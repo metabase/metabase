@@ -26,6 +26,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.semantic-layer-import.dbt.test-util.fixture :as fixture]
+   [metabase-enterprise.semantic-layer-import.test-util.regenerate :as regenerate]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.test.data.interface :as tx]
    ;; for the `#t` print-method of `LocalDate`, which the dataset EDN is written with
@@ -74,15 +75,6 @@
    [:dbname {:optional true} :string]
    [:user   {:optional true} :string]])
 
-(mr/def ::field-definition
-  "A column of a mart table in the dataset definition format: its name, base type, and whether it is the primary key
-  or a foreign key to another table."
-  [:map {:closed true}
-   [:field-name :string]
-   [:base-type  :keyword]
-   [:pk?        {:optional true} :boolean]
-   [:fk         {:optional true} :keyword]])
-
 (mr/def ::value
   "A cell of a mart table: dates are read back as `LocalDate`s, which print as the `#t` literals the dataset EDN
   takes; nothing else needs converting."
@@ -91,10 +83,6 @@
 (mr/def ::row
   "One row of a mart table, its values in column order."
   [:sequential ::value])
-
-(mr/def ::table-definition
-  "A table in the dataset definition format: name, field definitions, rows."
-  [:tuple :string [:sequential ::field-definition] [:sequential ::row]])
 
 (mr/def ::data-source
   "The JDBC data source for the Postgres the project was built in."
@@ -153,7 +141,7 @@
       (fixture/dbt! scratch profiles-dir "seed")
       (fixture/dbt! scratch profiles-dir "run" "--select" (str "package:" package-name)))))
 
-(mu/defn- field-definitions :- [:sequential ::field-definition]
+(mu/defn- field-definitions :- [:sequential ::regenerate/field-definition]
   "The dataset field definitions for `table`, from the columns Postgres reports for it, in column order."
   [ds                     :- ::data-source
    {:keys [table pk fks]} :- ::table]
@@ -177,7 +165,7 @@
   "The rows of `table`, ordered by `pk`, as vectors of values in the order of `fields`, its field definitions."
   [ds                 :- ::data-source
    {:keys [table pk]} :- ::table
-   fields             :- [:sequential ::field-definition]]
+   fields             :- [:sequential ::regenerate/field-definition]]
   (let [columns (map :field-name fields)
         sql     (format "SELECT %s FROM public.%s ORDER BY %s"
                         (str/join ", " (map #(str \" % \") columns))
@@ -189,25 +177,6 @@
                 (.toLocalDate ^java.sql.Date v)
                 v))
             row))))
-
-(mu/defn- edn-field-definition :- :string
-  [{:keys [field-name base-type pk? fk]} :- ::field-definition]
-  (str "{:field-name " (pr-str field-name) ", :base-type " base-type
-       (when pk? ", :pk? true")
-       (when fk (str ", :fk " fk))
-       "}"))
-
-(mu/defn- edn-table-definition :- :string
-  "One table of the dataset EDN, laid out like the checked-in dataset definitions: one field definition and one row
-  per line."
-  [[table-name fields table-rows] :- ::table-definition]
-  (str "[" (pr-str table-name) "\n"
-       "  [" (str/join "\n   " (map edn-field-definition fields)) "]\n"
-       "  [" (str/join "\n   " (map (fn [row] (str "[" (str/join ", " (map pr-str row)) "]")) table-rows)) "]]"))
-
-(mu/defn- edn-dataset :- :string
-  [table-definitions :- [:sequential ::table-definition]]
-  (str "[" (str/join "\n " (map edn-table-definition table-definitions)) "]\n"))
 
 (mu/defn regenerate! :- :string
   "Regenerate the dataset (see the namespace docstring) from the checkout at `:project` (default
@@ -227,13 +196,12 @@
      :or   {project (str (System/getProperty "user.home") "/dbt-business-intelligence")
             out     dataset-filename}} :- ::options
     password                           :- [:maybe :string]]
-   (fixture/check-repo-root)
+   (regenerate/check-repo-root)
    (let [connection (with-defaults (or connection {}) password)]
      (build! (io/file project) connection {:deps? (boolean deps?)})
      (let [ds          (data-source connection)
            definitions (vec (for [table tables
                                   :let  [fields (vec (field-definitions ds table))]]
                               [(:table table) fields (vec (rows ds table fields))]))]
-       (spit out (edn-dataset definitions))
-       (format "wrote %s: %s" out (str/join ", " (for [[table-name _ table-rows] definitions]
-                                                   (format "%s (%d rows)" table-name (count table-rows)))))))))
+       (spit out (regenerate/edn-dataset definitions))
+       (regenerate/summary out definitions)))))

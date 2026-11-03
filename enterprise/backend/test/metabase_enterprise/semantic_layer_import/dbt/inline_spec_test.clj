@@ -240,7 +240,7 @@
               "parcels_delayed"     [:sum {} (parcels-field "daily_depot_volume" "parcels_delayed" :type/Integer)]
               "parcels_received"    [:sum {} (parcels-field "daily_depot_volume" "parcels_received" :type/Integer)]
               "resolved_exceptions" [:count {}]
-              "run_count"           [:count-where {} [:not-null {} (parcels-field "delivery_runs" "run_id" :type/Text)]]
+              "run_count"           [:count {} (parcels-field "delivery_runs" "run_id" :type/Text)]
               "total_route_hours"   [:sum {} (parcels-field "delivery_runs" "route_hours" :type/Float)]
               "delay_rate"          [:/ {}
                                      [:metric {} (entity-id "parcels_delayed")]

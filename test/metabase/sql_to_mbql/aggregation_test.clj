@@ -260,6 +260,16 @@
    {:from "spec percentile"        :sql "PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY amount)" :converts? false}
    {:from "spec approximate"       :sql "APPROX_COUNT_DISTINCT(customer_id)" :dialect "snowflake" :converts? false}
    {:from "spec approximate"       :sql "APPROX_PERCENTILE(amount, 0.5)" :dialect "snowflake" :converts? false}
+   {:from "spec approximate"       :sql "APPROX_PERCENTILE(amount, 0.5)" :dialect "trino" :converts? true}
+   {:from "spec percentile"        :sql "PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY amount DESC)" :converts? true}
+   {:from "spec percentile"        :sql "MEDIAN(amount)" :dialect "mysql" :converts? false}
+   {:from "spec percentile"        :sql "MEDIAN(amount)" :dialect "trino" :converts? false}
+   {:from "spec statistical"       :sql "STDDEV(amount)" :dialect "mysql" :converts? true}
+   {:from "spec statistical"       :sql "STDDEV_POP(amount)" :dialect "sqlite" :converts? false}
+   {:from "snowflake count_if"     :sql "COUNT_IF(status = 'completed')" :dialect "snowflake" :converts? true}
+   {:from "snowflake iff"          :sql "SUM(IFF(status = 'completed', amount, 0))" :dialect "snowflake" :converts? true}
+   {:from "sqlserver integer avg"  :sql "AVG(quantity)" :dialect "tsql" :converts? false}
+   {:from "sqlserver integer avg"  :sql "AVG(amount)" :dialect "tsql" :converts? true}
    {:from "spec window"            :sql "RANK() OVER (ORDER BY revenue DESC NULLS LAST)" :converts? false}
    ;; converters
    {:from "converters cube orders__count"    :sql "COUNT(DISTINCT orders.id)" :converts? true}
@@ -339,10 +349,27 @@
       "COUNT(1)"
       "SUM(1)"
       "COUNT(orders.*)"))
-  (testing "COUNT of a column counts the rows where it is not null, as count-where, the way the import spells it"
+  (testing "COUNT of a column counts the rows where it is not null, as count over the column, which compiles to COUNT(x)"
     (are [sql clause] (= clause (aggregation sql))
-      "COUNT(comm)"     [:count-where {} [:not-null {} (col "comm")]]
-      "COUNT(order_id)" [:count-where {} [:not-null {} (col "order_id")]]))
+      "COUNT(comm)"     [:count {} (col "comm")]
+      "COUNT(order_id)" [:count {} (col "order_id")]))
+  (testing "COUNT_IF counts the rows where its condition holds"
+    (is (= [:count-where {} [:= {} (col "status") "completed"]]
+           (aggregation "snowflake" "COUNT_IF(status = 'completed')")))
+    (is (= [:count-where {} [:and {} [:> {} (col "amount") 0] [:= {} (col "status") "completed"]]]
+           (aggregation "snowflake" "COUNT_IF(status = 'completed') FILTER (WHERE amount > 0)"))))
+  (testing "IF and IFF are a CASE of one branch"
+    (is (= [:sum {} [:case {} [[[:= {} (col "status") "completed"] (col "amount")]] 0]]
+           (aggregation "snowflake" "SUM(IFF(status = 'completed', amount, 0))")))
+    (is (= [:max {} [:case {} [[[:> {} (col "amount") 0] (col "amount")]] nil]]
+           (aggregation "bigquery" "MAX(IF(amount > 0, amount, NULL))"))))
+  (testing "an integer average on a warehouse that truncates it is reported, as is the share idiom's average of 1 and 0"
+    (are [sql] (re-find #"truncates" (aggregation "tsql" sql))
+      "AVG(quantity)"
+      "AVG(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)")
+    (is (re-find #"truncates" (aggregation "redshift" "AVG(quantity)")))
+    (is (= [:avg {} (col "amount")] (aggregation "tsql" "AVG(amount)")))
+    (is (= [:avg {} (col "quantity")] (aggregation "postgres" "AVG(quantity)"))))
   (testing "the argument is converted with the row-level converters: an expression, a cast, a CASE"
     (are [sql clause] (= clause (aggregation sql))
       "SUM(L_EXTENDEDPRICE * (1 - L_DISCOUNT))"
@@ -368,13 +395,40 @@
       "STDDEV_SAMP(amount)"
       "VARIANCE(amount)"
       "VAR_SAMP(amount)"
-      "STDDEV_SAMP(\"X\")")))
+      "STDDEV_SAMP(\"X\")"))
+  (testing "MySQL's STDDEV is the population one, and converts; its VARIANCE cannot be told from VAR_SAMP"
+    (is (= [:stddev {} (col "amount")] (aggregation "mysql" "STDDEV(amount)")))
+    (is (re-find #"(?i)sample" (aggregation "mysql" "STDDEV_SAMP(amount)")))
+    (is (re-find #"(?i)sample" (aggregation "mysql" "VARIANCE(amount)"))))
+  (testing "a warehouse Metabase has no stddev on"
+    (is (re-find #"no standard deviation or variance aggregation" (aggregation "sqlite" "STDDEV_POP(amount)")))))
 
 (deftest ^:parallel percentile-test
   (testing "a continuous percentile, with its fraction"
     (are [sql clause] (= clause (aggregation sql))
       "PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY amount)" [:percentile {} (col "amount") 0.75]
       "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount)"  [:percentile {} (col "amount") 0.5]))
+  (testing "ordered DESC, the percentile is 1 - p of the ascending order: the same value"
+    (are [sql clause] (= clause (aggregation sql))
+      "PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY amount DESC)" [:percentile {} (col "amount") 0.25]
+      "PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY amount DESC)"  [:percentile {} (col "amount") 0.1]
+      "PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY amount ASC)"  [:percentile {} (col "amount") 0.75]))
+  (testing "where Metabase's percentile is an approximation, an exact one is reported, and the approximation converts"
+    (are [dialect] (re-find #"is exact, where Metabase's percentile" (aggregation dialect "MEDIAN(amount)"))
+      "bigquery"
+      "tsql"
+      "trino"
+      "presto")
+    (is (re-find #"is exact" (aggregation "athena" "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount)")))
+    (is (= [:percentile {} (col "amount") 0.5] (aggregation "trino" "approx_percentile(amount, 0.5)")))
+    (is (= [:percentile {} (col "amount") 0.9] (aggregation "clickhouse" "quantile(0.9)(amount)")))
+    (is (= [:percentile {} (col "amount") 0.5] (aggregation "clickhouse" "median(amount)")))
+    (is (= [:percentile {} (col "amount") 0.5] (aggregation "spark" "PERCENTILE(amount, 0.5)"))))
+  (testing "where Metabase has no percentile at all, it is reported"
+    (are [dialect sql] (re-find #"no percentile aggregation" (aggregation dialect sql))
+      "mysql"  "MEDIAN(amount)"
+      "sqlite" "MEDIAN(amount)"
+      "mysql"  "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount)"))
   (testing "a discrete percentile returns a value from the data where Metabase's interpolates, so it is reported"
     (is (re-find #"PERCENTILE_DISC" (aggregation "PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY amount)"))))
   (testing "the fraction has to be a literal from 0 to 1"
@@ -462,7 +516,24 @@
       [:count-where {} [:not-null {} (col "o_orderkey")]]))
   (testing "COUNT of a CASE yielding a column counts the rows where the condition holds and the column is not null"
     (is (= [:count-where {} [:and {} [:= {} (col "status") "completed"] [:not-null {} (col "comm")]]]
-           (aggregation "COUNT(CASE WHEN status = 'completed' THEN comm END)")))))
+           (aggregation "COUNT(CASE WHEN status = 'completed' THEN comm END)"))))
+  (testing "the near misses of the idiom are aggregated as the values they are"
+    (are [sql clause] (= clause (aggregation sql))
+      ;; an ELSE 0 under COUNT is never null, so every row counts
+      "COUNT(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)"
+      [:count {} [:case {} [[[:= {} (col "status") "completed"] 1]] 0]]
+
+      "AVG(CASE WHEN status = 'completed' THEN 1 END)"
+      [:avg {} [:case {} [[[:= {} (col "status") "completed"] 1]]]]
+
+      "COUNT(DISTINCT CASE WHEN status = 'completed' THEN customer_id ELSE order_id END)"
+      [:distinct {} [:case {} [[[:= {} (col "status") "completed"] (col "customer_id")]] (col "order_id")]]
+
+      "SUM(CASE WHEN status = 'completed' THEN 2 ELSE 0 END)"
+      [:sum-where {} 2 [:= {} (col "status") "completed"]]
+
+      "SUM(CASE WHEN status = 'completed' THEN 1 ELSE NULL END)"
+      [:count-where {} [:= {} (col "status") "completed"]])))
 
 (deftest ^:parallel case-distinct-where-and-share-test
   (testing "COUNT(DISTINCT CASE WHEN c THEN x END) is distinct-where"
@@ -549,7 +620,7 @@
   (testing "a function with a Lib equivalent over an aggregate"
     (are [sql clause] (= clause (aggregation sql))
       "SUM(items.quantity) + LOG10(COUNT(users.id))"
-      [:+ {} [:sum {} (col "quantity")] [:log {} [:count-where {} [:not-null {} (col "id")]]]]
+      [:+ {} [:sum {} (col "quantity")] [:log {} [:count {} (col "id")]]]
 
       "ROUND(SUM(amount) / COUNT(*), 2)"
       [:/ {} [:round {} [:* {} [:/ {} [:sum {} (col "amount")] [:count {}]] 100]] 100]
@@ -569,7 +640,12 @@
            (aggregation "postgres" "SUM(sal) / COUNT(*)")))
     (testing "a share is a float, so it is not"
       (is (= [:/ {} [:share {} [:= {} (col "status") "completed"]] 2]
-             (aggregation "postgres" "AVG(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) / 2"))))))
+             (aggregation "postgres" "AVG(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) / 2"))))
+    (testing "a median or percentile of an integer column is a double to the warehouse, so it is not either"
+      (is (= [:/ {} [:median {} (col "quantity")] [:count {}]]
+             (aggregation "postgres" "MEDIAN(quantity) / COUNT(*)")))
+      (is (= [:/ {} [:percentile {} (col "quantity") 0.5] 2]
+             (aggregation "postgres" "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY quantity) / 2"))))))
 
 (deftest ^:parallel aggregate-cast-test
   (testing "a cast of an aggregate is read as a cast is: Snowflake's NUMBER is NUMBER(38, 0), which rounds"
@@ -670,7 +746,7 @@
       "count(distinct customer_id)"
 
       "COUNT(comm)"
-      "SUM(CASE WHEN comm IS NOT NULL THEN 1 ELSE 0.0 END)"
+      "COUNT(comm)"
 
       "SUM(amount) FILTER (WHERE status = 'completed')"
       "SUM(CASE WHEN status = ? THEN amount ELSE 0.0 END)"

@@ -37,7 +37,9 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (def versions
   "The `version` strings of the two document shapes the import reads, see the namespace docstring."
@@ -55,8 +57,8 @@
   0.2.0.dev0 (`ANSI_SQL`, `OSSIE_SQL_2026`, `SNOWFLAKE`, ...) and an enumeration in 0.1.1; see
   [[metabase-enterprise.semantic-layer-import.ossie.dialect]] for how one is chosen."
   [:map {::mr/deliberately-open true}
-   [:dialect    :string]
-   [:expression :string]])
+   [:dialect    ::text]
+   [:expression ::text]])
 
 (mr/def ::expression
   "A field's or metric's `expression`: the expression in one or more dialects, and in 0.2.0.dev0 optionally the
@@ -64,7 +66,7 @@
   least one of the two has to be there."
   [:and
    [:map {::mr/deliberately-open true}
-    [:sql      {:optional true} [:maybe :string]]
+    [:sql      {:optional true} [:maybe ::text]]
     [:dialects {:optional true} [:maybe [:sequential ::dialect-expression]]]]
    [:fn {:error/message "an expression has a `sql` or at least one entry in `dialects`"}
     (fn [{:keys [sql dialects]}]
@@ -83,52 +85,60 @@
   `Decimal`, `Float`, `Boolean`, `Date`, `Time`, `DateTime`, `DateTimeTz`, `Opaque`), kept as a string since a writer
   may use another name; 0.1.1 has none."
   [:map {::mr/deliberately-open true}
-   [:name        :string]
+   [:name        ::text]
    [:expression  ::expression]
    [:dimension   {:optional true} [:maybe ::dimension]]
    [:label       {:optional true} [:maybe ::text]]
    [:description {:optional true} [:maybe ::text]]
-   [:datatype    {:optional true} [:maybe :string]]])
+   [:datatype    {:optional true} [:maybe ::text]]])
+
+(mr/def ::free-form
+  "A value the import carries but never reads: a metric's `ai_context` or `custom_extensions`, of whatever shape the
+  project gives it."
+  [:any {::mr/deliberately-open true, :description "free-form metadata of the project's own"}])
 
 (mr/def ::metric
   "A metric: a SQL aggregate expression, in one or more dialects, over a dataset's fields. A model-scoped metric
   (the model's `metrics`) names fields as `dataset.field` and may span datasets; a dataset-scoped one (a dataset's
-  `metrics`, 0.2.0.dev0 only) names its own dataset's fields unqualified."
+  `metrics`, 0.2.0.dev0 only) names its own dataset's fields unqualified. Its `datatype`, `ai_context` and
+  `custom_extensions` are carried in the IR's `meta`, unread."
   [:map {::mr/deliberately-open true}
-   [:name        :string]
-   [:expression  ::expression]
-   [:description {:optional true} [:maybe ::text]]
-   [:datatype    {:optional true} [:maybe :string]]])
+   [:name              ::text]
+   [:expression        ::expression]
+   [:description       {:optional true} [:maybe ::text]]
+   [:datatype          {:optional true} [:maybe ::text]]
+   [:ai_context        {:optional true} ::free-form]
+   [:custom_extensions {:optional true} ::free-form]])
 
 (mr/def ::relationship
   "A many-to-one relationship from the dataset `from` to the dataset `to`, on the fields `from_columns` of the one
   and `to_columns` of the other, pairwise; more than one pair is a composite key. Despite their names the two hold
   field names (0.2.0.dev0 says so; 0.1.1 did not say, and its writers use the same names for both)."
   [:map {::mr/deliberately-open true}
-   [:name         :string]
-   [:from         :string]
-   [:to           :string]
-   [:from_columns [:sequential {:min 1} :string]]
-   [:to_columns   [:sequential {:min 1} :string]]])
+   [:name         ::text]
+   [:from         ::text]
+   [:to           ::text]
+   [:from_columns [:sequential {:min 1} ::text]]
+   [:to_columns   [:sequential {:min 1} ::text]]])
 
 (mr/def ::dataset
   "A dataset: a physical table, view or query (`source`) with the fields declared over it, its keys by field name,
   and in 0.2.0.dev0 its own metrics."
   [:map {::mr/deliberately-open true}
-   [:name        :string]
-   [:source      :string]
-   [:primary_key {:optional true} [:maybe [:sequential :string]]]
-   [:unique_keys {:optional true} [:maybe [:sequential [:sequential :string]]]]
+   [:name        ::text]
+   [:source      ::text]
+   [:primary_key {:optional true} [:maybe [:sequential ::text]]]
+   [:unique_keys {:optional true} [:maybe [:sequential [:sequential ::text]]]]
    [:description {:optional true} [:maybe ::text]]
    [:fields      {:optional true} [:maybe [:sequential ::field]]]
    [:metrics     {:optional true} [:maybe [:sequential ::metric]]]])
 
 (mr/def ::model-keys
   "What a semantic model holds, in either shape: at the root of a 0.2.0.dev0 document, in each entry of a 0.1.1
-  document's `semantic_model`."
+  document's `semantic_model`. A model's own `description` and `ai_context` are not read: the collection the metrics
+  land in has a fixed description."
   [:map {::mr/deliberately-open true}
-   [:name          :string]
-   [:description   {:optional true} [:maybe ::text]]
+   [:name          ::text]
    [:datasets      [:sequential {:min 1} ::dataset]]
    [:relationships {:optional true} [:maybe [:sequential ::relationship]]]
    [:metrics       {:optional true} [:maybe [:sequential ::metric]]]])
@@ -155,9 +165,9 @@
     [:version [:maybe :string]]]])
 
 (mr/def ::raw
-  "A document as YAML or JSON parses it, with keyword keys, before decoding: a map of any shape, which decoding
-  checks."
-  [:map-of {::mr/deliberately-open true, :description "the raw document, of any shape"} :keyword :any])
+  "A document as YAML or JSON parses it, with keyword keys (YAML leaves a key that is not text as it is), before
+  decoding: a map of any shape, which decoding checks."
+  [:map-of {::mr/deliberately-open true, :description "the raw document, of any shape"} :any :any])
 
 (def ^:private transformer
   (mtx/transformer
@@ -170,7 +180,7 @@
   Nil when neither says."
   [{:keys [version] :as document} :- ::raw]
   (cond
-    (some? version)                  (str version)
+    (some? version)                      (str version)
     (contains? document :semantic_model) "0.1.1"
     (contains? document :datasets)       "0.2.0.dev0"))
 
@@ -212,16 +222,24 @@
       "0.2.0.dev0"
       (assoc (decode ::document.0.2.0 document) :version version))))
 
-(mu/defn- parse-file :- :any
+(def ^:private yaml-nesting-depth-limit
+  "How deep a YAML document may nest: an Ossie document nests six levels or so, and a document thousands deep would
+  overflow the stack before the shared default of [[yaml/nesting-depth-limit]] is reached."
+  100)
+
+(mu/defn- parse-file :- [:any {::mr/deliberately-open true, :description "the parsed file, of any shape"}]
   "The YAML or JSON of the file at `filename`, parsed with keyword keys, whatever its shape: JSON when the name ends in
   `.json`, YAML otherwise (JSON is YAML too, so a `.json` file read as YAML parses as well; the split is about the error
-  messages). Throws, naming the file, when it cannot be read or does not parse."
+  messages). A YAML mapping with a key twice is refused rather than read as its last value, and so is one nested deeper
+  than [[yaml-nesting-depth-limit]]. Throws, naming the file, when it cannot be read or does not parse."
   [filename :- :string]
   (try
     (if (str/ends-with? (u/lower-case-en filename) ".json")
       (with-open [r (io/reader filename)]
         (json/decode+kw r))
-      (yaml/parse-string (slurp filename)))
+      (yaml/parse-string (slurp filename)
+                         :allow-duplicate-keys false
+                         :nesting-depth-limit yaml-nesting-depth-limit))
     (catch Exception e
       (throw (ex-info (format "Cannot read Ossie document %s: %s" filename (ex-message e))
                       {:path filename}
@@ -243,7 +261,7 @@
                       {:path filename})))
     (try
       (model raw)
-      (catch clojure.lang.ExceptionInfo e
+      (catch ExceptionInfo e
         (throw (ex-info (format "%s (%s)" (ex-message e) filename)
                         (assoc (ex-data e) :path filename)
                         e))))))

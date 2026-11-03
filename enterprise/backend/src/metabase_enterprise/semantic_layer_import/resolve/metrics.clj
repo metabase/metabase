@@ -84,7 +84,7 @@
 (mr/def ::canonical-aggregation
   "An aggregation in the form the Lib clauses are built from, see [[canonical-aggregation]]. `agg` is an IR operator,
   or one of the stage's own: `:row-count` for a `:count` or `:sum` over no expression, and `:count-non-null` for a
-  `:count` over a column, which SQL skips nulls for. The expression of a `:count-where` is the condition to count rows
+  `:count` over a column, which SQL skips nulls for and Lib's `count` over an expression does too. The expression of a `:count-where` is the condition to count rows
   by. `percentile` is set for a `:percentile`."
   [:map {:closed true}
    [:agg        [:enum :row-count :count-non-null :count-where
@@ -157,7 +157,7 @@
                                 (name agg)))
     (case agg
       :row-count      (lib/count)
-      :count-non-null (lib/count-where (lib/not-null expression))
+      :count-non-null (lib/count expression)
       :count-where    (lib/count-where expression)
       :sum            (lib/sum expression)
       :avg            (lib/avg expression)

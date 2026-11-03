@@ -14,4 +14,7 @@ README](ossie/README.md#running-the-tests)). Run them all in a fresh JVM with
 or one namespace with `./bin/test-agent :only '[metabase-enterprise.semantic-layer-import.sql-test]'`. From a REPL
 started with the `:ee` and `:ee-dev` aliases, require and run them as any other test namespace. Each source's
 end-to-end test needs a Postgres warehouse; see [the dbt README](dbt/README.md#the-end-to-end-test) and [the Ossie
-README](ossie/README.md#the-end-to-end-test).
+README](ossie/README.md#the-end-to-end-test). What the two end-to-end tests share (converting and importing a fixture,
+reading the cards back, running a metric and its breakouts, comparing with hand-written SQL) is in
+`test_util/e2e.clj`, and what the fixture generators share (the repo-root check and the dataset EDN writer) in
+`test_util/regenerate.clj`.

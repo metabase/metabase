@@ -130,7 +130,7 @@
     :else
     (lib/with-temporal-bucket column unit)))
 
-(mu/defn reference-clause :- ::sql-to-mbql/expression
+(mu/defn- reference-clause :- ::sql-to-mbql/expression
   "The Lib expression a placeholder's reference stands for: a key's or a named expression's `expr`, a dimension's,
   bucketed when the reference says so; each a column ref, or the SQL inlined, against the table the reference reaches
   (see [[path-context]])."

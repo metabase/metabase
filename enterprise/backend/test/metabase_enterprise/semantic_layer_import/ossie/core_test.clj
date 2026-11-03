@@ -7,15 +7,15 @@
    [clojure.java.io :as io]
    [clojure.test :refer [are deftest is testing]]
    [mb.hawk.assert-exprs]
+   [medley.core :as m]
    [metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
    [metabase-enterprise.semantic-layer-import.ossie.test-util :as tu]
+   [metabase-enterprise.semantic-layer-import.resolve :as resolve]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml])
   (:import
    (clojure.lang ExceptionInfo)))
-
-(set! *warn-on-reflection* true)
 
 (def ^:private tpch-config
   "The TPC-H model names Snowflake's sample database; read for Postgres, whose driver folds the unquoted names to lower
@@ -25,7 +25,7 @@
    :creator-email  "admin@example.com"
    :schema-mapping {"TPCH_SF1" "public"}})
 
-(defn- fld
+(defn- yaml-fld
   "A field ref as the YAML reads back, clause names as strings, on a TPC-H table in `public`."
   ([table column]
    ["field" {} [tu/db "public" table column]])
@@ -39,7 +39,7 @@
                                                      :config tpch-config})
           read-yaml #(yaml/parse-string (slurp (io/file out-dir %)))
           card      (fn [metric-name]
-                      (read-yaml (:path (some #(when (= metric-name (:name %)) %) (:converted report)))))
+                      (read-yaml (:path (m/find-first #(= metric-name (:name %)) (:converted report)))))
           stage     (fn [metric-name]
                       (-> (card metric-name) :dataset_query :stages first))]
       (is (mr/validate ::semantic-layer-import/report report))
@@ -61,21 +61,21 @@
         (is (=? {:source-table [tu/db "public" "lineitem"]
                  :aggregation  [["sum" {}
                                  ["case" {}
-                                  [[["not" {} ["=" {} (fld "lineitem" "l_returnflag") "R"]]
-                                    ["*" {} (fld "lineitem" "l_extendedprice")
-                                     ["-" {} 1 (fld "lineitem" "l_discount")]]]]
+                                  [[["not" {} ["=" {} (yaml-fld "lineitem" "l_returnflag") "R"]]
+                                    ["*" {} (yaml-fld "lineitem" "l_extendedprice")
+                                     ["-" {} 1 (yaml-fld "lineitem" "l_discount")]]]]
                                   0]]]}
                 (stage "net_revenue"))))
       (testing "a ratio of aggregates is one aggregation"
         (is (=? {:aggregation [["/" {}
-                                ["sum" {} ["case" {} [[["not" {} ["=" {} (fld "lineitem" "l_returnflag") "R"]]
-                                                       ["*" {} (fld "lineitem" "l_extendedprice")
-                                                        ["-" {} 1 (fld "lineitem" "l_discount")]]]] 0]]
-                                ["distinct" {} (fld "lineitem" "l_orderkey")]]]}
+                                ["sum" {} ["case" {} [[["not" {} ["=" {} (yaml-fld "lineitem" "l_returnflag") "R"]]
+                                                       ["*" {} (yaml-fld "lineitem" "l_extendedprice")
+                                                        ["-" {} 1 (yaml-fld "lineitem" "l_discount")]]]] 0]]
+                                ["distinct" {} (yaml-fld "lineitem" "l_orderkey")]]]}
                 (stage "average_order_value"))))
       (testing "a metric over another dataset is over that table"
         (is (=? {:source-table [tu/db "public" "orders"]
-                 :aggregation  [["distinct" {} (fld "orders" "o_orderkey")]]}
+                 :aggregation  [["distinct" {} (yaml-fld "orders" "o_orderkey")]]}
                 (stage "order_count"))))
       (testing "the dimension set: the table's own, its one time dimension the default, and the joined dataset's"
         (let [dimensions (:dimensions (card "net_revenue"))]
@@ -88,7 +88,7 @@
             (is (= ["L Orderkey" "LINEITEM" "ORDERS"]
                    [(:display-name (first dimensions)) (-> dimensions first :group :display-name)
                     (-> dimensions last :group :display-name)])))
-          (is (= (fld "orders" "o_orderpriority" "l_orderkey")
+          (is (= (yaml-fld "orders" "o_orderpriority" "l_orderkey")
                  (:target (last (:dimension_mappings (card "net_revenue"))))))))
       (testing "the metric's description and metadata-free card"
         (is (= "Number of orders." (:description (card "order_count"))))))))
@@ -126,12 +126,12 @@
         "m0_sum_bare.ossie.yaml"             "total_amount"       [:sum {} amount]
         "m1_scalar_field.ossie.yaml"         "total_amount"       [:sum {} amount]
         "m2_aggregates_qualified.ossie.yaml" "sum_amount"         [:sum {} amount]
-        "m2_aggregates_qualified.ossie.yaml" "count_orders"       [:count-where {} [:not-null {} order-id]]
+        "m2_aggregates_qualified.ossie.yaml" "count_orders"       [:count {} order-id]
         "m2_aggregates_qualified.ossie.yaml" "distinct_customers" [:distinct {} customer-id]
         "m2_aggregates_qualified.ossie.yaml" "avg_amount"         [:avg {} amount]
         "m2_aggregates_qualified.ossie.yaml" "min_amount"         [:min {} amount]
         "m2_aggregates_qualified.ossie.yaml" "max_amount"         [:max {} amount]
-        "m2_aggregates_bare.ossie.yaml"      "count_orders"       [:count-where {} [:not-null {} order-id]]
+        "m2_aggregates_bare.ossie.yaml"      "count_orders"       [:count {} order-id]
         "m3_filtered_agg_qualified.ossie.yaml" "completed_amount" [:sum-where {} amount [:= {} status "completed"]]
         "m3_filtered_agg_bare.ossie.yaml"      "completed_amount" [:sum-where {} amount [:= {} status "completed"]])
       (testing "the ladder's datasets declare no dimension, so a metric has no curated dimensions, and reports none"
@@ -144,7 +144,7 @@
     (let [resolved (tu/resolve-file (tu/fixture "apache/compliance/scott/scott_model.ossie.yaml"))]
       (is (= {"emp.sum_sal"         [:sum {} (tu/fld "scott" "emp" "sal")]
               "emp.emp_count"       [:count {}]
-              "emp.comm_count"      [:count-where {} [:not-null {} (tu/fld "scott" "emp" "comm")]]
+              "emp.comm_count"      [:count {} (tu/fld "scott" "emp" "comm")]
               "emp.sum_comm"        [:sum {} (tu/fld "scott" "emp" "comm")]
               "dept.dept_count"     [:count {}]
               "salgrade.grade_count" [:count {}]}
@@ -189,7 +189,30 @@
       (let [resolved (tu/resolve-file (tu/fixture "apache/examples/tpcds_semantic_model.osi-0.1.1.yaml"))]
         (is (= ["total_sales" "total_profit" "customer_lifetime_value" "sales_by_brand"]
                (map (comp :name :ir) (:metrics resolved))))
-        (is (= ["store_productivity"] (map :name (:unsupported resolved))))))))
+        (is (= ["store_productivity"] (map :name (:unsupported resolved))))
+        (is (re-find #"SUM\(store\.s_number_employees\) aggregates \"s_number_employees\" of dataset \"store\""
+                     (tu/unsupported resolved "store_productivity")))))))
+
+(deftest ^:parallel two-hop-reference-test
+  (testing "a reference two relationships away parses with its path, and the resolve stage reports it: a dimension mapping is one join"
+    (let [ir       (tu/ir (tu/shop-document [(tu/metric "eu_sales" "SUM(orders.amount) FILTER (WHERE regions.region_name = 'EU')")]
+                                            :edit #(-> %
+                                                       (update :datasets conj {:name        "regions"
+                                                                               :source      "shop.public.regions"
+                                                                               :primary_key ["id"]
+                                                                               :fields      [(tu/dimension "id") (tu/dimension "region_name")]})
+                                                       (update :relationships conj {:name         "customers_to_regions"
+                                                                                    :from         "customers"
+                                                                                    :to           "regions"
+                                                                                    :from_columns ["segment"]
+                                                                                    :to_columns   ["id"]}))))
+          resolved (resolve/resolve-semantic-layer {:databases {"shop" tu/db}, :driver :postgres, :creator-email "admin@example.com"}
+                                                   ir)]
+      (is (= [] (:unsupported ir)))
+      (is (= {:kind :dimension, :path ["orders_to_customers" "customers_to_regions"], :name "region_name", :bucket nil}
+             (-> ir :metrics first :aggregation :references (get "__ossie_ref_1__"))))
+      (is (re-find #"is reached through more than one join \(\"orders_to_customers\", \"customers_to_regions\"\)"
+                   (tu/unsupported resolved "eu_sales"))))))
 
 (deftest ^:parallel duckdb-ossie-fixtures-test
   (let [resolve-fixture #(tu/resolve-file (tu/fixture (str "duckdb_ossie/" %)))]
@@ -203,7 +226,7 @@
       (is (re-find #"^expr \"SUM\(store_sales\.ss_ext_sales_price\) / NULLIF\(SUM\(\": could not parse"
                    (tu/unsupported (resolve-fixture "invalid/malformed_expression.json") "store_productivity"))))
     (testing "a relationship to a dataset the model does not have is a join that cannot be made"
-      (let [ir       (tu/parse (tu/fixture "duckdb_ossie/invalid/dangling_relationship.json"))
+      (let [ir       (tu/parse-file (tu/fixture "duckdb_ossie/invalid/dangling_relationship.json"))
             resolved (resolve-fixture "invalid/dangling_relationship.json")]
         (is (= {:name        "store_sales_to_date"
                 :reason      "relationship \"store_sales_to_date\" leads to dataset \"date_dimension\", which the model does not have"
@@ -215,7 +238,7 @@
                  (:unsupported-dimensions (tu/outcome resolved "total_sales"))))
           (is (= [:sum {} (tu/fld "store_sales" "ss_ext_sales_price")] (tu/aggregation resolved "total_sales"))))))
     (testing "a relationship that does not land on a key of its dataset would multiply the rows"
-      (is (re-find #"relationship \"store_sales_to_store\" leads to \"s_city\" of dataset \"store\", which is not among its keys \(s_store_id, s_store_sk\)"
+      (is (re-find #"relationship \"store_sales_to_store\" leads to \"s_city\" of dataset \"store\", which is not on its own among its keys \(\"s_store_id\", \"s_store_sk\"\)"
                    (get (:unsupported-dimensions (tu/outcome (resolve-fixture "many_to_many_model.json") "total_sales"))
                         "s_store_name"))))
     (testing "two relationships to a dataset are two paths, and the shorter one is taken"
@@ -231,15 +254,15 @@
                     " names the dataset of every field it aggregates")
                (tu/unsupported resolved "transaction_count")))))
     (testing "field expressions are over the source's columns, so a field named like another field does not refer to it"
-      (is (= [:count-where {} [:not-null {} (tu/fld "t" "k")]]
+      (is (= [:count {} (tu/fld "t" "k")]
              (tu/aggregation (resolve-fixture "invalid/field_cycle.json") "m")))
       (is (= [:sum {} (tu/fld "sales" "amt")] (tu/aggregation (resolve-fixture "nested_field_model.json") "total"))))
     (testing "OSSIE_SQL_2026's own functions are reported by the SQL converter when a metric reaches them"
       (let [resolved (resolve-fixture "ossie_sql_2026_model.json")]
-        (is (= [:count-where {} [:not-null {} (tu/fld "main" "orders" "id")]] (tu/aggregation resolved "order_count")))
+        (is (= [:count {} (tu/fld "main" "orders" "id")] (tu/aggregation resolved "order_count")))
         (is (= "expr \"SUM(ZEROIFNULL(o.discount))\": dataset \"o\" has no field \"discount\""
                (tu/unsupported resolved "discount_total_ossie")))))
-    (testing "documents with fields the import cannot read but no metrics convert nothing and report nothing"
+    (testing "documents whose fields use OSSIE_SQL_2026's functions, and which declare no metric, convert nothing and report nothing"
       (are [file] (= {:metrics [], :unsupported [], :errors []}
                      (select-keys (resolve-fixture file) [:metrics :unsupported :errors]))
         "invalid/ossie_sql_2026_arity.json"
@@ -248,4 +271,4 @@
         "invalid/ossie_sql_2026_regexp_like.json"
         "invalid/semantic_model_wrapper.json"))
     (testing "the hostile YAML converts its one metric"
-      (is (= [:count-where {} [:not-null {} (tu/fld "t" "k")]] (tu/aggregation (resolve-fixture "yaml_edge_cases.yaml") "m"))))))
+      (is (= [:count {} (tu/fld "t" "k")] (tu/aggregation (resolve-fixture "yaml_edge_cases.yaml") "m"))))))

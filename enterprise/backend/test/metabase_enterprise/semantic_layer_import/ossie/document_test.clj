@@ -3,6 +3,7 @@
   refused up front."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.semantic-layer-import.ossie.document :as document]
    [metabase-enterprise.semantic-layer-import.ossie.test-util :as tu]
@@ -11,28 +12,26 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(set! *warn-on-reflection* true)
-
 (defn- shape
   "What a model says, independent of the document shape it was written in."
   [model]
   {:name          (:name model)
-   :datasets      (mapv (fn [{:keys [name source primary_key fields]}]
-                          [name source primary_key (mapv :name fields)])
+   :datasets      (mapv (fn [{dataset-name :name, :keys [source fields], primary-key :primary_key}]
+                          [dataset-name source primary-key (mapv :name fields)])
                         (:datasets model))
    :relationships (mapv (juxt :name :from :to :from_columns :to_columns) (:relationships model))
    :metrics       (mapv (juxt :name (comp :expression first :dialects :expression)) (:metrics model))})
 
 (deftest ^:parallel both-shapes-test
   (testing "the same model in the 0.1.1 and 0.2.0.dev0 shapes reads the same, apart from the version"
-    (let [old (document/read-document tu/tpch-document)
-          new (document/read-document tu/tpch-document-v02)]
-      (is (mr/validate ::document/model old))
-      (is (= "0.1.1" (:version old)))
-      (is (= "0.2.0.dev0" (:version new)))
-      (is (= (shape old) (shape new)))
-      (is (= ["lineitem" "orders" "customer" "nation" "region"] (map :name (:datasets new))))
-      (is (= ["net_revenue" "gross_revenue" "order_count" "average_order_value"] (map :name (:metrics new)))))))
+    (let [v01 (document/read-document tu/tpch-document)
+          v02 (document/read-document tu/tpch-document-v02)]
+      (is (mr/validate ::document/model v01))
+      (is (= "0.1.1" (:version v01)))
+      (is (= "0.2.0.dev0" (:version v02)))
+      (is (= (shape v01) (shape v02)))
+      (is (= ["lineitem" "orders" "customer" "nation" "region"] (map :name (:datasets v02))))
+      (is (= ["net_revenue" "gross_revenue" "order_count" "average_order_value"] (map :name (:metrics v02)))))))
 
 (deftest ^:parallel json-test
   (testing "a JSON document reads like a YAML one; a 0.1.1 wrapper around one model is read"
@@ -53,6 +52,11 @@
                           (document/model {:version "0.3.0", :name "m", :datasets [{:name "t", :source "t"}]})))
     (is (thrown-with-msg? ExceptionInfo #"this one says nil"
                           (document/model {:foo "bar"}))))
+  (testing "a version and a shape that disagree are refused as the version's schema says"
+    (is (thrown-with-msg? ExceptionInfo #"Invalid Ossie document"
+                          (document/model {:version "0.2.0.dev0", :semantic_model [{:name "m", :datasets [{:name "t", :source "t"}]}]})))
+    (is (thrown-with-msg? ExceptionInfo #"Invalid Ossie document"
+                          (document/model {:version "0.1.1", :name "m", :datasets [{:name "t", :source "t"}]}))))
   (testing "a 0.1.1 document holds one model"
     (is (thrown-with-msg? ExceptionInfo #"semantic_model holds 2 \(\"a\", \"b\"\); split the document"
                           (document/model {:version        "0.1.1"
@@ -81,20 +85,25 @@
               (explain {:version       "0.2.0.dev0"
                         :name          "m"
                         :datasets      [{:name "t", :source "t"}]
-                        :relationships [{:name "r", :from "t", :to "t", :from_columns [], :to_columns ["x"]}]}))))))
+                        :relationships [{:name "r", :from "t", :to "t", :from_columns [], :to_columns ["x"]}]})))
+      (testing "a key that is not text is no key the schemas name, and the document is checked as it is"
+        (is (=? ["Invalid Ossie document" {:name ["missing required key"]}]
+                (explain {1 "one", :datasets [{:name "t", :source "t"}]})))))))
 
 (deftest ^:parallel coercion-test
-  (testing "text YAML typed as a number or a boolean is read as its text"
+  (testing "text YAML typed as a number or a boolean is read as its text, names and expressions included"
     (let [model (document/model {:version  "0.2.0.dev0"
-                                 :name     "m"
+                                 :name     123
                                  :datasets [{:name        "t"
                                              :source      "t"
                                              :description 1.5
                                              :fields      [{:name        "f"
-                                                            :expression  {:sql "f"}
+                                                            :expression  {:sql 1}
                                                             :description true
                                                             :label       7}]}]})]
+      (is (= "123" (:name model)))
       (is (= "1.5" (-> model :datasets first :description)))
+      (is (= "1" (-> model :datasets first :fields first :expression :sql)))
       (is (= ["true" "7"] ((juxt :description :label) (-> model :datasets first :fields first))))))
   (testing "the hostile-but-legal YAML of the duckdb-ossie fixture reads"
     (let [model  (document/read-document (tu/fixture "duckdb_ossie/yaml_edge_cases.yaml"))
@@ -113,7 +122,7 @@
                      (let [f (io/file dir filename)]
                        (spit f content)
                        (str f)))]
-        (is (thrown-with-msg? ExceptionInfo #"Cannot read Ossie document .*broken\.yaml: mapping values are not allowed here"
+        (is (thrown-with-msg? ExceptionInfo #"Cannot read Ossie document .*broken\.yaml: "
                               (document/read-document (tu/fixture "duckdb_ossie/invalid/broken.yaml"))))
         (is (thrown-with-msg? ExceptionInfo #"Cannot read Ossie document .*nope\.json"
                               (document/read-document (write! "nope.json" "{"))))
@@ -125,6 +134,12 @@
                               (document/read-document (write! "scalar.yaml" "just text\n"))))
         (is (thrown-with-msg? ExceptionInfo #"Unsupported Ossie document: .* \(.*v3\.yaml\)"
                               (document/read-document (write! "v3.yaml" "version: 9.9\nname: m\ndatasets: [{name: t, source: t}]\n"))))
+        (testing "a mapping with a key twice is refused rather than read as its last value"
+          (is (thrown-with-msg? ExceptionInfo #"(?s)Cannot read Ossie document .*twice\.yaml: .*duplicate key"
+                                (document/read-document (write! "twice.yaml" "name: a\nname: b\ndatasets: [{name: t, source: t}]\n")))))
+        (testing "a document nested absurdly deep is refused before it overflows the stack"
+          (is (thrown-with-msg? ExceptionInfo #"Cannot read Ossie document .*deep\.yaml: .*Nesting Depth"
+                                (document/read-document (write! "deep.yaml" (str "name: " (str/join (repeat 2000 "[")) (str/join (repeat 2000 "]")) "\n"))))))
         (let [e (try
                   (document/read-document (write! "bad.yaml" "version: 0.2.0.dev0\nname: m\n"))
                   (catch ExceptionInfo e e))]

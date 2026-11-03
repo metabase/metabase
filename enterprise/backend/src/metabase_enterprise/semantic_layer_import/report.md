@@ -10,7 +10,8 @@
   finished query so that every way of writing the case is caught: a cumulative metric is a running total across whatever
   it is broken out by, so it is right only with its time dimension as the finest breakout, and a metric that buckets
   anything by week starts its weeks on the instance's first day of the week (see [the caveat on weeks](sql.md#weeks));
-- `:unsupported`, one `{:kind :name :reason}` per entry that could not be converted;
+- `:unsupported`, one `{:kind :name :reason}` per entry that could not be converted: a `:metric`, a `:table` the source
+  defines in a way the import cannot read (a query), or a `:relationship` from a table the model does not have;
 - `:errors`, one `{:kind :name :unique-id :message}` per entry the import itself failed on: an unexpected exception,
   which is a bug or an input the import did not anticipate, rather than something the source can say that Metabase
   cannot. The message names the exception. A table the source could not parse is listed with `:kind :table`.

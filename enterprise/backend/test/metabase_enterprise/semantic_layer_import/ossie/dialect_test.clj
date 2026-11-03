@@ -2,8 +2,10 @@
   "[[metabase-enterprise.semantic-layer-import.ossie.dialect]]: which of a document's dialects is read, and what that
   says about the warehouse."
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer [are deftest is testing]]
-   [metabase-enterprise.semantic-layer-import.ossie.dialect :as dialect])
+   [metabase-enterprise.semantic-layer-import.ossie.dialect :as dialect]
+   [metabase.util.yaml :as yaml])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -19,13 +21,15 @@
     "MDX"            "MDX"))
 
 (deftest ^:parallel choose-test
-  (testing "the option wins: a vendor SQL dialect as itself, a portable one as the portable dialects"
+  (testing "the option wins: a vendor SQL dialect as itself, a portable one as itself, tried before the other portable one"
     (is (= "SNOWFLAKE" (dialect/choose "snowflake" #{"ANSI_SQL" "BIGQUERY"})))
-    (is (nil? (dialect/choose "ANSI_SQL" #{"SNOWFLAKE"})))
-    (is (nil? (dialect/choose "OSSIE_SQL_2026" #{"SNOWFLAKE"}))))
-  (testing "an option that is not SQL the import reads fails the run"
-    (is (thrown-with-msg? ExceptionInfo #"The :dialect option \"MDX\" is not a SQL dialect the import reads"
-                          (dialect/choose "MDX" #{"ANSI_SQL"}))))
+    (is (= "ANSI_SQL" (dialect/choose "ANSI_SQL" #{"SNOWFLAKE"})))
+    (is (= "OSSIE_SQL_2026" (dialect/choose "ossie_sql_2026" #{"SNOWFLAKE"}))))
+  (testing "an option that is not SQL the import reads fails the run, naming the dialects it does"
+    (is (thrown-with-msg? ExceptionInfo #"The :dialect option \"MDX\" is not a SQL dialect the import reads: name one of ATHENA, BIGQUERY, .*SNOWFLAKE.*, or leave it out for the portable ones \(ANSI_SQL, OSSIE_SQL_2026\)"
+                          (dialect/choose "MDX" #{"ANSI_SQL"})))
+    (is (thrown-with-msg? ExceptionInfo #"The :dialect option \"DUCKDB\" is not a SQL dialect the import reads"
+                          (dialect/choose "DUCKDB" #{"ANSI_SQL"}))))
   (testing "without the option, the one vendor SQL dialect the document uses, else the portable ones"
     (is (= "BIGQUERY" (dialect/choose nil #{"ANSI_SQL" "BIGQUERY"})))
     (is (= "BIGQUERY" (dialect/choose nil #{"ANSI_SQL" "BIGQUERY" "DAX" "TABLEAU"})))
@@ -34,14 +38,37 @@
     (is (nil? (dialect/choose nil #{"OSSIE_SQL_2026" "MDX"})))
     (is (nil? (dialect/choose nil #{})))))
 
+(deftest ^:parallel candidates-test
+  (testing "the chosen dialect, then the portable ones; a portable one chosen goes first"
+    (is (= ["ANSI_SQL" "OSSIE_SQL_2026"] (dialect/candidates nil)))
+    (is (= ["ANSI_SQL" "OSSIE_SQL_2026"] (dialect/candidates "ANSI_SQL")))
+    (is (= ["OSSIE_SQL_2026" "ANSI_SQL"] (dialect/candidates "OSSIE_SQL_2026")))
+    (is (= ["SNOWFLAKE" "ANSI_SQL" "OSSIE_SQL_2026"] (dialect/candidates "SNOWFLAKE")))))
+
 (deftest ^:parallel warehouse-test
   (is (= {:type "SNOWFLAKE", :driver :snowflake} (dialect/warehouse "SNOWFLAKE")))
   (is (= {:type "TRINO", :driver :starburst} (dialect/warehouse "TRINO")))
   (is (= {:type "BIGQUERY", :driver :bigquery-cloud-sdk} (dialect/warehouse "BIGQUERY")))
-  (is (= {:type nil, :driver nil} (dialect/warehouse nil)))
+  (is (= {:type "DRUID", :driver :druid-jdbc} (dialect/warehouse "DRUID")))
+  (testing "the portable dialects name no warehouse"
+    (is (= {:type nil, :driver nil} (dialect/warehouse nil)))
+    (is (= {:type nil, :driver nil} (dialect/warehouse "OSSIE_SQL_2026"))))
   (is (= "snowflake" (dialect/sqlglot-dialect "SNOWFLAKE")))
   (is (= "bigquery" (dialect/sqlglot-dialect "BIGQUERY")))
-  (is (nil? (dialect/sqlglot-dialect nil))))
+  (is (nil? (dialect/sqlglot-dialect nil)))
+  (is (nil? (dialect/sqlglot-dialect "ANSI_SQL"))))
+
+(deftest ^:parallel known-drivers-test
+  (testing "every driver a vendor dialect maps to is one the repository has: built in, or a driver module's plugin"
+    (doseq [[vendor driver-name] dialect/vendor->driver
+            :let [driver   (name driver-name)
+                  built-in (io/file "src/metabase/driver" (str driver ".clj"))
+                  plugin   (io/file "modules/drivers" driver "resources/metabase" driver "metabase-plugin.yaml")]]
+      (is (or (.exists built-in)
+              (and (.exists plugin)
+                   (let [declared (:driver (yaml/parse-string (slurp plugin)))]
+                     (contains? (into #{} (map :name) (if (map? declared) [declared] declared)) driver))))
+          (format "%s maps to %s, which is neither a built-in driver nor a driver module" vendor driver-name)))))
 
 (deftest ^:parallel pick-test
   (let [expression {:sql      "ossie form"
@@ -58,6 +85,8 @@
              (dialect/pick nil (update expression :dialects rest))))
       (is (= {:dialect "OSSIE_SQL_2026", :expression "ossie entry"}
              (dialect/pick nil (-> expression (dissoc :sql) (update :dialects rest))))))
+    (testing "OSSIE_SQL_2026 chosen is read before ANSI_SQL"
+      (is (= {:dialect "OSSIE_SQL_2026", :expression "ossie form"} (dialect/pick "OSSIE_SQL_2026" expression))))
     (testing "nothing the import reads"
       (is (nil? (dialect/pick nil {:dialects [{:dialect "MDX", :expression "[Measures].[x]"}]})))
       (is (nil? (dialect/pick "SNOWFLAKE" {:dialects [{:dialect "BIGQUERY", :expression "x"}]}))))

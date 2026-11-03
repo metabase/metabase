@@ -583,7 +583,7 @@
 (deftest parse-error-test
   (testing "an exception while parsing one metric is logged and reported as an error; the other metrics still parse"
     (mt/with-dynamic-fn-redefs [parse/parse-ratio (fn [_] (throw (NullPointerException. "boom")))]
-      (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer-import.dbt.parse :error]]
+      (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer-import.unsupported :error]]
         (let [{:keys [metrics unsupported]} (parse-built {:edit with-ratio})]
           (is (= ["m"] (map :name metrics)))
           (is (= [{:kind      :metric
@@ -596,7 +596,7 @@
   (testing (str "an exception while parsing a semantic model is logged and reported the same way, and the metrics over"
                 " it are reported as over a model the manifest does not have")
     (mt/with-dynamic-fn-redefs [parse/parse-columns (fn [_] (throw (IllegalStateException. "boom")))]
-      (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer-import.dbt.parse :error]]
+      (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer-import.unsupported :error]]
         (let [{:keys [tables metrics unsupported]} (parse-built {})
               reason (str "error parsing semantic model (java.lang.IllegalStateException): boom")]
           (is (= {} tables))

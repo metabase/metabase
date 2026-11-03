@@ -56,3 +56,47 @@
                                                          (unsupported/throw-reason "no such column")))))))
   (testing "SQL that converts comes back as the converter returns it"
     (is (= :upper (first (sql/value->mbql "postgres" "upper(name)" resolve-name))))))
+
+(deftest ^:parallel parse-expr-test
+  (testing "a bare column name, quoted or not, qualified or not, says whether its column part was quoted"
+    (are [expr parsed] (= parsed (sql/parse-expr expr))
+      "amount"                 {:kind :column, :name "amount", :quoted? false}
+      "t.amount"               {:kind :column, :name "amount", :quoted? false}
+      "\"Mixed Case\""         {:kind :column, :name "Mixed Case", :quoted? true}
+      "t.\"Mixed Case\""       {:kind :column, :name "Mixed Case", :quoted? true}
+      "`ticked`"               {:kind :column, :name "ticked", :quoted? true}
+      "[Bracketed]"            {:kind :column, :name "Bracketed", :quoted? true}
+      "[t].[Bracketed]"        {:kind :column, :name "Bracketed", :quoted? true}
+      "\n  amount\n"           {:kind :column, :name "amount", :quoted? false}
+      "1"                      {:kind :literal, :value "1"}
+      "NULL"                   {:kind :literal, :value "NULL"}
+      "*"                      {:kind :wildcard}
+      "amount * 2"             {:kind :sql}
+      "a.b.c"                  {:kind :sql}
+      "1.0"                    {:kind :sql}))
+  (testing "column-name is the column a bare column name is, nil for anything else"
+    (is (= "amount" (sql/column-name "t.amount")))
+    (is (nil? (sql/column-name "amount * 2")))
+    (is (nil? (sql/column-name "1")))))
+
+(deftest ^:parallel relation-parts-test
+  (testing "the parts of a dotted relation name, each with its quotes stripped and whether it had any"
+    (are [relation-name parts] (= parts (sql/relation-parts relation-name))
+      "db.schema.table"            [{:name "db", :quoted? false} {:name "schema", :quoted? false} {:name "table", :quoted? false}]
+      "\"dbt_bi\".\"public\".\"t\"" [{:name "dbt_bi", :quoted? true} {:name "public", :quoted? true} {:name "t", :quoted? true}]
+      "`db`.t"                     [{:name "db", :quoted? true} {:name "t", :quoted? false}]
+      "[db].[s].[t]"               [{:name "db", :quoted? true} {:name "s", :quoted? true} {:name "t", :quoted? true}]
+      "\"a\"\"b\".t"               [{:name "a\"b", :quoted? true} {:name "t", :quoted? false}]
+      " db.s.t "                   [{:name "db", :quoted? false} {:name "s", :quoted? false} {:name "t", :quoted? false}]
+      "a.b.c.d"                    [{:name "a", :quoted? false} {:name "b", :quoted? false} {:name "c", :quoted? false} {:name "d", :quoted? false}]))
+  (testing "BigQuery's one pair of backticks around the whole path is split at the dots, each part quoted"
+    (is (= [{:name "proj", :quoted? true} {:name "ds", :quoted? true} {:name "tbl", :quoted? true}]
+           (sql/relation-parts "`proj.ds.tbl`")))
+    (is (= [{:name "ds", :quoted? true} {:name "tbl", :quoted? true}] (sql/relation-parts "`ds.tbl`")))
+    (is (nil? (sql/relation-parts "`a.`"))))
+  (testing "a query, an empty string or two dots in a row is no dotted name"
+    (are [relation-name] (nil? (sql/relation-parts relation-name))
+      "SELECT * FROM orders"
+      "select 1"
+      "db..t"
+      "")))

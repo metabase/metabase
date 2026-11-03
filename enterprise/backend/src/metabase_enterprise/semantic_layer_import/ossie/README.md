@@ -80,8 +80,12 @@ document's SQL is read in; see "Dialects" below for when it is needed.
 Reading the document can fail before anything else does, and every such failure names the file: one that cannot be
 read or does not parse (`Cannot read Ossie document ...`), one that holds no mapping (`Invalid Ossie document ...: the
 file is empty`, or holds a list), one of a version the import does not read (`Unsupported Ossie document`), one that
-does not match its version's schema (`Invalid Ossie document`, with the schema errors in the exception's data), and a
-0.1.1 document holding several models. So can a `:dialect` option naming an expression language that is not SQL.
+does not match its version's schema (`Invalid Ossie document`, with the schema errors in the exception's data), a YAML
+mapping with a key twice or nested a hundred levels deep (refused rather than read as its last value, or overflowing the
+stack), and a 0.1.1 document holding several models. So can a `:dialect` option naming an expression language that is
+not SQL, or a SQL dialect the import knows no warehouse for (`EXASOL`).
+
+A model's `description` and `ai_context` are not read: the collection the metrics land in has a fixed description.
 
 ### Dialects
 
@@ -91,25 +95,32 @@ vendor ones, `SNOWFLAKE`, `BIGQUERY`, `DATABRICKS`, `TRINO`, `CLICKHOUSE`, `POST
 them expression languages that are not SQL at all (`MDX`, `DAX`, `TABLEAU`, `MAQL`, `SIGMA`). The import reads one
 dialect for the whole document:
 
-1. the `:dialect` option, when given, which has to be a vendor SQL dialect the import knows or a portable one;
+1. the `:dialect` option, when given, which has to be a vendor SQL dialect the import knows or a portable one; a
+   portable one is then tried before the other portable one, so `:dialect "OSSIE_SQL_2026"` reads the spec's own SQL
+   (the top-level `sql`, or an `OSSIE_SQL_2026` entry) where a document carries an `ANSI_SQL` form too;
 2. otherwise the one vendor SQL dialect the document uses, if it uses exactly one: a document that writes its SQL for
    one warehouse was written for it;
 3. otherwise the portable dialects: a document in `ANSI_SQL` alone, or one written for several warehouses, which the
    option tells apart.
 
 Each expression is then read in that dialect, falling back to `ANSI_SQL`, then the top-level `sql`, then an
-`OSSIE_SQL_2026` entry. An expression that has none of those is reported: a field, where a metric refers to it; a
-metric, itself. `ANSI_SQL` comes before `OSSIE_SQL_2026` because it is what every writer emits and what the SQL
-converter knows best: `OSSIE_SQL_2026`'s own functions (`NVL`, `IFF`, `ZEROIFNULL`, `DATEADD`, `CHARINDEX`) mostly do
-not convert, and are reported as functions the converter does not know when a metric reaches them.
+`OSSIE_SQL_2026` entry. An expression that has none of those is reported: a field, where a metric refers to it, with
+the reason the field was left out; a metric, itself. `ANSI_SQL` comes before `OSSIE_SQL_2026` because it is what every
+writer emits and what the SQL converter knows best: `OSSIE_SQL_2026`'s own functions (`ZEROIFNULL`, `DATEADD`,
+`CHARINDEX`, `DIV0`) mostly do not convert, and are reported as functions the converter does not know when a metric
+reaches them (`NVL` converts, as `coalesce`, and `IFF` as a `CASE`).
 
 The chosen vendor dialect says which warehouse the document was written for, and the IR's `:warehouse` names it and
 the Metabase driver that connects to it (`SNOWFLAKE` → `:snowflake`, `BIGQUERY` → `:bigquery-cloud-sdk`, `TRINO` →
-`:starburst`, `SPARK` → `:sparksql`, ...; the table is `ossie.dialect/vendor->driver`): `convert!` fails up front when
-the config's `:driver` is another one. A document read in the portable dialects names no warehouse, and the config is
-taken at its word, with a warning. The metric SQL is parsed, in the source, in the sqlglot dialect of that driver, or
-sqlglot's default for the portable dialects; the resolve stage parses it again in the dialect of the config's
-`:driver`.
+`:starburst`, `SPARK` → `:sparksql`, `DRUID` → `:druid-jdbc`, ...; the table is `ossie.dialect/vendor->driver`):
+`convert!` fails up front when the config's `:driver` is another one. A document read in the portable dialects names
+no warehouse, and the config is taken at its word, with a warning. The metric SQL is parsed, in the source, in the
+sqlglot dialect of that driver, or sqlglot's default for the portable dialects; the resolve stage parses it again in
+the dialect of the config's `:driver`.
+
+BigQuery is a dead end for now: its driver is not a JDBC one, and [the config](../config.md) refuses a `:driver` that
+is not, since the import types columns through the driver's JDBC type mapping. A document in `BIGQUERY` can only be
+imported for another warehouse, read in its portable forms with `:dialect "ANSI_SQL"`.
 
 ### Identifiers and the warehouse
 
@@ -127,17 +138,23 @@ type, and the instance supplies it. Ossie knows no warehouse type strings, so th
 The report is [the import's](../report.md); a model-scoped metric is listed under its `name`, a dataset-scoped one
 under `<dataset>.<name>`, the way the spec says it is referred to. A metric the parse stage failed on is listed under
 `:errors` as `error parsing metric (<class>): <message>`; a dataset that could not be parsed is listed the same way
-under its own name, with `:kind :table`, and so, under `:unsupported`, is a dataset defined by a query. "Limitations"
-below collects every reason an Ossie metric is reported.
+under its own name, with `:kind :table`, and so, under `:unsupported`, is a dataset defined by a query or named by more
+than three parts. A relationship from a dataset the model does not have is listed with `:kind :relationship`. A second
+dataset or metric of a name already declared is listed too: the first is read, since the rest of the import refers to
+each by name. The entries come in the document's order: datasets, relationships, then metrics. "Limitations" below
+collects every reason an Ossie metric is reported.
 
 ### Identifiers and re-import
 
 The ids are [the import's](../ids.md), prefixed `ossie-import/`. A metric's unique id is `<model>.<metric>`, or
-`<model>.<dataset>.<metric>` for a dataset-scoped one, so a metric renamed in the document is a new card on import and
-the old card stays in the instance; a new `description` keeps the card and updates it. The collection's id carries the
-model's `name`, so two models with the same name collide only when they are also mapped to the same Database. A curated
-dimension's path is `<relationship>__<field>` for a dimension reached through a relationship, and the bare field name
-on the metric's own dataset.
+`<model>.<dataset>.<metric>` for a dataset-scoped one, a dot or backslash inside a name escaped with a backslash so
+that no two metrics share an id (dataset-scoped `b` of dataset `a` is `m.a.b`, a model-scoped metric named `a.b` is
+`m.a\.b`); so a metric renamed in the document is a new card on import and the old card stays in the instance, and a
+new `description` keeps the card and updates it. The collection's id carries the model's `name`, so two models with
+the same name collide only when they are also mapped to the same Database. A curated dimension's id is seeded by its
+path, `<relationship>__<field>` for a dimension reached through a relationship and the bare field name on the metric's
+own dataset; its display name is the field's `label` or name, prefixed with the relationship's only when two dimensions
+of the set would otherwise share a name.
 
 ## What converts
 
@@ -145,11 +162,12 @@ on the metric's own dataset.
 
 | Ossie | IR, and Metabase |
 | -- | -- |
-| a dataset whose `source` is a table, `db.schema.table`, `schema.table` or `table` | a table, over that relation; the dataset's name is an alias of it, so `dataset.field` names the metric's own table |
-| a dataset whose `source` is a query | reported under `:unsupported` with `:kind :table`, and every metric over it with it |
-| a field with a `dimension` | a dimension of the table: `:time` when `is_time` is true, or, in 0.2.0.dev0, when it is left out and the field's `datatype` is `Date`, `Time`, `DateTime` or `DateTimeTz`, as the spec defaults it; `:categorical` otherwise (always, in 0.1.1, unless `is_time` says). Its `label` and `description` are the curated dimension's; a time dimension has no grain, Ossie having none |
-| a field without a `dimension` | a named expression of the table, inlined where a metric refers to it. Not something a metric can be broken out by: Snowflake's writer and the spec's examples leave `dimension` off the measures |
-| a field whose expression is a bare column | documents that column, typed by the field's `datatype` |
+| a dataset whose `source` is a table, `db.schema.table`, `schema.table` or `table`, each part bare or quoted (BigQuery's `` `project.dataset.table` `` included) | a table, over that relation; the dataset's name is an alias of it, so `dataset.field` names the metric's own table |
+| a dataset whose `source` is a query, or a name of more than three parts | reported under `:unsupported` with `:kind :table`, and every metric that refers to it with the same reason |
+| a field with a `dimension` | a dimension of the table: `:time` when `is_time` is true, or, when it is left out, when the field's `datatype` is `Date`, `Time`, `DateTime`, `DateTimeTz` or `timestamp`, as 0.2.0.dev0 defaults it (a 0.1.1 field usually has no `datatype`, and is then `:categorical`; Snowflake's 0.1.1 writer emits one, and it is read the same way). Its `label` and `description` are the curated dimension's; a time dimension has no grain, Ossie having none |
+| a field without a `dimension` | a named expression of the table, inlined where a metric refers to it. Not something a metric can be broken out by. The spec leaves this open: it defines `dimension` only as the metadata of a field that is one, and says of fields that they "can be used for grouping, filtering, and in metric expressions" without saying which. The writers that mark anything (Snowflake's, the TPC-DS example) mark the groupable fields with `dimension`, so the import reads it as the declaration; a document that marks nothing (the compliance ladder, SCOTT) gets metrics with no curated dimensions rather than a dimension per column |
+| a field whose expression is a bare column, quoted or not, qualified by the dataset or not | documents that column, as written, typed by the field's `datatype` |
+| a field with no expression in a dialect the import reads | left out, logged; a metric that refers to it is reported with the reason |
 | a field whose expression is SQL (`L_EXTENDEDPRICE * (1 - L_DISCOUNT)`, `EXTRACT(YEAR FROM O_ORDERDATE)`) | the dimension's or expression's `expr`, over the dataset's source columns: inlined in a metric or a filter; a dimension over SQL cannot be a curated dimension and is listed under the metric's `:unsupported-dimensions`, as [the IR](../ir.md) says |
 | `primary_key` | the table's keys, one per field; a key naming no field is read as a column, the 0.1.1 reading |
 | `unique_keys` | read where a relationship lands, see below |
@@ -171,11 +189,12 @@ import could not make, and what is behind it, the `to` dataset's dimensions, is 
 | a composite key, `from_columns: [a, b]` | an implicit join is on one column of each side |
 | a `from_columns` or `to_columns` field that is SQL rather than a column | the same: a join needs a column on each side |
 | a field either side does not declare, or a `to` dataset the model does not have | nothing to join on |
-| a `to_columns` field that is not among the `to` dataset's `primary_key` or `unique_keys`, when it declares any | a join to anything but a key would multiply the rows; a dataset that declares no keys is trusted |
+| a `to_columns` field that is not, on its own, one of the `to` dataset's `primary_key` or `unique_keys`, when it declares any | a join to anything but a key would multiply the rows: a part of a composite key (`primary_key: [id, segment]`, landing on `segment`) is not a key. A dataset that declares no keys is trusted |
 
-A relationship from a dataset the model does not have, or that is a query, is logged and dropped: nothing could reach
-through it. A dataset may relate to itself (`emp_to_manager`); its own dimensions then come twice, the joined ones named
-`<relationship>__<field>`.
+Dataset and field names in a relationship match ignoring case, as they do in a metric's SQL. A relationship from a
+dataset the model does not have is reported (`:kind :relationship`): nothing could reach through it, so no metric would
+say so; one from a dataset that is a query is logged, the dataset being reported already. A dataset may relate to
+itself (`emp_to_manager`); its own dimensions then come twice, the joined ones named `<relationship>__<field>`.
 
 ### Metrics
 
@@ -188,18 +207,20 @@ converts; its README's "Aggregations" section lists the aggregates):
 
 | Ossie | Metabase |
 | -- | -- |
-| `SUM`, `AVG`, `MIN`, `MAX`, `MEDIAN`, `COUNT(DISTINCT x)`, `PERCENTILE_CONT`, `STDDEV_POP`, `VAR_POP` | `sum`, `avg`, `min`, `max`, `median`, `distinct`, `percentile`, `stddev`, `var` |
-| `COUNT(*)`, `COUNT(1)` | `count`, a row count; `COUNT(x)` is `count-where` the field is not null |
-| `agg(x) FILTER (WHERE c)`, `SUM(CASE WHEN c THEN x ELSE 0 END)` and the other `CASE` idioms | `sum-where`, `count-where`, `distinct-where`, `share` |
-| arithmetic, `NULLIF`, `COALESCE` and the row-level functions over aggregates | one aggregation, `x / NULLIF(y, 0)` being `x / y` |
+| `SUM`, `AVG`, `MIN`, `MAX`, `MEDIAN`, `COUNT(DISTINCT x)`, `PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x [DESC])`, `STDDEV_POP`, `VAR_POP` | `sum`, `avg`, `min`, `max`, `median`, `distinct`, `percentile` (of `1 - p` for a `DESC` order, the same value), `stddev`, `var`. Where Metabase's percentile is an approximation (BigQuery, SQL Server, the Trino family) or missing (MySQL, SQLite), or its `AVG` of integers would not truncate as SQL Server's and Redshift's do, the SQL converter reports the aggregate; see its README |
+| `COUNT(*)`, `COUNT(1)`, `COUNT(dataset.*)` | `count`, a row count; `COUNT(x)` is `count` over the field, which compiles to `COUNT(x)` |
+| `SUM(x) FILTER (WHERE c)`, `COUNT(...) FILTER (WHERE c)`, `COUNT_IF(c)`, `SUM(CASE WHEN c THEN x ELSE 0 END)` and the other `CASE` idioms | `sum-where`, `count-where`, `distinct-where`, `share`. `FILTER` over any other aggregate (`AVG`, `MIN`, `MEDIAN`, ...) is reported: Metabase has no filtered form of those, and the `CASE` idiom (`AVG(CASE WHEN c THEN x END)`) converts as the aggregate over the `CASE` |
+| arithmetic, `NULLIF`, `COALESCE`, `IF`/`IFF` and the row-level functions over aggregates | one aggregation, `x / NULLIF(y, 0)` being `x / y` |
 | a field reference, `dataset.field` or bare | the field inlined: its column, or its SQL as the dimension's or expression's `expr`, perhaps through a relationship's join |
 | the metric's `description` | the card's description |
 
 **Scoping and names.** A model-scoped metric (the model's `metrics`) names fields as `dataset.field`; a dataset-scoped
 one (a 0.2.0.dev0 dataset's own `metrics`) names its own dataset's fields bare and may not reach another dataset. The
-spec says a model-scoped metric has to qualify every field, but every converter reads a bare name, and so does the
-import: as the field of the one dataset that declares a field of that name, reported when none or several do (the
-compliance ladder carries bare variants, `SUM(amount)`, for exactly this). Names match ignoring case, as SQL does.
+spec says a model-scoped metric has to qualify every field, but most converters read a bare name (Sigma's drops the
+metric, as the ladder's `m0_sum_bare` fixture notes), and so does the import: as the field of the one dataset that
+declares a field of that name, reported when none or several do (the compliance ladder carries bare variants,
+`SUM(amount)`, for exactly this). Names match ignoring case, as SQL does. `COUNT(dataset.*)` names the dataset and no
+field.
 A field reference may only name a declared field: `SUM(store_sales.ss_bogus)`, where `ss_bogus` is a column of the
 source but no field, is reported, as the spec says it is invalid.
 
@@ -214,7 +235,9 @@ to, is reported.
 
 **The time dimension.** A metric's default dimension is its base dataset's time dimension, when the dataset has
 exactly one (TPC-H's `lineitem` has `ship_date`; `orders` has `order_date` and `order_year`, so a metric over it has
-none). Ossie has no time grains, so it has no default temporal unit.
+none, and nothing says so: a metric without a default dimension is not a report entry). A time dimension that is SQL
+(`order_year`) counts as one here but cannot be a curated dimension, so a metric over such a dataset has no default
+either way. Ossie has no time grains, so it has no default temporal unit.
 
 **Aggregates over a joined dataset.** A metric spanning datasets reaches the one side of a relationship through an
 implicit join, which gives the one side's values once per row of the many side: `SUM(store.s_number_employees)` over
@@ -242,8 +265,11 @@ convert](../../../../../../src/metabase/sql_to_mbql/README.md#what-does-not-conv
 | a window-function metric, which is how Ossie writes cumulative, ranking and period-over-period metrics | `SUM(SUM(store_sales.ss_ext_sales_price)) OVER (ORDER BY date_dim.d_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)`, `RANK() OVER (PARTITION BY store.s_store_sk ORDER BY SUM(...) DESC)`, `SUM(x) - LAG(SUM(x), 1) OVER (ORDER BY d_year, d_moy)` | The value depends on the other rows of the result, which the metric's `description` says the query has to group by; one aggregation has no say over the breakout. The SQL converter reports it. | Read a `SUM(SUM(x)) OVER (ORDER BY t ROWS UNBOUNDED PRECEDING)` as `cum-sum` with `t` as the metric's time dimension, and `LAG` as `offset`, as the dbt source does for cumulative metrics it can recognise. |
 | an aggregate over a field of a joined dataset | `SUM(store.s_number_employees)` from `store_sales` | See "Aggregates over a joined dataset": it would count each store once per sale. | The spec's semantics (PR 246) once settled; in Metabase, a `[:metric ...]` reference to a card on another table, so the one side is aggregated at its own grain. |
 | a reference two relationships away | `SUM(lineitem.net_amount_kept) FILTER (WHERE customer.market_segment = 'BUILDING')` from `lineitem`, through `orders` | A dimension mapping is one implicit join; the resolve stage reports a two-hop path. | Extend Metabase metrics so a mapping can carry a multi-hop join path, or so a metric query can hold explicit joins. |
-| a dataset defined by a query | `source: SELECT * FROM orders WHERE deleted IS NULL` | A metric is over a table, and an implicit join needs one. | Import the query as a model card and let the metric be over it. |
-| a composite-key relationship, or one on a SQL field or landing off a key | `from_columns: [ss_item_sk, ss_ticket_number]`; `to_columns: [s_city]` on a dataset keyed by `s_store_sk` | See "Relationships". | Explicit joins in Metabase metrics. |
+| a dataset defined by a query, or named by more than three parts | `source: SELECT * FROM orders WHERE deleted IS NULL`; `source: srv.db.sch.t` | A metric is over a table, and an implicit join needs one; a table is named by at most `database.schema.table`. | Import the query as a model card and let the metric be over it. |
+| a composite-key relationship, or one on a SQL field or landing off a key | `from_columns: [ss_item_sk, ss_ticket_number]`; `to_columns: [s_city]` on a dataset keyed by `s_store_sk`; `to_columns: [id]` on a dataset keyed by `[id, segment]` | See "Relationships". | Explicit joins in Metabase metrics. |
+| a second dataset or metric of a name already declared | two `metrics` named `total`; a dataset-scoped metric `b` of dataset `a` beside a model-scoped metric named `a.b` | The rest of the import refers to a dataset or a metric by name, so the two would be one card, the second written over the first. The first is read. A second field of a name is left out the same way, logged rather than reported. | Nothing: rename one. |
+| a relationship from a dataset the model does not have | `from: date_dim` with no such dataset | Nothing could reach through it; reported so that a misspelling is not silent. | Nothing: fix the name. |
+| a document in `BIGQUERY` for BigQuery | | The import types columns through a JDBC driver's type mapping, and BigQuery's driver is not one, so the config refuses it; see "Dialects". | Type columns for the BigQuery driver, whose `database-type->base-type` is its own. |
 | a field whose expression is SQL, as a curated dimension | `order_year: EXTRACT(YEAR FROM O_ORDERDATE)` with `dimension: {is_time: true}` | A dimension mapping targets a column. A filter or a metric still inlines it. | Extend Metabase metrics so a mapping can target an expression. |
 | a metric that refers to another metric | `net_revenue / order_count` | The spec forbids it, and the SQL converter sees a column outside an aggregate. | Nothing: write the arithmetic out, as the spec says to. |
 | a metric that names no dataset in a model of several | `COUNT(*)` as a model-scoped metric | Nothing says which dataset's rows to count. | Nothing: make it dataset-scoped. |
@@ -294,13 +320,14 @@ Run it by name with the Postgres driver enabled:
 ./bin/test-agent --drivers=postgres :only '[metabase-enterprise.semantic-layer-import.ossie.e2e-test]'
 ```
 
-The dataset is generated by `test_util/tpch.py`, DuckDB's `tpch` extension run through `uv run --with duckdb`, and
-written as EDN by the test-util namespace of the same name: the five tables the model is defined over, without their
-comment columns, with TPC-H's keys as the tables' primary and foreign keys so a sync knows the joins. The quickstart
-documents `net_revenue` at scale factor 1 as 164,360,931,200.40, which a checked-in fixture cannot reach (six million
-order lines); the generator computes the metric at scale factor 1 as well, in seconds, and refuses to write the
-dataset unless it gets that number, so the formula and the data are known to be TPC-H's. Regenerate from a REPL at
-the repo root, with `uv` on `PATH`:
+The dataset is generated by `test_util/tpch.py`, DuckDB's `tpch` extension run through `uv run --with duckdb==<pinned
+version>`, and written as EDN by the test-util namespace of the same name: the five tables the model is defined over,
+without their comment columns, with TPC-H's keys as the tables' primary and foreign keys so a sync knows the joins. The
+quickstart documents `net_revenue` at scale factor 1 as 164,360,931,200.40, which a checked-in fixture cannot reach
+(six million order lines); the generator computes the metric at scale factor 1 as well, in seconds, and refuses to
+write the dataset unless it gets that number, so the formula and the data are known to be TPC-H's. It writes the metric
+at the small scale next to the dataset, in `tpch_sf0_001_summary.edn`, for the end-to-end test to check against.
+Regenerate from a REPL at the repo root, with `uv` on `PATH`:
 
 ```clojure
 (require '[metabase-enterprise.semantic-layer-import.ossie.test-util.tpch :as tpch])

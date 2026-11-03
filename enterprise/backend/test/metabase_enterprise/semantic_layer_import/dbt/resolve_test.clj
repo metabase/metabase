@@ -158,7 +158,7 @@
       "percentile"     [:percentile {} f 0.9]
       "min"            [:min {} f]
       "max"            [:max {} f]
-      "count"          [:count-where {} [:not-null {} f]]
+      "count"          [:count {} f]
       "count_distinct" [:distinct {} f]
       "sum_boolean"    [:count-where {} [:= {} f true]])))
 
@@ -412,7 +412,7 @@
       (is (= [:count-where {} [:= {} status "returned"]]
              (aggregation-of-expr "status = 'returned'" :agg "sum_boolean"))))
     (testing "over an expression, count skips nulls and average averages"
-      (is (= [:count-where {} [:not-null {} [:+ {} sales 0]]] (aggregation-of-expr "sales + 0" :agg "count")))
+      (is (= [:count {} [:+ {} sales 0]] (aggregation-of-expr "sales + 0" :agg "count")))
       (is (= [:avg {} [:/ {} sales quantity]] (aggregation-of-expr "sales / quantity" :agg "average"))))
     (testing "a simple CASE is the searched CASE with = conditions"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
@@ -611,9 +611,9 @@
                      (tu/unsupported {:metric {:filter (tu/where-filters template)}})))))))
 
 (deftest ^:parallel count-test
-  (is (= [:count-where {} [:not-null {} (fld "sales" :type/Float)]] (aggregation-of-expr "sales" :agg "count"))
+  (is (= [:count {} (fld "sales" :type/Float)] (aggregation-of-expr "sales" :agg "count"))
       "COUNT(col) skips nulls")
-  (is (= [:count-where {} [:not-null {} (fld "fact_sales_key" :type/Integer)]]
+  (is (= [:count {} (fld "fact_sales_key" :type/Integer)]
          (aggregation-of-expr "fact_sales_key" :agg "count")))
   (is (= [:distinct {} (fld "customer_key" :type/Text)] (aggregation-of-expr "customer_key" :agg "count_distinct"))))
 

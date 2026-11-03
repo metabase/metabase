@@ -11,7 +11,7 @@ aggregate expressions and whose joins are declared.
 1. Make it a nested module, `enterprise/semantic-layer-import.<source>`, in a directory next to `dbt/` and `ossie/`,
    add an entry for it to `.clj-kondo/config/modules/config.edn` next to theirs, and run `./bin/mage
    fix-modules-config` to fill it in. A nested module may use this module's internal namespaces, as both do with
-   `schemas.ir`, `schemas.config`, `sql` and `unsupported`.
+   `interface`, `schemas.ir`, `sql` and `unsupported`.
 2. Parse the project into an `::ir/semantic-layer`:
    - `:source`: the `:tool` name prefixes every id the import derives (and names the default collection), so it has to
      be unique among sources and must never change;

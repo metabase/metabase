@@ -1,17 +1,14 @@
 (ns metabase-enterprise.semantic-layer-import.ossie.test-util
   "Shared fixtures for the Ossie source's tests: where the checked-in documents are (see the README in that
   directory), a config that maps their warehouse databases onto one Metabase database, and the shortcuts from a
-  document, on disk or built in a test, to each stage's view of it: the IR ([[ir]], [[parse]]), the resolved layer
-  ([[resolve-file]], [[resolve-document]]) and what became of one metric ([[outcome]])."
+  document, on disk or built in a test, to each stage's view of it: the IR ([[ir]], [[parse-file]]), the resolved
+  layer ([[resolve-file]]) and what became of one metric ([[outcome]])."
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase-enterprise.semantic-layer-import.emit :as emit]
    [metabase-enterprise.semantic-layer-import.ossie.document :as document]
    [metabase-enterprise.semantic-layer-import.ossie.parse :as parse]
    [metabase-enterprise.semantic-layer-import.resolve :as resolve]))
-
-(set! *warn-on-reflection* true)
 
 (def fixtures-dir
   "Where the Ossie fixtures live, relative to the repo root the tests run from. EE test resources are not on the
@@ -34,6 +31,10 @@
 (def tpch-dataset
   "TPC-H at scale factor 0.001 as a test dataset definition, for the end-to-end test."
   (fixture "tpch/tpch_sf0_001.edn"))
+
+(def tpch-summary
+  "What the generator computed over [[tpch-dataset]] when it wrote it, the model's `net_revenue` among it."
+  (fixture "tpch/tpch_sf0_001_summary.edn"))
 
 (def db
   "The Metabase database every fixture's warehouse database maps to in [[default-config]]."
@@ -60,10 +61,10 @@
   ([options raw]
    (parse/parse-model options (document/model raw))))
 
-(defn parse
+(defn parse-file
   "The IR of the document at `filename`, parsed with the source's `options` (default none)."
   ([filename]
-   (parse {} filename))
+   (parse-file {} filename))
   ([options filename]
    (parse/parse-file options filename)))
 
@@ -74,30 +75,12 @@
   ([config filename]
    (resolve-file config {} filename))
   ([config options filename]
-   (resolve/resolve-semantic-layer config (parse options filename))))
-
-(defn resolve-document
-  "`raw`, a document as a map, parsed and resolved with `config` (default [[default-config]])."
-  ([raw]
-   (resolve-document default-config raw))
-  ([config raw]
-   (resolve-document config {} raw))
-  ([config options raw]
-   (resolve/resolve-semantic-layer config (ir options raw))))
+   (resolve/resolve-semantic-layer config (parse-file options filename))))
 
 (defn metric-named
   "The IR metric named `metric-name` among `metrics`, a parsed document's `:metrics`."
   [metrics metric-name]
   (m/find-first #(= metric-name (:name %)) metrics))
-
-(defn strip-uuids
-  "`x` with every `:lib/uuid` taken off, so a clause compares by what it says."
-  [x]
-  (walk/postwalk (fn [form]
-                   (if (and (map? form) (contains? form :lib/uuid))
-                     (dissoc form :lib/uuid)
-                     form))
-                 x))
 
 (defn stage
   "The one stage of the query [[emit/dataset-query]] writes for `resolved-metric`, with portable refs."
@@ -110,20 +93,26 @@
   portable form serdes writes when it converted, `{:unsupported reason}` when it was reported, `{:error message}` when
   the import failed on it. Throws when the metric is nowhere, which is a bug."
   [resolved metric-name]
-  (let [named (fn [k] (m/find-first #(= metric-name (:name %)) (k resolved)))]
-    (if-let [converted (m/find-first #(= metric-name (-> % :ir :name)) (:metrics resolved))]
+  (let [named     (fn [k] (m/find-first #(= metric-name (:name %)) (k resolved)))
+        converted (m/find-first #(= metric-name (-> % :ir :name)) (:metrics resolved))]
+    (cond
+      converted
       (let [{:keys [aggregation filters source-table]} (stage converted)]
         {:aggregation            (first aggregation)
          :filters                (or filters [])
          :source-table           source-table
          :notes                  (:notes converted)
          :unsupported-dimensions (into {} (map (juxt :name :reason)) (:unsupported-dimensions converted))})
-      (if-let [unsupported (named :unsupported)]
-        {:unsupported (:reason unsupported)}
-        (if-let [failed (named :errors)]
-          {:error (:message failed)}
-          (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
-                          {:resolved resolved})))))))
+
+      (named :unsupported)
+      {:unsupported (:reason (named :unsupported))}
+
+      (named :errors)
+      {:error (:message (named :errors))}
+
+      :else
+      (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
+                      {:resolved resolved})))))
 
 (defn aggregation
   "The aggregation clause the metric `metric-name` of `resolved` converted to, or `{:unsupported reason}`."
@@ -210,9 +199,3 @@
          :datasets      [orders-dataset customers-dataset]
          :relationships [orders-to-customers]
          :metrics       (vec metrics)}))
-
-(def shop-config
-  "The config for [[shop-document]]."
-  {:databases     {"shop" db}
-   :driver        :postgres
-   :creator-email "admin@example.com"})

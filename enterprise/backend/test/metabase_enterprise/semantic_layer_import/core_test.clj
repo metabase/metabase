@@ -18,7 +18,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- column [column-name data-type]
-  [column-name {:name column-name, :data-type data-type, :description nil, :quoted? false}])
+  [column-name {:name column-name, :data-type data-type, :base-type nil, :description nil, :quoted? false}])
 
 (defn- dimension [dimension-name dimension-type & {:keys [grain]}]
   {:name dimension-name, :type dimension-type, :expr dimension-name, :grain grain, :validity nil, :label nil

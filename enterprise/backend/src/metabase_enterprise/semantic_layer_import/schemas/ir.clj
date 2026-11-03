@@ -48,8 +48,10 @@
   "A column of the relation, as the source project documents it. `data-type` is the warehouse type string and may be
   missing when the project does not declare it; a source that knows the column's type in Metabase's terms rather than
   the warehouse's (Ossie's logical `datatype`, say) sets `base-type` instead, which the resolve stage takes over
-  `data-type`. `quoted?` is whether the project writes the column's name in quotes, so the warehouse kept its spelling,
-  as `quoted` on `::relation`."
+  `data-type`. `base-type` is the one optional key here, unlike the rest of the IR's required-but-nullable keys: it was
+  added for Ossie after dbt, and the resolve stage builds a column of this shape too, for a column a metric names that
+  no source documented, so an absent key means the same as nil everywhere. `quoted?` is whether the project writes the
+  column's name in quotes, so the warehouse kept its spelling, as `quoted` on `::relation`."
   [:map {:closed true}
    [:name        :string]
    [:data-type   [:maybe :string]]
@@ -236,15 +238,18 @@
 
 (mr/def ::metric.simple
   "One aggregation over the table named `table`: an operator over an expression (`::aggregation`), or a whole SQL
-  aggregate expression (`::aggregation.sql`). A cumulative metric is the same with its aggregation running over
-  everything up to each row, which only an `::aggregation` can. `time-dimension` names the dimension of the table the
-  metric is measured along over time: its default dimension, and what a `:time-dimension` reference refers to."
+  aggregate expression (`::aggregation.sql`), told apart by which of `operator` and `sql` it has. A cumulative metric
+  is the same with its aggregation running over everything up to each row, which only an `::aggregation` can.
+  `time-dimension` names the dimension of the table the metric is measured along over time: its default dimension, and
+  what a `:time-dimension` reference refers to."
   [:merge
    ::metric.common
    [:map {:closed true}
     [:type           [:enum :simple :cumulative]]
     [:table          :string]
-    [:aggregation    [:or ::aggregation ::aggregation.sql]]
+    [:aggregation    [:multi {:dispatch (fn [aggregation] (if (contains? aggregation :sql) :sql :operator))}
+                      [:operator ::aggregation]
+                      [:sql      ::aggregation.sql]]]
     [:time-dimension [:maybe :string]]]])
 
 (mr/def ::metric.ratio
@@ -274,8 +279,9 @@
    [:derived    ::metric.derived]])
 
 (mr/def ::content-kind
-  "What an entry of a report is about: a metric, or a table, which only the parse stage can fail on."
-  [:enum :metric :table])
+  "What an entry of a report is about: a metric; a table, which only the parse stage can fail on; or a relationship
+  between tables that leads from one the model does not have, which no metric could reach through."
+  [:enum :metric :table :relationship])
 
 (mr/def ::unsupported
   "Something the import could not convert, and why: at parse time a metric that could not become a `::metric` (or,

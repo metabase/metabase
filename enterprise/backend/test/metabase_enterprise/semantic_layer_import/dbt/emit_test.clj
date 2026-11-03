@@ -138,7 +138,7 @@
       (is (= [:coalesce {} tu/sum-sales 1]
              (tu/aggregation {:type-params {:fill_nulls_with 1}, :input-measure {:fill_nulls_with 0}})))))
   (testing "around a count"
-    (is (= [:coalesce {} [:count-where {} [:not-null {} (fld "sales" :type/Float)]] 0]
+    (is (= [:coalesce {} [:count {} (fld "sales" :type/Float)] 0]
            (tu/aggregation {:measure {:agg "count", :expr "sales"}, :type-params {:fill_nulls_with 0}}))))
   (testing "around a row count"
     (is (= [:coalesce {} [:count {}] 0] (tu/aggregation {:measure {:expr "1"}, :type-params {:fill_nulls_with 0}}))))

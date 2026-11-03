@@ -48,7 +48,7 @@ expression, a condition, holds). Its `expr` is a column, a literal or SQL; `:sum
 | -- | -- |
 | `:sum`, `:avg`, `:min`, `:max`, `:median` | `sum`, `avg`, `min`, `max`, `median` |
 | `:percentile` | `percentile` with the same fraction |
-| `:count` of a column or an expression | `count-where` the expression is not null |
+| `:count` of a column or an expression | `count` over the expression, which compiles to `COUNT(x)` and skips nulls as SQL does |
 | `:count`, `:sum` of `1`; `:count` of `*` | `count`, a row count |
 | `:count-distinct` | `distinct` |
 | `:count-where` of a condition, or a boolean column | `count-where` the condition, or the column being true |

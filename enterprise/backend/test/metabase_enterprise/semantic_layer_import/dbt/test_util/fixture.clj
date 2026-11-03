@@ -37,6 +37,7 @@
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase-enterprise.semantic-layer-import.test-util.regenerate :as regenerate]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -57,16 +58,6 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private resources-dir "enterprise/backend/test_resources/semantic_layer_import/dbt")
-
-(mu/defn check-repo-root :- :nil
-  "Throw unless the working directory is the repo root, which the relative paths in [[fixtures]] and in
-  [[metabase-enterprise.semantic-layer-import.dbt.test-util.marts]] assume; a REPL started elsewhere would otherwise
-  fail halfway, or write somewhere else."
-  []
-  (when-not (.isDirectory (io/file resources-dir))
-    (throw (ex-info (format "%s is not under the working directory %s: run from the repo root"
-                            resources-dir (System/getProperty "user.dir"))
-                    {:user-dir (System/getProperty "user.dir")}))))
 
 (mr/def ::fixture
   "How one fixture is generated: the dbt `:project` directory, the `:out` file, the warehouse `:database` the profile
@@ -406,7 +397,7 @@
 
   ([fixture-key :- (into [:enum] (keys fixtures))
     overrides   :- ::fixture-overrides]
-   (check-repo-root)
+   (regenerate/check-repo-root)
    (let [{:keys [project out database extra-metrics metrics-yaml deps?] :as fixture}
          (merge (fixtures fixture-key) overrides)]
      (when-let [error (mr/explain ::fixture fixture)]

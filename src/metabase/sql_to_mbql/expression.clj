@@ -237,9 +237,12 @@
     (if (set? t) t #{t})))
 
 (mu/defn- integer-typed? :- :boolean
-  "Is `value` known to be an integer? A column whose ref has no type is `:type/*`, which is not known to be one."
+  "Is `value` known to be an integer? A column whose ref has no type is `:type/*`, which is not known to be one. Lib
+  types a `median` or a `percentile` as its argument, where the warehouse returns a double or a decimal, so neither
+  is."
   [value :- ::value]
-  (every? #(isa? % :type/Integer) (types-of value)))
+  (and (not (and (vector? value) (contains? #{:median :percentile} (first value))))
+       (every? #(isa? % :type/Integer) (types-of value))))
 
 (mu/defn- division->value :- ::value
   "`x / y`. [[throw-unsupported]] when sqlglot marks the division `typed` and both operands are known integers: on
@@ -364,6 +367,16 @@
                        (arg node :ifs))]
     (if (contains? (:args node) :default)
       (lib/case branches (->value (arg node :default) ctx))
+      (lib/case branches))))
+
+(mu/defn- if->value :- ::value
+  "`IF(c, a, b)` (BigQuery, Spark, Databricks, ClickHouse) and Snowflake's `IFF`, which sqlglot reads as one function:
+  a `CASE` of one branch, `b` its default when there is one."
+  [node           :- ::node
+   ctx            :- ::context]
+  (let [branches [[(->predicate (arg node :this) ctx) (->value (arg node :true) ctx)]]]
+    (if (arg node :false)
+      (lib/case branches (->value (arg node :false) ctx))
       (lib/case branches))))
 
 (mu/defn- log->value :- ::value
@@ -1068,23 +1081,32 @@
       :else                  (lib/sum-where (->value summed ctx) (conjunction conditions)))))
 
 (mu/defn- count-non-null :- ::aggregation
-  "`COUNT(x)`, SQL's count of the rows where `x` is not null, as `count-where`, with `condition` (a `FILTER`'s, or nil)
-  conjoined. `COUNT(CASE WHEN c THEN x END)` counts the rows where `c` holds and `x` is not null, which are just those
-  where `c` holds when `x` is a literal."
+  "`COUNT(x)`, SQL's count of the rows where `x` is not null, as `count` over `x`, which compiles to `COUNT(x)`. With
+  `condition` (a `FILTER`'s, or nil), or when `x` is `CASE WHEN c THEN y END`, which counts the rows where `c` holds
+  and `y` is not null (just those where `c` holds when `y` is a literal), the rows are narrowed instead, as
+  `count-where`."
   [argument  :- ::node
    ctx       :- ::context
    condition :- [:maybe ::condition]]
   (let [{:keys [then-node else]} (conditional-case argument)
-        conditions (cond
-                     (not (and then-node (contains? #{:none :null} else)))
-                     [(lib/not-null (->value argument ctx))]
+        conditional?             (boolean (and then-node (contains? #{:none :null} else)))]
+    (if (and (not conditional?) (not condition))
+      (lib/count (->value argument ctx))
+      (lib/count-where (conjunction (cond-> []
+                                      condition          (conj condition)
+                                      conditional?       (conj (conditional-case-condition argument ctx))
+                                      (and conditional? (not (never-null? then-node)))
+                                      (conj (lib/not-null (->value then-node ctx)))
+                                      (not conditional?) (conj (lib/not-null (->value argument ctx)))))))))
 
-                     (never-null? then-node)
-                     [(conditional-case-condition argument ctx)]
-
-                     :else
-                     [(conditional-case-condition argument ctx) (lib/not-null (->value then-node ctx))])]
-    (lib/count-where (conjunction (cond->> conditions condition (cons condition))))))
+(mu/defn- count-if->aggregation :- ::aggregation
+  "`COUNT_IF(c)` (Snowflake, Databricks, Trino) and `COUNTIF(c)` (BigQuery), the count of the rows `c` holds for, as
+  `count-where`, with `condition` (a `FILTER`'s, or nil) conjoined."
+  [node      :- ::node
+   ctx       :- ::context
+   condition :- [:maybe ::condition]]
+  (let [counted (->predicate (arg node :this) (argument-context ctx))]
+    (lib/count-where (conjunction (cond->> [counted] condition (cons condition))))))
 
 (mu/defn- distinct-count :- ::aggregation
   "`COUNT(DISTINCT x)`, `distinct-node` being the `DISTINCT`, as `distinct`, or `distinct-where` with `condition` (a
@@ -1123,16 +1145,36 @@
       (= "Distinct" (:class argument)) (distinct-count node argument ctx condition)
       :else                            (count-non-null argument ctx condition))))
 
+(def ^:private integer-avg-dialects
+  "The dialects whose `AVG` of an integer is an integer, the fraction dropped: SQL Server's and Redshift's. Metabase's
+  `avg` casts its argument to a float there (see the drivers' `:avg` methods), so `AVG(a)` over 1 and 2 is 1 to the
+  warehouse and 1.5 to Metabase."
+  #{"tsql" "redshift"})
+
 (mu/defn- avg->aggregation :- ::aggregation
-  "`AVG(x)`; `AVG(CASE WHEN c THEN 1 ELSE 0 END)` is `share`, the fraction of the rows `c` holds for."
+  "`AVG(x)`; `AVG(CASE WHEN c THEN 1 ELSE 0 END)` is `share`, the fraction of the rows `c` holds for. Both are
+  [[throw-unsupported]] on a dialect in [[integer-avg-dialects]] when the warehouse would average integers: `x` known
+  to be one, or the `1` and `0` of the share idiom."
   [node :- ::node
-   ctx  :- ::context]
+   {:keys [dialect] :as ctx} :- ::context]
   (let [argument                 (plain-argument node)
         ctx                      (argument-context ctx)
-        {:keys [then-node else]} (conditional-case argument)]
+        {:keys [then-node else]} (conditional-case argument)
+        integer-avg?             (contains? integer-avg-dialects dialect)]
     (if (and then-node (= :zero else) (literal-of? then-node 1))
-      (lib/share (conditional-case-condition argument ctx))
-      (lib/avg (->value argument ctx)))))
+      (do
+        (when integer-avg?
+          (throw-unsupported (str "%s averages the integers 1 and 0, which %s truncates to 0 or 1 where Metabase's"
+                                  " share is a fraction; write 1.0 and 0.0")
+                             (:sql node) dialect))
+        (lib/share (conditional-case-condition argument ctx)))
+      (let [value (->value argument ctx)]
+        (when (and integer-avg? (integer-typed? value))
+          (throw-unsupported (str "%s averages an integer, which %s truncates to a whole number where Metabase's avg"
+                                  " divides as a float, so the number would differ; cast the argument to a decimal or"
+                                  " float")
+                             (:sql node) dialect))
+        (lib/avg value)))))
 
 (mu/defn- unary-aggregation :- ::converter
   "The converter for an aggregate of one argument with a Lib aggregation of the same meaning, `(lib-fn x)`, `x`
@@ -1150,28 +1192,89 @@
   (let [aggregate (arg node :this)
         condition (->predicate (arg (arg node :expression) :this) (argument-context ctx))]
     (case (:class aggregate)
-      "Sum"   (sum->aggregation aggregate ctx condition)
-      "Count" (count->aggregation aggregate ctx condition)
+      "Sum"     (sum->aggregation aggregate ctx condition)
+      "Count"   (count->aggregation aggregate ctx condition)
+      "CountIf" (count-if->aggregation aggregate ctx condition)
       (throw-unsupported (str "FILTER over %s has no Metabase equivalent: only a sum, a count and a distinct count"
                               " have a filtered form")
                          (:sql aggregate)))))
 
+(def ^:private percentile-dialects
+  "The dialects on which Metabase's `percentile` and `median` are not the exact `PERCENTILE_CONT` and `MEDIAN` they
+  compile to elsewhere: `:approximate` where Metabase compiles them to an estimate (BigQuery's `APPROX_QUANTILES`,
+  SQL Server's `APPROX_PERCENTILE_CONT`, the Trino family's `approx_percentile`), so an exact percentile is
+  [[throw-unsupported]] there (see [[check-percentile]]) and the Trino family's `approx_percentile(x, p)`, the very
+  function Metabase emits, converts (see [[approx-quantile->aggregation]]); `:none` where Metabase has no percentile
+  aggregation at all (MySQL, SQLite), so a metric with one would fail when it runs. ClickHouse's `quantile(p)(x)` and
+  `median(x)` are what Metabase compiles to there, and convert (see [[quantile->aggregation]])."
+  {"bigquery" :approximate
+   "tsql"     :approximate
+   "presto"   :approximate
+   "trino"    :approximate
+   "athena"   :approximate
+   "mysql"    :none
+   "sqlite"   :none})
+
+(def ^:private approx-percentile-dialects
+  "The dialects whose `approx_percentile(x, p)` is the function Metabase's `percentile` compiles to."
+  #{"presto" "trino" "athena"})
+
+(mu/defn- check-percentile :- :nil
+  "[[throw-unsupported]] when `node`, an exact percentile or median, has no exact Metabase equivalent on `ctx`'s
+  dialect (see [[percentile-dialects]])."
+  [node                :- ::node
+   {:keys [dialect]}   :- ::context]
+  (case (get percentile-dialects dialect)
+    :approximate (throw-unsupported (str "%s is exact, where Metabase's percentile on %s is an approximation, so the"
+                                         " number would differ")
+                                    (:sql node) dialect)
+    :none        (throw-unsupported "%s has no Metabase equivalent on %s, which has no percentile aggregation"
+                                    (:sql node) dialect)
+    nil))
+
+(mu/defn- percentile-fraction :- number?
+  "The fraction `p-node`, a percentile's argument, is: a literal from 0 to 1, else [[throw-unsupported]] naming
+  `node`."
+  [node   :- ::node
+   p-node :- ::node]
+  (let [p (literal-number (unparenthesized p-node))]
+    (when-not (and p (<= 0 p 1))
+      (throw-unsupported "the percentile of %s has to be a literal from 0 to 1" (:sql node)))
+    p))
+
+(mu/defn- median->aggregation :- ::aggregation
+  "`MEDIAN(x)` as `median`, where Metabase's is exact (see [[check-percentile]])."
+  [node :- ::node
+   ctx  :- ::context]
+  (check-percentile node ctx)
+  (lib/median (->value (plain-argument node) (argument-context ctx))))
+
+(mu/defn- quantile->aggregation :- ::aggregation
+  "`quantile(p)(x)` and `median(x)` on ClickHouse, `PERCENTILE(x, p)` on Spark and Databricks, which sqlglot reads as
+  one function: `percentile`, which compiles to the same function on each (see [[check-percentile]])."
+  [node :- ::node
+   ctx  :- ::context]
+  (check-percentile node ctx)
+  (lib/percentile (->value (arg node :this) (argument-context ctx)) (percentile-fraction node (arg node :quantile))))
+
 (mu/defn- within-group->aggregation :- ::aggregation
-  "`PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x)` as `percentile`, `p` a literal from 0 to 1. `PERCENTILE_DISC` picks
-  a value from the data where Metabase's percentile interpolates between two, so it is [[throw-unsupported]], as is any
-  other `WITHIN GROUP` function."
+  "`PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x)` as `percentile`, `p` a literal from 0 to 1; ordered `DESC`, the
+  percentile `1 - p` of the ascending order, which is the same value. `PERCENTILE_DISC` picks a value from the data
+  where Metabase's percentile interpolates between two, so it is [[throw-unsupported]], as is any other `WITHIN GROUP`
+  function, and an exact percentile where Metabase's is not (see [[check-percentile]])."
   [node :- ::node
    ctx  :- ::context]
   (let [function (arg node :this)
         ordered  (arg (arg node :expression) :expressions)]
     (case (:class function)
       "PercentileCont"
-      (let [p (literal-number (unparenthesized (arg function :this)))]
-        (when-not (and p (<= 0 p 1))
-          (throw-unsupported "the percentile of %s has to be a literal from 0 to 1" (:sql node)))
+      (let [p (percentile-fraction node (arg function :this))]
         (when-not (= 1 (count ordered))
           (throw-unsupported "%s orders by more than one expression" (:sql node)))
-        (lib/percentile (->value (arg (first ordered) :this) (argument-context ctx)) p))
+        (check-percentile node ctx)
+        (let [[{:keys [args] :as ordering}] ordered
+              p                             (if (:desc args) (double (- 1M (bigdec p))) p)]
+          (lib/percentile (->value (arg ordering :this) (argument-context ctx)) p)))
 
       "PercentileDisc"
       (throw-unsupported (str "%s picks a value from the data, where Metabase's percentile interpolates between two,"
@@ -1180,15 +1283,34 @@
 
       (throw-unsupported "%s is not supported" (describe node)))))
 
+(def ^:private no-stddev-dialects
+  "The dialects on which Metabase has no `stddev` or `var` aggregation at all, so a metric with one would fail when it
+  runs: SQLite's."
+  #{"sqlite"})
+
+(mu/defn- population-statistic :- ::converter
+  "The converter for a population standard deviation or variance, `(lib-fn x)`, which [[throw-unsupported]] on a
+  dialect in [[no-stddev-dialects]]."
+  [lib-fn :- ifn?]
+  (fn [node {:keys [dialect] :as ctx}]
+    (when (contains? no-stddev-dialects dialect)
+      (throw-unsupported "%s has no Metabase equivalent on %s, which has no standard deviation or variance aggregation"
+                         (:sql node) dialect))
+    ((unary-aggregation lib-fn) node ctx)))
+
 (mu/defn- sample-statistic :- ::converter
   "The converter for a sample standard deviation or variance, `statistic`, which divides by n - 1 where Metabase's
   `stddev` and `var` are the population statistics and divide by n, as `population-function` does in SQL: the number
-  would differ, so it is [[throw-unsupported]]."
+  would differ, so it is [[throw-unsupported]]. MySQL's `STDDEV` is the population one, and converts there as
+  `STDDEV_POP` does (its `VARIANCE` and `VAR_SAMP` arrive as one node, so neither converts)."
   [statistic           :- :string
-   population-function :- :string]
-  (fn [node _ctx]
-    (throw-unsupported "%s is the sample %s, where Metabase's is the population one; write %s for that"
-                       (:sql node) statistic population-function)))
+   population-function :- :string
+   population-lib-fn   :- ifn?]
+  (fn [{:keys [func] :as node} {:keys [dialect] :as ctx}]
+    (if (and (= "mysql" dialect) (= "STDDEV" func))
+      ((population-statistic population-lib-fn) node ctx)
+      (throw-unsupported "%s is the sample %s, where Metabase's is the population one; write %s for that"
+                         (:sql node) statistic population-function))))
 
 (mu/defn- approximate :- ::converter
   "The converter for an approximate aggregate, whose estimate the exact Metabase aggregation `exact-function` would not
@@ -1197,6 +1319,16 @@
   (fn [node _ctx]
     (throw-unsupported "%s is approximate, where Metabase's %s is exact, so the number would differ"
                        (:sql node) exact-function)))
+
+(mu/defn- approx-quantile->aggregation :- ::aggregation
+  "`APPROX_PERCENTILE(x, p)`: on the Trino family the function Metabase's `percentile` compiles to, so it converts to
+  that (see [[approx-percentile-dialects]]); elsewhere an estimate the exact `percentile` would not return, so it is
+  [[throw-unsupported]]."
+  [node                :- ::node
+   {:keys [dialect] :as ctx} :- ::context]
+  (if (contains? approx-percentile-dialects dialect)
+    (lib/percentile (->value (arg node :this) (argument-context ctx)) (percentile-fraction node (arg node :quantile)))
+    ((approximate "PERCENTILE_CONT") node ctx)))
 
 (mu/defn- window->value :- ::value
   "A window function, `f(...) OVER (...)`: its value depends on the other rows of the result, which one expression or
@@ -1213,20 +1345,22 @@
   aggregation of the same meaning, or reports one Metabase lacks. `FILTER` and `WITHIN GROUP` wrap an aggregate."
   {"Sum"            (fn [node ctx] (sum->aggregation node ctx nil))
    "Count"          (fn [node ctx] (count->aggregation node ctx nil))
+   "CountIf"        (fn [node ctx] (count-if->aggregation node ctx nil))
    "Avg"            avg->aggregation
    "Min"            (unary-aggregation lib/min)
    "Max"            (unary-aggregation lib/max)
-   "Median"         (unary-aggregation lib/median)
-   "StddevPop"      (unary-aggregation lib/stddev)
-   "VariancePop"    (unary-aggregation lib/var)
+   "Median"         median->aggregation
+   "Quantile"       quantile->aggregation
+   "StddevPop"      (population-statistic lib/stddev)
+   "VariancePop"    (population-statistic lib/var)
    ;; sqlglot reads `STDDEV` and `STDDEV_SAMP`, and `VARIANCE` and `VAR_SAMP`, as these
-   "Stddev"         (sample-statistic "standard deviation" "STDDEV_POP")
-   "StddevSamp"     (sample-statistic "standard deviation" "STDDEV_POP")
-   "Variance"       (sample-statistic "variance" "VAR_POP")
+   "Stddev"         (sample-statistic "standard deviation" "STDDEV_POP" lib/stddev)
+   "StddevSamp"     (sample-statistic "standard deviation" "STDDEV_POP" lib/stddev)
+   "Variance"       (sample-statistic "variance" "VAR_POP" lib/var)
    "Filter"         filter->aggregation
    "WithinGroup"    within-group->aggregation
    "ApproxDistinct" (approximate "COUNT(DISTINCT ...)")
-   "ApproxQuantile" (approximate "PERCENTILE_CONT")})
+   "ApproxQuantile" approx-quantile->aggregation})
 
 (def ^:private value-converters
   "The converter for each sqlglot node class the subset covers where a value is expected: columns, literals,
@@ -1248,6 +1382,7 @@
    ;; cannot be converted does, an error or a null
    "TryCast"          cast->value
    "Case"             case->value
+   "If"               if->value
    "Abs"              (unary lib/abs)
    "Floor"            (unary lib/floor)
    "Ceil"             (unary lib/ceil)

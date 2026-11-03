@@ -164,7 +164,7 @@ under `count`, or SQL (see "Filters and SQL expressions" for the SQL subset). Th
 | -- | -- |
 | `sum` of a column or expression | `sum` |
 | `sum` of the literal `1`; `count` of `1` or `*` | `count`, a row count |
-| `count` of a column or expression | `count-where` the expression is not null, since SQL's `count` skips nulls |
+| `count` of a column or expression | `count` over the expression, which compiles to `COUNT(x)` and skips nulls as dbt's does |
 | `count_distinct` | `distinct` |
 | `average` | `avg` |
 | `min`, `max`, `median` | `min`, `max`, `median` |
