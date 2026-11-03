@@ -489,7 +489,7 @@
               true)
           false))
       (getString [_ ^String column]
-        (get @row column))
+        ^String (get @row column))
       (close [_]))))
 
 (defn- describe-fields-with-fake-athena
