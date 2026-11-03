@@ -34939,7 +34939,7 @@
         "tags" : [ "/api/table" ]
       },
       "put" : {
-        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/data-studio/table/edit`.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/ee/data-studio/table/edit`.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {

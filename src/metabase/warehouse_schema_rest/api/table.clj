@@ -277,7 +277,7 @@
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
-  Deprecated: use `POST /api/data-studio/table/edit`."
+  Deprecated: use `POST /api/ee/data-studio/table/edit`."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- TableUpdateBodyBulk]
