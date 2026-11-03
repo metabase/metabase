@@ -120,3 +120,11 @@
      :running          false
      :checked_at       (t/offset-date-time)
      :items            items}))
+
+(mu/defn run-checks :- [:sequential ::security-center.schema/health-check]
+  "Runs every registered check that applies, in registry order."
+  []
+  (into []
+        (comp (filter applicable?)
+              (map run-check))
+        (all-checks)))
