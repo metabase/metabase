@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -149,6 +150,16 @@
              [:hint     [:enum :notebook-query :sql-card :no-values]]]}
   [{:keys [query-id hint]}]
   {:message  (str "You do not have permission to run SQL against the database of query " query-id ".")
+   :recovery [(hint-steps hint)]})
+
+(tools/defrecoverable audit-db-sql!
+  "The query's database is the audit database, where the QP refuses SQL for all users, admins too."
+  {:payload [:map {:closed true}
+             [:query-id :string]
+             [:hint     [:enum :notebook-query :sql-card :no-values]]]}
+  [{:keys [query-id hint]}]
+  {:message  (str "The database of query " query-id " is the audit database. SQL does not run there for any user, "
+                  "and no permission change can allow it.")
    :recovery [(hint-steps hint)]})
 
 (tools/defrecoverable unreadable-query!
@@ -372,6 +383,10 @@
       (sql-not-allowed! {:sql-card? sql-card?, :hint hint}))
     (when-not (readable-database? database-id)
       (database-not-found! {:query-id query-id}))
+    ;; The QP refuses SQL on the audit database for all users, admins too, but `native-query-access?` says yes for
+    ;; admins there.
+    (when (= audit/audit-db-id database-id)
+      (audit-db-sql! {:query-id query-id, :hint hint}))
     (when-not (sql.common/native-query-access? database-id)
       (no-sql-permission! {:query-id query-id, :hint hint}))))
 
