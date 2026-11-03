@@ -379,6 +379,25 @@
                      :stages [{:source-card (:id model)}]}
                     (:dataset_query structured)))))))))
 
+(deftest document-construct-model-chart-metric-as-source-card-test
+  (testing "a metric in `source-card` is a failed call that names the source to use, not a chart"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card metric {:type          :metric
+                                           :name          "Order count"
+                                           :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                              (lib/aggregate (lib/count)))}]
+          (let [result (invoke-document-tool "document_construct_model_chart"
+                                             (assoc model-chart-args
+                                                    :query {:lib/type "mbql/query"
+                                                            :stages   [{:lib/type    "mbql.stage/mbql"
+                                                                        :source-card (:entity_id metric)
+                                                                        :aggregation [["count" {}]]
+                                                                        :breakout    [["field" {} "PRODUCT_ID"]]}]}))]
+            (is (= {:class :recoverable :code ::recoverable.pipeline/metric-as-source-card} (:error result)))
+            (is (str/starts-with? (:output result) "The metric \"Order count\" (needs source-table: "))
+            (is (nil? (:structured-output result)))))))))
+
 (deftest document-construct-model-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"
     ;; Stubbed one layer below the tool: `construct_notebook_query` is a record now, and the

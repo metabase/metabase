@@ -398,8 +398,12 @@
                       :name          "plain metric"
                       :dataset_query (count-metric-query (orders-query))}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        ;; The stage aggregates the metric: construct_notebook_query rejects a metric `source-card` that the stage
+        ;; does not aggregate, with `:metric-as-source-card`.
         (let [q         {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql" :source-card metric-eid}]}
+                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                     :source-card metric-eid
+                                     :aggregation [["metric" {} metric-eid]]}]}
               construct (fn [metabot profile-id]
                           (as-metabot metabot profile-id #(construct/execute-representations-query q)))
               rejected? (fn []
