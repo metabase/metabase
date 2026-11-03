@@ -326,7 +326,14 @@
                 "the check that does not apply is left out")
             (is (=? passing-health-check (first checks)))
             (testing "a check that throws is unknown with a message, and the other checks are unaffected"
-              (is (=? throwing-health-check (second checks))))))))))
+              (is (=? throwing-health-check (second checks))))))
+        (testing "sets the health-checks gauge"
+          (mt/with-prometheus-system! [_ system]
+            (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")
+            (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
+                                        {:check_id "https-redirect", :severity "medium", :status "pass"})))
+            (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
+                                        {:check_id "session-secret-key", :severity "high", :status "unknown"})))))))))
 
 (deftest recheck-health-check-test
   (testing "POST /api/ee/security-center/health-checks/:id/recheck"

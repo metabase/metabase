@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase-enterprise.security-center.metrics :as metrics]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
@@ -141,13 +142,13 @@
   "The health checks that apply to this instance, each with its current result."
   []
   (api/check-superuser)
-  {:checks (health-checks/run-checks)})
+  {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
 
 (api.macros/defendpoint :post "/health-checks/recheck" :- [:map [:checks [:sequential ::security-center.schema/health-check]]]
   "Run every health check that applies to this instance again."
   []
   (api/check-superuser)
-  {:checks (health-checks/run-checks)})
+  {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
 
 (api.macros/defendpoint :post "/health-checks/:id/recheck" :- ::security-center.schema/health-check
   "Run one health check again. 404 for an id that is not a check, and for a check that does not apply to this
@@ -156,7 +157,9 @@
   (api/check-superuser)
   (let [check (health-checks/check-by-id (keyword id))]
     (api/check-404 (and check (health-checks/applicable? check)))
-    (health-checks/run-check check)))
+    (let [response (health-checks/run-check check)]
+      (metrics/set-health-check-gauges! [response])
+      response)))
 
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."

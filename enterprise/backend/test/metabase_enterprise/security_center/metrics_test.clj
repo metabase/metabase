@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -98,3 +100,22 @@
       (doseq [severity ["critical" "high" "medium" "low"]
               ack      ["true" "false"]]
         (is (contains? labels {:severity severity :acknowledged ack}))))))
+
+(deftest health-checks-known-labels-test
+  (testing "every registered check has a label set per status, so the gauges start at 0"
+    (let [labels (analytics.core/known-labels :metabase-security-center/health-checks)]
+      (is (= (* 3 (count (health-checks/all-checks))) (count labels)))
+      (is (contains? (set labels) {:check_id "https-redirect", :severity "medium", :status "pass"})))))
+
+(deftest set-health-check-gauges!-test
+  (testing "the gauge is 1 for the status of each check and 0 for the other two"
+    (mt/with-prometheus-system! [_ system]
+      (metrics/set-health-check-gauges! [{:id :https-redirect, :severity :medium, :status :fail}
+                                         {:id :sso-login, :severity :medium, :status :pass}])
+      (are [check-id status value] (= value (mt/metric-value system :metabase-security-center/health-checks
+                                                             {:check_id check-id, :severity "medium", :status status}))
+        "https-redirect" "fail"    1.0
+        "https-redirect" "pass"    0.0
+        "https-redirect" "unknown" 0.0
+        "sso-login"      "pass"    1.0
+        "sso-login"      "fail"    0.0))))
