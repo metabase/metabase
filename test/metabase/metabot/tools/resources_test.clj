@@ -538,10 +538,12 @@
   (testing "Two breakouts of one field get different field IDs, and each one resolves to its own column"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {card-id :id} {:type          :question
-                                                :dataset_query (mt/mbql-query orders
-                                                                 {:aggregation [[:count]]
-                                                                  :breakout    [!month.created_at
-                                                                                !year.created_at]})}]
+                                                :dataset_query (let [mp         (mt/metadata-provider)
+                                                                     created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                     (lib/aggregate (lib/count))
+                                                                     (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                                                     (lib/breakout (lib/with-temporal-bucket created-at :year))))}]
         (let [created-at-id (mt/id :orders :created_at)
               {:keys [resources]} (read-uris {:uris [(str "metabase://question/" card-id "/fields")]})
               fields (get-in resources [0 :content :structured-output :fields])]
