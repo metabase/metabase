@@ -162,7 +162,7 @@ describe("SavedEntityPicker", () => {
     expect(options.map((node) => node.textContent)).toEqual(["a", "A", "B"]);
   });
 
-  it("opens on the first collection when the root collection request fails", async () => {
+  it("opens on the personal collection when the root collection request fails", async () => {
     await setup({ rootCollectionRequest: "fails" });
 
     const options = await screen.findAllByTestId("option-text");
