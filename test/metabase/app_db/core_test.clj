@@ -21,3 +21,15 @@
       (is (= 3 @calls)))
     (testing "the cache is introspectable for telemetry (carries clojure.core.memoize cache metadata)"
       (is (some? (:clojure.core.memoize/cache (meta f)))))))
+
+(deftest increment-app-db-unique-indentifier!-test
+  (testing "inside a binding, the bump changes the bound DB's id and leaves the root's alone"
+    (let [root-id (mdb/unique-identifier)]
+      (is (= {:bound-id-changed? true
+              :root-id-changed?  false}
+             (let [bound-changed? (mdb/with-application-db (mdb.connection/current-application-db)
+                                    (let [before (mdb/unique-identifier)]
+                                      (mdb/increment-app-db-unique-indentifier!)
+                                      (not= before (mdb/unique-identifier))))]
+               {:bound-id-changed? bound-changed?
+                :root-id-changed?  (not= root-id (mdb/unique-identifier))}))))))
