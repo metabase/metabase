@@ -126,6 +126,39 @@ describe("gauge dynamic goal", () => {
     expect((await screen.findAllByText("$2,500")).length).toBeGreaterThan(0);
   });
 
+  it("draws a range bounded by an answered value of 0 and a negative decimal one", async () => {
+    setup({
+      height: LABELED_GAUGE_SIZE,
+      referencedEntities: {
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [
+                createMockColumn({ name: "low" }),
+                createMockColumn({ name: "zero" }),
+              ],
+              rows: [[-12.5, 0]],
+            },
+          },
+        },
+      },
+      segments: [
+        {
+          min: { type: "card", id: 9, column: "low" },
+          max: { type: "card", id: 9, column: "zero" },
+          color: "red",
+        },
+        { min: 0, max: 100, color: "green" },
+      ],
+      width: LABELED_GAUGE_SIZE,
+    });
+
+    expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();
+    expect(screen.getByTestId("gauge-arc-1")).toBeInTheDocument();
+    expect(screen.getAllByText("-12.5").length).toBeGreaterThan(0);
+  });
+
   it("formats a resolved bound in the tooltip of a gauge too small for labels", async () => {
     setup({
       columnSettings: CURRENCY_COLUMN_SETTINGS,

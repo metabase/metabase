@@ -229,6 +229,38 @@ describe("resolveGoalValue", () => {
     expect(goalValue).toEqual({ value: null, isUnanswered: true });
   });
 
+  it("resolves a referenced value of 0, which is not a missing value", () => {
+    const data = createMockDatasetData({
+      cols,
+      rows,
+      referenced_entities: createMockReferencedEntitiesResults({
+        id: 7,
+        column: "total",
+        value: 0,
+      }),
+    });
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 7, column: "total" }),
+    ).toEqual({ value: 0 });
+  });
+
+  it("resolves a negative decimal referenced value", () => {
+    const data = createMockDatasetData({
+      cols,
+      rows,
+      referenced_entities: createMockReferencedEntitiesResults({
+        id: 7,
+        column: "total",
+        value: -12.5,
+      }),
+    });
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 7, column: "total" }),
+    ).toEqual({ value: -12.5 });
+  });
+
   it("errors for a foreign column reference that does not exist", () => {
     const data = createMockDatasetData({
       cols,

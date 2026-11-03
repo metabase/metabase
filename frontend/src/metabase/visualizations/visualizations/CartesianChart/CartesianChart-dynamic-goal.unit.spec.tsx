@@ -188,6 +188,37 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   },
 );
 
+describe("line chart with an answered goal that isn't positive", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("draws the goal line at an answered goal of 0", async () => {
+    await setup({
+      display: "line",
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 0,
+      }),
+    });
+
+    expect(queryEChartsGoalLine()).toBeInTheDocument();
+  });
+
+  it("draws the goal line at a negative answered goal, stretching the y-axis down to it", async () => {
+    await setup({
+      display: "line",
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: -250,
+      }),
+    });
+
+    expect(queryEChartsGoalLine()).toBeInTheDocument();
+    expect(screen.getByText("-250")).toBeInTheDocument();
+  });
+});
+
 describe("line chart with multiple series and a dynamic goal", () => {
   afterEach(() => {
     jest.useRealTimers();
