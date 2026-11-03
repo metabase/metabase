@@ -9,6 +9,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.query-permissions.schema :as query-permissions.schema]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -334,6 +335,9 @@
   "The `:data_access_token` column of a StoredResult, decoded."
   ::permissions.schema/data-access-token)
 
+(mr/def ::stored-result.resolved-source-ids
+  ::query-permissions.schema/resolved-source-ids)
+
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:merge
@@ -344,14 +348,15 @@
 (mr/def ::stored-result.update
   "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
   [:map {:closed true}
-   [:result_data       {:optional true} [:maybe [:or bytes? :string]]]
-   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
-   [:database_id       {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query     {:optional true} [:maybe ::stored-result.dataset-query]]
-   [:data_access_token {:optional true} [:maybe ::stored-result.data-access-token]]
-   [:row_count         {:optional true} [:maybe :int]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:result_data         {:optional true} [:maybe [:or bytes? :string]]]
+   [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:database_id         {:optional true} [:maybe ::lib.schema.id/database]]
+   [:dataset_query       {:optional true} [:maybe ::stored-result.dataset-query]]
+   [:data_access_token   {:optional true} [:maybe ::stored-result.data-access-token]]
+   [:resolved_source_ids {:optional true} [:maybe ::stored-result.resolved-source-ids]]
+   [:row_count           {:optional true} [:maybe :int]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::stored-result-use
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."

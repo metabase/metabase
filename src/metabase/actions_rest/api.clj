@@ -218,6 +218,20 @@
                      (contains? slug->id k)  (get slug->id k)
                      :else                   k)))))
 
+(api.macros/defendpoint :post "/execute" :- :map
+  "Execute the ad-hoc `action`, without saving it. Superusers only."
+  {:scope api-scope/data-app}
+  [_route-params
+   _query-params
+   {:keys [action parameters]} :- [:map {:closed true}
+                                   [:action ::actions.schema/action.adhoc]
+                                   [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]
+   request]
+  (api/check-superuser)
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-action action))
+  (let [action (actions/adhoc-action action)]
+    (actions/execute-action! action (remap-parameter-keys action (update-keys parameters name)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

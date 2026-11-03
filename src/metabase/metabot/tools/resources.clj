@@ -85,6 +85,7 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.transforms.core :as transforms]
@@ -244,28 +245,6 @@
                          {:uses #{"search"}
                           :text (str "Call `search` and build the URI from a result's numeric `id`"
                                      " attribute, or copy its `uri` attribute as-is.")}]))})
-
-(tools/defrecoverable not-a-metric!
-  "Report a metric URI that refers to a question or model."
-  {:payload [:map {:closed true}
-             [:id       :int]
-             [:type     [:enum "question" "model"]]
-             [:card-uri :string]]}
-  [{:keys [id type card-uri]}]
-  {:message  (str "Card " id " is a " type ", not a metric.")
-   :recovery [{:uses #{}
-               :text (str "Read `" (uri-preview card-uri) "` instead.")}]})
-
-(tools/defrecoverable wrong-card-kind!
-  "Report a question or model URI that names a different kind of card."
-  {:payload [:map {:closed true}
-             [:id :int]
-             [:expected [:enum "question" "model"]]
-             [:actual [:enum "question" "model" "metric"]]
-             [:uri :string]]}
-  [{:keys [id expected actual uri]}]
-  {:message (str "Card " id " is a " actual ", not a " expected ".")
-   :recovery [{:uses #{} :text (str "Read `" (uri-preview uri) "` instead.")}]})
 
 (tools/defrecoverable inactive-table!
   "Report a readable table that is no longer active."
@@ -761,12 +740,14 @@
 (defn- check-card-kind [id expected & path-segments]
   (let [{actual :type :as card} (check-card-resource-database id)]
     (when-not (= actual expected)
-      (let [path-segments (if (= actual :metric)
-                            (when (= (first path-segments) "fields")
-                              (cons "dimensions" (rest path-segments)))
-                            path-segments)]
-        (wrong-card-kind! {:id id :expected (name expected) :actual (name actual)
-                           :uri (apply llm-shape/metabase-uri actual id path-segments)})))
+      (let [[aspect & more] path-segments
+            path-segments   (cond
+                              (= actual :metric)      (when (= aspect "fields") (cons "dimensions" more))
+                              (= aspect "dimensions") (cons "fields" more)
+                              :else                   path-segments)]
+        (tools.u/wrong-source-type!
+         {:id id :expected-type expected :actual-type actual
+          :card-uri (uri-preview (apply llm-shape/metabase-uri actual id path-segments))})))
     card))
 
 (defn- usable-metrics
@@ -882,34 +863,23 @@
 
 ;; ----- Metric -----
 
-(defn- check-metric-resource
-  "Require that `metric-id` is a metric whose backing database is addressable as a Metabot resource.
-
-  The error for a question or model includes its resource URI with `path-segments` appended."
-  [metric-id & path-segments]
-  (let [{card-type :type} (check-card-resource-database metric-id)]
-    (when-not (= :metric card-type)
-      (not-a-metric! {:id       metric-id
-                      :type     (name card-type)
-                      :card-uri (apply llm-shape/metabase-uri card-type metric-id path-segments)}))))
-
 (defn- fetch-metric [id-str]
   (let [metric-id (parse-long id-str)]
-    (check-metric-resource metric-id)
+    (check-card-kind metric-id :metric)
     (entity-details/get-metric-details {:metric-id                  metric-id
                                         :with-queryable-dimensions? false
                                         :with-field-values?         false})))
 
 (defn- fetch-metric-dimensions [id-str]
   (let [metric-id (parse-long id-str)]
-    (check-metric-resource metric-id "fields")
+    (check-card-kind metric-id :metric "dimensions")
     (entity-details/get-metric-details {:metric-id                  metric-id
                                         :with-queryable-dimensions? true
                                         :with-field-values?         false})))
 
 (defn- fetch-metric-dimension [id-str dim-id]
   (let [metric-id (parse-long id-str)]
-    (check-metric-resource metric-id "fields" dim-id)
+    (check-card-kind metric-id :metric "dimensions" dim-id)
     (field-values {:entity-type "metric"
                    :entity-id   metric-id
                    :field-id    dim-id

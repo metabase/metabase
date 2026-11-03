@@ -1283,6 +1283,22 @@
               (is (= (mt/id :reviews) (get-in resource [:content :structured-output :base_table_id]))
                   "a metric's base table is its source"))))))))
 
+(deftest curated-metric-over-a-deleted-source-is-marked-unavailable-test
+  (testing "a curated metric whose source card was deleted is marked unavailable"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {question :id} {:name "doomed question" :dataset_query (orders-query)}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {metric :id} {:type          :metric
+                                                   :name          "metric on a doomed question"
+                                                   :dataset_query (count-metric-query
+                                                                   (lib/query mp (lib.metadata/card mp question)))}]
+            (verify-card! metric)
+            (t2/delete! :model/Card :id question)
+            (let [resource (first (read-uris metabot :internal (str "metabase://metric/" metric)))]
+              (is (nil? (:error resource)) (:error resource))
+              (is (true? (get-in resource [:content :structured-output :source_unavailable]))))))))))
+
 (deftest uncurated-metric-over-an-unreadable-table-fails-closed-test
   ;; the user reads the published table through the Library grant, which exists only on EE
   (when config/ee-available?

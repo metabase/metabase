@@ -260,7 +260,7 @@
                :source-table ["Sample" "PUBLIC" "ORDERS"]
                :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
 
-(deftest export-validation-failures-end-metabot-turn-test
+(deftest export-validation-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (let [export-query (mt/original-fn #'repr.resolve/export-query)]
@@ -281,11 +281,7 @@
                                                :title "Order IDs" :description "IDs of orders."})]
             (is (nil? (:error (ex-data caught))))
             (is (= :unrecoverable (:class (tools.error/classify caught))))
-            (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                    :error {:class :unrecoverable :code :internal}}
-                   outcome))
-            (is (= "Something went wrong."
-                   (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (= test-util/internal-failure outcome))))))))
 
 (deftest metadata-lookup-failures-propagate-test
   (with-mp-and-stubs!
@@ -363,9 +359,9 @@
                     :error {:class :recoverable
                             :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
                    outcome))
-            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (nil? (#'agent/terminal-error-message {} [{:type :tool-output :result outcome}] 0)))))))))
 
-(deftest metadata-lookup-failures-end-metabot-turn-test
+(deftest metadata-lookup-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (doseq [[label failure] (metadata-lookup-failures)]
@@ -379,11 +375,7 @@
                                                 "construct_notebook_query"
                                                 {:query orders-id-query
                                                  :title "Order IDs" :description "IDs of orders."})]
-              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                      :error  {:class :unrecoverable :code :internal}}
-                     outcome))
-              (is (= "Something went wrong."
-                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
+              (is (= test-util/internal-failure outcome)))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
@@ -862,6 +854,21 @@
           (is (= :expression-editor-rejection (:error (ex-data e))))
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
+
+(deftest aggregation-without-aggregation-function-explained-test
+  (testing "an aggregation with no aggregation function in it is explained, with how to fix it"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["+" {} 1 2]]}]})]
+          (is (= :query-not-runnable (:error (ex-data e))))
+          (is (str/ends-with? (ex-message e)
+                              (str ": Aggregations should contain at least one aggregation function. Wrap the "
+                                   "calculation in one, such as `sum` or `count`, or move a per-row calculation "
+                                   "to `expressions:`."))))))))
 
 (deftest editor-rejection-between-message-test
   (with-mp-and-stubs!
@@ -3320,6 +3327,23 @@
           (is (=? {:agent-error? true :error :query-not-runnable :status-code 400} (ex-data e)))
           (is (str/includes? (ex-message e) "could not be resolved")))))))
 
+(deftest nested-expression-unresolved-reference-explained-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [q {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "expressions"  {"Broken" ["+" {}
+                                                      ["length" {}
+                                                       ["replace" {}
+                                                        ["substring" {} ["field" {"join-alias" "Nope"} "NAME"] 1 10]
+                                                        "-" ""]]
+                                                      1]}}]}
+            e (editor-rejection q)]
+        (is (=? {:agent-error? true, :error :query-not-runnable} (ex-data e)))
+        (is (re-find #"Failing paths: [^;]+could not be resolved" (ex-message e)))))))
+
 (deftest path-ref-to-dropped-join-column-rejected-before-sql-test
   (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
     (with-mp-and-stubs!
@@ -3347,11 +3371,25 @@
         hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
       (is (= "stages[0].alias: missing `alias`" (explain (missing :alias) (missing :alias)))))
-    (testing "at most three problems are listed"
-      (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
+    (testing "one problem in several places is listed once, with a count of the others"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c))
+                            "stages[0].a (and 2 other places): should be an integer.")))
+    (testing "a problem in one other place, and one more problem, are counted in the singular"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b)) "stages[0].a (and 1 other place): "))
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d])) "; and 1 more problem")))
+    (testing "at most three problems are listed, and the rest are counted"
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d :e])) "; and 2 more problems")))
     (testing "problems with a known cause are listed before Malli's own messages"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
-                            "stages[0].alias: missing `alias`; stages[0].a: should be an integer")))
+                            "stages[0].alias: missing `alias`; stages[0].a (and 2 other places): should be an integer")))
+    (testing "Malli's own messages are listed before a guessed cause, however often it repeats"
+      (let [untyped (fn [i] {:type :malli.core/missing-key, :in [:stages 0 :filters i 2 1 :base-type]})
+            no-join {:schema (mc/schema [:fn {:error/message "no join named \"first\""} any?])
+                     :value  1
+                     :in     [:stages]}]
+        (is (str/starts-with? (apply explain (conj (mapv untyped (range 4)) no-join))
+                              (str "stages: no join named \"first\"; "
+                                   "stages[0].filters[0][2][1].base-type (and 3 other places): a field reference by name is missing `base-type`")))))
     (testing "the usual causes are added only when no problem has a known cause"
       (is (re-find hint (explain (invalid :a))))
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))

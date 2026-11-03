@@ -1,7 +1,9 @@
+import { translateEntityId } from "embedding-sdk-bundle/lib/translate-entity-id";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import {
   type DynamicQueryInput,
   type QueryInput,
+  type TableQueryInput,
   isQueryInput,
   isQuestionInput,
   isTableInput,
@@ -9,6 +11,7 @@ import {
 import type { QuestionSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { cardApi, selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
@@ -74,12 +77,18 @@ type ResolvedSource = {
 
 /**
  * A card source given by its entity ID, with the card's numeric id: query
- * metadata and the query itself address cards by numeric id.
+ * metadata and the query itself address cards by numeric id. Outside the dev
+ * preview, a data app's table query runs the question its `entityId` names,
+ * which holds its static clauses.
  */
 async function resolveSourceCard(
   store: SdkStore,
   input: QueryInput,
 ): Promise<ResolvedSource> {
+  if (isTableInput(input) && isDataApp() && !isDataAppDev()) {
+    return resolveDataAppQuestion(store, input);
+  }
+
   if (!isQuestionInput(input) || input.source.id !== undefined) {
     return { input };
   }
@@ -90,6 +99,27 @@ async function resolveSourceCard(
     input: { ...input, source: { ...input.source, id: card.id } },
     card,
   };
+}
+
+async function resolveDataAppQuestion(
+  store: SdkStore,
+  { entityId }: TableQueryInput,
+): Promise<ResolvedSource> {
+  if (entityId === undefined) {
+    throw new Error(
+      "A data app's query needs an `entityId` in `defineQuery(...)`: the question it names is what the app runs.",
+    );
+  }
+
+  const cardId = await translateEntityId(store, "card", entityId);
+  const card: Card = await runRtkEndpoint(
+    { id: cardId },
+    store.dispatch,
+    cardApi.endpoints.getCard,
+    { forceRefetch: false },
+  );
+
+  return { input: { source: { type: "card", id: card.id } }, card };
 }
 
 async function fetchCardByEntityId(
@@ -106,7 +136,7 @@ async function fetchCardByEntityId(
   } catch (error) {
     if (isObject(error) && error.status === 404) {
       throw new Error(
-        `Saved question ${entityId} does not exist. Fetch the app's typed schema again to pick up its current questions.`,
+        `Saved question ${entityId} does not exist. Generate the app's questions and import the repository again.`,
       );
     }
 
@@ -172,7 +202,8 @@ function withoutOrderBys<TStage extends TestStageSpec>({
 
 function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
   if (!isQuestionInput(input)) {
-    return input;
+    const { entityId: _entityId, ...stage } = input;
+    return stage;
   }
 
   return {

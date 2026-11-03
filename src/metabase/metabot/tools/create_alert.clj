@@ -134,10 +134,11 @@
 (defrecord CreateAlertTool []
   tools/Tool
   (declaration [_]
-    {:name        "create_alert"
-     :description tool-description
-     :scope       scope/agent-alert-create
-     :args        alert-schema})
+    {:name            "create_alert"
+     :description     tool-description
+     :scope           scope/agent-alert-create
+     :args            alert-schema
+     :metabot/writes? true})
 
   (handle [_ {:keys [card_id send_condition schedule send_once]} ctx]
     (let [channel (current-slack-channel ctx)

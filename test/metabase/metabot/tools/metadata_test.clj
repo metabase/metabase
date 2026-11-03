@@ -485,3 +485,48 @@
                                                :result_metadata columns}]
       (t2/delete! :model/Card :id inner-id)
       (check-unrestricted-statistics outer-id statistics))))
+
+(deftest joined-metric-dimensions-round-trip-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/join (lib/join-clause
+                               (lib.metadata/table mp (mt/id :reviews))
+                               [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                       (lib.metadata/field mp (mt/id :reviews :product_id)))]))
+                    (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card {metric-id :id} {:type :metric :dataset_query query}]
+        (let [dimensions (->> (entity-details/get-metric-details
+                               {:metric-id metric-id :with-field-values? false})
+                              :structured-output :join-required-dimensions (mapcat :dimensions))
+              valid-ids (mapv :field_id dimensions)]
+          (is (some #{(mt/id :reviews :rating)} valid-ids))
+          (doseq [profile [:document-generate-content :slackbot :internal]]
+            (doseq [field-id valid-ids]
+              (let [{:keys [error structured-output]} (invoke-field-detail profile "metric" metric-id field-id)]
+                (is (nil? error))
+                (is (=? {:field_id (if (= profile :internal) (str field-id) field-id)}
+                        (if (= profile :internal) (first structured-output) structured-output)))))
+            (let [{:keys [output]} (invoke-field-detail profile "metric" metric-id "missing")]
+              (is (str/includes? output (str "Field missing was not found in metric " metric-id ".")))
+              (doseq [field-id valid-ids]
+                (is (str/includes? output (str field-id)))))))))))
+
+(deftest card-resource-types-name-the-real-kind-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (doseq [actual-type [:model :question :metric]]
+        (mt/with-temp [:model/Card {card-id :id} {:type actual-type
+                                                  :dataset_query (if (= actual-type :metric)
+                                                                   (lib/aggregate query (lib/count)) query)}]
+          (doseq [expected-type [:model :question :metric]
+                  :when (not= expected-type actual-type)
+                  path (if (= expected-type :metric) ["" "/dimensions"] ["" "/fields" "/sources"])]
+            (let [{:keys [error output]} (invoke-metadata :internal "read_resource"
+                                                          {:uris [(str "metabase://" (name expected-type)
+                                                                       "/" card-id path)]})]
+              (is (= :recoverable (:class error)))
+              (is (str/includes? output (str "Card " card-id " is a " (name actual-type)
+                                             ", not a " (name expected-type) ".")))
+              (is (str/includes? output (str "metabase://" (name actual-type) "/" card-id))))))))))
