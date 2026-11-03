@@ -714,3 +714,34 @@
                                                                                         :max   nil
                                                                                         :color "red"}]}})
       (is (= [[100]] (get-in (card-query-referenced-entities chart-id) [:card chart-id :data :rows]))))))
+
+(deftest cached-main-result-gets-fresh-goal-values-test
+  (testing "a main result served from the cache still gets freshly run goal values"
+    (mt/initialize-if-needed! :db)
+    (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
+      (try
+        ;; with-temp can't create the root config while one exists
+        (when existing-config
+          (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
+        (mt/with-temporary-setting-values [enable-query-caching true]
+          (mt/with-temp [:model/CacheConfig _              {:model_id 0
+                                                            :model    "root"
+                                                            :strategy "ttl"
+                                                            :config   {:multiplier 99999 :min_duration_ms 0}}
+                         :model/Card        {goal-id :id}  {:dataset_query (mt/native-query {:query "SELECT 1 AS \"count\""})}
+                         :model/Card        {chart-id :id} (chart-card :scalar {:scalar.segments [{:min   (goal-ref goal-id)
+                                                                                                   :max   nil
+                                                                                                   :color "red"}]})]
+            (letfn [(run-chart []
+                      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id)
+                                            {:ignore_cache false}))]
+              (run-chart)
+              (t2/update! :model/Card :id goal-id {:dataset_query (mt/native-query {:query "SELECT 2 AS \"count\""})})
+              (let [response (run-chart)]
+                (testing "the main result came from the cache"
+                  (is (some? (:cached response))))
+                (testing "the goal didn't"
+                  (is (= [[2]] (get-in response [:data :referenced_entities :card goal-id :data :rows]))))))))
+        (finally
+          (when existing-config
+            (t2/insert! :model/CacheConfig existing-config)))))))
