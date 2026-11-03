@@ -87,11 +87,12 @@
 (defn- do-with-field-display-name!
   "Run `thunk` with `display-name` set by a user as the display name of the Field with `field-id`."
   [field-id display-name thunk]
-  (try
-    (field-user-settings/upsert-field-user-settings! {:id field-id} {:display_name display-name})
-    (thunk)
-    (finally
-      (field-user-settings/delete-field-user-settings! [field-id]))))
+  (mt/with-temp-vals-in-db :model/Field field-id {:display_name (t2/select-one-fn :display_name :model/Field :id field-id)}
+    (try
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:display_name display-name})
+      (thunk)
+      (finally
+        (field-user-settings/delete-field-user-settings! [field-id])))))
 
 (defmacro ^:private with-field-display-name!
   "Run `body` with `display-name` set by a user as the display name of the Field with `field-id`."
