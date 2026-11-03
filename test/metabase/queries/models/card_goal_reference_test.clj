@@ -239,6 +239,27 @@
              (t2/delete! :model/DashboardCard :dashboard_id dash-id)
              (is (= 403 (revert-status serialized))))))))))
 
+(deftest document-card-goal-reference-permissions-test
+  (do-with-unreadable-card!
+   (fn [goal-id]
+     (mt/with-model-cleanup [:model/Document :model/Card]
+       (mt/with-temp [:model/Card {readable-id :id} {:dataset_query (count-query)}]
+         (letfn [(save-document [status goal]
+                   (mt/user-http-request :rasta :post status "document/"
+                                         {:name     "Document with a dynamic goal"
+                                          :document {:type    "doc"
+                                                     :content [{:type "cardEmbed" :attrs {:id -1 :name nil}}]}
+                                          :cards    {-1 {:name                   "Gauge"
+                                                         :type                   :question
+                                                         :dataset_query          (count-query)
+                                                         :display                :gauge
+                                                         :visualization_settings (gauge-viz goal)}}}))]
+           (testing "saving a document card whose goal reads a card the user can't read is refused"
+             (save-document 403 (card-goal goal-id))
+             (is (not (t2/exists? :model/Document :name "Document with a dynamic goal"))))
+           (testing "a goal reading a readable card saves"
+             (save-document 200 (card-goal readable-id)))))))))
+
 (deftest public-card-goal-reference-save-test
   (testing "an editor can't make a public card return a card they can't read"
     (mt/with-temporary-setting-values [enable-public-sharing true]
