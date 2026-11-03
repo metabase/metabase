@@ -63,14 +63,6 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
-(mu/defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
-  [card-ids      :- [:set ::lib.schema.id/card]
-   collection-id :- ::lib.schema.id/collection]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
-
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
@@ -199,12 +191,6 @@
   "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
-
-(mu/defn table-published? :- :boolean
-  "Whether the Table with `table-id` is published to the Library."
-  [table-id :- ::lib.schema.id/table]
-  (some? (t2/select-one-fn :id [:model/Table :id] :id table-id :is_published true
-                           {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn tables-with-fields
   "The Tables with `table-ids`, with their Fields hydrated."

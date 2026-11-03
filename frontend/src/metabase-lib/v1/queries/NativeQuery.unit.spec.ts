@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import NativeQuery, {
@@ -303,6 +304,32 @@ describe("NativeQuery", () => {
       });
     });
 
+    describe("required template tags", () => {
+      it.each(["text", "number", "date"] as const)(
+        "should run and save without a default value for a required %s tag",
+        (type) => {
+          const q = makeQuery().setQueryText(
+            "SELECT * from ORDERS where {{foo}}",
+          );
+          const requiredQuery = q.setTemplateTag(
+            "foo",
+            createMockTemplateTag({
+              name: "foo",
+              "display-name": "Foo",
+              type,
+              required: true,
+              default: undefined,
+            }),
+          );
+
+          expect(requiredQuery.canRun()).toBe(true);
+          expect(
+            Lib.canSave(requiredQuery.question().query(), "question"),
+          ).toBe(true);
+        },
+      );
+    });
+
     describe("snippet template tags", () => {
       it("should parse snippet tags", () => {
         const q = makeQuery().setQueryText("{{ snippet: foo }}");
@@ -401,6 +428,25 @@ describe("NativeQuery", () => {
           "{{#1}} {{ #2 }} {{ #1-a-card-name }} {{ #1-a-card-name }}",
         );
         expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2, 1]);
+      });
+
+      it("should keep differently-named tags for the same card verbatim", () => {
+        const queryText = "SELECT 1 FROM {{#1-foo}} AS a, {{#1-bar}} AS b";
+        const q = makeQuery().setQueryText(queryText);
+
+        expect(q.queryText()).toBe(queryText);
+        expect(q.templateTagsMap()).toEqual({
+          "#1-foo": expect.objectContaining({
+            name: "#1-foo",
+            type: "card",
+            "card-id": 1,
+          }),
+          "#1-bar": expect.objectContaining({
+            name: "#1-bar",
+            type: "card",
+            "card-id": 1,
+          }),
+        });
       });
     });
   });

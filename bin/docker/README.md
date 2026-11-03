@@ -1,3 +1,5 @@
+[Metabase](https://www.metabase.com/) is the easy, open-source way for everyone in your company to ask questions and learn from data.
+
 # Quick Reference
 - **Maintained by:** [Metabase](https://www.metabase.com/)
 - **Where to get help:** [Metabase Documentation](https://www.metabase.com/help) | [Enterprise Support](https://www.metabase.com/product/enterprise)

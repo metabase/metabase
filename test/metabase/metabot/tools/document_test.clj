@@ -153,6 +153,18 @@
                       "Rewrite the SQL as one statement, then retry.")
                  (:output result))))))))
 
+(deftest document-construct-sql-chart-invalid-template-syntax-test
+  (testing "SQL with an unclosed `[[` gets the SQL tools' template syntax recovery, without the edit-only sentence"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+        (let [result (invoke-document-tool "document_construct_sql_chart"
+                                           (assoc sql-chart-args :database_id db-id :sql "SELECT * FROM t [[WHERE x = {{x}}"))
+              output (:output result)]
+          (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax} (:error result)))
+          (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
+          (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
+          (is (not (str/includes? output "this edit did not change"))))))))
+
 (deftest document-construct-sql-chart-blank-sql-test
   (testing "blank SQL gets the SQL tools' recovery step instead of a draft"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -331,6 +343,25 @@
             (is (=? {:database (mt/id)
                      :stages [{:source-card (:id model)}]}
                     (:dataset_query structured)))))))))
+
+(deftest document-construct-model-chart-metric-as-source-card-test
+  (testing "a metric in `source-card` is a failed call that names the source to use, not a chart"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card metric {:type          :metric
+                                           :name          "Order count"
+                                           :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                              (lib/aggregate (lib/count)))}]
+          (let [result (invoke-document-tool "document_construct_model_chart"
+                                             (assoc model-chart-args
+                                                    :query {:lib/type "mbql/query"
+                                                            :stages   [{:lib/type    "mbql.stage/mbql"
+                                                                        :source-card (:entity_id metric)
+                                                                        :aggregation [["count" {}]]
+                                                                        :breakout    [["field" {} "PRODUCT_ID"]]}]}))]
+            (is (= {:class :recoverable :code ::recoverable.pipeline/metric-as-source-card} (:error result)))
+            (is (str/starts-with? (:output result) "The metric \"Order count\" (needs source-table: "))
+            (is (nil? (:structured-output result)))))))))
 
 (deftest document-construct-model-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"

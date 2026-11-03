@@ -136,7 +136,7 @@
     (catch clojure.lang.ExceptionInfo e
       (let [data (ex-data e)
             status-code (:status-code data)]
-        (if (and (not (contains? data tools.error/error-key))
+        (if (and (not (tools.error/declared? e))
                  (int? status-code) (<= 400 status-code 499))
           (save-rejected! {:message (ex-message e)})
           (throw e))))))
@@ -350,10 +350,11 @@
 (defrecord SaveEntityTool []
   tools/Tool
   (declaration [_]
-    {:name        "save_entity"
-     :description tool-description
-     :scope       scope/agent-question-create
-     :args        save-entity-schema})
+    {:name            "save_entity"
+     :description     tool-description
+     :scope           scope/agent-question-create
+     :args            save-entity-schema
+     :metabot/writes? true})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
     (let [{:keys [dataset_query display]} (resolve-chart chart_id)

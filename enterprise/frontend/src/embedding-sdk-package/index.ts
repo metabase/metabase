@@ -33,7 +33,6 @@ export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
   ActionKind,
-  ActionResultForBulk,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
@@ -181,6 +180,7 @@ export type {
   SdkActionId,
   SdkActionDefinition,
   SdkActionInput,
+  SdkLegacyActionDefinition,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

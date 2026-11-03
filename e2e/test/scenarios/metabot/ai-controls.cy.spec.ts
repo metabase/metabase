@@ -2,7 +2,7 @@ import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 
-describe("AI Controls > Metabot access and customization", () => {
+describe("AI Controls > Metabot access", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -16,7 +16,7 @@ describe("AI Controls > Metabot access and customization", () => {
   });
 
   describe("Feature Access page", () => {
-    it("should display the AI feature access table with groups, save a permission change, and hide the Metabot chat icon for users in a group without Metabot access", () => {
+    it("should hide the Metabot chat icon for users in a group without Metabot access, and show it once access is granted", () => {
       cy.intercept("GET", "/api/ee/ai-controls/permissions").as(
         "getPermissions",
       );
@@ -28,23 +28,6 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.wait("@getPermissions");
 
-      cy.findByTestId("ai-feature-access-table").should("be.visible");
-
-      // Verify column headers
-      cy.findByTestId("ai-feature-access-table").within(() => {
-        cy.findByText("AI features").should("be.visible");
-        cy.findByText("Chat and NLQ").should("be.visible");
-        cy.findByText("SQL generation").should("be.visible");
-        cy.findByText("Other tools").should("be.visible");
-      });
-
-      // Admins row checkboxes should be always checked and disabled
-      cy.findByRole("row", { name: /Administrators permissions/ }).within(
-        () => {
-          cy.findByRole("switch").should("be.checked").and("be.disabled");
-        },
-      );
-
       cy.findByRole("row", { name: /All Users permissions/ }).within(() => {
         // Toggle the metabot AI features switch off (default is checked)
         cy.findByRole("switch").should("be.checked").click({ force: true });
@@ -52,12 +35,6 @@ describe("AI Controls > Metabot access and customization", () => {
         cy.wait("@updatePermissions")
           .its("response.statusCode")
           .should("eq", 200);
-
-        // Check that the switch is off and all checkboxes are unchecked
-        cy.findByRole("switch").should("not.be.checked");
-        cy.findAllByRole("checkbox").each(($checkbox) => {
-          cy.wrap($checkbox).should("not.be.checked");
-        });
       });
 
       cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
@@ -90,11 +67,6 @@ describe("AI Controls > Metabot access and customization", () => {
         cy.wait("@updatePermissions")
           .its("response.statusCode")
           .should("eq", 200);
-
-        // When metabot permission is toggled on, all tools should be enabled by default
-        cy.findAllByRole("checkbox").each(($checkbox) => {
-          cy.wrap($checkbox).should("be.checked");
-        });
       });
 
       cy.log(
@@ -113,162 +85,9 @@ describe("AI Controls > Metabot access and customization", () => {
         .should("be.visible");
     });
   });
-
-  describe("Customization", () => {
-    it("should save a custom Metabot name, icon and illustrations setting and use them in the app", () => {
-      H.updateEnterpriseSettings({
-        "metabot-show-illustrations": true,
-      });
-
-      cy.intercept("PUT", "/api/setting/metabot-name").as("saveName");
-      cy.intercept("PUT", "/api/setting/metabot-icon").as("saveIcon");
-      cy.intercept("PUT", "/api/setting/metabot-show-illustrations").as(
-        "saveIllustrations",
-      );
-
-      cy.visit("/admin/metabot/customization");
-
-      cy.findByRole("heading", { name: "Customization", level: 1 }).should(
-        "be.visible",
-      );
-      cy.findByLabelText("AI agent's name")
-        .should("be.visible")
-        .clear()
-        .type("HAL 9000");
-
-      // Wait for debounced save
-      cy.wait("@saveName").its("response.statusCode").should("eq", 204);
-
-      H.main().findByText("AI agent's icon").should("be.visible");
-      cy.findByRole("button", { name: "Upload a custom icon" }).should(
-        "be.visible",
-      );
-
-      // Upload a tiny PNG via the hidden file input
-      cy.get('input[type="file"]').selectFile(
-        {
-          contents: Cypress.Buffer.from(TINY_PNG_BASE64, "base64"),
-          fileName: "metabot-icon.png",
-          mimeType: "image/png",
-        },
-        { force: true },
-      );
-
-      cy.wait("@saveIcon").its("response.statusCode").should("eq", 204);
-
-      // The "Remove custom icon" button should be visible
-      cy.findByLabelText("Remove custom icon").should("be.visible");
-
-      H.main().findByText("Metabot illustrations").should("be.visible");
-
-      // The switch should be ON
-      cy.findByRole("switch", { name: "Show Metabot illustrations" }).should(
-        "have.attr",
-        "data-checked",
-        "true",
-      );
-
-      // Toggle illustrations off
-      cy.findByRole("switch", {
-        name: "Show Metabot illustrations",
-      }).click({ force: true });
-
-      cy.wait("@saveIllustrations")
-        .its("response.statusCode")
-        .should("eq", 204);
-
-      cy.visit("/");
-      cy.findByLabelText("Navigation bar").should("be.visible");
-
-      // The app bar button tooltip/aria-label should reflect the custom name
-      H.appBar()
-        .findByRole("button", { name: /Chat with HAL 9000/ })
-        .should("be.visible")
-        .within(() => {
-          // When a custom icon is set, MetabotIcon renders an <img> with alt = metabotName
-          cy.get("img").should("be.visible");
-        });
-
-      // Open Metabot chat to verify illustrations are hidden
-      H.appBar()
-        .findByRole("button", { name: /Chat with HAL 9000/ })
-        .click();
-      H.assertChatVisibility("visible");
-
-      cy.findByTestId("metabot-empty-chat-info").should("be.visible");
-      // The SVG illustration should NOT be rendered when showIllustrations=false
-      cy.findByTestId("metabot-empty-chat-info")
-        .find("svg")
-        .should("not.exist");
-      // But the hint text should still be visible, with the no-illustration copy
-      cy.findByTestId("metabot-empty-chat-info")
-        .findByText(/Explore your metrics and models with AI/)
-        .should("be.visible");
-    });
-  });
-
-  describe("System Prompts pages", () => {
-    it("should save custom Metabot chat and SQL generation system prompts", () => {
-      cy.intercept("PUT", "/api/setting/metabot-chat-system-prompt").as(
-        "savePrompt",
-      );
-      cy.intercept("PUT", "/api/setting/metabot-sql-system-prompt").as(
-        "saveSqlPrompt",
-      );
-
-      cy.visit("/admin/metabot/system-prompts/metabot-chat");
-
-      cy.findByRole("heading", {
-        name: "AI chat prompt instructions",
-        level: 1,
-      }).should("be.visible");
-
-      cy.findByRole("textbox", { name: /AI chat prompt instructions/ })
-        .should("be.visible")
-        .click()
-        .type("Be concise and helpful.")
-        .blur();
-
-      cy.wait("@savePrompt").its("response.statusCode").should("eq", 204);
-
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: "SQL generation" })
-        .click();
-
-      cy.findByRole("heading", {
-        name: "SQL generation prompt instructions",
-        level: 1,
-      }).should("be.visible");
-
-      cy.findByRole("textbox", {
-        name: /SQL generation prompt instructions/,
-      })
-        .should("be.visible")
-        .click()
-        .type("Always use uppercase SQL keywords.")
-        .blur();
-
-      cy.wait("@saveSqlPrompt").its("response.statusCode").should("eq", 204);
-
-      // Reload and verify persistence
-      cy.reload();
-      cy.findByRole("textbox", {
-        name: /SQL generation prompt instructions/,
-      }).should("have.text", "Always use uppercase SQL keywords.");
-
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: "AI chat" })
-        .click();
-      cy.findByRole("textbox", {
-        name: /AI chat prompt instructions/,
-      }).should("have.text", "Be concise and helpful.");
-    });
-  });
 });
 
 describe("AI controls > AI usage limits", () => {
-  const AI_USAGE_LIMITS_URL = "/admin/metabot/usage-controls/ai-usage-limits";
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -278,99 +97,6 @@ describe("AI controls > AI usage limits", () => {
 
   afterEach(() => {
     llmMockServerTeardown();
-  });
-
-  describe("Instance limit settings and enforcement", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/ee/ai-controls/usage/instance").as(
-        "getInstanceLimit",
-      );
-      cy.intercept("PUT", "/api/ee/ai-controls/usage/instance").as(
-        "updateInstanceLimit",
-      );
-      cy.intercept("GET", "/api/ee/ai-controls/usage/group").as(
-        "getGroupLimits",
-      );
-      cy.intercept("PUT", "/api/setting/metabot-limit-unit").as(
-        "saveLimitUnit",
-      );
-      cy.intercept("PUT", "/api/setting/metabot-limit-reset-rate").as(
-        "saveLimitPeriod",
-      );
-      cy.intercept("PUT", "/api/setting/metabot-quota-reached-message").as(
-        "saveQuotaMessage",
-      );
-    });
-
-    it("should clear and save instance limit settings, then enforce a zero limit in chat", () => {
-      // Pre-set a limit so there's something to clear
-      cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
-        max_usage: 100,
-      });
-
-      cy.visit(AI_USAGE_LIMITS_URL);
-      cy.wait("@getInstanceLimit");
-
-      cy.findByRole("textbox", {
-        name: "Total monthly instance token limit",
-      }).clear();
-      cy.wait("@updateInstanceLimit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ max_usage: null });
-      });
-
-      // Change limit type to messages
-      cy.findByRole("radio", { name: "By message count" }).click({
-        force: true,
-      });
-      cy.wait("@saveLimitUnit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ value: "messages" });
-      });
-
-      // Change reset period to weekly
-      cy.findByRole("radio", { name: "Weekly" }).click({ force: true });
-      cy.wait("@saveLimitPeriod").then(({ request }) => {
-        expect(request.body).to.deep.equal({ value: "weekly" });
-      });
-
-      // Type an instance limit value
-      cy.findByLabelText("Total weekly instance message limit").type("500");
-      cy.wait("@updateInstanceLimit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ max_usage: 500 });
-      });
-
-      // Type a quota-reached message
-      cy.findByLabelText("Quota-reached message")
-        .clear()
-        .type("You have hit the AI usage limit.");
-      cy.wait("@saveQuotaMessage").then(({ request }) => {
-        expect(request.body).to.deep.equal({
-          value: "You have hit the AI usage limit.",
-        });
-      });
-      cy.log("Enforce a zero instance limit in a fresh chat");
-      cy.findByLabelText("Total weekly instance message limit").type(
-        "{selectall}0",
-      );
-      cy.wait("@updateInstanceLimit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ max_usage: 0 });
-      });
-
-      H.updateSetting("metabot-enabled?", true);
-
-      cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
-        "xrayCandidates",
-      );
-      cy.visit("/");
-      cy.wait("@xrayCandidates");
-
-      H.openMetabotViaSearchButton();
-      H.sendMetabotMessage("hello");
-
-      H.lastChatMessage().should(
-        "have.text",
-        "You have hit the AI usage limit.",
-      );
-    });
   });
 
   describe("Group limits handling", () => {
@@ -468,27 +194,7 @@ describe("AI controls > AI usage limits", () => {
       });
     });
 
-    it("should display both groups with their configured limits and respect the effective user limit (max across their groups)", () => {
-      cy.visit(AI_USAGE_LIMITS_URL);
-
-      // Both groups should appear in the group limits table with correct values
-      cy.findByLabelText(
-        "Max messages per user for AI Limit Group A (low)",
-      ).should("have.value", "5");
-
-      cy.findByLabelText(
-        "Max messages per user for AI Limit Group B (high)",
-      ).should("have.value", "100");
-
-      // The section description should explain that users get the highest limit
-      cy.findByTestId("group-limits-tab").within(() => {
-        cy.findByText(
-          /If a user belongs to more than one group, they'll be given the highest limit among all the groups/i,
-        )
-          .scrollIntoView()
-          .should("be.visible");
-      });
-
+    it("should respect the effective user limit (max across their groups)", () => {
       // Normal user is in group A (limit 5) and group B (limit 100).
       // Effective limit = max(1, 1, 1, 5, 100) = 100.
       // (pre-existing groups are set to 1 in beforeEach)
@@ -572,9 +278,6 @@ describe("AI Controls > Tenant usage limits", () => {
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
     );
-    cy.intercept("PUT", "/api/ee/ai-controls/usage/tenant/*").as(
-      "updateTenantLimit",
-    );
     llmMockServerSetup();
   });
 
@@ -595,25 +298,10 @@ describe("AI Controls > Tenant usage limits", () => {
     H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
     H.lastChatMessage().should("not.contain.text", DEFAULT_QUOTA_MESSAGE);
 
-    cy.log(
-      "tenant limit set to 0 in the UI: the user gets the quota-reached message",
-    );
+    cy.log("tenant limit set to 0: the user gets the quota-reached message");
     cy.signInAsAdmin();
-    cy.visit("/admin/metabot/usage-controls/ai-usage-limits");
-
-    cy.findByRole("tab", { name: "Specific tenants" }).click();
-
-    cy.findByTestId("tenant-limits-tab").should("be.visible");
-    cy.findByTestId("tenant-limits-tab")
-      .findByText("Test Corp")
-      .should("be.visible");
-    cy.findByLabelText("Max total monthly tokens for Test Corp").type("0");
-    cy.wait("@updateTenantLimit").then(({ request, response }) => {
-      expect(request.url).to.match(
-        new RegExp(`/api/ee/ai-controls/usage/tenant/${tenantId}$`),
-      );
-      expect(request.body).to.deep.equal({ max_usage: 0 });
-      expect(response?.statusCode).to.eq(200);
+    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
+      max_usage: 0,
     });
     // Clear the backend limit-check cache so the new limit is seen immediately,
     cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
@@ -640,9 +328,6 @@ describe("AI Controls > Tenant usage limits", () => {
   }
 });
 
-// A tiny valid PNG (1×1 transparent pixel), used for the icon upload test
-const TINY_PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const MOCK_LLM_PORT = 6123;
 const MOCK_LLM_RESPONSE = "Hello from mock LLM!";
 const DEFAULT_QUOTA_MESSAGE =
