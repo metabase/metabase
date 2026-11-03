@@ -24,13 +24,15 @@ import { AdvisoriesPage } from "./AdvisoriesPage";
 const mockAcknowledge = jest.fn();
 const mockAcknowledgeAll = jest.fn();
 
+const PAST_EOL = "2000-06-01";
+
 function setup(
   advisories: Advisory[] = [],
   {
     lastCheckedAt = null,
     initialRoute = "/",
     isError = false,
-    versionInfo = createMockVersionInfo(),
+    versionInfo,
   }: {
     lastCheckedAt?: string | null;
     initialRoute?: string;
@@ -50,7 +52,7 @@ function setup(
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupSettingEndpoint({
     settingKey: "version-info",
-    settingValue: versionInfo,
+    settingValue: versionInfo ?? createMockVersionInfo(),
   });
   jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
     config: {
@@ -437,7 +439,7 @@ describe("AdvisoriesPage", () => {
       setup([], {
         versionInfo: createMockVersionInfo({
           major_version_support: [
-            createMockMajorVersionSupport({ major: 59, eol: "2000-06-01" }),
+            createMockMajorVersionSupport({ major: 59, eol: PAST_EOL }),
           ],
         }),
       });
