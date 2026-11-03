@@ -94,6 +94,15 @@
 /* In error: the ring of the draft and focus states, in the error colour, at
    the same place. A pill being edited in place carries the draft ring on the
    draft pill inside its wrapper: the error ring replaces it there. */
+/* Prototype: the tokens that a drag or Shift + an arrow key selected. */
+.filterToken.tokenSelected,
+.connector.tokenSelected {
+  background-color: var(--mb-color-background_surface-brand-subtle-hover);
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-brand);
+}
+
 .filterToken.tokenError,
 .filterToken.tokenError > [data-testid="draft-filter-pill"],
 .connector.tokenError {

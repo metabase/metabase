@@ -38,12 +38,14 @@ import {
   LOGIC_KEYWORDS,
   OPEN_PAREN,
   type Token,
+  type TokenRange,
   endsOperand,
   filterToken,
   getFilterLabel,
   getLogicTokens,
   getParenDepths,
   getSummaryStageIndex,
+  groupRange,
   hasTopLevelOr,
   insertToken,
   isOpToken,
@@ -55,6 +57,7 @@ import {
   removeParenPair,
   removePill,
   removePillAt,
+  removeRange,
   removeTokenAt,
   replaceTokenAt,
   startsOperand,
@@ -117,6 +120,7 @@ const LOGIC_LABELS: Record<string, string> = {
 };
 
 const SLOT_ATTR = "data-caret-slot";
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
 const BAR_ATTR = "data-expression-bar";
 const PILL_ATTR = "data-pill-index";
 const ENTER_AT_START_EVENT = "expression-bar-enter-start";
@@ -164,6 +168,23 @@ export function ExpressionBar({
   const [caret, setCaret] = useState(committedTokens.length);
   const [text, setText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  // Prototype: tokens that a drag or Shift + an arrow key selected, between
+  // two caret positions. It belongs to the tokens it was made on, so any
+  // other change of the tokens drops it.
+  const [selectionState, setSelectionState] = useState<{
+    anchor: number;
+    focus: number;
+    tokens: Token[];
+  }>();
+  const selection: TokenRange | undefined =
+    selectionState?.tokens === tokens
+      ? {
+          start: Math.min(selectionState.anchor, selectionState.focus),
+          end: Math.max(selectionState.anchor, selectionState.focus),
+        }
+      : undefined;
+  const dragRef = useRef<{ anchor: TokenRange; element: Element }>(undefined);
+  const didDragRef = useRef(false);
   // Bumped to give the caret a fresh pill, back at its column step.
   const [pillKey, setPillKey] = useState(0);
   const [pillEdit, setPillEdit] = useState<PillEdit>();
@@ -577,6 +598,178 @@ export function ExpressionBar({
     close({ keepFocus: true });
   };
 
+  const selectTokens = (anchor: number, focus: number) => {
+    const start = Math.min(anchor, focus);
+    const end = Math.max(anchor, focus);
+    const hasFilter = tokens
+      .slice(start, end)
+      .some((token) => token.type === "filter");
+    setSelectionState(hasFilter ? { anchor, focus, tokens } : undefined);
+  };
+
+  /** The next caret position to the left or the right, past a hidden AND. */
+  const stepPosition = (position: number, isLeft: boolean) => {
+    if (isLeft) {
+      const next = position - 1;
+      return next > 0 && isHiddenAnd(tokens[next])
+        ? next - 1
+        : Math.max(next, 0);
+    }
+    const next = position + 1;
+    return isHiddenAnd(tokens[position]) && next < tokens.length
+      ? next + 1
+      : Math.min(next, tokens.length);
+  };
+
+  /**
+   * Prototype: the keys for the selected tokens. Backspace or Delete removes
+   * them, a parenthesis puts them in a group, and Shift with an arrow key
+   * changes the selection. True when the key was for the selection.
+   */
+  const handleSelectionKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (
+      event.shiftKey &&
+      (event.key === "ArrowLeft" || event.key === "ArrowRight")
+    ) {
+      const isLeft = event.key === "ArrowLeft";
+      const anchor = selectionState?.anchor ?? caretIndex;
+      const focus = selectionState?.focus ?? caretIndex;
+      const nextFocus = stepPosition(
+        selection != null ? focus : caretIndex,
+        isLeft,
+      );
+      selectTokens(selection != null ? anchor : caretIndex, nextFocus);
+      // The keys go to the idle caret, and the picker closes.
+      close({ keepFocus: true });
+      return true;
+    }
+    // Shift, Control, Alt and Meta come before the key that they change.
+    if (selection == null || MODIFIER_KEYS.has(event.key)) {
+      return false;
+    }
+    if (event.key === "Backspace" || event.key === "Delete") {
+      const next = removeRange(tokens, selection);
+      setTokens(next.tokens);
+      setCaret(next.caret);
+      setSelectionState(undefined);
+      return true;
+    }
+    if (event.key === "(" || event.key === ")") {
+      const grouped = groupRange(tokens, selection);
+      if (grouped != null) {
+        setTokens(grouped.tokens);
+        setSelectionState({
+          anchor: grouped.range.start,
+          focus: grouped.range.end,
+          tokens: grouped.tokens,
+        });
+      }
+      return true;
+    }
+    if (event.key === "Escape") {
+      setSelectionState(undefined);
+      return true;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      setSelectionState(undefined);
+      moveCaret(event.key === "ArrowLeft" ? selection.start : selection.end, {
+        open: false,
+      });
+      return true;
+    }
+    // Any other key, like typing, works on the caret as before.
+    setSelectionState(undefined);
+    return false;
+  };
+
+  /** The tokens under an element of this bar: a pill, or a caret position. */
+  const getTokenRangeAt = (target: EventTarget | null) => {
+    if (
+      !(target instanceof Element) ||
+      target.closest(`[${BAR_ATTR}]`) !== barRef.current
+    ) {
+      return undefined;
+    }
+    const pill = target.closest(`[${PILL_ATTR}]`);
+    if (pill != null) {
+      const index = Number(pill.getAttribute(PILL_ATTR));
+      return { range: { start: index, end: index + 1 }, element: pill };
+    }
+    const slot = target.closest(`[${SLOT_ATTR}]`);
+    if (slot != null) {
+      const index = Number(slot.getAttribute(SLOT_ATTR));
+      return { range: { start: index, end: index }, element: slot };
+    }
+    return undefined;
+  };
+
+  /** Prototype: a drag across the pills selects them. */
+  const startDragSelection = (event: MouseEvent<HTMLDivElement>) => {
+    if (!event.shiftKey) {
+      setSelectionState(undefined);
+    }
+    if (
+      event.button !== 0 ||
+      (event.target instanceof Element &&
+        event.target.closest("input, [data-testid='draft-filter-pill']"))
+    ) {
+      return;
+    }
+    const at = getTokenRangeAt(event.target);
+    if (at == null) {
+      return;
+    }
+    // Shift and a click select from the highlighted pill, the selection or
+    // the caret, to the clicked pill.
+    if (event.shiftKey) {
+      const highlighted = getTokenRangeAt(document.activeElement);
+      const anchorRange =
+        selection ??
+        (highlighted?.element.hasAttribute(PILL_ATTR)
+          ? highlighted.range
+          : { start: caretIndex, end: caretIndex });
+      const isForward = at.range.end > anchorRange.end;
+      selectTokens(
+        isForward ? anchorRange.start : anchorRange.end,
+        isForward ? at.range.end : at.range.start,
+      );
+      didDragRef.current = true;
+      close({ keepFocus: true });
+      return;
+    }
+    dragRef.current = { anchor: at.range, element: at.element };
+    const handleMove = (moveEvent: globalThis.MouseEvent) => {
+      const drag = dragRef.current;
+      const over = getTokenRangeAt(
+        document.elementFromPoint(moveEvent.clientX, moveEvent.clientY),
+      );
+      if (drag == null || over == null || over.element === drag.element) {
+        return;
+      }
+      didDragRef.current = true;
+      const isForward = over.range.end > drag.anchor.end;
+      latestSelectTokensRef.current(
+        isForward ? drag.anchor.start : drag.anchor.end,
+        isForward ? over.range.end : over.range.start,
+      );
+    };
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove);
+      dragRef.current = undefined;
+      if (didDragRef.current) {
+        // The keys go to the caret, which is idle while tokens are selected.
+        latestCloseRef.current({ keepFocus: true });
+      }
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp, { once: true });
+  };
+  const latestSelectTokensRef = useLatest(selectTokens);
+  // The pill can keep an old key handler, so the handler reads the selection
+  // of the latest render.
+  const latestSelectionKeyRef = useLatest(handleSelectionKey);
+  const latestCloseRef = useLatest(close);
+
   const removeTokenBeforeCaret = () => {
     if (caretIndex > 0) {
       // Prototype: a hidden AND is not visible, so Backspace skips it and
@@ -657,6 +850,9 @@ export function ExpressionBar({
   ) => {
     const input = event.currentTarget;
 
+    if (typed.length === 0 && latestSelectionKeyRef.current(event)) {
+      return true;
+    }
     if (event.key === "(" || event.key === ")") {
       insert(event.key === "(" ? OPEN_PAREN : CLOSE_PAREN);
       return true;
@@ -730,6 +926,10 @@ export function ExpressionBar({
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
 
+    if (text.length === 0 && latestSelectionKeyRef.current(event)) {
+      event.preventDefault();
+      return;
+    }
     if (event.key === "(" || event.key === ")") {
       event.preventDefault();
       insert(event.key === "(" ? OPEN_PAREN : CLOSE_PAREN);
@@ -919,7 +1119,13 @@ export function ExpressionBar({
           setText(event.target.value);
           setIsOpen(true);
         }}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          // With tokens selected, the caret takes the keys for them, and the
+          // picker stays closed.
+          if (selection == null) {
+            setIsOpen(true);
+          }
+        }}
         onKeyDown={handleKeyDown}
       />
     </span>
@@ -945,7 +1151,15 @@ export function ExpressionBar({
           [S.barNested]: isNested,
         })}
         onClick={handleBarClick}
+        onClickCapture={(event) => {
+          // The click at the end of a drag does not open the pill under it.
+          if (didDragRef.current) {
+            didDragRef.current = false;
+            event.stopPropagation();
+          }
+        }}
         onMouseDown={(event) => {
+          startDragSelection(event);
           isPointerInBarRef.current = true;
           window.addEventListener(
             "mouseup",
@@ -1027,6 +1241,11 @@ export function ExpressionBar({
                 token={token}
                 depth={parenDepths[index]}
                 isAndHidden={!hasOr}
+                isSelected={
+                  selection != null &&
+                  index >= selection.start &&
+                  index < selection.end
+                }
                 hasError={shownErrorPositions.has(index)}
                 isFlashed={
                   token.type === "filter" &&
@@ -1040,6 +1259,17 @@ export function ExpressionBar({
                   setOpenPillCount((count) => count + (isOpened ? 1 : -1))
                 }
                 onLeave={(isLeft) => moveCaret(isLeft ? index : index + 1)}
+                onExtendSelection={(isLeft) => {
+                  // The selection starts with this pill and the next one in
+                  // the direction of the arrow, and the caret takes the keys.
+                  const anchor = isLeft ? index + 1 : index;
+                  const focus = stepPosition(
+                    isLeft ? index : index + 1,
+                    isLeft,
+                  );
+                  moveCaret(focus, { open: false });
+                  selectTokens(anchor, focus);
+                }}
                 onRemove={() => {
                   // An AND leaves a gap for the OR that replaces it: the caret
                   // goes there, open, and the stream stays a draft until then.
@@ -1378,6 +1608,8 @@ type TokenViewProps = {
   depth: number;
   /** ANDs are implicit: nothing drawn between the pills they join. */
   isAndHidden: boolean;
+  /** Prototype: in the tokens that a drag or Shift + an arrow selected. */
+  isSelected: boolean;
   hasError: boolean;
   isFlashed: boolean;
   onReplace: (token: Token) => void;
@@ -1385,6 +1617,8 @@ type TokenViewProps = {
   onRemove: () => void;
   onPopoverChange: (isOpened: boolean) => void;
   onLeave: (isLeft: boolean) => void;
+  /** Prototype: Shift and an arrow key on the pill start a selection. */
+  onExtendSelection: (isLeft: boolean) => void;
 };
 
 function TokenView({
@@ -1394,6 +1628,7 @@ function TokenView({
   token,
   depth,
   isAndHidden,
+  isSelected,
   hasError,
   isFlashed,
   onReplace,
@@ -1401,8 +1636,12 @@ function TokenView({
   onRemove,
   onPopoverChange,
   onLeave,
+  onExtendSelection,
 }: TokenViewProps) {
-  const errorClass = hasError ? S.tokenError : undefined;
+  const errorClass = cx({
+    [S.tokenError]: hasError,
+    [S.tokenSelected]: isSelected,
+  });
 
   if (token.type === "op" && token.op === "and" && isAndHidden) {
     return null;
@@ -1465,6 +1704,12 @@ function TokenView({
     if (event.key === "Enter" || event.key === "ArrowDown") {
       event.preventDefault();
       onEdit("values");
+    } else if (
+      event.shiftKey &&
+      (event.key === "ArrowLeft" || event.key === "ArrowRight")
+    ) {
+      event.preventDefault();
+      onExtendSelection(event.key === "ArrowLeft");
     } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       onLeave(event.key === "ArrowLeft");

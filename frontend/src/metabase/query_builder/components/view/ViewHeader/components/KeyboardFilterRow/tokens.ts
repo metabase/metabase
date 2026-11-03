@@ -363,6 +363,127 @@ export function removePill(
   return { tokens: next, caret: index };
 }
 
+/** Prototype: a range of tokens, from `start` to before `end`. */
+export type TokenRange = { start: number; end: number };
+
+/**
+ * Prototype: the range grown so that it holds both parentheses of each pair
+ * that it touches.
+ */
+function getBalancedRange(
+  tokens: readonly Token[],
+  { start, end }: TokenRange,
+): TokenRange {
+  let range = { start, end };
+  let isChanged = true;
+  while (isChanged) {
+    isChanged = false;
+    for (let index = range.start; index < range.end; index++) {
+      const pair = findParenPair(tokens, index);
+      if (pair != null && (pair < range.start || pair >= range.end)) {
+        range = {
+          start: Math.min(range.start, pair),
+          end: Math.max(range.end, pair + 1),
+        };
+        isChanged = true;
+      }
+    }
+  }
+  return range;
+}
+
+/** Prototype: the tokens without the AND / OR and empty parentheses that dangle. */
+function removeDanglingTokens(tokens: readonly Token[]): Token[] {
+  let next = [...tokens];
+  let isChanged = true;
+  while (isChanged) {
+    isChanged = false;
+    const index = next.findIndex((token, at) => {
+      const before = next[at - 1];
+      const after = next[at + 1];
+      if (isOpToken(token)) {
+        return (
+          before == null ||
+          after == null ||
+          isOpToken(before) ||
+          isParenToken(before, "open") ||
+          isParenToken(after, "close")
+        );
+      }
+      return isParenToken(token, "open") && isParenToken(after, "close");
+    });
+    if (index !== -1) {
+      const isEmptyGroup = isParenToken(next[index], "open");
+      next = next.filter(
+        (_, at) => at !== index && !(isEmptyGroup && at === index + 1),
+      );
+      isChanged = true;
+    }
+  }
+  return next;
+}
+
+/**
+ * Prototype: removes the tokens of `range`, with the other parenthesis of each
+ * pair that it touches, and the AND / OR that would dangle. The caret goes
+ * where the range was.
+ */
+export function removeRange(
+  tokens: readonly Token[],
+  range: TokenRange,
+): { tokens: Token[]; caret: number } {
+  const { start, end } = getBalancedRange(tokens, range);
+  const removed = new Set<number>();
+  for (let index = start; index < end; index++) {
+    removed.add(index);
+  }
+  // Parentheses outside the range whose pair is inside go too.
+  tokens.forEach((_, index) => {
+    const pair = findParenPair(tokens, index);
+    if (pair != null && removed.has(pair)) {
+      removed.add(index);
+    }
+  });
+  const kept = tokens
+    .map((token, index) => ({ token, index }))
+    .filter(({ index }) => !removed.has(index));
+  const next = removeDanglingTokens(kept.map(({ token }) => token));
+  const keptBefore = kept.filter(({ index }) => index < start).length;
+  return { tokens: next, caret: Math.min(keptBefore, next.length) };
+}
+
+/**
+ * Prototype: puts the tokens of `range` in parentheses, without the AND / OR
+ * at its ends, and with whole pairs of parentheses. Undefined when the range
+ * has no filter.
+ */
+export function groupRange(
+  tokens: readonly Token[],
+  range: TokenRange,
+): { tokens: Token[]; range: TokenRange } | undefined {
+  let { start, end } = range;
+  while (start < end && isOpToken(tokens[start])) {
+    start++;
+  }
+  while (end > start && isOpToken(tokens[end - 1])) {
+    end--;
+  }
+  ({ start, end } = getBalancedRange(tokens, { start, end }));
+  if (!tokens.slice(start, end).some((token) => token.type === "filter")) {
+    return undefined;
+  }
+  return {
+    tokens: [
+      ...tokens.slice(0, start),
+      OPEN_PAREN,
+      ...tokens.slice(start, end),
+      CLOSE_PAREN,
+      ...tokens.slice(end),
+    ],
+    range: { start, end: end + 2 },
+  };
+}
+
 /** The index of the parenthesis that closes or opens the one at `index`, if any. */
 export function findParenPair(
   tokens: readonly Token[],
