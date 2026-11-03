@@ -1,6 +1,26 @@
 (ns metabase.app-db.snapshot-test-util.generate
   "Writes the checked-in snapshots that [[metabase.app-db.snapshot-test-util/load-snapshot!]] reads.
 
+  To regenerate, start a REPL with the `:dev` and `:test` aliases and Docker running, and call [[generate!]] once for
+  each of [[metabase.app-db.snapshot-test-util/flavors]].
+  The regeneration check in [[metabase.app-db.snapshot-test]] names a stale flavor and the call that rewrites it.
+
+  To move the boundary to a newer changeset:
+
+  1. Rename `test_resources/app_db_snapshots/<version>/`, and set
+     [[metabase.app-db.snapshot-test-util/snapshot-version]] to the new name.
+  2. In its `meta.edn`, set `:through-changeset-id` to the new boundary and `:executed-at` to that changeset's date.
+  3. Regenerate every flavor.
+  4. Run [[metabase.app-db.snapshot-test]] against each dialect with `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`.
+
+  The boundary can go no later than the last changeset with a `vNN.` id until this namespace also writes the snapshot's
+  `databasechangelog_version` rows, because loading a snapshot backfills its version from those ids.
+
+  On an arm64 Mac, the amd64 `metabase/mariadb:10.6` image has started with a stray `.cache` directory in its data
+  directory, which MariaDB lists as a database named `#mysql50#.cache`.
+  A v65 precondition that scans every database then fails while generating `:mariadb-legacy-timestamp`.
+  Removing `/var/lib/mysql/.cache` in the container once it is ready gets past it; CI has not hit this.
+
   Generating needs the migration-test harness in [[metabase.app-db.schema-migrations-test.impl]], which itself loads
   snapshots.
   Keeping the write side in a namespace of its own leaves that dependency running one way."
