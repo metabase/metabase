@@ -133,6 +133,12 @@
   padding: 0 0.375rem;
 }
 
+/* An empty bar's placeholder and focused input start at the same position. */
+.bar[data-empty][data-variant="header"] > .caretSlot {
+  min-width: 0;
+  padding: 0;
+}
+
 /* Between pills, the empty draft is only a caret: no room is made until there is text. */
 .caretSlotMid:has([data-testid="draft-filter-pill"] input[data-empty]) {
   padding: 0;

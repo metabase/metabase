@@ -1174,6 +1174,7 @@ export function ExpressionBar({
           }
         }}
         data-testid="filter-expression-bar"
+        data-empty={tokens.length === 0 && !trailing ? true : undefined}
         data-variant={variant}
         {...{ [BAR_ATTR]: true }}
       >

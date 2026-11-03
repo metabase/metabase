@@ -102,7 +102,7 @@ export type ColumnKeyState = {
 export const EXTRA_OPTION_PREFIX = "extra:";
 
 /** Shared by the empty filter bar and the draft's column input. */
-export const getFilterPlaceholder = () => t`Type to filter`;
+export const getFilterPlaceholder = () => t`Type to filter...`;
 
 interface DraftFilterPillProps {
   query: Lib.Query;

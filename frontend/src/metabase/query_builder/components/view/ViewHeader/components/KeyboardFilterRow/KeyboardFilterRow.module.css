@@ -75,6 +75,8 @@
 .draftPillBare {
   /* As tall as a filter pill, so opening the caret never grows the bar. */
   min-height: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   padding: 0;
   border-width: 0;
   border-color: transparent;
@@ -90,6 +92,10 @@
     min-width: 0;
     padding: 0;
     background: none;
+
+    &::placeholder {
+      color: var(--mb-color-text-secondary);
+    }
   }
 }
 
