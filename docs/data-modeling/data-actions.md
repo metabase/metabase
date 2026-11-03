@@ -19,7 +19,7 @@ You can run data actions in two ways:
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
 
-Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. So we recommend data actions over model actions. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). For a dashboard button, create a model action.
+Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md).
 
 If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
 

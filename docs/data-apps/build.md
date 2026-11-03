@@ -30,14 +30,14 @@ If you just want to start building a data app, check out the step-by-step [getti
 - Node.js 22.12 or later on your computer.
 - A Git repository that your Metabases connect to with [Remote Sync](../data-modeling/semantic-layer/remote-sync.md), and permission to push to it. Apps get into Metabase only when Metabase pulls them from the repository, and the repository also keeps each app's source code.
 - A Metabase where your agent builds each app. See [Choose where to build apps](#choose-where-to-build-apps).
-- A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics on a Metabase in Read-write mode while it builds an app. But for apps that people rely on, use tables and metrics that you trust.
-- If your apps write data, a PostgreSQL or MySQL database with [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database). An app that only shows data doesn't need actions, and can read from any database that Metabase connects to.
+- A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics on a Remote-Synced Metabae in Read-write mode while it builds an app.
+- Only PostgreSQL or MySQL support actions that write back to the database. The  database must have [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database).
 
 ## Choose where to build apps
 
 Your agent builds and ships each app from a Metabase that it logs in to. You can set this up in two ways:
 
-- **A development Metabase and a production Metabase (recommended).** Your agent builds each app on its own branch, on a development Metabase in Read-write mode that connects to your data warehouse. You review the app in a pull request, and merge it into the branch that your production Metabase pulls from. Keep your production Metabase in Read-only mode, so that every change goes through Git. On the development Metabase, your agent can also publish tables and create metrics for the app. See [development instances](../installation-and-operation/development-instance.md).
+- **A development Metabase and a production Metabase (recommended).** Your agent builds each app on its own branch, on a development Metabase in Read-write mode that connects to your data warehouse. You review the app in a pull request, and merge it into the branch that your production Metabase pulls from. Keep your production Metabase in Read-only mode, so that every change to your Library and data apps goes through Git. On the development Metabase, your agent can also publish tables and create metrics for the app.
 - **Only your production Metabase, in Read-only mode.** This setup has fewer steps, but each change that your agent ships goes to production without review. And you can't publish tables or create metrics on a Read-only Metabase, and neither can your agent, so your apps can read only the tables and metrics that are already in your Library. [Getting started with data apps](./getting-started.md) uses this setup.
 
 The rest of this page uses a development Metabase and a production Metabase.
@@ -48,18 +48,17 @@ A data app runs with the permissions of the person who opens it. Their [data per
 
 An app can read:
 
-- Tables, with their [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md). The app can query tables directly, without a saved question, but not with SQL.
+- Tables, with their [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md).
 - The metrics in your [Library](../data-modeling/semantic-layer/library.md), but no other metrics.
 - The questions in its own collection, but no other questions.
 
-Your agent builds each app on the [published tables](../data-modeling/semantic-layer/published-tables.md) and the metrics in your Library. But Metabase doesn't check that the tables an app reads are published, so an app can read any table that the person who opens it can view.
 
 An app can write data only through the actions in its own collection.
 
-Your agent writes the questions and actions that the app needs in the app's code, and generates the app's collection from them. The collection can hold only questions and actions. The CLI refuses an item that breaks a rule when it generates the collection, and so does Metabase when it pulls the collection. The main rules are:
+Your agent writes the questions and actions that the app needs in the app's code, and generates the app's collection with those items. The collection can hold only questions and actions. Items follow these rules:
 
 - Questions must be built with the query builder, not SQL, and must start from a table. So a question can't start from another saved question or model, even one in the app's collection. Questions also can't have explicit joins, custom columns, parameters, or more than one stage. But a question can use columns from linked tables through foreign keys, and the metrics in your Library.
-- Actions must be [table actions](../data-modeling/data-actions.md#create-a-data-action-that-changes-one-row), which insert, update, or delete one row of a table. Data apps don't support SQL actions.
+- Actions are data actions (not model actions).
 - Items in the collection can't be archived or made public. Questions in the collection can't be embedded.
 
 The app's collection changes only when Metabase pulls it from your repository. You can't move the app's collection, move it to the trash, or make it official.
@@ -107,7 +106,7 @@ Delete the key when you no longer need the preview.
 
 ## Ship the app to production
 
-Your data apps always sync through your Git repository, but unlike the rest of your [synced content](../data-modeling/semantic-layer/remote-sync.md#what-metabase-syncs), apps sync only one way: Metabase pulls apps from the repository, and never pushes them. Use the same steps for a new app and for each change to an app:
+Your data apps always sync through your Git repository. Use the same steps for a new app and for each change to an app:
 
 1. If your development Metabase has changes to synced content that the app reads, like a table that your agent just published, [push your changes](../data-modeling/semantic-layer/remote-sync.md#pushing-changes-to-git) to the app's branch. Then pull the branch in your local clone.
 2. Commit the app's directory, `data_apps/<slug>/`, and its collection, `collections/data_apps/`, together, and push the branch.

@@ -14,7 +14,7 @@ redirect_from:
 
 **Actions** are entities in Metabase that let you build custom forms and business logic. **Model actions** are actions that belong to a [model](../models.md).
 
-Model actions let you write parameterized SQL that writes back to your database. You can attach model actions to [buttons on dashboards](../../../dashboards/actions.md) to create custom workflows. You can even publicly share the parameterized forms that actions generate to collect data.
+Model actions let you write back to your database. You can attach model actions to [buttons on dashboards](../../../dashboards/actions.md) to create custom workflows. You can even publicly share the forms that actions generate to collect data.
 
 Here are a few ideas for what you can do with model actions:
 
