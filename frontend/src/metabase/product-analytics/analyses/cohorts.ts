@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import { withWidgetProps } from "metabase/event-tables";
 import { SegmentedControl } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -10,7 +11,6 @@ import {
 } from "../cohorts/retention-curves";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
-import { withWidgetProps } from "../settings/with-widget-props";
 import { pointString } from "../sql/analyses/base";
 import { toCohortPeriod } from "../sql/analyses/cohorts";
 

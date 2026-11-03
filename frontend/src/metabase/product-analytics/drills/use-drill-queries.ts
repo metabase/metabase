@@ -9,6 +9,7 @@ import * as Lib from "metabase-lib";
 import type { Dataset, DatasetQuery, Table } from "metabase-types/api";
 
 import { getColumnRoles } from "../analyses/common-settings";
+import { getActorGrain } from "../analyses/setting-helpers";
 import type { CommonSettings, UsersTable } from "../analyses/types";
 import { buildFilteredQuery, getTableMetadata } from "../base-query";
 import { DRILL_MEMBERS_CTE, buildMembersSql } from "../build-sql";
@@ -73,7 +74,7 @@ export const useDrillQueries = ({
   const dispatch = useDispatch();
   const columns = useMemo(() => getColumnRoles(settings), [settings]);
   // The spec's grain is who's behind a point, even where counting picks the measure.
-  const grain = spec?.grain ?? settings.counting;
+  const grain = spec?.grain ?? getActorGrain(settings.counting);
 
   // Each request keeps its own subscription until it settles: ad-hoc results
   // are evicted as soon as nothing subscribes, and a lazy query hook only

@@ -9,7 +9,6 @@ import {
 import type {
   SettingDefinitions,
   SettingKey,
-  SettingSection,
   SettingWidget,
   StoredSettings,
 } from "./types";
@@ -19,23 +18,14 @@ import type {
  * signatures: engine changes belong in viz-core, so the two can't drift apart.
  */
 
-const SETTING_SECTIONS: readonly SettingSection[] = [
-  "toolbar",
-  "setup",
-  "advanced",
-];
-
-const isSettingSection = (value: string | undefined): value is SettingSection =>
-  SETTING_SECTIONS.some((section) => section === value);
-
-const isSettingKey = <TContext, S>(
-  definitions: SettingDefinitions<TContext, S>,
+const isSettingKey = <TContext, S, TSection extends string>(
+  definitions: SettingDefinitions<TContext, S, TSection>,
   key: string,
 ): key is SettingKey<S> => key in definitions;
 
 /** viz-core's `isValid` reads the stored value from `settings`; ours takes it as an argument. */
-const toEngineDefinitions = <TContext, S>(
-  definitions: SettingDefinitions<TContext, S>,
+const toEngineDefinitions = <TContext, S, TSection extends string>(
+  definitions: SettingDefinitions<TContext, S, TSection>,
 ) =>
   Object.fromEntries(
     Object.keys(definitions)
@@ -54,8 +44,8 @@ const toEngineDefinitions = <TContext, S>(
   );
 
 /** Computes every setting: stored values that pass `isValid`, defaults for the rest. */
-export function computeSettings<TContext, S>(
-  definitions: SettingDefinitions<TContext, S>,
+export function computeSettings<TContext, S, TSection extends string>(
+  definitions: SettingDefinitions<TContext, S, TSection>,
   context: TContext,
   stored: StoredSettings,
 ): S {
@@ -70,13 +60,13 @@ export function computeSettings<TContext, S>(
 }
 
 /** Widgets for every setting that has one, with dependencies applied on change. */
-export function getSettingWidgets<TContext, S>(
-  definitions: SettingDefinitions<TContext, S>,
+export function getSettingWidgets<TContext, S, TSection extends string>(
+  definitions: SettingDefinitions<TContext, S, TSection>,
   context: TContext,
   stored: StoredSettings,
   computed: S,
   onChange: (changes: Partial<S>) => void,
-): SettingWidget[] {
+): SettingWidget<TSection>[] {
   const computedSettings: Partial<S> = computed;
   const widgets = getSettingsWidgets(
     definitions,
@@ -90,10 +80,9 @@ export function getSettingWidgets<TContext, S>(
   );
 
   return widgets.flatMap((widget) => {
-    const { id, section, widget: component } = widget;
+    const { id, widget: component } = widget;
     if (
       !isSettingKey(definitions, id) ||
-      !isSettingSection(section) ||
       component === undefined ||
       typeof component === "string"
     ) {
@@ -102,8 +91,7 @@ export function getSettingWidgets<TContext, S>(
     return [
       {
         id,
-        section,
-        group: definitions[id].group,
+        section: definitions[id].getSection(),
         inline: definitions[id].inline,
         secondary: definitions[id].secondary,
         title: widget.title,

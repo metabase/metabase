@@ -1,10 +1,17 @@
 import { useCallback, useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
-import { useMetadataProvider } from "metabase/metadata-store";
+import {
+  type StoredSettings,
+  type UsersTableLink,
+  computeSettings,
+  getEventTableSettings,
+  getSettingWidgets,
+  getUsersTableLink,
+  isEventTableSetUp,
+} from "metabase/event-tables";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
-import { getPersonColumn, getUsersTableLink } from "./analyses/column-roles";
 import { getColumnRoles } from "./analyses/common-settings";
 import { getAnalysisConfig } from "./analyses/config";
 import type {
@@ -15,13 +22,13 @@ import type {
 } from "./analyses/types";
 import type { BaseQueryInput } from "./base-query";
 import { createFlagAllocator } from "./events/allocate-flags";
-import { detectPageviews } from "./events/pageviews";
-import { computeSettings, getSettingWidgets } from "./settings/compute";
-import type { StoredSettings } from "./settings/types";
 import type { AnalysisKind } from "./spec/types";
 import { getLookbackDays } from "./sql/analyses/lookback";
 import { useAnalysisQuery } from "./use-analysis-query";
 import { useStableValue } from "./use-stable-value";
+
+// PROTOTYPE: the analyses' SQL is ClickHouse's. Lift this once it's MBQL.
+const SUPPORTED_ENGINE = "clickhouse";
 
 type UseAnalysisArgs<K extends AnalysisKind> = {
   kind: K;
@@ -32,26 +39,30 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
   colors: DisplayColors;
 };
 
-/** The table the person column links to, once its metadata is loaded. */
+/**
+ * The link to the people table, known with the event table, and the people
+ * table once its metadata is loaded too.
+ */
 const useUsersTable = (
   table: Table | undefined,
-  stored: StoredSettings,
-): UsersTable | undefined => {
+): { link: UsersTableLink | undefined; usersTable: UsersTable | undefined } => {
   const link = useMemo(
-    () => getUsersTableLink(table, getPersonColumn(table, stored)),
-    [table, stored],
+    () =>
+      getUsersTableLink(table, getEventTableSettings(table)["columns.person"]),
+    [table],
   );
   const metadata = useGetTableQueryMetadataQuery(
     link !== undefined ? { id: link.tableId } : skipToken,
   );
-  const usersTable = metadata.currentData;
-  return useMemo(
+  const usersTableMetadata = metadata.currentData;
+  const usersTable = useMemo(
     () =>
-      link !== undefined && usersTable !== undefined
-        ? { link, table: usersTable }
+      link !== undefined && usersTableMetadata !== undefined
+        ? { link, table: usersTableMetadata }
         : undefined,
-    [link, usersTable],
+    [link, usersTableMetadata],
   );
+  return { link, usersTable };
 };
 
 /**
@@ -71,18 +82,11 @@ export const useAnalysis = <K extends AnalysisKind>({
     tableId !== undefined ? { id: tableId } : skipToken,
   );
   const table = tableMetadata.currentData;
-  const usersTable = useUsersTable(table, stored);
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
-  // Memoized: a new query each render would get new clause ids, and with
-  // them a new base query.
-  const detectedPageviews = useMemo(
-    () => detectPageviews(metadataProvider, table),
-    [metadataProvider, table],
-  );
+  const { link: usersTableLink, usersTable } = useUsersTable(table);
 
   const context = useMemo<AnalysisContext>(
-    () => ({ table, usersTable, detectedPageviews }),
-    [table, usersTable, detectedPageviews],
+    () => ({ table, usersTable }),
+    [table, usersTable],
   );
   const computed = useMemo(
     () => computeSettings(config.settings, context, stored),
@@ -114,9 +118,19 @@ export const useAnalysis = <K extends AnalysisKind>({
     [config, widgetContext, stored, computed, handleChangeSettings],
   );
 
+  // The same test as the table picker's, so a table that's left the picker,
+  // like one that's no longer an event table, asks to be set up again. Until
+  // the table loads, it isn't known not to be set up.
+  const isTableSetUp = table === undefined || isEventTableSetUp(table);
+  // Until the table loads, its database isn't known to be unsupported.
+  const isDatabaseSupported =
+    table === undefined || table.db?.engine === SUPPORTED_ENGINE;
   const flags = createFlagAllocator();
   const specResult = config.toSpec(computed, flags);
-  const spec = specResult.status === "ready" ? specResult.spec : undefined;
+  const spec =
+    specResult.status === "ready" && isTableSetUp && isDatabaseSupported
+      ? specResult.spec
+      : undefined;
   const requiredPeopleSegments = computed.filters.people.map(
     flags.segmentFlagFor,
   );
@@ -124,6 +138,8 @@ export const useAnalysis = <K extends AnalysisKind>({
   const base = useStableValue<BaseQueryInput>({
     dateRange: computed.date_range,
     columns: getColumnRoles(computed),
+    pageviews: computed.pageviews,
+    pathCleaning: computed.path_cleaning,
     events: flags.events,
     extraColumns: config.getExtraColumns?.(computed, context) ?? [],
     usersTable: usersTable?.link,
@@ -132,17 +148,27 @@ export const useAnalysis = <K extends AnalysisKind>({
     requiredPeopleSegments,
     lookbackDays: spec !== undefined ? getLookbackDays(spec) : 0,
   });
-  const missing = specResult.status === "incomplete" ? specResult.missing : [];
+  // Until the table loads, its columns aren't known to be missing either.
+  const missing =
+    specResult.status === "incomplete"
+      ? specResult.missing.filter(
+          (setting) => table !== undefined || !setting.isTableSetting,
+        )
+      : [];
   const query = useAnalysisQuery({ spec, tableId, base });
 
   return {
     config,
     table,
     usersTable,
+    /** While the people table loads, `usersTable` is undefined but this isn't. */
+    usersTableLink,
     computed,
     widgets,
     spec,
     missing,
+    isTableSetUp,
+    isDatabaseSupported,
     display: config.getDisplay(computed),
     question: config.getQuestion?.(computed) ?? config.question,
     vizSettings: config.getVizSettings(computed, colors),

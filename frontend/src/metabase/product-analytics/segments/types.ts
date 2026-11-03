@@ -26,15 +26,7 @@ export type DraftPaletteSegment = PaletteSegmentBase & {
   query: OpaqueDatasetQuery;
 };
 
-/** A prototype placeholder, shown while no people table is linked. */
-export type SamplePaletteSegment = PaletteSegmentBase & {
-  status: "sample";
-};
-
-export type PaletteSegment =
-  | SavedPaletteSegment
-  | DraftPaletteSegment
-  | SamplePaletteSegment;
+export type PaletteSegment = SavedPaletteSegment | DraftPaletteSegment;
 
 /** A draft's conditions, kept for the session until saved or discarded. */
 export type SegmentDraft = {

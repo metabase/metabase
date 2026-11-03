@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import { withWidgetProps } from "metabase/event-tables";
 import { SegmentedControl } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
-import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, HabitSpec } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
 import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";

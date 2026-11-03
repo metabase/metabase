@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
+import { type StoredSettings, updateSettings } from "metabase/event-tables";
 import { useLocation, useNavigate } from "metabase/router";
 
-import { updateSettings } from "./settings/compute";
-import type { StoredSettings } from "./settings/types";
 import { decodeSettings, encodeSettings } from "./url-state";
 import { isJustCreated } from "./use-add-to-dashboard-toast";
 

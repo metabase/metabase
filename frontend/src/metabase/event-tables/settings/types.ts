@@ -6,9 +6,8 @@ import type { ComponentType } from "react";
  * place of the series.
  */
 
+/** An analysis's sections. Other settings, like event tables', name their own. */
 export type SettingSection = "toolbar" | "setup" | "advanced";
-
-export type SettingGroup = "columns";
 
 export type SettingKey<S> = keyof S & string;
 
@@ -34,18 +33,18 @@ export type SettingDefinition<
   S,
   K extends SettingKey<S>,
   P extends object = object,
+  TSection extends string = SettingSection,
 > = {
   getTitle?: (context: TContext, settings: S) => string;
   /** Shown in a tooltip on an info icon next to the title. */
   getHint?: () => string;
   /** Shown at the far end of the title's row, e.g. a button the widget relies on. */
   TitleAction?: ComponentType;
-  group?: SettingGroup;
   /** Renders the title and widget on one line. */
   inline?: boolean;
   /** Renders below a divider, after the section's other settings. */
   secondary?: boolean;
-  getSection: () => SettingSection;
+  getSection: () => TSection;
   /** A widget registry name (see `registerSettingWidgets`) or a component. */
   widget?: string | ComponentType<SettingWidgetProps<S[K]> & P>;
   /** May only read the keys in `readDependencies`, which are computed first. */
@@ -67,15 +66,18 @@ export type SettingDefinition<
   eraseDependencies?: SettingKey<S>[];
 };
 
-export type SettingDefinitions<TContext, S> = {
-  [K in SettingKey<S>]: SettingDefinition<TContext, S, K>;
+export type SettingDefinitions<
+  TContext,
+  S,
+  TSection extends string = SettingSection,
+> = {
+  [K in SettingKey<S>]: SettingDefinition<TContext, S, K, object, TSection>;
 };
 
 /** A setting ready to render. Values are untyped here, as in viz-core. */
-export type SettingWidget = {
+export type SettingWidget<TSection extends string = SettingSection> = {
   id: string;
-  section: SettingSection;
-  group?: SettingGroup;
+  section: TSection;
   inline?: boolean;
   secondary?: boolean;
   title?: string;

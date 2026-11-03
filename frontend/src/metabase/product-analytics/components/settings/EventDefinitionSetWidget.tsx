@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { Button, Icon, Stack } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import type { EventDefinition } from "../../events/types";
-import type { SettingWidgetProps } from "../../settings/types";
 
 import { EventDefinitionWidget } from "./EventDefinitionWidget";
 

@@ -1,17 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type {
+  ColumnRoles,
+  PageviewRule,
+  PathCleaningRule,
+  UsersTableLink,
+} from "metabase/event-tables";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
-import {
-  COLUMN_ROLES,
-  type ColumnRoles,
-  type ExtraColumn,
-  type ProjectedColumn,
-  type UsersTableLink,
-} from "./columns";
+import type { ExtraColumn, ProjectedColumn } from "./columns";
 import {
   parseDateRange,
   serializeDateRange,
@@ -28,6 +28,7 @@ import {
 import { findColumn, findJoinedColumn } from "./find-column";
 import type { AllocatedPeopleSegment } from "./segments/types";
 import { ALL_HISTORY_DAYS, IN_RANGE_FLAG } from "./sql/analyses/lookback";
+import { PAGEVIEW_FLAG } from "./sql/analyses/path-nodes";
 
 const STAGE = -1;
 
@@ -42,11 +43,11 @@ const getEventFilter = (
 ): Lib.ExpressionClause | Lib.FilterClause => {
   const eventQuery = readEventQuery(metadataProvider, event);
   if (eventQuery === null) {
-    throw new Error(t`The conditions for ${event.name} can't be read.`);
+    throw new Error(t`The conditions for “${event.name}” can't be read.`);
   }
   const [first, ...rest] = Lib.filters(eventQuery, STAGE);
   if (first === undefined) {
-    throw new Error(t`${event.name} has no conditions.`);
+    throw new Error(t`“${event.name}” has no conditions.`);
   }
   return rest.length === 0
     ? first
@@ -56,6 +57,10 @@ const getEventFilter = (
 export type BaseQueryInput = {
   dateRange: string;
   columns: ColumnRoles;
+  /** A rule on a column adds `PAGEVIEW_FLAG`. */
+  pageviews: PageviewRule | null;
+  /** Applied to the compiled SQL instead; see `BaseColumns`. */
+  pathCleaning: readonly PathCleaningRule[];
   events: readonly AllocatedEvent[];
   extraColumns: readonly ExtraColumn[];
   /** Needed when an extra column comes from the users table. */
@@ -80,7 +85,10 @@ export type BuiltBaseQuery = {
   query: Lib.Query;
   databaseId: number;
   extraColumns: ProjectedColumn[];
-  /** The 0/1 columns: one per event, and `IN_RANGE_FLAG` with a lookback. */
+  /**
+   * The 0/1 columns: one per event, `IN_RANGE_FLAG` with a lookback, and
+   * `PAGEVIEW_FLAG` with a pageview rule on a column.
+   */
   flags: string[];
 };
 
@@ -127,7 +135,7 @@ const applyFilters = (
     const columnName = columns[COLUMN_ROLE_FOR_GRAIN[cohort.grain]];
     if (columnName === null) {
       throw new Error(
-        t`Pick a column for “${cohort.label}” in Advanced settings.`,
+        t`“${cohort.label}” can't be applied, because this table has no session column.`,
       );
     }
     // An empty cohort matches nothing, rather than everything.
@@ -247,6 +255,7 @@ export const buildBaseQuery = (
   {
     dateRange,
     columns,
+    pageviews,
     events,
     extraColumns,
     usersTable,
@@ -256,10 +265,10 @@ export const buildBaseQuery = (
 ): BuiltBaseQuery => {
   const tableMetadata = getTableMetadata(metadataProvider, tableId);
   if (columns.timestamp === null) {
-    throw new Error(t`Pick an event time column in Advanced settings.`);
+    throw new Error(t`This table has no event time column.`);
   }
   if (columns.person === null) {
-    throw new Error(t`Pick a person column in Advanced settings.`);
+    throw new Error(t`This table has no person column.`);
   }
 
   const hasLookback = lookbackDays > 0;
@@ -287,7 +296,7 @@ export const buildBaseQuery = (
   let usersJoinAlias: string | undefined;
   if (usersColumns.length > 0) {
     if (usersTable === undefined) {
-      throw new Error(t`The person column doesn't link to a users table.`);
+      throw new Error(t`The person column doesn't link to a people table.`);
     }
     ({ query, alias: usersJoinAlias } = joinUsersTable(
       metadataProvider,
@@ -295,6 +304,15 @@ export const buildBaseQuery = (
       usersTable,
       usersColumns.map(({ column }) => column),
     ));
+  }
+
+  const hasPageviewFlag = pageviews?.type === "column_value";
+  if (hasPageviewFlag) {
+    const isPageview = Lib.expressionClause("=", [
+      findColumn(query, pageviews.column),
+      pageviews.value,
+    ]);
+    query = Lib.expression(query, STAGE, PAGEVIEW_FLAG, asFlag(isPageview));
   }
 
   for (const { flag, event } of events) {
@@ -307,7 +325,7 @@ export const buildBaseQuery = (
   }
 
   const eventColumns = _.uniq([
-    ...COLUMN_ROLES.flatMap((role) => columns[role] ?? []),
+    ...Object.values(columns).flatMap((column) => column ?? []),
     ...extraColumns
       .filter(({ from }) => from === "events")
       .map(({ column }) => column),
@@ -315,6 +333,7 @@ export const buildBaseQuery = (
   const flags = [
     ...events.map(({ flag }) => flag),
     ...(hasLookback ? [IN_RANGE_FLAG] : []),
+    ...(hasPageviewFlag ? [PAGEVIEW_FLAG] : []),
   ];
   const selected = [
     ...eventColumns.map((name) => findColumn(query, name)),

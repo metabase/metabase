@@ -138,6 +138,11 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::event-settings
+  "Product analytics settings for an event table, keyed like an analysis's settings, e.g.
+  `{\"columns.person\" \"user_id\"}`. The frontend owns their shape and validates them."
+  [:map-of [:or :keyword :string] :any])
+
 (mr/def ::table-user-settings
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
@@ -166,6 +171,7 @@
    [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:event_settings          {:optional true} [:maybe ::event-settings]]
    [:description_set         {:optional true} :boolean]
    [:visibility_type_set     {:optional true} :boolean]
    [:caveats_set             {:optional true} :boolean]
@@ -224,4 +230,7 @@
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:transform_target        {:optional true} [:maybe :boolean]]])
+   [:transform_target        {:optional true} [:maybe :boolean]]
+   [:detected_event_settings {:optional true} [:maybe ::event-settings]]
+   ;; Stored on `metabase_table_user_settings`; see `metabase.warehouse-schema-overlay.core/user-only-table-columns`
+   [:event_settings          {:optional true} [:maybe ::event-settings]]])

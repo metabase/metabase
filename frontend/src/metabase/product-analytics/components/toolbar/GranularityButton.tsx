@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { SettingWidgetProps } from "../../settings/types";
 import type { Granularity } from "../../spec/types";
 
 type GranularityButtonProps = SettingWidgetProps<Granularity> & {

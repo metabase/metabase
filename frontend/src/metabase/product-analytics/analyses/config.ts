@@ -1,7 +1,7 @@
+import type { StoredSettings } from "metabase/event-tables";
 import { PRODUCT_ANALYTICS_KINDS } from "metabase-types/api";
 import { isProductAnalyticsKind } from "metabase-types/guards";
 
-import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 
 import { COHORTS_CONFIG } from "./cohorts";

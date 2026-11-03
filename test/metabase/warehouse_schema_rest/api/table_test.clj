@@ -85,6 +85,8 @@
     {:db          (db-details)
      :db_id       (mt/id)
      :entity_type "entity/GenericTable"
+     ;; read from `metabase_table_user_settings`, which `mt/object-defaults` doesn't see
+     :event_settings nil
      :field_order "database"
      :view_count  0
      :measures    []
@@ -121,7 +123,7 @@
                {:name         (mt/format-name "checkins")
                 :display_name "Checkins"
                 :id           (mt/id :checkins)
-                :entity_type  "entity/EventTable"}
+                :entity_type  "entity/GenericTable"}
                {:name         (mt/format-name "orders")
                 :display_name "Orders"
                 :id           (mt/id :orders)
@@ -669,7 +671,7 @@
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
-                                                             :entity_type  "entity/EventTable"})))
+                                                             :entity_type  "entity/GenericTable"})))
                  :destination    (-> (field-details users-id-field)
                                      (dissoc :target :dimensions :values)
                                      (assoc :table_id         (mt/id :users)

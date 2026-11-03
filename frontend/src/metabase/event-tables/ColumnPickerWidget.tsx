@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Select } from "metabase/ui";
 
-import type { SettingWidgetProps } from "../../settings/types";
+import type { SettingWidgetProps } from "./settings/types";
 
 type ColumnPickerWidgetProps = SettingWidgetProps<string | null> & {
   columns?: { value: string; label: string }[];

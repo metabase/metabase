@@ -32,7 +32,11 @@ export interface Duration {
   unit: TimeUnit;
 }
 
+/** What an analysis counts. */
 export type Grain = "person" | "session" | "event";
+
+/** Who an analysis follows: each row is one event, so events aren't actors. */
+export type ActorGrain = Exclude<Grain, "event">;
 
 export type Aggregate = "count" | "uniq" | "sum" | "avg" | "min" | "max";
 
@@ -105,6 +109,11 @@ export interface PathsSpec {
   hideNoisyEvents: boolean;
   maxNodes: number;
   minVolume: number;
+  /**
+   * What names each step: its event name, its URL path, or its URL path on
+   * pageviews (`PAGEVIEW_FLAG`) and its event name on other events.
+   */
+  stepNames: "event_name" | "url_path" | "url_path_on_pageviews";
 }
 
 export interface HabitSpec {
@@ -177,7 +186,7 @@ export interface OutputSpec {
 export interface AnalysisSpec {
   kind: AnalysisKind;
   timeRange: TimeRange;
-  grain: Grain;
+  grain: ActorGrain;
   measure: Measure;
   bucket: Bucket;
   /**
@@ -186,8 +195,6 @@ export interface AnalysisSpec {
    */
   breakout?: BreakoutSpec;
   scope: ActorPredicate;
-  /** Events that paths name by their `url_path` rather than their `event_name`. */
-  pageview?: FlagRef;
   funnel?: FunnelSpec;
   paths?: PathsSpec;
   habit?: HabitSpec;

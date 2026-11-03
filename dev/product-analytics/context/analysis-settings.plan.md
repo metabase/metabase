@@ -253,7 +253,7 @@ Make `AnalysisWorkspace` generic over `K` too, so the config, stored settings an
 | `columns.event_name` | A text column named like `event_name` or `event`, else none                                                |
 | `columns.url_path`   | `type/URL`, else a column named like `url_path` or `path`, else none                                       |
 
-- `pageviews` sits with them in the Columns group. It's an event, not a column, and paths name the events it matches by their URL path rather than their event name. It defaults to `event_type = 1` on tables with an `event_type` number column (Umami and Track), and to none elsewhere. See `events/pageviews.ts`, and [post-prototype.md](post-prototype.md) for other schemas.
+- `pageviews` is a table setting now, with path cleaning. See "Pageviews and path cleaning" in [event-table-settings.plan.md](event-table-settings.plan.md#pageviews-and-path-cleaning).
 - `isValid` checks that the column still exists. If the table changes, a stored choice falls back to the default.
 - They go in the Advanced panel, grouped under "Columns", until there's a design for them.
 - Other settings depend on them. With no session column, `counting` drops the "Sessions" option (`getProps`), and a stored "session" falls back to "person" (`isValid`). Both read `columns.session`.
@@ -414,6 +414,8 @@ Routing back to the builder:
 7. **Save and reopen.** Build the card shape, the save flow, `/event-analysis/:cardId` and the two routing hooks. First, spike whether the existing save and add-to-dashboard modals accept a plain card.
 
 ## Open questions: column roles
+
+The first two are taken up in [event-table-settings.plan.md](event-table-settings.plan.md).
 
 The defaults in [`column-roles.ts`](../../../frontend/src/metabase/product-analytics/analyses/column-roles.ts) are overfit. Each role's name list starts with `pa_events_resolved`'s exact column names, so every role there maps to itself. The generic fallbacks (`user_id`, `ts`, `timestamp`, `event`, `path`) haven't been tried on a real second table. Before this ships, work out:
 

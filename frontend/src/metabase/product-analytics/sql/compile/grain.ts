@@ -1,15 +1,13 @@
 import { t } from "ttag";
 
-import type { Grain, Measure } from "../../spec/types";
+import type { ActorGrain, Grain, Measure } from "../../spec/types";
 
-export const compileGrain = (grain: Grain): string => {
+export const compileGrain = (grain: ActorGrain): string => {
   switch (grain) {
     case "person":
       return "person_id";
     case "session":
       return "session_id";
-    case "event":
-      return "event_id";
   }
 };
 
@@ -28,7 +26,7 @@ export const grainTitle = (grain: Grain): string => {
   }
 };
 
-export const compileMeasure = (measure: Measure, grain: Grain): string => {
+export const compileMeasure = (measure: Measure, grain: ActorGrain): string => {
   if (measure.agg === "count") {
     return "count()";
   }

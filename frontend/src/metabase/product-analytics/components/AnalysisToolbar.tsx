@@ -2,11 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import type { SettingKey, SettingWidget } from "metabase/event-tables";
 import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
 import type { ConcreteTableId } from "metabase-types/api";
 
 import type { CommonSettings } from "../analyses/types";
-import type { SettingKey, SettingWidget } from "../settings/types";
 
 import { SqlModal } from "./SqlModal";
 import { TableSegmentsButton } from "./toolbar/TableSegmentsButton";

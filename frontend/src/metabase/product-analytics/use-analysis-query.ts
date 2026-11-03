@@ -146,6 +146,7 @@ const useCompiledBase = ({
               return column !== null ? [{ column, ids }] : [];
             }),
             peopleSegments: people.compiled,
+            pathCleaning: base.pathCleaning,
           },
         }
       : undefined;
@@ -195,7 +196,7 @@ const useCompiledPeopleSegments = ({
     }
     if (usersTable === undefined) {
       return {
-        error: t`Link a Customers or Users table to the person column to use people segments.`,
+        error: t`This analysis uses people segments, but this table isn't linked to a people table anymore. Remove the segments, or ask an admin to link one in Data Studio.`,
       };
     }
     try {

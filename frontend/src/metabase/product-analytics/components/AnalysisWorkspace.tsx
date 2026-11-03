@@ -6,6 +6,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
+import type { StoredSettings } from "metabase/event-tables";
 import { useNavigate } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import type {
@@ -22,7 +23,6 @@ import { useDrillQueries } from "../drills/use-drill-queries";
 import { type AnalysisFilters, withPeopleFilter } from "../filters";
 import { SegmentDragProvider } from "../segments/drag-context";
 import type { PaletteSegment } from "../segments/types";
-import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
 import type { DrillPoint } from "../sql/compose";
@@ -32,6 +32,7 @@ import { useAnalysisState } from "../use-analysis-state";
 import { useAnalysisTimelines } from "../use-analysis-timelines";
 import { useSaveAnalysis } from "../use-save-analysis";
 import { useStableValue } from "../use-stable-value";
+import { useTableSettingsUrl } from "../use-table-settings-url";
 
 import { AnalysisActionsMenu } from "./AnalysisActionsMenu";
 import { AnalysisResult, getAnalysisRawSeries } from "./AnalysisResult";
@@ -120,10 +121,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    usersTableLink,
     computed,
     spec,
     widgets,
     missing,
+    isTableSetUp,
+    isDatabaseSupported,
     display,
     question,
     vizSettings,
@@ -136,6 +140,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     colors: displayColors,
   });
+  const tableSettingsUrl = useTableSettingsUrl(table);
   // Only while "Show as" is offered: a view without it keeps the stored value.
   const breakoutViewWidget = widgets.find(
     (widget) => widget.id === "breakout_view",
@@ -364,6 +369,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               source="event"
               table={table}
               usersTable={usersTable}
+              isUsersTableLinked={usersTableLink !== undefined}
               isHinted={isSegmentsHinted}
               onClose={() => setIsSegmentsOpen(false)}
             />
@@ -373,6 +379,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               source="people"
               table={table}
               usersTable={usersTable}
+              isUsersTableLinked={usersTableLink !== undefined}
               isHinted={isPeopleSegmentsHinted}
               onClose={() => setIsPeopleSegmentsOpen(false)}
             />
@@ -402,6 +409,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 isLoading={query.isLoading}
                 error={query.error}
                 missing={missing}
+                isTableSetUp={isTableSetUp}
+                tableSettingsUrl={tableSettingsUrl}
+                isDatabaseSupported={isDatabaseSupported}
                 setupLabel={config.setupLabel}
                 onOpenSetup={
                   panel !== "setup" ? () => setPanel("setup") : undefined

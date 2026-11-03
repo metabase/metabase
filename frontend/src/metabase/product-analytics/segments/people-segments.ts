@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { UsersTableLink } from "metabase/event-tables";
 import * as Lib from "metabase-lib";
 
 import { getTableMetadata } from "../base-query";
-import type { UsersTableLink } from "../columns";
 import { findColumn } from "../find-column";
 
 import { readSegmentDefinition } from "./to-event-definition";

@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import type {
   SettingDefinition,
   SettingKey,
+  SettingSection,
   SettingWidgetProps,
 } from "./types";
 
@@ -16,14 +17,23 @@ export function withWidgetProps<
   S,
   K extends SettingKey<S>,
   P extends object,
+  TSection extends string = SettingSection,
 >(
-  definition: SettingDefinition<TContext, S, K, P> & {
+  definition: SettingDefinition<TContext, S, K, P, TSection> & {
     widget: ComponentType<SettingWidgetProps<S[K]> & P>;
-    getProps: NonNullable<SettingDefinition<TContext, S, K, P>["getProps"]>;
+    getProps: NonNullable<
+      SettingDefinition<TContext, S, K, P, TSection>["getProps"]
+    >;
   },
-): SettingDefinition<TContext, S, K> {
+): SettingDefinition<TContext, S, K, object, TSection> {
   // The engine spreads the result of `getProps` into the widget's props, so
   // the widget always gets `P`. The parameter type checks that pairing, which
   // `SettingDefinitions` cannot express per key.
-  return definition as unknown as SettingDefinition<TContext, S, K>;
+  return definition as unknown as SettingDefinition<
+    TContext,
+    S,
+    K,
+    object,
+    TSection
+  >;
 }

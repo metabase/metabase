@@ -16,11 +16,11 @@ import {
   withFilterQuery,
 } from "../filters";
 import type { PeopleSegmentRef } from "../segments/types";
-import type { Grain } from "../spec/types";
+import type { ActorGrain } from "../spec/types";
 
 import { ConditionPill } from "./events/ConditionsEditor";
 
-export const getCountLabel = (grain: Grain, count: number): string => {
+export const getCountLabel = (grain: ActorGrain, count: number): string => {
   const formatted = count.toLocaleString();
   switch (grain) {
     case "person":
@@ -31,8 +31,6 @@ export const getCountLabel = (grain: Grain, count: number): string => {
         `${formatted} sessions`,
         count,
       );
-    case "event":
-      return ngettext(msgid`${formatted} event`, `${formatted} events`, count);
   }
 };
 

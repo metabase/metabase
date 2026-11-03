@@ -1,3 +1,4 @@
+import type { StoredSettings } from "metabase/event-tables";
 import {
   type CardDisplayType,
   type ConcreteTableId,
@@ -8,7 +9,6 @@ import {
   type VisualizationSettings,
 } from "metabase-types/api";
 
-import type { StoredSettings } from "./settings/types";
 import type { AnalysisKind } from "./spec/types";
 
 export type AnalysisCard = Pick<

@@ -1,0 +1,28 @@
+## Event table settings for product analytics: which column is the timestamp, the person, and so on.
+## Sync detects them on metabase_table; users override them on metabase_table_user_settings.
+
+databaseChangeLog:
+  - changeSet:
+      id: p59kvf
+      author: Kevin Kelleher
+      comment: Add detected_event_settings to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: detected_event_settings
+                  type: ${text.type}
+                  remarks: JSON event table settings detected by sync, e.g. which column is the person
+  - changeSet:
+      id: e7vt4s
+      author: Kevin Kelleher
+      comment: Add event_settings to metabase_table_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: event_settings
+                  type: ${text.type}
+                  remarks: JSON event table settings a user set, overriding detected_event_settings

@@ -1,5 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
+import { withWidgetProps } from "metabase/event-tables";
 import { SegmentedControl } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -11,7 +12,6 @@ import { DisqualifierListWidget } from "../components/settings/DisqualifierListW
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { formatPeriod } from "../drills/describe";
-import { withWidgetProps } from "../settings/with-widget-props";
 import { pointString } from "../sql/analyses/base";
 import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 import {
@@ -173,8 +173,8 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     isValid: (value) => isOneOf(ORDERINGS, value),
     getProps: () => ({
       options: [
-        { name: t`In order, no other actions in between`, value: "strict" },
-        { name: t`In order, other actions allowed in between`, value: "loose" },
+        { name: t`In order, no other events in between`, value: "strict" },
+        { name: t`In order, other events allowed in between`, value: "loose" },
         { name: t`In any order`, value: "any" },
       ],
     }),

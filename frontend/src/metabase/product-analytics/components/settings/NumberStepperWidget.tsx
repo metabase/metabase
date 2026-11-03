@@ -1,6 +1,5 @@
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { NumberInput } from "metabase/ui";
-
-import type { SettingWidgetProps } from "../../settings/types";
 
 type NumberStepperWidgetProps = SettingWidgetProps<number> & {
   min?: number;

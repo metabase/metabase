@@ -1,14 +1,14 @@
+import type { ColumnRole } from "metabase/event-tables";
 import * as Lib from "metabase-lib";
 import type { OpaqueDatasetQuery } from "metabase-types/api";
 import { isRecord } from "metabase-types/guards";
 
-import type { ColumnRole } from "./columns";
 import {
   isPeopleSegmentRef,
   toPeopleSegmentRef,
 } from "./segments/people-segment-ref";
 import type { PaletteSegment, PeopleSegmentRef } from "./segments/types";
-import type { Grain } from "./spec/types";
+import type { ActorGrain } from "./spec/types";
 
 /**
  * A set of actors picked by clicking a chart, e.g. everyone who reached a
@@ -18,7 +18,7 @@ import type { Grain } from "./spec/types";
 export type CohortFilter = {
   /** The conditions that picked the set, e.g. "Reached step 2: Signed up". */
   label: string;
-  grain: Grain;
+  grain: ActorGrain;
   ids: string[];
 };
 
@@ -37,13 +37,12 @@ export const NO_FILTERS: AnalysisFilters = {
   people: [],
 };
 
-export const COLUMN_ROLE_FOR_GRAIN: Record<Grain, ColumnRole> = {
+export const COLUMN_ROLE_FOR_GRAIN: Record<ActorGrain, ColumnRole> = {
   person: "person",
   session: "session",
-  event: "event_id",
 };
 
-const GRAINS: readonly unknown[] = ["person", "session", "event"];
+const GRAINS: readonly unknown[] = ["person", "session"];
 
 const isCohortFilter = (value: unknown): value is CohortFilter =>
   isRecord(value) &&
@@ -65,16 +64,15 @@ export const hasFilters = (filters: AnalysisFilters): boolean =>
   filters.cohorts.length > 0 ||
   filters.people.length > 0;
 
-/** Adds a people segment from the palette, once. Samples have no conditions to add. */
+/** Adds a people segment from the palette, once. */
 export const withPeopleFilter = (
   filters: AnalysisFilters,
   segment: PaletteSegment,
 ): AnalysisFilters => {
-  const ref = toPeopleSegmentRef(segment);
   const isAdded = filters.people.some((people) => people.key === segment.key);
-  return ref === undefined || isAdded
+  return isAdded
     ? filters
-    : { ...filters, people: [...filters.people, ref] };
+    : { ...filters, people: [...filters.people, toPeopleSegmentRef(segment)] };
 };
 
 /** The filter query, or `null` when there is none or it can't be read. */

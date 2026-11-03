@@ -530,7 +530,7 @@ Known issues, beyond lifecycle's:
 
 ## Implementation
 
-Built as planned, except where noted here. `bun run dev/product-analytics/check-insights.ts` runs both passes and the search against ClickHouse without Metabase, and checks the planted effects in `ground-truth.json`.
+Built as planned, except where noted here. `bun run dev/product-analytics/check-insights.ts` runs both passes and the search against ClickHouse without Metabase, and checks the planted effects in `ground-truth.json`. The script was removed with the insights code; its last working version is at `4431c8431b5^`.
 
 It covers all the data with a 30-day window, not the app's defaults (the last 90 days, 7 days). There it finds the four planted effects, plus three side effects of how the generator simulates browsing:
 

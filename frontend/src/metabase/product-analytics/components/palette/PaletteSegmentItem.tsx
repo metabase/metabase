@@ -97,14 +97,12 @@ export const PaletteSegmentItem = ({
         <Box c="text-disabled" display="flex" style={{ flexShrink: 0 }}>
           <Icon name="grabber" size={12} />
         </Box>
-        {segment.status !== "sample" && (
-          <Icon
-            name="segment"
-            className={S.segmentIcon}
-            data-status={segment.status}
-            aria-hidden
-          />
-        )}
+        <Icon
+          name="segment"
+          className={S.segmentIcon}
+          data-status={segment.status}
+          aria-hidden
+        />
         <Tooltip
           label={segment.description}
           disabled={!segment.description}

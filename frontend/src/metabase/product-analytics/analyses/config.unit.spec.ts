@@ -1,3 +1,10 @@
+import {
+  EVERY_EVENT,
+  type PageviewRule,
+  type StoredSettings,
+  computeSettings,
+  getSettingWidgets,
+} from "metabase/event-tables";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
@@ -5,8 +12,6 @@ import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { buildSql } from "../build-sql";
 import { createFlagAllocator } from "../events/allocate-flags";
 import { createMockEventDefinition } from "../events/mocks";
-import { computeSettings, getSettingWidgets } from "../settings/compute";
-import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 
 import { ANALYSIS_KINDS, getAnalysisConfig } from "./config";
@@ -74,7 +79,6 @@ const PLANNER_COLUMNS = {
   timestamp: "created_at",
   person: "person_id",
   session: "session_id",
-  event_id: "event_id",
   event_name: "event_name",
   url_path: "url_path",
 };
@@ -82,7 +86,7 @@ const PLANNER_COLUMNS = {
 const SIGNED_UP = createMockEventDefinition({ name: "Signed up" });
 const PURCHASED = createMockEventDefinition({ name: "Purchased" });
 
-/** What each analysis needs to run that has no default without a table. */
+/** What each analysis needs to run that has no default. */
 const REQUIRED_EVENTS: Record<AnalysisKind, StoredSettings> = {
   funnel: { "funnel.steps": [SIGNED_UP, PURCHASED] },
   paths: { "paths.start": SIGNED_UP },
@@ -97,7 +101,6 @@ const REQUIRED_EVENTS: Record<AnalysisKind, StoredSettings> = {
 const EVENT_TABLE = createMockTable({
   id: 10,
   fields: [
-    createMockField({ id: 1, name: "event_id", base_type: "type/Text" }),
     createMockField({ id: 2, name: "user_id", base_type: "type/Text" }),
     createMockField({ id: 3, name: "ts", base_type: "type/DateTime" }),
     createMockField({ id: 4, name: "event_name", base_type: "type/Text" }),
@@ -109,6 +112,14 @@ const EVENT_TABLE = createMockTable({
     }),
     createMockField({ id: 7, name: "amount", base_type: "type/Float" }),
   ],
+  detected_event_settings: {
+    schema: "posthog",
+    settings: {
+      "columns.timestamp": "ts",
+      "columns.person": "user_id",
+      "columns.event_name": "event_name",
+    },
+  },
 });
 
 const SESSION_TABLE = createMockTable({
@@ -117,6 +128,13 @@ const SESSION_TABLE = createMockTable({
     ...(EVENT_TABLE.fields ?? []),
     createMockField({ id: 9, name: "session_id", base_type: "type/Text" }),
   ],
+  detected_event_settings: {
+    schema: "amplitude",
+    settings: {
+      ...EVENT_TABLE.detected_event_settings?.settings,
+      "columns.session": "session_id",
+    },
+  },
 });
 
 const USERS_TABLE = createMockTable({
@@ -146,6 +164,7 @@ describe("analysis settings", () => {
   it.each(ANALYSIS_KINDS)("compiles the %s defaults to SQL", (kind) => {
     const { specResult, allocation } = setup({
       kind,
+      table: EVENT_TABLE,
       stored: REQUIRED_EVENTS[kind],
     });
     const built = buildSql(getReadySpec(specResult), "SELECT 1", {
@@ -283,7 +302,7 @@ describe("analysis settings", () => {
     ).toBe("day");
   });
 
-  it("only offers counting by columns the table has", () => {
+  it("only offers counting by columns the table has, and always by event", () => {
     const { computed, getProps } = setup({
       kind: "lifecycle",
       table: EVENT_TABLE,
@@ -362,25 +381,65 @@ describe("analysis settings", () => {
     });
   });
 
-  it("picks column role defaults from the table", () => {
-    const { computed } = setup({ kind: "funnel", table: EVENT_TABLE });
+  it("takes column roles from the table: a user's choices over sync's", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      event_settings: {
+        "columns.event_name": null,
+        "columns.url_path": "plan",
+      },
+    });
+    const { computed } = setup({ kind: "funnel", table });
 
     expect(computed["columns.timestamp"]).toBe("ts");
     expect(computed["columns.person"]).toBe("user_id");
     expect(computed["columns.session"]).toBeNull();
-    expect(computed["columns.event_id"]).toBe("event_id");
-    expect(computed["columns.event_name"]).toBe("event_name");
-    expect(computed["columns.url_path"]).toBeNull();
+    expect(computed["columns.event_name"]).toBeNull();
+    expect(computed["columns.url_path"]).toBe("plan");
   });
 
-  it("drops a stored column the table doesn't have", () => {
+  it("ignores table settings an analysis stored", () => {
     const { computed } = setup({
-      kind: "funnel",
+      kind: "paths",
       table: EVENT_TABLE,
-      stored: { "columns.timestamp": "missing" },
+      stored: {
+        "columns.timestamp": "signed_up_at",
+        "columns.url_path": "plan",
+        pageviews: EVERY_EVENT,
+        path_cleaning: [{ pattern: "/v[0-9]+", replacement: "" }],
+      },
     });
 
     expect(computed["columns.timestamp"]).toBe("ts");
+    expect(computed["columns.url_path"]).toBeNull();
+    expect(computed.pageviews).toBeNull();
+    expect(computed.path_cleaning).toEqual([]);
+  });
+
+  it("leaves a role empty when nothing set or detected it", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      detected_event_settings: null,
+    });
+    const { computed } = setup({ kind: "funnel", table });
+
+    expect(computed["columns.timestamp"]).toBeNull();
+    expect(computed["columns.person"]).toBeNull();
+  });
+
+  it("ignores a detected or table column the table no longer has", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      detected_event_settings: {
+        schema: "posthog",
+        settings: { "columns.timestamp": "missing" },
+      },
+      event_settings: { "columns.person": "missing" },
+    });
+    const { computed } = setup({ kind: "funnel", table });
+
+    expect(computed["columns.timestamp"]).toBeNull();
+    expect(computed["columns.person"]).toBeNull();
   });
 
   it("finds when people were first seen for lifecycle by the column's name", () => {
@@ -739,12 +798,38 @@ describe("analysis settings", () => {
   });
 
   describe("pageviews", () => {
-    const PAGEVIEW = createMockEventDefinition({ name: "Pageview" });
+    const PAGEVIEW_RULE: PageviewRule = {
+      type: "column_value",
+      column: "event_type",
+      value: 1,
+    };
 
-    const getPathsSql = (stored: StoredSettings) => {
-      const { specResult, allocation } = setup({
+    const PAGES_TABLE = createMockTable({
+      ...EVENT_TABLE,
+      fields: [
+        ...(EVENT_TABLE.fields ?? []),
+        createMockField({ id: 11, name: "path", base_type: "type/Text" }),
+        createMockField({
+          id: 12,
+          name: "event_type",
+          base_type: "type/Integer",
+        }),
+      ],
+      detected_event_settings: {
+        schema: "metabase-track",
+        settings: {
+          ...EVENT_TABLE.detected_event_settings?.settings,
+          "columns.url_path": "path",
+          pageviews: PAGEVIEW_RULE,
+        },
+      },
+    });
+
+    const getPathsSql = (eventSettings: Table["event_settings"]) => {
+      const { computed, specResult, allocation } = setup({
         kind: "paths",
-        stored: { ...REQUIRED_EVENTS.paths, ...stored },
+        table: { ...PAGES_TABLE, event_settings: eventSettings },
+        stored: REQUIRED_EVENTS.paths,
       });
       const spec = getReadySpec(specResult);
       const built = buildSql(spec, "SELECT 1", {
@@ -752,48 +837,75 @@ describe("analysis settings", () => {
         flags: allocation.events.map(({ flag }) => flag),
         extraColumns: [],
       });
-      return { spec, sql: built.sql };
+      return { computed, spec, sql: built.sql };
     };
 
-    it("defaults to the pageviews detected in the table", () => {
-      const config = getAnalysisConfig("paths");
-      const computed = computeSettings(
-        config.settings,
-        {
-          table: EVENT_TABLE,
-          usersTable: undefined,
-          detectedPageviews: PAGEVIEW,
-        },
-        {},
+    it("defaults to the table's pageview rule", () => {
+      const { computed } = setup({ kind: "paths", table: PAGES_TABLE });
+
+      expect(computed.pageviews).toEqual(PAGEVIEW_RULE);
+    });
+
+    it("names pageviews by their URL path, and other events by their name", () => {
+      const { spec, sql } = getPathsSql({});
+
+      expect(spec.paths?.stepNames).toBe("url_path_on_pageviews");
+      expect(sql).toContain(
+        "if(is_pageview = 1, ifNull(url_path, ''), ifNull(event_name, '')) AS step_name",
       );
-
-      expect(computed.pageviews).toEqual(PAGEVIEW);
     });
 
-    it("defaults to none when the table has no pageviews we recognize", () => {
-      const { computed } = setup({ kind: "paths", table: EVENT_TABLE });
-
-      expect(computed.pageviews).toBeNull();
-    });
-
-    it("names pageviews by their URL path", () => {
-      const { spec, sql } = getPathsSql({
-        pageviews: PAGEVIEW,
-        "columns.url_path": "path",
+    it("names every step by its URL path without an event name column", () => {
+      const { computed, spec, sql } = getPathsSql({
+        "columns.event_name": null,
       });
 
-      expect(spec.pageview).toEqual({ flag: "ev_2" });
-      expect(sql).toContain(
-        "if(ev_2, url_path, ifNull(event_name, '')) AS step_name",
-      );
+      expect(computed.pageviews).toEqual(EVERY_EVENT);
+      expect(spec.paths?.stepNames).toBe("url_path");
+      expect(sql).toContain("ifNull(url_path, '') AS step_name");
     });
 
-    it("names pageviews like other events without a URL path column", () => {
-      const { spec, sql } = getPathsSql({ pageviews: PAGEVIEW });
+    it("names every step by its event name without a URL path column", () => {
+      const { computed, spec, sql } = getPathsSql({ "columns.url_path": null });
 
-      expect(spec.pageview).toBeUndefined();
+      expect(computed.pageviews).toBeNull();
+      expect(spec.paths?.stepNames).toBe("event_name");
       expect(sql).toContain("ifNull(event_name, '') AS step_name");
-      expect(sql).not.toContain("url_path, ifNull");
+    });
+
+    it("asks for a column to name steps by when there's neither", () => {
+      const { specResult } = setup({
+        kind: "paths",
+        table: {
+          ...EVENT_TABLE,
+          event_settings: { "columns.event_name": null },
+        },
+        stored: REQUIRED_EVENTS.paths,
+      });
+
+      expect(specResult).toEqual({
+        status: "incomplete",
+        missing: [expect.objectContaining({ isTableSetting: true })],
+      });
+    });
+  });
+
+  describe("path cleaning", () => {
+    const CUSTOM_RULES = [{ pattern: "/v[0-9]+", replacement: "" }];
+
+    it("uses the table's rules", () => {
+      const { computed } = setup({
+        kind: "paths",
+        table: {
+          ...EVENT_TABLE,
+          event_settings: {
+            "columns.url_path": "plan",
+            path_cleaning: CUSTOM_RULES,
+          },
+        },
+      });
+
+      expect(computed.path_cleaning).toEqual(CUSTOM_RULES);
     });
   });
 
@@ -853,6 +965,7 @@ describe("analysis settings", () => {
       (direction) => {
         const { specResult } = setup({
           kind: "paths",
+          table: EVENT_TABLE,
           stored: { "paths.direction": direction },
         });
         const spec = getReadySpec(specResult);
@@ -866,6 +979,7 @@ describe("analysis settings", () => {
       const getBoundsSql = (direction: string) => {
         const { specResult } = setup({
           kind: "paths",
+          table: EVENT_TABLE,
           stored: { "paths.direction": direction },
         });
         const built = buildSql(getReadySpec(specResult), "SELECT 1", {
@@ -887,6 +1001,7 @@ describe("analysis settings", () => {
     it("leaves the event its direction hides out of the query", () => {
       const { specResult, allocation } = setup({
         kind: "paths",
+        table: EVENT_TABLE,
         stored: {
           "paths.direction": "from",
           "paths.start": SIGNED_UP,
@@ -901,6 +1016,7 @@ describe("analysis settings", () => {
     it("compiles paths without the event its direction doesn't use", () => {
       const { specResult, allocation } = setup({
         kind: "paths",
+        table: EVENT_TABLE,
         stored: {
           ...REQUIRED_EVENTS.paths,
           "paths.direction": "from",

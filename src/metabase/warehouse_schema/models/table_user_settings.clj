@@ -29,7 +29,8 @@
                      mi/transform-keyword
                      (partial mi/assert-optional-enum table/data-sources)
                      (some-fn keyword identity))
-   :data_authority  table/transform-data-authority})
+   :data_authority  table/transform-data-authority
+   :event_settings  mi/transform-json-no-keywordization})
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
@@ -38,6 +39,9 @@
   (derive :hook/dependencies))
 
 (methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
+
+(def ^:private settable-columns
+  (into warehouse-schema-overlay/user-settable-table-columns warehouse-schema-overlay/user-only-table-columns))
 
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, and
@@ -78,7 +82,7 @@
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-table-columns)
+  (when (and (every? #(nil? (get settings %)) settable-columns)
              (not-any? #(get settings %) (vals warehouse-schema-overlay/table-user-settings-flags)))
     (warehouse-schema.db/delete-table-user-settings! (:table_id settings)))
   settings)
@@ -103,7 +107,7 @@
   "Record the user-settable Table columns present in `settings` as the user values of `table`."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    settings     :- ::warehouse-schema.schema/table.update]
-  (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
+  (let [settings (u/select-keys-when settings :present settable-columns)]
     (when (seq settings)
       (if (warehouse-schema.db/table-user-settings-exist? id)
         (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings))
@@ -113,7 +117,7 @@
   "[[upsert-user-settings]] for every Table in `table-ids`, in one statement per kind."
   [table-ids :- [:set ::lib.schema.id/table]
    settings  :- ::warehouse-schema.schema/table.update]
-  (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
+  (let [settings (u/select-keys-when settings :present settable-columns)]
     (when (and (seq settings) (seq table-ids))
       (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
         (when-let [missing (not-empty (remove existing table-ids))]
@@ -186,7 +190,7 @@
 
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
   {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
-               :show_in_getting_started :data_authority :data_source :owner_email :is_published
+               :show_in_getting_started :data_authority :data_source :owner_email :is_published :event_settings
                :description_set :visibility_type_set :caveats_set
                :points_of_interest_set :data_layer_set :data_source_set]
    :defaults  {:description_set        false

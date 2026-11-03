@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { ListSearchField } from "metabase/common/components/ListSearchField";
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import {
   FilterColumnPicker,
@@ -23,7 +24,6 @@ import { toSegmentPickerItem } from "../../segments/picker-items";
 import type { PeopleSegmentRef } from "../../segments/types";
 import { usePaletteSegments } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
-import type { SettingWidgetProps } from "../../settings/types";
 
 import S from "./BreakoutMenu.module.css";
 
@@ -74,7 +74,7 @@ const getButtonLabel = (
       const count = value.segments.length;
       return count === 1 && first !== undefined
         ? first.label
-        : ngettext(msgid`${count} Segment`, `${count} Segments`, count);
+        : ngettext(msgid`${count} segment`, `${count} segments`, count);
     }
   }
 };
@@ -276,7 +276,7 @@ const PropertyOptions = ({
     <Box w={DROPDOWN_WIDTH}>
       <ListSearchField
         autoFocus
-        placeholder={t`Find...`}
+        placeholder={t`Find…`}
         value={searchText}
         onChange={(event) => setSearchText(event.target.value)}
         onResetClick={() => setSearchText("")}

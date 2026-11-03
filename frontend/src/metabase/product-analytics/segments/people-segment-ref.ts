@@ -2,10 +2,10 @@ import { isRecord } from "metabase-types/guards";
 
 import type { PaletteSegment, PeopleSegmentRef } from "./types";
 
-/** How an analysis keeps a palette segment; undefined for a sample, which has no conditions. */
+/** How an analysis keeps a palette segment. */
 export const toPeopleSegmentRef = (
   segment: PaletteSegment,
-): PeopleSegmentRef | undefined => {
+): PeopleSegmentRef => {
   switch (segment.status) {
     case "saved":
       return {
@@ -19,8 +19,6 @@ export const toPeopleSegmentRef = (
         label: segment.name,
         definition: { type: "draft", query: segment.query },
       };
-    case "sample":
-      return undefined;
   }
 };
 

@@ -261,7 +261,9 @@ const MoreMenu = ({
                 leftSection={<Icon name="calendar" />}
                 onClick={events.onToggle}
               >
-                {events.isOpen ? t`Hide events` : t`Show events`}
+                {events.isOpen
+                  ? t`Hide timeline events`
+                  : t`Show timeline events`}
               </Menu.Item>
             )}
             {savedCard !== undefined && !savedCard.archived && (
@@ -613,7 +615,7 @@ const AnalysisModal = ({
     case "invite":
       return (
         <InviteToViewModal
-          title={t`Invite someone to view this question`}
+          title={t`Invite someone to view this analysis`}
           shareUrl={shareUrl}
           triggeredFrom="question"
           inviteTarget={{ type: "question", id: card.id, name: card.name }}

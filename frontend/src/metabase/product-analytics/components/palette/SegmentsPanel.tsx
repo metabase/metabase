@@ -2,8 +2,12 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
-import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
+import {
+  canAccessDataStudio,
+  getUserCanWriteSegments,
+} from "metabase/common/data-studio/selectors";
 import { useToast } from "metabase/common/hooks";
+import { UsersTablePrompt } from "metabase/event-tables";
 import { useSelector } from "metabase/redux";
 import {
   Box,
@@ -16,7 +20,6 @@ import {
   Text,
   TextInput,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment, Table } from "metabase-types/api";
@@ -25,14 +28,10 @@ import type { UsersTable } from "../../analyses/types";
 import { useEventDropTarget } from "../../segments/drag-context";
 import type {
   PaletteSegment,
-  SamplePaletteSegment,
   SegmentDraft,
   SegmentSource,
 } from "../../segments/types";
-import {
-  getSamplePeopleSegments,
-  usePaletteSegments,
-} from "../../segments/use-palette-segments";
+import { usePaletteSegments } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
 import { PanelCloseButton } from "../PanelCloseButton";
 import { ResizeHandle } from "../ResizeHandle";
@@ -58,6 +57,8 @@ type SegmentsPanelProps = {
   source: SegmentSource;
   table: Table | undefined;
   usersTable: UsersTable | undefined;
+  /** The event table links to a people table, which may still be loading. */
+  isUsersTableLinked: boolean;
   /** The toolbar button that hides this panel is hovered. */
   isHinted?: boolean;
   onClose: () => void;
@@ -73,6 +74,7 @@ export const SegmentsPanel = ({
   source,
   table,
   usersTable,
+  isUsersTableLinked,
   isHinted = false,
   onClose,
 }: SegmentsPanelProps) => {
@@ -102,11 +104,10 @@ export const SegmentsPanel = ({
       </Group>
       <Box className={S.scroll} py="md">
         {isPeople ? (
-          <PaletteSection
-            source="people"
-            table={usersTable?.table}
-            samples={usersTable === undefined ? getSamplePeopleSegments() : []}
-            emptyMessage={t`No segments on this table yet.`}
+          <PeopleSection
+            table={table}
+            usersTable={usersTable}
+            isUsersTableLinked={isUsersTableLinked}
           />
         ) : (
           <PaletteSection
@@ -120,11 +121,44 @@ export const SegmentsPanel = ({
   );
 };
 
+type PeopleSectionProps = Pick<
+  SegmentsPanelProps,
+  "table" | "usersTable" | "isUsersTableLinked"
+>;
+
+/** The people table's segments, or how to link one while there's none. */
+const PeopleSection = ({
+  table,
+  usersTable,
+  isUsersTableLinked,
+}: PeopleSectionProps) => {
+  if (table !== undefined && !isUsersTableLinked) {
+    return (
+      <Box px="lg" py="xs">
+        <UsersTablePrompt table={table} />
+      </Box>
+    );
+  }
+  if (usersTable === undefined) {
+    return (
+      <Box px="lg" py="xs">
+        <Loader size="xs" />
+      </Box>
+    );
+  }
+  return (
+    <PaletteSection
+      source="people"
+      table={usersTable.table}
+      emptyMessage={t`No segments on this table yet.`}
+    />
+  );
+};
+
 type PaletteSectionProps = {
   source: SegmentSource;
-  /** Undefined when there's no such table; only `samples` are shown then. */
+  /** Undefined while the table loads. */
   table: Table | undefined;
-  samples?: SamplePaletteSegment[];
   emptyMessage: string;
 };
 
@@ -133,7 +167,6 @@ type ModalState = { draft: SegmentDraft } | null;
 const PaletteSection = ({
   source,
   table,
-  samples = [],
   emptyMessage,
 }: PaletteSectionProps) => {
   const [sendToast] = useToast();
@@ -159,7 +192,7 @@ const PaletteSection = ({
     },
   });
   const eventDropProps = takesEvents ? eventDrop.dropProps : {};
-  const items: PaletteSegment[] = [...saved, ...drafted, ...samples];
+  const items: PaletteSegment[] = [...saved, ...drafted];
   // A long list, drafts included, gets a search box at the top.
   const isSearchable = saved.length + drafted.length >= SEARCH_THRESHOLD;
   const [searchText, setSearchText] = useState("");
@@ -174,22 +207,19 @@ const PaletteSection = ({
             segment.name.toLowerCase().includes(search),
         );
   const canEdit = table !== undefined && tableQuery !== undefined;
-  const disabledHint =
-    table === undefined
-      ? t`Link a Customers or Users table to the person column first.`
-      : undefined;
   // Who can create, edit or remove segments in Data Studio can do it from here.
   const canWriteSegments = useSelector(
     (state) =>
       table !== undefined && getUserCanWriteSegments(state, table.is_published),
   );
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
   const [updateSegment] = useUpdateSegmentMutation();
 
   const removeSegment = async (segment: Segment) => {
     const { error } = await updateSegment({
       id: segment.id,
       archived: true,
-      revision_message: t`Removed from event analysis`,
+      revision_message: t`Removed from product analysis`,
     });
     sendToast(
       error
@@ -206,14 +236,9 @@ const PaletteSection = ({
     return {
       editUrl: Urls.dataModelSegment(segment.id),
       revisionsUrl: Urls.dataModelSegmentRevisions(segment.id),
-      dataStudioUrl: table.is_published
-        ? Urls.dataStudioPublishedTableSegment(table.id, segment.id)
-        : Urls.dataStudioDataModelSegment({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-            segmentId: segment.id,
-          }),
+      dataStudioUrl: hasDataStudioAccess
+        ? getSegmentDataStudioUrl(table, segment)
+        : undefined,
       onRemove: () => removeSegment(segment),
     };
   };
@@ -315,16 +340,14 @@ const PaletteSection = ({
       )}
       {!isDrafting && (
         <Box>
-          <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
-            <Button
-              variant="light"
-              leftSection={<Icon name="add" />}
-              disabled={!canEdit}
-              onClick={() => setIsDrafting(true)}
-            >
-              {t`Draft a segment`}
-            </Button>
-          </Tooltip>
+          <Button
+            variant="light"
+            leftSection={<Icon name="add" />}
+            disabled={!canEdit}
+            onClick={() => setIsDrafting(true)}
+          >
+            {t`Draft a segment`}
+          </Button>
         </Box>
       )}
       {modal !== null && table !== undefined && tableQuery !== undefined && (
@@ -343,3 +366,14 @@ const PaletteSection = ({
     </Stack>
   );
 };
+
+/** The segment's page in Data Studio: in the library for a published table. */
+const getSegmentDataStudioUrl = (table: Table, segment: Segment): string =>
+  table.is_published
+    ? Urls.dataStudioPublishedTableSegment(table.id, segment.id)
+    : Urls.dataStudioDataModelSegment({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+        segmentId: segment.id,
+      });

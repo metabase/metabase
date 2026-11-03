@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import type { Table } from "metabase-types/api";
 
@@ -13,7 +14,6 @@ import {
   segmentToEventDefinition,
 } from "../../segments/to-event-definition";
 import type { PaletteSegment } from "../../segments/types";
-import type { SettingWidgetProps } from "../../settings/types";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { EventDefinitionSummary } from "../events/EventDefinitionSummary";
 import { useTableQuery } from "../events/use-table-query";

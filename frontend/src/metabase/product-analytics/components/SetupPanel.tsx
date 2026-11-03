@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { SettingWidget } from "metabase/event-tables";
 import { Box, Divider, Group, Paper, Tabs, Title } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
-import type { SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
 import { PanelCloseButton } from "./PanelCloseButton";
@@ -43,7 +43,6 @@ export const SetupPanel = ({
   onClose,
 }: SetupPanelProps) => {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
-  // Column role settings aren't shown, so some analyses have nothing here.
   const hasAdvanced = getSectionWidgets(widgets, "advanced").length > 0;
   const activeTab = hasAdvanced ? tab : "setup";
 
@@ -90,14 +89,8 @@ export const SetupPanel = ({
   );
 };
 
-/** Column role settings still pick their defaults; they just aren't shown. */
 const getSectionWidgets = (widgets: SettingWidget[], section: AnalysisPanel) =>
-  widgets.filter(
-    (widget) =>
-      widget.section === section &&
-      !widget.hidden &&
-      widget.group === undefined,
-  );
+  widgets.filter((widget) => widget.section === section && !widget.hidden);
 
 type SectionWidgetsProps = {
   widgets: SettingWidget[];

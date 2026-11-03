@@ -132,6 +132,9 @@
 
 (t2/deftransforms :model/Table
   {:entity_type             mi/transform-keyword
+   :detected_event_settings mi/transform-json-no-keywordization
+   ;; From `metabase_table_user_settings`, when read through the overlay's `table-query`
+   :event_settings          mi/transform-json-no-keywordization
    :is_published            mi/transform-boolean
    :show_in_getting_started mi/transform-boolean
    :visibility_type         mi/transform-keyword
@@ -618,7 +621,7 @@
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :is_published]
+               :data_source :owner_email :is_published :detected_event_settings]
    :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
    :transform {:archived_at    (serdes/date)
                :deactivated_at (serdes/date)
