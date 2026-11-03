@@ -17,7 +17,7 @@ The basic workflow:
 
 - You build an app locally with an agent.
 - You can preview the app on your machine.
-- When you're happy with it, you commit your changes, then pull the changes into your Metabase with Remote Sync.
+- When you're happy with it, your agent saves the app to a Git repository, and your Metabase gets the app from that repository. A Git repository stores your app's code, and keeps each version of it.
 
 The app we build in this guide only shows data, so it works with any database that Metabase connects to. If your data warehouse is PostgreSQL or MySQL, you can also add a [form that changes data](#add-a-form-that-changes-data).
 
@@ -25,6 +25,7 @@ The app we build in this guide only shows data, so it works with any database th
 
 - An admin account on a Metabase on a Pro or Enterprise plan.
 - An AI coding agent, like Claude Code or Codex.
+- Git on your computer, and an account on GitHub, GitLab, or Bitbucket. Your Metabase gets your app from a Git repository. If you don't have a repository, [step 5](#5-connect-your-metabase-to-a-git-repository) shows you how to connect one.
 
 ## Set up your tools
 
@@ -68,16 +69,18 @@ For other ways to install the skill, check out [The metabase-cli skill](../insta
 
 If you can't add the skill to your agent, tell your agent to run `mb skills get data-app` before it starts on the app.
 
-### 4. Make sure you have tables published to your Library
+### 4. Publish tables to your semantic layer
 
-Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library. If you haven't created your semantic layer yet, ask your agent to create it for you and add the tables it needs.
+Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your semantic layer. The [semantic layer](../data-modeling/semantic-layer/library.md) is your set of curated tables and metrics: the data that you've checked, and that people and AI should use. Building on it means your app shows the same vetted numbers as the rest of your Metabase. So publish trusted tables that are ready for analysis.
 
-You can also create your Library and add tables manually:
+If you haven't created your semantic layer yet, ask your agent to create it for you and add the tables it needs.
+
+You can also create your semantic layer and add tables manually:
 
 1. Click the **grid** icon in the upper right, and select **Data studio**.
 2. In the left sidebar, click **Semantic layer**. If Metabase asks you to create your semantic layer, click **Create my semantic layer**.
 3. Look in the **Data** section. If the tables that your app needs are there, go to [step 5](#5-connect-your-metabase-to-a-git-repository).
-4. Otherwise, [publish the tables](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer) that your app needs. Publish only tables that you know have trustworthy data.
+4. Otherwise, [publish the tables](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer) that your app needs.
 
 If your Metabase already syncs in Read-only mode, and the tables that your app needs aren't published, build your apps on a development Metabase in Read-write mode instead. See [Choose where to build apps](./build.md#choose-where-to-build-apps).
 
@@ -85,11 +88,18 @@ If your Metabase already syncs in Read-only mode, and the tables that your app n
 
 Skip this step if your Metabase already syncs with a Git repository.
 
+Your Metabase connects to a repository with a feature called [Remote Sync](../data-modeling/semantic-layer/remote-sync.md), which has two modes:
+
+- **Read-only**: Metabase only reads from the repository. You and your agent can't change the semantic layer in Metabase. Changes come only from the repository. Use this mode for a production Metabase that people rely on.
+- **Read-write**: Metabase can also write to the repository, and you and your agent can change the semantic layer in Metabase. Use this mode if you're only trying out data apps.
+
+Choose a mode now, because each mode needs a different access token.
+
 1. Create a new repository on GitHub, GitLab, or Bitbucket, and initialize it with a README file. See [Set up a repository](../data-modeling/semantic-layer/remote-sync.md#1-set-up-a-repository-to-store-your-content).
-2. Create an access token for the repository. In Read-only mode, Metabase only reads from the repository, so a read-only token is enough. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase). If you plan to select Read-write mode, create a read-write token instead: see [Create a token for your development Metabase](../data-modeling/semantic-layer/remote-sync.md#2-create-a-token-for-your-development-metabase).
+2. Create an access token for the repository. For Read-only mode, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase). For Read-write mode, see [Create a token for your development Metabase](../data-modeling/semantic-layer/remote-sync.md#2-create-a-token-for-your-development-metabase).
 3. On your Metabase, go to **Admin** > **Settings** > **Remote sync**.
 4. In **Repository URL**, enter the repository's URL, for example `https://github.com/your-org/your-repo`.
-5. Since this is your production Metabase, select **Read-only**. In Read-only mode, every change to the Library goes through Remote Sync: you and your agent can't change the Library in Metabase or with the CLI. If you're only trying out data apps, you can select **Read-write** instead.
+5. Select the mode that you chose.
 6. In **Access Token**, paste the token.
 7. Click **Set up remote sync**.
 
@@ -101,7 +111,7 @@ The rest of this guide assumes that your Metabase is in Read-only mode.
 
 ### 6. Clone the repository
 
-Clone your Metabase's Remote Sync repository to your computer, and change into its directory. Use your repository's URL:
+Clone the repository that you connected in [step 5](#5-connect-your-metabase-to-a-git-repository) to your computer, and change into its directory. Use your repository's URL:
 
 ```sh
 git clone https://github.com/your-org/your-repo
@@ -123,10 +133,9 @@ Create a Metabase data app that shows our orders by month, and a table of the la
 The agent:
 
 - Writes the app's code in `data_apps/<slug>/`, where `<slug>` is the app's short name. The code includes the questions that the app runs.
-- Generates the [app's collection](./build.md#what-a-data-app-can-read-and-write) in `collections/data_apps/` from the app's questions.
 - Starts a preview of the app.
 
-Ask for an app that uses the tables and metrics that are already in your Library. If the app needs a table or a metric that isn't in your Library, the agent stops and tells you what's missing.
+Ask for an app that uses the tables and metrics that are already in your semantic layer. If the app needs a table or a metric that isn't in your semantic layer, the agent stops and tells you what's missing.
 
 The agent runs commands on your computer, like `mb`, `npm`, and `git`, and it might ask for your permission first.
 
@@ -151,7 +160,7 @@ Ship the app to my Metabase.
 The agent:
 
 - Builds the app.
-- Commits the app's source code, bundle, and collection to the branch that your production Metabase pulls from.
+- Commits the app to the branch that your production Metabase pulls from.
 - Pushes the branch to your repository.
 - Pulls the branch into your production Metabase with the CLI.
 
@@ -181,7 +190,7 @@ People in those groups can now open the app at `/apps/<slug>`. The app runs with
 
 ## Edit the app
 
-1. In your clone of your Remote Sync repository, pull the latest changes:
+1. In your clone of the repository, pull the latest changes:
 
    ```sh
    git pull

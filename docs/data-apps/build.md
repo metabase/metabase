@@ -33,8 +33,8 @@ This page is the reference for data apps. To set up your tools and build your fi
 
 Your agent builds and ships each app from a Metabase that it logs in to. You can set this up in two ways:
 
-- **A development Metabase and a production Metabase (recommended).** Your agent builds each app on its own branch, on a development Metabase in Read-write mode that connects to your data warehouse. You review the app in a pull request, and merge it into the branch that your production Metabase pulls from. Keep your production Metabase in Read-only mode, so that every change to your Library and data apps goes through Git. On the development Metabase, your agent can also publish tables and create metrics for the app.
-- **Only your production Metabase, in Read-only mode.** This setup has fewer steps, but each change that your agent ships goes to production without review. And you can't publish tables or create metrics on a Read-only Metabase, and neither can your agent, so your apps can read only the tables and metrics that are already in your Library. [Getting started with data apps](./getting-started.md) uses this setup.
+- **A development Metabase and a production Metabase (recommended).** Set up two Metabases: one for trying things out, and one for the content that people rely on. Your agent builds each app on the development Metabase, where it can also publish tables and create metrics for the app. You review the app before it reaches production. To set this up, connect both Metabases to the same Git repository with [Remote Sync](../data-modeling/semantic-layer/remote-sync.md): your development Metabase in Read-write mode, and your production Metabase in Read-only mode.
+- **Only your production Metabase.** This setup has fewer steps, but each change that your agent ships goes to production without review. [Getting started with data apps](./getting-started.md) uses this setup.
 
 The rest of this page uses a development Metabase and a production Metabase.
 
@@ -52,31 +52,34 @@ An app can write data only through the actions in its own collection.
 
 Your agent writes the questions and actions that the app needs in the app's code, and generates the app's collection with those items. The collection can hold only questions and actions. Items follow these rules:
 
-- Questions must be built with the query builder, not SQL, and must start from a table. So a question can't start from another saved question or model, even one in the app's collection. Questions also can't have explicit joins, custom columns, parameters, or more than one stage. But a question can use columns from linked tables through foreign keys, and the metrics in your Library.
-- Actions are data actions (not model actions).
+- Questions must be built with the query builder, not SQL, and must start from a table. So a question can't start from another saved question or model, even one in the app's collection. Questions also can't have explicit joins, custom columns, parameters, or more than one stage. But a question can use columns from linked tables through foreign keys, and the metrics in your semantic layer.
+- Actions are table actions, which insert, update, or delete one row of a table by its primary key. Apps can't use SQL actions or model actions.
 - Items in the collection can't be archived or made public. Questions in the collection can't be embedded.
+
+Your agent follows these rules for you, but the rules limit what you can ask for. Some tips for guiding your agent.
+
+- **Describe the result, not the SQL.** An app can't run SQL. So instead of pasting a query, ask for "revenue by month for each product category."
+- **Name tables, not saved questions.** Instead of "Use our Weekly sales question," ask for "weekly sales from the Orders table." If the table isn't in your semantic layer, the agent stops and tells you what's missing.
+- **Ask for columns from related tables.** "Show each order with its product's category" works if the Orders table has a foreign key to the Products table. Without a foreign key, the question can't get that column, because questions can't have explicit joins.
+- **Ask for calculated values.** Like: "show each order's discount as a percentage", because the agent can calculate the value in the app's code.
+- **Keep writes to one row.** "Let people edit a product" works. "Mark all of a customer's orders as refunded" doesn't, because an action changes only one row at a time.
 
 The app's collection changes only when Metabase pulls it from your repository. You can't move the app's collection, move it to the trash, or make it official.
 
-## Build the app with your agent
+## Build an app on a development Metabase
 
-1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin to your development Metabase.
-2. Install the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) for your agent. The CLI comes with its own skills for building data apps, and the metabase-cli skill tells your agent to load them.
-3. On your development Metabase, [create a branch](../data-modeling/semantic-layer/remote-sync.md#creating-a-branch) for the app. Metabase creates the branch in your repository, and switches to it.
-4. In a local clone of your Git repository, switch to the same branch, and start your agent there. The agent writes the app's source code in the clone. The agent stops if the folder isn't a clone of the repository that your development Metabase syncs with, or if the clone isn't on the branch that your development Metabase tracks. See [what syncs with a data app](#what-syncs-with-a-data-app).
-5. Ask your agent to create a Metabase data app, and follow its instructions. For example:
+For every step, from installing your tools to opening the app, check out [Getting started with data apps](./getting-started.md). That guide builds on one Metabase. With a development Metabase, do these things differently:
 
-   ```text
-   Create a Metabase data app that lets people look up product info, and add, edit, or remove products. Make it look cool.
-   ```
+- **Log the CLI in to your development Metabase**, not your production Metabase.
+- **Build each app on its own branch.** Ask your agent to create the branch on your development Metabase and in your clone, or [create a branch](../data-modeling/semantic-layer/remote-sync.md#creating-a-branch) on your development Metabase and switch your clone to it. If you build on the branch that your production Metabase pulls from (by default, your main branch), the app goes to production without review.
+
+The agent stops if the directory isn't a clone of the repository that your development Metabase syncs with, or if the clone isn't on the branch that your development Metabase tracks. See [what syncs with a data app](#what-syncs-with-a-data-app).
 
 The agent creates the app in `data_apps/<slug>/`, and writes the app's code there, with the questions and actions that the app needs. Then the agent generates the app's collection in `collections/data_apps/`, and builds the app's bundle (the built app, up to 10 MiB). When the app is ready, ask the agent to ship it. The agent [ships the app](#ship-the-app-to-production) to your branch, and pulls the branch into your development Metabase, where the app opens at `/apps/<slug>`.
 
-Build each app on its own branch. The agent pushes the app to the branch that your development Metabase tracks. If that's the branch that your production Metabase pulls from (by default, your main branch), the app goes to production without review.
-
 To build, preview, and ship the app, the agent runs commands on your computer, like `mb`, `npm run build`, `npm run dev`, and `git`. Your agent might ask for your permission before it runs these commands.
 
-A new app starts live, so admins can open it at its address after the first pull. To let other people open it, [add their groups](./manage.md#choose-who-can-open-an-app) to the app. To take an app offline, [make it a draft](./manage.md#make-an-app-live-or-a-draft).
+The first time that a Metabase pulls an app, the app is [live](./manage.md#make-an-app-live-or-a-draft) on that Metabase: admins can open it at `/apps/<slug>`. To let other people open it, [add their groups](./manage.md#choose-who-can-open-an-app) to the app. To take an app offline, [make it a draft](./manage.md#make-an-app-live-or-a-draft).
 
 ![The Permissions tab of the Store Explorer app, with two groups that can open the app, and an Add groups button](./images/data-app-permissions.png)
 
@@ -101,7 +104,13 @@ Delete the key when you no longer need the preview.
 
 ## Ship the app to production
 
-Your data apps always sync through your Git repository. Use the same steps for a new app and for each change to an app:
+Your data apps always reach Metabase through your Git repository. When the app is ready, tell your agent:
+
+```text
+Ship the app to my development Metabase.
+```
+
+The agent does steps 1 to 3 below for you. You then review the change, merge it, and pull it into production. Use the same steps for a new app and for each change to an app:
 
 1. If your development Metabase has changes to synced content that the app reads, like a table that your agent just published, [push your changes](../data-modeling/semantic-layer/remote-sync.md#pushing-changes-to-git) to the app's branch. Then pull the branch in your local clone.
 2. Commit the app's directory, `data_apps/<slug>/`, and its collection, `collections/data_apps/`, together, and push the branch.
@@ -110,11 +119,9 @@ Your data apps always sync through your Git repository. Use the same steps for a
 5. On your production Metabase (in Read-only mode), [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). If your production Metabase uses [auto-sync](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-automatically), it pulls the changes on its own within five minutes.
 6. The first time that you ship an app, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app on your production Metabase.
 
-When your agent ships an app, it does steps 1 to 3 for you.
-
 Metabase doesn't sync an app's group access or its [status](./manage.md#make-an-app-live-or-a-draft) (live or draft), so each Metabase keeps its own. The first pull creates the app on your production Metabase as live, and only admins can open it until you add groups there. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
 
-Your production Metabase also needs the published tables and metrics that the app reads. They ship with the app only if you [sync your Library](../data-modeling/semantic-layer/library.md#versioning-the-library) with Remote Sync, so sync your Library too. If your app uses actions, you must [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) on the production databases that the app writes to.
+Your production Metabase also needs the published tables and metrics that the app reads. They ship with the app only if you [sync your semantic layer](../data-modeling/semantic-layer/library.md#versioning-the-library) with Remote Sync, so sync it too. If your app uses actions, you must [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) on the production databases that the app writes to.
 
 ### What syncs with a data app
 
@@ -128,6 +135,16 @@ Metabase pulls the app's manifest, its bundle, and its collection with its quest
 When your agent builds the app, it writes the bundle to `dist/index.js`. Commit the bundle with the app's collection: the bundle runs the questions and actions in the collection, so a bundle without them fails. The `.gitignore` files in your repository keep `node_modules/` and `.env.local` out of it. In the manifest, you can edit the app's `name`, `description`, and `allowed_hosts`. Don't edit the rest of the manifest, the bundle, or the collection by hand.
 
 ## Change a data app
+
+Start your agent in your local clone of your Git repository, and tell it what to change. For example:
+
+```text
+Create a new branch from main on my development Metabase and in this clone. Then add a filter by product category to the orders-overview app, and ship the app to my development Metabase.
+```
+
+Then do the rest of the steps in [Ship the app to production](#ship-the-app-to-production).
+
+To set up the branch yourself:
 
 1. On your development Metabase, [switch to the branch](../data-modeling/semantic-layer/remote-sync.md#switching-branches) that your production Metabase pulls from, and [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). Then [create a branch](../data-modeling/semantic-layer/remote-sync.md#creating-a-branch) for the change.
 2. In your local clone of your Git repository, pull the latest changes, and switch to the new branch.
