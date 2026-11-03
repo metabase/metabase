@@ -102,48 +102,48 @@
               (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
                       (mapv set @calls))))))))))
 
-(deftest ^:synchronized purge-cascaded-action-on-model-delete-test
+(deftest purge-cascaded-action-on-model-delete-test
   (testing "deleting a model card purges the index entries for actions the database cascade removed with it"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card   {card-id :id}   {:name "Temp Action Model" :type :model}
+      (mt/with-temp [:model/Card   {card-id :id}   {:name "Temp Action Model", :type :model}
                      :model/Action {action-id :id} {:name     "Temp Cascaded Action"
                                                     :model_id card-id
                                                     :type     :query}]
         (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))
         ;; action.model_id carries ON DELETE CASCADE, so this removes the action with no toucan statement.
-        (t2/delete! :model/Card card-id)
-        (is (false? (t2/exists? :model/Action action-id)))
+        (t2/delete! :model/Card :id card-id)
+        (is (false? (t2/exists? :model/Action :id action-id)))
         (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))))))
 
-(deftest ^:synchronized surviving-cascade-documents-are-not-purged-test
+(deftest surviving-cascade-documents-are-not-purged-test
   (testing "a cascade-fed document that still resolves after the delete keeps its index entry"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card   {keep-card :id}   {:name "Kept Action Model" :type :model}
-                     :model/Card   {drop-card :id}   {:name "Dropped Action Model" :type :model}
-                     :model/Action {keep-action :id} {:name "Surviving Action" :model_id keep-card :type :query}
-                     :model/Action {drop-action :id} {:name "Doomed Action" :model_id drop-card :type :query}]
-        (t2/delete! :model/Card drop-card)
+      (mt/with-temp [:model/Card   {keep-card :id}   {:name "Kept Action Model", :type :model}
+                     :model/Card   {drop-card :id}   {:name "Dropped Action Model", :type :model}
+                     :model/Action {keep-action :id} {:name "Surviving Action", :model_id keep-card, :type :query}
+                     :model/Action {drop-action :id} {:name "Doomed Action", :model_id drop-card, :type :query}]
+        (t2/delete! :model/Card :id drop-card)
         (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str drop-action))))
         (testing "the untouched card's action is left alone"
           (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str keep-action)))))))))
 
 (deftest cascading-documents-only-covers-unpurgeable-selectors-test
   (testing "only search-models ingestion cannot purge on its own are enumerated"
-    (mt/with-temp [:model/Card   {card-id :id} {:name "Selector Shape Card" :type :model}
-                   :model/Action {_ :id}       {:name "Shape Probe Action" :model_id card-id :type :query}]
-      (let [cascading (search/cascading-documents [(t2/select-one :model/Card card-id)])]
+    (mt/with-temp [:model/Card   {card-id :id} {:name "Selector Shape Card", :type :model}
+                   :model/Action {_ :id}       {:name "Shape Probe Action", :model_id card-id, :type :query}]
+      (let [cascading (search/cascading-documents [(t2/select-one :model/Card :id card-id)])]
         (testing "card/dataset/metric resolve from a :this.id selector, so ingestion already handles them"
           (is (empty? (set/intersection #{"card" "dataset" "metric"} (set (keys cascading))))))
         (testing "action is reached through :this.model_id, so its documents are enumerated up front"
           (is (contains? (set (keys cascading)) "action")))))))
 
-(deftest ^:synchronized moved-document-is-not-purged-test
+(deftest moved-document-is-not-purged-test
   (testing "a document that stops matching the selector without being deleted keeps its index entry"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card   {from-card :id}  {:name "From Model" :type :model}
-                     :model/Card   {to-card :id}    {:name "To Model" :type :model}
-                     :model/Action {action-id :id}  {:name "Reparented Action" :model_id from-card :type :query}]
-        (let [cascading (search/cascading-documents [(t2/select-one :model/Card from-card)])
+      (mt/with-temp [:model/Card   {from-card :id}  {:name "From Model", :type :model}
+                     :model/Card   {to-card :id}    {:name "To Model", :type :model}
+                     :model/Action {action-id :id}  {:name "Reparented Action", :model_id from-card, :type :query}]
+        (let [cascading (search/cascading-documents [(t2/select-one :model/Card :id from-card)])
               indexed   #(str (t2/select-one-fn :legacy_input (search.index/active-table)
                                                 :model "action" :model_id (str action-id)))]
           (is (contains? (set (keys cascading)) "action"))
@@ -160,29 +160,43 @@
 
 (deftest reconcile-chunks-reindex-messages-test
   (testing "surviving ids go out in bounded chunks, so one batch cannot blow the bind-parameter limit"
-    (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model" :type :model}
-                   :model/Action {_a1 :id}     {:name "Chunk Action 1" :model_id card-id :type :query}
-                   :model/Action {_a2 :id}     {:name "Chunk Action 2" :model_id card-id :type :query}
-                   :model/Action {_a3 :id}     {:name "Chunk Action 3" :model_id card-id :type :query}]
-      (let [cascading (search/cascading-documents [(t2/select-one :model/Card card-id)])
+    (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model", :type :model}
+                   :model/Action {_a1 :id}     {:name "Chunk Action 1", :model_id card-id, :type :query}
+                   :model/Action {_a2 :id}     {:name "Chunk Action 2", :model_id card-id, :type :query}
+                   :model/Action {_a3 :id}     {:name "Chunk Action 3", :model_id card-id, :type :query}]
+      (let [cascading (search/cascading-documents [(t2/select-one :model/Card :id card-id)])
             calls     (atom [])]
         (is (= 3 (count (get cascading "action"))))
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
         (with-redefs [search/reindex-batch-size 2]
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
                                       (fn [updates] (swap! calls conj updates))]
             (search/reconcile-cascading-documents! cascading)))
-        (let [selectors (mapcat identity @calls)]
+        (let [selectors (into [] cat @calls)]
           (testing "three surviving documents split across two messages, neither over the limit"
             (is (= [2 1] (sort > (map (fn [[_model [_in _id-expr ids]]] (count ids)) selectors))))))))))
 
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"
-    (mt/with-temp [:model/Card   {card-id :id} {:name "Ceiling Model" :type :model}
-                   :model/Action {_a :id}      {:name "Ceiling Action" :model_id card-id :type :query}]
-      (let [instances [(t2/select-one :model/Card card-id)]]
+    (mt/with-temp [:model/Card   {card-id :id} {:name "Ceiling Model", :type :model}
+                   :model/Action {_a :id}      {:name "Ceiling Action", :model_id card-id, :type :query}]
+      (let [instances [(t2/select-one :model/Card :id card-id)]]
         (is (contains? (set (keys (search/cascading-documents instances))) "action"))
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
         (with-redefs [search.ingestion/max-enumerated-documents 0]
           (is (nil? (search/cascading-documents instances))))))))
+
+(deftest reconcile-leaves-unenumerable-survivors-alone-test
+  (testing "when the surviving documents cannot be enumerated, reconcile purges none of them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id}   {:name "Unenumerable Model", :type :model}
+                     :model/Action {action-id :id} {:name "Live Action", :model_id card-id, :type :query}]
+        (let [cascading (search/cascading-documents [(t2/select-one :model/Card :id card-id)])]
+          (is (contains? (set (keys cascading)) "action"))
+          ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+          (with-redefs [search.ingestion/max-enumerated-documents 0]
+            (search/reconcile-cascading-documents! cascading))
+          (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id)))))))))
 
 (deftest model-index-gets-delete-capture-test
   (testing "ModelIndex is captured for deletes despite being kept out of :hook/search-index"
