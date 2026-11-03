@@ -6,17 +6,18 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { Outlet } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 const SecurityCenterNav = () => (
   <AdminNavWrapper>
     <AdminNavItem
       label={t`Advisories`}
-      path="/admin/security-center/advisories"
+      path={Urls.securityCenterAdvisories()}
       icon="shield_outline"
     />
     <AdminNavItem
       label={t`Health checks`}
-      path="/admin/security-center/health-checks"
+      path={Urls.securityCenterHealthChecks()}
       icon="pulse"
     />
   </AdminNavWrapper>

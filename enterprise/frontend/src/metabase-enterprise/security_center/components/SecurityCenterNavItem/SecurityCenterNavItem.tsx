@@ -5,10 +5,11 @@ import {
   AdminNavListItem,
 } from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { SecurityCenterBadge } from "./SecurityCenterBadge";
 
-const PATH = "/admin/security-center";
+const PATH = Urls.securityCenter();
 
 interface SecurityCenterNavItemProps {
   currentPath: string;
