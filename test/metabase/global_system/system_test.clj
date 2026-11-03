@@ -827,3 +827,40 @@
                {:stopped? (system/stop! handle), :stopped @stopped, :root @handle}))
         (finally
           (cleanup! [handle]))))))
+
+(deftest ^:synchronized derived-component-test
+  (mc/alter-root db-handle :root-db)
+  (let [makes   (atom 0)
+        derived (system/derived-component-handle ::derived [db-handle]
+                                                 (fn [db] (swap! makes inc) {:for db, :id (Object.)}))]
+    (testing "the same dependency value gives the same derived value"
+      (is (identical? @derived @derived))
+      (is (= 1 @makes)))
+    (testing "a binding of the dependency gets its own value, and the root's is still there after"
+      (let [root-value @derived]
+        (mc/binding db-handle :bound-db
+                    (fn [] (is (= :bound-db (:for @derived)))))
+        (is (identical? root-value @derived))))
+    (testing "a write that replaces the dependency's value gets a fresh derived value"
+      (mc/reset! db-handle :replaced-db)
+      (is (= :replaced-db (:for @derived))))
+    (testing "dependency values are told apart by identity, not equality"
+      (mc/reset! db-handle (String. "same"))
+      (let [first-value @derived]
+        (mc/reset! db-handle (String. "same"))
+        (is (not (identical? first-value @derived)))))
+    (testing "only the most recent dependency values are remembered"
+      (mc/reset! db-handle :oldest)
+      (let [oldest @derived]
+        (doseq [i (range 8)]
+          (mc/reset! db-handle i)
+          @derived)
+        (mc/reset! db-handle :oldest)
+        (is (not (identical? oldest @derived)))))
+    (testing "threads racing on a new dependency value all get one derived value"
+      (mc/reset! db-handle :raced)
+      (let [go      (promise)
+            racers  (mapv (fn [_] (future @go @derived)) (range 16))
+            _       (deliver go true)
+            results (mapv deref racers)]
+        (is (= 1 (count (into #{} (map System/identityHashCode) results))))))))
