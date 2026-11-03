@@ -41,8 +41,8 @@
                      :model/Collection {collection-id :id} {:type "library-data"}]
         (try
           (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
-                                                           {:is_published  true
-                                                            :collection_id collection-id})
+                                                                  {:is_published  true
+                                                                   :collection_id collection-id})
           (let [all-users (perms/all-users-group)]
             (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
             (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
@@ -54,7 +54,7 @@
           (f user-id collection-id)
           (finally
             (schema.table-user-settings/unset-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
-                                                             [:is_published :collection_id])))))))
+                                                                   [:is_published :collection_id])))))))
 
 (deftest published-table-test
   (testing "Published tables grant query access via collection permissions only with library enabled\n"
