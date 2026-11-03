@@ -33,6 +33,7 @@ import S from "./ExpressionBar.module.css";
 import { type FilterPillPart, FilterPillParts } from "./FilterPillParts";
 import RowS from "./KeyboardFilterRow.module.css";
 import { PopoverFilterPill } from "./PopoverFilterPill";
+import { useLayoutAnimation } from "./layout-animation";
 import {
   CLOSE_PAREN,
   LOGIC_KEYWORDS,
@@ -314,6 +315,7 @@ export function ExpressionBar({
     ),
   );
   const hasGroups = nesting >= ROWS_FROM_NESTING;
+  useLayoutAnimation(barRef, isExpanded && hasGroups ? "rows" : "line");
   const { areAndsVisible, onTypeAnd } = useConnectors({
     tokens,
     isExpanded,
