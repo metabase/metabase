@@ -1,0 +1,108 @@
+(ns metabase-enterprise.security-center.health-checks-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase.security-center.schema :as security-center.schema]
+   [metabase.test :as mt]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
+
+(defn- fake-check
+  "A registry entry for the tests, with `overrides` on top. Passes with one item unless told otherwise."
+  [& {:as overrides}]
+  (merge {:id                :https-redirect
+          :severity          :medium
+          :title             (deferred-tru "Requests are redirected to HTTPS")
+          :description       (deferred-tru "Plain HTTP exposes sessions.")
+          :remediation       (deferred-tru "Turn on the redirect in Admin settings.")
+          :docs-page         "configuring-metabase/settings"
+          :requires-restart? false
+          :applicable?       (constantly true)
+          :run               (constantly [{:status :pass, :message "Redirect to HTTPS is on"}])}
+         overrides))
+
+(deftest ^:parallel registry-test
+  (testing "every registered check is keyed by its own id and matches the entry schema"
+    (doseq [[id entry] @#'health-checks/checks]
+      (is (= id (:id entry)))
+      (is (mr/validate ::health-checks/entry entry))))
+  (testing "an entry registered under another id fails at load time"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"registered under"
+                          (#'health-checks/validated-registry {:sso-login (fake-check)}))))
+  (testing "an entry outside the schema fails at load time"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (#'health-checks/validated-registry {:https-redirect (fake-check :severity :urgent)})))))
+
+(deftest accessors-test
+  (let [redirect (fake-check)
+        sso      (fake-check :id :sso-login)]
+    (with-redefs [health-checks/checks {:https-redirect redirect, :sso-login sso}]
+      (is (= [redirect sso] (health-checks/all-checks)))
+      (is (= [:https-redirect :sso-login] (health-checks/check-ids)))
+      (is (= sso (health-checks/check-by-id :sso-login)))
+      (is (nil? (health-checks/check-by-id :mfa-required))))))
+
+(deftest ^:parallel status-of-test
+  (testing "any item fails → fail"
+    (is (= :fail (health-checks/status-of [{:status :pass} {:status :unknown} {:status :fail}]))))
+  (testing "else any item unknown → unknown"
+    (is (= :unknown (health-checks/status-of [{:status :pass} {:status :unknown}]))))
+  (testing "else pass"
+    (is (= :pass (health-checks/status-of [{:status :pass} {:status :pass}])))))
+
+(deftest ^:parallel applicable-test
+  (is (true? (health-checks/applicable? (fake-check :applicable? (constantly true)))))
+  (is (false? (health-checks/applicable? (fake-check :applicable? (constantly false)))))
+  (testing "a throw counts as applicable, and is logged"
+    (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.health-checks :error]]
+      (is (true? (health-checks/applicable? (fake-check :applicable? #(throw (ex-info "boom" {}))))))
+      (is (=? [{:level :error, :message #"Health check https-redirect could not tell whether it applies"}]
+              (messages))))))
+
+(deftest ^:parallel run-check-test
+  (testing "the response is a HealthCheck, with the texts as strings"
+    (let [response (health-checks/run-check (fake-check))]
+      (is (mr/validate ::security-center.schema/health-check response))
+      (is (=? {:id               :https-redirect
+               :severity         :medium
+               :title            "Requests are redirected to HTTPS"
+               :description      "Plain HTTP exposes sessions."
+               :remediation      "Turn on the redirect in Admin settings."
+               :docs             {:page "configuring-metabase/settings"}
+               :requires_restart false
+               :status           :pass
+               :running          false
+               :checked_at       java.time.OffsetDateTime
+               :items            [{:status :pass, :message "Redirect to HTTPS is on"}]}
+              response))
+      (is (not (contains? (:docs response) :anchor)))))
+  (testing "the docs anchor is returned when the entry has one"
+    (is (= {:page "configuring-metabase/environment-variables", :anchor "mb_session_secret_key"}
+           (:docs (health-checks/run-check (fake-check :docs-page   "configuring-metabase/environment-variables"
+                                                       :docs-anchor "mb_session_secret_key"))))))
+  (testing "the status follows the items"
+    (is (= :fail (:status (health-checks/run-check (fake-check :run (constantly [{:status :pass} {:status :fail}]))))))
+    (is (= :unknown (:status (health-checks/run-check (fake-check :run (constantly [{:status :unknown}])))))))
+  (testing "the texts follow the user's locale"
+    (mt/with-user-locale "es"
+      (is (= "Requests are redirected to HTTPS"
+             (:title (health-checks/run-check (fake-check)))))))
+  (testing "a check that throws comes back as unknown with the error's message, and is logged"
+    (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.health-checks :error]]
+      (let [response (health-checks/run-check (fake-check :run #(throw (ex-info "the setting is unreadable" {}))))]
+        (is (mr/validate ::security-center.schema/health-check response))
+        (is (= :unknown (:status response)))
+        (is (= [{:status :unknown, :message "The check could not run: the setting is unreadable"}]
+               (:items response))))
+      (is (=? [{:level :error, :message "Health check https-redirect failed"}]
+              (messages)))))
+  (testing "a check that returns no items comes back as unknown"
+    (let [response (health-checks/run-check (fake-check :run (constantly [])))]
+      (is (= :unknown (:status response)))
+      (is (=? [{:status :unknown, :message string?}] (:items response)))))
+  (testing "a check that returns an item outside the schema comes back as unknown"
+    (let [response (health-checks/run-check (fake-check :run (constantly [{:status :error}])))]
+      (is (= :unknown (:status response)))
+      (is (mr/validate ::security-center.schema/health-check response)))))
