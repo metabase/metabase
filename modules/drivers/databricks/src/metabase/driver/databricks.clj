@@ -287,9 +287,10 @@
       (if use-m2m "m2m" "pat")))
 
 (defn- normalize-details [details]
-  (cond-> details
-    (not (contains? details :auth-mode))
-    (assoc :auth-mode (infer-auth-mode details))))
+  (when details
+    (cond-> details
+      (not (contains? details :auth-mode))
+      (assoc :auth-mode (infer-auth-mode details)))))
 
 (defmethod driver/normalize-db-details :databricks
   [_driver database]
