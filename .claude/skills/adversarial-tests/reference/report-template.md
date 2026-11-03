@@ -30,6 +30,8 @@ Repro: `tests/<generator>/<path>.txt`, test "<full test name>". Copy it to `<rep
 bun run test-unit-keep-cljs --ci --maxWorkers=2 --testTimeout=10000 --runTestsByPath <repo-relative path> -t "<test name>"
 ```
 
+<For a backend test, the run command is `./bin/test-agent :only '[<namespace>/<test name>]'` instead.>
+
 <If there are no findings, write "None." under the heading.>
 
 ## Candidates to keep

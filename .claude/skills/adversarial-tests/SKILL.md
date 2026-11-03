@@ -43,7 +43,7 @@ local/adversarial-tests/<run-id>/
   blind/prompt.md, blind/SCENARIOS.md    its prompt and its scenario list
   manifest.tsv                           every generated file: generator, path, risk or scenario
   repairs.md                             every harness repair from step 8
-  runs/*.json, runs/*.tsv                raw Jest results and summaries
+  runs/*.json, runs/*.txt, runs/*.tsv    raw Jest results, raw test-agent output, and summaries
   triage.tsv                             one line per test with its verdict
   tests/diff-informed/..., tests/blind/...   copies of every generated file, as .txt
   report.md
@@ -105,7 +105,9 @@ gh issue view <n> --repo metabase/metabase --json number,title,body \
   --jq '"Issue #\(.number): \(.title)\n\n\(.body)"' > "$RUN_DIR/context/issues/<n>.md"
 ```
 
-For Linear issue ids in the body or branch name (`[A-Z]{2,5}-[0-9]+`), run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. Without it, note in the report that the Linear issue was not read.
+`gh issue view` also returns pull requests, and a `#<number>` in a PR body is often a related PR. Skip any number whose `gh issue view <n> --json url` URL contains `/pull/`, because another PR's description says nothing about what this one intends.
+
+For Linear issue ids in the body or branch name, match `[A-Za-z]{2,5}-[0-9]+` and uppercase the result, because branch names are usually lowercase (`sec-1343-model-metadata-positional-names`). Then run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. Without it, note in the report that the Linear issue was not read.
 
 ### 4. Name the risks
 
@@ -129,20 +131,20 @@ mkdir -p "$SANDBOX/out"
 cp "$RUN_DIR/blind/context.md" "$SANDBOX/context.md"
 cp .claude/skills/adversarial-tests/reference/blind-generator.md "$SANDBOX/prompt.md"
 cp "$SANDBOX/prompt.md" "$RUN_DIR/blind/prompt.md"
-(cd "$SANDBOX" && claude -p --restricted --tools "Read,Write" \
+(cd "$SANDBOX" && claude -p --restricted --strict-mcp-config --tools "Read,Write" \
   --permission-mode acceptEdits --permission-prompts none \
   --model opus --no-session-persistence \
   "Read prompt.md and context.md in the current directory, then do what prompt.md says." \
   > "$RUN_DIR/blind/transcript.txt" 2>&1)
 ```
 
-Blindness is enforced by what the process can reach, not by asking it to look away. `--restricted` drops Bash and every other code-running tool, ignores user and project settings, and confines the file tools to the working directory. `--tools "Read,Write"` leaves it nothing else. The working directory is a fresh directory outside every git checkout, so the only files it can open are `prompt.md` and `context.md`, and the only place it can write is `out/`. The context file in turn is built by a script whose extractors drop function bodies and diff hunks.
+Blindness is enforced by what the process can reach, not by asking it to look away. `--restricted` drops Bash and every other code-running tool, ignores user and project settings, and confines the file tools to the working directory. `--strict-mcp-config` with no `--mcp-config` loads no MCP servers, so connectors such as GitHub or Linear cannot fetch the PR. `--tools "Read,Write"` leaves it nothing else. The working directory is a fresh directory outside every git checkout, so the only files it can open are `prompt.md` and `context.md`, and the only place it can write is `out/`. The context file in turn is built by a script whose extractors drop function bodies and diff hunks.
 
 The blind generator does not run anything, so you can carry on with step 6 while it works. If the `claude` CLI is not available, run the blind generator as an Agent call whose brief is the prompt file and the context file, and state in the report that blindness was by instruction only for this run.
 
 ### 6. Write the diff-informed tests
 
-Read `reference/diff-informed-generator.md` and write the tests yourself into the head worktree, at the paths it gives. Record each file in `manifest.tsv` with the generator name `diff-informed` and the risk ids it covers. Do not run Jest yet, apart from the parent-commit calibration that the file describes for tests whose oracle is the parent's behaviour.
+Read `reference/diff-informed-generator.md` and write the tests yourself into the head worktree, at the paths it gives. Record each file in `manifest.tsv` with the generator name `diff-informed` and the risk ids it covers. Do not run any generated test yet, apart from the parent-commit calibration that the file describes for tests whose oracle is the parent's behaviour.
 
 ### 7. Collect the blind tests
 
@@ -168,8 +170,13 @@ node .claude/skills/adversarial-tests/scripts/jest-summary.mjs "$RUN_DIR/runs/<l
 Backend runs also go one process at a time:
 
 ```bash
-(cd "$WT/<side>" && ./bin/test-agent :only '[metabase.foo.bar-adversarial-diff-test metabase.foo.bar-adversarial-blind-test]')
+(cd "$WT/<side>" && ./bin/test-agent :only '[metabase.foo.bar-adversarial-diff-test metabase.foo.bar-adversarial-blind-test]') \
+  > "$RUN_DIR/runs/<label>.txt" 2>&1
+(cd "${TMPDIR:-/tmp}" && bb "$REPO/.claude/skills/adversarial-tests/scripts/test-agent-summary.bb" \
+  "$RUN_DIR/runs/<label>.txt" "$WT/<side>" <test file> [<test file> ...]) > "$RUN_DIR/runs/<label>.tsv"
 ```
+
+`:only` takes namespaces, or `<namespace>/<test name>` to pick single tests. The summary prints one line per selected `deftest` with status `PASSED`, `FAILED`, `ERROR` (the test threw) or `LOAD_ERROR`, and skips the Liquibase `Running Changeset:` lines that make up most of the output. Hawk loads every namespace before it runs any test, so one generated file that does not compile stops the whole run, and every test then shows `LOAD_ERROR`. The last column of a `LOAD_ERROR` line quotes the compiler error, which names the file and line. `bb` runs from `$TMPDIR` because the repo's `bb.edn` would make it resolve the project's dependencies first. In a fresh worktree one invocation took about 70 seconds.
 
 A running REPL is attached to one checkout, so it cannot run the parent commit's code. Use `./bin/test-agent` in both worktrees, so both sides run the same way.
 

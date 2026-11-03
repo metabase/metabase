@@ -4,11 +4,11 @@ This step runs every generated test on the PR head, then on the parent commit wh
 
 ## 1. First run on the head
 
-Run all generated frontend specs in one Jest invocation (label `head-1`), then all backend scratch namespaces in one `./bin/test-agent` invocation. Summarise the Jest results with `jest-summary.mjs`.
+Run all generated frontend specs in one Jest invocation (label `head-1`), then all backend scratch namespaces in one `./bin/test-agent` invocation. Summarise the Jest results with `jest-summary.mjs` and the `test-agent` output with `test-agent-summary.bb`.
 
 Sort every failure into one of two kinds:
 
-- A harness error means the test never reached its assertion for reasons unrelated to the behaviour under test. Typical causes are a `SUITE_ERROR` line (syntax error, bad import, a module that does not exist at that path), an unmocked endpoint (`No fallback response defined for GET /api/...`), a missing provider or store slice, or a fixture that fails schema validation.
+- A harness error means the test never reached its assertion for reasons unrelated to the behaviour under test. Typical causes are a `SUITE_ERROR` line (syntax error, bad import, a module that does not exist at that path), an unmocked endpoint (`No fallback response defined for GET /api/...`), a missing provider or store slice, or a fixture that fails schema validation. On the backend, a namespace that does not compile (`Unable to resolve symbol`, `Could not locate ... on classpath`) shows as `LOAD_ERROR`. One such file stops every backend test in the run, so repair or drop it first and rerun before you sort anything else.
 - An assertion failure means the test ran its actions and an `expect` or `is` disagreed. A thrown error from the code under test also counts here, because a crash on a valid input is a result.
 
 ## 2. Repair harness errors, within fixed rules
@@ -34,7 +34,7 @@ Repair at most twice per file, rerunning after each round. A test still failing 
 
 ## 3. Rerun every failure once
 
-Rerun every spec that has an assertion failure (label `head-2`), filtered with `-t` to the failing tests. End each id in the pattern with the character that follows it in the title, such as `"S3 |R2:"`, because `S1` also matches `S13`. Tests that `-t` filters out show as `PENDING` in the summary, so ignore those lines. A test that passes on the rerun is a flake. Record it as `flake` and stop there. A test that fails both times goes on to the parent run.
+Rerun every spec that has an assertion failure (label `head-2`), filtered with `-t` to the failing tests. End each id in the pattern with the character that follows it in the title, such as `"S3 |R2:"`, because `S1` also matches `S13`. Tests that `-t` filters out show as `PENDING` in the summary, so ignore those lines. For backend tests, list each failing test as `<namespace>/<test name>` in `:only`, which selects exactly those tests, and give the summary script the same files as before: it prints only the tests the run selected. A test that passes on the rerun is a flake. Record it as `flake` and stop there. A test that fails both times goes on to the parent run.
 
 ## 4. Run on the parent commit
 

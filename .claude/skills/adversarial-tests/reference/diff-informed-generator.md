@@ -43,5 +43,6 @@ These conventions come from the existing test namespaces:
 
 - Require `[clojure.test :refer :all]` and `[metabase.test :as mt]`. Create rows with `mt/with-temp`, call endpoints with `mt/user-http-request`, and run queries with `mt/run-mbql-query` or `qp/process-query`.
 - For property tests, use `clojure.test.check` (`defspec` from `clojure.test.check.clojure-test`, plus `clojure.test.check.generators` and `clojure.test.check.properties`) with at most 50 trials per property, to keep the run short.
+- To calibrate parent-behaviour tests, list only those tests in `:only` on the parent, as `<namespace>/<test name>`, so the stated-intent tests in the same file do not run there early.
 - Use `mt/test-drivers` only for a differential across drivers, and only with drivers that run locally (`:h2`, and `:postgres` if it is already running).
 - Comments follow the house rule: a comment explains a wait, seed or mock whose shape would otherwise look wrong, and nothing else.

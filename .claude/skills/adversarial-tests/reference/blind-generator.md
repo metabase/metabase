@@ -97,6 +97,7 @@ Follow these rules for backend files:
 - `mt/user-http-request` takes a test user (`:crowberto` is an admin, `:rasta` is not), a method, the expected status, and the path without `/api/`.
 - `mt/with-temp` creates rows that are deleted after the body. Models are named like `:model/Card`, `:model/Dashboard`, `:model/Collection`.
 - Queries against the sample data go through `(mt/run-mbql-query venues {:filter [:= $price 1]})` and friends.
+- In query results a joined column's `:name` is its own column name, with `_2` added when another column already has it (`ID_2`). The join alias appears only in its `:display_name`, as in `"Model → Category ID"`.
 
 ## Output
 
