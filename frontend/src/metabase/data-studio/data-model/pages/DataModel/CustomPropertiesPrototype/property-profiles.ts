@@ -6,13 +6,30 @@ import {
 } from "metabase-types/api/mocks";
 import { isObject } from "metabase-types/guards";
 
-import { CUSTOMER_PROPERTIES_ID } from "./fixtures";
+import {
+  CUSTOMER_PROPERTIES_ID,
+  CUSTOM_FIELD_ID,
+  CUSTOM_FIELD_ID_FIELD_ID,
+  CUSTOM_FIELD_NAME_FIELD_ID,
+  CUSTOM_FIELD_TITLE_FIELD_ID,
+  CUSTOM_FIELD_TYPE_FIELD_ID,
+  DEAL_PROPERTY_ID,
+  DEAL_PROPERTY_LABEL_FIELD_ID,
+  DEAL_PROPERTY_NAME_FIELD_ID,
+  DEAL_PROPERTY_TYPE_FIELD_ID,
+} from "./fixtures";
 
 type PropertyProfile = {
+  id: number;
   name: string;
-  firstSeenDaysAgo: number;
-  lastSeenDaysAgo: number;
   values: [string, number][];
+};
+
+type CustomFieldDefinition = {
+  id: number;
+  name: string;
+  title: string;
+  fieldType: string | null;
 };
 
 export const CUSTOMER_COUNT = 2320;
@@ -34,9 +51,8 @@ const range = (
 
 const PROPERTY_PROFILES: PropertyProfile[] = [
   {
+    id: 1,
     name: "plan",
-    firstSeenDaysAgo: 1700,
-    lastSeenDaysAgo: 0,
     values: [
       ["Free", 1204],
       ["Starter", 610],
@@ -45,9 +61,8 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 2,
     name: "region",
-    firstSeenDaysAgo: 1700,
-    lastSeenDaysAgo: 0,
     values: [
       ["AMER", 1120],
       ["EMEA", 690],
@@ -55,9 +70,8 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 3,
     name: "hubspot_lifecycle_stage",
-    firstSeenDaysAgo: 900,
-    lastSeenDaysAgo: 1,
     values: [
       ["customer", 1210],
       ["lead", 402],
@@ -67,9 +81,8 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 4,
     name: "signup_source",
-    firstSeenDaysAgo: 1650,
-    lastSeenDaysAgo: 0,
     values: [
       ["website", 1022],
       ["referral", 431],
@@ -78,9 +91,8 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 5,
     name: "seats",
-    firstSeenDaysAgo: 1700,
-    lastSeenDaysAgo: 0,
     values: [
       ...range(60, (index) => String((index + 1) * 5), 1597),
       ["10+", 38],
@@ -89,15 +101,13 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 6,
     name: "mrr_usd",
-    firstSeenDaysAgo: 1500,
-    lastSeenDaysAgo: 0,
     values: range(80, (index) => `${(index + 1) * 49}.00`, 1601),
   },
   {
+    id: 7,
     name: "industry",
-    firstSeenDaysAgo: 1700,
-    lastSeenDaysAgo: 1,
     values: [
       ["Software", 520],
       ["Financial services", 301],
@@ -108,9 +118,8 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 8,
     name: "csm_email",
-    firstSeenDaysAgo: 1030,
-    lastSeenDaysAgo: 0,
     values: range(
       18,
       (index) =>
@@ -119,15 +128,13 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ),
   },
   {
+    id: 9,
     name: "nps_score",
-    firstSeenDaysAgo: 700,
-    lastSeenDaysAgo: 3,
     values: range(11, (index) => String(10 - index), 640),
   },
   {
+    id: 10,
     name: "trial_ends_on",
-    firstSeenDaysAgo: 1680,
-    lastSeenDaysAgo: 0,
     values: range(
       40,
       (index) =>
@@ -138,27 +145,24 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ),
   },
   {
+    id: 11,
     name: "is_beta_tester",
-    firstSeenDaysAgo: 640,
-    lastSeenDaysAgo: 6,
     values: [
       ["true", 120],
       ["false", 66],
     ],
   },
   {
-    name: "Plan Tier",
-    firstSeenDaysAgo: 420,
-    lastSeenDaysAgo: 0,
+    id: 12,
+    name: "plan_tier",
     values: [
       ["pro", 98],
       ["free", 41],
     ],
   },
   {
+    id: 13,
     name: "churn_risk",
-    firstSeenDaysAgo: 3,
-    lastSeenDaysAgo: 0,
     values: [
       ["low", 52],
       ["medium", 31],
@@ -166,15 +170,54 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 15,
     name: "legacy_billing_id",
-    firstSeenDaysAgo: 1700,
-    lastSeenDaysAgo: 450,
     values: range(50, (index) => `LB-${10023 + index * 7}`, 510),
   },
 ];
 
-const daysAgo = (days: number) =>
-  new Date(Date.now() - days * DAY_MS).toISOString();
+const CUSTOM_FIELD_DEFINITIONS: CustomFieldDefinition[] = [
+  { id: 1, name: "plan", title: "Plan", fieldType: "dropdown" },
+  { id: 2, name: "region", title: "Region", fieldType: "dropdown" },
+  {
+    id: 3,
+    name: "hubspot_lifecycle_stage",
+    title: "Lifecycle stage",
+    fieldType: "dropdown",
+  },
+  {
+    id: 4,
+    name: "signup_source",
+    title: "Signup source",
+    fieldType: "dropdown",
+  },
+  { id: 5, name: "seats", title: "Seats", fieldType: "number" },
+  { id: 6, name: "mrr_usd", title: "MRR", fieldType: "currency" },
+  { id: 7, name: "industry", title: "Industry", fieldType: "dropdown" },
+  { id: 8, name: "csm_email", title: "CSM", fieldType: "text" },
+  { id: 9, name: "nps_score", title: "NPS", fieldType: null },
+  { id: 10, name: "trial_ends_on", title: "Trial ends", fieldType: "date" },
+  {
+    id: 11,
+    name: "is_beta_tester",
+    title: "Beta tester",
+    fieldType: "checkbox",
+  },
+  { id: 12, name: "plan_tier", title: "Plan Tier", fieldType: "dropdown" },
+  { id: 13, name: "churn_risk", title: "Churn risk", fieldType: "dropdown" },
+  { id: 14, name: "renewal_date", title: "Renewal date", fieldType: "date" },
+];
+
+const DEAL_PROPERTIES: [string, string, string][] = [
+  ["dealname", "Deal name", "string"],
+  ["amount", "Amount", "number"],
+  ["createdate", "Create date", "datetime"],
+  ["dealstage", "Deal stage", "enumeration"],
+  ["lead_src_c", "Lead source", "enumeration"],
+  ["partner_referral", "Partner referral", "bool"],
+  ["implementation_start", "Implementation start", "date"],
+  ["seats_requested", "Seats requested", "number"],
+];
 
 const sumCounts = (values: [string, number][]) =>
   values.reduce((sum, [, count]) => sum + count, 0);
@@ -198,16 +241,14 @@ export function getEntityCountDataset() {
 
 export function getPropertySummaryDataset() {
   return dataset(
-    ["property_name", "entities", "count", "values", "min", "max"],
+    ["custom_field_id", "entities", "count", "values"],
     PROPERTY_PROFILES.map((profile) => {
       const entityCount = sumCounts(profile.values);
       return [
-        profile.name,
+        profile.id,
         entityCount,
         entityCount,
         DISTINCT_VALUE_COUNTS[profile.name] ?? profile.values.length,
-        daysAgo(profile.firstSeenDaysAgo),
-        daysAgo(profile.lastSeenDaysAgo),
       ];
     }),
   );
@@ -215,15 +256,70 @@ export function getPropertySummaryDataset() {
 
 export function getPropertyValuesDataset() {
   return dataset(
-    ["property_name", "property_value", "count"],
+    ["custom_field_id", "value", "count"],
     PROPERTY_PROFILES.flatMap((profile) =>
-      profile.values.map(([value, count]) => [profile.name, value, count]),
+      profile.values.map(([value, count]) => [profile.id, value, count]),
     ).sort((a, b) => Number(b[2]) - Number(a[2])),
   );
 }
 
+const CUSTOM_FIELD_COLUMNS: Record<number, keyof CustomFieldDefinition> = {
+  [CUSTOM_FIELD_ID_FIELD_ID]: "id",
+  [CUSTOM_FIELD_NAME_FIELD_ID]: "name",
+  [CUSTOM_FIELD_TITLE_FIELD_ID]: "title",
+  [CUSTOM_FIELD_TYPE_FIELD_ID]: "fieldType",
+};
+
+const DEAL_PROPERTY_COLUMNS: Record<number, number> = {
+  [DEAL_PROPERTY_NAME_FIELD_ID]: 0,
+  [DEAL_PROPERTY_LABEL_FIELD_ID]: 1,
+  [DEAL_PROPERTY_TYPE_FIELD_ID]: 2,
+};
+
+function getRequestedFieldIds(query: Record<string, unknown>): number[] {
+  return Array.isArray(query.fields)
+    ? query.fields.flatMap((ref: unknown) =>
+        Array.isArray(ref) && typeof ref[1] === "number" ? [ref[1]] : [],
+      )
+    : [];
+}
+
+function getCustomFieldDataset(fieldIds: number[]) {
+  return dataset(
+    fieldIds.map(String),
+    CUSTOM_FIELD_DEFINITIONS.map((definition) =>
+      fieldIds.map((fieldId) => {
+        const column = CUSTOM_FIELD_COLUMNS[fieldId];
+        return column ? definition[column] : null;
+      }),
+    ),
+  );
+}
+
+function getDealPropertyDataset(fieldIds: number[]) {
+  return dataset(
+    fieldIds.map(String),
+    DEAL_PROPERTIES.map((row) =>
+      fieldIds.map((fieldId) => {
+        const index = DEAL_PROPERTY_COLUMNS[fieldId];
+        return index != null ? row[index] : null;
+      }),
+    ),
+  );
+}
+
 export function getPropertyRegistryDataset(query: unknown): Dataset | null {
-  if (!isObject(query) || query["source-table"] !== CUSTOMER_PROPERTIES_ID) {
+  if (!isObject(query)) {
+    return null;
+  }
+  const sourceTable = query["source-table"];
+  if (sourceTable === CUSTOM_FIELD_ID) {
+    return getCustomFieldDataset(getRequestedFieldIds(query));
+  }
+  if (sourceTable === DEAL_PROPERTY_ID) {
+    return getDealPropertyDataset(getRequestedFieldIds(query));
+  }
+  if (sourceTable !== CUSTOMER_PROPERTIES_ID) {
     return null;
   }
   const breakoutCount = Array.isArray(query.breakout)

@@ -7,7 +7,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import {
   type RegistryProperty,
   usePropertyRegistry,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
 import {
   Card,
@@ -40,8 +39,7 @@ type PropertyFilter = "all" | "attention" | "hidden";
 const MAX_LISTED_VALUES = 4;
 
 export function TablePropertyList({ table }: { table: Table }) {
-  const { getTableStructure } = useTableStructures();
-  const state = usePropertyRegistry(table, getTableStructure(table).eav);
+  const state = usePropertyRegistry(table);
   const { selectedPropertyName, setSelectedPropertyName } =
     usePropertySelection();
   const [filter, setFilter] = useState<PropertyFilter>("all");
@@ -50,7 +48,7 @@ export function TablePropertyList({ table }: { table: Table }) {
   if (state.status === "unbound") {
     return (
       <EmptyState
-        message={t`Pick the entity, property and value columns in Details to see this table's properties.`}
+        message={t`Pick the entity, property and value columns in Details to see this table's custom fields.`}
         spacing="sm"
       />
     );
@@ -88,7 +86,7 @@ export function TablePropertyList({ table }: { table: Table }) {
       <Stack gap="md">
         <TextInput
           leftSection={<Icon name="search" />}
-          placeholder={t`Search properties`}
+          placeholder={t`Search custom fields`}
           value={search}
           onChange={(event) => setSearch(event.currentTarget.value)}
         />
@@ -112,15 +110,17 @@ export function TablePropertyList({ table }: { table: Table }) {
         />
       </Stack>
       <Text size="sm" c="text-secondary">
-        {t`Profiled from ${state.registry.rowCount.toLocaleString()} rows about ${state.registry.entityCount.toLocaleString()} entities. Coverage is the share of entities with a value.`}
+        {state.registry.hasDefinitions
+          ? t`Labels and types come from the field definitions. Coverage is the share of ${state.registry.entityCount.toLocaleString()} entities with a value.`
+          : t`No field definitions, so labels and types are inferred from ${state.registry.rowCount.toLocaleString()} values. Coverage is the share of ${state.registry.entityCount.toLocaleString()} entities with a value.`}
       </Text>
       <Stack gap="sm" role="list">
         {visibleProperties.map((property) => (
           <PropertyItem
-            key={property.name}
+            key={property.key}
             property={property}
-            active={property.name === selectedPropertyName}
-            onSelect={() => setSelectedPropertyName(property.name)}
+            active={property.key === selectedPropertyName}
+            onSelect={() => setSelectedPropertyName(property.key)}
           />
         ))}
       </Stack>
@@ -137,13 +137,7 @@ function PropertyItem({
   active: boolean;
   onSelect: () => void;
 }) {
-  const valuesLabel =
-    property.distinctValueCount <= MAX_LISTED_VALUES
-      ? property.topValues
-          .slice(0, MAX_LISTED_VALUES)
-          .map(({ value }) => value)
-          .join(", ")
-      : t`${property.distinctValueCount.toLocaleString()} values`;
+  const valuesLabel = getValuesLabel(property);
 
   return (
     <Card
@@ -208,4 +202,17 @@ function PropertyItem({
       </UnstyledButton>
     </Card>
   );
+}
+
+function getValuesLabel(property: RegistryProperty) {
+  if (property.distinctValueCount === 0) {
+    return t`No values yet`;
+  }
+  if (property.distinctValueCount <= MAX_LISTED_VALUES) {
+    return property.topValues
+      .slice(0, MAX_LISTED_VALUES)
+      .map(({ value }) => value)
+      .join(", ");
+  }
+  return t`${property.distinctValueCount.toLocaleString()} values`;
 }

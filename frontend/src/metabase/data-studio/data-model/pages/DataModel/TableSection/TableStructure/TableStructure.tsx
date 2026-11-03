@@ -9,7 +9,9 @@ import { Link } from "metabase/common/components/Link";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
   type EavBinding,
+  type EavDefinitionTable,
   type HistoryBinding,
+  type ResolvedEavBinding,
   type TableStructure as TableStructureValue,
   getPeriodGranularityOptions,
   getRowIdentityLabel,
@@ -19,6 +21,7 @@ import {
   getTableRoleRowDescription,
   isRoleA,
   isTableRole,
+  useEavBinding,
   usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -40,6 +43,7 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { DetailsEditableText } from "../../DetailPanel";
 
+import { PivotModelInput } from "./PivotModelInput";
 import S from "./TableStructure.module.css";
 
 interface TableStructureProps {
@@ -170,7 +174,6 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
         <EavBindingSection
           table={table}
           fields={fields}
-          binding={structure.eav}
           disabled={readOnly}
           onChange={(eav) => setEavBinding(table, eav)}
         />
@@ -465,22 +468,27 @@ function HistoryBindingSection({
 function EavBindingSection({
   table,
   fields,
-  binding,
   disabled,
   onChange,
 }: {
   table: Table;
   fields: Field[];
-  binding: EavBinding;
   disabled: boolean;
   onChange: (binding: Partial<EavBinding>) => void;
 }) {
+  const resolved = useEavBinding(table);
+  const { binding } = resolved;
+
   return (
-    <SidebarSection title={t`Custom properties`}>
+    <SidebarSection title={t`Custom fields`}>
       <Text size="sm" c="text-secondary">
-        {t`Each row is one property value of a thing. Properties can be pivoted into columns of that thing.`}
+        {t`Each row is one custom field value of a thing. Labels and types come from the table that defines the fields.`}
       </Text>
       <DetailsTable>
+        <DetailsRow
+          label={t`Belongs to`}
+          value={<EntityTableValue table={table} resolved={resolved} />}
+        />
         <DetailsRow
           label={t`Entity key`}
           value={
@@ -518,22 +526,48 @@ function EavBindingSection({
           }
         />
         <DetailsRow
-          label={t`Changed at`}
+          label={t`Field definitions`}
           value={
-            <FieldSelect
-              label={t`Changed at`}
-              fields={fields.filter((field) => isDate(field))}
-              value={binding.changedAtFieldId}
-              placeholder={t`No change date`}
-              clearable
+            <DefinitionTableInput
+              resolved={resolved}
               disabled={disabled}
-              onChange={(changedAtFieldId) => onChange({ changedAtFieldId })}
+              onChange={onChange}
             />
           }
         />
+        {resolved.definitionTable && (
+          <DetailsRow
+            label={t`Label`}
+            value={
+              <DefinitionFieldInput
+                label={t`Label`}
+                definitionTable={resolved.definitionTable}
+                value={binding.labelFieldId}
+                isOverridden={resolved.isLabelOverridden}
+                disabled={disabled}
+                onChange={(labelFieldId) => onChange({ labelFieldId })}
+              />
+            }
+          />
+        )}
+        {resolved.definitionTable && (
+          <DetailsRow
+            label={t`Type`}
+            value={
+              <DefinitionFieldInput
+                label={t`Type`}
+                definitionTable={resolved.definitionTable}
+                value={binding.typeFieldId}
+                isOverridden={resolved.isTypeOverridden}
+                disabled={disabled}
+                onChange={(typeFieldId) => onChange({ typeFieldId })}
+              />
+            }
+          />
+        )}
         <DetailsRow
-          label={t`Properties`}
-          value={<PropertyRegistrySummary table={table} binding={binding} />}
+          label={t`Fields`}
+          value={<PropertyRegistrySummary table={table} resolved={resolved} />}
         />
         <DetailsRow
           label={t`Columns`}
@@ -549,19 +583,190 @@ function EavBindingSection({
             />
           }
         />
+        <DetailsRow
+          label={t`Pivot model`}
+          value={
+            <PivotModelInput
+              table={table}
+              resolved={resolved}
+              disabled={disabled}
+            />
+          }
+        />
       </DetailsTable>
     </SidebarSection>
   );
 }
 
-function PropertyRegistrySummary({
+function EntityTableValue({
   table,
-  binding,
+  resolved,
 }: {
   table: Table;
-  binding: EavBinding;
+  resolved: ResolvedEavBinding;
 }) {
-  const state = usePropertyRegistry(table, binding);
+  const { entityTable, entityKeyField } = resolved;
+  if (!entityTable || !entityKeyField) {
+    return (
+      <Text c="text-secondary">{t`Pick an entity key that links to a table`}</Text>
+    );
+  }
+  return (
+    <Stack gap="xs" py="xs">
+      <Link
+        to={Urls.dataStudioData({
+          databaseId: table.db_id,
+          schemaName: table.schema,
+          tableId: entityTable.id,
+        })}
+      >
+        <Text c="text-brand" fw="bold">
+          {entityTable.display_name}
+        </Text>
+      </Link>
+      <Text size="sm" c="text-secondary">
+        {t`Inferred: ${entityKeyField.name} → ${entityTable.name}`}
+      </Text>
+    </Stack>
+  );
+}
+
+function DefinitionTableInput({
+  resolved,
+  disabled,
+  onChange,
+}: {
+  resolved: ResolvedEavBinding;
+  disabled: boolean;
+  onChange: (binding: Partial<EavBinding>) => void;
+}) {
+  const {
+    definitionTable,
+    definitionInference,
+    isDefinitionOverridden,
+    schemaTables,
+  } = resolved;
+  const isConfirmedGuess =
+    isDefinitionOverridden &&
+    definitionTable?.id === definitionInference.definitionTableId;
+  const selectDefinitionTable = (
+    definitionTableId: EavBinding["definitionTableId"] | undefined,
+  ) =>
+    onChange({
+      definitionTableId,
+      labelFieldId: undefined,
+      typeFieldId: undefined,
+    });
+
+  return (
+    <Stack gap="xs" py="xs">
+      <Select
+        aria-label={t`Field definitions`}
+        data={schemaTables.map((schemaTable) => ({
+          value: String(schemaTable.id),
+          label: schemaTable.display_name,
+        }))}
+        value={definitionTable ? String(definitionTable.id) : null}
+        placeholder={t`No definitions table`}
+        searchable
+        clearable
+        disabled={disabled}
+        onChange={(value) =>
+          selectDefinitionTable(value != null ? Number(value) : null)
+        }
+      />
+      <Text size="sm" c="text-secondary">
+        <DefinitionTableHint resolved={resolved} />
+      </Text>
+      {!disabled && isDefinitionOverridden && !isConfirmedGuess && (
+        <Button
+          size="compact-sm"
+          variant="subtle"
+          w="fit-content"
+          px={0}
+          onClick={() => selectDefinitionTable(undefined)}
+        >
+          {t`Use the inferred definitions table`}
+        </Button>
+      )}
+    </Stack>
+  );
+}
+
+function DefinitionTableHint({ resolved }: { resolved: ResolvedEavBinding }) {
+  const { definitionTable, definitionInference, isDefinitionOverridden } =
+    resolved;
+  if (definitionTable) {
+    return isDefinitionOverridden
+      ? t`Set by an admin`
+      : t`Inferred: ${definitionInference.signal}`;
+  }
+  return isDefinitionOverridden
+    ? t`None. Labels come from the property names and types from the values.`
+    : t`${definitionInference.signal}. Labels come from the property names and types from the values.`;
+}
+
+function DefinitionFieldInput({
+  label,
+  definitionTable,
+  value,
+  isOverridden,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  definitionTable: EavDefinitionTable;
+  value: FieldId | null;
+  isOverridden: boolean;
+  disabled: boolean;
+  onChange: (fieldId: FieldId | null | undefined) => void;
+}) {
+  const fields = definitionTable.fields ?? [];
+  const selectedField = fields.find(
+    (field) => getRawTableFieldId(field) === value,
+  );
+  return (
+    <Stack gap="xs" py="xs">
+      <FieldSelect
+        label={label}
+        fields={fields}
+        value={value}
+        placeholder={t`None`}
+        clearable
+        disabled={disabled}
+        onChange={onChange}
+      />
+      <Group gap="sm">
+        <Text size="sm" c="text-secondary">
+          {selectedField
+            ? t`From ${definitionTable.name}.${selectedField.name}`
+            : t`Not read from ${definitionTable.name}`}
+          {" · "}
+          {isOverridden ? t`Set by an admin` : t`Inferred`}
+        </Text>
+        {!disabled && isOverridden && (
+          <Button
+            size="compact-sm"
+            variant="subtle"
+            px={0}
+            onClick={() => onChange(undefined)}
+          >
+            {t`Reset`}
+          </Button>
+        )}
+      </Group>
+    </Stack>
+  );
+}
+
+function PropertyRegistrySummary({
+  table,
+  resolved,
+}: {
+  table: Table;
+  resolved: ResolvedEavBinding;
+}) {
+  const state = usePropertyRegistry(table);
   const propertiesUrl = Urls.dataStudioData({
     databaseId: table.db_id,
     schemaName: table.schema,
@@ -582,14 +787,16 @@ function PropertyRegistrySummary({
   const attentionCount = properties.filter(
     (property) => !property.isHidden && property.signals.length > 0,
   ).length;
+  const entityName =
+    resolved.entityTable?.display_name.toLowerCase() ?? t`entities`;
 
   return (
     <Stack gap="xs" py="xs">
       <Group gap="sm">
         <Text c="text-primary" fw="bold">
           {ngettext(
-            msgid`${properties.length} property`,
-            `${properties.length} properties`,
+            msgid`${properties.length} field`,
+            `${properties.length} fields`,
             properties.length,
           )}
         </Text>
@@ -600,7 +807,9 @@ function PropertyRegistrySummary({
         )}
       </Group>
       <Text size="sm" c="text-secondary">
-        {t`Profiled from ${state.registry.rowCount.toLocaleString()} rows about ${state.registry.entityCount.toLocaleString()} entities`}
+        {resolved.definitionTable
+          ? t`Defined in ${resolved.definitionTable.name}, with values for ${state.registry.entityCount.toLocaleString()} ${entityName}`
+          : t`Profiled from ${state.registry.rowCount.toLocaleString()} rows about ${state.registry.entityCount.toLocaleString()} ${entityName}`}
       </Text>
       <Button
         component={Link}
@@ -610,7 +819,7 @@ function PropertyRegistrySummary({
         w="fit-content"
         px={0}
       >
-        {t`Review properties`}
+        {t`Review fields`}
       </Button>
     </Stack>
   );

@@ -71,18 +71,18 @@ export function getPropertyTypeDescription(property: RegistryProperty) {
 
 export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
   return match(signal)
-    .with({ type: "new" }, () => (
-      <Badge color="brand" variant="light" size="sm">{t`New`}</Badge>
+    .with({ type: "undefined" }, () => (
+      <Badge color="warning" variant="light" size="sm">{t`Not defined`}</Badge>
     ))
-    .with({ type: "stale" }, () => (
-      <Badge color="neutral" variant="light" size="sm">{t`Stale`}</Badge>
+    .with({ type: "unused" }, () => (
+      <Badge color="neutral" variant="light" size="sm">{t`No values`}</Badge>
     ))
     .with({ type: "type-drift" }, () => (
       <Badge color="warning" variant="light" size="sm">{t`Bad values`}</Badge>
     ))
-    .with({ type: "duplicate" }, ({ propertyName }) => (
+    .with({ type: "duplicate" }, ({ propertyLabel }) => (
       <Badge color="warning" variant="light" size="sm">
-        {t`Looks like ${propertyName}`}
+        {t`Looks like ${propertyLabel}`}
       </Badge>
     ))
     .exhaustive();

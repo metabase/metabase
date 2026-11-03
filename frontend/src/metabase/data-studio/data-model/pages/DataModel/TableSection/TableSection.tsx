@@ -87,7 +87,7 @@ const TableSectionBase = ({
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             {isCustomPropertyTable && (
-              <Tabs.Tab value="properties">{t`Properties`}</Tabs.Tab>
+              <Tabs.Tab value="properties">{t`Custom fields`}</Tabs.Tab>
             )}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>

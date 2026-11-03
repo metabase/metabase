@@ -58,7 +58,7 @@ const TODAY_MESSAGES: MetabotMessage[] = [
     "today-answer",
     [
       { id: "1", title: "Searched for “pro customers seats”", status: "ended" },
-      { id: "2", title: "Read Customer properties", status: "ended" },
+      { id: "2", title: "Read Custom field values", status: "ended" },
       {
         id: "3",
         title: "Ran SQL: CAST(property_value AS INT) > 50",
@@ -88,7 +88,7 @@ const REGISTRY_MESSAGES: MetabotMessage[] = [
       },
       {
         id: "2",
-        title: "Read Customers and its 14 custom properties",
+        title: "Read Customers and its 14 custom fields",
         status: "ended",
       },
       {
@@ -115,9 +115,9 @@ const DISCOVERY_MESSAGES: MetabotMessage[] = [
     "discovery-answer",
     [
       { id: "1", title: "Read Customers", status: "ended" },
-      { id: "2", title: "Listed custom properties", status: "ended" },
+      { id: "2", title: "Listed custom fields", status: "ended" },
     ],
-    `Besides name, email, country and signup date, there are **14 custom properties** in Customer properties:
+    `Besides name, email, country and signup date, there are **14 custom fields**:
 
 - **Commercial**: Plan (98% of customers), MRR (69%), Seats (71%), Trial ends (12%)
 - **Firmographic**: Region (93%), Industry (64%), Signup source (78%)
@@ -128,19 +128,18 @@ Want a breakdown of customers by plan and region?`,
   ),
 ];
 
-const TODAY_CONTEXT = `table customer_properties
-  customer_id     integer  FK → customers.id
-  property_name   text
-    values: churn_risk, csm_email, industry, mrr_usd,
-            plan, Plan Tier, region, seats, … (14)
-  property_value  text
+const TODAY_CONTEXT = `table custom_field_value
+  customer_id      integer  FK → customers.id
+  custom_field_id  integer  FK → custom_field.id
+  value            text
     values: none (9,412 distinct, over the
             1,000-value limit)
-  updated_at      timestamp`;
+table custom_field
+  id, name, title, field_type`;
 
 const REGISTRY_CONTEXT = `table customers
   id, name, email, country, created_at
-  custom properties (from customer_properties, 14, top 4 shown)
+  custom fields (from custom_field_value, 14, top 4 shown)
     plan     category  98%  Free | Starter | Pro | Enterprise
              "Plan Tier" is merged into it
     seats    integer   71%  5–300, 3% aren't numbers
@@ -211,7 +210,7 @@ export function MetabotComparisonPrototype() {
           title={t`Metabot reads the tables as they are`}
           messages={TODAY_MESSAGES}
           context={TODAY_CONTEXT}
-          contextNote={t`It can guess the property names from the field values of property_name. It can't tell which values belong to which property, what type each one is, or that two names mean the same thing. The answer is wrong: '7' > '50' is true when compared as text.`}
+          contextNote={t`It sees two tables joined by IDs, not that they add columns to Customers. Every value is text, and it can't tell that two fields mean the same thing. The answer is wrong: '7' > '50' is true when compared as text.`}
         />
         <Conversation
           badge={t`With the registry`}

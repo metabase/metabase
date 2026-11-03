@@ -7,14 +7,15 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import { dayjs } from "metabase/dayjs";
 import {
   type PropertySignal,
   type RegistryProperty,
+  type ResolvedEavBinding,
+  useEavBinding,
   usePropertyOverrides,
   usePropertyRegistry,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Alert,
   Button,
@@ -64,11 +65,11 @@ export function PropertyDetailsPanel({
   onWidthChange,
   onClose,
 }: PropertyDetailsPanelProps) {
-  const { getTableStructure } = useTableStructures();
-  const state = usePropertyRegistry(table, getTableStructure(table).eav);
+  const state = usePropertyRegistry(table);
+  const resolved = useEavBinding(table);
   const property =
     state.status === "loaded"
-      ? state.registry.properties.find(({ name }) => name === propertyName)
+      ? state.registry.properties.find(({ key }) => key === propertyName)
       : undefined;
 
   return (
@@ -80,13 +81,17 @@ export function PropertyDetailsPanel({
     >
       <DetailPanelHeader
         icon={property ? getPropertyIcon(property) : "string"}
-        label={t`Property of ${table.display_name}`}
+        label={t`Custom field of ${table.display_name}`}
         title={property?.displayName ?? propertyName}
         isLoading={state.status === "loading"}
         onClose={onClose}
       />
       {property ? (
-        <PropertyDetails table={table} property={property} />
+        <PropertyDetails
+          table={table}
+          property={property}
+          resolved={resolved}
+        />
       ) : (
         <FieldDetailsSkeleton />
       )}
@@ -97,16 +102,17 @@ export function PropertyDetailsPanel({
 function PropertyDetails({
   table,
   property,
+  resolved,
 }: {
   table: Table;
   property: RegistryProperty;
+  resolved: ResolvedEavBinding;
 }) {
   const setOverrides = usePropertyOverrides(table);
   const save = (overrides: Parameters<typeof setOverrides>[1]) =>
     setOverrides(property.name, overrides);
-  const visibleSignals = property.signals.filter(
-    (signal) => signal.type !== "stale" || property.isHidden,
-  );
+  const visibleSignals = property.signals;
+  const definitionColumns = getDefinitionColumnNames(resolved);
 
   return (
     <Stack gap="xxl">
@@ -142,8 +148,18 @@ function PropertyDetails({
             }
           />
           <DetailsRow
+            label={t`Label source`}
+            value={
+              <LabelSource
+                property={property}
+                definitionColumns={definitionColumns}
+                onReset={() => save({ displayName: undefined })}
+              />
+            }
+          />
+          <DetailsRow
             label={t`Raw name`}
-            value={<Code>{property.name}</Code>}
+            value={<RawName property={property} resolved={resolved} />}
           />
           <DetailsRow
             label={t`Description`}
@@ -161,7 +177,13 @@ function PropertyDetails({
           />
           <DetailsRow
             label={t`Type`}
-            value={<PropertyTypeInput property={property} onSave={save} />}
+            value={
+              <PropertyTypeInput
+                property={property}
+                definitionColumns={definitionColumns}
+                onSave={save}
+              />
+            }
           />
           <DetailsRow
             label={t`Semantic type`}
@@ -231,14 +253,6 @@ function PropertyDetails({
             label={t`Distinct values`}
             value={property.distinctValueCount.toLocaleString()}
           />
-          <DetailsRow
-            label={t`First seen`}
-            value={formatDate(property.firstSeen)}
-          />
-          <DetailsRow
-            label={t`Last seen`}
-            value={formatDate(property.lastSeen)}
-          />
         </DetailsTable>
         <TopValues property={property} />
       </SidebarSection>
@@ -246,14 +260,114 @@ function PropertyDetails({
   );
 }
 
+type DefinitionColumnNames = {
+  table: string;
+  label: string | null;
+  type: string | null;
+};
+
+function getDefinitionColumnNames({
+  definitionTable,
+  binding,
+}: ResolvedEavBinding): DefinitionColumnNames | null {
+  if (!definitionTable) {
+    return null;
+  }
+  const fields = definitionTable.fields ?? [];
+  const nameOf = (fieldId: number | null) =>
+    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name ?? null;
+  return {
+    table: definitionTable.name,
+    label: nameOf(binding.labelFieldId),
+    type: nameOf(binding.typeFieldId),
+  };
+}
+
+function LabelSource({
+  property,
+  definitionColumns,
+  onReset,
+}: {
+  property: RegistryProperty;
+  definitionColumns: DefinitionColumnNames | null;
+  onReset: () => void;
+}) {
+  const definitionLabel = property.definition?.label;
+  const labelColumn =
+    definitionColumns?.label != null
+      ? `${definitionColumns.table}.${definitionColumns.label}`
+      : null;
+  return (
+    <Stack gap="xs" py="xs">
+      {match(property.labelSource)
+        .with("definition", () => (
+          <Text c="text-primary">{t`From ${labelColumn ?? t`the definitions`}`}</Text>
+        ))
+        .with("admin", () => (
+          <Text c="text-primary">
+            {definitionLabel
+              ? t`Edited by an admin. ${labelColumn ?? t`The definition`} says “${definitionLabel}”.`
+              : t`Edited by an admin`}
+          </Text>
+        ))
+        .with("values", () => (
+          <Text c="text-primary">
+            {definitionColumns
+              ? t`Not in ${definitionColumns.table}, so there's no label`
+              : t`The property name made readable`}
+          </Text>
+        ))
+        .exhaustive()}
+      {property.labelSource === "admin" && definitionLabel && (
+        <Button
+          size="compact-sm"
+          variant="subtle"
+          w="fit-content"
+          px={0}
+          onClick={onReset}
+        >
+          {t`Use “${definitionLabel}”`}
+        </Button>
+      )}
+    </Stack>
+  );
+}
+
+function RawName({
+  property,
+  resolved,
+}: {
+  property: RegistryProperty;
+  resolved: ResolvedEavBinding;
+}) {
+  const propertyColumn = resolved.propertyField?.name;
+  const showsKey = property.key !== property.name && propertyColumn != null;
+  return (
+    <Stack gap="xs" py="xs">
+      <Code w="fit-content">{property.name}</Code>
+      {showsKey && (
+        <Text size="sm" c="text-secondary">
+          {t`Rows where ${propertyColumn} is ${property.key}`}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
 function PropertyTypeInput({
   property,
+  definitionColumns,
   onSave,
 }: {
   property: RegistryProperty;
+  definitionColumns: DefinitionColumnNames | null;
   onSave: (overrides: { type?: RegistryProperty["type"] }) => void;
 }) {
-  const isOverridden = property.type !== property.inferredType;
+  const declaredType = property.definition?.declaredType;
+  const typeColumn =
+    definitionColumns?.type != null
+      ? `${definitionColumns.table}.${definitionColumns.type}`
+      : null;
   return (
     <Stack gap="xs" py="xs">
       <Select
@@ -271,11 +385,25 @@ function PropertyTypeInput({
         }}
       />
       <Text size="sm" c="text-secondary">
-        {isOverridden
-          ? t`Set by an admin. Values read as ${getPropertyTypeLabel(property.inferredType)}.`
-          : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text and cast when queried.`}
+        {match(property.typeSource)
+          .with(
+            "definition",
+            () =>
+              t`From ${typeColumn ?? t`the definitions`}: ${declaredType ?? ""}. Values are stored as text and cast when queried.`,
+          )
+          .with("values", () =>
+            declaredType == null && property.definition != null
+              ? t`Its definition has no type, so it's inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}.`
+              : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text and cast when queried.`,
+          )
+          .with(
+            "admin",
+            () =>
+              t`Set by an admin. The default is ${getPropertyTypeLabel(property.inferredType)}.`,
+          )
+          .exhaustive()}
       </Text>
-      {isOverridden && (
+      {property.typeSource === "admin" && (
         <Button
           size="compact-sm"
           variant="subtle"
@@ -283,7 +411,7 @@ function PropertyTypeInput({
           px={0}
           onClick={() => onSave({ type: undefined })}
         >
-          {t`Use the inferred type (${getPropertyTypeLabel(property.inferredType)})`}
+          {t`Use the default type (${getPropertyTypeLabel(property.inferredType)})`}
         </Button>
       )}
     </Stack>
@@ -304,26 +432,37 @@ function SignalAlert({
   }) => void;
 }) {
   return match(signal)
-    .with({ type: "new" }, () => (
+    .with({ type: "undefined" }, () => (
       <Alert
-        color="core-brand"
+        color="warning"
         variant="light"
-        icon={<Icon name="sparkles" />}
-        title={t`New property`}
+        icon={<Icon name="warning" />}
+        title={t`Not in the field definitions`}
       >
         <Stack gap="sm">
           <Text>
-            {t`Started arriving ${formatDate(property.firstSeen)} on ${property.entityCount.toLocaleString()} entities. Add a description so people and Metabot know what it means.`}
+            {t`${property.entityCount.toLocaleString()} entities have values for ${property.key}, but no definition has that key. The field was probably deleted, so it's hidden from people and Metabot.`}
           </Text>
           <Group gap="sm">
             <Button
               size="compact-sm"
-              onClick={() => onSave({ isHidden: true })}
+              onClick={() => onSave({ isHidden: !property.isHidden })}
             >
-              {t`Hide it for now`}
+              {property.isHidden ? t`Show it anyway` : t`Hide it`}
             </Button>
           </Group>
         </Stack>
+      </Alert>
+    ))
+    .with({ type: "unused" }, () => (
+      <Alert
+        variant="light"
+        icon={<Icon name="info" />}
+        title={t`No values yet`}
+      >
+        <Text>
+          {t`It's defined, but no entity has a value. The pivot model still gets an empty column for it.`}
+        </Text>
       </Alert>
     ))
     .with({ type: "type-drift" }, ({ nonConformingCount, examples }) => (
@@ -350,16 +489,16 @@ function SignalAlert({
         </Stack>
       </Alert>
     ))
-    .with({ type: "duplicate" }, ({ propertyName }) => (
+    .with({ type: "duplicate" }, ({ propertyName, propertyLabel }) => (
       <Alert
         color="warning"
         variant="light"
         icon={<Icon name="copy" />}
-        title={t`Looks like ${propertyName}`}
+        title={t`Looks like ${propertyLabel}`}
       >
         <Stack gap="sm">
           <Text>
-            {t`Its values match ${propertyName}'s in other casing, on different entities. Merging shows both as one ${propertyName} column.`}
+            {t`Its values match ${propertyLabel}'s in other casing, on different entities. Merging shows both as one ${propertyLabel} column.`}
           </Text>
           <Group gap="sm">
             <Button
@@ -369,26 +508,7 @@ function SignalAlert({
                 onSave({ mergedInto: propertyName, isHidden: true })
               }
             >
-              {t`Merge into ${propertyName}`}
-            </Button>
-          </Group>
-        </Stack>
-      </Alert>
-    ))
-    .with({ type: "stale" }, () => (
-      <Alert
-        variant="light"
-        icon={<Icon name="clock" />}
-        title={t`No new values since ${formatDate(property.lastSeen)}`}
-      >
-        <Stack gap="sm">
-          <Text>{t`Hidden from people and Metabot because it stopped arriving.`}</Text>
-          <Group gap="sm">
-            <Button
-              size="compact-sm"
-              onClick={() => onSave({ isHidden: false })}
-            >
-              {t`Show it anyway`}
+              {t`Merge into ${propertyLabel}`}
             </Button>
           </Group>
         </Stack>
@@ -438,6 +558,3 @@ function TopValues({ property }: { property: RegistryProperty }) {
     </Stack>
   );
 }
-
-const formatDate = (date: string | null) =>
-  date ? dayjs(date).format("MMM D, YYYY") : t`Unknown`;

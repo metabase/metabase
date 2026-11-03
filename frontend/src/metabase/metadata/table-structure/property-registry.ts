@@ -1,11 +1,13 @@
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import type {
-  Aggregation,
   ConcreteFieldReference,
+  ConcreteTableId,
   Dataset,
   FieldId,
   RowValue,
@@ -14,7 +16,7 @@ import type {
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import type { EavBinding } from "./inference";
+import { type ResolvedEavBinding, useEavBinding } from "./eav-binding";
 
 export const PROPERTY_TYPES = [
   "text",
@@ -51,19 +53,28 @@ export type PropertySemanticType = (typeof PROPERTY_SEMANTIC_TYPES)[number];
 export type PropertyValueCount = { value: string; count: number };
 
 export type PropertySignal =
-  | { type: "new" }
-  | { type: "stale" }
+  | { type: "undefined" }
+  | { type: "unused" }
   | { type: "type-drift"; nonConformingCount: number; examples: string[] }
-  | { type: "duplicate"; propertyName: string };
+  | { type: "duplicate"; propertyName: string; propertyLabel: string };
+
+export type PropertySource = "admin" | "definition" | "values";
+
 type ObservedProperty = {
-  name: string;
+  key: string;
   entityCount: number;
   rowCount: number;
   distinctValueCount: number;
-  firstSeen: string | null;
-  lastSeen: string | null;
   topValues: PropertyValueCount[];
 };
+
+export type PropertyDefinition = {
+  key: string;
+  name: string | null;
+  label: string | null;
+  declaredType: string | null;
+};
+
 type PropertyOverrides = {
   displayName?: string;
   description?: string;
@@ -73,11 +84,16 @@ type PropertyOverrides = {
   isHidden?: boolean;
   mergedInto?: string;
 };
+
 export type RegistryProperty = ObservedProperty & {
+  name: string;
+  definition: PropertyDefinition | null;
   displayName: string;
+  labelSource: PropertySource;
   description: string;
   type: PropertyType;
   inferredType: PropertyType;
+  typeSource: PropertySource;
   semanticType: PropertySemanticType | null;
   synonyms: string[];
   isHidden: boolean;
@@ -90,6 +106,7 @@ export type PropertyRegistry = {
   entityCount: number;
   rowCount: number;
   properties: RegistryProperty[];
+  hasDefinitions: boolean;
 };
 
 export type PropertyRegistryState =
@@ -98,17 +115,15 @@ export type PropertyRegistryState =
   | { status: "error"; error: unknown }
   | { status: "loaded"; registry: PropertyRegistry };
 
-// PROTOTYPE: mocked. There's no property registry table or API yet, so admin
-// overrides live in localStorage and the rest is profiled in the browser with
-// three group-by queries against the property table.
+// PROTOTYPE: mocked. There's no eav_definition column or API yet, so admin
+// overrides live in localStorage. Labels and types are read from the
+// definitions table, and the values are profiled with group-by queries.
 const STORAGE_KEY = "metabase-prototype-property-registry";
 const TOP_VALUES_LIMIT = 10000;
+const DEFINITIONS_LIMIT = 2000;
 const TYPE_CONFORMANCE_THRESHOLD = 0.9;
 const CATEGORY_MAX_DISTINCT_VALUES = 30;
-const NEW_PROPERTY_DAYS = 14;
-const STALE_PROPERTY_DAYS = 180;
 const DUPLICATE_VALUE_OVERLAP = 0.5;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 type RegistryStorage = Record<string, Record<string, PropertyOverrides>>;
 
@@ -162,34 +177,53 @@ const fieldRef = (fieldId: FieldId): ConcreteFieldReference => [
   null,
 ];
 
-const minOf = (ref: ConcreteFieldReference): Aggregation => ["min", ref];
-const maxOf = (ref: ConcreteFieldReference): Aggregation => ["max", ref];
-
 type BoundEav = {
   entityKeyFieldId: FieldId;
   propertyFieldId: FieldId;
   valueFieldId: FieldId;
-  changedAtFieldId: FieldId | null;
 };
 
-function getBoundEav(binding: EavBinding): BoundEav | null {
-  const { entityKeyFieldId, propertyFieldId, valueFieldId, changedAtFieldId } =
-    binding;
+export type BoundDefinitions = {
+  tableId: ConcreteTableId;
+  keyFieldId: FieldId;
+  nameFieldId: FieldId | null;
+  labelFieldId: FieldId | null;
+  typeFieldId: FieldId | null;
+};
+
+function getBoundEav({ binding }: ResolvedEavBinding): BoundEav | null {
+  const { entityKeyFieldId, propertyFieldId, valueFieldId } = binding;
   if (entityKeyFieldId == null || propertyFieldId == null) {
     return null;
   }
   if (valueFieldId == null) {
     return null;
   }
-  return { entityKeyFieldId, propertyFieldId, valueFieldId, changedAtFieldId };
+  return { entityKeyFieldId, propertyFieldId, valueFieldId };
+}
+
+function getBoundDefinitions({
+  binding,
+  definitionJoinFieldId,
+  definitionNameFieldId,
+}: ResolvedEavBinding): BoundDefinitions | null {
+  const { definitionTableId, labelFieldId, typeFieldId } = binding;
+  if (definitionTableId == null || definitionJoinFieldId == null) {
+    return null;
+  }
+  return {
+    tableId: definitionTableId,
+    keyFieldId: definitionJoinFieldId,
+    nameFieldId: definitionNameFieldId,
+    labelFieldId,
+    typeFieldId,
+  };
 }
 
 export function getPropertySummaryQuery(
   table: Pick<Table, "db_id" | "id">,
   eav: BoundEav,
 ): StructuredDatasetQuery {
-  const changedAt =
-    eav.changedAtFieldId != null ? fieldRef(eav.changedAtFieldId) : null;
   return {
     database: table.db_id,
     type: "query",
@@ -199,7 +233,6 @@ export function getPropertySummaryQuery(
         ["distinct", fieldRef(eav.entityKeyFieldId)],
         ["count"],
         ["distinct", fieldRef(eav.valueFieldId)],
-        ...(changedAt ? [minOf(changedAt), maxOf(changedAt)] : []),
       ],
       breakout: [fieldRef(eav.propertyFieldId)],
     },
@@ -237,31 +270,74 @@ export function getEntityCountQuery(
   };
 }
 
+const getDefinitionFieldIds = (definitions: BoundDefinitions) => [
+  definitions.keyFieldId,
+  definitions.nameFieldId,
+  definitions.labelFieldId,
+  definitions.typeFieldId,
+];
+
+export function getDefinitionsQuery(
+  databaseId: Table["db_id"],
+  definitions: BoundDefinitions,
+): StructuredDatasetQuery {
+  return {
+    database: databaseId,
+    type: "query",
+    query: {
+      "source-table": definitions.tableId,
+      fields: getDefinitionFieldIds(definitions)
+        .filter((fieldId) => fieldId != null)
+        .map(fieldRef),
+      limit: DEFINITIONS_LIMIT,
+    },
+  };
+}
+
 const toNumber = (value: RowValue) => (typeof value === "number" ? value : 0);
 const toText = (value: RowValue) => (value == null ? "" : String(value));
-const toDate = (value: RowValue) => (typeof value === "string" ? value : null);
+const toOptionalText = (value: RowValue) =>
+  value == null || value === "" ? null : String(value);
 
 function readObservedProperties(
   summary: Dataset,
   values: Dataset,
 ): ObservedProperty[] {
-  const hasDates = summary.data.cols.length > 4;
   const valuesByProperty = _.groupBy(values.data.rows, (row) => toText(row[0]));
   return summary.data.rows.map((row) => {
-    const name = toText(row[0]);
+    const key = toText(row[0]);
     return {
-      name,
+      key,
       entityCount: toNumber(row[1]),
       rowCount: toNumber(row[2]),
       distinctValueCount: toNumber(row[3]),
-      firstSeen: hasDates ? toDate(row[4]) : null,
-      lastSeen: hasDates ? toDate(row[5]) : null,
-      topValues: (valuesByProperty[name] ?? []).map((valueRow) => ({
+      topValues: (valuesByProperty[key] ?? []).map((valueRow) => ({
         value: toText(valueRow[1]),
         count: toNumber(valueRow[2]),
       })),
     };
   });
+}
+
+export function readDefinitions(
+  dataset: Dataset,
+  definitions: BoundDefinitions,
+): PropertyDefinition[] {
+  const columnIds = getDefinitionFieldIds(definitions).filter(
+    (fieldId) => fieldId != null,
+  );
+  const indexOf = (fieldId: FieldId | null) =>
+    fieldId == null ? -1 : columnIds.indexOf(fieldId);
+  const read = (row: RowValue[], fieldId: FieldId | null) => {
+    const index = indexOf(fieldId);
+    return index >= 0 ? toOptionalText(row[index]) : null;
+  };
+  return dataset.data.rows.map((row) => ({
+    key: toText(row[indexOf(definitions.keyFieldId)]),
+    name: read(row, definitions.nameFieldId),
+    label: read(row, definitions.labelFieldId),
+    declaredType: read(row, definitions.typeFieldId),
+  }));
 }
 
 const TYPE_PATTERNS: Record<Exclude<PropertyType, "text">, RegExp> = {
@@ -270,6 +346,7 @@ const TYPE_PATTERNS: Record<Exclude<PropertyType, "text">, RegExp> = {
   date: /^\d{4}-\d{2}-\d{2}/,
   boolean: /^(true|false)$/i,
 };
+
 export function conformsToType(value: string, type: PropertyType): boolean {
   return type === "text" || TYPE_PATTERNS[type].test(value.trim());
 }
@@ -281,6 +358,7 @@ function getConformingShare(values: PropertyValueCount[], type: PropertyType) {
     .reduce((sum, { count }) => sum + count, 0);
   return total > 0 ? conforming / total : 0;
 }
+
 export function inferPropertyType(values: PropertyValueCount[]): PropertyType {
   const candidates: PropertyType[] = ["boolean", "integer", "decimal", "date"];
   return (
@@ -290,35 +368,83 @@ export function inferPropertyType(values: PropertyValueCount[]): PropertyType {
   );
 }
 
+type DeclaredMeaning = {
+  type: PropertyType;
+  semanticType: PropertySemanticType | null;
+};
+
+export function readDeclaredType(
+  declaredType: string | null,
+  values: PropertyValueCount[],
+): DeclaredMeaning | null {
+  if (declaredType == null) {
+    return null;
+  }
+  const isWholeNumber =
+    values.length === 0 ||
+    getConformingShare(values, "integer") >= TYPE_CONFORMANCE_THRESHOLD;
+  return match(declaredType.toLowerCase())
+    .with("number", "numeric", "integer", "decimal", () => ({
+      type: isWholeNumber ? ("integer" as const) : ("decimal" as const),
+      semanticType: null,
+    }))
+    .with("currency", "money", () => ({
+      type: "decimal" as const,
+      semanticType: "type/Currency" as const,
+    }))
+    .with("date", "datetime", () => ({
+      type: "date" as const,
+      semanticType: null,
+    }))
+    .with("checkbox", "bool", "boolean", () => ({
+      type: "boolean" as const,
+      semanticType: null,
+    }))
+    .with("dropdown", "enumeration", "select", "tagger", () => ({
+      type: "text" as const,
+      semanticType: "type/Category" as const,
+    }))
+    .with("text", "string", "textarea", () => ({
+      type: "text" as const,
+      semanticType: null,
+    }))
+    .otherwise(() => null);
+}
+
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const CURRENCY_NAME_RE = /(^|_)(mrr|arr|revenue|amount|price|usd|eur)(_|$)/;
 const QUANTITY_NAME_RE = /(^|_)(seats|licenses|count|quantity|users)(_|$)/;
 const SCORE_NAME_RE = /(^|_)(score|nps|rating)(_|$)/;
 
 function inferSemanticType(
+  name: string,
   property: ObservedProperty,
   type: PropertyType,
 ): PropertySemanticType | null {
-  const name = property.name.toLowerCase();
+  const lowerName = name.toLowerCase();
   if (type === "text") {
-    if (property.topValues.every(({ value }) => EMAIL_RE.test(value))) {
+    const hasEmails =
+      property.topValues.length > 0 &&
+      property.topValues.every(({ value }) => EMAIL_RE.test(value));
+    if (hasEmails) {
       return "type/Email";
     }
     return property.distinctValueCount <= CATEGORY_MAX_DISTINCT_VALUES
       ? "type/Category"
       : null;
   }
-  if (type === "decimal" && CURRENCY_NAME_RE.test(name)) {
+  if (type === "decimal" && CURRENCY_NAME_RE.test(lowerName)) {
     return "type/Currency";
   }
-  if (type === "integer" && SCORE_NAME_RE.test(name)) {
+  if (type === "integer" && SCORE_NAME_RE.test(lowerName)) {
     return "type/Score";
   }
-  if (type === "integer" && QUANTITY_NAME_RE.test(name)) {
+  if (type === "integer" && QUANTITY_NAME_RE.test(lowerName)) {
     return "type/Quantity";
   }
   return null;
 }
+
 function humanizePropertyName(name: string) {
   const words = name.replace(/[_-]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -332,10 +458,13 @@ const nameTokens = (name: string) =>
 
 const valueSet = (property: ObservedProperty) =>
   new Set(property.topValues.map(({ value }) => value.toLowerCase()));
+
+type NamedProperty = ObservedProperty & { name: string; label: string };
+
 function findDuplicateOf(
-  property: ObservedProperty,
-  others: ObservedProperty[],
-): ObservedProperty | undefined {
+  property: NamedProperty,
+  others: NamedProperty[],
+): NamedProperty | undefined {
   const tokens = nameTokens(property.name);
   const values = valueSet(property);
   return others.find((other) => {
@@ -359,19 +488,18 @@ function findDuplicateOf(
 }
 
 function getSignals(
-  property: ObservedProperty,
+  property: NamedProperty,
+  definition: PropertyDefinition | null,
+  hasDefinitions: boolean,
   type: PropertyType,
-  others: ObservedProperty[],
-  now: number,
+  others: NamedProperty[],
 ): PropertySignal[] {
   const signals: PropertySignal[] = [];
-  const firstSeenMs = property.firstSeen ? Date.parse(property.firstSeen) : NaN;
-  const lastSeenMs = property.lastSeen ? Date.parse(property.lastSeen) : NaN;
-  if (now - firstSeenMs < NEW_PROPERTY_DAYS * DAY_MS) {
-    signals.push({ type: "new" });
+  if (hasDefinitions && definition == null) {
+    signals.push({ type: "undefined" });
   }
-  if (now - lastSeenMs > STALE_PROPERTY_DAYS * DAY_MS) {
-    signals.push({ type: "stale" });
+  if (property.rowCount === 0) {
+    signals.push({ type: "unused" });
   }
   const nonConforming = property.topValues.filter(
     ({ value }) => !conformsToType(value, type),
@@ -388,36 +516,110 @@ function getSignals(
   }
   const duplicateOf = findDuplicateOf(property, others);
   if (duplicateOf) {
-    signals.push({ type: "duplicate", propertyName: duplicateOf.name });
+    signals.push({
+      type: "duplicate",
+      propertyName: duplicateOf.name,
+      propertyLabel: duplicateOf.label,
+    });
   }
   return signals;
 }
 
+const emptyObservation = (key: string): ObservedProperty => ({
+  key,
+  entityCount: 0,
+  rowCount: 0,
+  distinctValueCount: 0,
+  topValues: [],
+});
+
+function getDisplayName(
+  overrides: PropertyOverrides,
+  definition: PropertyDefinition | null,
+  name: string,
+  hasDefinitions: boolean,
+): Pick<RegistryProperty, "displayName" | "labelSource"> {
+  if (overrides.displayName) {
+    return { displayName: overrides.displayName, labelSource: "admin" };
+  }
+  if (definition?.label) {
+    return { displayName: definition.label, labelSource: "definition" };
+  }
+  return {
+    displayName:
+      hasDefinitions && definition == null
+        ? t`Field ${name}`
+        : humanizePropertyName(name),
+    labelSource: "values",
+  };
+}
+
+function getTypeSource(
+  overrides: PropertyOverrides,
+  declared: DeclaredMeaning | null,
+): PropertySource {
+  if (overrides.type != null) {
+    return "admin";
+  }
+  return declared != null ? "definition" : "values";
+}
+
 function buildRegistry(
   observed: ObservedProperty[],
+  definitions: PropertyDefinition[] | null,
   entityCount: number,
   overridesByName: Record<string, PropertyOverrides>,
-  now: number,
 ): PropertyRegistry {
-  const properties = observed.map((property): RegistryProperty => {
+  const definitionsByKey = new Map(
+    (definitions ?? []).map((definition) => [definition.key, definition]),
+  );
+  const observedKeys = new Set(observed.map(({ key }) => key));
+  const unusedDefinitions = (definitions ?? []).filter(
+    ({ key }) => !observedKeys.has(key),
+  );
+  const named = [
+    ...observed,
+    ...unusedDefinitions.map(({ key }) => emptyObservation(key)),
+  ].map((property): NamedProperty => {
+    const definition = definitionsByKey.get(property.key);
+    const name = definition?.name ?? property.key;
+    return { ...property, name, label: definition?.label ?? name };
+  });
+  const hasDefinitions = definitions != null;
+
+  const properties = named.map((property): RegistryProperty => {
+    const definition = definitionsByKey.get(property.key) ?? null;
     const overrides = overridesByName[property.name] ?? {};
     const inferredType = inferPropertyType(property.topValues);
-    const type = overrides.type ?? inferredType;
-    const signals = getSignals(property, type, observed, now).filter(
-      (signal) => signal.type !== "duplicate" || !overrides.mergedInto,
+    const declared = readDeclaredType(
+      definition?.declaredType ?? null,
+      property.topValues,
     );
+    const type = overrides.type ?? declared?.type ?? inferredType;
+    const typeSource = getTypeSource(overrides, declared);
+    const signals = getSignals(
+      property,
+      definition,
+      hasDefinitions,
+      type,
+      named,
+    ).filter((signal) => signal.type !== "duplicate" || !overrides.mergedInto);
     return {
       ...property,
-      displayName: overrides.displayName ?? humanizePropertyName(property.name),
+      definition,
+      ...getDisplayName(overrides, definition, property.name, hasDefinitions),
       description: overrides.description ?? "",
       type,
-      inferredType,
+      inferredType: declared?.type ?? inferredType,
+      typeSource,
       semanticType:
         overrides.semanticType !== undefined
           ? overrides.semanticType
-          : inferSemanticType(property, type),
+          : (declared?.semanticType ??
+            inferSemanticType(property.name, property, type)),
       synonyms: overrides.synonyms ?? [],
-      isHidden: overrides.isHidden ?? signals.some((s) => s.type === "stale"),
+      isHidden:
+        overrides.isHidden ?? signals.some((s) => s.type === "undefined"),
       mergedInto: overrides.mergedInto ?? null,
       coverage: entityCount > 0 ? property.entityCount / entityCount : 0,
       signals,
@@ -427,14 +629,35 @@ function buildRegistry(
     entityCount,
     rowCount: observed.reduce((sum, { rowCount }) => sum + rowCount, 0),
     properties: _.sortBy(properties, (property) => -property.coverage),
+    hasDefinitions,
   };
 }
-export function usePropertyRegistry(
-  table: Pick<Table, "db_id" | "id">,
-  binding: EavBinding,
-): PropertyRegistryState {
+
+export function useDefinitionRows(
+  databaseId: Table["db_id"],
+  definitions: BoundDefinitions | null,
+) {
+  const { data, error } = useGetAdhocQueryQuery(
+    definitions ? getDefinitionsQuery(databaseId, definitions) : skipToken,
+  );
+  return useMemo(
+    () => ({
+      definitions:
+        data && definitions ? readDefinitions(data, definitions) : undefined,
+      error,
+    }),
+    [data, definitions, error],
+  );
+}
+
+export function usePropertyRegistry(table: Table): PropertyRegistryState {
   const [storage] = usePrototypeStorage(STORAGE_KEY, parseStorage);
-  const eav = getBoundEav(binding);
+  const resolved = useEavBinding(table);
+  const eav = useMemo(() => getBoundEav(resolved), [resolved]);
+  const boundDefinitions = useMemo(
+    () => getBoundDefinitions(resolved),
+    [resolved],
+  );
   const summary = useGetAdhocQueryQuery(
     eav ? getPropertySummaryQuery(table, eav) : skipToken,
   );
@@ -444,40 +667,53 @@ export function usePropertyRegistry(
   const entities = useGetAdhocQueryQuery(
     eav ? getEntityCountQuery(table, eav) : skipToken,
   );
+  const definitionRows = useDefinitionRows(table.db_id, boundDefinitions);
   const overridesByName = storage[getTableKey(table)];
 
   return useMemo((): PropertyRegistryState => {
     if (!eav) {
       return { status: "unbound" };
     }
-    const error = summary.error ?? values.error ?? entities.error;
+    const error =
+      summary.error ?? values.error ?? entities.error ?? definitionRows.error;
     if (error) {
       return { status: "error", error };
     }
-    if (!summary.data || !values.data || !entities.data) {
+    const isLoadingDefinitions =
+      boundDefinitions != null && definitionRows.definitions == null;
+    if (
+      !summary.data ||
+      !values.data ||
+      !entities.data ||
+      isLoadingDefinitions ||
+      resolved.isLoading
+    ) {
       return { status: "loading" };
     }
-    const entityCount = toNumber(entities.data.data.rows[0]?.[0] ?? 0);
     return {
       status: "loaded",
       registry: buildRegistry(
         readObservedProperties(summary.data, values.data),
-        entityCount,
+        definitionRows.definitions ?? null,
+        toNumber(entities.data.data.rows[0]?.[0] ?? 0),
         overridesByName ?? {},
-        Date.now(),
       ),
     };
   }, [
     eav,
+    boundDefinitions,
+    resolved.isLoading,
     summary.data,
     summary.error,
     values.data,
     values.error,
     entities.data,
     entities.error,
+    definitionRows,
     overridesByName,
   ]);
 }
+
 export function usePropertyOverrides(table: Pick<Table, "db_id" | "id">) {
   const [, updateStorage] = usePrototypeStorage(STORAGE_KEY, parseStorage);
   return useCallback(
