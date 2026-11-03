@@ -55,10 +55,14 @@
                                          metabot-sql-execution-enabled?   true]
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "`run_query` refuses SQL on the audit database with a step the model can take"
-            (is (= {:class :recoverable, :code ::run-query/no-sql-permission}
-                   (:error (run-query! {:database audit/audit-db-id
-                                        :type     :native
-                                        :native   {:query "SELECT * FROM v_audit_log"}})))))
+            (let [result (run-query! {:database audit/audit-db-id
+                                      :type     :native
+                                      :native   {:query "SELECT * FROM v_audit_log"}})]
+              (is (= {:class :recoverable, :code ::run-query/audit-db-sql}
+                     (:error result)))
+              (testing "and does not call it a permission gap"
+                (is (re-find #"is the audit database" (:output result)))
+                (is (not (re-find #"(?i)you do not have permission" (:output result)))))))
           (testing "a SQL tool with no notebook fallback gets the QP's refusal, and the turn does not end"
             (let [result (call-tool! [#'tools/document-construct-sql-chart-tool]
                                      {}
