@@ -22,7 +22,7 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -310,18 +310,28 @@
               (sort-by :rrf >)
               (map :search-result)))))))
 
-(defn- join-results-by-rrf
-  "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
-   Items appearing in multiple result lists are boosted in the final ranking.
-   May return more results than requested limit."
+(defn- run-searches
+  "Execute multiple search queries in parallel. Returns one `{:ranked results}` per query, or `{:error e}` for a
+  query whose search threw, so one failed query doesn't discard the others' results."
   [search-fn search-engine all-queries]
-  ;; Zero queries case is handled nicely by the >1 branch
-  (if (= 1 (count all-queries))
-    (search-fn (first all-queries) search-engine)
-    ;; Create futures for parallel execution
-    (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
-          result-lists (mapv deref futures)]
-      (reciprocal-rank-fusion result-lists))))
+  (let [attempt (fn [query]
+                  (try
+                    {:ranked (search-fn query search-engine)}
+                    (catch Exception e
+                      {:error e})))]
+    ;; Zero queries case is handled nicely by the >1 branch
+    (if (= 1 (count all-queries))
+      [(attempt (first all-queries))]
+      ;; Create futures for parallel execution
+      (mapv deref (mapv #(future (attempt %)) all-queries)))))
+
+(defn- confined-collection-id
+  "The collection that a search for `metabot` must stay inside, or nil. A confined metabot (embedded, or
+  the nlq profile) may only search inside its own collection."
+  [metabot profile-id]
+  (when (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
+            (= profile-id "nlq"))
+    (:collection_id metabot)))
 
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
@@ -331,14 +341,16 @@
   `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
   own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
   nil-query search — a pure listing over the active filters — instead of returning nothing.
+  `partial-results?` keeps the other queries' results when a query's search fails, unless every
+  search failed; without it, any failure fails the call.
 
   Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
-  `:total` metadata."
+  `:total` metadata, and the queries whose search failed as `:failed-queries`."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot profile-id search-native-query weights
-           created-by archived collection-id offset filters-only?]}]
+           entity-types limit metabot profile-id weights
+           created-by archived collection-id offset filters-only? partial-results?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
               :semantic-query-count (count semantic-queries)
@@ -347,7 +359,6 @@
               :limit                limit
               :metabot-id           (:entity_id metabot)
               :profile-id           profile-id
-              :search-native-query  search-native-query
               :weights              weights
               :created-by           created-by
               :archived             archived
@@ -359,13 +370,10 @@
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         use-verified?   (:use_verified_content metabot)
-        embedded-metabot? (= (:entity_id metabot) metabot.config/embedded-metabot-id)
-        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
-        ;; collection. That is a containment boundary, not a default, so a caller-supplied
+        ;; The confined collection is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
         ;; replace it. Unconfined, the caller's collection-id applies.
-        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
-                          (:collection_id metabot))
+        confined-id     (confined-collection-id metabot profile-id)
         ;; Measures and segments belong to a table, not a collection, so a search scoped to a collection
         ;; never returns them, even though the search tools list them as entity types.
         collection-id   (or confined-id collection-id)
@@ -389,10 +397,6 @@
                                                           :filter-items-in-personal-collection "exclude-others"
                                                           :context                             :metabot
                                                           :archived                            (boolean archived)})
-                                                  ;; Don't include search-native-query key if nil so that we don't
-                                                  ;; inadvertently filter out search models that don't support it
-                                                  search-native-query
-                                                  (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
                                                   (assoc :curated true)
                                                   weights
@@ -414,30 +418,42 @@
                                        (frequencies (map :model ranked)))
                             ranked))
         ranked-fn*      (fn [search-engine queries]
-                          (let [queries (search.engine/disjunction search-engine queries)]
-                            (join-results-by-rrf ranked-fn search-engine queries)))
+                          (let [searches (search.engine/disjunction search-engine queries)
+                                ;; A disjunction either keeps the queries apart or folds them all into one search.
+                                covered  (if (= 1 (count searches)) [queries] (map vector queries))]
+                            (mapv #(assoc %1 :queries %2) (run-searches ranked-fn search-engine searches) covered)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (search.engine/fallback-engine semantic-engine))
-        fused-ranked    (cond
+        engine-outcomes (cond
                           ;; A pure listing over the filters: one search with no search string.
                           (and filters-only?
                                (empty? term-queries)
                                (empty? semantic-queries))
-                          (ranked-fn nil nil)
+                          [[{:ranked (ranked-fn nil nil)}]]
 
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           semantic-engine
-                          (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
+                          (into []
+                                (keep (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries))))
                                 {semantic-engine semantic-queries
-                                 fallback-engine term-queries}))
+                                 fallback-engine term-queries})
 
                           ;; Search for all the terms on equal footing, using the default engine.
                           :else
-                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+                          [(ranked-fn* nil (distinct (concat term-queries semantic-queries)))])
+        outcomes        (apply concat engine-outcomes)
+        failed          (filter :error outcomes)
+        _               (when (seq failed)
+                          (when (or (not partial-results?) (every? :error outcomes))
+                            (throw (:error (first failed))))
+                          (doseq [{:keys [error]} failed]
+                            (log/error error "[METABOT-SEARCH] A search query failed; returning the other queries' results")))
+        fused-ranked    (reciprocal-rank-fusion
+                         (for [engine-outcome engine-outcomes]
+                           (reciprocal-rank-fusion (keep :ranked engine-outcome))))
         ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
         ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
         ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
@@ -463,7 +479,9 @@
              enrich-with-metric-sources
              enrich-with-measure-segment-base-tables
              (validate-and-enrich-documents (boolean archived)))
-        (vary-meta assoc :total total))))
+        (vary-meta assoc
+                   :total total
+                   :failed-queries (into [] (comp (mapcat :queries) (distinct)) failed)))))
 
 (defn- table-refs->results
   [ids]
@@ -570,21 +588,51 @@
          enrich-with-measure-segment-base-tables
          remove-unreadable-transforms)))
 
+(def ^:private default-search-limit 10)
+(def ^:private max-search-limit 50)
+
+(defn- search-restrictions
+  "What narrowed a search beyond its queries, as sentences for the model."
+  [default-types {:keys [metabot profile-id]} {:keys [entity_types]}]
+  (cond-> []
+    (and (seq entity_types) (not-every? (set entity_types) default-types))
+    (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
+               ". If other types could match, add them to `entity_types`."))
+
+    (:use_verified_content metabot)
+    (conj "This Metabot searches only curated content, such as verified items and items in official collections.")
+
+    (confined-collection-id metabot profile-id)
+    (conj "This Metabot searches only inside its own collection.")))
+
 (defn- format-search-output
-  "Format search results as an LLM-ready string."
-  [results]
-  (let [results-xml (llm-shape/search-results->xml results)]
+  "Format search results as an LLM-ready string. `limit` is the page size the search asked for, and `restrictions`
+  are the [[search-restrictions]] that explain an empty result."
+  [results limit restrictions]
+  (let [results-xml                    (llm-shape/search-results->xml results)
+        {:keys [total failed-queries]} (meta results)]
     (te/lines
      "<result>"
      results-xml
      ""
-     (str "Total results: " (count results))
+     ;; Search caps each ranked pool, so the total is a lower bound.
+     (if (and total (< limit total))
+       (str "Showing " (count results) " of at least " total " results. "
+            "To see more, raise `limit` (max " max-search-limit ") or make the queries more specific.")
+       (str "Total results: " (count results)))
+     (when (seq failed-queries)
+       (str "The search failed for " (str/join ", " (map #(str "\"" (llm-shape/escape-xml %) "\"") failed-queries))
+            ", so these results may be incomplete. "
+            "If what you need isn't listed, tell the user the search was incomplete."))
+     (when (empty? results)
+       ["<no-results>"
+        restrictions
+        (str "Retry once with shorter `keyword_queries`: one or two words each, with synonyms as separate entries. "
+             "If that also finds nothing, tell the user instead of searching again.")
+        "</no-results>"])
      "</result>"
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
-
-(def ^:private default-search-limit 10)
-(def ^:private max-search-limit 50)
 
 ;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
 ;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
@@ -619,18 +667,89 @@
                     :table_id (when (#{"measure" "segment"} (:type r)) (:base_table_id r))
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
+(defn- browse-instead-step
+  [& uri-text]
+  {:uses #{"read_resource"}
+   :text (apply str "Find the data with `read_resource` instead: " uri-text)})
+
+(mr/def ::search-scope
+  "What a search reaches: the collection or database it is limited to, if any. `verified-only` is true when the
+  search is limited to verified content but `read_resource` is not, as in the profiles exempt from curation."
+  [:map {:closed true}
+   [:collection-id [:maybe :int]]
+   [:database-id   [:maybe :int]]
+   [:verified-only :boolean]])
+
+(defn search-scope
+  "The [[::search-scope]] of a search for the Metabot row `metabot`.
+  `profile-id` names the profile the search runs under, and `database-id`, unless nil, is the database it is limited
+  to."
+  [metabot profile-id database-id]
+  {:collection-id (confined-collection-id metabot profile-id)
+   :database-id   database-id
+   :verified-only (and (boolean (:use_verified_content metabot))
+                       (not (shared/curated-only?)))})
+
+(defn browse-steps
+  "The recovery steps that find with `read_resource` what a search over a [[::search-scope]] could have found.
+  They browse only what the search was limited to, so a `verified-only` scope gets none."
+  [{:keys [collection-id database-id verified-only]}]
+  (cond
+    verified-only
+    []
+
+    collection-id
+    [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
+
+    database-id
+    [(browse-instead-step "read `metabase://database/" database-id "/tables` and `metabase://database/"
+                          database-id "/models`.")]
+
+    :else
+    [(browse-instead-step "read `metabase://collections` for metrics, models, questions and "
+                          "dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, "
+                          "for tables.")]))
+
+(def ^:private no-retry-step
+  {:uses #{"search"}
+   :text (str "Do not call `search` again in this turn. If you cannot find the data another way, "
+              "tell the user that search is unavailable right now.")})
+
+(tools/defrecoverable search-failed!
+  "The search backend failed, for example because the search index is missing.
+
+  Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
+  {:payload ::search-scope}
+  [scope]
+  {:message  "Search failed."
+   :recovery (conj (browse-steps scope) no-retry-step)})
+
 (defn- do-search
-  [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
-  (let [results (search (merge {:semantic-queries semantic_queries
-                                :term-queries    keyword_queries
-                                :entity-types    (or (seq entity_types) (vec default-types))
-                                :limit           (min max-search-limit
-                                                      (or limit default-search-limit))}
-                               search-opts))]
-    {:output (format-search-output results)
-     :structured-output {:result-type :search
-                         :data results
-                         :total_count (count results)}
+  [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as args}]
+  ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
+  ;; search failed. `read_resource` does not use the search index.
+  (let [limit        (min max-search-limit (or limit default-search-limit))
+        opts         (merge {:semantic-queries semantic_queries
+                             :term-queries     keyword_queries
+                             :entity-types     (or (seq entity_types) (vec default-types))
+                             :limit            limit
+                             :partial-results? true}
+                            search-opts)
+        results      (try
+                       (search opts)
+                       (catch Exception e
+                         ;; The runtime logs a recoverable error at debug level, without its cause.
+                         (log/error e "Metabot search failed")
+                         (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)))))
+        restrictions (search-restrictions default-types search-opts args)]
+    {:output (format-search-output results limit restrictions)
+     :structured-output (cond-> {:result-type :search
+                                 :data results
+                                 :total_count (count results)}
+                          (empty? results) (assoc :empty_reason (cond
+                                                                  (seq (:failed-queries (meta results))) "incomplete"
+                                                                  (seq restrictions)                     "restricted"
+                                                                  :else                                  "no_match")))
      :data-parts [(streaming/search-results-part
                    {:total_count (count results)
                     :results (mapv search-result->item results)})]}))
@@ -760,20 +879,3 @@
   (->SearchTool
    "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
    nlq-search-schema ["metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
-
-(def ^:private transform-search-schema
-  [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
-   [:keyword_queries {:optional true} keyword-queries-schema]
-   [:search_native_query {:optional true} [:maybe [:boolean {:description "Also match against the native SQL text of transforms, not just names and descriptions."}]]]
-   [:entity_types {:optional true} (entity-types-schema "table" "model" "transform")]
-   [:limit {:optional true} limit-schema]])
-
-(mu/defn ^{:tool-name  "search"
-           :scope      scope/agent-search
-           :title-fn   search-display}
-  transform-search-tool
-  "Find transforms, plus the tables and models around them, by topic."
-  [{:keys [search_native_query] :as args} :- transform-search-schema]
-  (do-search (sorted-set "model" "table" "transform")
-             {:search-native-query search_native_query :metabot shared/*metabot*} args))

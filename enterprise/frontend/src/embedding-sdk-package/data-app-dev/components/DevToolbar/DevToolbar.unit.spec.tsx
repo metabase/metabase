@@ -99,9 +99,9 @@ describe("DevToolbar closed", () => {
     );
   });
 
-  it("shows no count when there are no alerts", async () => {
+  it("shows no warning or count when there are no alerts", async () => {
     await setup();
-    expect(getToggle()).toHaveTextContent(/^⚠ Diagnostics$/);
+    expect(getToggle()).toHaveTextContent(/^Diagnostics$/);
   });
 });
 
