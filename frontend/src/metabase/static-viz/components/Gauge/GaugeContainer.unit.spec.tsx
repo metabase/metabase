@@ -269,6 +269,43 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
+    it("renders finite positions when an unresolved min sits among segments that give the gauge's bounds", () => {
+      const root = setup({
+        segments: [
+          { min: 0, max: 30, color: GREEN },
+          {
+            min: { type: "card", id: 9, column: "goal" },
+            max: 70,
+            color: RED,
+          },
+          { min: 70, max: 100, color: BLUE },
+        ],
+      });
+
+      // running to the start of the gauge, the red segment contains the green one
+      expect(getSegmentFills(root)).toEqual([RED, GREEN, BLUE]);
+      expect(getEndpointLabels(root)).toEqual(["0", "100"]);
+      expect(getNaNAttributes(root)).toEqual([]);
+    });
+
+    it("renders finite positions when an unresolved max sits among segments that give the gauge's bounds", () => {
+      const root = setup({
+        segments: [
+          { min: 0, max: 30, color: GREEN },
+          {
+            min: 30,
+            max: { type: "card", id: 9, column: "goal" },
+            color: RED,
+          },
+          { min: 70, max: 100, color: BLUE },
+        ],
+      });
+
+      expect(getSegmentFills(root)).toEqual([GREEN, RED, BLUE]);
+      expect(getEndpointLabels(root)).toEqual(["0", "100"]);
+      expect(getNaNAttributes(root)).toEqual([]);
+    });
+
     it("drops a segment with both bounds unresolvable", () => {
       const root = setup({
         segments: [
@@ -300,6 +337,14 @@ function getSegmentFills(root: HTMLElement) {
 
 function getSegmentPaths(root: HTMLElement) {
   return getSegmentArcs(root).map((arc) => arc.getAttribute("d"));
+}
+
+function getNaNAttributes(root: HTMLElement) {
+  return Array.from(root.querySelectorAll("*")).flatMap((element) =>
+    Array.from(element.attributes)
+      .filter((attribute) => attribute.value.includes("NaN"))
+      .map((attribute) => `${element.tagName} ${attribute.name}`),
+  );
 }
 
 function getNeedleTransform(root: HTMLElement) {
