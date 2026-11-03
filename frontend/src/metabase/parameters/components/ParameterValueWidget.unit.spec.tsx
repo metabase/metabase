@@ -5,8 +5,9 @@ import {
   setupCardParameterRemappingEndpoint,
   setupCardParameterSearchEndpoint,
   setupCardParameterValuesEndpoint,
+  setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   CardId,
@@ -14,7 +15,10 @@ import type {
   ParameterValues,
   ValuesQueryType,
 } from "metabase-types/api";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockParameter,
+  createMockParameterValues,
+} from "metabase-types/api/mocks";
 import {
   createProductsCategoryField,
   createProductsRatingField,
@@ -25,9 +29,14 @@ import { ParameterValueWidget } from "./ParameterValueWidget";
 interface SetupOpts {
   parameter?: Partial<UiParameter>;
   value?: ParameterValueOrArray | null;
+  enableRequiredBehavior?: boolean;
 }
 
-function setup({ parameter, value = null }: SetupOpts = {}) {
+function setup({
+  parameter,
+  value = null,
+  enableRequiredBehavior,
+}: SetupOpts = {}) {
   const defaultParameter: UiParameter = {
     ...createMockParameter({
       id: "test-param",
@@ -39,18 +48,21 @@ function setup({ parameter, value = null }: SetupOpts = {}) {
     ...parameter,
   };
 
-  const setValue = jest.fn();
+  const setValue = jest.fn<void, [ParameterValueOrArray | null]>();
+  const setParameterValueToDefault = jest.fn<void, [string]>();
 
   renderWithProviders(
     <ParameterValueWidget
       parameter={defaultParameter}
       setValue={setValue}
+      setParameterValueToDefault={setParameterValueToDefault}
       value={value}
       placeholder="Enter a value"
+      enableRequiredBehavior={enableRequiredBehavior}
     />,
   );
 
-  return { setValue };
+  return { setValue, setParameterValueToDefault };
 }
 
 type WidgetValue = ParameterValueOrArray | null;
@@ -486,6 +498,112 @@ describe("ParameterValueWidget", () => {
       setup({ parameter, value: ["NY"] });
 
       expect(screen.getByLabelText("revert icon")).toBeInTheDocument();
+    });
+  });
+
+  describe("legacy category parameter", () => {
+    it("should list the field values and set the picked one", async () => {
+      setupParameterValuesEndpoints(
+        createMockParameterValues({
+          values: [["Doohickey"], ["Gizmo"]],
+          has_more_values: false,
+        }),
+      );
+      const { setValue } = setup({
+        parameter: {
+          ...createMockParameter({ id: "category-param", type: "category" }),
+          fields: [createProductsCategoryField()],
+        },
+      });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      await userEvent.click(await screen.findByText("Gizmo"));
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      expect(setValue).toHaveBeenCalledTimes(1);
+      expect(setValue).toHaveBeenCalledWith(["Gizmo"]);
+    });
+  });
+
+  describe("boolean parameter", () => {
+    const booleanParameter = {
+      ...createMockParameter({ id: "boolean-param", type: "boolean/=" }),
+      fields: [],
+    };
+
+    it("should add a true filter by default", async () => {
+      const { setValue } = setup({ parameter: booleanParameter });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      expect(await screen.findByLabelText("True")).toBeChecked();
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      expect(setValue).toHaveBeenCalledTimes(1);
+      expect(setValue).toHaveBeenCalledWith([true]);
+    });
+
+    it("should update the filter to false", async () => {
+      const { setValue } = setup({
+        parameter: booleanParameter,
+        value: [true],
+      });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      await userEvent.click(await screen.findByLabelText("False"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Update filter" }),
+      );
+
+      expect(setValue).toHaveBeenCalledTimes(1);
+      expect(setValue).toHaveBeenCalledWith([false]);
+    });
+  });
+
+  describe("required field parameter with a default value", () => {
+    it("should set the default value back when the value is removed", async () => {
+      setupParameterValuesEndpoints(
+        createMockParameterValues({
+          values: [["Gizmo"], ["Widget"]],
+          has_more_values: false,
+        }),
+      );
+      const { setValue } = setup({
+        parameter: {
+          ...createMockParameter({
+            id: "category-param",
+            type: "string/=",
+            required: true,
+            default: ["Gizmo"],
+          }),
+          fields: [createProductsCategoryField()],
+        },
+        value: ["Widget"],
+        enableRequiredBehavior: true,
+      });
+
+      await userEvent.click(
+        screen.getByTestId("parameter-value-widget-target"),
+      );
+      await userEvent.click(
+        await within(screen.getByRole("dialog")).findByRole("checkbox", {
+          name: "Widget",
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set to default" }),
+      );
+
+      expect(setValue).toHaveBeenCalledTimes(1);
+      expect(setValue).toHaveBeenCalledWith(["Gizmo"]);
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
     });
   });
 });

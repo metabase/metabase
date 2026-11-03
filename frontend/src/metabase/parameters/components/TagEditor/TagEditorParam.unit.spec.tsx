@@ -36,6 +36,7 @@ import {
 import {
   ORDERS,
   PEOPLE,
+  PRODUCTS,
   PRODUCTS_ID,
   REVIEWS,
   createSampleDatabase,
@@ -566,6 +567,32 @@ describe("TagEditorParam", () => {
         await screen.findByTestId("filter-widget-type-select"),
       );
       expect(screen.getByText("String")).toBeInTheDocument();
+    });
+
+    it("should show the legacy category widget-type as String", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "category",
+      });
+      setup({ tag });
+
+      expect(
+        await screen.findByTestId("filter-widget-type-select"),
+      ).toHaveValue("String");
+    });
+
+    it("should show a disabled ID widget type for a PK field", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.ID, null],
+        "widget-type": "id",
+      });
+      setup({ tag });
+
+      const select = await screen.findByTestId("filter-widget-type-select");
+      expect(select).toHaveValue("ID");
+      expect(select).toBeDisabled();
     });
   });
 
