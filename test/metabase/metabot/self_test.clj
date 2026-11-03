@@ -2959,9 +2959,10 @@
                 (is (not (str/includes? body ":class")) body))))
           (testing "the Snowplow event carries the class and the code of the error, and no text of it"
             (snowplow-test/with-fake-snowplow-collector
-              (into [] (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
-                                                    #{"failer"})
-                    [part])
+              (transduce (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
+                                                      #{"failer"})
+                         (constantly nil)
+                         [part])
               ;; The collector may also hold a `new_instance_created` from the first read of a setting in
               ;; this JVM, so filter for the tool events as the other Snowplow tests do.
               (let [events (filter #(= "agent_used_tool" (get-in % [:data "event"]))
