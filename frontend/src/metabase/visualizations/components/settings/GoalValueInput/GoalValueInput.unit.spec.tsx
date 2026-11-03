@@ -19,6 +19,7 @@ import {
 } from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
+import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -48,6 +49,11 @@ import { GoalValueInput } from "./GoalValueInput";
 
 const { trackSimpleEvent } =
   jest.requireMock<typeof Analytics>("metabase/analytics");
+
+jest.mock("metabase/embedding/config", () => ({
+  ...jest.requireActual("metabase/embedding/config"),
+  isEmbedding: jest.fn(() => false),
+}));
 
 const DATA = createMockDatasetData({
   cols: [
@@ -1667,6 +1673,7 @@ describe("GoalValueInput", () => {
 
     afterEach(() => {
       jest.restoreAllMocks();
+      jest.mocked(isEmbedding).mockReturnValue(false);
     });
 
     it("shows a hint in the pill tooltip", async () => {
@@ -1712,6 +1719,23 @@ describe("GoalValueInput", () => {
       const { mockWindowOpen } = setupCardSource();
 
       await userEvent.click(await getLoadedPill());
+
+      expect(await screen.findByRole("menu")).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    // an embedding host has no Metabase app to open the source in
+    it("has nothing to open when Metabase is embedded", async () => {
+      jest.mocked(isEmbedding).mockReturnValue(true);
+      const { mockWindowOpen } = setupCardSource();
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      await userEvent.hover(pill);
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Orders → total");
+      expect(tooltip).not.toHaveTextContent(NEW_TAB_HINT);
+
+      fireEvent.click(pill, { ctrlKey: true });
 
       expect(await screen.findByRole("menu")).toBeInTheDocument();
       expect(mockWindowOpen).not.toHaveBeenCalled();
