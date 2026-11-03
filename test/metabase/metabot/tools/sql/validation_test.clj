@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.test :as mt]))
 
 ;;;; contains-template-tags?
 
@@ -106,6 +108,18 @@
     (testing context
       (is (=? expected
               (metabot.tools.sql.validation/validate-sql dialect sql))))))
+
+(deftest template-syntax-error-is-english-test
+  (testing "The parser message is English for a user with another locale"
+    (mt/with-mock-i18n-bundles! {"zz" {:messages {"Invalid query: found ''[['' or '''{{''' with no matching '']]'' or ''}}''"
+                                                  "TRANSLATED PARSER MESSAGE"}}}
+      (mt/with-user-locale "zz"
+        (testing "the parser itself returns the translation"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"TRANSLATED PARSER MESSAGE"
+                                (lib/parse-parameters "SELECT {{x"))))
+        (is (=? {:valid? false
+                 :error-message "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'"}
+                (metabot.tools.sql.validation/validate-sql "postgres" "SELECT {{x")))))))
 
 (def ^:private transpilation-cases
   "Testing _context_ describe a test case. Apart from that, pretty formatting is checked by comparisons of raw output

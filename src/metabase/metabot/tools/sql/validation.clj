@@ -4,6 +4,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -76,7 +77,9 @@
                (catch clojure.lang.ExceptionInfo _
                  true)))
     (try
-      (lib/parse-parameters sql)
+      ;; Model-facing: the parser builds its messages with `tru`, so get them in English, never in the user's locale.
+      (binding [i18n/*user-locale* "en"]
+        (lib/parse-parameters sql))
       nil
       (catch clojure.lang.ExceptionInfo e
         (if (= :invalid-query (:type (ex-data e)))
