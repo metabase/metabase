@@ -47,7 +47,7 @@
 
 (defn- active-locale [options]
   (if (:locale options)
-    (Locale. (:locale options))
+    (Locale/of (:locale options))
     (Locale/getDefault)))
 
 (defn- number-formatter-for-options-baseline

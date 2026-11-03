@@ -21,7 +21,7 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.metabot.util :as metabot.u]
-   [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.quoting :as quoting]))
@@ -94,6 +94,20 @@
   {:message "The SQL query contains more than one statement, and only one is supported. No changes were saved."
    :recovery [{:uses #{} :text "Rewrite the SQL as one statement, then retry."}]})
 
+(tools/defrecoverable invalid-template-syntax!
+  "The proposed SQL has `{{...}}` or `[[...]]` syntax that Metabase rejects."
+  {:payload [:map {:closed true} [:error-message :string] [:edit? :boolean]]}
+  [{:keys [error-message edit?]}]
+  (let [prefix (str "The SQL query has invalid Metabase `{{...}}` or `[[...]]` syntax. "
+                    (when edit? "The problem can be in SQL that this edit did not change. ")
+                    "No changes were saved. Parser details: ")
+        recovery [{:uses #{} :text (str "Close each `{{` with `}}` and each `[[` with `]]`. Give each `{{...}}` a name, "
+                                        "such as `{{category}}`. Put at least one `{{...}}` variable in each `[[...]]`, "
+                                        "or remove the `[[...]]` clause. Then retry.")}]
+        budget (tools.runtime/output-budget prefix recovery)]
+    {:message (str prefix (bounded-quote error-message budget))
+     :recovery recovery}))
+
 (tools/defrecoverable blank-sql!
   "Creating, replacing, or editing the query would leave it with no SQL."
   {:payload [:map {:closed true} [:query-id {:optional true} :string]]}
@@ -134,13 +148,17 @@
    [:action-result {:optional true} ::action-result]])
 
 (defn validated-sql-action!
-  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation."
-  [{:keys [validation-result action-result]}]
+  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation.
+
+  Set `:edit?` when the validated SQL keeps text from before the call, as `edit_sql_query` does."
+  [{:keys [validation-result action-result]} & {:keys [edit?]}]
   (let [{:keys [valid? dialect error-message reason]} validation-result]
     (cond
-      valid?                          action-result
-      (= :multiple-statements reason) (multiple-sql-statements! {})
-      :else                           (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+      valid?                              action-result
+      (= :multiple-statements reason)     (multiple-sql-statements! {})
+      (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message
+                                                                     :edit?         (boolean edit?)})
+      :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
@@ -148,10 +166,12 @@
   non-integer `database-id` fails closed."
   [database-id]
   (and (int? database-id)
-       (= :query-builder-and-native
-          (perms/full-database-permission-for-user api/*current-user-id*
-                                                   :perms/create-queries
-                                                   database-id))))
+       (some? api/*current-user-id*)
+       ;; The check the QP makes before it runs SQL. Native permission alone is not enough: the user also needs
+       ;; unrestricted data access, and no sandbox on the database from any of their groups.
+       (query-perms/can-run-query? {:database database-id
+                                    :type     :native
+                                    :native   {:query "SELECT 1"}})))
 
 (defn check-native-query-access!
   "Throw an unrecoverable error unless the user may write native queries against `database-id`."

@@ -273,4 +273,4 @@
 (mu/defn model-index
   "The ModelIndex with `model-index-id`, or nil."
   [model-index-id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex model-index-id))
+  (t2/select-one :model/ModelIndex :id [:auto/param model-index-id]))

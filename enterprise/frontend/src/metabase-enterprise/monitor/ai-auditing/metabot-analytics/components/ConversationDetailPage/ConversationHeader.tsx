@@ -100,14 +100,14 @@ export function ConversationHeader({
           </Flex>
           <Flex gap="xl" align="center" wrap="wrap">
             <Flex gap="xxs" align="center">
-              <Icon name="calendar" size={16} c="text-disabled" />
+              <Icon name="calendar" size={16} c="text-secondary" />
               <Text size="md" c="text-secondary">
                 <DateTime value={conversation.created_at} unit="day" />
               </Text>
             </Flex>
             {firstProfile && (
               <Flex gap="xxs" align="center">
-                <Icon name="metabot" size={16} c="text-disabled" />
+                <Icon name="metabot" size={16} c="text-secondary" />
                 <Text size="md" c="text-secondary">
                   {renderMetabotProfileLabel(firstProfile)}
                 </Text>
@@ -116,13 +116,13 @@ export function ConversationHeader({
             {(userGroupsInfo.userGroups.length > 0 ||
               userGroupsInfo.isAdmin) && (
               <Flex gap="xxs" align="center">
-                <Icon name="group" size={16} c="text-disabled" />
+                <Icon name="group" size={16} c="text-secondary" />
                 <UserGroupsMenu {...userGroupsInfo} />
               </Flex>
             )}
             {tenant && (
               <Flex gap="xxs" align="center">
-                <Icon name="company" size={16} c="text-disabled" />
+                <Icon name="company" size={16} c="text-secondary" />
                 <Anchor
                   component={ForwardRefLink}
                   to={EnterpriseUrls.editTenant(tenant.id)}
@@ -136,7 +136,7 @@ export function ConversationHeader({
             )}
             {conversation.forked_from_conversation_id && (
               <Flex gap="xxs" align="center">
-                <Icon name="git_branch" size={16} c="text-disabled" />
+                <Icon name="git_branch" size={16} c="text-secondary" />
                 <Anchor
                   component={ForwardRefLink}
                   to={Urls.monitorAiAuditingConversationDetail(
@@ -223,7 +223,7 @@ function UserGroupsMenu({
         >
           <Flex component="span" align="center" gap={4}>
             <span>{summaryText}</span>
-            <Icon name="chevrondown" size={10} c="text-disabled" />
+            <Icon name="chevrondown" size={10} c="text-secondary" />
           </Flex>
         </Anchor>
       </Menu.Target>

@@ -100,7 +100,7 @@
   "Apply `updates` to the TransformTest with `id`."
   [id :- ms/PositiveInt
    updates :- ::transform-testing.schema/transform-test.update]
-  (t2/update! :model/TransformTest id updates))
+  (t2/update! :model/TransformTest :id id updates))
 
 (mu/defn delete-transform-test!
   "Delete the TransformTest with `id`."

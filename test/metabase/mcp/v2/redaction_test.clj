@@ -156,7 +156,7 @@
   "The hydrated-and-redacted handlers of the persisted notification `notification-id`, as the
    current user sees them."
   [notification-id]
-  (-> (t2/select-one :model/Notification notification-id)
+  (-> (t2/select-one :model/Notification :id notification-id)
       redaction/hydrate-and-redact-notification
       :handlers))
 
@@ -255,7 +255,7 @@
                     :col                    0
                     :size_x                 4
                     :size_y                 4
-                    :card                   {:id 12 :name "Executive Payroll"}
+                    :card                   (t2/instance :model/Card {:id 12 :name "Executive Payroll"})
                     :visualization_settings {:card.title          "Executive Payroll by Employee"
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
@@ -284,4 +284,22 @@
       (testing "readable: nothing is stripped"
         (let [dc (redact true)]
           (is (= "Executive Payroll by Employee" (get-in dc [:visualization_settings :card.title])))
-          (is (some? (:parameter_mappings dc))))))))
+          (is (some? (:parameter_mappings dc)))))
+      (testing "a bare map in place of a card row is redacted, without asking `mi/can-read?`"
+        (let [dc (with-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
+                   (first (:dashcards (redaction/redact-dashboard
+                                       {:dashcards [(assoc dashcard
+                                                           :card   {:id 12}
+                                                           :series [{:id 99, :name "Hidden"}])]}))))]
+          (is (nil? (:card dc)))
+          (is (= [] (:parameter_mappings dc)))
+          (is (= [{:id 99}] (:series dc))))))))
+
+(deftest virtual-dashcard-keeps-its-mappings-test
+  (testing "a text card has no card to hide, so its filter wiring and settings stay"
+    (let [dashcard {:id                     2
+                    :card_id                nil
+                    :card                   nil
+                    :visualization_settings {:text "{{x}}", :click_behavior {:type "link"}}
+                    :parameter_mappings     [{:parameter_id "p", :card_id nil, :target [:text-tag "x"]}]}]
+      (is (= dashcard (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]}))))))))

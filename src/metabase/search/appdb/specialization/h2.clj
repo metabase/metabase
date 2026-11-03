@@ -8,6 +8,8 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]))
 
+(set! *warn-on-reflection* true)
+
 (defmethod specialization/table-schema :h2 [base-schema]
   (into [[:id :bigint :auto-increment :primary-key]
          [:search_terms :text]

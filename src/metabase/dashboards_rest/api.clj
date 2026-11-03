@@ -8,7 +8,6 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
@@ -688,11 +687,11 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
-                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
+   _body]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
           dashboard (get-dashboard resolved-id)]
@@ -1189,11 +1188,11 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
-                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
+   _body]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
@@ -1344,11 +1343,11 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  {:scope api-scope/data-app}
   [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
-   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
+   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
+   _body]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1367,12 +1366,12 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  {:scope api-scope/data-app}
   [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
-   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
+   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
+   _body]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true
@@ -1388,11 +1387,11 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
-  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
-   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]
+   _body]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
@@ -1422,11 +1421,11 @@
   Results are returned as a map of
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]
+   _body]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
@@ -1440,7 +1439,6 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1462,7 +1460,6 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1481,7 +1478,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
@@ -1508,7 +1504,6 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
@@ -1546,7 +1541,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]

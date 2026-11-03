@@ -236,7 +236,7 @@ const SampleDatabaseIndicator = () => {
           {t`Sample Database for testing`}
         </Text>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}
-        <Text inline c="text-disabled">{t`(by Metabase)`}</Text>
+        <Text inline c="text-secondary">{t`(by Metabase)`}</Text>
       </Flex>
       <Group gap="xxs">
         <Icon name="check_filled" c="feedback-positive" />
