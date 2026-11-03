@@ -295,6 +295,31 @@
           (is (= {:id hidden-card} (:card dc))
               "the unreadable card comes back as an id with no name"))))))
 
+(deftest set-series-with-an-unreadable-stored-card-test
+  (testing "a writer can overlay a card the dashboard already holds but they cannot read, as the save allows. The dry
+            run has no row for that card, and its response shows it as an id, as the save's readback does"
+    (mt/with-temp [:model/Collection    {open-id :id}     {}
+                   :model/Collection    {locked-id :id}   {}
+                   :model/Dashboard     {dash-id :id}     {:name "Sales" :collection_id open-id}
+                   :model/Card          {open-card :id}   {:name "Revenue" :collection_id open-id}
+                   :model/Card          {hidden-card :id} {:name "CONFIDENTIAL" :collection_id locked-id}
+                   :model/DashboardCard _                 {:dashboard_id dash-id :card_id hidden-card :row 0 :col 0}
+                   :model/DashboardCard {open-dc :id}     {:dashboard_id dash-id :card_id open-card :row 4 :col 0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (doseq [validate-only? [true false]]
+          (testing (str "validate_only " validate-only?)
+            (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                                  (wire {:method        "update"
+                                                         :id            dash-id
+                                                         :validate_only validate-only?
+                                                         :ops           [{:op          "set_series"
+                                                                          :dashcard_id open-dc
+                                                                          :card_ids    [hidden-card]}]})))]
+              (is (= [{:id hidden-card}]
+                     (:series (first (filter #(= open-dc (:id %)) (:dashcards result)))))))))
+        (is (= [hidden-card] (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id open-dc))
+            "the save went through")))))
+
 (deftest parameter-ops-accept-json-shapes-test
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]

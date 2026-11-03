@@ -145,7 +145,7 @@
   ;; Prepared before any branch reads them, so a malformed `ops` fails as :invalid-op rather than crashing a `seq`
   ;; or passing as no ops.
   (let [ops   (dashboard-ops/prepare-ops (:ops opts))
-        attrs (:attrs opts)
+        attrs (or (:attrs opts) {})
         _     (check-permission! dashboard attrs)
         ;; Sent as attributes, `:dashcards` would replace the layout behind the ops' back, and `:tabs` would be
         ;; dropped silently. Compiled against the parameters in attrs, a source card in them would count as already

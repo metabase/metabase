@@ -17,7 +17,8 @@
    [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
-   [metabase.pulse.core :as pulse]))
+   [metabase.pulse.core :as pulse]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,6 +29,13 @@
    title, the warehouse columns it displays and their labels, and click targets naming other entities.
    Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
   [:card.title :card.description :column_settings :series_settings :click_behavior])
+
+(defn- readable-series-card?
+  "Whether `card`, an entry in a dashcard's `:series`, is a card row the current user can read."
+  [card]
+  ;; A compiled dry run leaves an entry as a bare `{:id}` when no row was fetched for it, as for a card the dashboard
+  ;; already holds that the user cannot read. That is not a model instance, so `mi/can-read?` would throw on it.
+  (and (t2/instance-of? :model/Card card) (mi/can-read? card)))
 
 (defn- redact-dashcard
   [dashcard]
@@ -55,7 +63,7 @@
            (not-empty (apply dissoc (:visualization_settings dashcard) card-describing-viz-keys)))
 
     (seq (:series dashcard))
-    (update :series (partial mapv #(cond-> % (not (mi/can-read? %)) (select-keys [:id]))))))
+    (update :series (partial mapv #(cond-> % (not (readable-series-card? %)) (select-keys [:id]))))))
 
 (defn redact-dashboard
   "`dash`, with its dashcards' `:card` and `:series` populated — by hydration on a saved dashboard,

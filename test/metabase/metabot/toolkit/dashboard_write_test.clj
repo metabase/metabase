@@ -100,7 +100,27 @@
                               {:dashboard (hydrated (:id dash))
                                :attrs     {}
                                :ops       [{:op "add_parameter" :parameter_id "p" :name "P" :type "not-a-type"}]}))))
-        (is (empty? (:parameters (hydrated (:id dash)))))))))
+        (is (empty? (:parameters (hydrated (:id dash))))))))
+  (testing "a create's compiled payload is checked as an update's is, on a dry run as on a save"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [validate-only? [true false]]
+        (testing (if validate-only? "dry run" "save")
+          (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:parameters some?}}
+                  (error-data #(dashboard-write/write!
+                                {:attrs          {:name "Invalid parameters"}
+                                 :ops            [{:op "add_parameter" :parameter_id "p" :name "P" :type "not-a-type"}]
+                                 :validate-only? validate-only?}))))))
+      (is (not (t2/exists? :model/Dashboard :name "Invalid parameters"))))))
+
+(deftest missing-attrs-test
+  (testing "attrs left out are none, so an update with only ops saves them and a create reports its missing name"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+        (is (=? {:name "Sales", :dashcards [{:visualization_settings {:text "Hello"}}]}
+                (dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                         :ops       [{:op "add_text" :id -1 :markdown "Hello"}]}))))
+      (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:name some?}}
+              (error-data #(dashboard-write/write! {:ops [{:op "add_text" :id -1 :markdown "Hello"}]})))))))
 
 (deftest unreadable-card-test
   (testing "a card the user cannot read is refused as unknown, before any write"
