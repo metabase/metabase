@@ -2141,6 +2141,33 @@
           (is (= ["First row, first column" "First row, second column"]
                  (->> result :data :rows first (drop 1)))))))))
 
+(defn- select-star-native-sandbox-def [table-key]
+  {:query (mt/native-query {:query (format-honeysql {:select [:*], :from [[(identifier table-key)]]})})})
+
+(deftest join-native-sandbox-with-empty-result-metadata-test
+  (testing "A native sandbox Card with empty saved result metadata should still return the columns of its Table (#74173)"
+    (mt/test-drivers (into #{} (filter (mt/normal-drivers-with-feature :inner-join)) (sandboxing-fk-sql-drivers))
+      (met/with-gtaps! {:gtaps {:categories (select-star-native-sandbox-def :categories)
+                                :venues     (select-star-native-sandbox-def :venues)}}
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :categories))
+              mp      (lib.tu/merged-mock-metadata-provider
+                       (mt/metadata-provider)
+                       {:cards [{:id card-id, :result-metadata []}]})
+              query   (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                          (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :venues))
+                                                         [(lib/= (lib.metadata/field mp (mt/id :categories :id))
+                                                                 (lib.metadata/field mp (mt/id :venues :category_id)))])
+                                        (lib/with-join-strategy :inner-join))))
+              query   (-> query
+                          (lib/order-by (lib/with-join-alias (lib.metadata/field mp (mt/id :venues :id))
+                                                             (:alias (first (lib/joins query)))))
+                          (lib/limit 2))]
+          (mt/with-native-query-testing-context query
+            (is (= [[4 "Asian" 1 "Red Medicine" 4 10.0646 -165.374 3]
+                    [11 "Burger" 2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                   (mt/formatted-rows [int str int str int 4.0 4.0 int]
+                                      (qp/process-query query))))))))))
+
 (deftest test-66781
   (testing "Handle user attribute filters against implicitly joined tables that are also sandboxed correctly (#66781)"
     (met/with-gtaps! (let [mp (mt/metadata-provider)]

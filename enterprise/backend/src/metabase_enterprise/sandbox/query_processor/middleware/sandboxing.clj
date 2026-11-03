@@ -230,7 +230,8 @@
   (or (when (= (count (:stages query)) 1)
         (let [first-stage (lib/query-stage query 0)]
           (when (and (lib/native-stage? first-stage)
-                     (not (:lib/stage-metadata first-stage)))
+                     ;; empty saved metadata is the same as no metadata: a query always returns columns
+                     (empty? (get-in first-stage [:lib/stage-metadata :columns])))
             (when-let [cols (not-empty (native-query-metadata query))]
               (when card-id
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
