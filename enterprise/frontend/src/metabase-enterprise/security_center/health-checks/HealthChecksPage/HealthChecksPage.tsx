@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Button, Group, Icon, Loader, Stack, Title } from "metabase/ui";
+import { Button, Group, Icon, Stack, Title } from "metabase/ui";
 import type { HealthCheck } from "metabase-types/api";
 
 import {
@@ -96,10 +96,8 @@ export const HealthChecksPage = () => {
         {hasChecks && (
           <Button
             variant="subtle"
-            leftSection={
-              isRecheckingAll ? <Loader size="1rem" /> : <Icon name="sync" />
-            }
-            disabled={isRecheckingAll}
+            leftSection={<Icon name="sync" />}
+            loading={isRecheckingAll}
             onClick={handleRecheckAll}
           >
             {t`Re-check all`}

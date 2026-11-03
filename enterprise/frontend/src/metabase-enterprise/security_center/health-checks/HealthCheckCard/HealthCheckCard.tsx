@@ -10,7 +10,6 @@ import {
   Card,
   Group,
   Icon,
-  Loader,
   Stack,
   Text,
   Title,
@@ -95,10 +94,9 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
             </Button>
           )}
           <Button
-            leftSection={
-              isRechecking ? <Loader size="1rem" /> : <Icon name="sync" />
-            }
-            disabled={isRechecking || isRecheckingAll}
+            leftSection={<Icon name="sync" />}
+            loading={isRechecking}
+            disabled={isRecheckingAll}
             onClick={handleRecheck}
           >
             {t`Re-check`}
