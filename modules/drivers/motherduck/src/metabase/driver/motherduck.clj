@@ -412,27 +412,18 @@
   [_driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form :postgres hsql-form amount unit))
 
-;; The inherited method puts time zone strings directly into HoneySQL, bypassing the String
-;; method above. Inline the zones so the endpoint can resolve TIMEZONE at prepare time.
-;; Cast untyped datetime arguments to timestamp for the same reason. For example:
+;; The endpoint has to know TIMEZONE's argument types at prepare time. The Postgres method passes the zones, and literal
+;; datetimes, as untyped parameters. So inline the zones, and cast arguments that compile without a type, as in
 ;;   TIMEZONE('America/Los_Angeles', TIMEZONE('UTC', CAST(? AS timestamp)))
-;; Arguments that already include a time zone need only the outer TIMEZONE call.
+;; Everything else, such as the #80155 tag, is left to Postgres.
 (defmethod sql.qp/->honeysql [:motherduck :convert-timezone]
-  [driver [_ _opts arg target-timezone source-timezone]]
-  (let [expr         (sql.qp/->honeysql driver (cond-> arg
-                                                 (string? arg) u.date/parse))
-        timestamptz? (or (sql.qp.u/field-with-tz? arg)
-                         (h2x/is-of-type? expr "timestamptz")
-                         (h2x/is-of-type? expr "timestamp with time zone"))
-        _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
-        expr         [:timezone (h2x/literal target-timezone)
-                      (if timestamptz?
-                        expr
-                        [:timezone (h2x/literal source-timezone) (h2x/->pg-timestamp expr)])]]
-    ;; The tag makes the inherited :relative-datetime, :now and :today methods wrap NOW() in TIMEZONE(target, NOW()),
-    ;; so both sides of a filter compare in the target zone (#80155). It holds the inlined literal for the same reason.
-    (h2x/with-type-info expr {:database-type                          "timestamp"
-                              :metabase.driver.postgres/target-timezone (h2x/literal target-timezone)})))
+  [driver [tag opts arg target-timezone source-timezone]]
+  (let [expr (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
+        arg  (if (or (h2x/database-type expr) (sql.qp.u/field-with-tz? arg))
+               arg
+               (sql.qp/compiled (h2x/->pg-timestamp expr)))]
+    ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
+     driver [tag opts arg (h2x/literal target-timezone) (some-> source-timezone h2x/literal)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Reading results                                                 |
