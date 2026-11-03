@@ -319,9 +319,10 @@
 ;;
 ;; The hash and UUID patterns match the value itself, with no surrounding quotes: the auth identity credentials are a
 ;; JSON column holding both, so in the dump they arrive quoted as JSON rather than as SQL string literals. Each shape is
-;; specific enough to stand on its own. A timestamp is not, since plain dates turn up in seeded text, so that one still
-;; has to be a SQL literal to be masked, and neither is an entity id. The backfill in
-;; `064/20260723_backfill_entity_ids.yaml` gives the internal user one of 21 random hex characters taken from a UUID.
+;; specific enough to stand on its own. Timestamps and entity ids are not, since plain dates and runs of hex digits both
+;; turn up in seeded text, so those two are masked only as SQL literals. The backfill in
+;; `064/20260723_backfill_entity_ids.yaml` gives the internal user an entity id of 21 random hex characters taken from a
+;; UUID.
 (def ^:private unstable-literals
   "Values two dumps of the very same migrations disagree on, as `[pattern replacement]` pairs.
   They are the wall-clock times, and the generated hashes, tokens and entity ids [[generated-columns]] drops on the row
@@ -547,3 +548,18 @@
     ["a" "b"] ["a" "c"]     {:index 1, :checked-in "b", :regenerated "c"}
     ["a" "b"] ["a"]         {:index 1, :checked-in "2 statements", :regenerated "1 statements"}
     ["a"]     ["a" "b" "c"] {:index 1, :checked-in "1 statements", :regenerated "3 statements"}))
+
+(deftest unstable-values-masked-test
+  (are [statement expected] (= expected (unstable-values-masked statement))
+    ;; values two regenerations disagree on
+    "VALUES ('2026-11-03 12:00:00.123+00')"              "VALUES ('<timestamp>')"
+    "VALUES ('0d305ac41f1d4d0cb247e')"                   "VALUES ('<entity-id>')"
+    "{\"id\":\"8f14e45f-ceea-467a-9575-cbd67bb3ef0a\"}" "{\"id\":\"<uuid>\"}"
+    ;; shapes that only count as unstable inside a SQL literal, or at full length, are left alone
+    "VALUES ('2026-11-03')"                              "VALUES ('2026-11-03')"
+    "VALUES ('0d305ac41f1d4d0cb247')"                    "VALUES ('0d305ac41f1d4d0cb247')"
+    "{\"key\":\"0d305ac41f1d4d0cb247e\"}"                "{\"key\":\"0d305ac41f1d4d0cb247e\"}")
+  (testing "a password hash is masked inside the JSON that holds it"
+    (is (= "{\"password_hash\":\"<password-hash>\"}"
+           (unstable-values-masked
+            "{\"password_hash\":\"$2a$10$fQPgxCCkhVJqnVF57pE.A.YxyghaOC2sqpf3Tdck6GE6Edg6RKS7a\"}")))))

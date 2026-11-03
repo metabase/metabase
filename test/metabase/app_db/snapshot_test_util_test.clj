@@ -51,8 +51,9 @@
 
 (deftest usable-for-start?-test
   (impl/with-temp-empty-app-db [conn :h2]
-    (let [[before-boundary] (first (snapshot/changesets conn))
-          [after-boundary]  (last (snapshot/changesets conn))]
+    (let [ids             (map first (snapshot/changesets conn))
+          before-boundary (first ids)
+          after-boundary  (last ids)]
       (testing "the snapshot can stand in for a start after its boundary, and not for one before it"
         (is (true? (snapshot/usable-for-start? conn :h2 after-boundary)))
         (is (not (snapshot/usable-for-start? conn :h2 before-boundary))))
