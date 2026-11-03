@@ -269,27 +269,19 @@
        ;; rather than throwing lets callers enqueue re-derivations under selectors like `:in`.
        nil))))
 
+;; Only `:this.id` yields a document id, so a search-model reached through a join on another column, or one whose
+;; `:id` attr is compound, has to have its documents enumerated before they are deleted.
 (defn purgeable-selector?
-  "Whether a hook's where-clause names a document [[bulk-ingest!]] could purge if it stopped resolving.
-  Only `:this.id` yields a document id, so a search-model reached through a join on another column, or one
-  whose `:id` attr is compound, has to have its documents enumerated before they are deleted."
+  "Whether a hook's where-clause names a document [[bulk-ingest!]] could purge if it stopped resolving."
   [where-clause]
-  (try
-    (some? (extract-model-and-id ::probe where-clause))
-    (catch Exception _
-      ;; A selector shape extraction doesn't recognize is bulk-ingest!'s problem to hit, not this caller's:
-      ;; callers run before a delete, where throwing would take the delete down with it.
-      true)))
+  (some? (extract-model-and-id ::probe where-clause)))
 
+;; A single delete can fan out to arbitrarily many dependent documents, and this enumeration happens on the caller's
+;; thread inside its transaction, so past the ceiling the documents are left to the convergence backstop rather than
+;; held in heap.
 (def ^:private max-enumerated-documents
-  "Ceiling on how many documents one statement may enumerate before it runs. A single delete can fan out to
-  arbitrarily many dependent documents, and this enumeration happens on the caller's thread inside its
-  transaction, so past the ceiling the documents are left to the convergence backstop rather than held in heap."
+  "Ceiling on how many documents one statement may enumerate before it runs."
   10000)
-
-(defn- doc-id-expression
-  [select-item]
-  (if (vector? select-item) (first select-item) select-item))
 
 (defn doc-ids
   "The ids of the documents `search-model` currently produces under `where-clause`, or nil past
@@ -308,12 +300,12 @@
 (defn doc-id-selector
   "A where-clause matching `search-model`'s documents by their own ids, whatever their relationships now are."
   [search-model ids]
-  [:in (doc-id-expression (search.ingestion.query/doc-id-select-item search-model)) (vec ids)])
+  [:in (search.ingestion.query/doc-id-expression search-model) (vec ids)])
 
+;; Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
+;; nulled rather than deleted still has a document, and must not be purged.
 (defn existing-doc-ids
-  "Which of `ids` `search-model` still produces a document for.
-  Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
-  nulled rather than deleted still has a document, and must not be purged."
+  "Which of `ids` `search-model` still produces a document for, or nil past [[max-enumerated-documents]]."
   [search-model ids]
   (when (seq ids)
     (doc-ids search-model (doc-id-selector search-model ids))))
