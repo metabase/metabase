@@ -18,6 +18,7 @@ import {
   MetabotComparisonPrototype,
   MetabotDiscoveryPrototype,
 } from "./MetabotPrototype";
+import { ModelPrototype } from "./ModelPrototype";
 import { QueryBuilderPrototype } from "./QueryBuilderPrototype";
 import {
   CURATED_REGISTRY,
@@ -73,6 +74,7 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
   return (
     <div style={{ height: "100vh" }}>
       <Wrapper>
+        <Route path="model/:slug" element={<ModelPrototype />} />
         <Route path="data-studio" element={<DataStudioLayout />}>
           <Route path="data">
             <Route element={<DataSectionLayout />}>

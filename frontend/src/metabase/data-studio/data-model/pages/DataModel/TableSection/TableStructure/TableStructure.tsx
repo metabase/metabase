@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
   DetailsRow,
@@ -8,10 +8,7 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
-  type EavBinding,
-  type EavDefinitionTable,
   type HistoryBinding,
-  type ResolvedEavBinding,
   type TableStructure as TableStructureValue,
   getPeriodGranularityOptions,
   getRowIdentityLabel,
@@ -21,8 +18,6 @@ import {
   getTableRoleRowDescription,
   isRoleA,
   isTableRole,
-  useEavBinding,
-  usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -31,7 +26,6 @@ import {
   Button,
   Code,
   Group,
-  Loader,
   Select,
   Stack,
   Switch,
@@ -42,8 +36,9 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { DetailsEditableText } from "../../DetailPanel";
+import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
+import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
 
-import { PivotModelInput } from "./PivotModelInput";
 import S from "./TableStructure.module.css";
 
 interface TableStructureProps {
@@ -171,13 +166,14 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
       )}
 
       {role && isRoleA(role, "role/CustomPropertyTable") && (
-        <EavBindingSection
+        <CustomPropertiesSection
           table={table}
-          fields={fields}
           disabled={readOnly}
           onChange={(eav) => setEavBinding(table, eav)}
         />
       )}
+
+      <EntityCustomPropertiesSection table={table} />
     </>
   );
 }
@@ -462,365 +458,5 @@ function HistoryBindingSection({
         />
       </DetailsTable>
     </SidebarSection>
-  );
-}
-
-function EavBindingSection({
-  table,
-  fields,
-  disabled,
-  onChange,
-}: {
-  table: Table;
-  fields: Field[];
-  disabled: boolean;
-  onChange: (binding: Partial<EavBinding>) => void;
-}) {
-  const resolved = useEavBinding(table);
-  const { binding } = resolved;
-
-  return (
-    <SidebarSection title={t`Custom fields`}>
-      <Text size="sm" c="text-secondary">
-        {t`Each row is one custom field value of a thing. Labels and types come from the table that defines the fields.`}
-      </Text>
-      <DetailsTable>
-        <DetailsRow
-          label={t`Belongs to`}
-          value={<EntityTableValue table={table} resolved={resolved} />}
-        />
-        <DetailsRow
-          label={t`Entity key`}
-          value={
-            <FieldSelect
-              label={t`Entity key`}
-              fields={fields}
-              value={binding.entityKeyFieldId}
-              disabled={disabled}
-              onChange={(entityKeyFieldId) => onChange({ entityKeyFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Property`}
-          value={
-            <FieldSelect
-              label={t`Property`}
-              fields={fields}
-              value={binding.propertyFieldId}
-              disabled={disabled}
-              onChange={(propertyFieldId) => onChange({ propertyFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Value`}
-          value={
-            <FieldSelect
-              label={t`Value`}
-              fields={fields}
-              value={binding.valueFieldId}
-              disabled={disabled}
-              onChange={(valueFieldId) => onChange({ valueFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Field definitions`}
-          value={
-            <DefinitionTableInput
-              resolved={resolved}
-              disabled={disabled}
-              onChange={onChange}
-            />
-          }
-        />
-        {resolved.definitionTable && (
-          <DetailsRow
-            label={t`Label`}
-            value={
-              <DefinitionFieldInput
-                label={t`Label`}
-                definitionTable={resolved.definitionTable}
-                value={binding.labelFieldId}
-                isOverridden={resolved.isLabelOverridden}
-                disabled={disabled}
-                onChange={(labelFieldId) => onChange({ labelFieldId })}
-              />
-            }
-          />
-        )}
-        {resolved.definitionTable && (
-          <DetailsRow
-            label={t`Type`}
-            value={
-              <DefinitionFieldInput
-                label={t`Type`}
-                definitionTable={resolved.definitionTable}
-                value={binding.typeFieldId}
-                isOverridden={resolved.isTypeOverridden}
-                disabled={disabled}
-                onChange={(typeFieldId) => onChange({ typeFieldId })}
-              />
-            }
-          />
-        )}
-        <DetailsRow
-          label={t`Fields`}
-          value={<PropertyRegistrySummary table={table} resolved={resolved} />}
-        />
-        <DetailsRow
-          label={t`Columns`}
-          value={
-            <Switch
-              py="xs"
-              label={t`Pivot properties into columns`}
-              checked={binding.pivotToColumns}
-              disabled={disabled}
-              onChange={(event) =>
-                onChange({ pivotToColumns: event.target.checked })
-              }
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Pivot model`}
-          value={
-            <PivotModelInput
-              table={table}
-              resolved={resolved}
-              disabled={disabled}
-            />
-          }
-        />
-      </DetailsTable>
-    </SidebarSection>
-  );
-}
-
-function EntityTableValue({
-  table,
-  resolved,
-}: {
-  table: Table;
-  resolved: ResolvedEavBinding;
-}) {
-  const { entityTable, entityKeyField } = resolved;
-  if (!entityTable || !entityKeyField) {
-    return (
-      <Text c="text-secondary">{t`Pick an entity key that links to a table`}</Text>
-    );
-  }
-  return (
-    <Stack gap="xs" py="xs">
-      <Link
-        to={Urls.dataStudioData({
-          databaseId: table.db_id,
-          schemaName: table.schema,
-          tableId: entityTable.id,
-        })}
-      >
-        <Text c="text-brand" fw="bold">
-          {entityTable.display_name}
-        </Text>
-      </Link>
-      <Text size="sm" c="text-secondary">
-        {t`Inferred: ${entityKeyField.name} → ${entityTable.name}`}
-      </Text>
-    </Stack>
-  );
-}
-
-function DefinitionTableInput({
-  resolved,
-  disabled,
-  onChange,
-}: {
-  resolved: ResolvedEavBinding;
-  disabled: boolean;
-  onChange: (binding: Partial<EavBinding>) => void;
-}) {
-  const {
-    definitionTable,
-    definitionInference,
-    isDefinitionOverridden,
-    schemaTables,
-  } = resolved;
-  const isConfirmedGuess =
-    isDefinitionOverridden &&
-    definitionTable?.id === definitionInference.definitionTableId;
-  const selectDefinitionTable = (
-    definitionTableId: EavBinding["definitionTableId"] | undefined,
-  ) =>
-    onChange({
-      definitionTableId,
-      labelFieldId: undefined,
-      typeFieldId: undefined,
-    });
-
-  return (
-    <Stack gap="xs" py="xs">
-      <Select
-        aria-label={t`Field definitions`}
-        data={schemaTables.map((schemaTable) => ({
-          value: String(schemaTable.id),
-          label: schemaTable.display_name,
-        }))}
-        value={definitionTable ? String(definitionTable.id) : null}
-        placeholder={t`No definitions table`}
-        searchable
-        clearable
-        disabled={disabled}
-        onChange={(value) =>
-          selectDefinitionTable(value != null ? Number(value) : null)
-        }
-      />
-      <Text size="sm" c="text-secondary">
-        <DefinitionTableHint resolved={resolved} />
-      </Text>
-      {!disabled && isDefinitionOverridden && !isConfirmedGuess && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => selectDefinitionTable(undefined)}
-        >
-          {t`Use the inferred definitions table`}
-        </Button>
-      )}
-    </Stack>
-  );
-}
-
-function DefinitionTableHint({ resolved }: { resolved: ResolvedEavBinding }) {
-  const { definitionTable, definitionInference, isDefinitionOverridden } =
-    resolved;
-  if (definitionTable) {
-    return isDefinitionOverridden
-      ? t`Set by an admin`
-      : t`Inferred: ${definitionInference.signal}`;
-  }
-  return isDefinitionOverridden
-    ? t`None. Labels come from the property names and types from the values.`
-    : t`${definitionInference.signal}. Labels come from the property names and types from the values.`;
-}
-
-function DefinitionFieldInput({
-  label,
-  definitionTable,
-  value,
-  isOverridden,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  definitionTable: EavDefinitionTable;
-  value: FieldId | null;
-  isOverridden: boolean;
-  disabled: boolean;
-  onChange: (fieldId: FieldId | null | undefined) => void;
-}) {
-  const fields = definitionTable.fields ?? [];
-  const selectedField = fields.find(
-    (field) => getRawTableFieldId(field) === value,
-  );
-  return (
-    <Stack gap="xs" py="xs">
-      <FieldSelect
-        label={label}
-        fields={fields}
-        value={value}
-        placeholder={t`None`}
-        clearable
-        disabled={disabled}
-        onChange={onChange}
-      />
-      <Group gap="sm">
-        <Text size="sm" c="text-secondary">
-          {selectedField
-            ? t`From ${definitionTable.name}.${selectedField.name}`
-            : t`Not read from ${definitionTable.name}`}
-          {" · "}
-          {isOverridden ? t`Set by an admin` : t`Inferred`}
-        </Text>
-        {!disabled && isOverridden && (
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            px={0}
-            onClick={() => onChange(undefined)}
-          >
-            {t`Reset`}
-          </Button>
-        )}
-      </Group>
-    </Stack>
-  );
-}
-
-function PropertyRegistrySummary({
-  table,
-  resolved,
-}: {
-  table: Table;
-  resolved: ResolvedEavBinding;
-}) {
-  const state = usePropertyRegistry(table);
-  const propertiesUrl = Urls.dataStudioData({
-    databaseId: table.db_id,
-    schemaName: table.schema,
-    tableId: table.id,
-    tab: "properties",
-  });
-
-  if (state.status === "unbound") {
-    return (
-      <Text c="text-secondary">{t`Pick the property and value columns`}</Text>
-    );
-  }
-  if (state.status !== "loaded") {
-    return <Loader size="xs" />;
-  }
-
-  const { properties } = state.registry;
-  const attentionCount = properties.filter(
-    (property) => !property.isHidden && property.signals.length > 0,
-  ).length;
-  const entityName =
-    resolved.entityTable?.display_name.toLowerCase() ?? t`entities`;
-
-  return (
-    <Stack gap="xs" py="xs">
-      <Group gap="sm">
-        <Text c="text-primary" fw="bold">
-          {ngettext(
-            msgid`${properties.length} field`,
-            `${properties.length} fields`,
-            properties.length,
-          )}
-        </Text>
-        {attentionCount > 0 && (
-          <Badge color="warning" variant="light">
-            {t`${attentionCount} need attention`}
-          </Badge>
-        )}
-      </Group>
-      <Text size="sm" c="text-secondary">
-        {resolved.definitionTable
-          ? t`Defined in ${resolved.definitionTable.name}, with values for ${state.registry.entityCount.toLocaleString()} ${entityName}`
-          : t`Profiled from ${state.registry.rowCount.toLocaleString()} rows about ${state.registry.entityCount.toLocaleString()} ${entityName}`}
-      </Text>
-      <Button
-        component={Link}
-        to={propertiesUrl}
-        size="compact-sm"
-        variant="subtle"
-        w="fit-content"
-        px={0}
-      >
-        {t`Review fields`}
-      </Button>
-    </Stack>
   );
 }

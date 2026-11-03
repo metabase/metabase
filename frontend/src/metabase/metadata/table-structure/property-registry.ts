@@ -55,10 +55,19 @@ export type PropertyValueCount = { value: string; count: number };
 export type PropertySignal =
   | { type: "undefined" }
   | { type: "unused" }
-  | { type: "type-drift"; nonConformingCount: number; examples: string[] }
+  | {
+      type: "type-drift";
+      nonConformingCount: number;
+      examples: string[];
+      exampleCounts: PropertyValueCount[];
+    }
   | { type: "duplicate"; propertyName: string; propertyLabel: string };
 
 export type PropertySource = "admin" | "definition" | "values";
+
+export const MISMATCH_HANDLINGS = ["ignore", "text"] as const;
+
+export type MismatchHandling = (typeof MISMATCH_HANDLINGS)[number];
 
 type ObservedProperty = {
   key: string;
@@ -83,6 +92,7 @@ type PropertyOverrides = {
   synonyms?: string[];
   isHidden?: boolean;
   mergedInto?: string;
+  onMismatch?: MismatchHandling;
 };
 
 export type RegistryProperty = ObservedProperty & {
@@ -98,7 +108,12 @@ export type RegistryProperty = ObservedProperty & {
   synonyms: string[];
   isHidden: boolean;
   mergedInto: string | null;
+  mergedFrom: string[];
+  onMismatch: MismatchHandling;
+  isMismatchHandlingSet: boolean;
   coverage: number;
+  quality: number;
+  isSuggestedForPivot: boolean;
   signals: PropertySignal[];
 };
 
@@ -107,6 +122,7 @@ export type PropertyRegistry = {
   rowCount: number;
   properties: RegistryProperty[];
   hasDefinitions: boolean;
+  isEntityCountFromEntityTable: boolean;
 };
 
 export type PropertyRegistryState =
@@ -124,6 +140,8 @@ const DEFINITIONS_LIMIT = 2000;
 const TYPE_CONFORMANCE_THRESHOLD = 0.9;
 const CATEGORY_MAX_DISTINCT_VALUES = 30;
 const DUPLICATE_VALUE_OVERLAP = 0.5;
+const PIVOT_MIN_COVERAGE = 0.3;
+const SAMPLE_ROWS_LIMIT = 60;
 
 type RegistryStorage = Record<string, Record<string, PropertyOverrides>>;
 
@@ -155,6 +173,9 @@ function parsePropertyOverrides(value: unknown): PropertyOverrides {
       : undefined,
     isHidden: typeof value.isHidden === "boolean" ? value.isHidden : undefined,
     mergedInto: parseString(value.mergedInto),
+    onMismatch: MISMATCH_HANDLINGS.find(
+      (handling) => handling === value.onMismatch,
+    ),
   };
 }
 
@@ -259,13 +280,42 @@ export function getPropertyValuesQuery(
 export function getEntityCountQuery(
   table: Pick<Table, "db_id" | "id">,
   eav: BoundEav,
+  entityTable: Pick<Table, "id"> | undefined,
+): StructuredDatasetQuery {
+  return {
+    database: table.db_id,
+    type: "query",
+    query: entityTable
+      ? { "source-table": entityTable.id, aggregation: [["count"]] }
+      : {
+          "source-table": table.id,
+          aggregation: [["distinct", fieldRef(eav.entityKeyFieldId)]],
+        },
+  };
+}
+
+export function getSampleRowsQuery(
+  table: Pick<Table, "db_id" | "id">,
+  eav: BoundEav,
+  entityKeyValue: EntityKeyValue | undefined,
 ): StructuredDatasetQuery {
   return {
     database: table.db_id,
     type: "query",
     query: {
       "source-table": table.id,
-      aggregation: [["distinct", fieldRef(eav.entityKeyFieldId)]],
+      fields: [
+        fieldRef(eav.entityKeyFieldId),
+        fieldRef(eav.propertyFieldId),
+        fieldRef(eav.valueFieldId),
+      ],
+      ...(entityKeyValue != null
+        ? {
+            filter: ["=", fieldRef(eav.entityKeyFieldId), entityKeyValue],
+          }
+        : {}),
+      "order-by": [["asc", fieldRef(eav.entityKeyFieldId)]],
+      limit: SAMPLE_ROWS_LIMIT,
     },
   };
 }
@@ -512,6 +562,7 @@ function getSignals(
         0,
       ),
       examples: nonConforming.map(({ value }) => value),
+      exampleCounts: nonConforming,
     });
   }
   const duplicateOf = findDuplicateOf(property, others);
@@ -548,7 +599,7 @@ function getDisplayName(
   return {
     displayName:
       hasDefinitions && definition == null
-        ? t`Field ${name}`
+        ? t`Property ${name}`
         : humanizePropertyName(name),
     labelSource: "values",
   };
@@ -568,6 +619,7 @@ function buildRegistry(
   observed: ObservedProperty[],
   definitions: PropertyDefinition[] | null,
   entityCount: number,
+  isEntityCountFromEntityTable: boolean,
   overridesByName: Record<string, PropertyOverrides>,
 ): PropertyRegistry {
   const definitionsByKey = new Map(
@@ -595,8 +647,11 @@ function buildRegistry(
       definition?.declaredType ?? null,
       property.topValues,
     );
-    const type = overrides.type ?? declared?.type ?? inferredType;
-    const typeSource = getTypeSource(overrides, declared);
+    const keepsText = overrides.type == null && overrides.onMismatch === "text";
+    const type = keepsText
+      ? "text"
+      : (overrides.type ?? declared?.type ?? inferredType);
+    const typeSource = keepsText ? "admin" : getTypeSource(overrides, declared);
     const signals = getSignals(
       property,
       definition,
@@ -604,6 +659,11 @@ function buildRegistry(
       type,
       named,
     ).filter((signal) => signal.type !== "duplicate" || !overrides.mergedInto);
+    const coverage = entityCount > 0 ? property.entityCount / entityCount : 0;
+    const conformingShare =
+      property.rowCount > 0 ? getConformingShare(property.topValues, type) : 0;
+    const isHidden = overrides.isHidden ?? false;
+    const mergedInto = overrides.mergedInto ?? null;
     return {
       ...property,
       definition,
@@ -618,18 +678,48 @@ function buildRegistry(
           : (declared?.semanticType ??
             inferSemanticType(property.name, property, type)),
       synonyms: overrides.synonyms ?? [],
-      isHidden:
-        overrides.isHidden ?? signals.some((s) => s.type === "undefined"),
-      mergedInto: overrides.mergedInto ?? null,
-      coverage: entityCount > 0 ? property.entityCount / entityCount : 0,
+      isHidden,
+      mergedInto,
+      mergedFrom: [],
+      onMismatch: overrides.onMismatch ?? "ignore",
+      isMismatchHandlingSet: overrides.onMismatch != null,
+      coverage,
+      quality: coverage * conformingShare,
+      isSuggestedForPivot:
+        !isHidden &&
+        mergedInto == null &&
+        coverage >= PIVOT_MIN_COVERAGE &&
+        signals.every(
+          (signal) =>
+            signal.type !== "undefined" && signal.type !== "duplicate",
+        ),
       signals,
     };
+  });
+  const mergedFromByName = _.groupBy(
+    properties.filter(({ mergedInto }) => mergedInto != null),
+    ({ mergedInto }) => mergedInto ?? "",
+  );
+  const withMerges = properties.map((property) => {
+    const mergedFrom = mergedFromByName[property.name] ?? [];
+    const mergedEntityCount = mergedFrom.reduce(
+      (sum, { entityCount: count }) => sum + count,
+      property.entityCount,
+    );
+    return mergedFrom.length > 0
+      ? {
+          ...property,
+          mergedFrom: mergedFrom.map(({ displayName }) => displayName),
+          coverage: entityCount > 0 ? mergedEntityCount / entityCount : 0,
+        }
+      : property;
   });
   return {
     entityCount,
     rowCount: observed.reduce((sum, { rowCount }) => sum + rowCount, 0),
-    properties: _.sortBy(properties, (property) => -property.coverage),
+    properties: _.sortBy(withMerges, (property) => -property.quality),
     hasDefinitions,
+    isEntityCountFromEntityTable,
   };
 }
 
@@ -665,7 +755,7 @@ export function usePropertyRegistry(table: Table): PropertyRegistryState {
     eav ? getPropertyValuesQuery(table, eav) : skipToken,
   );
   const entities = useGetAdhocQueryQuery(
-    eav ? getEntityCountQuery(table, eav) : skipToken,
+    eav ? getEntityCountQuery(table, eav, resolved.entityTable) : skipToken,
   );
   const definitionRows = useDefinitionRows(table.db_id, boundDefinitions);
   const overridesByName = storage[getTableKey(table)];
@@ -696,6 +786,7 @@ export function usePropertyRegistry(table: Table): PropertyRegistryState {
         readObservedProperties(summary.data, values.data),
         definitionRows.definitions ?? null,
         toNumber(entities.data.data.rows[0]?.[0] ?? 0),
+        resolved.entityTable != null,
         overridesByName ?? {},
       ),
     };
@@ -703,6 +794,7 @@ export function usePropertyRegistry(table: Table): PropertyRegistryState {
     eav,
     boundDefinitions,
     resolved.isLoading,
+    resolved.entityTable,
     summary.data,
     summary.error,
     values.data,
@@ -734,5 +826,33 @@ export function usePropertyOverrides(table: Pick<Table, "db_id" | "id">) {
       });
     },
     [table, updateStorage],
+  );
+}
+
+export type EntityKeyValue = string | number;
+
+export type PropertySampleRow = {
+  entityKey: RowValue;
+  propertyKey: string;
+  value: string;
+};
+
+export function usePropertySampleRows(
+  table: Table,
+  entityKeyValue?: EntityKeyValue,
+): PropertySampleRow[] | undefined {
+  const resolved = useEavBinding(table);
+  const eav = useMemo(() => getBoundEav(resolved), [resolved]);
+  const { data } = useGetAdhocQueryQuery(
+    eav ? getSampleRowsQuery(table, eav, entityKeyValue) : skipToken,
+  );
+  return useMemo(
+    () =>
+      data?.data.rows.map(([entityKey, propertyKey, value]) => ({
+        entityKey,
+        propertyKey: toText(propertyKey),
+        value: toText(value),
+      })),
+    [data],
   );
 }

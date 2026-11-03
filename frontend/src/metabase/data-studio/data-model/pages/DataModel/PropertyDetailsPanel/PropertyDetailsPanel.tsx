@@ -8,6 +8,9 @@ import {
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
 import {
+  MISMATCH_HANDLINGS,
+  type MismatchHandling,
+  type PropertyRegistry,
   type PropertySignal,
   type RegistryProperty,
   type ResolvedEavBinding,
@@ -23,6 +26,7 @@ import {
   Group,
   Icon,
   Progress,
+  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -40,6 +44,7 @@ import {
 
 import {
   formatShare,
+  getEntityNoun,
   getPropertyIcon,
   getPropertySemanticTypeOptions,
   getPropertyTypeLabel,
@@ -81,15 +86,16 @@ export function PropertyDetailsPanel({
     >
       <DetailPanelHeader
         icon={property ? getPropertyIcon(property) : "string"}
-        label={t`Custom field of ${table.display_name}`}
+        label={t`Custom property of ${resolved.entityTable?.display_name ?? table.display_name}`}
         title={property?.displayName ?? propertyName}
         isLoading={state.status === "loading"}
         onClose={onClose}
       />
-      {property ? (
+      {property && state.status === "loaded" ? (
         <PropertyDetails
           table={table}
           property={property}
+          registry={state.registry}
           resolved={resolved}
         />
       ) : (
@@ -102,28 +108,44 @@ export function PropertyDetailsPanel({
 function PropertyDetails({
   table,
   property,
+  registry,
   resolved,
 }: {
   table: Table;
   property: RegistryProperty;
+  registry: PropertyRegistry;
   resolved: ResolvedEavBinding;
 }) {
   const setOverrides = usePropertyOverrides(table);
   const save = (overrides: Parameters<typeof setOverrides>[1]) =>
     setOverrides(property.name, overrides);
-  const visibleSignals = property.signals;
   const definitionColumns = getDefinitionColumnNames(resolved);
+  const noun = getEntityNoun(resolved.entityTable);
+  const mergedIntoLabel =
+    registry.properties.find(({ name }) => name === property.mergedInto)
+      ?.displayName ?? property.mergedInto;
+  const visibleSignals = property.mergedInto != null ? [] : property.signals;
+  const hasAlerts = visibleSignals.length > 0 || mergedIntoLabel != null;
 
   return (
     <Stack gap="xxl">
-      {visibleSignals.length > 0 && (
+      {hasAlerts && (
         <SidebarSection title={t`Needs attention`}>
           <Stack gap="md">
+            {mergedIntoLabel != null && (
+              <MergedAlert
+                property={property}
+                mergedIntoLabel={mergedIntoLabel}
+                onUndo={() => save({ mergedInto: undefined })}
+              />
+            )}
             {visibleSignals.map((signal) => (
               <SignalAlert
                 key={signal.type}
                 property={property}
                 signal={signal}
+                noun={noun}
+                propertyColumn={resolved.propertyField?.name ?? t`the property`}
                 onSave={save}
               />
             ))}
@@ -243,7 +265,7 @@ function PropertyDetails({
             value={
               <Stack gap="xs" py="xs">
                 <Text c="text-primary">
-                  {t`${formatShare(property.coverage)} of entities (${property.entityCount.toLocaleString()})`}
+                  {t`${formatShare(property.coverage)} of ${noun.plural} (${property.entityCount.toLocaleString()} of ${registry.entityCount.toLocaleString()})`}
                 </Text>
                 <Progress value={property.coverage * 100} size="sm" />
               </Stack>
@@ -253,6 +275,12 @@ function PropertyDetails({
             label={t`Distinct values`}
             value={property.distinctValueCount.toLocaleString()}
           />
+          {property.mergedFrom.length > 0 && (
+            <DetailsRow
+              label={t`Merged in`}
+              value={property.mergedFrom.join(", ")}
+            />
+          )}
         </DetailsTable>
         <TopValues property={property} />
       </SidebarSection>
@@ -418,18 +446,24 @@ function PropertyTypeInput({
   );
 }
 
+type SignalOverrides = {
+  isHidden?: boolean;
+  mergedInto?: string;
+  onMismatch?: MismatchHandling;
+};
+
 function SignalAlert({
   property,
   signal,
+  noun,
+  propertyColumn,
   onSave,
 }: {
   property: RegistryProperty;
   signal: PropertySignal;
-  onSave: (overrides: {
-    isHidden?: boolean;
-    mergedInto?: string;
-    type?: RegistryProperty["type"];
-  }) => void;
+  noun: ReturnType<typeof getEntityNoun>;
+  propertyColumn: string;
+  onSave: (overrides: SignalOverrides) => void;
 }) {
   return match(signal)
     .with({ type: "undefined" }, () => (
@@ -437,18 +471,26 @@ function SignalAlert({
         color="warning"
         variant="light"
         icon={<Icon name="warning" />}
-        title={t`Not in the field definitions`}
+        title={t`Definition not found`}
       >
         <Stack gap="sm">
           <Text>
-            {t`${property.entityCount.toLocaleString()} entities have values for ${property.key}, but no definition has that key. The field was probably deleted, so it's hidden from people and Metabot.`}
+            {t`${property.entityCount.toLocaleString()} ${noun.plural} have values where ${propertyColumn} is ${property.key}, but the definitions table has no row for ${property.key}.`}
           </Text>
+          <Group gap="xs">
+            <Text size="sm" c="text-secondary">{t`Sample values`}</Text>
+            {property.topValues.slice(0, 3).map(({ value }) => (
+              <Code key={value}>{value}</Code>
+            ))}
+          </Group>
           <Group gap="sm">
             <Button
               size="compact-sm"
               onClick={() => onSave({ isHidden: !property.isHidden })}
             >
-              {property.isHidden ? t`Show it anyway` : t`Hide it`}
+              {property.isHidden
+                ? t`Show to people and Metabot`
+                : t`Hide from people and Metabot`}
             </Button>
           </Group>
         </Stack>
@@ -461,52 +503,28 @@ function SignalAlert({
         title={t`No values yet`}
       >
         <Text>
-          {t`It's defined, but no entity has a value. The pivot model still gets an empty column for it.`}
+          {t`It's defined, but no ${noun.singular} has a value. It's left out of the pivot model until it has values.`}
         </Text>
       </Alert>
     ))
-    .with({ type: "type-drift" }, ({ nonConformingCount, examples }) => (
-      <Alert
-        color="warning"
-        variant="light"
-        icon={<Icon name="warning" />}
-        title={t`${nonConformingCount.toLocaleString()} values aren't ${getPropertyTypeLabel(property.type).toLowerCase()}s`}
-      >
-        <Stack gap="sm">
-          <Text>
-            {t`For example ${examples
-              .slice(0, 3)
-              .map((example) => `"${example}"`)
-              .join(
-                ", ",
-              )}. They're left out when people filter or summarize ${property.displayName} as a number, and the filter says so.`}
-          </Text>
-          <Group gap="sm">
-            <Button size="compact-sm" onClick={() => onSave({ type: "text" })}>
-              {t`Treat as text`}
-            </Button>
-          </Group>
-        </Stack>
-      </Alert>
+    .with({ type: "type-drift" }, (drift) => (
+      <MismatchAlert property={property} signal={drift} onSave={onSave} />
     ))
     .with({ type: "duplicate" }, ({ propertyName, propertyLabel }) => (
       <Alert
         color="warning"
         variant="light"
         icon={<Icon name="copy" />}
-        title={t`Looks like ${propertyLabel}`}
+        title={t`Might be the same as ${propertyLabel}`}
       >
         <Stack gap="sm">
           <Text>
-            {t`Its values match ${propertyLabel}'s in other casing, on different entities. Merging shows both as one ${propertyLabel} column.`}
+            {t`Most of its values match ${propertyLabel}'s in other casing, and they're on different ${noun.plural}. Merging shows both as one ${propertyLabel} column. You can undo it.`}
           </Text>
           <Group gap="sm">
             <Button
               size="compact-sm"
-              variant="filled"
-              onClick={() =>
-                onSave({ mergedInto: propertyName, isHidden: true })
-              }
+              onClick={() => onSave({ mergedInto: propertyName })}
             >
               {t`Merge into ${propertyLabel}`}
             </Button>
@@ -515,6 +533,95 @@ function SignalAlert({
       </Alert>
     ))
     .exhaustive();
+}
+
+function MismatchAlert({
+  property,
+  signal,
+  onSave,
+}: {
+  property: RegistryProperty;
+  signal: Extract<PropertySignal, { type: "type-drift" }>;
+  onSave: (overrides: SignalOverrides) => void;
+}) {
+  const typeLabel = getPropertyTypeLabel(property.inferredType);
+  const share =
+    property.rowCount > 0 ? signal.nonConformingCount / property.rowCount : 0;
+  const isKeptAsText = property.onMismatch === "text";
+  return (
+    <Alert
+      color={property.isMismatchHandlingSet ? "core-brand" : "warning"}
+      variant="light"
+      icon={<Icon name="warning" />}
+      title={t`${signal.nonConformingCount.toLocaleString()} values don't fit ${typeLabel}`}
+    >
+      <Stack gap="sm">
+        <Group gap="xs">
+          {signal.exampleCounts.slice(0, 4).map(({ value, count }) => (
+            <Code key={value}>
+              {value === "" ? t`(empty)` : value} · {count.toLocaleString()}
+            </Code>
+          ))}
+        </Group>
+        <SegmentedControl
+          fullWidth
+          value={property.onMismatch}
+          onChange={(value) => {
+            const handling = MISMATCH_HANDLINGS.find(
+              (option) => option === value,
+            );
+            if (handling) {
+              onSave({ onMismatch: handling });
+            }
+          }}
+          data={[
+            { value: "ignore", label: t`Leave out` },
+            { value: "text", label: t`Keep as text` },
+          ]}
+        />
+        <Text size="sm">
+          {isKeptAsText
+            ? t`${property.displayName} stays text, so nothing is left out, but it can't be summed or compared as ${typeLabel.toLowerCase()}.`
+            : t`${property.displayName} is read as ${typeLabel.toLowerCase()}. ${formatShare(share)} of its values are left out of filters and summaries, and the filter says so.`}
+        </Text>
+        <Text size="sm" c="text-secondary">
+          {isKeptAsText
+            ? t`Exported as type: text, so agents read it the same way.`
+            : t`Exported as on_mismatch: null, so agents use the same cast.`}
+        </Text>
+      </Stack>
+    </Alert>
+  );
+}
+
+function MergedAlert({
+  property,
+  mergedIntoLabel,
+  onUndo,
+}: {
+  property: RegistryProperty;
+  mergedIntoLabel: string;
+  onUndo: () => void;
+}) {
+  return (
+    <Alert
+      variant="light"
+      color="core-brand"
+      icon={<Icon name="check" />}
+      title={t`Merged into ${mergedIntoLabel}`}
+    >
+      <Stack gap="sm">
+        <Text>
+          {t`Its ${property.entityCount.toLocaleString()} values now show in the ${mergedIntoLabel} column, and ${property.displayName} isn't listed on its own.`}
+        </Text>
+        <Group gap="sm">
+          <Button size="compact-sm" onClick={onUndo}>
+            {t`Undo merge`}
+          </Button>
+        </Group>
+      </Stack>
+    </Alert>
+  );
 }
 
 function TopValues({ property }: { property: RegistryProperty }) {

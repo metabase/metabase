@@ -13,7 +13,7 @@ import {
 } from "metabase/metadata/table-structure";
 import { Badge } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
+import type { IconName, Table } from "metabase-types/api";
 
 export function getPropertyTypeLabel(type: PropertyType) {
   return match(type)
@@ -72,7 +72,9 @@ export function getPropertyTypeDescription(property: RegistryProperty) {
 export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
   return match(signal)
     .with({ type: "undefined" }, () => (
-      <Badge color="warning" variant="light" size="sm">{t`Not defined`}</Badge>
+      <Badge color="warning" variant="light" size="sm">
+        {t`Definition not found`}
+      </Badge>
     ))
     .with({ type: "unused" }, () => (
       <Badge color="neutral" variant="light" size="sm">{t`No values`}</Badge>
@@ -88,5 +90,33 @@ export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
     .exhaustive();
 }
 
+export const getOpenSignals = (property: RegistryProperty) =>
+  property.signals.filter(
+    (signal) => signal.type !== "type-drift" || !property.isMismatchHandlingSet,
+  );
+
 export const needsAttention = (property: RegistryProperty) =>
-  !property.isHidden && property.signals.length > 0;
+  !property.isHidden &&
+  property.mergedInto == null &&
+  getOpenSignals(property).length > 0;
+
+export const getMissingBindingMessage = () =>
+  t`Pick the entity key, property and value columns in Details.`;
+
+export function getEntityNoun(table: Pick<Table, "display_name"> | undefined) {
+  const singular = table
+    ? table.display_name.toLowerCase().replace(/s$/, "")
+    : t`entity`;
+  return {
+    singular,
+    plural: table ? table.display_name.toLowerCase() : t`entities`,
+    title: singular.charAt(0).toUpperCase() + singular.slice(1),
+  };
+}
+
+export const getCustomPropertiesTitle = (
+  entityTable: Pick<Table, "display_name"> | undefined,
+) =>
+  entityTable
+    ? t`${getEntityNoun(entityTable).title} custom properties`
+    : t`Custom properties`;

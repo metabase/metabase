@@ -6,6 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   type RegistryProperty,
+  useEavBinding,
   usePropertyRegistry,
 } from "metabase/metadata/table-structure";
 import {
@@ -26,6 +27,9 @@ import type { Table } from "metabase-types/api";
 import {
   PropertySignalBadge,
   formatShare,
+  getEntityNoun,
+  getMissingBindingMessage,
+  getOpenSignals,
   getPropertyIcon,
   getPropertyTypeDescription,
   needsAttention,
@@ -40,18 +44,14 @@ const MAX_LISTED_VALUES = 4;
 
 export function TablePropertyList({ table }: { table: Table }) {
   const state = usePropertyRegistry(table);
+  const noun = getEntityNoun(useEavBinding(table).entityTable);
   const { selectedPropertyName, setSelectedPropertyName } =
     usePropertySelection();
   const [filter, setFilter] = useState<PropertyFilter>("all");
   const [search, setSearch] = useState("");
 
   if (state.status === "unbound") {
-    return (
-      <EmptyState
-        message={t`Pick the entity, property and value columns in Details to see this table's custom fields.`}
-        spacing="sm"
-      />
-    );
+    return <EmptyState message={getMissingBindingMessage()} spacing="sm" />;
   }
   if (state.status !== "loaded") {
     return (
@@ -86,7 +86,7 @@ export function TablePropertyList({ table }: { table: Table }) {
       <Stack gap="md">
         <TextInput
           leftSection={<Icon name="search" />}
-          placeholder={t`Search custom fields`}
+          placeholder={t`Search custom properties`}
           value={search}
           onChange={(event) => setSearch(event.currentTarget.value)}
         />
@@ -111,14 +111,18 @@ export function TablePropertyList({ table }: { table: Table }) {
       </Stack>
       <Text size="sm" c="text-secondary">
         {state.registry.hasDefinitions
-          ? t`Labels and types come from the field definitions. Coverage is the share of ${state.registry.entityCount.toLocaleString()} entities with a value.`
-          : t`No field definitions, so labels and types are inferred from ${state.registry.rowCount.toLocaleString()} values. Coverage is the share of ${state.registry.entityCount.toLocaleString()} entities with a value.`}
+          ? t`Labels and types come from the definitions table. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`
+          : t`There's no definitions table, so labels and types are inferred from ${state.registry.rowCount.toLocaleString()} values. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`}
       </Text>
       <Stack gap="sm" role="list">
         {visibleProperties.map((property) => (
           <PropertyItem
             key={property.key}
             property={property}
+            mergedIntoLabel={
+              properties.find(({ name }) => name === property.mergedInto)
+                ?.displayName
+            }
             active={property.key === selectedPropertyName}
             onSelect={() => setSelectedPropertyName(property.key)}
           />
@@ -130,10 +134,12 @@ export function TablePropertyList({ table }: { table: Table }) {
 
 function PropertyItem({
   property,
+  mergedIntoLabel,
   active,
   onSelect,
 }: {
   property: RegistryProperty;
+  mergedIntoLabel: string | undefined;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -184,13 +190,19 @@ function PropertyItem({
             </Text>
           </Stack>
           <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-            {property.isHidden ? (
-              <Text size="sm" c="text-secondary-opaque">{t`Hidden`}</Text>
-            ) : (
-              property.signals.map((signal) => (
-                <PropertySignalBadge key={signal.type} signal={signal} />
-              ))
+            {property.mergedInto != null && (
+              <Text size="sm" c="text-secondary-opaque">
+                {t`Merged into ${mergedIntoLabel ?? property.mergedInto}`}
+              </Text>
             )}
+            {property.isHidden && property.mergedInto == null && (
+              <Text size="sm" c="text-secondary-opaque">{t`Hidden`}</Text>
+            )}
+            {!property.isHidden &&
+              property.mergedInto == null &&
+              getOpenSignals(property).map((signal) => (
+                <PropertySignalBadge key={signal.type} signal={signal} />
+              ))}
           </Group>
           <Stack gap={rem(4)} w={rem(72)} flex="0 0 auto" align="flex-end">
             <Text size="sm" c="text-primary" fw="bold">

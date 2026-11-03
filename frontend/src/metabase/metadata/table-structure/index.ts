@@ -2,6 +2,7 @@ export {
   type CustomPropertyFacet,
   type EavBinding,
   type EavDefinitionInference,
+  findTargetTable,
   inferCustomPropertyFacet,
   inferDefinitionColumns,
   inferWildcardDefinitionTable,
@@ -33,13 +34,23 @@ export {
 export {
   type EavDefinitionTable,
   type ResolvedEavBinding,
+  useCustomPropertyParents,
   useEavBinding,
 } from "./eav-binding";
-export { type PivotModel, usePivotModel } from "./pivot-models";
+export {
+  type PivotModel,
+  usePivotModel,
+  usePivotModelById,
+} from "./pivot-models";
 export { getTableHiddenReason } from "./visibility";
 export { type TableStructure, useTableStructures } from "./table-structure";
 export {
   type BoundDefinitions,
+  MISMATCH_HANDLINGS,
+  type MismatchHandling,
+  type EntityKeyValue,
+  type PropertySampleRow,
+  conformsToType,
   PROPERTY_SEMANTIC_TYPES,
   PROPERTY_TYPES,
   type PropertyRegistry,
@@ -54,5 +65,6 @@ export {
   readDeclaredType,
   useDefinitionRows,
   usePropertyOverrides,
+  usePropertySampleRows,
   usePropertyRegistry,
 } from "./property-registry";

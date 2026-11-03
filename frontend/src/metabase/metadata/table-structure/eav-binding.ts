@@ -15,8 +15,9 @@ import {
   inferDefinitionColumns,
   inferEavDefinition,
 } from "./inference";
+import { isRoleA } from "./roles";
 import { useTableStructures } from "./table-structure";
-import { useSchemaTables } from "./use-tables-with-fields";
+import { useSchemaTables, useTablesWithFields } from "./use-tables-with-fields";
 
 export type EavDefinitionTable = Table & { id: ConcreteTableId };
 
@@ -119,4 +120,31 @@ export function useEavBinding(table: Table): ResolvedEavBinding {
       isLoading,
     };
   }, [eav, eavOverrides, fields, isLoading, schemaTables, table.name]);
+}
+
+export function useCustomPropertyParents(
+  tables: Table[],
+): Map<Table["id"], Table> {
+  const { getTableStructure } = useTableStructures();
+  const { tables: tablesWithFields } = useTablesWithFields(tables, {
+    isEnabled: tables.length > 0,
+  });
+  return useMemo(
+    () =>
+      new Map(
+        tablesWithFields.flatMap((table) => {
+          const { role, eav } = getTableStructure(table);
+          if (!role || !isRoleA(role, "role/CustomPropertyTable")) {
+            return [];
+          }
+          const entityKeyField = fieldById(
+            table.fields ?? [],
+            eav.entityKeyFieldId,
+          );
+          const parent = findTargetTable(entityKeyField, tablesWithFields);
+          return parent ? [[table.id, parent]] : [];
+        }),
+      ),
+    [getTableStructure, tablesWithFields],
+  );
 }

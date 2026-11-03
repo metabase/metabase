@@ -5,24 +5,32 @@ import type { Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 export type PivotModel = {
+  id: number;
   name: string;
-  columnCount: number;
+  tableId: number;
+  propertyKeys: string[];
   generatedAt: string;
 };
 
 // PROTOTYPE: mocked. Generated pivot models would be ordinary saved models
 // matched by (value table, "pivot"); here only their summary is kept.
 const STORAGE_KEY = "metabase-prototype-pivot-models";
+const FIRST_MODEL_ID = 9001;
 
 function parsePivotModel(value: unknown): PivotModel | undefined {
   if (!isObject(value)) {
     return undefined;
   }
-  const { name, columnCount, generatedAt } = value;
-  return typeof name === "string" &&
-    typeof columnCount === "number" &&
+  const { id, name, tableId, propertyKeys, generatedAt } = value;
+  const keys = Array.isArray(propertyKeys)
+    ? propertyKeys.filter((key) => typeof key === "string")
+    : null;
+  return typeof id === "number" &&
+    typeof name === "string" &&
+    typeof tableId === "number" &&
+    keys != null &&
     typeof generatedAt === "string"
-    ? { name, columnCount, generatedAt }
+    ? { id, name, tableId, propertyKeys: keys, generatedAt }
     : undefined;
 }
 
@@ -48,9 +56,20 @@ export function usePivotModel(table: Pick<Table, "db_id" | "id">) {
   );
   const key = getPivotModelKey(table);
   const savePivotModel = useCallback(
-    (model: PivotModel) =>
-      updateStorage((current) => ({ ...current, [key]: model })),
+    (model: Omit<PivotModel, "id">) =>
+      updateStorage((current) => ({
+        ...current,
+        [key]: {
+          ...model,
+          id: current[key]?.id ?? FIRST_MODEL_ID + Object.keys(current).length,
+        },
+      })),
     [key, updateStorage],
   );
   return { pivotModel: storage[key], savePivotModel };
+}
+
+export function usePivotModelById(id: number) {
+  const [storage] = usePrototypeStorage(STORAGE_KEY, parseStorage);
+  return Object.values(storage).find((model) => model.id === id);
 }

@@ -412,7 +412,7 @@ export function createWarehouse({
       display_name: "Customers",
       entity_type: "entity/UserTable",
       fields: customersFields(withPropertyColumns),
-      estimated_row_count: 2320,
+      estimated_row_count: 2480,
     }),
     createMockTable({
       id: CUSTOMER_PROPERTIES_ID,

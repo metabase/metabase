@@ -88,7 +88,7 @@ const REGISTRY_MESSAGES: MetabotMessage[] = [
       },
       {
         id: "2",
-        title: "Read Customers and its 14 custom fields",
+        title: "Read Customers and its 14 custom properties",
         status: "ended",
       },
       {
@@ -115,9 +115,9 @@ const DISCOVERY_MESSAGES: MetabotMessage[] = [
     "discovery-answer",
     [
       { id: "1", title: "Read Customers", status: "ended" },
-      { id: "2", title: "Listed custom fields", status: "ended" },
+      { id: "2", title: "Listed custom properties", status: "ended" },
     ],
-    `Besides name, email, country and signup date, there are **14 custom fields**:
+    `Besides name, email, country and signup date, there are **14 custom properties**:
 
 - **Commercial**: Plan (98% of customers), MRR (69%), Seats (71%), Trial ends (12%)
 - **Firmographic**: Region (93%), Industry (64%), Signup source (78%)
@@ -139,14 +139,14 @@ table custom_field
 
 const REGISTRY_CONTEXT = `table customers
   id, name, email, country, created_at
-  custom fields (from custom_field_value, 14, top 4 shown)
+  custom properties (from custom_field_value, 14, top 4 shown)
     plan     category  98%  Free | Starter | Pro | Enterprise
              "Plan Tier" is merged into it
     seats    integer   71%  5–300, 3% aren't numbers
              also called: licenses, users
     region   category  93%  AMER | EMEA | APAC
     mrr_usd  currency  69%  "MRR", monthly recurring revenue
-  … list_properties for the other 10`;
+  … list_properties (proposed tool) for the other 10`;
 
 function Conversation({
   badge,
@@ -201,9 +201,14 @@ function Conversation({
 export function MetabotComparisonPrototype() {
   return (
     <Stack p="xl" gap="xl" bg="background_page-secondary" mih="100vh">
-      <Title
-        order={2}
-      >{t`Metabot with and without the property registry`}</Title>
+      <Group gap="sm">
+        <Title
+          order={2}
+        >{t`Metabot with and without the property registry`}</Title>
+        <Badge color="warning" variant="light">
+          {t`Illustrative: scripted answers`}
+        </Badge>
+      </Group>
       <Group align="stretch" gap="xl" wrap="nowrap">
         <Conversation
           badge={t`Today`}
@@ -227,6 +232,9 @@ export function MetabotComparisonPrototype() {
 export function MetabotDiscoveryPrototype() {
   return (
     <Stack p="xl" gap="xl" bg="background_page-secondary" mih="100vh">
+      <Badge color="warning" variant="light" w="fit-content">
+        {t`Illustrative: scripted answers`}
+      </Badge>
       <Conversation
         badge={t`With the registry`}
         title={t`Discovery: Metabot can say what exists`}

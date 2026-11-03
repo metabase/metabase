@@ -78,13 +78,13 @@ export function CustomFieldSection({
   const definition = definitions?.find(({ key }) => key === facet.suffix);
 
   return (
-    <SidebarSection title={t`Custom field`}>
+    <SidebarSection title={t`Custom property`}>
       <DetailsTable>
         <DetailsRow
           label={t`Structure`}
           value={
             <Stack gap="xs" py="xs">
-              <Text c="text-primary">{t`Custom field`}</Text>
+              <Text c="text-primary">{t`Custom property`}</Text>
               <Text size="sm" c="text-secondary">
                 {t`Inferred: named with the ${facet.prefix} prefix, so the customer chose this column`}
               </Text>
@@ -199,10 +199,10 @@ function Meaning({
 
 function getMeaningConsequence(field: Field) {
   if (isSummable(field)) {
-    return t`Being a custom field doesn't change that, so it still counts as a measure.`;
+    return t`Being a custom property doesn't change that, so it still counts as a measure.`;
   }
   if (isDate(field)) {
-    return t`Being a custom field doesn't change that, so it can still be a table's main date.`;
+    return t`Being a custom property doesn't change that, so it can still be a table's main date.`;
   }
   return null;
 }

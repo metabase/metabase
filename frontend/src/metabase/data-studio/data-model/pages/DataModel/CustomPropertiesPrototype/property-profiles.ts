@@ -7,6 +7,7 @@ import {
 import { isObject } from "metabase-types/guards";
 
 import {
+  CUSTOMERS_ID,
   CUSTOMER_PROPERTIES_ID,
   CUSTOM_FIELD_ID,
   CUSTOM_FIELD_ID_FIELD_ID,
@@ -32,7 +33,7 @@ type CustomFieldDefinition = {
   fieldType: string | null;
 };
 
-export const CUSTOMER_COUNT = 2320;
+export const CUSTOMER_COUNT = 2480;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -170,6 +171,18 @@ const PROPERTY_PROFILES: PropertyProfile[] = [
     ],
   },
   {
+    id: 14,
+    name: "renewal_date",
+    values: range(
+      30,
+      (index) =>
+        new Date(Date.now() + (index * 12 + 20) * DAY_MS)
+          .toISOString()
+          .slice(0, 10),
+      862,
+    ),
+  },
+  {
     id: 15,
     name: "legacy_billing_id",
     values: range(50, (index) => `LB-${10023 + index * 7}`, 510),
@@ -206,6 +219,12 @@ const CUSTOM_FIELD_DEFINITIONS: CustomFieldDefinition[] = [
   { id: 12, name: "plan_tier", title: "Plan Tier", fieldType: "dropdown" },
   { id: 13, name: "churn_risk", title: "Churn risk", fieldType: "dropdown" },
   { id: 14, name: "renewal_date", title: "Renewal date", fieldType: "date" },
+  {
+    id: 16,
+    name: "partner_tier",
+    title: "Partner tier",
+    fieldType: "dropdown",
+  },
 ];
 
 const DEAL_PROPERTIES: [string, string, string][] = [
@@ -237,6 +256,103 @@ function dataset(columnNames: string[], rows: RowValue[][]): Dataset {
 
 export function getEntityCountDataset() {
   return dataset(["count"], [[CUSTOMER_COUNT]]);
+}
+
+const SAMPLE_CUSTOMERS: RowValue[][] = [
+  [
+    1042,
+    "Northwind Traders",
+    "ops@northwind.example",
+    "Germany",
+    "2021-04-12T09:30:00Z",
+  ],
+  [
+    1043,
+    "Blue Fjord",
+    "hello@bluefjord.example",
+    "USA",
+    "2022-08-03T14:10:00Z",
+  ],
+  [
+    1044,
+    "Lumen Labs",
+    "team@lumenlabs.example",
+    "Japan",
+    "2023-01-19T07:45:00Z",
+  ],
+  [
+    1045,
+    "Orbit Freight",
+    "it@orbitfreight.example",
+    "United Kingdom",
+    "2020-11-02T11:00:00Z",
+  ],
+  [
+    1046,
+    "Acme Analytics",
+    "data@acme.example",
+    "Canada",
+    "2024-05-27T16:20:00Z",
+  ],
+];
+
+const SAMPLE_PROPERTY_ROWS: RowValue[][] = [
+  [1042, 1, "Pro"],
+  [1042, 2, "EMEA"],
+  [1042, 5, "120"],
+  [1042, 6, "2940.00"],
+  [1042, 14, "2027-03-01"],
+  [1042, 7, "Software"],
+  [1042, 8, "ana@acme.io"],
+  [1042, 3, "customer"],
+  [1043, 1, "Starter"],
+  [1043, 2, "AMER"],
+  [1043, 5, "10+"],
+  [1043, 14, "2026-12-15"],
+  [1043, 7, "Retail"],
+  [1043, 4, "referral"],
+  [1044, 12, "pro"],
+  [1044, 2, "APAC"],
+  [1044, 5, "35"],
+  [1044, 9, "9"],
+  [1044, 10, "2026-11-20"],
+  [1045, 1, "Enterprise"],
+  [1045, 2, "EMEA"],
+  [1045, 5, "260"],
+  [1045, 6, "8820.00"],
+  [1045, 14, "2027-06-30"],
+  [1045, 11, "true"],
+  [1045, 13, "low"],
+  [1046, 1, "Free"],
+  [1046, 2, "AMER"],
+  [1046, 4, "website"],
+  [1046, 15, "LB-10023"],
+];
+
+function getEntityFilterValue(query: Record<string, unknown>) {
+  const filter = query.filter;
+  return Array.isArray(filter) && filter[0] === "=" ? filter[2] : undefined;
+}
+
+function getSampleRowsDataset(query: Record<string, unknown>) {
+  const entityKey = getEntityFilterValue(query);
+  return dataset(
+    ["customer_id", "custom_field_id", "value"],
+    SAMPLE_PROPERTY_ROWS.filter(
+      ([customerId]) => entityKey == null || customerId === entityKey,
+    ),
+  );
+}
+
+function getCustomersDataset(query: Record<string, unknown>) {
+  if (Array.isArray(query.aggregation)) {
+    return getEntityCountDataset();
+  }
+  const limit = typeof query.limit === "number" ? query.limit : undefined;
+  return dataset(
+    ["id", "name", "email", "country", "created_at"],
+    SAMPLE_CUSTOMERS.slice(0, limit),
+  );
 }
 
 export function getPropertySummaryDataset() {
@@ -319,8 +435,14 @@ export function getPropertyRegistryDataset(query: unknown): Dataset | null {
   if (sourceTable === DEAL_PROPERTY_ID) {
     return getDealPropertyDataset(getRequestedFieldIds(query));
   }
+  if (sourceTable === CUSTOMERS_ID) {
+    return getCustomersDataset(query);
+  }
   if (sourceTable !== CUSTOMER_PROPERTIES_ID) {
     return null;
+  }
+  if (Array.isArray(query.fields)) {
+    return getSampleRowsDataset(query);
   }
   const breakoutCount = Array.isArray(query.breakout)
     ? query.breakout.length
