@@ -234,10 +234,15 @@
    "gold"   "final"
    "silver" "final"})
 
-(defn- normalize-legacy-data-layer
-  "Return `table-row` with a pre-v59 `:data_layer` value replaced by its current value."
+(defn- normalize-table-row
+  "Return `table-row` with `:is_published` as a boolean.
+  A pre-v59 `:data_layer` value is replaced by its current value."
   [table-row]
-  (u/update-if-exists table-row :data_layer #(get legacy-data-layers % %)))
+  ;; The raw read skips `:model/Table`'s transforms. MySQL and MariaDB return the overlay's computed `is_published`
+  ;; as `0` or `1`, and `0` is truthy.
+  (-> table-row
+      (u/update-if-exists :is_published #(or (true? %) (and (number? %) (== 1 %))))
+      (u/update-if-exists :data_layer #(get legacy-data-layers % %))))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -282,7 +287,7 @@
         universe-cards    (appdb-source/with-missing-relation-fallback
                             degraded-signals ::universe-cards []
                             #(data-complexity-score.db/universe-cards audit/audit-db-id))
-        universe-tables   (mapv normalize-legacy-data-layer (universe-table-rows degraded-signals))
+        universe-tables   (mapv normalize-table-row (universe-table-rows degraded-signals))
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names degraded-signals (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)

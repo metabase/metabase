@@ -65,7 +65,7 @@
       (is (= ::ok (fallback ::ok-read (constantly ::ok))))
       (is (= #{} @degraded)))
     (testing "every missing-table and missing-column SQLState falls back and records its signal"
-      (let [states ["42102" "42122" "42703" "42P01" "42S02" "42S22"]]
+      (let [states ["42102" "42122" "42703" "42P01" "42S02" "42S03" "42S04" "42S22"]]
         (doseq [state states]
           (testing state
             (is (= ::fallback (fallback (keyword "sql-state" state) (throw-sql-state state))))))

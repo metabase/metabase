@@ -467,6 +467,26 @@
                {:gold   (has-table? metabot gold)
                 :copper (has-table? metabot copper)}))))))
 
+(deftest ^:synchronized library-catalog-unpublished-table-test
+  (testing "an unpublished Table in a Library collection stays out of :library on every app DB"
+    ;; MySQL and MariaDB return the overlay's computed `is_published` as `0` or `1`, and `0` is truthy.
+    (collections.tu/with-library [{:keys [metrics]}]
+      (mt/with-temp [:model/Database {db-id :id}       {:name "Published Library DB"}
+                     :model/Table    {published :id}   {:db_id         db-id
+                                                        :active        true
+                                                        :name          "library_published"
+                                                        :collection_id (:id metrics)
+                                                        :is_published  true}
+                     :model/Table    {unpublished :id} {:db_id         db-id
+                                                        :active        true
+                                                        :name          "library_unpublished"
+                                                        :collection_id (:id metrics)
+                                                        :is_published  false}]
+        (let [library (:library (#'complexity/enumerate-catalogs nil nil))]
+          (is (= {:published true, :unpublished false}
+                 {:published   (has-table? library published)
+                  :unpublished (has-table? library unpublished)})))))))
+
 (deftest ^:synchronized metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"
     (is (nil? (#'complexity/metabot-collection-scope-ids nil))))
