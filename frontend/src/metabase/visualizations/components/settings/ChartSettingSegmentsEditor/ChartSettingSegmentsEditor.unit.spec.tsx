@@ -1,11 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, within } from "__support__/ui";
-import { delay } from "__support__/utils";
+import { fireEvent, render, screen, waitFor, within } from "__support__/ui";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
-
-import { DEBOUNCE_MS } from "../ChartSettingInputNumeric";
 
 import {
   ChartSettingSegmentsEditor,
@@ -54,14 +51,15 @@ it("Should pass back a new array of segments on change", async () => {
 
   await userEvent.clear(min);
   await userEvent.type(min, "20");
-  await delay(DEBOUNCE_MS * 2);
 
-  expect(onChange).toHaveBeenCalledWith(
-    expect.arrayContaining([
-      expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
-      // Need to use objectContaining here to account for the 'key' values that are added
-      expect.objectContaining(DEFAULT_VALUE[1]),
-    ]),
+  await waitFor(() =>
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
+        // Need to use objectContaining here to account for the 'key' values that are added
+        expect.objectContaining(DEFAULT_VALUE[1]),
+      ]),
+    ),
   );
 });
 

@@ -69,8 +69,8 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   <ChartSettingInputNumeric
                     value={segment.min ?? undefined}
-                    onChange={(rawValue) => {
-                      const newValue = rawValue ?? null;
+                    onChange={(value) => {
+                      const newValue = value ?? null;
                       if (newValue !== segment.min) {
                         onChangeProperty(index, "min", newValue);
                       }
@@ -81,8 +81,8 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   <ChartSettingInputNumeric
                     value={segment.max ?? undefined}
-                    onChange={(rawValue) => {
-                      const newValue = rawValue ?? null;
+                    onChange={(value) => {
+                      const newValue = value ?? null;
                       if (newValue !== segment.max) {
                         onChangeProperty(index, "max", newValue);
                       }
