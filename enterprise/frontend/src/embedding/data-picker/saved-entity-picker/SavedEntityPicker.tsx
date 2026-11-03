@@ -12,6 +12,7 @@ import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
@@ -73,7 +74,7 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
   // The starting collection is picked once, so wait for "Our analytics" to load
   // or fail: users without access to it still get the picker.
   if (!collections || isRootCollectionLoading || !currentUser) {
-    return null;
+    return <DelayedLoadingAndErrorWrapper loading error={null} />;
   }
 
   return (

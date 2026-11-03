@@ -112,7 +112,10 @@ async function setup({ rootCollectionRequest }: SetupOpts = {}) {
       onBack={jest.fn()}
     />,
   );
-  await waitForLoaderToBeRemoved();
+  // a held "Our analytics" keeps the loader up until the test releases it
+  if (rootCollectionRequest !== "loads-after-collections") {
+    await waitForLoaderToBeRemoved();
+  }
 
   return { store, resolveRootCollection };
 }
@@ -146,6 +149,19 @@ describe("SavedEntityPicker", () => {
     expect(
       screen.getAllByTestId("option-text").map((node) => node.textContent),
     ).toEqual(["a", "A", "B"]);
+  });
+
+  it("shows a loader while Our analytics is still loading after the collections", async () => {
+    const { store, resolveRootCollection } = await setup({
+      rootCollectionRequest: "loads-after-collections",
+    });
+
+    await waitFor(() => expect(hasLoadedCollectionsTree(store)).toBe(true));
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+
+    resolveRootCollection();
+    await waitForLoaderToBeRemoved();
   });
 
   it("opens on Our analytics when the root collection loads after the collections", async () => {
