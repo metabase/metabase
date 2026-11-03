@@ -94,6 +94,18 @@
   {:message "The SQL query contains more than one statement, and only one is supported. No changes were saved."
    :recovery [{:uses #{} :text "Rewrite the SQL as one statement, then retry."}]})
 
+(tools/defrecoverable invalid-template-syntax!
+  "The proposed SQL has `{{...}}` or `[[...]]` syntax that Metabase rejects."
+  {:payload [:map {:closed true} [:error-message :string]]}
+  [{:keys [error-message]}]
+  (let [prefix (str "The SQL query has invalid Metabase `{{...}}` or `[[...]]` syntax. The problem can be in SQL "
+                    "that was there before this call. No changes were saved. Parser details: ")
+        recovery [{:uses #{} :text (str "Close each `{{` with `}}` and each `[[` with `]]`, put a variable such as "
+                                        "`{{name}}` in each `{{...}}` and each `[[...]]`, or remove the clause, then retry.")}]
+        budget (tools.runtime/output-budget prefix recovery)]
+    {:message (str prefix (bounded-quote error-message budget))
+     :recovery recovery}))
+
 (tools/defrecoverable blank-sql!
   "Creating, replacing, or editing the query would leave it with no SQL."
   {:payload [:map {:closed true} [:query-id {:optional true} :string]]}
@@ -138,9 +150,10 @@
   [{:keys [validation-result action-result]}]
   (let [{:keys [valid? dialect error-message reason]} validation-result]
     (cond
-      valid?                          action-result
-      (= :multiple-statements reason) (multiple-sql-statements! {})
-      :else                           (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+      valid?                              action-result
+      (= :multiple-statements reason)     (multiple-sql-statements! {})
+      (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message})
+      :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.

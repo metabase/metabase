@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -61,6 +62,21 @@
   (boolean (and (string? sql)
                 (re-find #"\{\{|\[\[" sql))))
 
+(defn- template-syntax-error
+  "The parser message for `{{...}}` or `[[...]]` syntax in `sql` that Metabase rejects, or `nil`.
+
+  This is the strict parse that SQL drivers do before each run. The parser marks its syntax errors with
+  `:type :invalid-query`, and other exceptions are not about the SQL, so they propagate."
+  [sql]
+  (when (contains-template-tags? sql)
+    (try
+      (lib/parse-parameters sql)
+      nil
+      (catch clojure.lang.ExceptionInfo e
+        (if (= :invalid-query (:type (ex-data e)))
+          (ex-message e)
+          (throw e))))))
+
 (mr/def ::validation-result
   [:map
    [:valid? :boolean]
@@ -72,7 +88,10 @@
 (mu/defn validate-sql :- ::validation-result
   "Validate sql query.
 
-  Validation is short-circuited and query is considered valid for following cases:
+  For every dialect, sql with `{{...}}` or `[[...]]` syntax that Metabase rejects is not valid, with `:reason`
+  `:invalid-template-syntax` and the parser message in `:error-message`. Metabase cannot run such sql.
+
+  Otherwise validation is short-circuited and query is considered valid for following cases:
   - sql string is empty,
   - dialect is `nil` or maps to `nil` (e.g. h2, vertica),
   - dialect is not in [[dialect-mapping]],
@@ -86,15 +105,25 @@
   with the Python ai-service."
   [dialect :- [:maybe :string]
    sql :- :string]
-  (let [mapped-dialect (get dialect-mapping dialect)]
-    (if (or (nil? dialect)
-            (str/blank? sql)
-            (not (contains? dialect-mapping dialect))
-            (nil? mapped-dialect)
-            (contains-template-tags? sql))
+  (let [mapped-dialect (get dialect-mapping dialect)
+        template-error (template-syntax-error sql)]
+    (cond
+      template-error
+      {:valid? false
+       :dialect dialect
+       :reason :invalid-template-syntax
+       :error-message template-error}
+
+      (or (nil? dialect)
+          (str/blank? sql)
+          (not (contains? dialect-mapping dialect))
+          (nil? mapped-dialect)
+          (contains-template-tags? sql))
       {:valid? true
        :dialect dialect
        :transpiled-sql sql}
+
+      :else
       (let [{:keys [error-message reason transpiled-sql status]}
             (sql-tools/transpile-sql sql mapped-dialect mapped-dialect)]
         (merge
