@@ -550,11 +550,15 @@
         (mt/with-temp [:model/Card {model-card :id} {:dataset_query (venues-count), :type :model}]
           (doseq [[item-type card-id] {"question" notebook-card, "model" model-card}]
             (testing item-type
-              (is (str/includes?
-                   (:output (run-viewing! [{:type item-type, :id card-id}] (str card-id)))
-                   (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen "
-                                "are not applied. Link to it as `metabase://%s/%d`, not as a query.")
-                           item-type card-id item-type card-id)))))))
+              (let [output (:output (run-viewing! [{:type item-type, :id card-id}] (str card-id)))]
+                (is (str/includes?
+                     output
+                     (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen "
+                                  "are not applied. Link to it as `metabase://%s/%d`, not as a query.")
+                             item-type card-id item-type card-id)))
+                (testing "only a question has a query ID for the query on screen"
+                  (is (= (= "question" item-type)
+                         (str/includes? output "run its query ID to read the query on the user's screen")))))))))
       (testing "a query the conversation holds says nothing about a saved version"
         (is (not (str/includes? (:output (run-tool! {"q1" (venues-count)} {:query_id "q1"})) "saved version"))))
       (testing "a saved question the user is not viewing runs by its id too"

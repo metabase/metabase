@@ -679,9 +679,13 @@
                   (when (< (count shown-cols) (count cols))
                     (format "Only the first %d of %d columns are shown." (count shown-cols) (count cols)))
                   (when-let [{:keys [id type]} saved-card]
-                    (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen"
-                                 " are not applied. Link to it as `metabase://%s/%d`, not as a query.")
-                            (name type) id (name type) id))
+                    (str (format (str "This ran the saved version of %s %d: edits and filter values on the user's"
+                                      " screen are not applied. Link to it as `metabase://%s/%d`, not as a query.")
+                                 (name type) id (name type) id)
+                         ;; Only a saved question gets a query ID for its query on screen (`assign-context-ids`).
+                         (when (= :question type)
+                           (str " If the user is viewing it, run its query ID to read the query on the user's"
+                                " screen."))))
                   (cond
                     none-fit?
                     (str "The query returned rows, but one row is longer than the output limit."
