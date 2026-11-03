@@ -79,6 +79,18 @@
                           :rows [[1000]]}}
                 (referenced-goal-result part goal-id)))))))
 
+(deftest execute-card-runs-goal-from-another-database-test
+  (testing "execute-card runs a dynamic goal whose source reads a different database than the card"
+    (let [places-count (mt/dataset places-cam-likes
+                         (mt/mbql-query places {:aggregation [[:count]]}))]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query places-count}
+                     :model/Card {card-id :id} (gauge-with-referenced-goal goal-id)]
+        (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+          (is (= [[100]] (get-in part [:result :data :rows])))
+          (is (=? {:status "completed"
+                   :data   {:rows [[3]]}}
+                  (referenced-goal-result part goal-id))))))))
+
 (deftest execute-card-resolves-goals-as-the-creator-test
   (testing "a notification resolves its card's dynamic goals with the permissions of the user who created it"
     (mt/with-temp [:model/Collection {secret-id :id} {}
