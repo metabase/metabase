@@ -864,7 +864,7 @@
   [mbql5-query metadata-provider]
   (let [query (lib/query metadata-provider mbql5-query)
         cols  (lib/returned-columns query)]
-    (mapv #(tools.u/->result-column query %) cols)))
+    (tools.u/->result-columns query cols)))
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
@@ -979,14 +979,15 @@
                     :problem (or (not-runnable-problem error) (me/error-message error))})
         paths-of (group-by :problem located)
         lines    (for [problem (distinct (map :problem located))
-                       :let    [[path & others] (distinct (map :path (paths-of problem)))]]
+                       :let    [[path & others] (distinct (map :path (paths-of problem)))
+                                n-others         (count others)]]
                    (str path
                         (when others
-                          (format " (and %d other place%s)" (count others) (if (= 1 (count others)) "" "s")))
+                          (format " (and %d other %s)" n-others (u/format-plural n-others "place")))
                         ": " problem))
         omitted  (- (count lines) max-not-runnable-problems)]
     (cond-> (vec (take max-not-runnable-problems lines))
-      (pos? omitted) (conj (format "and %d more problem%s" omitted (if (= 1 omitted) "" "s"))))))
+      (pos? omitted) (conj (format "and %d more %s" omitted (u/format-plural omitted "problem"))))))
 
 (defn- query-not-runnable-explanation
   "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
@@ -1006,6 +1007,34 @@
            (not-any? not-runnable-problem errors)
            (str ". This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
 
+(defn- first-stage-metric-ids
+  "Return the IDs of the metrics that the first stage's aggregations reference."
+  [query]
+  (into #{}
+        (match/match-many (lib/aggregations query 0)
+          [:metric _ (id :guard pos-int?)]
+          id)))
+
+(defn- metric-source-card
+  "Return `{metric-id required-source}`, as [[incompatible-metrics]] does, for the metric that the first stage of
+  `query` reads as its `source-card`, when that stage does not aggregate the same metric.
+
+  The query processor expands a metric `source-card` only when the query references a metric. Otherwise the stage
+  reads the metric's aggregated result, so a `count` gives 1 and a base column is not there. This check is stricter:
+  the stage must aggregate this metric.
+
+  A stage that passes this check still goes to [[incompatible-metrics]]. That check accepts the stage for a metric on
+  a table, and refuses it for a metric on a model or a saved question, because the stage's `source-card` is not that
+  card."
+  [mp query]
+  ;; Not `lib.util/source-card-id`: it validates the query, and this check runs before the gate that explains an
+  ;; invalid query.
+  (when-let [card-id (get-in query [:stages 0 :source-card])]
+    (let [card (lib.metadata/card mp card-id)]
+      (when (and (= :metric (:type card))
+                 (not (contains? (first-stage-metric-ids query) card-id)))
+        {card-id (tools.u/metric-required-source mp card)}))))
+
 (defn- incompatible-metrics
   "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
 
@@ -1016,10 +1045,7 @@
   Only source mismatches in the first stage's aggregations are checked. Metrics in later stages, joins, or other
   clauses still reach the query processor, as do other errors such as archived metrics."
   [mp query]
-  (let [referenced (into #{}
-                         (match/match-many (lib/aggregations query 0)
-                           [:metric _ (id :guard pos-int?)]
-                           id))]
+  (let [referenced (first-stage-metric-ids query)]
     (when (seq referenced)
       (let [stage-card-id (lib.util/source-card-id query)
             _             (lib.metadata/bulk-metadata mp :metadata/card (cond-> referenced
@@ -1041,11 +1067,12 @@
                            [metric-id required]))))
                referenced))))))
 
-(defn- incompatible-metric-explanation
-  "Describe each incompatible metric and the source it requires.
+(defn- metric-source-descriptions
+  "Describe each metric and the source it requires.
 
-  Return `{:message ... :usable-sources {metric-id {:source-table id} | {:source-card id}}}`.
-  `required-by-metric-id` comes from [[incompatible-metrics]]; `mp` supplies the database name for portable FKs.
+  Return `{:descriptions [string ...] :usable-sources {metric-id {:source-table id} | {:source-card id}}}`, with the
+  descriptions in the order of `required-by-metric-id`. `required-by-metric-id` maps a metric ID to its
+  [[metabase.metabot.tools.util/metric-required-source]]; `mp` supplies the database name for portable FKs.
   Include names and sources only when the current user may access them. `:usable-sources` identifies those same
   sources by numeric ID."
   [mp required-by-metric-id]
@@ -1082,11 +1109,7 @@
 
                                 :else
                                 " (defined on a source you do not have access to)"))))]
-    {:message        (str "These metrics cannot be used on this stage's source: "
-                          (str/join ", " (map describe metric-ids))
-                          ". "
-                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
-                          "or drop the metric and express the aggregation directly.")
+    {:descriptions   (mapv describe metric-ids)
      :usable-sources (into {}
                            (keep (fn [[metric-id r]]
                                    (cond
@@ -1096,6 +1119,47 @@
                                      (and (= :card (:kind r)) (contains? readable (:card-id r)))
                                      [metric-id {:source-card (:card-id r)}])))
                            required-by-metric-id)}))
+
+(defn- incompatible-metric-explanation
+  "Describe each incompatible metric and the source it requires.
+
+  Return `{:message ... :usable-sources ...}`, as [[metric-source-descriptions]] does.
+  `required-by-metric-id` comes from [[incompatible-metrics]]."
+  [mp required-by-metric-id]
+  (let [{:keys [descriptions usable-sources]} (metric-source-descriptions mp required-by-metric-id)]
+    {:message        (str "These metrics cannot be used on this stage's source: "
+                          (str/join ", " descriptions)
+                          ". "
+                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                          "or drop the metric and express the aggregation directly.")
+     :usable-sources usable-sources}))
+
+(defn- metric-source-card-explanation
+  "Describe the metric that a stage reads as its `source-card`, and the source to use instead.
+
+  Return `{:message ... :usable-sources ...}`, as [[metric-source-descriptions]] does.
+  `required-by-metric-id` comes from [[metric-source-card]]."
+  [mp required-by-metric-id]
+  (let [{:keys [descriptions usable-sources]} (metric-source-descriptions mp required-by-metric-id)]
+    {:message        (str "The metric " (first descriptions) " is in `source-card:`. A metric is an aggregation, "
+                          "not a source: a stage on a metric reads its result, not its rows. "
+                          (if (seq usable-sources)
+                            (str "Build the stage on the source shown for the metric, and put the metric in the "
+                                 "stage's `aggregation:`.")
+                            "Drop the metric, and express its aggregation directly on a table or model."))
+     :usable-sources usable-sources}))
+
+(defn- metric-source-error
+  "Return the agent error for the metrics in `required-by-metric-id`, with the message and usable sources that
+  `explanation` gives for them. `data` carries the `:error` code."
+  [mp data explanation required-by-metric-id]
+  (let [{:keys [message usable-sources]} (explanation mp required-by-metric-id)]
+    (ex-info message
+             (assoc data
+                    :agent-error?   true
+                    :metric-ids     (vec (keys required-by-metric-id))
+                    :usable-sources usable-sources
+                    :status-code    400))))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -1119,7 +1183,8 @@
     5. Sanity-check the post-repair shape against the portable repair schema.
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
-    6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
+    6.5. Backstop-gate the resolved query: reject a metric in the first stage's `source-card:` unless that stage
+       aggregates the metric ([[metric-source-card]]), mirror the FE `canRun` schema validation
        ([[query-not-runnable-explanation]]), check that implicit field references use a foreign key to their table
        ([[assert-source-fields-reach-their-tables!]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
@@ -1175,6 +1240,10 @@
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _curated      (check-curated-query-sources! mp pmbql-query)
+            ;; Before the other gates: a metric source changes which columns the stage has, so their errors would
+            ;; send the agent to fix the wrong thing.
+            _metric-src   (when-let [bad (metric-source-card mp pmbql-query)]
+                            (throw (metric-source-error mp {:error :metric-as-source-card} metric-source-card-explanation bad)))
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
                             (throw (ex-info (format "The constructed query is not runnable - it would fail the query builder's validation, so it cannot be visualized or saved. Failing paths: %s."
                                                     why)
@@ -1191,13 +1260,7 @@
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
             ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
             _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
-                            (let [{:keys [message usable-sources]} (incompatible-metric-explanation mp bad)]
-                              (throw (ex-info message
-                                              {:agent-error?   true
-                                               :error          :incompatible-metric
-                                               :metric-ids     (vec (keys bad))
-                                               :usable-sources usable-sources
-                                               :status-code    400}))))
+                            (throw (metric-source-error mp {:error :incompatible-metric} incompatible-metric-explanation bad)))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (try
                             (repr/validate-query exported-repr)
