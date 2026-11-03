@@ -6,6 +6,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn creates-view?
+  "Whether `sql` creates a view, including with the `ALGORITHM`, `DEFINER` and `SQL SECURITY` clauses MySQL allows
+  between `CREATE` and `VIEW`."
+  [sql]
+  (boolean (re-find #"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?VIEW\b"
+                    sql)))
+
 (defn- literals-closed?
   "Whether `text` has no unterminated string literal. Quotes escaped either way a dump tool may write them -- doubled
   (`''`, Postgres) or backslashed (`\\'`, MySQL) -- are removed before counting, backslash pairs first so that a

@@ -53,10 +53,6 @@
                               :db    "mb_test"
                               :ready ["mariadb" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}})
 
-(def flavors
-  "Every flavor a snapshot can be generated for, `:h2` -- which needs no server -- included."
-  (into [:h2] (sort (keys flavor->server))))
-
 (def ^:private ready-timeout-ms (* 3 60 1000))
 
 (defn- exec

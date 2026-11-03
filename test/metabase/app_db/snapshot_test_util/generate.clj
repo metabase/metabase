@@ -60,15 +60,17 @@
   "Migrate the empty DB `server` is running -- or an in-memory H2 one, when `server` is nil -- through the snapshot
   boundary and dump it."
   [flavor version server]
-  (let [db-type     (if server (:db-type server) :h2)
-        through     (snapshot/through-changeset-id version)
-        data-source (mdb.test-util/->ClojureJDBCSpecDataSource
-                     (if server
-                       (sql-jdbc.conn/connection-details->spec db-type (:details server))
-                       {:subprotocol "h2", :classname "org.h2.Driver"
-                        ;; no DB_CLOSE_DELAY: `conn` stays open through the migration and the dump, and closing it
-                        ;; should free the DB rather than leave a migrated copy in the heap
-                        :subname (format "mem:app_db_snapshot_%05d" (rand-int 100000))}))]
+  (let [[db-type spec] (if server
+                         [(:db-type server)
+                          (sql-jdbc.conn/connection-details->spec (:db-type server) (:details server))]
+                         [:h2
+                          {:subprotocol "h2"
+                           :classname   "org.h2.Driver"
+                           ;; no DB_CLOSE_DELAY: `conn` stays open through the migration and the dump, and closing it
+                           ;; should free the DB rather than leave a migrated copy in the heap
+                           :subname     (format "mem:app_db_snapshot_%05d" (rand-int 100000))}])
+        through        (snapshot/through-changeset-id version)
+        data-source    (mdb.test-util/->ClojureJDBCSpecDataSource spec)]
     (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
       ;; the image was chosen for a flavor, but only the running server can confirm it is that flavor -- MariaDB is
       ;; reached as `:mysql`, and which MariaDB flavor it is depends on how it handles timestamps
@@ -110,7 +112,7 @@
 (defn generate!
   "Regenerate the checked-in snapshot for `flavor` and return the file written.
 
-  `flavor` is the dialect the file is for, one of [[metabase.app-db.snapshot-test-util.server/flavors]] -- there is a
+  `flavor` is the dialect the file is for, one of [[metabase.app-db.snapshot-test-util/flavors]] -- there is a
   file per flavor, so regenerating the MariaDB one means passing `:mariadb`, not the `:mysql` it is reached as. See
   [[dump-snapshot!]] for what this needs."
   ([flavor]

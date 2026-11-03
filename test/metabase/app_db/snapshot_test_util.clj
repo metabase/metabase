@@ -41,6 +41,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.snapshot-test-util.dump-util :as dump-util]
    [metabase.util.log :as log])
   (:import
    (liquibase.changelog ChangeSet)))
@@ -55,7 +56,7 @@
   "Snapshot directory tests boot from."
   "v63")
 
-(def ^:private snapshot-flavors
+(def flavors
   "Dialects a snapshot is dumped for.
 
   MariaDB is not a MySQL alias: MySQL 8 dumps declare functional indexes (`KEY x ((case when ...)))`) that MariaDB
@@ -72,7 +73,7 @@
 (defn- snapshot-resource [version flavor]
   (io/resource (resource-path version flavor "sql")))
 
-(defn- meta-data [version]
+(defn- snapshot-meta [version]
   (let [resource (io/resource (format "app_db_snapshots/%s/meta.edn" version))]
     (when-not resource
       (throw (ex-info "No app DB snapshot metadata on the classpath" {:version version})))
@@ -83,13 +84,13 @@
   ([]
    (through-changeset-id snapshot-version))
   ([version]
-   (:through-changeset-id (meta-data version))))
+   (:through-changeset-id (snapshot-meta version))))
 
 (defn executed-at
   "The `dateexecuted` every changelog row in the snapshot for `version` carries. Set to the date of the boundary
   changeset, so the rows read as plausible."
   ^java.time.OffsetDateTime [version]
-  (java.time.OffsetDateTime/parse (:executed-at (meta-data version))))
+  (java.time.OffsetDateTime/parse (:executed-at (snapshot-meta version))))
 
 (def deployment-id
   "The `deployment_id` every changelog row in a snapshot carries, in place of the random one Liquibase gives each run.
@@ -130,7 +131,7 @@
   ([^java.sql.Connection conn db-type]
    (loadable? conn db-type snapshot-version))
   ([^java.sql.Connection conn db-type version]
-   (boolean (some->> (flavor conn db-type) snapshot-flavors (snapshot-resource version) some?))))
+   (boolean (some->> (flavor conn db-type) flavors (snapshot-resource version) some?))))
 
 (defn statements
   "Split the contents of a snapshot `.sql` file into individual statements."
@@ -148,7 +149,7 @@
       (vec (jdbc/result-set-seq rs)))))
 
 (def ^:private drop-changelog-tables
-  "Anything that opens Liquibase against a connection — [[changeset-ids]] included — creates the changelog tables as a
+  "Anything that opens Liquibase against a connection — [[changesets]] included — creates the changelog tables as a
   side effect, before a single changeset has run. The snapshot carries its own copies, complete with the rows saying
   what has already been applied, so clear the empty ones out of the way first.
 
@@ -184,13 +185,6 @@
       "SET SESSION sql_mode = IFNULL(@mb_snapshot_sql_mode, @@SESSION.sql_mode)"]]
     [drop-changelog-tables []]))
 
-(defn- creates-view?
-  "Whether `sql` creates a view, including with the `ALGORITHM`, `DEFINER` and `SQL SECURITY` clauses MySQL allows
-  between `CREATE` and `VIEW`."
-  [sql]
-  (boolean (re-find #"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?VIEW\b"
-                    sql)))
-
 (defn- load-order
   "`[guarded unguarded]`: the snapshot's statements split into those that run under [[session-guards]] and those that
   run once the guards are back off.
@@ -202,7 +196,7 @@
   only read tables and views defined before it, so deferring them cannot break a load."
   [flavor stmts]
   (if (mysql-family flavor)
-    [(remove creates-view? stmts) (filter creates-view? stmts)]
+    [(remove dump-util/creates-view? stmts) (filter dump-util/creates-view? stmts)]
     [stmts []]))
 
 (defn load-snapshot!
@@ -259,17 +253,18 @@
        (.commit conn))
      :done)))
 
-(defn changeset-ids
-  "Every changeset ID in the current changelog, in the order Liquibase will run them."
+(defn changesets
+  "`[id author filename]` of every changeset in the current changelog, in the order Liquibase will run them."
   [^java.sql.Connection conn]
   (liquibase/with-liquibase [lb conn]
-    (mapv #(.getId ^ChangeSet %) (.getChangeSets (.getDatabaseChangeLog lb)))))
+    (mapv (fn [^ChangeSet cs] [(.getId cs) (.getAuthor cs) (.getFilePath cs)])
+          (.getChangeSets (.getDatabaseChangeLog lb)))))
 
 (defn usable-for-start?
   "Whether the snapshot can stand in for replaying changesets up to (but not including) `start-id`. False when
   `start-id` is at or before the snapshot boundary, since the caller still needs those changesets to run."
-  [^java.sql.Connection conn changeset-ids db-type start-id]
+  [^java.sql.Connection conn db-type start-id]
   (and (loadable? conn db-type)
-       (let [idx (zipmap changeset-ids (range))]
+       (let [idx (zipmap (map first (changesets conn)) (range))]
          (when-let [through (idx (through-changeset-id))]
            (boolean (some-> (idx start-id) (> through)))))))

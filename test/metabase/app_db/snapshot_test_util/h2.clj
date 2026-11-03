@@ -3,12 +3,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.app-db.snapshot-test-util.dump :as dump]))
+   [metabase.app-db.snapshot-test-util.dump :as dump]
+   [metabase.app-db.snapshot-test-util.dump-util :as dump-util]))
 
 (set! *warn-on-reflection* true)
-
-(defn- view-statement? [sql]
-  (some? (re-find #"(?i)^CREATE\s+VIEW\s" sql)))
 
 (defrecord H2Dumper []
   dump/Dumper
@@ -34,8 +32,8 @@
                             (map #(str/replace % #";\s*$" "")))
                       (jdbc/query {:connection conn} ["SCRIPT"]))]
       ;; relative order is kept inside each group: a view may read from an earlier view
-      (into (vec (remove view-statement? stmts))
-            (filter view-statement? stmts)))))
+      (into (vec (remove dump-util/creates-view? stmts))
+            (filter dump-util/creates-view? stmts)))))
 
 (def dumper
   "Dumps an H2 app DB. Reads everything through the connection, so it ignores the connection details."

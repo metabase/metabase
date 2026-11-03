@@ -184,7 +184,7 @@
   on where its `start-id` falls."
   [^java.sql.Connection conn driver start-id]
   (binding [custom-migrations/*create-sample-content* false]
-    (when (snapshot/usable-for-start? conn (snapshot/changeset-ids conn) driver start-id)
+    (when (snapshot/usable-for-start? conn driver start-id)
       (log/debugf "Loading app db snapshot %s before running migrations up to %s..." snapshot/snapshot-version start-id)
       (snapshot/load-snapshot! conn driver))
     (log/debugf "Finding and running migrations before %s..." start-id)
