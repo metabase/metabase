@@ -132,7 +132,11 @@ The agent runs commands on your computer, like `mb`, `npm`, and `git`, and it mi
 
 ### 8. Preview the app
 
-The agent starts the [data app preview](./build.md#preview-the-app-on-your-computer) at a `localhost` address on your computer. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview. The preview gets its data from your production Metabase with an admin [API key](../people-and-groups/api-keys.md), so the preview shows what an admin can see, not necessarily what the app's viewers can see. You choose who can open the app in [step 10](#10-add-groups-to-the-app).
+The agent starts the [data app preview](./build.md#preview-the-app-on-your-computer) at a `localhost` address on your computer. This preview is just the app running on your local machine; it's not yet on your Metabase. The preview allows the agent to "see" the app in the browser and iterate on the app's design.
+
+Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview.
+
+The preview gets its data from your Metabase with an admin [API key](../people-and-groups/api-keys.md). So the preview shows what an admin can see, not necessarily what the app's viewers can see. You choose who can open the app in [step 10](#10-add-groups-to-the-app).
 
 Ask your agent for changes until the app looks the way you want.
 
