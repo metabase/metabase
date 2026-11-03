@@ -12,6 +12,11 @@ import type {
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
+const getLatestCheck = (cached: HealthCheck | undefined, fresh: HealthCheck) =>
+  cached && Date.parse(cached.checked_at) > Date.parse(fresh.checked_at)
+    ? cached
+    : fresh;
+
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({
@@ -81,10 +86,8 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
               undefined,
               (draft) => {
                 draft.checks = draft.checks.map((check) =>
-                  check.id === checkId &&
-                  Date.parse(recheckedCheck.checked_at) >=
-                    Date.parse(check.checked_at)
-                    ? recheckedCheck
+                  check.id === checkId
+                    ? getLatestCheck(check, recheckedCheck)
                     : check,
                 );
               },
@@ -97,16 +100,24 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/ee/security-center/health-checks/recheck",
       }),
-      onQueryStarted: (_arg, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (response) =>
+      onQueryStarted: (_arg, { dispatch, getState, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (response) => {
+          const { data: cached } =
+            securityCenterApi.endpoints.listHealthChecks.select()(getState());
+          const checks = response.checks.map((check) =>
+            getLatestCheck(
+              cached?.checks.find(({ id }) => id === check.id),
+              check,
+            ),
+          );
           dispatch(
             securityCenterApi.util.upsertQueryData(
               "listHealthChecks",
               undefined,
-              response,
+              { ...response, checks },
             ),
-          ),
-        ),
+          );
+        }),
     }),
   }),
 });

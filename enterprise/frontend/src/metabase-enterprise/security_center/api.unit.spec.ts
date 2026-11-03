@@ -1,13 +1,22 @@
 import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import {
+  setupHealthChecksEndpoint,
+  setupRecheckHealthChecksEndpoint,
+} from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createAdvisory } from "metabase-types/api/mocks/security-center";
+import {
+  createAdvisory,
+  createMockHealthCheck,
+} from "metabase-types/api/mocks/security-center";
 
 import {
   useAcknowledgeAdvisoriesMutation,
   useAcknowledgeAdvisoryMutation,
+  useListHealthChecksQuery,
   useListSecurityAdvisoriesQuery,
+  useRecheckHealthChecksMutation,
   useSyncSecurityAdvisoriesMutation,
 } from "./api";
 
@@ -96,5 +105,41 @@ describe("security-center cache invalidation", () => {
       expect(result.current.query.data?.advisories).toEqual([]);
     });
     expect(fetchMock.callHistory.calls(LIST_URL)).toHaveLength(2);
+  });
+});
+
+describe("security-center re-check all", () => {
+  it("keeps a check that is newer in the cache than in the re-check all response", async () => {
+    const newerCheck = createMockHealthCheck({
+      id: "https-site-url",
+      status: "pass",
+      checked_at: "2026-10-29T12:00:00Z",
+    });
+    const olderCheck = createMockHealthCheck({
+      id: "https-site-url",
+      status: "fail",
+      checked_at: "2026-10-29T11:00:00Z",
+    });
+    const otherCheck = createMockHealthCheck({
+      id: "sso-login",
+      checked_at: "2026-10-29T11:00:00Z",
+    });
+    setupHealthChecksEndpoint([newerCheck]);
+    setupRecheckHealthChecksEndpoint([olderCheck, otherCheck]);
+    const { result } = renderHookWithProviders(() => {
+      const query = useListHealthChecksQuery();
+      const [recheckAll] = useRecheckHealthChecksMutation();
+      return { query, recheckAll };
+    }, {});
+
+    await waitFor(() => {
+      expect(result.current.query.data?.checks).toEqual([newerCheck]);
+    });
+
+    await act(async () => {
+      await result.current.recheckAll().unwrap();
+    });
+
+    expect(result.current.query.data?.checks).toEqual([newerCheck, otherCheck]);
   });
 });
