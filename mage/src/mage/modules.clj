@@ -209,7 +209,6 @@
      core.version
      audit-app.view-log
      warehouses.schema
-     warehouse-schema-overlay
      xrays})
 
 (defn- affected-modules

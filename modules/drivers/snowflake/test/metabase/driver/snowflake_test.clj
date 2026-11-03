@@ -1191,9 +1191,9 @@
             (sync/sync-database! (mt/id))
             (let [v4-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   v4-field (t2/select-one :model/Field :table_id (:id v4-table) :name "text_column")]
-              (field-user-settings/upsert-user-settings v4-field
-                                                        {:coercion_strategy :Coercion/String->Integer
-                                                         :effective_type    :type/Integer})
+              (field-user-settings/upsert-field-user-settings! v4-field
+                                                               {:coercion_strategy :Coercion/String->Integer
+                                                                :effective_type    :type/Integer})
               (t2/update! :model/Field :id (:id v4-field)
                           {:coercion_strategy :Coercion/String->Integer
                            :effective_type    :type/Integer})
