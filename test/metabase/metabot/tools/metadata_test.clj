@@ -251,32 +251,27 @@
                   (invoke-metadata profile "get_field_values"
                                    {:data_source data-source :source_id source-id :field_id field-id}))))))))
 
-(deftest metadata-wrong-source-types-are-recoverable-test
+(deftest metadata-cards-in-the-wrong-list-are-read-at-their-own-type-test
   (mt/as-admin
-    (mt/with-temp [:model/Card {model-id :id} {:type :model}
-                   :model/Card {metric-id :id} {:type :metric}]
-      (doseq [profile [:document-generate-content :slackbot]
-              [source-id actual-type expected-type] [[metric-id "metric" "model"]
-                                                     [model-id "model" "metric"]]
-              :let [message (str (if (= expected-type "metric") "Card " "ID ")
-                                 source-id " is a " actual-type ", not a " expected-type "."
-                                 "\nRetry using a " expected-type " ID.")]]
-        (let [result (invoke-metadata profile "list_available_fields"
-                                      (assoc {:table_ids [(mt/id :products)] :model_ids [] :metric_ids []}
-                                             (keyword (str expected-type "_ids")) [source-id]))]
-          (is (nil? (:error result)))
-          (is (= [(mt/id :products)] (mapv :id (get-in result [:structured-output :tables]))))
-          (is (= [message] (get-in result [:structured-output :errors]))))
-        (is (=? {:error {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed}
-                 :output #(str/includes? % message)}
-                (invoke-metadata profile "list_available_fields"
-                                 (assoc {:table_ids [] :model_ids [] :metric_ids []}
-                                        (keyword (str expected-type "_ids")) [source-id])))))
-      (doseq [profile [:document-generate-content :slackbot]]
-        (is (= {:error {:class :recoverable :code ::tools.u/wrong-source-type}
-                :output (str "Card " model-id " is a model, not a metric.\nRetry using a metric ID.")}
-               (invoke-metadata profile "get_field_values"
-                                {:data_source "metric" :source_id model-id :field_id (mt/id :orders :id)})))))))
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query query}
+                     :model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate query (lib/count))}]
+        (doseq [profile [:document-generate-content :slackbot]]
+          (testing (str profile " list_available_fields")
+            (let [{:keys [error structured-output]}
+                  (invoke-metadata profile "list_available_fields"
+                                   {:table_ids [] :model_ids [metric-id] :metric_ids [model-id]})]
+              (is (nil? error))
+              (is (=? {:models    [{:id model-id :type :model}]
+                       :metrics   [{:id metric-id :type :metric}]
+                       :questions []
+                       :errors    []}
+                      structured-output))))
+          (testing (str profile " get_field_values with a model as a metric")
+            (is (=? {:structured-output {:field_id (mt/id :orders :id) :result-type :field-metadata}}
+                    (invoke-metadata profile "get_field_values"
+                                     {:data_source "metric" :source_id model-id :field_id (mt/id :orders :id)})))))))))
 
 (deftest question-passed-as-metric-or-model-is-returned-as-question-test
   (testing "A user can call a saved question a metric, and the field tools have no question ID argument (BOT-2545)"
@@ -385,26 +380,21 @@
         (doseq [profile [:document-generate-content :slackbot :internal]
                 [actual-type source-id] [["model" model-id] ["question" question-id] ["metric" metric-id]]
                 data-source ["model" "question" "report" "metric"]
-                :let [expected-type (if (= data-source "report") "question" data-source)
-                      ;; `get_field_values` reads a question requested as a metric or model as a question.
-                      read-as-question? (and (not= profile :internal)
-                                             (= actual-type "question")
-                                             (#{"metric" "model"} data-source))]
-                :when (and (not= actual-type expected-type) (not read-as-question?))]
-          (let [{:keys [error output]} (invoke-field-detail profile data-source source-id (mt/id :orders :id))]
-            (is (= {:class :recoverable
-                    :code (if (= profile :internal)
-                            :metabase.metabot.tools.core/all-items-failed
-                            ::tools.u/wrong-source-type)} error))
-            (is (str/includes? (or output "")
-                               (if (= profile :internal)
-                                 (str "Card " source-id " is a " actual-type ", not a " expected-type "."
-                                      "\nRead `metabase://" actual-type "/" source-id
-                                      (if (= actual-type "metric") "/dimensions/" "/fields/")
-                                      (mt/id :orders :id) "` instead.")
-                                 (str (if (= expected-type "metric") "Card " "ID ")
-                                      source-id " is a " actual-type ", not a " expected-type "."
-                                      "\nRetry using a " expected-type " ID."))))))))))
+                :let [expected-type (if (= data-source "report") "question" data-source)]
+                :when (not= actual-type expected-type)]
+          (testing (str profile " " actual-type " as " data-source)
+            (let [{:keys [error output] :as result} (invoke-field-detail profile data-source source-id (mt/id :orders :id))]
+              (if (= profile :internal)
+                (do
+                  (is (= {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed} error))
+                  (is (str/includes? (or output "")
+                                     (str "Card " source-id " is a " actual-type ", not a " expected-type "."
+                                          "\nRead `metabase://" actual-type "/" source-id
+                                          (if (= actual-type "metric") "/dimensions/" "/fields/")
+                                          (mt/id :orders :id) "` instead."))))
+                ;; `get_field_values` reads a card at its own type
+                (is (=? {:structured-output {:field_id (mt/id :orders :id) :result-type :field-metadata}}
+                        result))))))))))
 
 (deftest question-field-details-use-returned-columns-test
   (mt/as-admin

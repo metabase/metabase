@@ -43,26 +43,16 @@
 
 (defn- source-entity-type
   "Check that the current user can read `entity-id` as a Metabot resource, and return the entity type to read
-  it as: `requested-type`, or `:question` for a saved question requested as a metric or a model. Users call
-  saved questions metrics, and `list_available_fields` has no argument for questions.
-
-  Throws a recoverable error for any other card that is not of `requested-type`."
+  it as: `:table` for a table, or the card's own type for a card, whichever card type was requested."
   [requested-type entity-id]
   (if (= requested-type :table)
     (do (resources-tools/check-table-resource-database entity-id)
         ;; an inactive table is missing, as the details treat it, not uncurated
         (tools.u/get-table entity-id :db_id)
         :table)
-    (let [{card-type :type} (resources-tools/check-card-resource-database entity-id)]
-      (cond
-        (= card-type requested-type)
-        card-type
-
-        (and (= card-type :question) (contains? #{:metric :model} requested-type))
-        :question
-
-        :else
-        (tools.u/wrong-source-type! {:id entity-id :expected-type requested-type :actual-type card-type})))))
+    ;; Users call saved questions metrics, and `list_available_fields` has no argument for questions. A card in the
+    ;; wrong list is read at its own type, and the output groups it under that type.
+    (:type (resources-tools/check-card-resource-database entity-id))))
 
 (defn- check-curated!
   "Under curated-only, throw unless the source is within curated content. `entity-type` is the type

@@ -281,7 +281,8 @@
                   "list_available_fields reads a question passed as a metric as a question, and judges it on curation"))
             (testing "an uncurated model on a curated table isn't readable through the metric URI"
               (is (denied? (read plain-model)))
-              (is (some #(str/includes? % "not a metric") (:errors (metadata plain-model)))))
+              (is (some #(str/includes? % "only uses curated content") (:errors (metadata plain-model)))
+                  "list_available_fields reads a model passed as a metric as a model, and judges it on curation"))
             (testing "an uncurated metric with a native definition is denied: it references no tables to judge it by"
               (is (denied? (read native-metric)))
               (testing "and construct_notebook_query refuses it before repair as an uncurated source"
@@ -299,8 +300,8 @@
 
 (deftest curated-non-metric-card-through-metric-paths-test
   (testing "a curated Card named where a metric is expected passes on its own curation; the metric paths then refuse
-            it by kind, as they do for the unrestricted Metabot, and an uncurated question referenced as a metric
-            fails closed"
+            it by kind, as they do for the unrestricted Metabot, list_available_fields reads it at its own type, and
+            an uncurated question referenced as a metric fails closed"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {model-id :id} {:type :model :name "verified model" :dataset_query (orders-query)}
                      :model/Card {question-id :id} {:type :question :name "plain question"
@@ -311,9 +312,9 @@
           (let [read (fn [mb] (:error (first (read-uris mb :internal (str "metabase://metric/" model-id)))))]
             (is (str/includes? (read metabot) "not a metric"))
             (is (= (read nil) (read metabot)))))
-        (testing "list_available_fields metric_ids"
+        (testing "list_available_fields metric_ids reads the model as a model"
           (let [errors (fn [mb] (as-metabot mb :internal #(metadata-errors (fields-args :metric_ids [model-id]))))]
-            (is (some #(str/includes? % "not a metric") (errors metabot)))
+            (is (= [] (errors metabot)))
             (is (= (errors nil) (errors metabot)))))
         (testing "a question referenced as a metric in a query is judged as missing, not by its definition"
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
