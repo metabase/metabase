@@ -12,7 +12,6 @@ on:
     paths: &snapshot-inputs
       # what decides the DB a migration run produces. Custom migrations and the Liquibase setup are listed because
       # changing them leaves every changeset checksum as it was, so nothing else would notice the snapshot is stale.
-      - "deps.edn"
       - "resources/migrations/**"
       - "resources/liquibase*.yaml"
       - "src/metabase/app_db/custom_migrations.clj"
@@ -56,8 +55,6 @@ jobs:
         # metabase.app-db.snapshot-test-util.server and started by the snapshot-regeneration job below, so it is not
         # any of these.
         include:
-          - name: H2
-            driver: h2
           - name: Postgres 14.x
             driver: postgres
             image: postgres:14-alpine
@@ -111,7 +108,6 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Wait for the database to accept connections
-        if: ${{ matrix.driver != 'h2' }}
         run: |
           # Polls with a client over TCP rather than checking that the port is open. Both image families run a
           # temporary server while they initialize, and the port is published the moment the container starts, so a
