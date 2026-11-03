@@ -5,9 +5,10 @@ import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
 import { useNavigate, useParams, useSearchParams } from "metabase/router";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Flex, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -25,6 +26,7 @@ export const ResetPassword = (): JSX.Element | null => {
   const { token = "" } = useParams<ResetPasswordQueryParams>();
   const redirectUrl = searchParams.get("redirect") ?? undefined;
   const email = searchParams.get("email") ?? undefined;
+  const applicationName = useSelector(getApplicationName);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [sendToast] = useToast();
@@ -53,6 +55,11 @@ export const ResetPassword = (): JSX.Element | null => {
     <AuthLayout>
       {status?.valid ? (
         <ResetPasswordForm
+          notice={
+            status.password_reset_required
+              ? t`An administrator has required you to set a new password before you can use ${applicationName} again.`
+              : undefined
+          }
           onValidatePassword={validatePassword}
           onSubmit={handlePasswordSubmit}
         />

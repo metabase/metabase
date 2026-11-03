@@ -10,6 +10,7 @@ import {
   type MfaEnrollmentResponse,
   isMfaChallenge,
   isMfaEnrollment,
+  isPasswordResetRequired,
   sessionApi,
 } from "metabase/api/session";
 import { getUser, refetchCurrentUser } from "metabase/current-user";
@@ -73,6 +74,7 @@ interface LoginPayload {
 export interface LoginResult {
   mfaChallenge?: MfaChallengeResponse;
   mfaEnrollment?: MfaEnrollmentResponse;
+  passwordResetRequired?: boolean;
 }
 
 export const LOGIN = "metabase/auth/LOGIN";
@@ -92,6 +94,11 @@ export const login = createAsyncThunk(
       if (isMfaEnrollment(result)) {
         const enrollment: LoginResult = { mfaEnrollment: result };
         return enrollment;
+      }
+
+      if (isPasswordResetRequired(result)) {
+        const resetRequired: LoginResult = { passwordResetRequired: true };
+        return resetRequired;
       }
 
       await dispatch(completeLogin()).unwrap();

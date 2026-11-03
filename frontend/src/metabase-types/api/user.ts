@@ -167,6 +167,18 @@ export type UpdatePasswordRequest = {
   old_password?: string;
 };
 
+export type ForcePasswordResetRequest = (
+  | { user_ids: UserId[]; all?: never }
+  | { all: true; include_self?: boolean; user_ids?: never }
+) & {
+  send_email?: boolean;
+};
+
+export type ForcePasswordResetResponse = {
+  users_reset: number;
+  emails_queued: number;
+};
+
 export type ListUsersRequest = {
   status?: "deactivated" | "all";
   query?: string;

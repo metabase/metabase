@@ -108,9 +108,18 @@
            (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                     :status-code 401}))))))))
 
-(mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
+(def ^:private LoginResult
+  "What a login returns in place of throwing: a new Session, an MFA-pending result map when a second factor is
+  required, or a password-reset-required result map when an admin has forced the user to set a new password."
+  [:or
+   session.schema/SessionSchema
+   [:map [:mfa/pending? [:= true]]]
+   [:map {:closed true} [:password-reset-required? [:= true]]]])
+
+(mu/defn- email-login :- [:maybe LoginResult]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
-  map when a second factor is required), or `nil` if they couldn't be authenticated."
+  map when a second factor is required, or a password-reset-required result map when an admin has forced them to set
+  a new password), or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
@@ -119,6 +128,8 @@
                                       :password password
                                       :device-info device-info})]
     (cond
+      ;; only reached with the right password, so it tells nobody without it that the account is locked
+      (= :password-reset-required (:error result)) {:password-reset-required? true}
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
       (:success? result) (if (:mfa/pending? result) result (:session result))
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
@@ -130,9 +141,10 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]
+(mu/defn- login :- LoginResult
   "Attempt to login with different available methods with `username` and `password`, returning a new Session (or an
-  MFA-pending result map when a second factor is required) or throwing an Exception if login could not be completed."
+  MFA-pending or password-reset-required result map, see [[LoginResult]]) or throwing an Exception if login could not
+  be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
@@ -253,6 +265,12 @@
         do-login   (fn []
                      (let [result (login username password (request/device-info request))]
                        (cond
+                         ;; The password was right, but an admin has forced a reset, so it no longer signs anyone in.
+                         ;; Tells the client to explain that and offer a reset email. No cookies are set.
+                         (:password-reset-required? result)
+                         {:status 200
+                          :body   {:password_reset_required true}}
+
                          ;; First factor OK, but this user does not have a second factor enrolled. However the
                          ;; instance is configured to require MFA, so force this user to enroll a second factor.
                          ;; Expects the user to send a POST /mfa/enroll.
@@ -472,8 +490,11 @@
   (let [auth-result (auth-identity/with-fallback auth-identity/authenticate
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
-                      {:token token})]
-    {:valid (:success? auth-result)}))
+                      {:token token})
+        valid?      (true? (:success? auth-result))]
+    ;; whether an admin forced this reset, so the page can say why the user is setting a new password
+    {:valid                   valid?
+     :password_reset_required (boolean (and valid? (auth-identity/password-reset-required? (:user-id auth-result))))}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

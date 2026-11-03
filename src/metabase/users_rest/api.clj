@@ -8,6 +8,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.channel.email.messages :as messages]
+   [metabase.channel.settings :as channel.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -26,6 +28,7 @@
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -696,6 +699,124 @@
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (auth-identity/reset-token-hash id))})
       {:password_reset_url password-reset-url})))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                         Forcing a Password Reset -- POST /api/user/force-password-reset                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- sso-user?
+  "Whether `user` signs in through an SSO provider that is still enabled. They get no reset link: it would let them
+  bypass the provider."
+  [{:keys [sso_source]}]
+  (boolean (and sso_source (sso/sso-source-enabled? sso_source))))
+
+(defn- email-password-reset!
+  "Email `user` a fresh password-reset link. A failure is logged rather than thrown: by now the user is locked out,
+  which is what matters, and a link can still be sent from the people list."
+  [{:keys [id email] :as user}]
+  (try
+    (let [reset-token (auth-identity/create-password-reset! id)]
+      (messages/send-password-reset-email! email nil (str (system/site-url) "/auth/reset_password/" reset-token) true)
+      (events/publish-event! :event/password-reset-initiated
+                             {:object (assoc user :token (auth-identity/reset-token-hash id))}))
+    (catch Exception e
+      (log/errorf e "Failed to email a password reset link to user %d after forcing a password reset" id))))
+
+(mr/def ::ForcePasswordResetResult
+  [:map {:closed true}
+   [:users_reset   ms/IntGreaterThanOrEqualToZero]
+   [:emails_queued ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::ForcePasswordResetResponse
+  ;; the second alternative is what a caller who included themselves gets: the same result inside a Ring response
+  ;; that clears their session cookie, as `DELETE /api/session` does on logout. That is a transport detail, so
+  ;; `:openapi/response-schema` documents the result alone.
+  [:or {:openapi/response-schema ::ForcePasswordResetResult}
+   ::ForcePasswordResetResult
+   [:map {:closed true}
+    [:status  [:= 200]]
+    [:body    ::ForcePasswordResetResult]
+    [:cookies [:map-of :string :map]]]])
+
+(defn- record-forced-password-reset!
+  "Write the audit trail for forcing `user` to reset their password. Never throws: by the time this runs the user is
+  locked out, and an audit problem must not stop the rest of a bulk reset or report failure to the caller."
+  [user]
+  (try
+    (events/publish-event! :event/password-reset-forced {:object user :user-id api/*current-user-id*})
+    (catch Throwable e
+      (log/warnf e "Error recording the forced password reset of user %d in the audit log" (:id user)))))
+
+(mu/defn- force-password-reset-users! :- ::ForcePasswordResetResult
+  "Lock each of `users` out until they set a new password (see `auth-identity/force-password-reset!`). When
+  `send-email?` and `users` is exactly one person who signs in with a password, also email them a link to set one, on
+  a background thread after the lockout; a bulk reset sends no email, and people get a link through forgot-password."
+  [users       :- [:sequential [:map {:closed true}
+                                [:id         ms/PositiveInt]
+                                [:email      :string]
+                                [:sso_source [:maybe :keyword]]]]
+   send-email? :- :boolean]
+  (let [password-users (into []
+                             (keep (fn [user]
+                                     (let [{:keys [had-password?]} (auth-identity/force-password-reset!
+                                                                    (:id user) api/*current-user-id*)]
+                                       (record-forced-password-reset! user)
+                                       (when had-password? user))))
+                             users)
+        email-user     (when (and send-email?
+                                  (= 1 (count users))
+                                  (channel.settings/email-configured?))
+                         (first (remove sso-user? password-users)))]
+    (when email-user
+      (future (email-password-reset! email-user)))
+    {:users_reset   (count users)
+     :emails_queued (if email-user 1 0)}))
+
+(api.macros/defendpoint :post "/force-password-reset" :- ::ForcePasswordResetResponse
+  "Force users — the ones in `user_ids`, or with `all` every active user but you (and you too with `include_self`) —
+  to set a new password before they can use Metabase again, for responding to a security incident. For each one this ends every session they have,
+  stops their current password from working, and invalidates any password reset link already sent. Their new password
+  must differ from the current one.
+
+  When exactly one person is reset, they are also emailed a new reset link (unless `send_email` is false), in the
+  background once the lockout is done; `emails_queued` says whether one will be sent. A bulk reset sends no email:
+  each person gets a new link through forgot-password, or from an admin.
+
+  A user who signs in through an enabled SSO provider is logged out but gets no email: their provider decides whether
+  they can sign in again. LDAP passwords live in the directory and must be reset there.
+
+  Exactly one of `user_ids` and `all` is required. `user_ids` may not include anyone who is not an active user. It may
+  include you; `all` leaves you out unless `include_self`, which only goes with `all`. When you are among those reset,
+  you are reset last, which ends the session this request was made with, so the response also clears your session
+  cookie.
+
+  `all` needs email to be set up: it locks out every admin but you, so without email nobody could get a link to set a
+  new password, and an admin who included themselves could only get back in from the command line."
+  [_route-params
+   _query-params
+   {:keys [user_ids all include_self send_email]} :- [:map {:closed true}
+                                                      [:user_ids     {:optional true} [:maybe [:sequential {:min 1} ms/PositiveInt]]]
+                                                      [:all          {:optional true} [:maybe :boolean]]
+                                                      [:include_self {:optional true} [:maybe :boolean]]
+                                                      [:send_email   {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (api/check (not= (boolean (seq user_ids)) (true? all))
+             [400 (tru "Provide either user_ids or all, but not both.")])
+  (api/check (or (not include_self) all)
+             [400 (tru "include_self can only be used with all.")])
+  (api/check (or (not all) (channel.settings/email-configured?))
+             [400 (tru "Email must be set up to force everyone to reset their password.")])
+  (let [user-ids (some-> user_ids distinct vec)
+        users    (users-rest.db/active-personal-users-for-password-reset user-ids
+                                                                         (when (and all (not include_self))
+                                                                           api/*current-user-id*))
+        self?    #(= (:id %) api/*current-user-id*)]
+    (when user-ids
+      (api/check (= (count users) (count user-ids))
+                 [400 (tru "Every user in user_ids must be an active user.")]))
+    ;; the caller goes last: everyone else is locked out before the session this request runs on ends
+    (cond-> (force-password-reset-users! (sort-by self? users) (not (false? send_email)))
+      (some self? users) request/clear-session-cookie)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

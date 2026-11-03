@@ -6,7 +6,6 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isEmbeddingHubTenancy } from "metabase/common/tenants";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
-import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -15,6 +14,7 @@ import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { PeopleList } from "../../components/PeopleList";
+import { PeopleSettingsMenu } from "../../components/PeopleSettingsMenu";
 import { SearchFilter } from "../../components/SearchFilter";
 import { ACTIVE_STATUS, type ActiveStatus } from "../../constants";
 import { usePeopleQuery } from "../../hooks/use-people-query";
@@ -107,9 +107,7 @@ export function PeopleListingApp({
         <Group justify="space-between" w="100%" mb="xl">
           {!isEmbeddingHub && <Title order={1}>{pageTitle}</Title>}
 
-          {!external && (
-            <PLUGIN_TENANTS.EditUserStrategySettingsButton page="people" />
-          )}
+          {isAdmin && !external && <PeopleSettingsMenu />}
         </Group>
       )}
 

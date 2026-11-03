@@ -1,5 +1,7 @@
 import type {
   CreateUserRequest,
+  ForcePasswordResetRequest,
+  ForcePasswordResetResponse,
   ListUsersRequest,
   ListUsersResponse,
   UpdatePasswordRequest,
@@ -123,6 +125,16 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/password-reset-url`,
       }),
     }),
+    forcePasswordReset: builder.mutation<
+      ForcePasswordResetResponse,
+      ForcePasswordResetRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/user/force-password-reset",
+        body,
+      }),
+    }),
     listUserAttributes: builder.query<string[], void>({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
@@ -141,5 +153,6 @@ export const {
   useReactivateUserMutation,
   useUpdateUserMutation,
   useGetPasswordResetUrlMutation,
+  useForcePasswordResetMutation,
   useListUserAttributesQuery,
 } = userApi;

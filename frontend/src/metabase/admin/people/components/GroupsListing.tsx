@@ -27,6 +27,7 @@ import {
   Menu,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
@@ -528,7 +529,11 @@ export const GroupsListing = (props: GroupsListingProps) => {
       }
       description={
         props.description ??
-        t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`
+        jt`You can use groups to control your users' access to your data. Put users in groups and then ${(
+          <Link key="permissions" to={Urls.adminPermissions()} variant="brand">
+            {t`go to the Permissions section`}
+          </Link>
+        )} to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`
       }
     >
       <GroupsTable

@@ -193,19 +193,42 @@
   (throw (ex-info (str "Authentication not implemented for provider: " provider)
                   {:provider provider})))
 
+(defn- expired? [expires-at]
+  (and expires-at
+       (t/before? (t/offset-date-time expires-at) (t/offset-date-time))))
+
+(mu/defn password-reset-required? :- :boolean
+  "Whether `password-auth-identity` is expired because an admin forced its user to set a new password. A password
+  only expires two ways: a forced reset, or the end of a support-access grant, whose user always holds a
+  `support-access-grant` AuthIdentity; so an expired password without one was a forced reset. Setting a new password
+  clears the expiry."
+  [{:keys [user_id expires_at]} :- [:maybe ::auth-identity.schema/auth-identity]]
+  (boolean (and user_id
+                (expired? expires_at)
+                (not (auth-identity.db/auth-identity-exists? user_id "support-access-grant")))))
+
 (methodical/defmethod authenticate :after ::provider
   [_provider result]
   (if (and (:success? result)
            (:auth-identity result))
-    (let [auth-identity (:auth-identity result)
-          expires-at (:expires_at auth-identity)]
-      (if (and expires-at
-               (t/before? (t/offset-date-time expires-at)
-                          (t/offset-date-time)))
+    (let [auth-identity (:auth-identity result)]
+      (cond
+        ;; an admin forced a reset: the credential was right, but only a new one will do. Reported apart from an
+        ;; ordinary expiry so sign-in can tell the user why and send them to set a new password.
+        (and (= "password" (:provider auth-identity))
+             (password-reset-required? auth-identity))
+        (assoc result
+               :success? false
+               :error :password-reset-required
+               :message (deferred-tru "An administrator requires you to set a new password."))
+
+        (expired? (:expires_at auth-identity))
         (assoc result
                :success? false
                :error :authentication-expired
                :message (deferred-tru "This authentication method has expired. Please contact your administrator."))
+
+        :else
         result))
     result))
 

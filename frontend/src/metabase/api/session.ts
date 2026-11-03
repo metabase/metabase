@@ -23,10 +23,15 @@ export interface MfaEnrollmentResponse extends MfaEnrollResponse {
   enrollment_token: string;
 }
 
+export interface PasswordResetRequiredResponse {
+  password_reset_required: true;
+}
+
 export type CreateSessionResponse =
   | SessionResponse
   | MfaChallengeResponse
-  | MfaEnrollmentResponse;
+  | MfaEnrollmentResponse
+  | PasswordResetRequiredResponse;
 
 export const isMfaChallenge = (
   response: CreateSessionResponse,
@@ -37,6 +42,12 @@ export const isMfaEnrollment = (
   response: CreateSessionResponse,
 ): response is MfaEnrollmentResponse =>
   "mfa_enrollment" in response && response.mfa_enrollment === true;
+
+export const isPasswordResetRequired = (
+  response: CreateSessionResponse,
+): response is PasswordResetRequiredResponse =>
+  "password_reset_required" in response &&
+  response.password_reset_required === true;
 
 export interface GoogleAuthData {
   token: string;

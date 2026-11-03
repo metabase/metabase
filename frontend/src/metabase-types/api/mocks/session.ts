@@ -4,5 +4,6 @@ export const createMockPasswordResetTokenStatus = (
   opts?: Partial<PasswordResetTokenStatus>,
 ): PasswordResetTokenStatus => ({
   valid: false,
+  password_reset_required: false,
   ...opts,
 });

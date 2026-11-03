@@ -5,7 +5,7 @@ import { Box, Flex, Stack, Text } from "metabase/ui";
 
 interface AdminPaneLayoutProps {
   title?: React.ReactNode;
-  description?: string;
+  description?: ReactNode;
   titleActions?: ReactNode;
   headerContent?: ReactNode;
   children: ReactNode;

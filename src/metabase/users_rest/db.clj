@@ -127,6 +127,24 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :type :sso_source] :id user-id))
 
+(mu/defn active-personal-users-for-password-reset :- [:sequential [:map
+                                                                   [:id ::lib.schema.id/user]
+                                                                   [:email :string]
+                                                                   [:sso_source [:maybe :keyword]]]]
+  "The id, email, and SSO source of the active personal Users with `user-ids` — or of every one when `user-ids` is
+  nil — other than `exclude-id`, when given."
+  [user-ids   :- [:maybe [:sequential ::lib.schema.id/user]]
+   exclude-id :- [:maybe ::lib.schema.id/user]]
+  (if (and user-ids (empty? user-ids))
+    []
+    (t2/select [:model/User :id :email :sso_source]
+               (cond-> {:where    [:and
+                                   [:= :type (h2x/literal "personal")]
+                                   [:= :is_active true]]
+                        :order-by [[:id :asc]]}
+                 exclude-id (update :where conj [:not= :id exclude-id])
+                 user-ids   (update :where conj [:in :id user-ids])))))
+
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]

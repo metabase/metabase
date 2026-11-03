@@ -44,6 +44,7 @@ export const getEndReasonLabel = (reason: SessionEndReason): string =>
     .with("admin", () => t`Revoked by admin`)
     .with("logout", () => t`Signed out`)
     .with("password-change", () => t`Password changed`)
+    .with("forced-password-change", () => t`Password reset forced`)
     .with("user-deactivated", () => t`User deactivated`)
     .with("tenant-deactivated", () => t`Tenant deactivated`)
     .with("sso-logout", () => t`SSO logout`)

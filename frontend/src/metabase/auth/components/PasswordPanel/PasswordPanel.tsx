@@ -15,6 +15,7 @@ import type { LoginData } from "metabase-types/api";
 import { getExternalAuthProviders } from "../../selectors";
 import { AuthTextLink } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
+import { PasswordResetRequired } from "../PasswordResetRequired";
 
 interface PasswordPanelProps {
   redirectUrl?: string;
@@ -32,13 +33,21 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const [mfaEnrollment, setMfaEnrollment] =
     useState<MfaEnrollmentResponse | null>(null);
   const [remember, setRemember] = useState(false);
+  const [passwordResetRequiredEmail, setPasswordResetRequiredEmail] = useState<
+    string | null
+  >(null);
 
   const handleSubmit = useCallback(
     async (data: LoginData) => {
-      const { mfaChallenge: challenge, mfaEnrollment: enrollment } =
-        await dispatch(login({ data, redirectUrl })).unwrap();
+      const {
+        mfaChallenge: challenge,
+        mfaEnrollment: enrollment,
+        passwordResetRequired,
+      } = await dispatch(login({ data, redirectUrl })).unwrap();
 
-      if (challenge) {
+      if (passwordResetRequired) {
+        setPasswordResetRequiredEmail(data.username);
+      } else if (challenge) {
         setRemember(Boolean(data.remember));
         setMfaChallenge(challenge);
       } else if (enrollment) {
@@ -48,6 +57,15 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
     },
     [dispatch, redirectUrl],
   );
+
+  if (passwordResetRequiredEmail) {
+    return (
+      <PasswordResetRequired
+        email={passwordResetRequiredEmail}
+        onCancel={() => setPasswordResetRequiredEmail(null)}
+      />
+    );
+  }
 
   if (mfaChallenge) {
     return (

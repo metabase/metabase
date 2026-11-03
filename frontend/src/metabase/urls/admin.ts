@@ -33,6 +33,10 @@ export function resetPassword(user: BaseUser) {
     : `${getTenantsBasePath()}/people/${user.id}/reset`;
 }
 
+export function forcePasswordResetForEveryone() {
+  return `/admin/people/force-reset`;
+}
+
 export function newUserSuccess(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/success`

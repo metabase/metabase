@@ -183,6 +183,7 @@
 (events/derive! :event/password-reset-initiated ::user-event)
 (events/derive! :event/password-reset-successful ::user-event)
 (events/derive! :event/password-changed ::user-event)
+(events/derive! :event/password-reset-forced ::user-event)
 (events/derive! :event/mfa-verification-failed ::user-event)
 (events/derive! :event/mfa-required-enrollment-failed ::user-event)
 (events/derive! :event/mfa-enrolled ::user-event)

@@ -70,17 +70,23 @@
   (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn end-sessions-for-user!
-  "Record that every Session of the User with `user-id` ended because their password changed, clearing each key so
-  none can authenticate again; `ended-by` is who changed it. Returns the number ended."
-  [user-id  :- ::lib.schema.id/user
-   ended-by :- [:maybe ::lib.schema.id/user]]
-  ;; the same write `metabase.session.db/end-sessions!` makes, repeated here rather than delegated: the `session`
-  ;; module already depends on `auth-identity`, so the reverse dependency would be a module cycle
-  (t2/update! :model/Session :user_id (long user-id) :ended_at nil
-              {:ended_at         :%now
-               :end_reason       "password-change"
-               :ended_by_user_id ended-by
-               :key_hashed       nil}))
+  "Record that every Session of the User with `user-id` ended for `reason` (by default `password-change`, because
+  their password changed), clearing each key so none can authenticate again; `ended-by` is who ended them. Returns
+  the number ended."
+  ([user-id  :- ::lib.schema.id/user
+    ended-by :- [:maybe ::lib.schema.id/user]]
+   (end-sessions-for-user! user-id ended-by "password-change"))
+
+  ([user-id  :- ::lib.schema.id/user
+    ended-by :- [:maybe ::lib.schema.id/user]
+    reason   :- [:enum "password-change" "forced-password-change"]]
+   ;; the same write `metabase.session.db/end-sessions!` makes, repeated here rather than delegated: the `session`
+   ;; module already depends on `auth-identity`, so the reverse dependency would be a module cycle
+   (t2/update! :model/Session :user_id (long user-id) :ended_at nil
+               {:ended_at         :%now
+                :end_reason       reason
+                :ended_by_user_id ended-by
+                :key_hashed       nil})))
 
 (mu/defn user
   "The User with `user-id`, or nil."

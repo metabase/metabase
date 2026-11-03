@@ -80,6 +80,7 @@ const getDefaultPluginTenants = () => ({
     rlsColumnName?: string | null;
   }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
+  UserStrategyMenuItem: PluginPlaceholder,
   // Unjustified type cast. FIXME
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
   // Unjustified type cast. FIXME
@@ -168,6 +169,9 @@ export const PLUGIN_TENANTS: {
     rlsColumnName?: string | null;
   }>;
   EditUserStrategySettingsButton: (props: {
+    page: "people" | "tenants";
+  }) => React.ReactElement | null;
+  UserStrategyMenuItem: (props: {
     page: "people" | "tenants";
   }) => React.ReactElement | null;
   FormTenantWidget: (props: any) => React.ReactElement | null;

@@ -2202,6 +2202,171 @@
     (mt/user-http-request :crowberto :post 404
                           "user/999999/password-reset-url")))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                         Forcing a Password Reset -- POST /api/user/force-password-reset                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- clear-forced-password-resets!
+  "Undo every forced password reset, so a test that resets everyone leaves the shared test users able to log in."
+  []
+  (t2/update! :model/AuthIdentity :provider "password" :expires_at [:not= nil] {:expires_at nil}))
+
+(deftest force-password-reset-locks-user-out-test
+  (testing "POST /api/user/force-password-reset ends sessions, blocks the current password, and needs a new one"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "old-pw-1!Abc")
+        (let [creds       {:username (:email user), :password "old-pw-1!Abc"}
+              session-id  (:id (mt/client :post 200 "session" creds))
+              stale-token (auth-identity/create-password-reset! (:id user))]
+          (is (=? {:id (:id user)} (mt/client session-id :get 200 "user/current")))
+          (is (= {:users_reset 1, :emails_queued 0}
+                 (mt/user-http-request :crowberto :post 200 "user/force-password-reset"
+                                       {:user_ids [(:id user)], :send_email false})))
+          (testing "the admin's action is in the audit log"
+            (is (=? {:topic    :password-reset-forced
+                     :user_id  (mt/user->id :crowberto)
+                     :model    "User"
+                     :model_id (:id user)}
+                    (mt/latest-audit-log-entry :password-reset-forced (:id user)))))
+          (testing "the existing session is ended, by the admin"
+            (mt/client session-id :get 401 "user/current")
+            (is (=? {:end_reason "forced-password-change", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
+                    (t2/select-one :model/Session :user_id (:id user)))))
+          (testing "the current password no longer logs in: it is told a reset is required, and gets no session"
+            (is (= {:password_reset_required true}
+                   (mt/client :post 200 "session" creds))))
+          (testing "a wrong password still gets the generic failure, so it learns nothing about the account"
+            (mt/client :post 401 "session" {:username (:email user), :password "not-the-pw-1!Abc"}))
+          (testing "a reset link sent before the forced reset no longer works"
+            (mt/client :post 400 "session/reset_password" {:token stale-token, :password "new-pw-2!Abc"}))
+          (let [token (auth-identity/create-password-reset! (:id user))]
+            (testing "the reset page is told an admin required the reset"
+              (is (= {:valid true, :password_reset_required true}
+                     (mt/client :get 200 "session/password_reset_token_valid" :token token))))
+            (testing "a fresh reset link refuses the current password"
+              (mt/client :post 400 "session/reset_password" {:token token, :password "old-pw-1!Abc"}))
+            (testing "a fresh reset link sets a new password, which logs in"
+              (mt/client :post 200 "session/reset_password" {:token token, :password "new-pw-2!Abc"})
+              (is (some? (:id (mt/client :post 200 "session" {:username (:email user)
+                                                              :password "new-pw-2!Abc"}))))
+              (is (false? (auth-identity/password-reset-required? (:id user)))
+                  "setting the new password clears the expiry"))))))))
+
+(deftest password-reset-token-valid-ordinary-reset-test
+  (testing "GET /api/session/password_reset_token_valid does not report an ordinary reset as admin-required"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "old-pw-1!Abc")
+      (is (= {:valid true, :password_reset_required false}
+             (mt/client :get 200 "session/password_reset_token_valid"
+                        :token (auth-identity/create-password-reset! (:id user)))))
+      (is (= {:valid false, :password_reset_required false}
+             (mt/client :get 200 "session/password_reset_token_valid" :token (str (:id user) "_not-a-token")))))))
+
+(deftest force-password-reset-emails-reset-link-test
+  (testing "POST /api/user/force-password-reset emails the user a working reset link by default"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "old-pw-1!Abc")
+      (mt/with-fake-inbox
+        (is (= {:users_reset 1, :emails_queued 1}
+               (mt/with-expected-messages 1
+                 (mt/user-http-request :crowberto :post 200 "user/force-password-reset" {:user_ids [(:id user)]}))))
+        (let [body  (-> (get @mt/inbox (:email user)) first :body first :content)
+              token (second (re-find #"/auth/reset_password/([^\"<\s]+)" body))]
+          (is (some? token))
+          (mt/client :post 200 "session/reset_password" {:token token, :password "new-pw-2!Abc"}))))))
+
+(deftest force-password-reset-bulk-test
+  (testing "POST /api/user/force-password-reset"
+    (mt/with-temp [:model/User {a :id} {}
+                   :model/User {b :id} {}
+                   :model/User {inactive-id :id} {:is_active false}]
+      (auth-identity/set-password! a "old-pw-1!Abc")
+      (auth-identity/set-password! b "old-pw-1!Abc")
+      (testing "is superuser only"
+        (mt/user-http-request :rasta :post 403 "user/force-password-reset" {:user_ids [a]}))
+      (testing "needs exactly one of user_ids and all"
+        (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {})
+        (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [a], :all true}))
+      (testing "only takes include_self with all"
+        (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [a], :include_self true}))
+      (testing "refuses inactive or missing users in user_ids"
+        (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [a inactive-id]})
+        (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:user_ids [a 999999]}))
+      (testing "user_ids resets exactly those users, and emails none of them"
+        (mt/with-fake-inbox
+          (is (= {:users_reset 2, :emails_queued 0}
+                 (mt/user-http-request :crowberto :post 200 "user/force-password-reset" {:user_ids [a b a]})))
+          (is (empty? @mt/inbox)))
+        (is (= {:password_reset_required true}
+               (mt/client :post 200 "session" {:username (t2/select-one-fn :email :model/User :id a)
+                                               :password "old-pw-1!Abc"}))))
+      (testing "all is refused when email is not set up, and resets nobody"
+        (mt/with-temporary-setting-values [email-smtp-host nil]
+          (let [expired-passwords #(t2/count :model/AuthIdentity :provider "password" :expires_at [:not= nil])
+                before            (expired-passwords)]
+            (is (= "Email must be set up to force everyone to reset their password."
+                   (mt/user-http-request :crowberto :post 400 "user/force-password-reset" {:all true})))
+            (is (= before (expired-passwords))))))
+      (testing "all resets every active user but the caller, who stays logged in"
+        (let [expected (t2/count :model/User :type "personal" :is_active true :id [:not= (mt/user->id :crowberto)])]
+          (try
+            (is (=? {:users_reset expected}
+                    (mt/with-fake-inbox
+                      (mt/user-http-request :crowberto :post 200 "user/force-password-reset"
+                                            {:all true, :send_email false}))))
+            (is (=? {:id (mt/user->id :crowberto)} (mt/user-http-request :crowberto :get 200 "user/current")))
+            (finally
+              ;; the shared test users must be able to log in again
+              (clear-forced-password-resets!))))))))
+
+(deftest force-password-reset-self-test
+  (testing "POST /api/user/force-password-reset with the caller's own id resets them, emails them, and signs them out"
+    (mt/with-temp [:model/User admin {:is_superuser true}]
+      (auth-identity/set-password! (:id admin) "admin-pw-1!Abc")
+      (let [admin-creds {:username (:email admin), :password "admin-pw-1!Abc"}
+            session-key (:id (mt/client :post 200 "session" admin-creds))]
+        (mt/with-fake-inbox
+          (let [response (mt/with-expected-messages 1
+                           (mt/client-full-response session-key :post 200 "user/force-password-reset"
+                                                    {:user_ids [(:id admin)]}))]
+            (is (= {:users_reset 1, :emails_queued 1} (:body response)))
+            (testing "the response clears the caller's session cookie"
+              (is (str/includes? (str/join " " (u/one-or-many (get-in response [:headers "Set-Cookie"])))
+                                 "metabase.SESSION=;")))
+            (is (contains? @mt/inbox (:email admin)) "they are emailed a link to set a new password")))
+        (testing "their session is ended and their password asks for a reset"
+          (mt/client session-key :get 401 "user/current")
+          (is (= {:password_reset_required true} (mt/client :post 200 "session" admin-creds))))))))
+
+(deftest force-password-reset-include-self-test
+  (testing "POST /api/user/force-password-reset with all and include_self resets the caller too, last, and signs them out"
+    (mt/with-temp [:model/User admin {:is_superuser true}
+                   :model/User other {}]
+      (auth-identity/set-password! (:id admin) "admin-pw-1!Abc")
+      (auth-identity/set-password! (:id other) "other-pw-1!Abc")
+      (let [admin-creds {:username (:email admin), :password "admin-pw-1!Abc"}
+            session-key (:id (mt/client :post 200 "session" admin-creds))]
+        (try
+          (let [response (mt/with-fake-inbox
+                           (mt/client-full-response session-key :post 200 "user/force-password-reset"
+                                                    {:all true, :include_self true, :send_email false}))]
+            (is (=? {:users_reset (t2/count :model/User :type "personal" :is_active true)
+                     :emails_queued 0}
+                    (:body response)))
+            (testing "the response clears the caller's session cookie"
+              (is (str/includes? (str/join " " (u/one-or-many (get-in response [:headers "Set-Cookie"])))
+                                 "metabase.SESSION=;"))))
+          (testing "the caller's session is ended and their password no longer works"
+            (mt/client session-key :get 401 "user/current")
+            (is (= {:password_reset_required true} (mt/client :post 200 "session" admin-creds))))
+          (testing "everyone else was reset too"
+            (is (= {:password_reset_required true}
+                   (mt/client :post 200 "session" {:username (:email other), :password "other-pw-1!Abc"}))))
+          (finally
+            ;; the shared test users must be able to log in again
+            (clear-forced-password-resets!)))))))
+
 (deftest create-user-without-names-test
   (testing "POST /api/user succeeds when first and last name are omitted (#22754)"
     (mt/with-model-cleanup [:model/User]

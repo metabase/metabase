@@ -3,6 +3,7 @@ import { useUnmount } from "react-use";
 import { c, t } from "ttag";
 
 import {
+  useForcePasswordResetMutation,
   useForgotPasswordMutation,
   useGetPasswordResetUrlMutation,
   useGetUserQuery,
@@ -13,8 +14,11 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { getUserId } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Button, Modal, Text, TextInput } from "metabase/ui";
+import { Button, Checkbox, Modal, Stack, Text, TextInput } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { redirect } from "metabase/utils/dom";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
@@ -47,15 +51,33 @@ const UserPasswordResetModalInner = ({
   });
 
   const [resetUrl, setResetUrl] = useState<string | null>(null);
+  const [isForced, setIsForced] = useState(false);
+  const [confirmationText, setConfirmationText] = useState("");
+  // locking someone out takes typing their email, so it can't be done to the wrong person by accident
+  const isConfirmed =
+    !isForced ||
+    confirmationText.trim().toLowerCase() === user.email.toLowerCase();
 
   const [sendToast] = useToast();
   const [updatePassword] = useUpdatePasswordMutation();
   const [resetPasswordEmail] = useForgotPasswordMutation();
   const [getPasswordResetUrl] = useGetPasswordResetUrlMutation();
+  const [forcePasswordReset] = useForcePasswordResetMutation();
+  const isCurrentUser = useSelector(getUserId) === user.id;
 
   const handleResetConfirm = async () => {
     if (emailConfigured) {
-      await resetPasswordEmail(user.email).unwrap();
+      if (isForced) {
+        // locks them out, then emails them a link to set a new password
+        await forcePasswordReset({ user_ids: [user.id] }).unwrap();
+        if (isCurrentUser) {
+          // they have just locked themselves out, ending this session too
+          redirect(Urls.login());
+          return;
+        }
+      } else {
+        await resetPasswordEmail(user.email).unwrap();
+      }
 
       sendToast({
         message: c("{0} is the name of the user")
@@ -127,17 +149,34 @@ const UserPasswordResetModalInner = ({
       onClose={onClose}
       size="lg"
     >
-      <Text>{t`Are you sure you want to do this?`}</Text>
+      <Stack gap="lg">
+        <Text>{t`Are you sure you want to do this?`}</Text>
+        <Checkbox
+          label={t`Log them out and block their current password`}
+          checked={isForced}
+          onChange={(event) => setIsForced(event.currentTarget.checked)}
+        />
+        {isForced && (
+          <TextInput
+            label={t`Type "${user.email}" to confirm`}
+            value={confirmationText}
+            autoComplete="off"
+            onChange={(event) => setConfirmationText(event.currentTarget.value)}
+          />
+        )}
+      </Stack>
       <Modal.Footer>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
           variant="filled"
           color="brand"
+          disabled={isForced}
           onClick={handleGetResetLink}
         >{t`Get reset link`}</Button>
         <Button
           color="negative"
           variant="filled"
+          disabled={!isConfirmed}
           onClick={handleResetConfirm}
         >{t`Reset password`}</Button>
       </Modal.Footer>

@@ -148,7 +148,9 @@
             (testing "Support access grant token is valid"
               (let [response (mt/client :get 200 "session/password_reset_token_valid"
                                         :token token)]
-                (is (true? (:valid response)) "Token should be valid")))))))))
+                (is (true? (:valid response)) "Token should be valid")
+                (is (false? (:password_reset_required response))
+                    "a support grant is not an admin-forced reset")))))))))
 
 (deftest password-reset-token-valid-fallback-test
   (testing "GET /api/session/password_reset_token_valid falls back to regular password reset token"
@@ -523,6 +525,6 @@
                   "the deactivated grant user gets no password")))
           (testing "password_reset_token_valid answering false"
             (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated grant user" inactive-token)]
-                                   [label (cost #(is (= {:valid false}
+                                   [label (cost #(is (= {:valid false, :password_reset_required false}
                                                         (mt/client :get 200 "session/password_reset_token_valid" :token token))))]))]
               (is (apply = (vals costs)) (pr-str costs)))))))))

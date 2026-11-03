@@ -169,3 +169,30 @@
           (is (= "plain"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
+
+(deftest password-reset-required?-test
+  (testing "password-reset-required? is true only for a password an admin's forced reset expired"
+    (mt/with-temp [:model/User {user-id :id}]
+      (auth-identity/set-password! user-id "old-pw-1!Abc")
+      (is (false? (auth-identity/password-reset-required? user-id))
+          "a live password")
+      (auth-identity/force-password-reset! user-id nil)
+      (is (true? (auth-identity/password-reset-required? user-id))
+          "a password expired by a forced reset")
+      (is (= :password-reset-required
+             (:error (auth-identity/authenticate :provider/password {:email    (t2/select-one-fn :email :model/User :id user-id)
+                                                                     :password "old-pw-1!Abc"})))
+          "authenticate reports it apart from an ordinary expiry")
+      (auth-identity/set-password! user-id "new-pw-2!Abc")
+      (is (false? (auth-identity/password-reset-required? user-id))
+          "setting a new password clears it")))
+  (testing "a support user's password expired by the end of their grant is not a forced reset"
+    (mt/with-temp [:model/User {user-id :id :as user}]
+      (auth-identity/set-password! user-id "support-pw-1!Abc" {:expires-at (t/minus (t/instant) (t/hours 1))})
+      (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                       :provider    "support-access-grant"
+                                       :credentials {:token_hash "not-a-real-hash"}})
+      (is (false? (auth-identity/password-reset-required? user-id)))
+      (is (= :authentication-expired
+             (:error (auth-identity/authenticate :provider/password {:email    (:email user)
+                                                                     :password "support-pw-1!Abc"})))))))

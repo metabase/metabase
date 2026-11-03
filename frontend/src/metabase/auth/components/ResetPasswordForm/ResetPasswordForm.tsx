@@ -32,11 +32,13 @@ const getResetPasswordSchema = () =>
   });
 
 interface ResetPasswordFormProps {
+  notice?: string;
   onValidatePassword: (password: string) => Promise<string | undefined>;
   onSubmit: (data: ResetPasswordData) => void;
 }
 
 export const ResetPasswordForm = ({
+  notice,
   onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
@@ -62,6 +64,11 @@ export const ResetPasswordForm = ({
         ta="center"
         mb="lg"
       >{t`New password`}</Title>
+      {notice && (
+        <Box c="text-primary" ta="center" mb="lg">
+          {notice}
+        </Box>
+      )}
       <Box c="text-primary" ta="center" mb="xl">
         {t`To keep your data secure, passwords ${passwordDescription}`}
       </Box>

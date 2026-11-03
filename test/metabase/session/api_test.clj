@@ -653,7 +653,7 @@
               (is (apply = (vals costs)) (pr-str costs))))
           (testing "password_reset_token_valid answering false"
             (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated user" inactive-token)]
-                                   [label (cost #(is (= {:valid false}
+                                   [label (cost #(is (= {:valid false, :password_reset_required false}
                                                         (mt/client :get 200 "session/password_reset_token_valid" :token token))))]))]
               (is (apply = (vals costs)) (pr-str costs)))))))))
 
@@ -715,10 +715,10 @@
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
       (let [token (auth-identity/create-password-reset! (mt/user->id :rasta))]
-        (is (= {:valid true}
+        (is (= {:valid true, :password_reset_required false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
     (testing "Check than an made-up token returns false"
-      (is (= {:valid false}
+      (is (= {:valid false, :password_reset_required false}
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
     (testing "Check that an expired but valid token returns false"
       (let [uid (mt/user->id :rasta)
@@ -726,7 +726,7 @@
             ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
         (t2/update! :model/AuthIdentity :id (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
-        (is (= {:valid false}
+        (is (= {:valid false, :password_reset_required false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
 (deftest reset-token-ttl-hours-test

@@ -62,6 +62,30 @@ describe("PasswordPanel", () => {
     });
   });
 
+  it("should explain a forced password reset instead of signing in", async () => {
+    setup();
+    fetchMock.modifyRoute("session-login", {
+      response: { password_reset_required: true },
+    });
+
+    await userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
+    await userEvent.type(screen.getByLabelText("Password"), TEST_PASSWORD);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(
+      await screen.findByText("You need to set a new password"),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/user/current")).toBe(false);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Back to sign in" }),
+    );
+    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
+  });
+
   it("should render a link to reset the password and a list of auth providers", () => {
     setup({ isGoogleAuthEnabled: true });
 

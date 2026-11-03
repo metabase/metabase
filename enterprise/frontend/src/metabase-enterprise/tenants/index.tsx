@@ -32,7 +32,10 @@ import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
-import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
+import {
+  EditUserStrategySettingsButton,
+  UserStrategyMenuItem,
+} from "./EditUserStrategySettingsButton";
 import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
 import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
@@ -231,6 +234,7 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.EditUserStrategySettingsButton =
       EditUserStrategySettingsButton;
+    PLUGIN_TENANTS.UserStrategyMenuItem = UserStrategyMenuItem;
 
     PLUGIN_TENANTS.FormTenantWidget = FormTenantWidget;
     PLUGIN_TENANTS.TenantDisplayName = TenantDisplayName;

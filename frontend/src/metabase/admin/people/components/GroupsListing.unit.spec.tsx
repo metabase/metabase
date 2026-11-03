@@ -21,6 +21,16 @@ const setup = (groups = [createMockGroup()]) => {
 };
 
 describe("GroupsListing", () => {
+  it("links to the Permissions section from the description", async () => {
+    setup();
+
+    expect(
+      await screen.findByRole("link", {
+        name: "go to the Permissions section",
+      }),
+    ).toHaveAttribute("href", "/admin/permissions");
+  });
+
   it("shows groups with non-Latin names", async () => {
     setup([
       createMockGroup({ id: 10, name: "здравей", magic_group_type: null }),

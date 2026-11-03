@@ -2,6 +2,7 @@ import type { Store } from "@reduxjs/toolkit";
 import { type ComponentProps, Fragment, createElement } from "react";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
+import { EveryoneForcePasswordResetModal } from "metabase/admin/people/containers/ForcePasswordResetModal";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
@@ -260,6 +261,9 @@ export const getRoutes = (
 
             <Route path="" lazy={peopleListing}>
               {modalRoute("new", NewUserModal, { noWrap: true })}
+              {modalRoute("force-reset", EveryoneForcePasswordResetModal, {
+                noWrap: true,
+              })}
               {PLUGIN_TENANTS.userStrategyRoute}
             </Route>
 
