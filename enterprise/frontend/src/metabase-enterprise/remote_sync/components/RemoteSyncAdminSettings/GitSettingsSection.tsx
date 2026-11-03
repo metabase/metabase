@@ -34,6 +34,7 @@ export const GitSettingsSection = () => {
           </Text>
         }
         type="password"
+        placeholder="ghp_xK8mW2qL9vN4rT6yB1cF3hJ7pD5sG0aZ8eQu"
         {...getEnvSettingProps(settingDetails?.[TOKEN_KEY], {
           inputWrapperOrder: ["label", "description", "error"],
         })}
