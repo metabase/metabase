@@ -574,6 +574,44 @@
                   (read-uris
                    {:uris ["metabase://table/99999"]}))))))))
 
+(deftest read-question-fields-of-one-physical-field-test
+  (testing "Two breakouts of one field get different field IDs, and each one resolves to its own column"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                                :dataset_query (let [mp         (mt/metadata-provider)
+                                                                     created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                     (lib/aggregate (lib/count))
+                                                                     (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                                                     (lib/breakout (lib/with-temporal-bucket created-at :year))))}]
+        (let [created-at-id (mt/id :orders :created_at)
+              {:keys [resources]} (read-uris {:uris [(str "metabase://question/" card-id "/fields")]})
+              fields (get-in resources [0 :content :structured-output :fields])]
+          (is (= [created-at-id "CREATED_AT_2" "count"]
+                 (map :field_id fields)))
+          (testing "a drill-in on each field ID resolves its own column, and only the first column has a portable path"
+            ;; Both columns have Field 14, so the output is the same for both. Record the alias of the resolved column.
+            (let [output-fn (mt/original-fn #'field-stats/field-metadata-output)
+                  drill-in  (fn [field-id]
+                              (let [alias (atom nil)]
+                                (mt/with-dynamic-fn-redefs [field-stats/field-metadata-output
+                                                            (fn [query col field-id limit]
+                                                              (reset! alias (:lib/desired-column-alias col))
+                                                              (output-fn query col field-id limit))]
+                                  (let [{:keys [portable_fk]} (:structured-output
+                                                               (field-stats/field-values {:entity-type "question"
+                                                                                          :entity-id   card-id
+                                                                                          :field-id    field-id
+                                                                                          :limit       5}))]
+                                    {:column-alias @alias :portable-fk? (vector? portable_fk)}))))]
+              (are [field-id column-alias portable-fk?] (= {:column-alias column-alias :portable-fk? portable-fk?}
+                                                           (drill-in field-id))
+                created-at-id  "CREATED_AT"   true
+                "CREATED_AT_2" "CREATED_AT_2" false)))
+          (testing "only the first column gets the portable path of the field"
+            (is (= [true false false]
+                   (map (comp vector? :portable_fk) fields)))))))))
+
 (deftest read-dashboard-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-name :name}
