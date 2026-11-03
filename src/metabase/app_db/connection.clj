@@ -108,7 +108,7 @@
 
 ;; Reloading this namespace re-runs this form, and the root, which owns the connection pool, is installed only the
 ;; first time.
-(when-not (contains? (system/snapshot) ::application-db)
+(when-not (mc/root-entry application-db-component)
   (mc/alter-root application-db-component (application-db mdb.env/db-type mdb.env/data-source :create-pool? true)))
 
 (defn application-db-handle

@@ -7,7 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.driver.test-util :as driver.tu]
-   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.random :as u.random]
    [metabase.util.yaml :as u.yaml]
@@ -17,23 +17,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:private app-db-root-lock (Object.))
-
-;; Calls are serialized because two overlapping save/restore pairs would leave the second caller's DB installed as the
-;; "original" root once both finish.
 (defn do-with-application-db-as-root
-  "Install `app-db` as the root application DB for the extent of `thunk`, then restore the root it replaced.
-  Unlike a binding, the root is seen by threads that do not inherit this thread's bindings, such as Quartz workers
-  and the threads serving `mt/client`, so tests that call this must be `^:synchronized`.
-  Calls are serialized, but only against each other: other code that reads or writes the root takes no lock."
+  "Install `app-db` as the root application DB for the extent of `thunk`. See [[global-system.tu/do-with-root]]."
   [app-db thunk]
-  (locking app-db-root-lock
-    (let [handle (mdb/application-db-handle)
-          before (mc/alter-root handle app-db)]
-      (try
-        (thunk)
-        (finally
-          (mc/alter-root handle before))))))
+  (global-system.tu/do-with-root (mdb/application-db-handle) app-db thunk))
 
 (defmacro with-application-db-as-root
   "Run `body` with `app-db` installed as the root application DB. See [[do-with-application-db-as-root]]."
