@@ -73,6 +73,14 @@
    _card-id  :- ::lib.schema.id/card]
   nil)
 
+(defenterprise-schema check-referenced-entities :- [:map-of [:tuple :string :int] :string]
+  "The refusal message of each of the referenced-entity `specs` that `data-app` may not run, by `[type id]`, with
+  [[check-card]]'s rule for cards; none without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app-info
+   _specs    :- [:sequential [:map [:type :string] [:id :int]]]]
+  {})
+
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` may run the action with `action-id`, after a read check of the action; does nothing
   without the data-apps feature."

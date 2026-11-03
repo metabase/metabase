@@ -63,14 +63,15 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
-   & {:keys [context export-format was-pivot referenced-entities-specs]
+   & {:keys [context export-format was-pivot referenced-entities-specs check-referenced-entities]
       :or   {context       :ad-hoc
              export-format :api}}
    :- [:maybe [:map {:closed true}
                [:context       {:optional true} ::lib.schema.info/context]
                [:export-format {:optional true} ::qp.schema/export-format]
                [:was-pivot     {:optional true} [:maybe :boolean]]
-               [:referenced-entities-specs {:optional true} qp.referenced-entities/specs-schema]]]]
+               [:referenced-entities-specs {:optional true} qp.referenced-entities/specs-schema]
+               [:check-referenced-entities {:optional true} [:maybe ifn?]]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
@@ -91,7 +92,8 @@
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
         ;; must run before `process-query` sets up the QP store
-        (let [rff (qp.referenced-entities/maybe-wrap-rff-for-goals rff referenced-entities-specs)]
+        (let [rff (qp.referenced-entities/maybe-wrap-rff-for-goals rff referenced-entities-specs
+                                                                   check-referenced-entities)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
@@ -124,13 +126,16 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
-  (run-streaming-query
-   (-> query
-       (dissoc :cache-strategy :referenced-entities)
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)
-   :referenced-entities-specs (request-referenced-entities request)))
+  (let [data-app (data-apps/request-data-app request)]
+    (some-> data-app (data-apps/check-adhoc-query query))
+    (run-streaming-query
+     (-> query
+         (dissoc :cache-strategy :referenced-entities)
+         (update-in [:middleware :js-int-to-string?] (fnil identity true))
+         qp/userland-query-with-default-constraints)
+     :referenced-entities-specs (request-referenced-entities request)
+     ;; the specs come from the body, which `check-adhoc-query` doesn't read
+     :check-referenced-entities (when data-app (partial data-apps/check-referenced-entities data-app)))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
