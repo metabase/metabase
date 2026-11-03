@@ -228,15 +228,14 @@ export function DraftFilterPill({
     if (step === "column") {
       onColumnTextChange?.(newText);
     }
-    if (isAiPrompt(newText)) {
-      // A request to the AI can have commas, and it is not a value.
+    // Commas separate values. Elsewhere, the text can be a request to the AI,
+    // which can have commas.
+    if (step !== "value" || isAiPrompt(newText)) {
       setText(newText);
       return;
     }
     setText(newText.replace(/,/g, ""));
-    if (step === "value") {
-      onDraftChange(getFilterWithText(draft, newText), "typing");
-    }
+    onDraftChange(getFilterWithText(draft, newText), "typing");
   };
 
   const submit = () => {

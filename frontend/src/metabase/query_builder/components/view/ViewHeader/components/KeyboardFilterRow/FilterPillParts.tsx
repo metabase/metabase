@@ -2,6 +2,8 @@ import type { MouseEvent } from "react";
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import { Tooltip } from "metabase/ui";
+
 import S from "./KeyboardFilterRow.module.css";
 import type { DraftOperator } from "./types";
 import { formatDraftValue, getPillOperatorLabel } from "./utils";
@@ -57,12 +59,21 @@ export function FilterPillParts({
         </button>
       )}
       {values.length > 0 && (
-        <button
-          className={`${S.segment} ${S.valuesSegment}`}
-          onClick={handleClick("values")}
+        <Tooltip
+          label={values
+            .map((value) => formatDraftValue(operator, value))
+            .join(", ")}
+          disabled={values.length <= MAX_SHOWN_VALUES}
+          multiline
+          maw="20rem"
         >
-          <FilterPillValues operator={operator} values={values} />
-        </button>
+          <button
+            className={`${S.segment} ${S.valuesSegment}`}
+            onClick={handleClick("values")}
+          >
+            <FilterPillValues operator={operator} values={values} />
+          </button>
+        </Tooltip>
       )}
     </>
   );
