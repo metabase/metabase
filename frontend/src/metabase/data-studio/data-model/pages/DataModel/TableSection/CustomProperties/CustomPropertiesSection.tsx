@@ -38,10 +38,8 @@ import {
   needsAttention,
 } from "../../PropertyDetailsPanel/property-labels";
 
-import { AgentsReadDisclosure } from "./AgentsReadDisclosure";
 import { PivotModelInput } from "./PivotModelInput";
 import { RecognitionPreview } from "./RecognitionPreview";
-import { getAgentsReadSentences, getAgentsReadYaml } from "./agents-read";
 
 type CustomPropertiesSectionProps = {
   table: Table;
@@ -117,12 +115,6 @@ export function CustomPropertiesSection({
           }
         />
       </DetailsTable>
-      {registry && (
-        <AgentsReadDisclosure
-          sentences={getAgentsReadSentences(table, resolved, registry)}
-          yaml={getAgentsReadYaml(table, resolved, registry)}
-        />
-      )}
     </SidebarSection>
   );
 }
