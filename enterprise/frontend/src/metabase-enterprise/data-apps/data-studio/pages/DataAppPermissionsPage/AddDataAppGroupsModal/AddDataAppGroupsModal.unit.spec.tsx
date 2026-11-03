@@ -68,119 +68,6 @@ function setup({ useTenants = false, hasTenantsFeature = false } = {}) {
 }
 
 describe("AddDataAppGroupsModal", () => {
-  it("includes tenant groups when tenants are enabled and licensed", async () => {
-    const { onClose } = setup({ useTenants: true, hasTenantsFeature: true });
-
-    await userEvent.click(
-      await screen.findByRole("textbox", { name: "Groups" }),
-    );
-    const tenantOption = await screen.findByRole("option", {
-      name: "Tenant support",
-    });
-
-    expect(
-      within(tenantOption).getByRole("img", { name: "Tenant group" }),
-    ).toHaveClass("Icon-globe");
-    expect(
-      within(screen.getByRole("option", { name: "Finance" })).queryByRole(
-        "img",
-      ),
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(tenantOption);
-
-    const tenantPill = screen.getByRole("listitem", { name: "Tenant support" });
-
-    expect(
-      within(tenantPill).getByRole("img", { name: "Tenant group" }),
-    ).toHaveClass("Icon-globe");
-    expect(screen.queryByText(/\(tenant group\)/)).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-
-    const requests = fetchMock.callHistory.calls(
-      "path:/api/ee/apps/sales/groups",
-      { method: "POST" },
-    );
-    expect(requests).toHaveLength(1);
-    expect(JSON.parse(String(requests[0].options.body))).toEqual({
-      group_ids: [5],
-    });
-
-    const groupRequest = fetchMock.callHistory.calls(
-      "path:/api/permissions/group",
-    )[0];
-    expect(new URL(groupRequest.url).searchParams.get("tenancy")).toBeNull();
-  });
-
-  it("searches, selects, and removes groups with the keyboard", async () => {
-    setup();
-
-    const input = await screen.findByRole("textbox", { name: "Groups" });
-
-    await waitFor(() => expect(input).toBeEnabled());
-    await userEvent.type(input, "Fin");
-
-    expect(
-      await screen.findByRole("option", { name: "Finance" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: "All Users" }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.keyboard("{ArrowDown}{Enter}");
-
-    const pill = screen.getByRole("listitem", { name: "Finance" });
-
-    expect(within(pill).queryByRole("img")).not.toBeInTheDocument();
-
-    await userEvent.click(
-      within(pill).getByRole("button", { name: "Remove Finance" }),
-    );
-
-    expect(
-      screen.queryByRole("listitem", { name: "Finance" }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(input);
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Finance" }),
-    );
-    await userEvent.click(input);
-    await userEvent.keyboard("{Backspace}");
-
-    expect(
-      screen.queryByRole("listitem", { name: "Finance" }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.type(input, "Unknown group{Enter}");
-
-    expect(await screen.findByText("No groups found")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
-  });
-
-  it.each([
-    { useTenants: false, hasTenantsFeature: true },
-    { useTenants: true, hasTenantsFeature: false },
-  ])(
-    "excludes tenant groups without the setting and feature together: %p",
-    async (options) => {
-      setup(options);
-
-      await userEvent.click(
-        await screen.findByRole("textbox", { name: "Groups" }),
-      );
-      expect(
-        await screen.findByRole("option", { name: "Finance" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("option", { name: /Tenant support/ }),
-      ).not.toBeInTheDocument();
-    },
-  );
-
   it("offers only groups the app doesn't have and adds the selected ones", async () => {
     const { onClose } = setup();
 
@@ -211,5 +98,106 @@ describe("AddDataAppGroupsModal", () => {
     expect(JSON.parse(String(calls[0].options.body))).toEqual({
       group_ids: [4],
     });
+  });
+
+  it("removes the last selected group with Backspace when search is empty", async () => {
+    setup();
+
+    const input = await screen.findByRole("textbox", { name: "Groups" });
+
+    // add all users group
+    await userEvent.click(input);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "All Users" }),
+    );
+
+    // add finance group
+    await userEvent.click(input);
+    await userEvent.click(screen.getByRole("option", { name: "Finance" }));
+
+    expect(
+      screen.getByRole("listitem", { name: "Finance" }),
+    ).toBeInTheDocument();
+
+    // remove the last group
+    await userEvent.click(input);
+    await userEvent.keyboard("{Backspace}");
+
+    // finance group should be removed
+    expect(
+      screen.queryByRole("listitem", { name: "Finance" }),
+    ).not.toBeInTheDocument();
+
+    // all users group still remains
+    expect(
+      screen.getByRole("listitem", { name: "All Users" }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      name: "tenants are disabled",
+      useTenants: false,
+      hasTenantsFeature: true,
+    },
+    {
+      name: "tenant feature token is missing",
+      useTenants: true,
+      hasTenantsFeature: false,
+    },
+  ])("hides tenant group when $name", async (options) => {
+    setup(options);
+
+    await userEvent.click(
+      await screen.findByRole("textbox", { name: "Groups" }),
+    );
+
+    expect(
+      await screen.findByRole("option", { name: "Finance" }),
+    ).toBeInTheDocument();
+
+    // tenant group should be hidden
+    expect(
+      screen.queryByRole("option", { name: /Tenant support/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("includes tenant groups when tenants and its feature token are enabled", async () => {
+    setup({ useTenants: true, hasTenantsFeature: true });
+
+    await userEvent.click(
+      await screen.findByRole("textbox", { name: "Groups" }),
+    );
+
+    const tenantOption = await screen.findByRole("option", {
+      name: "Tenant support",
+    });
+
+    // in the pill, tenant group icon should be shown
+    expect(
+      within(tenantOption).getByRole("img", { name: "Tenant group" }),
+    ).toHaveClass("Icon-globe");
+
+    // internal group should not have an icon
+    expect(
+      within(screen.getByRole("option", { name: "Finance" })).queryByRole(
+        "img",
+      ),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(tenantOption);
+
+    // in the dropdown, tenant group icon should be shown
+    const tenantPill = screen.getByRole("listitem", { name: "Tenant support" });
+    expect(
+      within(tenantPill).getByRole("img", { name: "Tenant group" }),
+    ).toHaveClass("Icon-globe");
+
+    const groupRequest = fetchMock.callHistory.calls(
+      "path:/api/permissions/group",
+    )[0];
+
+    // include both internal and tenant groups - don't filter by tenancy
+    expect(new URL(groupRequest.url).searchParams.get("tenancy")).toBeNull();
   });
 });

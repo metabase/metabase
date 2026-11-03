@@ -30,12 +30,15 @@ export function AddDataAppGroupsModal({
 }: AddDataAppGroupsModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { data: assignedGroups = [] } = useGetDataAppGroupsQuery(app.name);
+
   const isTenantsEnabled = useSetting("use-tenants");
   const hasTenantsFeature = useHasTokenFeature("tenants");
   const canAssignTenantGroups = isTenantsEnabled && hasTenantsFeature;
+
   const { data: groups, isLoading } = useListPermissionsGroupsQuery(
     canAssignTenantGroups ? undefined : { tenancy: "internal" },
   );
+
   const [addGroups, { isLoading: isAdding }] = useAddDataAppGroupsMutation();
   const { sendErrorToast } = useMetadataToasts();
 
@@ -51,7 +54,7 @@ export function AddDataAppGroupsModal({
         .map((group) => ({
           value: String(group.id),
           label: getGroupNameLocalized(group),
-          isTenantGroup: group.is_tenant_group,
+          isTenantGroup: group.is_tenant_group ?? false,
         })) ?? [],
     [groups, assignedGroups, canAssignTenantGroups],
   );

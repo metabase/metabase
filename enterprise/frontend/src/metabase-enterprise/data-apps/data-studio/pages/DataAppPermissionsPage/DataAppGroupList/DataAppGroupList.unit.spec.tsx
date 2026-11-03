@@ -78,12 +78,18 @@ describe("DataAppGroupList", () => {
     expect(await screen.findByText("Support")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("Finance")).toBeInTheDocument();
+
+    // type column is hidden when tenants are disabled,
+    // even if there are tenant groups in the list.
     expect(
       screen.queryByRole("columnheader", { name: "Type" }),
     ).not.toBeInTheDocument();
+
+    // don't show the group type tooltip when tenants are disabled,
     expect(
       screen.queryByRole("img", { name: /Internal group|Tenant group/ }),
     ).not.toBeInTheDocument();
+
     expect(await screen.findByText("Missing 1 table")).toBeInTheDocument();
     expect(screen.getByText("All tables")).toBeInTheDocument();
   });
@@ -99,15 +105,16 @@ describe("DataAppGroupList", () => {
         groups: [createMockDataAppGroup({ is_tenant_group: isTenantGroup })],
       });
 
+      // group type icon (tenant vs internal) should be shown
       const typeIcon = await screen.findByRole("img", { name: label });
+      expect(typeIcon).toHaveClass(`Icon-${icon}`);
 
+      // group type column should be shown
       expect(
         screen.getByRole("columnheader", { name: "Type" }),
       ).toBeInTheDocument();
-      expect(typeIcon).toHaveClass(`Icon-${icon}`);
 
       await userEvent.hover(typeIcon);
-
       expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
     },
   );
@@ -117,14 +124,14 @@ describe("DataAppGroupList", () => {
       groups: [
         createMockDataAppGroup({
           id: 7,
-          name: "Tenant support",
+          name: "Gizmo",
           is_tenant_group: true,
         }),
       ],
     });
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Tenant support options" }),
+      await screen.findByRole("button", { name: "Gizmo options" }),
     );
 
     expect(

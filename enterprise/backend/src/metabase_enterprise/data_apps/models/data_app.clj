@@ -126,7 +126,7 @@
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
             (and api/*current-user-id*
-                 (data-apps.db/readable-data-app? api/*current-user-id* pk))))))
+                 (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)

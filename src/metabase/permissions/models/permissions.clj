@@ -602,8 +602,9 @@
   (let [collection (collection-or-id->collection collection-or-id)]
     (when (perms-group/is-tenant-group? group-or-id)
       (when-not (or (shared-tenant-collection? collection)
+                    ;; Tenant groups access data apps through read grants on its resource collection.
                     (and (pos-int? (:id collection))
-                         (data-perms/data-app-resource-collection? (:id collection))))
+                         (data-perms/collection-owned-by-data-app? (:id collection))))
         (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 

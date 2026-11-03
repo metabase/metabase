@@ -51,7 +51,7 @@
   [slug :- :string]
   (t2/exists? :model/DataApp :name slug))
 
-(mu/defn resource-collection?
+(mu/defn collection-owned-by-data-app?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
@@ -134,15 +134,11 @@
                                [:= :membership.user_id user-id]
                                [:= :grant.perm_type "perms/collection-access"]
                                [:in :grant.perm_value ["read" "read-and-write"]]
-                               (cond-> [:or [:and
-                                             [:= :member.tenant_id nil]
-                                             [:= :assigned_group.is_tenant_group false]]]
-                                 (premium-features/has-feature? :tenants)
-                                 (conj [:and
-                                        [:not= :member.tenant_id nil]
-                                        [:= :assigned_group.is_tenant_group true]]))]}))
+                               [:= :assigned_group.is_tenant_group [:not= :member.tenant_id nil]]
+                               (when-not (premium-features/has-feature? :tenants)
+                                 [:= :member.tenant_id nil])]}))
 
-(mu/defn readable-data-app?
+(mu/defn data-app-readable?
   "Whether the non-superuser with `user-id` can read the DataApp with `app-id`."
   [user-id :- ms/PositiveInt
    app-id  :- ms/PositiveInt]

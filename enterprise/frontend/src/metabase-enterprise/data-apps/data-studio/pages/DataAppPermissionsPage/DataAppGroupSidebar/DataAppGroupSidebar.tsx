@@ -43,6 +43,7 @@ export function DataAppGroupSidebar({
     app.name,
   );
   const warning = warnings?.find(({ group_id }) => group_id === group.id);
+
   const groupUrl = group.is_tenant_group
     ? Urls.adminTenantGroup(group.id)
     : Urls.adminGroup(group.id);

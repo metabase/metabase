@@ -1336,13 +1336,13 @@
   #{})
 
 (defenterprise data-app-collection?
-  "Whether the collection is in the data-apps namespace, including collections awaiting app ownership. OSS has none."
+  "Whether the collection is in the data-apps namespace. OSS has none."
   metabase-enterprise.data-apps.models.data-app
   [_collection-id]
   false)
 
-(defenterprise data-app-resource-collection?
-  "Whether the collection with `collection-id` is the resource collection of an existing data app. OSS has none."
+(defenterprise collection-owned-by-data-app?
+  "Whether the collection with `collection-id` belongs to an existing data app. OSS has none."
   metabase-enterprise.data-apps.core
   [_collection-id]
   false)
