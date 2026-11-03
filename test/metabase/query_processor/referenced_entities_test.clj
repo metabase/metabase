@@ -578,7 +578,34 @@
                     goal     (ref-entity response :card goal-id)]
                 (is (= [[100]] (get-in response [:data :rows])))
                 (is (nil? (:error goal)))
-                (is (= [[3]] (get-in goal [:data :rows])))))))))))
+                (is (= [[3]] (get-in goal [:data :rows]))))))
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (mt/with-temp [:model/Card      {chart-id :id, card-uuid :public_uuid} {:dataset_query main-query
+                                                                                    :display       :scalar
+                                                                                    :public_uuid   (str (random-uuid))}
+                           :model/Dashboard {dash-id :id, dash-uuid :public_uuid}  {:public_uuid (str (random-uuid))}
+                           :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                                   :card_id                chart-id
+                                                                   :visualization_settings {:scalar.segments
+                                                                                            [{:min   (goal-ref goal-id)
+                                                                                              :max   nil
+                                                                                              :color "red"}]}}]
+              (testing "a dashcard reads the reference from its viz settings"
+                (is (= [[3]] (get-in (dashcard-query-referenced-entities dash-id dashcard-id chart-id)
+                                     [:card goal-id :data :rows]))))
+              (testing "a public dashcard reads it too"
+                (is (= [[3]] (-> (client/client :get 202 (format "public/dashboard/%s/dashcard/%d/card/%d"
+                                                                 dash-uuid dashcard-id chart-id))
+                                 (ref-entity :card goal-id)
+                                 (get-in [:data :rows])))))
+              (testing "a public card reads it from its own viz settings"
+                (t2/update! :model/Card :id chart-id {:visualization_settings {:scalar.segments
+                                                                               [{:min   (goal-ref goal-id)
+                                                                                 :max   nil
+                                                                                 :color "red"}]}})
+                (is (= [[3]] (-> (client/client :get 202 (str "public/card/" card-uuid "/query"))
+                                 (ref-entity :card goal-id)
+                                 (get-in [:data :rows]))))))))))))
 
 (deftest card-endpoint-measure-goal-test
   (testing "POST /api/card/:id/query resolves a measure GoalSource from viz settings"
