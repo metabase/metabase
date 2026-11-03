@@ -369,7 +369,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:dependencies}
         (let [mp     (mt/metadata-provider)
-              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+              schema (t2/select-one-fn :schema :model/Table :id (mt/id :orders))]
           (with-transform-cleanup! [target {:type   "table"
                                             :schema schema
                                             :name   "model_transform"}]
@@ -459,7 +459,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
       (mt/with-premium-features #{:dependencies}
         (let [mp     (mt/metadata-provider)
-              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+              schema (t2/select-one-fn :schema :model/Table :id (mt/id :orders))]
           (with-transform-cleanup! [target {:type   "table"
                                             :schema schema
                                             :name   "model_transform_shapes"}]

@@ -1,7 +1,7 @@
 info:
   name: Metabase Databricks Driver
   version: 1.2.0
-  description: Allows Metabase to connect to Databricks SQL warehouse with personal access tokens or OAuth M2M
+  description: Allows Metabase to connect to Databricks SQL warehouse with personal access tokens, OAuth M2M, or workload identity federation (OIDC JWT)
 dependencies:
   - plugin: Metabase Hive Like Abstract Driver
 driver:
@@ -21,27 +21,31 @@ driver:
         helper-text: Found in SQL Warehouses > Connection details
         required: true
         placeholder: /sql/1.0/endpoints/abcdef1234567890
-      - name: use-m2m
-        display-name: Use Machine to Machine (M2M) authentication
-        type: boolean
-        default: true
-        helper-text: Use Personal Access Token for authentication.
+      - name: auth-mode
+        display-name: Authentication method
+        type: select
+        default: m2m
+        required: true
+        options:
+          - {name: "OAuth M2M (service principal)",      value: "m2m"}
+          - {name: "Personal Access Token",              value: "pat"}
+          - {name: "Workload Identity Federation (JWT)", value: "wif"}
       - merge:
         - password
         - name: token
           display-name: Personal Access Token
           required: true
-          helper-text: Personal Access Token for authentication. Not required if using OAuth M2M.
+          helper-text: Personal Access Token for authentication.
           placeholder: dapiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
           visible-if:
-            use-m2m: false
+            auth-mode: pat
       - name: client-id
         display-name: Service Principal Client ID
         placeholder: e26ce240-0a12-454f-934f-4c646603cb61
-        helper-text: For M2M OAuth authentication, corresponds to the service principal's Client ID.
+        helper-text: For M2M OAuth, the service principal's Client ID.
         required: true
         visible-if:
-          use-m2m: true
+          auth-mode: m2m
       - merge:
         - password
         - name: oauth-secret
@@ -50,7 +54,21 @@ driver:
           helper-text: OAuth Secret for M2M OAuth authentication.
           required: true
           visible-if:
-            use-m2m: true
+            auth-mode: m2m
+      - merge:
+        - password
+        - name: wif-token
+          display-name: OIDC token (inline, for testing)
+          helper-text: Paste a JWT for a one-off test. Use a token file in production.
+          placeholder: "eyJhbGciOi..."
+          visible-if:
+            auth-mode: wif
+      - name: wif-token-file-path
+        display-name: OIDC token file path
+        helper-text: Path to a file containing an OIDC JWT.
+        placeholder: "/var/run/secrets/tokens/oidc-token"
+        visible-if:
+          auth-mode: wif
       - merge:
         - multi-level-schema
         - display-name: Enable multiple catalogs

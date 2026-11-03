@@ -1,6 +1,6 @@
-import fetchMock from "fetch-mock";
-
+import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
+  createMockMediaQueryList,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -18,7 +18,7 @@ const MockUsers = new Array(100).fill(0).map((_, index) =>
 );
 
 const setup = () => {
-  fetchMock.get("path:/api/user", { data: MockUsers });
+  setupUsersEndpoints(MockUsers);
 
   renderWithProviders(<UserCollectionList />);
 };
@@ -41,6 +41,33 @@ describe("UserCollectionList", () => {
 
     // Items far down should not be rendered due to virtualization
     expect(screen.queryByText("big boi 98")).not.toBeInTheDocument();
+    expect(screen.queryByText("big boi 99")).not.toBeInTheDocument();
+  });
+
+  it("should show users in column order while keeping each personal collection link (#83318)", async () => {
+    jest
+      .spyOn(window, "matchMedia")
+      .mockReturnValue(createMockMediaQueryList({ matches: true }));
+
+    setup();
+
+    const links = await screen.findAllByRole("link", { name: /big boi \d+$/ });
+
+    expect(links.slice(0, 8).map((link) => link.textContent)).toEqual([
+      "big boi 0",
+      "big boi 25",
+      "big boi 50",
+      "big boi 75",
+      "big boi 1",
+      "big boi 26",
+      "big boi 51",
+      "big boi 76",
+    ]);
+    expect(screen.getByRole("link", { name: /big boi 25$/ })).toHaveAttribute(
+      "href",
+      "/collection/27",
+    );
+    expect(screen.queryByText("big boi 24")).not.toBeInTheDocument();
     expect(screen.queryByText("big boi 99")).not.toBeInTheDocument();
   });
 });

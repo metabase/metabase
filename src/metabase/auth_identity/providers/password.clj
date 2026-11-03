@@ -20,10 +20,6 @@
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
-;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
-(def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
-(def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
-
 (methodical/defmethod provider/validate :provider/password
   "Validate password credentials before insert/update into AuthIdentity.
    Ensures password_hash and password_salt are present."
@@ -86,7 +82,7 @@
            :error :invalid-credentials
            :message "Password did not match stored password."}))
       ;; Still run bcrypt to prevent timing attacks
-      (do (u.password/verify-password password fake-salt fake-hashed-password)
+      (do (u.password/do-useless-hash)
           {:success? false
            :error :invalid-credentials
            :message "No user found with that email address."}))))

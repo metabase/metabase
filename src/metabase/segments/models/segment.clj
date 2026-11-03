@@ -26,6 +26,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
@@ -275,21 +277,14 @@
                   :table_display_name        :table.display_name
                   :table_schema              :table.schema
                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Publishing is a user setting, so the published state and collection come from the table's
-                  ;; user settings when they are set, as in `metabase.warehouse-schema-overlay.core/table-query`.
                   ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
-                  :table-collection-id       [:case
-                                              [:not= :settings.is_published nil] :settings.collection_id
-                                              :else :table.collection_id]
-                  :table-is-published        [:coalesce :settings.is_published :table.is_published]
+                  :table-collection-id       :table.collection_id
+                  :table-is-published        :table.is_published
                   :table-collection-location :collection.location
                   :table-collection-type     :collection.type}
    ;; Only published tables count as library content, matching the table spec's own collection join.
    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :settings   [:model/TableUserSettings [:= :settings.table_id :this.table_id]]
            :collection [:model/Collection
                         [:and
-                         [:= [:coalesce :settings.is_published :table.is_published] true]
-                         [:= :collection.id [:case
-                                             [:not= :settings.is_published nil] :settings.collection_id
-                                             :else :table.collection_id]]]]}})
+                         [:= :table.is_published true]
+                         [:= :collection.id :table.collection_id]]]}})

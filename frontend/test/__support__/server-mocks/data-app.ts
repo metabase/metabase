@@ -16,6 +16,10 @@ export function setupListDataAppsEndpointWithError(error: string) {
   fetchMock.get("path:/api/ee/apps", { status: 500, body: error });
 }
 
+export function setupDataAppEndpoint(app: DataApp) {
+  fetchMock.get(`path:/api/ee/apps/${app.name}`, app);
+}
+
 export function setupDataAppRepoStatusEndpoint(status: DataAppRepoStatus) {
   fetchMock.get("path:/api/ee/apps/repo-status", status);
 }
@@ -26,10 +30,6 @@ export function setupDataAppRepoStatusEndpointWithError(error: string) {
 
 export function setupUpdateDataAppEndpoint(app: DataApp) {
   fetchMock.put(`path:/api/ee/apps/${app.name}`, app);
-}
-
-export function setupDeleteDataAppEndpoint(name: string) {
-  fetchMock.delete(`path:/api/ee/apps/${name}`, 204);
 }
 
 export function setupDataAppGroupsEndpoint(

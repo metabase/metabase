@@ -5,10 +5,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.pulse.api :as pulse.api]
@@ -57,6 +59,8 @@
                     (-> (metabot.db/dashboard dashboard-id)
                         api/read-check
                         (t2/hydrate [:dashcards :card])))
+        _         (when (shared/curated-only?)
+                    (curation/check-curated-subject! (str "dashboard " dashboard-id) ["dashboard" dashboard-id]))
         dashcards (filter (comp int? :id :card) (:dashcards dashboard))]
     (when-not (every? (comp mi/can-read? :card) dashcards)
       (tools/unrecoverable!
@@ -101,13 +105,14 @@
 (defrecord CreateDashboardSubscriptionTool []
   tools/Tool
   (declaration [_]
-    {:name        "create_dashboard_subscription"
-     :description tool-description
-     :scope       scope/agent-dashboard-subscribe
-     :args        [:map {:closed true}
-                   [:dashboard_id :int]
-                   [:slack_channel [:string {:min 1}]]
-                   [:schedule tools.create-alert/schedule-schema]]})
+    {:name            "create_dashboard_subscription"
+     :description     tool-description
+     :scope           scope/agent-dashboard-subscribe
+     :args            [:map {:closed true}
+                       [:dashboard_id :int]
+                       [:slack_channel [:string {:min 1}]]
+                       [:schedule tools.create-alert/schedule-schema]]
+     :metabot/writes? true})
 
   (handle [_ {:keys [dashboard_id slack_channel schedule]} _ctx]
     (tools.create-alert/check-slack-configured!)

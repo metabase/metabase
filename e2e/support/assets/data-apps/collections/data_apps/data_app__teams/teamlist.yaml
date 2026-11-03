@@ -1,0 +1,46 @@
+name: teamList
+entity_id: teamsAppTeamList00001
+creator_id: admin@metabase.test
+display: table
+collection_id: teamsAppCollection001
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Writable Postgres12
+  stages:
+  - fields:
+    - - field
+      - base-type: type/Text
+        effective-type: type/Text
+      - - Writable Postgres12
+        - public
+        - scoreboard_actions
+        - team_name
+    - - field
+      - base-type: type/Integer
+        effective-type: type/Integer
+      - - Writable Postgres12
+        - public
+        - scoreboard_actions
+        - score
+    order-by:
+    - - asc
+      - {}
+      - - field
+        - base-type: type/Text
+          effective-type: type/Text
+        - - Writable Postgres12
+          - public
+          - scoreboard_actions
+          - team_name
+    source-table:
+    - Writable Postgres12
+    - public
+    - scoreboard_actions
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+visualization_settings: {}
+card_schema: 24
+serdes/meta:
+- model: Card
+type: question

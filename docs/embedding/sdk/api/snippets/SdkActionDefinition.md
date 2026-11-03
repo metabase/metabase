@@ -1,25 +1,26 @@
 ```ts
 type SdkActionDefinition = {
-  action: {
-    id: SdkActionId;
+  entityId: SdkEntityId;
+  kind: "row/create" | "row/update" | "row/delete";
+  table: {
+    id: number;
   };
-  copiedActionEntityId?: SdkEntityId;
 };
 ```
 
-How a data app names an action: the `defineAction` export, which is what a
-data app must pass. `copiedActionEntityId` addresses the copy in the app's own
-collection, the only one its viewers can read. The dev preview runs `action`
-instead, so an app works before its resources are written.
+How a data app names an action: a `defineAction` definition of an implicit
+action on a table. The dev preview runs it without saving it, and a
+production build runs the action `entityId` names.
 
 ## Properties
 
 <!-- [<snippet properties>] -->
 
-| Property                                                  | Type                                                                        |
-| :-------------------------------------------------------- | :-------------------------------------------------------------------------- |
-| <a id="action"></a> `action`                              | \{ `id`: [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md); \} |
-| `action.id`                                               | [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md)              |
-| <a id="copiedactionentityid"></a> `copiedActionEntityId?` | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md)              |
+| Property                         | Type                                                           |
+| :------------------------------- | :------------------------------------------------------------- |
+| <a id="entityid"></a> `entityId` | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md) |
+| <a id="kind"></a> `kind`         | `"row/create"` \| `"row/update"` \| `"row/delete"`             |
+| <a id="table"></a> `table`       | \{ `id`: `number`; \}                                          |
+| `table.id`                       | `number`                                                       |
 
 <!-- [<endsnippet properties>] -->

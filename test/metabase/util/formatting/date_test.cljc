@@ -13,7 +13,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private locale
-  #?(:cljs nil :clj (Locale. "en")))
+  #?(:cljs nil :clj (Locale/of "en")))
 
 (def ^:private time-config {:start-of-week :sunday})
 

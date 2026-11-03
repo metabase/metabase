@@ -11,7 +11,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private no-active-run-clause
@@ -67,7 +66,7 @@
 (mu/defn transform-last-checkpoint-value
   "The last checkpoint value of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id))
+  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
 
 (mu/defn transform-collection-id
   "The Collection ID of the Transform with `transform-id`."
@@ -83,12 +82,12 @@
   "Apply `changes` to the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform transform-id changes))
+  (t2/update! :model/Transform :id transform-id changes))
 
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform transform-id))
+  (t2/delete! :model/Transform :id transform-id))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
@@ -183,6 +182,11 @@
   "The active TransformJobs."
   []
   (t2/select :model/TransformJob :active true))
+
+(mu/defn inactive-job-ids
+  "The IDs of the inactive TransformJobs."
+  []
+  (t2/select-pks-set :model/TransformJob :active false))
 
 (mu/defn job-snapshot
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."
@@ -466,7 +470,7 @@
   [transform-ids :- [:maybe [:or
                              [:set ::lib.schema.id/transform]
                              [:sequential ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
+  (t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query transform-ids))))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -820,12 +824,12 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -840,7 +844,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn table-indexes-for-transforms
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
@@ -850,17 +854,17 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))
 
 (mu/defn field-exists?
   "Whether a Field with `field-id` exists."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/exists? :model/Field :id field-id))
 
 (mu/defn active-field-ids-by-name
   "A map of name to ID for the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true))
 
 (mu/defn active-users
   "The active Users with `user-ids`."
