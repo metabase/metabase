@@ -35,6 +35,12 @@
         (finally
           (mc/alter-root handle before))))))
 
+(defmacro with-application-db-as-root
+  "Run `body` with `app-db` installed as the root application DB. See [[do-with-application-db-as-root]]."
+  {:style/indent [:defn]}
+  [app-db & body]
+  `(do-with-application-db-as-root ~app-db (^:once fn* [] ~@body)))
+
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
   (pretty [_]
