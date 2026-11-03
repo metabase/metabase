@@ -1,5 +1,4 @@
-import fetchMock from "fetch-mock";
-
+import { setupListGlossaryEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { ListGlossaryResponse } from "metabase/api";
 
@@ -14,7 +13,7 @@ function setup({ can_write }: Pick<ListGlossaryResponse, "can_write">) {
     data: [{ id: 1, term: "ARR", definition: "Annual recurring revenue" }],
     can_write,
   };
-  fetchMock.get("path:/api/glossary", response);
+  setupListGlossaryEndpoint(response);
 
   renderWithProviders(<GlossaryPage />, { withRouter: true });
 }

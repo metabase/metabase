@@ -3,15 +3,14 @@ import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { Text, Textarea, type TextareaProps } from "metabase/ui";
 
 import S from "./Glossary.module.css";
 
 const LINE_HEIGHT = 1.5;
-const DEFINITION_MAX_WIDTH = 600;
+const DEFINITION_MAX_WIDTH = "37.5rem";
 const FIELD_PADDING = "var(--mantine-spacing-xxs)";
-// An input's padding plus its 1px border, so read-only text lines up with editable text
-const READ_ONLY_PADDING = `calc(${FIELD_PADDING} + 1px)`;
 // Lifts the theme's 6-row cap so long definitions show in full
 const UNLIMITED_ROWS = Infinity;
 
@@ -70,10 +69,12 @@ const GlossaryField = forwardRef(function GlossaryField(
   if (readOnly) {
     return (
       <Text
-        className={cx(S.readOnlyValue, { [S.bold]: isBold })}
+        className={S.readOnlyValue}
         fz="md"
+        fw={isBold ? "bold" : undefined}
         lh={LINE_HEIGHT}
-        p={READ_ONLY_PADDING}
+        p="xxs"
+        bd="1px solid transparent"
         maw={maw}
       >
         {value}
@@ -87,17 +88,10 @@ const GlossaryField = forwardRef(function GlossaryField(
       classNames={{
         input: cx(S.input, {
           [S.bordered]: withBorder,
-          [S.bold]: isBold,
+          [CS.textBold]: isBold,
         }),
       }}
-      styles={{
-        input: {
-          lineHeight: LINE_HEIGHT,
-          padding: FIELD_PADDING,
-          // Mantine floors an input at --input-height; Textarea drops the vars prop and autosize rejects an inline minHeight
-          "--input-height": 0,
-        },
-      }}
+      styles={{ input: { lineHeight: LINE_HEIGHT, padding: FIELD_PADDING } }}
       variant="unstyled"
       maw={maw}
       value={value}

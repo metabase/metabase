@@ -1,9 +1,5 @@
-import type { GlossaryItem } from "metabase/api";
-import type { SortDirection } from "metabase-types/api";
+import type { Sorting } from "metabase/utils/sorting";
 
-export type GlossaryField = keyof Pick<GlossaryItem, "term" | "definition">;
+export type GlossaryField = "term" | "definition";
 
-export type GlossarySort = {
-  field: GlossaryField;
-  direction: SortDirection;
-};
+export type GlossarySort = Sorting<GlossaryField>;

@@ -5,8 +5,10 @@ import {
   setupCreateGlossaryEndpoint,
   setupCreateGlossaryEndpointWithError,
   setupDeleteGlossaryEndpoint,
+  setupDeleteGlossaryEndpointWithError,
   setupListGlossaryEndpoint,
   setupUpdateGlossaryEndpoint,
+  setupUpdateGlossaryEndpointWithError,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -42,7 +44,8 @@ const setup = ({ canWrite, getGlossary = () => GLOSSARY }: SetupOpts) => {
   });
 };
 
-const getNewTermButton = () => screen.queryByRole("button", { name: /term/i });
+const getNewTermButton = () =>
+  screen.queryByRole("button", { name: /new term/i });
 
 const getTable = () => screen.getByRole("table");
 
@@ -137,7 +140,9 @@ async function assertUpdateGlossaryTermFlow(server: GlossaryServer) {
     await within(getTable()).findByDisplayValue("Kitten"),
   ).toBeInTheDocument();
   expect(within(getTable()).getByDisplayValue("Young cat")).toBeInTheDocument();
-  expect(await screen.findAllByText("Term updated")).not.toHaveLength(0);
+  await waitFor(() =>
+    expect(screen.getAllByText("Term updated")).toHaveLength(2),
+  );
 }
 
 async function assertDeleteGlossaryTermFlow(server: GlossaryServer) {
@@ -180,6 +185,7 @@ describe("GlossaryContainer", () => {
     setup({ canWrite: false });
 
     expect(await screen.findByText("ARR")).toBeInTheDocument();
+    expect(within(getTable()).queryByRole("textbox")).not.toBeInTheDocument();
     expect(getNewTermButton()).not.toBeInTheDocument();
   });
 
@@ -218,5 +224,48 @@ describe("GlossaryContainer", () => {
     expect(
       within(getTable()).getAllByRole("textbox", { name: "Term" }),
     ).toHaveLength(2);
+  });
+
+  it("reverts the field and reports the error when updating fails", async () => {
+    setup({ canWrite: true });
+    setupUpdateGlossaryEndpointWithError(GLOSSARY[0].id);
+
+    const term = await within(getTable()).findByDisplayValue("ARR");
+    await userEvent.clear(term);
+    await userEvent.type(term, "MRR{Enter}");
+
+    expect(
+      await screen.findByText("Failed to update term"),
+    ).toBeInTheDocument();
+    expect(
+      await within(getTable()).findByDisplayValue("ARR"),
+    ).toBeInTheDocument();
+    expect(
+      within(getTable()).queryByDisplayValue("MRR"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the entry and reports the error when deleting fails", async () => {
+    setup({ canWrite: true });
+    setupDeleteGlossaryEndpointWithError(GLOSSARY[0].id);
+
+    await userEvent.click(
+      await within(getTable()).findByRole("button", { name: /delete/i }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: /delete/i,
+      }),
+    );
+
+    expect(
+      await screen.findByText("Failed to delete term"),
+    ).toBeInTheDocument();
+    expect(
+      await within(getTable()).findByDisplayValue("ARR"),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 });

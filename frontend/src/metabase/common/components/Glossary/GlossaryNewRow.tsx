@@ -11,32 +11,37 @@ import { isCancelKey, isCommitKey } from "./utils";
 
 type GlossaryNewRowProps = {
   initialDraft: CreateGlossaryRequest;
-  isDuplicateTerm: (term: string) => boolean;
+  isTermTaken: (term: string) => boolean;
   onSave: (draft: CreateGlossaryRequest) => void;
   onCancel: () => void;
 };
 
 /**
  * Enter saves once both fields are filled, or moves to the field that is missing or invalid.
- * Leaving the row saves it when complete and discards it when empty; Escape discards it.
+ * Leaving the row saves it when complete and changed since it opened, and discards it when empty.
+ * Escape discards it.
  */
 export function GlossaryNewRow({
   initialDraft,
-  isDuplicateTerm,
+  isTermTaken,
   onSave,
   onCancel,
 }: GlossaryNewRowProps) {
   const [values, setValues] = useState(initialDraft);
   const termRef = useRef<HTMLTextAreaElement>(null);
   const definitionRef = useRef<HTMLTextAreaElement>(null);
+  const fieldRefs = { term: termRef, definition: definitionRef };
 
   const draft = {
     term: values.term.trim(),
     definition: values.definition.trim(),
   };
-  const isDuplicate = isDuplicateTerm(draft.term);
+  const isDuplicate = isTermTaken(draft.term);
   const invalidField = getInvalidField(draft, isDuplicate);
   const isEmpty = draft.term === "" && draft.definition === "";
+  const isUnchanged =
+    draft.term === initialDraft.term.trim() &&
+    draft.definition === initialDraft.definition.trim();
 
   const handleChange = (field: GlossaryField, value: string) => {
     setValues((values) => ({ ...values, [field]: value }));
@@ -53,7 +58,6 @@ export function GlossaryNewRow({
       if (invalidField == null) {
         onSave(draft);
       } else {
-        const fieldRefs = { term: termRef, definition: definitionRef };
         fieldRefs[invalidField].current?.focus();
       }
     }
@@ -66,11 +70,15 @@ export function GlossaryNewRow({
     if (isFocusInRow) {
       return;
     }
-    if (invalidField == null) {
-      onSave(draft);
-    } else if (isEmpty) {
+    if (isEmpty) {
       onCancel();
+      return;
     }
+    // A row reopened with a failed draft waits for Enter or an edit instead of retrying on every blur
+    if (invalidField != null || isUnchanged) {
+      return;
+    }
+    onSave(draft);
   };
 
   return (

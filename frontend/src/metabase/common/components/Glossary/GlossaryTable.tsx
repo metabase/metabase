@@ -47,7 +47,7 @@ export type GlossaryTableProps = {
   /** Resolves to whether the term was saved; the new row reopens with the draft when it was not. */
   onCreate: (draft: CreateGlossaryRequest) => Promise<boolean>;
   onEdit: (request: UpdateGlossaryRequest) => void;
-  onDelete: (id: GlossaryItem["id"]) => Promise<void> | void;
+  onDelete: (id: GlossaryItem["id"]) => Promise<void>;
 };
 
 export function GlossaryTable({
@@ -71,7 +71,7 @@ export function GlossaryTable({
   );
 
   const handleSort = (field: GlossaryField) => {
-    setSort(getNextSort(sort, field));
+    setSort((sort) => getNextSort(sort, field));
   };
 
   const handleCreate = async (draft: CreateGlossaryRequest) => {
@@ -104,7 +104,7 @@ export function GlossaryTable({
         {!readOnly && (
           <Button
             size="lg"
-            leftSection={<Icon name="add" size={16} />}
+            leftSection={<Icon name="add" />}
             onClick={() => setNewRowDraft(EMPTY_DRAFT)}
           >
             {t`New term`}
@@ -133,14 +133,14 @@ export function GlossaryTable({
                   sort={sort}
                   onSort={handleSort}
                 />
-                <th />
+                <th aria-label={readOnly ? undefined : t`Actions`} />
               </tr>
             </thead>
             <tbody>
               {newRowDraft != null && (
                 <GlossaryNewRow
                   initialDraft={newRowDraft}
-                  isDuplicateTerm={(term) => isDuplicateTerm(glossary, term)}
+                  isTermTaken={(term) => isDuplicateTerm(glossary, term)}
                   onSave={handleCreate}
                   onCancel={() => setNewRowDraft(null)}
                 />
@@ -150,7 +150,7 @@ export function GlossaryTable({
                   key={item.id}
                   item={item}
                   readOnly={readOnly}
-                  isDuplicateTerm={(term) =>
+                  isTermTaken={(term) =>
                     isDuplicateTerm(glossary, term, item.id)
                   }
                   onEdit={onEdit}
@@ -202,7 +202,7 @@ function SortableHeaderCell({
   sort,
   onSort,
 }: SortableHeaderCellProps) {
-  const direction = sort?.field === field ? sort.direction : undefined;
+  const direction = sort?.column === field ? sort.direction : undefined;
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Enter" || event.key === " ") {

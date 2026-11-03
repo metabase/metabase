@@ -24,6 +24,14 @@ export function setupUpdateGlossaryEndpoint(item: GlossaryItem) {
   fetchMock.put(`path:/api/glossary/${item.id}`, item);
 }
 
+export function setupUpdateGlossaryEndpointWithError(id: GlossaryItem["id"]) {
+  fetchMock.put(`path:/api/glossary/${id}`, { status: 500, body: {} });
+}
+
 export function setupDeleteGlossaryEndpoint(id: GlossaryItem["id"]) {
   fetchMock.delete(`path:/api/glossary/${id}`, 204);
+}
+
+export function setupDeleteGlossaryEndpointWithError(id: GlossaryItem["id"]) {
+  fetchMock.delete(`path:/api/glossary/${id}`, { status: 500, body: {} });
 }

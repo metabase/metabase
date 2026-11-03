@@ -14,7 +14,9 @@ export function getVisibleItems(
     return items;
   }
   return items.toSorted((a, b) => {
-    const result = a[sort.field].localeCompare(b[sort.field]);
+    const result = a[sort.column].localeCompare(b[sort.column], undefined, {
+      numeric: true,
+    });
     return sort.direction === "asc" ? result : -result;
   });
 }
@@ -31,12 +33,18 @@ function filterItems(glossary: GlossaryItem[], searchQuery: string) {
   );
 }
 
+/** A header cycles ascending, descending, then back to the server order. */
 export function getNextSort(
   sort: GlossarySort | null,
-  field: GlossarySort["field"],
-): GlossarySort {
-  const isAscending = sort?.field === field && sort.direction === "asc";
-  return { field, direction: isAscending ? "desc" : "asc" };
+  column: GlossaryField,
+): GlossarySort | null {
+  if (sort?.column !== column) {
+    return { column, direction: "asc" };
+  }
+  if (sort.direction === "asc") {
+    return { column, direction: "desc" };
+  }
+  return null;
 }
 
 /** Terms are unique case-insensitively; `ownId` lets an entry keep its own term. */

@@ -11,56 +11,59 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
 
-type GlossaryMutationCallbacks = {
+export type UseGlossaryMutationsOptions = {
   onCreated?: (id: GlossaryItem["id"]) => void;
   onUpdated?: (id: GlossaryItem["id"]) => void;
   onDeleted?: (id: GlossaryItem["id"]) => void;
 };
 
-/**
- * Creates, updates, and deletes glossary entries, reporting each outcome in a toast.
- * `createTerm` resolves to whether the term was saved.
- */
+type UseGlossaryMutationsResult = {
+  /** Resolves to whether the term was saved. */
+  createTerm: (draft: CreateGlossaryRequest) => Promise<boolean>;
+  updateTerm: (request: UpdateGlossaryRequest) => Promise<void>;
+  deleteTerm: (id: GlossaryItem["id"]) => Promise<void>;
+};
+
+/** Creates, updates, and deletes glossary entries, reporting each outcome in a toast. */
 export function useGlossaryMutations({
   onCreated,
   onUpdated,
   onDeleted,
-}: GlossaryMutationCallbacks = {}) {
+}: UseGlossaryMutationsOptions = {}): UseGlossaryMutationsResult {
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();
   const [deleteGlossary] = useDeleteGlossaryMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const createTerm = async (draft: CreateGlossaryRequest) => {
-    try {
-      const item = await createGlossary(draft).unwrap();
-      sendSuccessToast(t`Term added`);
-      onCreated?.(item.id);
-      return true;
-    } catch (error) {
+    const { data, error } = await createGlossary(draft);
+    if (data == null) {
       sendErrorToast(getErrorMessage(error, t`Failed to add term`));
       return false;
     }
+    sendSuccessToast(t`Term added`);
+    onCreated?.(data.id);
+    return true;
   };
 
   const updateTerm = async (request: UpdateGlossaryRequest) => {
-    try {
-      await updateGlossary(request).unwrap();
-      sendSuccessToast(t`Term updated`);
-      onUpdated?.(request.id);
-    } catch (error) {
+    const { error } = await updateGlossary(request);
+    if (error) {
       sendErrorToast(getErrorMessage(error, t`Failed to update term`));
+      return;
     }
+    sendSuccessToast(t`Term updated`);
+    onUpdated?.(request.id);
   };
 
   const deleteTerm = async (id: GlossaryItem["id"]) => {
-    try {
-      await deleteGlossary({ id }).unwrap();
-      sendSuccessToast(t`Term deleted`);
-      onDeleted?.(id);
-    } catch (error) {
+    const { error } = await deleteGlossary({ id });
+    if (error) {
       sendErrorToast(getErrorMessage(error, t`Failed to delete term`));
+      return;
     }
+    sendSuccessToast(t`Term deleted`);
+    onDeleted?.(id);
   };
 
   return { createTerm, updateTerm, deleteTerm };

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type {
   CreateGlossaryRequest,
   GlossaryItem,
@@ -33,7 +33,9 @@ function setup({
     .fn<Promise<boolean>, [CreateGlossaryRequest]>()
     .mockReturnValue(createResult);
   const onEdit = jest.fn<void, [UpdateGlossaryRequest]>();
-  const onDelete = jest.fn<void, [GlossaryItem["id"]]>();
+  const onDelete = jest
+    .fn<Promise<void>, [GlossaryItem["id"]]>()
+    .mockResolvedValue(undefined);
   renderWithProviders(
     <>
       <GlossaryTable
@@ -166,6 +168,7 @@ describe("GlossaryTable", () => {
       await userEvent.type(getNewDefinitionField(), "Flies");
       await userEvent.click(screen.getByRole("button", { name: "Outside" }));
 
+      expect(onCreate).toHaveBeenCalledTimes(1);
       expect(onCreate).toHaveBeenCalledWith({
         term: "Bird",
         definition: "Flies",
@@ -219,6 +222,51 @@ describe("GlossaryTable", () => {
       expect(await screen.findByPlaceholderText("Boat")).toHaveValue("Bird");
       expect(getNewDefinitionField()).toHaveValue("Flies");
       expect(queryDuplicateWarning()).not.toBeInTheDocument();
+    });
+
+    it("keeps a reopened row open when focus leaves it, until Enter retries", async () => {
+      const createResult = defer<boolean>();
+      const { onCreate } = setup({ createResult: createResult.promise });
+
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(getNewTermField(), "Bird");
+      await userEvent.type(getNewDefinitionField(), "Flies{Enter}");
+      createResult.resolve(false);
+      expect(await screen.findByPlaceholderText("Boat")).toHaveValue("Bird");
+
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onCreate).toHaveBeenCalledTimes(1);
+      expect(getNewTermField()).toHaveValue("Bird");
+
+      await userEvent.type(getNewDefinitionField(), " ");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onCreate).toHaveBeenCalledTimes(1);
+
+      await userEvent.type(getNewDefinitionField(), "{Enter}");
+
+      expect(onCreate).toHaveBeenCalledTimes(2);
+    });
+
+    it("saves a reopened row when focus leaves it after an edit", async () => {
+      const createResult = defer<boolean>();
+      const { onCreate } = setup({ createResult: createResult.promise });
+
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(getNewTermField(), "Bird");
+      await userEvent.type(getNewDefinitionField(), "Flies{Enter}");
+      createResult.resolve(false);
+      expect(await screen.findByPlaceholderText("Boat")).toHaveValue("Bird");
+
+      await userEvent.type(getNewDefinitionField(), " high");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onCreate).toHaveBeenCalledTimes(2);
+      expect(onCreate).toHaveBeenLastCalledWith({
+        term: "Bird",
+        definition: "Flies high",
+      });
     });
 
     it("blocks saving a term that already exists, case-insensitively", async () => {
@@ -286,7 +334,7 @@ describe("GlossaryTable", () => {
       });
     });
 
-    it("reverts on Escape without saving", async () => {
+    it("reverts on Escape without saving and keeps focus in the field", async () => {
       const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
       const { onEdit } = setup({ glossary: [item] });
       const { definition } = getFieldsByTerm("Cat");
@@ -295,6 +343,11 @@ describe("GlossaryTable", () => {
 
       expect(onEdit).not.toHaveBeenCalled();
       expect(definition).toHaveValue("Meows");
+      expect(definition).toHaveFocus();
+
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onEdit).not.toHaveBeenCalled();
     });
 
     it("reverts a blank definition without saving", async () => {
@@ -306,6 +359,50 @@ describe("GlossaryTable", () => {
 
       expect(onEdit).not.toHaveBeenCalled();
       expect(getFieldsByTerm("Cat").definition).toHaveValue("Meows");
+    });
+
+    it("does not save a field whose value is unchanged", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { term } = getFieldsByTerm("Cat");
+
+      await userEvent.type(term, "{Enter}");
+      await userEvent.clear(term);
+      await userEvent.type(term, " Cat {Enter}");
+
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(term).toHaveValue("Cat");
+    });
+
+    it("saves the term on Shift+Enter instead of adding a line break", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { term } = getFieldsByTerm("Cat");
+
+      await userEvent.clear(term);
+      await userEvent.type(term, "Kitten{Shift>}{Enter}{/Shift}");
+
+      expect(onEdit).toHaveBeenCalledTimes(1);
+      expect(onEdit).toHaveBeenCalledWith({
+        id: 42,
+        term: "Kitten",
+        definition: "Meows",
+      });
+    });
+
+    it("ignores Enter and Escape while an IME composition is in progress", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { term } = getFieldsByTerm("Cat");
+
+      await userEvent.clear(term);
+      await userEvent.type(term, "猫");
+      fireEvent.keyDown(term, { key: "Enter", isComposing: true });
+      fireEvent.keyDown(term, { key: "Escape", isComposing: true });
+
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(term).toHaveValue("猫");
+      expect(term).toHaveFocus();
     });
 
     it("does not warn about the row's own term", async () => {
@@ -354,6 +451,39 @@ describe("GlossaryTable", () => {
 
     await userEvent.click(termHeader);
     expect(getTermValues()).toEqual(["Gamma", "Beta", "Alpha"]);
+
+    await userEvent.click(termHeader);
+    expect(getTermValues()).toEqual(["Beta", "Alpha", "Gamma"]);
+    expect(termHeader).not.toHaveAttribute("aria-sort");
+  });
+
+  it("sorts from the keyboard and exposes the sort state", async () => {
+    setup({
+      glossary: [
+        makeItem({ id: 1, term: "Beta", definition: "Second" }),
+        makeItem({ id: 2, term: "Alpha", definition: "First" }),
+        makeItem({ id: 3, term: "Gamma", definition: "Third" }),
+      ],
+    });
+    const termHeader = screen.getByRole("columnheader", { name: /^term$/i });
+    const definitionHeader = screen.getByRole("columnheader", {
+      name: /^definition$/i,
+    });
+    expect(termHeader).not.toHaveAttribute("aria-sort");
+
+    termHeader.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(getTermValues()).toEqual(["Alpha", "Beta", "Gamma"]);
+    expect(termHeader).toHaveAttribute("aria-sort", "ascending");
+
+    await userEvent.keyboard(" ");
+    expect(getTermValues()).toEqual(["Gamma", "Beta", "Alpha"]);
+    expect(termHeader).toHaveAttribute("aria-sort", "descending");
+
+    await userEvent.click(definitionHeader);
+    expect(getTermValues()).toEqual(["Alpha", "Beta", "Gamma"]);
+    expect(definitionHeader).toHaveAttribute("aria-sort", "ascending");
+    expect(termHeader).not.toHaveAttribute("aria-sort");
   });
 
   it("deletes a record with confirmation", async () => {
