@@ -32,6 +32,7 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -47,6 +48,13 @@ export type SearchCardParameterValuesRequest = CardParameterValuesRequest & {
 
 export const cardApi = Api.injectEndpoints({
   endpoints: (builder) => {
+    // RTK Query holds back tag invalidation until no requests are running,
+    // so a long-running query would keep the pre-save card in the cache and
+    // the editor would reopen on stale data. Saving that would undo this save.
+    // https://github.com/metabase/metabase/issues/84490
+    const upsertSavedCard = (card: Card) =>
+      cardApi.util.upsertQueryData("getCard", { id: card.id }, card);
+
     const updateCardPropertiesMutation = <
       PropertyKey extends keyof UpdateCardRequest,
     >(
@@ -65,6 +73,10 @@ export const cardApi = Api.injectEndpoints({
             idTag("table", `card__${id}`),
             ...additionalTags,
           ]),
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          handleQueryFulfilled(queryFulfilled, (card) =>
+            dispatch(upsertSavedCard(card)),
+          ),
       });
 
     return {
@@ -219,6 +231,10 @@ export const cardApi = Api.injectEndpoints({
 
           return invalidateTags(error, tags);
         },
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          handleQueryFulfilled(queryFulfilled, (card) =>
+            dispatch(upsertSavedCard(card)),
+          ),
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: (id) => ({
