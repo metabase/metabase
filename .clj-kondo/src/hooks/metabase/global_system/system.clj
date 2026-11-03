@@ -13,7 +13,8 @@
 
 ;; The module linter only sees namespace references, so a handle built from another module's keyword would reach
 ;; that module's component unnoticed. Requiring the key to belong to the calling namespace keeps each component
-;; reachable only through its owner.
+;; reachable only through its owner. This guards against accidental coupling, not deliberate bypass: interop such as
+;; `(ComponentHandle. k)` is not a call this hook sees.
 (defn mutable-component-handle
   "Report a call to `mutable-component-handle` whose key is not a literal keyword in the calling namespace."
   [{:keys [node ns]}]
