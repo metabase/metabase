@@ -7,7 +7,7 @@ import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { areQueriesEqual } from "../../../FilterAutoApply/utils";
+import { areQueriesIdentical } from "../../../FilterAutoApply/utils";
 
 import { FilterExpressionBar } from "./FilterExpressionBar";
 import S from "./KeyboardFilterRow.module.css";
@@ -43,7 +43,9 @@ export function KeyboardFilterRow({
 
   const setQuery = (newQuery: Lib.Query) => {
     const question = latestQuestion.current;
-    if (!areQueriesEqual(newQuery, question.query())) {
+    // Prototype: a change in the filter bar can be only a group of ANDs that
+    // is added or removed, and a comparison that flattens them misses it.
+    if (!areQueriesIdentical(newQuery, question.query())) {
       // Prototype: on slow data, a filter change only makes the result out of
       // date, and the user reruns the question with the run button.
       const isSlowData = !(autoApply?.isEnabled(newQuery) ?? true);

@@ -19,6 +19,22 @@ export function getQueryWithFilter(
 
 // Pickers build new clauses, with new ids and slightly different field refs,
 // so the same filter must be compared by meaning, not by value.
+/**
+ * Prototype: true when the queries are the same, apart from the `lib/uuid`s.
+ * Unlike `areQueriesEqual`, it tells nested ANDs, like the groups of the
+ * filter bar, from flat filters: the legacy comparison flattens them.
+ */
+export function areQueriesIdentical(
+  query1: Lib.Query,
+  query2: Lib.Query,
+): boolean {
+  const toJson = (query: Lib.Query) =>
+    JSON.stringify(Lib.toJsQuery(query), (key, value) =>
+      key === "lib/uuid" ? undefined : value,
+    );
+  return toJson(query1) === toJson(query2);
+}
+
 export function areQueriesEqual(query1: Lib.Query, query2: Lib.Query): boolean {
   return Lib.areLegacyQueriesEqual(
     Lib.toJsQuery(query1),
