@@ -277,11 +277,11 @@
 (deftest oss-namespaces-reach-enterprise-through-defenterprise-test
   (testing "OSS code reaches EE through `defenterprise` hooks; only startup and route wiring require EE namespaces"
     (is (= '#{;; mounts the EE route table
-              [metabase.api-routes.routes      metabase-enterprise.api-routes.routes]
+              [metabase.api-routes.routes metabase-enterprise.api-routes.routes]
               ;; loads EE's init namespaces at startup
-              [metabase.core.init              metabase-enterprise.core.init]
+              [metabase.core.init         metabase-enterprise.core.init]
               ;; mounts the EE SSO routes beside the OSS Slack Connect route
-              [metabase.sso.auth-wrapper       metabase-enterprise.sso.api.routes]}
+              [metabase.sso.auth-wrapper  metabase-enterprise.sso.api.routes]}
            (set (for [{:keys [namespace deps]} (dev.deps-graph/dependencies)
                       :when                    (not (enterprise-namespace? namespace))
                       {dep :namespace}         deps
