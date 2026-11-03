@@ -4,6 +4,12 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isInteger, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
+import {
+  type CurrentRowRule,
+  inferCurrentRowRule,
+  inferDurableKeyFallbackFieldId,
+  inferVersionKeyFieldId,
+} from "./history-source";
 import { type TableRole, getTableRoleLabel } from "./roles";
 
 export type RowIdentity =
@@ -43,9 +49,11 @@ export type RoleInference = {
 /** How to read a history table: which rows are versions of the same thing */
 export type HistoryBinding = {
   durableKeyFieldId: FieldId | null;
+  versionKeyFieldId: FieldId | null;
   validFromFieldId: FieldId | null;
   validToFieldId: FieldId | null;
   currentFlagFieldId: FieldId | null;
+  currentRowRule: CurrentRowRule;
   /** Filter to the current version of each row by default */
   currentRowsOnly: boolean;
 };
@@ -336,8 +344,11 @@ export function inferHistoryBinding(fields: Field[]): HistoryBinding {
     pks.find((field) => !isDate(field) && !matches(field, VERSION_RE)) ??
     fields.find(isFK) ??
     pks[0];
+  const durableKeyFieldId =
+    idOf(durableKey) ?? inferDurableKeyFallbackFieldId(fields);
   return {
-    durableKeyFieldId: idOf(durableKey),
+    durableKeyFieldId,
+    versionKeyFieldId: inferVersionKeyFieldId(fields, durableKeyFieldId),
     validFromFieldId: idOf(
       fields.find((field) => matches(field, VALID_FROM_RE)),
     ),
@@ -345,6 +356,7 @@ export function inferHistoryBinding(fields: Field[]): HistoryBinding {
     currentFlagFieldId: idOf(
       fields.find((field) => matches(field, CURRENT_FLAG_RE)),
     ),
+    currentRowRule: inferCurrentRowRule(fields),
     currentRowsOnly: true,
   };
 }

@@ -27,6 +27,11 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
+import {
+  FieldHistoryRoleInput,
+  useIsHistoryTable,
+} from "./FieldHistoryRoleInput";
+
 interface FieldDetailsProps {
   field: Field;
   table: Table;
@@ -43,6 +48,7 @@ export function FieldDetails({
   getFieldHref,
 }: FieldDetailsProps) {
   const readOnly = !table.can_write;
+  const isHistoryTable = useIsHistoryTable(table);
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
   });
@@ -111,6 +117,18 @@ export function FieldDetails({
             label={t`Grain`}
             value={<FieldGrainInput field={field} disabled={readOnly} />}
           />
+          {isHistoryTable && (
+            <DetailsRow
+              label={t`History`}
+              value={
+                <FieldHistoryRoleInput
+                  field={field}
+                  table={table}
+                  disabled={readOnly}
+                />
+              }
+            />
+          )}
         </DetailsTable>
       </SidebarSection>
       <SidebarSection title={t`Metadata`}>

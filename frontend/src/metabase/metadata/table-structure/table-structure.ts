@@ -7,6 +7,7 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import { isCurrentRowRule } from "./history-source";
 import {
   type EavBinding,
   type HistoryBinding,
@@ -75,9 +76,13 @@ function parseHistoryBinding(value: unknown): Partial<HistoryBinding> {
   }
   return {
     durableKeyFieldId: parseFieldId(value.durableKeyFieldId),
+    versionKeyFieldId: parseFieldId(value.versionKeyFieldId),
     validFromFieldId: parseFieldId(value.validFromFieldId),
     validToFieldId: parseFieldId(value.validToFieldId),
     currentFlagFieldId: parseFieldId(value.currentFlagFieldId),
+    currentRowRule: isCurrentRowRule(value.currentRowRule)
+      ? value.currentRowRule
+      : undefined,
     currentRowsOnly: parseBoolean(value.currentRowsOnly),
   };
 }

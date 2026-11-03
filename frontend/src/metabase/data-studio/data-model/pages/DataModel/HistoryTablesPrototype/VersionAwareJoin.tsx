@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   NotebookCell,
   NotebookCellItem,
@@ -16,7 +15,6 @@ import {
   Flex,
   Group,
   Icon,
-  Paper,
   SegmentedControl,
   Stack,
   Text,
@@ -33,7 +31,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { type ResultColumn, ResultGrid } from "./ResultGrid";
 import {
   FCT_ORDERS,
   type JoinVersionMode,
@@ -45,8 +42,6 @@ import {
 } from "./sample-data";
 
 registerVisualization(RowChart);
-
-const SUMMARIZE_ITEM_STYLE = { color: "var(--mb-color-core-summarize)" };
 
 const JOIN_COLOR = "background_surface-brand-strong";
 const SUMMARIZE_COLOR = "core-summarize";
@@ -412,125 +407,6 @@ export function VersionAwareJoin({
         >
           <ResultPanel mode={mode} showSql={isHistoryAware} />
         </Box>
-      </Flex>
-    </Flex>
-  );
-}
-
-type ColumnPickerItem = {
-  name: string;
-  isSelected?: boolean;
-  isDisabled?: boolean;
-};
-
-type ComparisonRow = {
-  plan: Plan;
-  atEvent: number;
-  current: number;
-};
-
-const COMPARISON_COLUMNS: ResultColumn<ComparisonRow>[] = [
-  { id: "plan", name: "Plan", value: (row) => row.plan },
-  {
-    id: "at_event",
-    name: "At order date",
-    value: (row) => formatMoney(row.atEvent),
-    align: "right",
-  },
-  {
-    id: "current",
-    name: "Now",
-    value: (row) => formatMoney(row.current),
-    align: "right",
-  },
-  {
-    id: "difference",
-    name: "Difference",
-    value: (row) => {
-      const difference = row.current - row.atEvent;
-      return `${difference >= 0 ? "+" : "−"}${formatMoney(Math.abs(difference))}`;
-    },
-    align: "right",
-  },
-];
-
-export function ImplicitJoinPicker() {
-  const atEvent = getRevenueByPlan("at-event").totals;
-  const current = getRevenueByPlan("current").totals;
-  const rows = PLANS.map((plan) => ({
-    plan,
-    atEvent: atEvent[plan],
-    current: current[plan],
-  }));
-  const sections = [
-    {
-      name: t`Fct Orders`,
-      icon: "table2" as const,
-      items: [
-        { name: t`Order Date` },
-        { name: t`Amount` },
-        { name: t`Order ID` },
-      ],
-    },
-    {
-      name: t`Customer · at order date`,
-      icon: "history" as const,
-      items: [
-        { name: t`Plan (as it was)`, isSelected: true },
-        { name: t`Region` },
-        { name: t`Name` },
-      ],
-    },
-    {
-      name: t`Customer · now`,
-      icon: "person" as const,
-      items: [
-        { name: t`Plan (now)`, isSelected: true },
-        { name: t`Region` },
-        { name: t`Name` },
-      ],
-    },
-    {
-      name: t`Customer · every version`,
-      icon: "warning" as const,
-      items: [{ name: t`Hidden: repeats orders`, isDisabled: true }],
-    },
-  ];
-
-  return (
-    <Flex direction="column" h="100%">
-      <QuestionHeader
-        title={t`Fct Orders`}
-        actionIcon="sum"
-        actionLabel={t`Summarize`}
-      />
-      <Flex flex={1} mih={0} gap="xl" p="xl">
-        <Paper w={300} shadow="md" withBorder style={{ overflow: "hidden" }}>
-          <AccordionList<ColumnPickerItem>
-            sections={sections}
-            alwaysExpanded
-            color="core-summarize"
-            getItemStyles={() => SUMMARIZE_ITEM_STYLE}
-            maxHeight={600}
-            searchable
-            searchPlaceholder={t`Find…`}
-            itemIsSelected={(item) => item.isSelected}
-            itemIsClickable={(item) => !item.isDisabled}
-            renderItemName={(item) => item.name}
-            renderSectionIcon={(section) =>
-              section.icon ? <Icon name={section.icon} /> : null
-            }
-          />
-        </Paper>
-        <Stack flex={1} miw={0} gap="md">
-          <Text fw="bold">{t`Sum of Amount by Plan, at order date vs now`}</Text>
-          <Box h={200}>
-            <ResultGrid rows={rows} columns={COMPARISON_COLUMNS} />
-          </Box>
-          <Text size="sm" c="text-secondary">
-            {t`Both columns add up to ${formatMoney(ORDERS_TOTAL)}. “Now” moves revenue from Pro to Enterprise because Acme, Fjord and Halcyon upgraded after placing those orders.`}
-          </Text>
-        </Stack>
       </Flex>
     </Flex>
   );

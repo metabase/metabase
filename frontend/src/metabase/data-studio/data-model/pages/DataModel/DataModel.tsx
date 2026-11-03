@@ -43,6 +43,7 @@ import {
   TableDetailsSkeleton,
 } from "./DetailPanel";
 import { FieldDetailsPanel } from "./FieldDetailsPanel";
+import { HistoryEntityPanel } from "./HistoryEntityPanel";
 import { PropertyDetailsPanel } from "./PropertyDetailsPanel";
 import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
@@ -57,6 +58,10 @@ import {
   REVEAL_WIDTH_TRANSITION,
 } from "./constants";
 import {
+  HistoryEntitySelectionProvider,
+  useHistoryEntitySelection,
+} from "./contexts/HistoryEntitySelectionContext";
+import {
   PropertySelectionProvider,
   usePropertySelection,
 } from "./contexts/PropertySelectionContext";
@@ -68,7 +73,9 @@ export const DataModel = () => {
   return (
     <SelectionProvider>
       <PropertySelectionProvider>
-        <DataModelContent />
+        <HistoryEntitySelectionProvider>
+          <DataModelContent />
+        </HistoryEntitySelectionProvider>
       </PropertySelectionProvider>
     </SelectionProvider>
   );
@@ -84,6 +91,8 @@ function DataModelContent() {
     hasSelectedMoreThanOneTable,
     resetSelection,
   } = useSelection();
+  const { selectedEntityKey, setSelectedEntityKey } =
+    useHistoryEntitySelection();
   const parsedParams = parseRouteParams(params);
   const {
     databaseId,
@@ -222,6 +231,11 @@ function DataModelContent() {
     activeTab === "properties" &&
     table != null &&
     selectedPropertyName != null;
+  const showHistoryEntity =
+    showTableDetailsSection &&
+    activeTab === "versions" &&
+    table != null &&
+    selectedEntityKey != null;
 
   const isDrawerOpen =
     openContainer != null ||
@@ -262,6 +276,8 @@ function DataModelContent() {
   closeActivePanelRef.current = () => {
     if (showPropertyDetails) {
       setSelectedPropertyName(null);
+    } else if (showHistoryEntity) {
+      setSelectedEntityKey(null);
     } else if (showFieldPreview) {
       closePreview();
     } else if (showFieldDetails) {
@@ -416,6 +432,18 @@ function DataModelContent() {
           defaultWidth={panelWidths.field}
           onWidthChange={handlePanelWidthChange("field")}
           onClose={() => setSelectedPropertyName(null)}
+        />
+      )}
+
+      {showHistoryEntity && (
+        <HistoryEntityPanel
+          key={`${table.id}:${selectedEntityKey}`}
+          ref={scrollToPanel}
+          table={table}
+          entityKey={selectedEntityKey}
+          defaultWidth={panelWidths.field}
+          onWidthChange={handlePanelWidthChange("field")}
+          onClose={() => setSelectedEntityKey(null)}
         />
       )}
 

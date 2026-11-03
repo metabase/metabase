@@ -36,3 +36,32 @@ export {
   usePropertyOverrides,
   usePropertyRegistry,
 } from "./property-registry";
+export {
+  CURRENT_ROW_RULES,
+  type CurrentRowRule,
+  FAR_FUTURE_VALID_TO,
+  type HistorySource,
+  getCurrentRowRuleOptions,
+  getHistorySourceLabel,
+  inferHistorySource,
+  isCurrentRowRule,
+} from "./history-source";
+export {
+  type ColumnChangeProfile,
+  type HistoryCheck,
+  type HistoryCheckId,
+  type HistoryCheckStatus,
+  type HistoryEntity,
+  type HistoryProfile,
+  type HistoryProfileState,
+  type HistoryVersion,
+  getFailedChecks,
+  useHistoryProfile,
+} from "./history-profile";
+export {
+  COLUMN_TREATMENTS,
+  type ColumnTreatment,
+  type HistoryReviewStatus,
+  useHistoryReview,
+  useHistoryReviewStatus,
+} from "./history-review";

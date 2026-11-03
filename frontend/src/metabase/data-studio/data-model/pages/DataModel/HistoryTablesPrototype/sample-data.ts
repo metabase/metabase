@@ -6,18 +6,6 @@ export type Region = (typeof REGIONS)[number];
 
 export const TODAY = "2026-11-03";
 
-export const PLAN_COLORS: Record<Plan, string> = {
-  Starter: "var(--mb-color-accent1)",
-  Pro: "var(--mb-color-accent0)",
-  Enterprise: "var(--mb-color-accent2)",
-};
-
-export const REGION_COLORS: Record<Region, string> = {
-  EMEA: "var(--mb-color-accent4)",
-  NA: "var(--mb-color-accent6)",
-  APAC: "var(--mb-color-accent5)",
-};
-
 export type CustomerVersion = {
   customerKey: number;
   customerId: string;
@@ -92,19 +80,13 @@ export function getCurrentVersion(customerId: string) {
   return getVersions(customerId).find((version) => version.isCurrent);
 }
 
-export const getVersionsOn = (date: string) =>
-  DIM_CUSTOMER.filter((version) => isValidOn(version, date));
-
-export const countCustomers = (versions: CustomerVersion[]) =>
-  new Set(versions.map((version) => version.customerId)).size;
-
 const PLAN_PRICE_RANGE: Record<Plan, [number, number]> = {
   Starter: [60, 180],
   Pro: [420, 980],
   Enterprise: [2400, 4800],
 };
 
-function seededRandom(seed: number) {
+export function seededRandom(seed: number) {
   let state = seed;
   return () => {
     state |= 0;
@@ -185,42 +167,3 @@ export function getRevenueByPlan(mode: JoinVersionMode) {
   });
   return { totals, matchedRowCount, total: sum(Object.values(totals)) };
 }
-
-export type SnapshotRow = {
-  customer_id: string;
-  name: string;
-  plan: Plan;
-  region: Region;
-  dbt_scd_id: string;
-  dbt_valid_from: string;
-  dbt_valid_to: string | null;
-};
-
-const fakeScdId = (seed: number) =>
-  `${((seed * 2654435761) >>> 0).toString(16).padStart(8, "0")}…`;
-
-const OVERLAPPING_VERSION_KEY = 7;
-
-export const CUSTOMERS_SNAPSHOT: SnapshotRow[] = [
-  ...DIM_CUSTOMER.map((version) => ({
-    customer_id: version.customerId,
-    name: version.name,
-    plan: version.plan,
-    region: version.region,
-    dbt_scd_id: fakeScdId(version.customerKey),
-    dbt_valid_from: version.validFrom,
-    dbt_valid_to:
-      version.customerKey === OVERLAPPING_VERSION_KEY
-        ? "2026-05-10"
-        : version.validTo,
-  })),
-  {
-    customer_id: "C-102",
-    name: "Birchwood",
-    plan: "Pro",
-    region: "NA",
-    dbt_scd_id: fakeScdId(99),
-    dbt_valid_from: "2026-08-03",
-    dbt_valid_to: null,
-  },
-];

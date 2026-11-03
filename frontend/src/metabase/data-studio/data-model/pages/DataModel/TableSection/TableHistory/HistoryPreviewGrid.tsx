@@ -5,24 +5,24 @@ import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-inst
 import type { ColumnOptions } from "metabase/data-grid/types";
 import { Box } from "metabase/ui";
 
-export type ResultColumn<TRow> = {
+export type PreviewColumn<TRow> = {
   id: string;
   name: string;
   value: (row: TRow) => string | number | boolean | null;
   align?: "left" | "right";
 };
 
-interface ResultGridProps<TRow> {
+interface HistoryPreviewGridProps<TRow> {
   rows: TRow[];
-  columns: ResultColumn<TRow>[];
+  columns: PreviewColumn<TRow>[];
   onRowClick?: (row: TRow) => void;
 }
 
-export function ResultGrid<TRow>({
+export function HistoryPreviewGrid<TRow>({
   rows,
   columns,
   onRowClick,
-}: ResultGridProps<TRow>) {
+}: HistoryPreviewGridProps<TRow>) {
   const columnsOptions: ColumnOptions<TRow>[] = useMemo(
     () =>
       columns.map((column) => ({

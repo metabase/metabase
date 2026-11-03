@@ -44,6 +44,11 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { DetailsEditableText } from "../../DetailPanel";
+import {
+  CurrentRowRuleInput,
+  HistorySourceValue,
+  HistoryVersionsSummary,
+} from "../TableHistory";
 
 import S from "./TableStructure.module.css";
 
@@ -182,6 +187,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
 
       {role && isRoleA(role, "role/HistoryDimension") && (
         <HistoryBindingSection
+          table={table}
           fields={fields}
           binding={structure.history}
           disabled={readOnly}
@@ -455,11 +461,13 @@ function FieldSelect({
 }
 
 function HistoryBindingSection({
+  table,
   fields,
   binding,
   disabled,
   onChange,
 }: {
+  table: Table;
   fields: Field[];
   binding: HistoryBinding;
   disabled: boolean;
@@ -472,6 +480,10 @@ function HistoryBindingSection({
       </Text>
       <DetailsTable>
         <DetailsRow
+          label={t`Source`}
+          value={<HistorySourceValue fields={fields} />}
+        />
+        <DetailsRow
           label={t`Durable key`}
           value={
             <FieldSelect
@@ -480,6 +492,20 @@ function HistoryBindingSection({
               value={binding.durableKeyFieldId}
               disabled={disabled}
               onChange={(durableKeyFieldId) => onChange({ durableKeyFieldId })}
+            />
+          }
+        />
+        <DetailsRow
+          label={t`Version key`}
+          value={
+            <FieldSelect
+              label={t`Version key`}
+              fields={fields}
+              value={binding.versionKeyFieldId}
+              placeholder={t`No version key`}
+              clearable
+              disabled={disabled}
+              onChange={(versionKeyFieldId) => onChange({ versionKeyFieldId })}
             />
           }
         />
@@ -509,20 +535,32 @@ function HistoryBindingSection({
           }
         />
         <DetailsRow
-          label={t`Current row flag`}
+          label={t`Current row is`}
           value={
-            <FieldSelect
-              label={t`Current row flag`}
-              fields={fields}
-              value={binding.currentFlagFieldId}
-              clearable
+            <CurrentRowRuleInput
+              value={binding.currentRowRule}
               disabled={disabled}
-              onChange={(currentFlagFieldId) =>
-                onChange({ currentFlagFieldId })
-              }
+              onChange={(currentRowRule) => onChange({ currentRowRule })}
             />
           }
         />
+        {binding.currentRowRule === "flag" && (
+          <DetailsRow
+            label={t`Current row flag`}
+            value={
+              <FieldSelect
+                label={t`Current row flag`}
+                fields={fields}
+                value={binding.currentFlagFieldId}
+                clearable
+                disabled={disabled}
+                onChange={(currentFlagFieldId) =>
+                  onChange({ currentFlagFieldId })
+                }
+              />
+            }
+          />
+        )}
         <DetailsRow
           label={t`Default rows`}
           value={
@@ -536,6 +574,10 @@ function HistoryBindingSection({
               }
             />
           }
+        />
+        <DetailsRow
+          label={t`Versions`}
+          value={<HistoryVersionsSummary table={table} />}
         />
       </DetailsTable>
     </SidebarSection>

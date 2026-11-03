@@ -13,6 +13,7 @@ import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
   getTableRoleLabel,
+  useHistoryReviewStatus,
   useTableFields,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -476,6 +477,10 @@ export function TablePickerTreeTable({
 function TableRoleCell({ table }: { table: Table }) {
   const fields = useTableFields(table);
   const { getTableStructure } = useTableStructures();
+  const historyReview = useHistoryReviewStatus({
+    ...table,
+    fields,
+  });
 
   if (fields == null) {
     return null;
@@ -485,6 +490,9 @@ function TableRoleCell({ table }: { table: Table }) {
     ...table,
     fields,
   });
+  const reviewReason = needsReview
+    ? inference.signal
+    : historyReview?.needsReview && historyReview.issue;
 
   return (
     <Group gap="xs" wrap="nowrap" data-testid="table-role">
@@ -493,8 +501,8 @@ function TableRoleCell({ table }: { table: Table }) {
       ) : (
         <Text c="text-secondary">{t`No role`}</Text>
       )}
-      {needsReview && (
-        <Tooltip label={t`Needs review. ${inference.signal}`}>
+      {reviewReason && (
+        <Tooltip label={t`Needs review. ${reviewReason}`}>
           <Icon
             name="warning"
             size={12}

@@ -22,6 +22,7 @@ import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
+import { TableHistoryVersions } from "./TableHistory";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
@@ -54,6 +55,8 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
+  const isHistoryTable =
+    structure.role != null && isRoleA(structure.role, "role/HistoryDimension");
   // Ad-hoc query results are dropped as soon as nothing reads them, so the
   // Properties tab would re-profile on every visit. Reading the registry here,
   // where it outlives tab switches, keeps it loaded while the table is open.
@@ -97,6 +100,9 @@ const TableSectionBase = ({
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             {isCustomPropertyTable && (
               <Tabs.Tab value="properties">{t`Properties`}</Tabs.Tab>
+            )}
+            {isHistoryTable && (
+              <Tabs.Tab value="versions">{t`Versions`}</Tabs.Tab>
             )}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
@@ -193,6 +199,11 @@ const TableSectionBase = ({
           {isCustomPropertyTable && (
             <Tabs.Panel value="properties">
               <TablePropertyList table={table} />
+            </Tabs.Panel>
+          )}
+          {isHistoryTable && (
+            <Tabs.Panel value="versions">
+              <TableHistoryVersions table={table} readOnly={readOnly} />
             </Tabs.Panel>
           )}
 
