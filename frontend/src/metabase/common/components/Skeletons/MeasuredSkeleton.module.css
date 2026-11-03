@@ -1,0 +1,6 @@
+/* Skullet's theme, matched to the Mantine skeletons in metabase/ui */
+.root {
+  --skullet-base: var(--mb-color-background_surface-disabled);
+  --skullet-highlight: var(--mb-color-background_page-tertiary);
+  --skullet-radius: var(--mantine-radius-xs);
+}

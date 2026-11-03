@@ -153,6 +153,7 @@
     "resize-observer-polyfill": "^1.5.1",
     "server-text-width": "^1.0.2",
     "simple-statistics": "^3.0.0",
+    "skullet": "0.0.3",
     "slugg": "^1.2.1",
     "sql-formatter": "^15.1.2",
     "stream-browserify": "^3.0.0",

@@ -15,6 +15,10 @@ const fetchMock = fetchMockModule;
 // A passing wait is not affected, and no test relies on the timeout to pass.
 configure({ asyncUtilTimeout: 10000 });
 
+// The app loads skullet/styles.css up front, which tests don't. Without it,
+// skullet injects the stylesheet itself, and jsdom can't parse its @scope rule.
+document.documentElement.style.setProperty("--skullet", "1");
+
 const REACT_KEY_WARNING_PATTERNS = [
   /Each child in a list should have a unique "key" prop/,
   /Encountered two children with the same key/,

@@ -6,6 +6,7 @@ import {
   useListRecentsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -13,6 +14,7 @@ import { useMarkPageReady } from "metabase/utils/performance-marks";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type {
   Database,
+  EmbeddingHomepageStatus,
   PopularItem,
   RecentItem,
   User,
@@ -21,9 +23,23 @@ import type {
 import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
-import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
-import { HomeSectionSkeleton } from "../HomeSectionSkeleton";
+import {
+  type HomeRecentCard,
+  HomeRecentItems,
+  HomeRecentSection,
+  recentsFilter,
+} from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
+
+// Typical titles, so a first visit's skeleton has realistic line lengths.
+// Later visits draw the section's shape as last shown.
+const SAMPLE_RECENT_CARDS: HomeRecentCard[] = [
+  "Quarterly revenue by region",
+  "Weekly signups",
+  "Customer lifetime value by plan",
+  "Active accounts",
+  "Support tickets this month",
+].map((title) => ({ title, icon: { name: "table" }, url: "" }));
 
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
@@ -59,11 +75,44 @@ export const HomeContent = (): JSX.Element | null => {
   }
 
   // `!user` is implied by `!isContentReady`, and repeating it narrows the
-  // type for everything below.
-  if (!isContentReady || !user) {
-    return <HomeSectionSkeleton />;
-  }
+  // type for the section below.
+  const isSectionLoading = !isContentReady || !user;
 
+  return (
+    <MeasuredSkeleton loading={isSectionLoading} id="home-content">
+      {isSectionLoading ? (
+        <HomeRecentItems cards={SAMPLE_RECENT_CARDS} />
+      ) : (
+        <HomeSection
+          user={user}
+          databases={databases}
+          recentItems={recentItems}
+          popularItems={popularItems}
+          embeddingHomepage={embeddingHomepage}
+          isXrayEnabled={isXrayEnabled}
+        />
+      )}
+    </MeasuredSkeleton>
+  );
+};
+
+type HomeSectionProps = {
+  user: User;
+  databases: Database[] | undefined;
+  recentItems: RecentItem[];
+  popularItems: PopularItem[] | undefined;
+  embeddingHomepage: EmbeddingHomepageStatus;
+  isXrayEnabled: boolean;
+};
+
+const HomeSection = ({
+  user,
+  databases,
+  recentItems,
+  popularItems,
+  embeddingHomepage,
+  isXrayEnabled,
+}: HomeSectionProps) => {
   if (embeddingHomepage === "visible" && user.is_superuser) {
     return <EmbedHomepage />;
   }

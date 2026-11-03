@@ -3,6 +3,7 @@ import {
   createAction,
   createReducer,
 } from "@reduxjs/toolkit";
+import { forgetShapes } from "skullet";
 
 import { Api } from "metabase/api";
 import {
@@ -140,6 +141,9 @@ export const logout = createAsyncThunk(
     try {
       const state = getState();
       const user = getUser(state);
+
+      // Skeleton shapes remembered from this user's pages
+      forgetShapes();
 
       if (user?.sso_source === "saml") {
         const { "saml-logout-url": samlLogoutUrl } =

@@ -1,5 +1,7 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+// Loaded up front so skullet doesn't inject it at runtime, which the CSP's style-src nonce would block
+import "skullet/styles.css";
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import

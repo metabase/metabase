@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -6,6 +7,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { getEngineLogo } from "metabase/databases/utils/engine";
@@ -13,36 +15,61 @@ import { useSelector } from "metabase/redux";
 import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { newDatabase } from "metabase/urls";
+import type { DatabaseId } from "metabase-types/api";
 
 import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
-import { BrowsePageSkeleton } from "../components/BrowseSkeletons";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
 
-const DATABASE_CARDS_SKELETON_COUNT = 3;
+type DatabaseCard = {
+  id: DatabaseId;
+  name: string;
+  url: string;
+};
+
+// Typical names, so a first visit's skeleton has realistic line lengths.
+// Later visits draw the grid's shape as last shown.
+const SAMPLE_DATABASE_CARDS: DatabaseCard[] = [
+  "Production warehouse",
+  "Product analytics",
+  "Marketing data",
+].map((name, index) => ({ id: -(index + 1), name, url: "" }));
 
 export const BrowseDatabases = () => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const { data, isLoading, error } = useListDatabasesQuery();
+  const { data, error } = useListDatabasesQuery();
   const databases = data?.data;
+
+  const databaseCards = useMemo(
+    () =>
+      databases?.map((database) => {
+        const hasNameCollision = databases.some(
+          (db) => db.id !== database.id && db.name === database.name,
+        );
+
+        return {
+          id: database.id,
+          name: database.name,
+          // in case of name collisions, use id-slug url for uniqueness
+          url: hasNameCollision
+            ? Urls.browseDatabase(database)
+            : Urls.permalinkDatabase(database),
+        };
+      }),
+    [databases],
+  );
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
 
-  if (!databases && isLoading) {
-    return (
-      <BrowsePageSkeleton cards={DATABASE_CARDS_SKELETON_COUNT} size="lg" />
-    );
-  }
-
-  if (!databases?.length && !isAdmin) {
+  if (databaseCards?.length === 0 && !isAdmin) {
     return (
       <EmptyState
         className={S.centeredEmptyState}
@@ -67,42 +94,47 @@ export const BrowseDatabases = () => {
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%" direction="column">
-          <BrowseGrid data-testid="database-browser">
-            {databases &&
-              databases.length > 0 &&
-              databases.map((database) => {
-                const hasNameCollision = databases.some(
-                  (db) => db.id !== database.id && db.name === database.name,
-                );
-
-                // in case of name collisions, use id-slug url for uniqueness
-                const databaseUrl = hasNameCollision
-                  ? Urls.browseDatabase(database)
-                  : Urls.permalinkDatabase(database);
-
-                return (
-                  <BrowseCard
-                    to={databaseUrl}
-                    key={database.id}
-                    title={database.name}
-                    icon="database"
-                    size="lg"
-                    className={DB.databaseCard}
-                  >
-                    <DatabaseQuickLinksMenu
-                      databaseId={database.id}
-                      className={DB.quickLinksTrigger}
-                    />
-                  </BrowseCard>
-                );
-              })}
-            {isAdmin && <AddDatabaseCard />}
-          </BrowseGrid>
+          <MeasuredSkeleton
+            loading={databaseCards == null}
+            id="browse-databases"
+          >
+            <DatabaseGrid
+              databaseCards={databaseCards ?? SAMPLE_DATABASE_CARDS}
+              isAdmin={isAdmin}
+            />
+          </MeasuredSkeleton>
         </Flex>
       </Flex>
     </Flex>
   );
 };
+
+const DatabaseGrid = ({
+  databaseCards,
+  isAdmin,
+}: {
+  databaseCards: DatabaseCard[];
+  isAdmin: boolean;
+}) => (
+  <BrowseGrid data-testid="database-browser">
+    {databaseCards.map((databaseCard) => (
+      <BrowseCard
+        to={databaseCard.url}
+        key={databaseCard.id}
+        title={databaseCard.name}
+        icon="database"
+        size="lg"
+        className={DB.databaseCard}
+      >
+        <DatabaseQuickLinksMenu
+          databaseId={databaseCard.id}
+          className={DB.quickLinksTrigger}
+        />
+      </BrowseCard>
+    ))}
+    {isAdmin && <AddDatabaseCard />}
+  </BrowseGrid>
+);
 
 const CardImageWrapper = ({ database }: { database: string }) => {
   return (

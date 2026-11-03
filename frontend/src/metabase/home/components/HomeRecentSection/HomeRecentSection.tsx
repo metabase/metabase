@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { IconData } from "metabase/common/utils/icon";
 import { getUser } from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
@@ -34,21 +35,49 @@ export const HomeRecentSection = () => {
 
   return (
     <div data-testid="recent-items-section">
-      <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
-      <div className={S.SectionBody}>
-        {recentsFilter(recentItems).map((item, index) => (
-          <HomeModelCard
-            key={index}
-            title={getName(item)}
-            icon={getIcon(item)}
-            url={Urls.modelToUrl(item) ?? ""}
-          />
-        ))}
-        {hasHelpCard && <HomeHelpCard />}
-      </div>
+      <HomeRecentItems
+        cards={recentsFilter(recentItems).map((item) => ({
+          title: getName(item),
+          icon: getIcon(item),
+          url: Urls.modelToUrl(item) ?? "",
+        }))}
+        hasHelpCard={hasHelpCard}
+      />
     </div>
   );
 };
+
+export type HomeRecentCard = {
+  title: string;
+  icon: IconData;
+  url: string;
+};
+
+type HomeRecentItemsProps = {
+  cards: HomeRecentCard[];
+  hasHelpCard?: boolean;
+};
+
+/** The "Pick up where you left off" caption and its row of item cards. */
+export const HomeRecentItems = ({
+  cards,
+  hasHelpCard = false,
+}: HomeRecentItemsProps) => (
+  <div>
+    <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
+    <div className={S.SectionBody}>
+      {cards.map((card, index) => (
+        <HomeModelCard
+          key={index}
+          title={card.title}
+          icon={card.icon}
+          url={card.url}
+        />
+      ))}
+      {hasHelpCard && <HomeHelpCard />}
+    </div>
+  </div>
+);
 
 export const recentsFilter = (results: RecentItem[]): RecentItem[] => {
   return results.filter((item) => item.model !== "collection").slice(0, 5);
