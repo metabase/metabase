@@ -43,10 +43,10 @@
         (is (= :external-only (tiles.settings/map-tile-server-allowed-networks))))
       (premium-features.tu/with-premium-features #{}
         (is (= :allow-private (tiles.settings/map-tile-server-allowed-networks)))))
-    (testing "an explicit value wins either way"
+    (testing "Cloud remains external-only even with a permissive environment value"
       (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-all"]
         (premium-features.tu/with-premium-features #{:hosting}
-          (is (= :allow-all (tiles.settings/map-tile-server-allowed-networks))))))))
+          (is (= :external-only (tiles.settings/map-tile-server-allowed-networks))))))))
 
 (deftest map-tile-server-url-allows-private-tile-servers-test
   (testing "self-hosted, a tile server on the deployment's own network is a long-standing, legitimate

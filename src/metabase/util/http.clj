@@ -24,15 +24,6 @@
 (defn- parse-http-headers [headers]
   (json/decode headers))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(defn ^:dynamic *fetch-as-json*
-  "Fetches url and parses body as json, returning it."
-  [url headers]
-  (let [headers (cond-> headers
-                  (string? headers) parse-http-headers)
-        response (http/get url (m/assoc-some {:as :json} :headers headers))]
-    (:body response)))
-
 ;; --------------------------------------------------------------------------------------------
 ;; SSRF-hardened fetch of an untrusted (user-provided) URL.
 ;;
@@ -295,6 +286,23 @@
             addrs
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(defn ^:dynamic *fetch-as-json*
+  "Fetch `url` as JSON. Optional `policy` restricts the destination at validation and connection time and disables
+  redirects. Without a policy, destinations and redirects are unrestricted."
+  ([url headers]
+   (*fetch-as-json* url headers nil))
+  ([url headers policy]
+   (when (and policy (not (host-allowed-for-network-policy? policy url)))
+     (throw (ex-info "Refusing to connect to a non-permitted network address"
+                     {:ssrf true :policy policy :host (->hostname url) :status-code 400})))
+   (let [headers (cond-> headers
+                   (string? headers) parse-http-headers)
+         opts    (cond-> (m/assoc-some {:as :json} :headers headers)
+                   policy (assoc :redirect-strategy :none
+                                 :dns-resolver (network-policy-dns-resolver policy)))]
+     (:body (http/get url opts)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *proxy-selector*

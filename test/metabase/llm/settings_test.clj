@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
@@ -218,6 +219,17 @@
     (mt/with-temporary-raw-setting-values [llm-allowed-networks "allow-all"]
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
         (is (= :external-only (llm.settings/llm-allowed-networks)))))))
+
+(deftest cloud-llm-network-policy-test
+  (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (= :external-only (llm.settings/llm-allowed-networks)))
+      (doseq [url ["http://127.0.0.1/v1" "http://169.254.169.254/v1" "http://10.0.0.1/v1" "http://[::1]/v1"]]
+        (is (thrown? clojure.lang.ExceptionInfo (llm.settings/llm-request-opts url))))
+      (testing "the managed service retains its explicit private-network exception"
+        (is (= :allow-private (llm.settings/network-policy :allow-private)))
+        (is (some? (:dns-resolver (llm.settings/llm-request-opts :allow-private "http://10.0.0.1/v1")))))
+      (is (some? (:dns-resolver (llm.settings/llm-request-opts "https://8.8.8.8/v1")))))))
 
 (deftest network-policy-floor-test
   (testing "a deployment-controlled endpoint's floor can only loosen the configured policy"

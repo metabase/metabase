@@ -10,6 +10,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
@@ -73,6 +74,7 @@
                   ;; DNS resolution.
                   (u/assoc-dissoc :dns-resolver resolver))]
       (http/request (cond-> req
+                      (premium-features/is-hosted?) (assoc :redirect-strategy :none)
                       (or (map? (:body req))
                           (sequential? (:body req))) (update :body json/encode))))))
 

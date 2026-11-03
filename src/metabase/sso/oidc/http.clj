@@ -5,6 +5,7 @@
    to ensure SSRF validation via `oidc-allowed-networks`."
   (:require
    [clj-http.client :as http]
+   [metabase.premium-features.core :as premium-features]
    [metabase.sso.settings :as sso.settings]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
@@ -34,6 +35,7 @@
   [opts]
   (let [resolver (u.http/network-policy-dns-resolver (sso.settings/oidc-allowed-networks))]
     (cond-> (merge default-opts opts)
+      (premium-features/is-hosted?) (assoc :redirect-strategy :none)
       resolver (assoc :dns-resolver resolver))))
 
 (defn oidc-get
