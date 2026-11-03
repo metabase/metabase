@@ -46,7 +46,9 @@
       - queries that include tables that are not audit views"
   :feature :audit-app
   [{query-type :type, database-id :database, query :query :as outer-query}]
-  ;; Each refusal has a QP error type, so that agents (Metabot, MCP, the Agent API) show its message to the caller.
+  ;; Each refusal has a QP error type, so that agents (Metabot, MCP, the Agent API) tell the caller why the query
+  ;; failed. They show the message of the invalid-query refusals. For the permissions refusal, some agents (Metabot
+  ;; `run_query`, Slackbot) show their own permission message.
   ;; The query goes under `:query`, because its own `:type` key would take the place of the error type.
   ;; Check if the user has access to the analytics collection, since this should be coupled with access to the
   ;; audit database in general.
