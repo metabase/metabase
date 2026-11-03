@@ -59,7 +59,7 @@
 
 (def snapshot-version
   "Snapshot directory tests boot from."
-  "v63")
+  "v65")
 
 ;; MariaDB is not a MySQL alias: MySQL 8 dumps declare functional indexes (`KEY x ((case when ...)))`) that MariaDB
 ;; cannot parse. It also needs two snapshots of its own, because `explicit_defaults_for_timestamp` changes the schema
