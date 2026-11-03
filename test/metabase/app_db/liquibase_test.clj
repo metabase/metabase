@@ -13,7 +13,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.test :as mt]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -49,18 +48,16 @@
                              mdb.test-util/->ClojureJDBCSpecDataSource)]
         ;; the version-tracking tail of the printed SQL uses the application-db dialect, so the application db must
         ;; BE this MySQL database (as it is on every real path that prints migration SQL)
-        (mc/binding (mdb.connection/application-db-handle)
-          (mdb.connection/application-db :mysql data-source)
-          (fn []
-            (liquibase/with-liquibase [liquibase data-source]
-              (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
-                (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
-                        :when (str/starts-with? line "CREATE TABLE")]
-                  (is (true?
-                       (or
-                        (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-                        (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
-                      (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line))))))))))))
+        (mdb/with-application-db (mdb.connection/application-db :mysql data-source)
+          (liquibase/with-liquibase [liquibase data-source]
+            (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
+              (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))
+                      :when (str/starts-with? line "CREATE TABLE")]
+                (is (true?
+                     (or
+                      (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                      (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
+                    (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))))
 
 (deftest consolidate-liquibase-changesets-test
   (mt/test-drivers #{:h2 :mysql :postgres}

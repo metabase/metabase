@@ -6,7 +6,6 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.test-util :as mdb.test-util]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.test.initialize :as initialize]
    [metabase.test.initialize.test-users :as init.test-users]
    [metabase.util.encryption :as encryption]))
@@ -41,14 +40,12 @@
     ;; hold one connection open for the whole fixture so the in-memory DB survives until every test has run
     (with-open [_conn (.getConnection data-source)]
       (let [app-db (mdb.connection/application-db :h2 data-source)]
-        (mc/binding (mdb.connection/application-db-handle)
-          app-db
-          (fn []
-            (binding [custom-migrations.util/*allow-temp-scheduling* false]
-              (mdb/setup-db! :create-sample-content? false)
-              (init.test-users/init!)
-              (with-redefs [encryption/default-secret-key secret-key]
-                (mdb.encryption/encrypt-db (mdb.connection/db-type) data-source nil)))))
+        (mdb/with-application-db app-db
+          (binding [custom-migrations.util/*allow-temp-scheduling* false]
+            (mdb/setup-db! :create-sample-content? false)
+            (init.test-users/init!)
+            (with-redefs [encryption/default-secret-key secret-key]
+              (mdb.encryption/encrypt-db (mdb.connection/db-type) data-source nil))))
         (reset! prepared-encrypted-db {:app-db app-db :secret-key secret-key})
         (try
           (thunk)

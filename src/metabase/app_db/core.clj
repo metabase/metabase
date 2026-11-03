@@ -42,6 +42,8 @@
   application-db
   data-source
   db-type
+  do-with-application-db
+  with-application-db
   do-before-commit
   do-after-commit
   in-transaction?

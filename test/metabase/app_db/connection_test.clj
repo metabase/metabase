@@ -4,7 +4,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.config.core :as config]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.connection]
@@ -921,19 +920,17 @@
     (let [data-source (mdb.data-source/raw-connection-string->DataSource
                        "jdbc:h2:mem:quartz-lock-test;DB_CLOSE_DELAY=-1")
           app-db      (mdb.connection/application-db :h2 data-source)]
-      (mc/binding (mdb.connection/application-db-handle)
-        app-db
-        (fn []
-          (let [quartz-ds                    (mdb.connection/quartz-data-source)
-                ^ReentrantReadWriteLock lock (:lock app-db)]
-            (.. lock writeLock lock)
-            (let [acquire (future
-                            (with-open [^Connection conn (.getConnection quartz-ds)]
-                              (instance? Connection conn)))]
-              (try
-                (is (= ::blocked (deref acquire 300 ::blocked))
-                    "getConnection should block while the write lock is held")
-                (finally
-                  (.. lock writeLock unlock)))
-              (is (true? (deref acquire 5000 ::timed-out))
-                  "getConnection should proceed once the write lock is released"))))))))
+      (mdb.connection/with-application-db app-db
+        (let [quartz-ds                    (mdb.connection/quartz-data-source)
+              ^ReentrantReadWriteLock lock (:lock app-db)]
+          (.. lock writeLock lock)
+          (let [acquire (future
+                          (with-open [^Connection conn (.getConnection quartz-ds)]
+                            (instance? Connection conn)))]
+            (try
+              (is (= ::blocked (deref acquire 300 ::blocked))
+                  "getConnection should block while the write lock is held")
+              (finally
+                (.. lock writeLock unlock)))
+            (is (true? (deref acquire 5000 ::timed-out))
+                "getConnection should proceed once the write lock is released")))))))
