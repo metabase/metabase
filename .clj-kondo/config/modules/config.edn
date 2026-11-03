@@ -2591,6 +2591,7 @@
            collections
            data-apps
            events
+           global-system
            health-inspector
            lib
            lib.be
