@@ -513,3 +513,34 @@
                                             (comparable-statements content)))
                     (format "the %s snapshot is stale; regenerate it with (snapshot-test-util.generate/generate! %s)"
                             (name flavor) flavor))))))))))
+
+(deftest skip-ran-replays-only-what-the-snapshot-does-not-record-test
+  (testing "replaying the whole changelog over a loaded snapshot runs none of the changesets it records again"
+    (impl/with-temp-empty-app-db [conn :h2]
+      (snapshot/load-snapshot! conn :h2)
+      (let [recorded (recorded-changesets conn)]
+        (impl/run-migrations-in-range! conn ["v00.00-000" nil] {:skip-ran? true})
+        (is (= []
+               (jdbc/query {:connection conn} ["SELECT id FROM DATABASECHANGELOG WHERE exectype = 'RERAN'"])))
+        (is (= (set (snapshot/changesets conn))
+               (set/union recorded (recorded-changesets conn))))))))
+
+;;; ------------------------------------------- comparing snapshot files --------------------------------------------
+
+(deftest single-row-inserts-test
+  (are [statement expected] (= expected (single-row-inserts statement))
+    ;; one statement per row, each with the full prefix
+    "INSERT INTO t VALUES (1, 'a'), (2, 'b')"     ["INSERT INTO t VALUES (1, 'a')" "INSERT INTO t VALUES (2, 'b')"]
+    ;; commas, parens and doubled quotes inside a value are not boundaries
+    "INSERT INTO t VALUES ('a, (b)'), ('it''s')" ["INSERT INTO t VALUES ('a, (b)')" "INSERT INTO t VALUES ('it''s')"]
+    ;; a single row, or anything that is not a plain list of tuples, is left alone
+    "INSERT INTO t VALUES (1)"                    ["INSERT INTO t VALUES (1)"]
+    "INSERT INTO t VALUES (1), (2) RETURNING *"   ["INSERT INTO t VALUES (1), (2) RETURNING *"]
+    "CREATE TABLE t (id INT, name TEXT)"          ["CREATE TABLE t (id INT, name TEXT)"]))
+
+(deftest first-difference-test
+  (are [checked-in regenerated expected] (= expected (first-difference checked-in regenerated))
+    ["a" "b"] ["a" "b"]     nil
+    ["a" "b"] ["a" "c"]     {:index 1, :checked-in "b", :regenerated "c"}
+    ["a" "b"] ["a"]         {:index 1, :checked-in "2 statements", :regenerated "1 statements"}
+    ["a"]     ["a" "b" "c"] {:index 1, :checked-in "1 statements", :regenerated "3 statements"}))
