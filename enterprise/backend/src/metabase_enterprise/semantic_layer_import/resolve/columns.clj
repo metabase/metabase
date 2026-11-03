@@ -111,7 +111,7 @@
   (let [{:keys [kind], column-name :name} (sql/parse-expr expr)]
     (case kind
       :column (resolve-column column-name)
-      :sql    (sql/expression->mbql (:dialect env) expr resolve-column)
+      :sql    (sql/value->mbql (:dialect env) expr resolve-column)
       (unsupported/throw-reason "%s is neither a column nor a SQL expression" (pr-str expr)))))
 
 (mu/defn table-key :- ::ir/key

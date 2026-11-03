@@ -8,6 +8,7 @@
   the import did not anticipate, and is left alone here; the stages list it under `:errors`."
   (:require
    [metabase-enterprise.semantic-layer-import.schemas.ir :as ir]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
@@ -61,6 +62,20 @@
    :name      entry-name
    :unique-id unique-id
    :reason    reason})
+
+(mu/defn error-report :- ::ir/unsupported
+  "The [[report]] entry for an entry of a source's project that threw something other than an unsupported reason
+  while it was parsed: a bug in the parser or an input it did not anticipate, logged with its stack and flagged
+  `:error?` so the report tells it apart from what the import chose not to convert. `kind` is the IR's for the entry,
+  `what` the source's own word for it (`metric`, `dataset`, `semantic model`)."
+  [kind       :- ::ir/content-kind
+   what       :- :string
+   entry-name :- :string
+   unique-id  :- :string
+   e          :- (ms/InstanceOfClass Throwable)]
+  (log/errorf e "Error parsing %s %s" what (pr-str entry-name))
+  (assoc (report kind entry-name unique-id (format "error parsing %s (%s): %s" what (pr-str (class e)) (ex-message e)))
+         :error? true))
 
 (mu/defn report? :- :boolean
   "Is `result`, what a stage made of an entry, a [[report]] entry rather than what the stage makes (an IR metric, a

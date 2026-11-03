@@ -1,12 +1,14 @@
 (ns metabase-enterprise.semantic-layer-import.resolve.filters
-  "The resolve stage's filters: a metric's `::ir/filter`s as Lib filter clauses.
+  "The resolve stage's filters: a metric's `::ir/filter`s as Lib filter clauses, and the placeholder resolution a SQL
+  aggregation shares with them (see [[placeholder-resolver]]).
 
   A filter is SQL in the warehouse's dialect with a placeholder identifier for each reference to the semantic layer's
-  own objects. [[sql/expression->mbql]] parses the SQL, as a condition, in the dialect of the config's `:driver`; a
+  own objects. [[sql/condition->mbql]] parses the SQL in the dialect of the config's `:driver`; a
   placeholder resolves to what its reference names (see [[reference-clause]]) and any other identifier to a column of
-  the metric's table. A dimension reached with an empty path, or through one of the table's aliases, is one of the
-  table's own; one reached through a join is on the table the join leads to (see [[resolve.columns/join-context]]). A
-  bucketed reference buckets the dimension's column by its grain, when the column can be (see [[available-unit]])."
+  the metric's table. A dimension or named expression reached with an empty path, or through one of the table's
+  aliases, is one of the table's own; one reached through a join is on the table the join leads to (see
+  [[resolve.columns/join-context]]). A bucketed reference buckets the dimension's column by its grain, when the column
+  can be (see [[available-unit]])."
   (:require
    [better-cond.core :as b]
    [clojure.string :as str]
@@ -37,27 +39,49 @@
     {:dimension dimension, :context context}
     (unsupported/throw-reason "dimension %s is not on table %s" (pr-str dimension-name) (pr-str (:name table)))))
 
-(mu/defn- locate-dimension :- ::located-dimension
-  "The dimension `reference` names and the context its expr is written against: with an empty path, or one naming the
-  table itself (see `aliases` on `::ir/table`), one of the table's own dimensions; through a join, a dimension of the
-  table the join leads to (see [[resolve.columns/join-context]]). A dimension mapping is one implicit join, so a path
-  of more than one join is [[unsupported/throw-reason]]."
-  [{:keys [table] :as context}         :- ::resolve.columns/context
-   {:keys [path], dimension-name :name} :- ::ir/reference.dimension]
+(mu/defn- path-context :- ::resolve.columns/context
+  "The context of the table `path` leads to from `context`'s table: with an empty path, or one naming the table itself
+  (see `aliases` on `::ir/table`), the table's own; through a join, that of the table the join leads to (see
+  [[resolve.columns/join-context]]). A dimension mapping is one implicit join, so a path of more than one join is
+  [[unsupported/throw-reason]], naming `what` (`dimension \"x\"`) is reached through it."
+  [{:keys [table] :as context} :- ::resolve.columns/context
+   path                        :- [:sequential :string]
+   what                        :- :string]
   (let [[step & more] path]
     (cond
       (nil? step)
-      (own-dimension context dimension-name)
+      context
 
       (seq more)
-      (unsupported/throw-reason "dimension %s is reached through more than one join (%s), which is not supported"
-                                (pr-str dimension-name) (str/join ", " (map pr-str path)))
+      (unsupported/throw-reason "%s is reached through more than one join (%s), which is not supported"
+                                what (str/join ", " (map pr-str path)))
 
       (contains? (:aliases table) step)
-      (own-dimension context dimension-name)
+      context
 
       :else
-      (own-dimension (resolve.columns/join-context context (resolve.columns/table-join context step)) dimension-name))))
+      (resolve.columns/join-context context (resolve.columns/table-join context step)))))
+
+(mu/defn- locate-dimension :- ::located-dimension
+  "The dimension `reference` names and the context its expr is written against (see [[path-context]])."
+  [context                              :- ::resolve.columns/context
+   {:keys [path], dimension-name :name} :- ::ir/reference.dimension]
+  (own-dimension (path-context context path (str "dimension " (pr-str dimension-name))) dimension-name))
+
+(mr/def ::located-expression
+  "An IR named expression and the context whose columns its expr is written against."
+  [:map {:closed true}
+   [:expression ::ir/expression]
+   [:context    ::resolve.columns/context]])
+
+(mu/defn- locate-expression :- ::located-expression
+  "The named expression `reference` names and the context its expr is written against (see [[path-context]])."
+  [context                               :- ::resolve.columns/context
+   {:keys [path], expression-name :name} :- ::ir/reference.expression]
+  (let [{:keys [table] :as located} (path-context context path (str "expression " (pr-str expression-name)))]
+    (if-let [expression (m/find-first #(= expression-name (:name %)) (:expressions table))]
+      {:expression expression, :context located}
+      (unsupported/throw-reason "expression %s is not on table %s" (pr-str expression-name) (pr-str (:name table))))))
 
 (mu/defn- metric-time-dimension :- ::located-dimension
   "The metric's time dimension, on its own table."
@@ -107,12 +131,18 @@
     (lib/with-temporal-bucket column unit)))
 
 (mu/defn- reference-clause :- ::sql-to-mbql/expression
-  "The Lib expression a filter's reference stands for."
+  "The Lib expression a placeholder's reference stands for: a key's or a named expression's `expr`, a dimension's,
+  bucketed when the reference says so; each a column ref, or the SQL inlined, against the table the reference reaches
+  (see [[path-context]])."
   [context                      :- ::resolve.columns/context
    {:keys [kind] :as reference} :- ::ir/reference]
   (case kind
     :key
     (resolve.columns/column-or-sql context (:expr (resolve.columns/table-key context (:name reference))))
+
+    :expression
+    (let [{:keys [expression context]} (locate-expression context reference)]
+      (resolve.columns/column-or-sql context (:expr expression)))
 
     (:dimension :time-dimension)
     (let [{:keys [dimension context]} (if (= kind :time-dimension)
@@ -123,17 +153,22 @@
         (bucketed-clause context dimension column (:grain bucket))
         column))))
 
+(mu/defn placeholder-resolver :- ::sql-to-mbql/resolve-column
+  "The column callback for SQL with placeholders in it, a filter's or a SQL aggregation's: an identifier that is one
+  of `references`' placeholders resolves to what its reference stands for (see [[reference-clause]]), and any other to
+  a column of `context`'s table."
+  [{:keys [resolve-column] :as context} :- ::resolve.columns/context
+   references                           :- [:map-of :string ::ir/reference]]
+  (fn [identifier]
+    (if-let [reference (get references identifier)]
+      (reference-clause context reference)
+      (resolve-column identifier))))
+
 (mu/defn- filter-clause :- ::lib.schema.expression/boolean
   "The Lib filter clause for one `::ir/filter`."
-  [{:keys [env resolve-column] :as context} :- ::resolve.columns/context
-   {:keys [sql references]}                 :- ::ir/filter]
-  (sql/expression->mbql (:dialect env)
-                        sql
-                        (fn [identifier]
-                          (if-let [reference (get references identifier)]
-                            (reference-clause context reference)
-                            (resolve-column identifier)))
-                        {:condition? true}))
+  [{:keys [env] :as context}  :- ::resolve.columns/context
+   {:keys [sql references]}   :- ::ir/filter]
+  (sql/condition->mbql (:dialect env) sql (placeholder-resolver context references)))
 
 (mu/defn filter-clauses :- [:sequential ::lib.schema.expression/boolean]
   "The Lib filter clauses for `filters`, each failure saying which filter, as the source wrote it."

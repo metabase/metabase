@@ -75,14 +75,6 @@
   [models :- [:sequential ::model]]
   (str/join ", " (map (comp pr-str :name :table) models)))
 
-(mu/defn- column-name :- [:maybe :string]
-  "The column `expr` names; nil when it is SQL, which an implicit join has no use for: it needs a column on each
-  side."
-  [expr :- :string]
-  (let [{:keys [kind], the-name :name} (sql/parse-expr expr)]
-    (when (= kind :column)
-      the-name)))
-
 (mu/defn- unsupported-join :- ::ir/join.unsupported
   [entity-name :- :string
    reason      :- :string
@@ -140,13 +132,13 @@
     (unsupported "semantic model %s names %s as its primary_entity but has no entity of that name to join on"
                  (pr-str target-name) (pr-str entity-name))
 
-    :let [source-column (column-name (:expr entity))]
+    :let [source-column (sql/column-name (:expr entity))]
 
     (not source-column)
     (unsupported "entity %s is the SQL expression %s, not a column; an implicit join needs a column"
                  (pr-str entity-name) (pr-str (:expr entity)))
 
-    (not (column-name (:expr target-entity)))
+    (not (sql/column-name (:expr target-entity)))
     (unsupported (str "entity %s on semantic model %s is the SQL expression %s, not a column; an implicit join needs"
                       " a column")
                  (pr-str entity-name) (pr-str target-name) (pr-str (:expr target-entity)))

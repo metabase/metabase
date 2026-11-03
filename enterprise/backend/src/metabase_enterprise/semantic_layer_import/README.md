@@ -11,9 +11,11 @@ Not everything a semantic layer can say has a Metabase equivalent. The import ne
 thing silently: whatever it cannot convert faithfully is listed in a report with the reason, and the rest of the run
 goes on.
 
-It is a developer tool, run from a REPL: nothing in Metabase calls it yet, and no premium feature gates it. dbt is the
-only source so far; [the dbt source's README](dbt/README.md) covers producing a manifest, running an import of a dbt
-project, and how each dbt construct converts or why it does not.
+It is a developer tool, run from a REPL: nothing in Metabase calls it yet, and no premium feature gates it. Two sources
+are read: dbt's semantic layer, from the `manifest.json` `dbt parse` writes ([the dbt source's README](dbt/README.md)
+covers producing one, running an import of a dbt project, and how each dbt construct converts or why it does not), and
+Apache Ossie semantic model documents, in both of the document shapes in use ([the Ossie source's
+README](ossie/README.md) covers the documents, running an import of one, and how each Ossie construct converts).
 
 ## Architecture
 
@@ -22,8 +24,8 @@ shared, source-agnostic stages turn the IR into serdes YAML:
 
 ```
 core/convert!           the one entry point, for every source
- ├─ parse               project files ──► IR, in memory               interface/raw->ir, implemented by dbt.* (a
- │                                                                    nested module of its own) for :dbt
+ ├─ parse               project files ──► IR, in memory               interface/raw->ir, implemented by dbt.* for :dbt
+ │                                                                    and ossie.* for :ossie (nested modules of their own)
  ├─ check-driver        the config's :driver vs. the IR's warehouse   core
  ├─ resolve             IR ──► Lib queries, dimension sets, report    resolve, resolve.*, metadata, sql, ids
  └─ emit                resolved content ──► serdes YAML tree         emit
@@ -35,10 +37,12 @@ serdes `import`         YAML tree ──► Cards in the app DB             ente
 1. **Parse** (source-specific). `convert!` loads the source's namespace the first time it converts something of that
    source's and calls its `interface/raw->ir` method, which reads the project format and produces an
    `::ir/semantic-layer` (`schemas/ir.clj`; see [The IR](ir.md)), handed straight to the next stage without being
-   written anywhere: *tables*, each a physical relation with its columns, dimensions, keys and joins, and *metrics*,
-   each simple, cumulative, ratio or derived, with filters written as SQL. The source applies its own defaulting rules,
-   translates its own idioms into the IR's terms (dbt's entity-based joins, Jinja filter templates and measures, for
-   example), and reports what the IR has no place for.
+   written anywhere: *tables*, each a physical relation with its columns, dimensions, named expressions, keys and
+   joins, and *metrics*, each simple, cumulative, ratio or derived, with filters written as SQL, a simple metric's
+   aggregation being an operator over an expression or, as Ossie writes it, a whole SQL aggregate expression. The
+   source applies its own defaulting rules, translates its own idioms into the IR's terms (dbt's entity-based joins,
+   Jinja filter templates and measures; Ossie's `dataset.field` references and relationships, for example), and
+   reports what the IR has no place for.
 2. **Check the driver.** `check-driver` fails the run when the config's `:driver` is not the driver for the warehouse
    the project was written for, since the driver decides how the project's column types and SQL are read.
 3. **Resolve.** Builds an in-memory Lib metadata provider from the IR (`metadata`), with Tables and Fields named the way
@@ -77,8 +81,9 @@ A few principles hold throughout:
 tree calls it; nothing else in Metabase does yet.
 
 - **`(convert! {:type source, :raw raw, :options options, :out-dir dir, :config config})`** runs the whole import in one
-  call: it parses `raw`, the semantic layer as the `source` writes it (for `:dbt`, the path of a `manifest.json`), with
-  the source's own `options` (optional; for dbt, `:entity-models`) into the IR, keeps that in memory, checks the driver,
+  call: it parses `raw`, the semantic layer as the `source` writes it (for `:dbt`, the path of a `manifest.json`; for
+  `:ossie`, the path of a YAML or JSON document), with the source's own `options` (optional; for dbt, `:entity-models`;
+  for Ossie, `:dialect`) into the IR, keeps that in memory, checks the driver,
   resolves, emits and writes the serdes tree under `dir`, then returns a `::report`. A problem with one entry goes in
   the report; `convert!` throws only for a problem with the run as a whole, such as an unknown `:type`, options the
   source does not take, a driver that does not match the project's warehouse, or a write that fails part-way (the
@@ -93,9 +98,9 @@ tree calls it; nothing else in Metabase does yet.
   to import. See [Importing the result](importing.md).
 - **`(check-driver driver warehouse)`** is the driver check `convert!` runs first, public for sources and tests.
 
-`:type` picks the source, whose namespace `convert!` loads the first time it is used; dbt is the only one so far.
-What `:raw` and `:options` hold is the source's own business, and the source checks them. A whole run, from a REPL
-started with the `:ee` alias:
+`:type` picks the source, whose namespace `convert!` loads the first time it is used: `:dbt` or `:ossie`. What `:raw`
+and `:options` hold is the source's own business, and the source checks them. A whole run, from a REPL started with
+the `:ee` alias:
 
 ```clojure
 (require '[metabase-enterprise.semantic-layer-import.core :as semantic-layer-import])
@@ -111,6 +116,15 @@ started with the `:ee` alias:
 
 ;; against the instance the tree will be imported into; import when this is []
 (semantic-layer-import/preflight {:out-dir "/path/to/serdes-out"})
+
+;; the same for an Ossie document
+(semantic-layer-import/convert!
+ {:type    :ossie
+  :raw     "/path/to/tpch-revenue.osi.yaml"
+  :out-dir "/path/to/serdes-out"
+  :config  {:databases     {"SNOWFLAKE_SAMPLE_DATA" "Snowflake"}
+            :driver        :snowflake
+            :creator-email "admin@example.com"}})
 ```
 
 ```sh
@@ -125,9 +139,10 @@ MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 | [The report](report.md) | What `convert!` returns: what converted, what has no Metabase equivalent, what failed, and how a run fails as a whole |
 | [Importing the result](importing.md) | Loading the tree with serdes, how the import spells warehouse names the way sync sees them, and checking a tree with `preflight` |
 | [Identifiers and re-import](ids.md) | How every id is derived from the project, and what that means for importing again |
-| [The IR](ir.md) | The intermediate representation every source parses into: its concepts next to dbt's, Cube's and OSI's, how aggregations map onto Metabase, and how a metric's dimension set is built |
+| [The IR](ir.md) | The intermediate representation every source parses into: its concepts next to dbt's, Ossie's and Cube's, how aggregations map onto Metabase, and how a metric's dimension set is built |
 | [SQL in the IR](sql.md) | The SQL the IR holds, how the `sql-to-mbql` module converts it (its README lists the subset of warehouse SQL that converts, what does not and what it would take), and the caveat on weeks |
 | [Namespaces](namespaces.md) | What each namespace does, and which stage it belongs to |
 | [Extending the import](extending.md) | Adding a source, and adding a kind of content besides metrics |
 | [Tests](tests.md) | Where the tests are and how to run them |
 | [The dbt source](dbt/README.md) | Producing a manifest, importing a dbt project, and how each dbt construct converts or why it does not |
+| [The Ossie source](ossie/README.md) | The two document shapes, importing an Apache Ossie document, which dialect is read, and how each Ossie construct converts or why it does not |

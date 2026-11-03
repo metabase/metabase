@@ -149,13 +149,14 @@
 
 (mu/defn physical-table :- ::physical-table
   "The Table sync made of `relation`: each part as written when the project quoted it, folded as `naming` says
-  otherwise. The
-  schema is what `:schema-mapping` says when it has an entry for it, else nil for a warehouse without schemas."
+  otherwise. The schema is what `:schema-mapping` says when it has an entry for it, else nil for a warehouse without
+  schemas or a relation that names none."
   [{:keys [identifier-case schemas? schema-mapping]} :- ::naming
    {:keys [schema table quoted]}                      :- ::ir/relation]
   {:schema (cond
              (contains? schema-mapping schema) (get schema-mapping schema)
              (not schemas?)                    nil
+             (nil? schema)                     nil
              (contains? quoted :schema)        schema
              :else                             (fold identifier-case schema))
    :name   (if (contains? quoted :table)
@@ -254,8 +255,9 @@
 
 (mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
   "A provider for the Metabase database `database-name`: the IR tables whose relation lives in it, as Tables, and
-  their documented columns, as Fields, the tables numbered from 1 and the fields after them. A column whose declared
-  type is unknown gets `:type/*`; the resolve stage reports it before it gets that far."
+  their documented columns, as Fields, the tables numbered from 1 and the fields after them. A column's type is the
+  `base-type` the source gives it when it knows one, else what the driver maps its `data-type` to; a column whose
+  declared type is unknown gets `:type/*`, and the resolve stage reports it before it gets that far."
   [{:keys [driver] :as config} :- ::config/config
    {:keys [tables]}            :- ::ir/semantic-layer
    database-name               :- :string]
@@ -274,7 +276,7 @@
         fields      (map-indexed (fn [i [table-id {:keys [data-type] :as column}]]
                                    (field-metadata (+ (count tables) (inc i)) table-id
                                                    (physical-column the-naming column)
-                                                   (or (base-type driver data-type) :type/*)))
+                                                   (or (:base-type column) (base-type driver data-type) :type/*)))
                                  (for [[table-id {:keys [columns]}] (map vector (map :id tables) in-database)
                                        column                       (vals columns)]
                                    [table-id column]))]

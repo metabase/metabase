@@ -4484,6 +4484,14 @@
   {:api  #{}
    :uses #{util enterprise/semantic-layer-import}}
 
+  enterprise/semantic-layer-import.ossie
+  {:api  #{}
+   :uses #{lib.schema
+           sql-tools
+           sql-tools.parsing
+           util
+           enterprise/semantic-layer-import}}
+
   enterprise/serialization
   {:team "Graphy"
    :api  #{metabase-enterprise.serialization.api

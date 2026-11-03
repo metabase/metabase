@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.semantic-layer-import.dbt.test-util.fixture :as fixture]
+   [metabase-enterprise.semantic-layer-import.test-util.regenerate :as regenerate]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.secret :as u.secret]
@@ -312,4 +313,4 @@
 
 (deftest check-repo-root-test
   (testing "the tests run at the repo root"
-    (is (nil? (fixture/check-repo-root)))))
+    (is (nil? (regenerate/check-repo-root)))))

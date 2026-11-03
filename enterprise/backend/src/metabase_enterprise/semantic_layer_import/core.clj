@@ -3,9 +3,10 @@
 
   [[convert!]] runs the whole import in one call, the same way for every source:
 
-  1. parse: the source's [[interface/raw->ir]] (dbt's is in [[metabase-enterprise.semantic-layer-import.dbt.core]])
-     turns the semantic layer as the source writes it into the intermediate representation of
-     [[metabase-enterprise.semantic-layer-import.schemas.ir]], which stays in memory;
+  1. parse: the source's [[interface/raw->ir]] (dbt's is in [[metabase-enterprise.semantic-layer-import.dbt.core]],
+     Apache Ossie's in [[metabase-enterprise.semantic-layer-import.ossie.core]]) turns the semantic layer as the source
+     writes it into the intermediate representation of [[metabase-enterprise.semantic-layer-import.schemas.ir]], which
+     stays in memory;
   2. [[check-driver]]: the config's driver against the warehouse the project was written for;
   3. resolve ([[metabase-enterprise.semantic-layer-import.resolve]]): bind the IR's content to Lib queries against a
      metadata provider made from it, reporting what has no Metabase equivalent;
@@ -33,7 +34,8 @@
 (def ^:private source-namespaces
   "The namespace that implements [[interface/raw->ir]] for each source, by its `:type`. [[convert!]] loads a source's
   namespace the first time it converts something of that source's, rather than loading every source up front."
-  {:dbt 'metabase-enterprise.semantic-layer-import.dbt.core})
+  {:dbt   'metabase-enterprise.semantic-layer-import.dbt.core
+   :ossie 'metabase-enterprise.semantic-layer-import.ossie.core})
 
 (mu/defn check-driver :- :nil
   "Check the config's `driver` against `warehouse`, what the semantic layer says about the warehouse it was written
@@ -119,9 +121,11 @@
   serdes tree to `out-dir`: parse it into the IR, resolve that with `config` (see `::config/config`), and emit what
   resolved. Returns a report of what was converted and what was not.
 
-  dbt is the only source so far: `:type` `:dbt`, with `:raw` the path of the `manifest.json` `dbt parse` writes and
-  `:options` `{:entity-models {entity-name semantic-model-name}}` (see
-  `:metabase-enterprise.semantic-layer-import.dbt.parse/options`).
+  The sources are dbt (`:type` `:dbt`, with `:raw` the path of the `manifest.json` `dbt parse` writes and `:options`
+  `{:entity-models {entity-name semantic-model-name}}`, see `:metabase-enterprise.semantic-layer-import.dbt.parse/options`)
+  and Apache Ossie (`:type` `:ossie`, with `:raw` the path of a semantic model document, YAML or JSON, and `:options`
+  `{:dialect \"SNOWFLAKE\"}` naming the dialect its SQL is read in, see
+  `:metabase-enterprise.semantic-layer-import.ossie.parse/options`).
 
   Check the tree with [[preflight]], then import it with
 
@@ -159,4 +163,11 @@
              :config  {:databases     {"dbt_bi" "Sales DB"}
                        :driver        :postgres
                        :creator-email "admin@example.com"}})
-  (preflight {:out-dir "/path/to/dbt-metrics-serdes"}))
+  (preflight {:out-dir "/path/to/dbt-metrics-serdes"})
+
+  (convert! {:type    :ossie
+             :raw     "/path/to/tpch-revenue.osi.yaml"
+             :out-dir "/path/to/ossie-metrics-serdes"
+             :config  {:databases      {"SNOWFLAKE_SAMPLE_DATA" "Snowflake"}
+                       :driver         :snowflake
+                       :creator-email  "admin@example.com"}}))

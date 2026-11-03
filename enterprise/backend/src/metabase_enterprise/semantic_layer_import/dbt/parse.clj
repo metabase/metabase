@@ -36,13 +36,12 @@
    [metabase-enterprise.semantic-layer-import.dbt.joins :as joins]
    [metabase-enterprise.semantic-layer-import.dbt.manifest :as manifest]
    [metabase-enterprise.semantic-layer-import.schemas.ir :as ir]
+   [metabase-enterprise.semantic-layer-import.sql :as sql]
    [metabase-enterprise.semantic-layer-import.unsupported :as unsupported]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -86,29 +85,6 @@
                         (assoc (ex-data e) :path manifest-filename)
                         e))))))
 
-(def ^:private relation-name-part-re
-  "One part of a relation name as dbt renders it, with the dot after it when there is one: in double quotes
-  (`\"dbt_bi\"`, dbt-postgres, dbt-snowflake, dbt-redshift, dbt-oracle, dbt-trino), in backticks (`` `dbt_bi` ``,
-  dbt-mysql, dbt-bigquery, dbt-spark, dbt-databricks, dbt-hive), in square brackets (`[dbt_bi]`, dbt-sqlserver) or
-  bare (`dbt_bi`). A closing quote doubled inside a quoted part stands for itself. The groups, in that order, say how
-  the part was quoted."
-  #"(?:\"((?:[^\"]|\"\")*)\"|`((?:[^`]|``)*)`|\[((?:[^\]]|\]\])*)\]|([^.\"`\[\]]+))\.?")
-
-(mu/defn- relation-name-parts :- [:maybe [:sequential [:map {:closed true}
-                                                       [:name    :string]
-                                                       [:quoted? :boolean]]]]
-  "The parts of `relation-name` in order, each with its quotes stripped (a doubled closing quote undoubled) and
-  whether it had any; nil when the name is not a dotted list of parts [[relation-name-part-re]] reads."
-  [relation-name :- :string]
-  (let [matches (re-seq relation-name-part-re relation-name)]
-    (when (= relation-name (apply str (map first matches)))
-      (for [[_ double-quoted backticked bracketed bare] matches]
-        (cond
-          double-quoted {:name (str/replace double-quoted "\"\"" "\""), :quoted? true}
-          backticked    {:name (str/replace backticked "``" "`"), :quoted? true}
-          bracketed     {:name (str/replace bracketed "]]" "]"), :quoted? true}
-          :else         {:name bare, :quoted? false})))))
-
 (mu/defn quoted-parts :- [:set ::ir/relation-part]
   "The parts of `node-relation` that dbt quoted when it built the table, read off `relation_name`, the relation as dbt
   renders it in SQL (`\"dbt_bi\".\"public\".\"fact_sales\"`, `analytics.dbt_alice.dim_customers`,
@@ -126,7 +102,7 @@
         (map vector
              [:table :schema :database]
              [table-alias schema-name database]
-             (reverse (some-> relation-name relation-name-parts)))))
+             (reverse (some-> relation-name sql/relation-parts)))))
 
 (mu/defn- parse-relation :- ::ir/relation
   [{:keys [database], schema-name :schema_name, table-alias :alias, :as node-relation}
@@ -156,6 +132,7 @@
         (map (fn [[column-name {data-type :data_type, quoted? :quote, :keys [description]}]]
                [column-name {:name        column-name
                              :data-type   data-type
+                             :base-type   nil
                              :description description
                              :quoted?     (boolean quoted?)}]))
         (:columns node)))
@@ -284,6 +261,8 @@
                                   :relation    (parse-relation node-relation)
                                   :columns     (parse-columns (source-node nodes semantic-model))
                                   :dimensions  (mapv parse-dimension dimensions)
+                                  ;; measures are folded into the metrics that use them, see [[ir-aggregation]]
+                                  :expressions []
                                   :keys        (mapv #(select-keys % [:name :expr]) entities)
                                   :joins       []
                                   :aliases     (cond-> #{} primary-entity (conj primary-entity))}
@@ -656,26 +635,12 @@
              :aggregation     (ir-aggregation aggregation)
              :time-dimension  (:agg-time-dimension aggregation)))))
 
-(mu/defn- error-report :- ::ir/unsupported
-  "The `:unsupported` entry for an entry of the manifest that threw something other than an unsupported reason while
-  it was parsed: a bug in the parser or an input it did not anticipate, logged with its stack and flagged `:error?` so
-  the report tells it apart from what the import chose not to convert. `kind` is the IR's for it, `what` dbt's."
-  [kind       :- ::ir/content-kind
-   what       :- :string
-   entry-name :- :string
-   unique-id  :- :string
-   e          :- (ms/InstanceOfClass Throwable)]
-  (log/errorf e "Error parsing %s %s" what (pr-str entry-name))
-  (assoc (unsupported/report kind entry-name unique-id
-                             (format "error parsing %s (%s): %s" what (pr-str (class e)) (ex-message e)))
-         :error? true))
-
 (mu/defn parse-metric :- [:or ::ir/metric ::ir/unsupported]
   "Parse one manifest metric into an `::ir/metric`, or an `::ir/unsupported` record saying why it could not be.
   `models` is keyed by semantic model unique ID, which is how a simple metric's `depends_on` refers to one; `metrics`
   is the manifest's own `metrics` map, keyed by metric unique ID, which is how an inline-spec cumulative metric refers
   to the metric it runs over. Without it, such a metric is reported. An exception that is not an unsupported reason is
-  reported too, flagged `:error?` (see [[error-report]])."
+  reported too, flagged `:error?` (see [[unsupported/error-report]])."
   ([models :- [:map-of :string ::model]
     metric :- ::manifest/metric]
    (parse-metric models {} metric))
@@ -695,17 +660,17 @@
       (fn [reason]
         (unsupported/report :metric metric-name unique-id reason)))
      (catch Exception e
-       (error-report :metric "metric" metric-name unique-id e)))))
+       (unsupported/error-report :metric "metric" metric-name unique-id e)))))
 
 (mu/defn- parse-semantic-model-or-report :- [:or ::model ::ir/unsupported]
-  "[[parse-semantic-model]], or the `:unsupported` entry for a semantic model it threw on (see [[error-report]]); the
+  "[[parse-semantic-model]], or the `:unsupported` entry for a semantic model it threw on (see [[unsupported/error-report]]); the
   metrics over such a model are then reported as over a semantic model the manifest does not have."
   [nodes :- [:map-of :string ::manifest/node]
    {model-name :name, unique-id :unique_id :as semantic-model} :- ::manifest/semantic-model]
   (try
     (parse-semantic-model nodes semantic-model)
     (catch Exception e
-      (error-report :table "semantic model" model-name unique-id e))))
+      (unsupported/error-report :table "semantic model" model-name unique-id e))))
 
 (mu/defn parse-manifest :- ::ir/semantic-layer
   "Parse a decoded manifest (see [[read-manifest]]) into the IR, with the dbt source's `options` (see `::options`).

@@ -4,12 +4,14 @@
   For every metric, builds with Lib the query that computes it against the
   [[metabase-enterprise.semantic-layer-import.metadata]] provider for its database: the source table, one aggregation,
   and a filter per `::ir/filter`; plus a deterministic `entity_id` (see
-  [[metabase-enterprise.semantic-layer-import.ids]]). For a simple or cumulative metric the aggregation is over its
-  `expr` (see [[canonical-metric-aggregation]]); for a ratio or derived metric it is arithmetic over `[:metric id]`
-  references to the cards its input metrics became, which is why metrics are resolved in dependency order (see
-  [[order-metrics]]) and each converted metric is added to the provider as a card. An input used with a filter of its
-  own is inlined as the filtered form of its aggregation (see [[filtered-input]]). Metrics that cannot be expressed as a
-  single-aggregation Metabase metric are reported in `:unsupported` with a reason instead of failing the run (see
+  [[metabase-enterprise.semantic-layer-import.ids]]). For a simple or cumulative metric the aggregation is an operator
+  over its `expr` (see [[canonical-metric-aggregation]]) or, for a simple metric a source writes as a whole SQL
+  aggregate expression, that SQL converted as one, its placeholders inlined (see [[sql-aggregation-clause]]); for a
+  ratio or derived metric it is arithmetic over `[:metric id]` references to the cards its input metrics became, which
+  is why metrics are resolved in dependency order (see [[order-metrics]]) and each converted metric is added to the
+  provider as a card. An input used with a filter of its own is inlined as the filtered form of its aggregation (see
+  [[filtered-input]]). Metrics that cannot be expressed as a single-aggregation Metabase metric are reported in
+  `:unsupported` with a reason instead of failing the run (see
   [[metabase-enterprise.semantic-layer-import.unsupported]]); a metric the import itself fails on is listed in
   `:errors`. A converted metric carries `notes` on where it agrees with the source only under some conditions (see
   [[notes]]).
@@ -73,8 +75,8 @@
                         (unsupported/throw-reason "count-where over the non-boolean column %s" (pr-str column-name)))
                       (lib/= column true))
                     column))
-      :sql      (let [value (sql/expression->mbql (:dialect env) expr resolve-column
-                                                  {:condition? (= operator :count-where)})]
+      :sql      (let [->mbql (if (= operator :count-where) sql/condition->mbql sql/value->mbql)
+                      value  (->mbql (:dialect env) expr resolve-column)]
                   (if (lib/clause? value)
                     value
                     (literal-unsupported (pr-str value)))))))
@@ -82,7 +84,7 @@
 (mr/def ::canonical-aggregation
   "An aggregation in the form the Lib clauses are built from, see [[canonical-aggregation]]. `agg` is an IR operator,
   or one of the stage's own: `:row-count` for a `:count` or `:sum` over no expression, and `:count-non-null` for a
-  `:count` over a column, which SQL skips nulls for. The expression of a `:count-where` is the condition to count rows
+  `:count` over a column, which SQL skips nulls for and Lib's `count` over an expression does too. The expression of a `:count-where` is the condition to count rows
   by. `percentile` is set for a `:percentile`."
   [:map {:closed true}
    [:agg        [:enum :row-count :count-non-null :count-where
@@ -109,14 +111,36 @@
   [expr :- :string]
   (str "expr " (pr-str expr)))
 
+(mu/defn- sql-aggregation? :- :boolean
+  "Is `aggregation`, a simple metric's, written as a whole SQL aggregate expression (see `::ir/aggregation.sql`) rather
+  than as an operator over an expression?"
+  [aggregation :- [:or ::ir/aggregation ::ir/aggregation.sql]]
+  (contains? aggregation :sql))
+
 (mu/defn- canonical-metric-aggregation :- ::canonical-aggregation
   "The [[canonical-aggregation]] of the simple metric `ir`, or of a simple input to a composed one, over its
-  aggregation's `expr` (see [[aggregated-expression]]), each failure saying which `expr`."
-  [context                                                :- ::resolve.columns/context
-   {{:keys [operator expr] :as aggregation} :aggregation} :- ::ir/metric.simple]
+  aggregation's `expr` (see [[aggregated-expression]]), each failure saying which `expr`. An aggregation written as
+  SQL has no canonical form: it is converted whole (see [[sql-aggregation-clause]]), and
+  [[unsupported/throw-reason]] here, where the caller needs the form (a filtered input, see [[filtered-input]])."
+  [context                                                       :- ::resolve.columns/context
+   {metric-name :name, {:keys [operator expr] :as aggregation} :aggregation} :- ::ir/metric.simple]
+  (when (sql-aggregation? aggregation)
+    (unsupported/throw-reason (str "metric %s is aggregated as the SQL %s; only an aggregation with an operator can"
+                                   " take a filter where it is referred to")
+                              (pr-str metric-name) (pr-str (:text aggregation))))
   (canonical-aggregation aggregation
                          (unsupported/with-reason-prefix (expr-prefix expr)
                            #(aggregated-expression context operator expr))))
+
+(mu/defn- sql-aggregation-clause :- ::lib.schema.aggregation/aggregation
+  "The Lib aggregation clause for `aggregation`, a whole SQL aggregate expression (see `::ir/aggregation.sql`):
+  converted as one by [[sql/aggregation->mbql]] in the config's dialect, each placeholder resolving to what its
+  reference stands for, inlined, and any other identifier to a column of the metric's table (see
+  [[resolve.filters/placeholder-resolver]]); each failure saying which expression, as the source wrote it."
+  [{:keys [env] :as context}     :- ::resolve.columns/context
+   {:keys [text sql references]} :- ::ir/aggregation.sql]
+  (unsupported/with-reason-prefix (expr-prefix text)
+    #(sql/aggregation->mbql (:dialect env) sql (resolve.filters/placeholder-resolver context references))))
 
 (mu/defn- aggregation-clause :- ::lib.schema.aggregation/aggregation
   "The Lib aggregation clause for `aggregation` (see [[canonical-aggregation]]). A cumulative metric runs over
@@ -133,7 +157,7 @@
                                 (name agg)))
     (case agg
       :row-count      (lib/count)
-      :count-non-null (lib/count-where (lib/not-null expression))
+      :count-non-null (lib/count expression)
       :count-where    (lib/count-where expression)
       :sum            (lib/sum expression)
       :avg            (lib/avg expression)
@@ -282,26 +306,52 @@
             :notes             (notes query)}
            (update dimensions :dimension-mappings without-ref-types))))
 
+(mu/defn- check-fill-nulls :- :nil
+  "[[unsupported/throw-reason]] when `fill-nulls-with` would fill the nulls of the aggregation `clause`, described by
+  `what` for the message (`max of \"status\"`, or the SQL), and the clause is not numeric: `COALESCE(MAX(text), 0)`
+  fails in the warehouse. A clause of unknown type is trusted."
+  [{:keys [query]}  :- ::resolve.columns/context
+   clause           :- ::lib.schema.aggregation/aggregation
+   fill-nulls-with  :- [:maybe :int]
+   what             :- :string]
+  (when (some? fill-nulls-with)
+    (let [result-type (lib/type-of query clause)]
+      (when (and (resolve.columns/known-type? result-type) (not (isa? result-type :type/Number)))
+        (unsupported/throw-reason "filling nulls with %s on a non-numeric aggregation: %s, which is %s"
+                                  fill-nulls-with what result-type)))))
+
+(mu/defn- simple-aggregation-clause :- ::lib.schema.aggregation/aggregation
+  "The Lib aggregation clause of the simple or cumulative metric `ir` in `context`, with its nulls filled (see
+  [[with-fill-nulls]]): its SQL converted whole when its aggregation is written as SQL (see
+  [[sql-aggregation-clause]]), which only a simple metric can be, otherwise its operator over its `expr` (see
+  [[aggregation-clause]])."
+  [context :- ::resolve.columns/context
+   {metric-type :type, :keys [aggregation fill-nulls-with] :as ir} :- ::ir/metric.simple]
+  (let [[clause what] (if (sql-aggregation? aggregation)
+                        (do
+                          (when (= metric-type :cumulative)
+                            (unsupported/throw-reason (str "a running total over the SQL aggregation %s has no Metabase"
+                                                           " equivalent: only a running sum or row count does")
+                                                      (pr-str (:text aggregation))))
+                          [(sql-aggregation-clause context aggregation) (pr-str (:text aggregation))])
+                        (let [{:keys [agg] :as canonical} (canonical-metric-aggregation context ir)]
+                          [(aggregation-clause metric-type canonical)
+                           (format "%s of %s" (name agg) (pr-str (:expr aggregation)))]))]
+    (check-fill-nulls context clause fill-nulls-with what)
+    (with-fill-nulls clause fill-nulls-with)))
+
 (mu/defn- resolve-simple :- ::resolved/metric
-  "Resolve a simple or cumulative metric: one aggregation over its `expr`, filtered by its filters."
+  "Resolve a simple or cumulative metric: one aggregation over its table (see [[simple-aggregation-clause]]), filtered
+  by its filters."
   [env :- ::resolve.columns/env
-   {metric-type :type, table-name :table, :keys [aggregation filters fill-nulls-with time-dimension] :as ir}
-   :- ::ir/metric.simple]
+   {table-name :table, :keys [filters time-dimension] :as ir} :- ::ir/metric.simple]
   (let [table (get (:tables env) table-name)]
     (when-not table
       (unsupported/throw-reason "table %s not found" (pr-str table-name)))
-    (let [{:keys [query] :as context}            (resolve.columns/metric-context env table ir time-dimension)
-          {:keys [agg expression] :as canonical} (canonical-metric-aggregation context ir)
-          filter-clauses                         (resolve.filters/filter-clauses context filters)
-          result-type                            (when (and (some? fill-nulls-with) (#{:min :max} agg) expression)
-                                                   (lib/type-of query expression))]
-      ;; COALESCE(MAX(text), 0) fails in the warehouse; every other aggregation has a numeric result
-      (when (and (resolve.columns/known-type? result-type) (not (isa? result-type :type/Number)))
-        (unsupported/throw-reason "filling nulls with %s on a non-numeric aggregation: %s of %s, which is %s"
-                                  fill-nulls-with (name agg) (pr-str (:expr aggregation)) result-type))
+    (let [context (resolve.columns/metric-context env table ir time-dimension)]
       (resolved-metric context ir
-                       (with-fill-nulls (aggregation-clause metric-type canonical) fill-nulls-with)
-                       filter-clauses))))
+                       (simple-aggregation-clause context ir)
+                       (resolve.filters/filter-clauses context filters)))))
 
 (mr/def ::outcome
   "What a converted metric is to a ratio or derived metric that refers to it: the id of its card in the provider,
@@ -386,13 +436,13 @@
 
     :derived
     (let [by-name (m/index-by #(or (:alias %) (:metric %)) (:inputs ir))
-          value   (sql/expression->mbql (:dialect env) expr
-                                        (fn [identifier]
-                                          (if-let [input (get by-name identifier)]
-                                            (input-leaf context outcomes input)
-                                            (unsupported/throw-reason "%s is not one of the metric's inputs (%s)"
-                                                                      (pr-str identifier)
-                                                                      (str/join ", " (map pr-str (keys by-name)))))))]
+          value   (sql/value->mbql (:dialect env) expr
+                                   (fn [identifier]
+                                     (if-let [input (get by-name identifier)]
+                                       (input-leaf context outcomes input)
+                                       (unsupported/throw-reason "%s is not one of the metric's inputs (%s)"
+                                                                 (pr-str identifier)
+                                                                 (str/join ", " (map pr-str (keys by-name)))))))]
       (if (lib/clause? value)
         value
         (unsupported/throw-reason "expr %s is the constant %s, not arithmetic over the inputs"

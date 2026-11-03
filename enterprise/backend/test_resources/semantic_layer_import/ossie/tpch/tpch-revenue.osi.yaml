@@ -1,0 +1,194 @@
+version: "0.1.1"
+semantic_model:
+- name: tpch_revenue
+  # description becomes native COMMENTs in a Snowflake semantic view, which Cortex Analyst reads.
+  # ai_context is kept for other tools; in the preview tested it is stored only in the OSI
+  # extension and not used by Cortex Analyst. Anything an AI tool must respect is therefore
+  # stated in description, on the field or metric it is about.
+  description: >
+    Order-to-cash model over the TPC-H sample data. One governed definition of
+    revenue for dashboards, notebooks and AI agents.
+  ai_context: >
+    "Revenue" always means net_revenue: extended price after line discount,
+    excluding returned lines. Do not use orders.total_price for revenue; it is
+    the order header amount including tax. Use gross_revenue only when the user
+    explicitly asks for gross or list revenue.
+
+  datasets:
+
+  - name: lineitem
+    source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM
+    primary_key: [l_orderkey, l_linenumber]
+    description: Order lines. Grain is one row per order line; revenue is measured here.
+    fields:
+    - name: l_orderkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: L_ORDERKEY}]}
+      description: Order the line belongs to. Several lines share one order.
+      dimension: {is_time: false}
+    - name: l_linenumber
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: L_LINENUMBER}]}
+      description: Line number within the order.
+      dimension: {is_time: false}
+    - name: l_partkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: L_PARTKEY}]}
+      description: Part (product) sold on the line.
+      dimension: {is_time: false}
+    - name: return_flag
+      datatype: String
+      expression: {dialects: [{dialect: ANSI_SQL, expression: L_RETURNFLAG}]}
+      description: "Return status of the line: R = returned, A = accepted, N = not yet known."
+      dimension: {is_time: false}
+    - name: ship_date
+      datatype: Date
+      expression: {dialects: [{dialect: ANSI_SQL, expression: L_SHIPDATE}]}
+      description: Date the line was shipped. Use order_date, not ship_date, for revenue over time.
+      dimension: {is_time: true}
+    - name: extended_price
+      datatype: Decimal
+      expression: {dialects: [{dialect: ANSI_SQL, expression: L_EXTENDEDPRICE}]}
+      description: >
+        Gross line amount: quantity times unit list price, before discount and tax.
+        Also called list revenue. Not the company definition of revenue.
+    - name: net_amount
+      datatype: Decimal
+      expression: {dialects: [{dialect: ANSI_SQL, expression: "L_EXTENDEDPRICE * (1 - L_DISCOUNT)"}]}
+      description: Line amount after discount, before tax, including returned lines. Not revenue.
+    - name: net_amount_kept
+      datatype: Decimal
+      expression: {dialects: [{dialect: ANSI_SQL, expression: "CASE WHEN L_RETURNFLAG <> 'R' THEN L_EXTENDEDPRICE * (1 - L_DISCOUNT) ELSE 0 END"}]}
+      description: >
+        Revenue per order line, the company definition: amount after discount,
+        before tax, zero for returned lines. Also called net sales. Sum it for revenue.
+
+  - name: orders
+    source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS
+    primary_key: [o_orderkey]
+    description: Order headers. One row per order.
+    fields:
+    - name: o_orderkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: O_ORDERKEY}]}
+      description: Unique order identifier.
+      dimension: {is_time: false}
+    - name: o_custkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: O_CUSTKEY}]}
+      description: Customer who placed the order.
+      dimension: {is_time: false}
+    - name: order_date
+      datatype: Date
+      expression: {dialects: [{dialect: ANSI_SQL, expression: O_ORDERDATE}]}
+      description: Date the order was placed. Also called the booking date. The default date for revenue over time.
+      dimension: {is_time: true}
+      ai_context: "Synonyms: date, booking date"
+    - name: order_year
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: "EXTRACT(YEAR FROM O_ORDERDATE)"}]}
+      description: Calendar year of the order date.
+      dimension: {is_time: true}
+    - name: order_priority
+      datatype: String
+      expression: {dialects: [{dialect: ANSI_SQL, expression: O_ORDERPRIORITY}]}
+      description: Priority assigned to the order, from 1-URGENT to 5-LOW.
+      dimension: {is_time: false}
+    - name: total_price
+      datatype: Decimal
+      expression: {dialects: [{dialect: ANSI_SQL, expression: O_TOTALPRICE}]}
+      description: >
+        Order header amount including tax. Not revenue: never use it for revenue
+        or sales questions. Kept for reconciliation only.
+
+  - name: customer
+    source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER
+    primary_key: [c_custkey]
+    description: Customers. One row per customer.
+    fields:
+    - name: c_custkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: C_CUSTKEY}]}
+      description: Unique customer identifier.
+      dimension: {is_time: false}
+    - name: c_nationkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: C_NATIONKEY}]}
+      description: Nation the customer is located in.
+      dimension: {is_time: false}
+    - name: market_segment
+      datatype: String
+      expression: {dialects: [{dialect: ANSI_SQL, expression: C_MKTSEGMENT}]}
+      description: Market segment of the customer, also called customer segment.
+      dimension: {is_time: false}
+      ai_context: "Synonyms: segment, customer segment"
+
+  - name: nation
+    source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.NATION
+    primary_key: [n_nationkey]
+    description: Nations. One row per nation.
+    fields:
+    - name: n_nationkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: N_NATIONKEY}]}
+      description: Unique nation identifier.
+      dimension: {is_time: false}
+    - name: n_regionkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: N_REGIONKEY}]}
+      description: Region the nation belongs to.
+      dimension: {is_time: false}
+    - name: nation_name
+      datatype: String
+      expression: {dialects: [{dialect: ANSI_SQL, expression: N_NAME}]}
+      description: Name of the nation, also called the country of the customer.
+      dimension: {is_time: false}
+      ai_context: "Synonyms: country"
+
+  - name: region
+    source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.REGION
+    primary_key: [r_regionkey]
+    description: World regions. One row per region.
+    fields:
+    - name: r_regionkey
+      datatype: Integer
+      expression: {dialects: [{dialect: ANSI_SQL, expression: R_REGIONKEY}]}
+      description: Unique region identifier.
+      dimension: {is_time: false}
+    - name: region_name
+      datatype: String
+      expression: {dialects: [{dialect: ANSI_SQL, expression: R_NAME}]}
+      description: Name of the world region of the customer, for example ASIA or EUROPE.
+      dimension: {is_time: false}
+
+  relationships:
+  - {name: lineitem_to_orders, from: lineitem, to: orders, from_columns: [l_orderkey], to_columns: [o_orderkey]}
+  - {name: orders_to_customer, from: orders, to: customer, from_columns: [o_custkey], to_columns: [c_custkey]}
+  - {name: customer_to_nation, from: customer, to: nation, from_columns: [c_nationkey], to_columns: [n_nationkey]}
+  - {name: nation_to_region, from: nation, to: region, from_columns: [n_regionkey], to_columns: [r_regionkey]}
+
+  metrics:
+  - name: net_revenue
+    datatype: Decimal
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "SUM(lineitem.net_amount_kept)"}]}
+    description: >
+      Revenue, the company definition: extended price after discount, excluding
+      returned lines, before tax. Also called sales or net sales. Use this metric
+      whenever a question asks for revenue or sales.
+    ai_context: "Synonyms: revenue, sales, net sales"
+  - name: gross_revenue
+    datatype: Decimal
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "SUM(lineitem.extended_price)"}]}
+    description: >
+      Gross or list-price revenue, before discounts and returns. Use only when a
+      question explicitly asks for gross or list revenue.
+  - name: order_count
+    datatype: Integer
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT orders.o_orderkey)"}]}
+    description: Number of orders.
+    ai_context: "Synonyms: number of orders"
+  - name: average_order_value
+    datatype: Decimal
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "SUM(lineitem.net_amount_kept) / COUNT(DISTINCT lineitem.l_orderkey)"}]}
+    description: Average order value (AOV) - net_revenue divided by the number of orders.
+    ai_context: "Synonyms: AOV"

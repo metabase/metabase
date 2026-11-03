@@ -2,31 +2,37 @@
 
 ## Adding a source
 
-The IR is meant to be no one tool's model; the table in [The IR](ir.md) lines dbt's, Cube's and OSI's concepts up with
-it. A new source, such as OSI (Open Semantic Interchange), is a parser behind `interface/raw->ir`, and nothing in the
-shared stages changes:
+The IR is meant to be no one tool's model; the table in [The IR](ir.md) lines dbt's, Ossie's and Cube's concepts up
+with it. A new source, such as Cube, is a parser behind `interface/raw->ir`, and nothing in the shared stages changes.
+The two sources so far show the two shapes a parser takes: dbt's (`dbt/`) has a format with aggregation operators,
+entities to match into joins and templated filters; Ossie's (`ossie/`) has a format whose metrics are whole SQL
+aggregate expressions and whose joins are declared.
 
-1. Make it a nested module, `enterprise/semantic-layer-import.<source>`, in a directory next to `dbt/`, and run
-   `./bin/mage fix-modules-config` to record it. A nested module may use this module's internal namespaces, as dbt's
-   does with `schemas.ir`, `schemas.config`, `sql` and `unsupported`.
+1. Make it a nested module, `enterprise/semantic-layer-import.<source>`, in a directory next to `dbt/` and `ossie/`,
+   add an entry for it to `.clj-kondo/config/modules/config.edn` next to theirs, and run `./bin/mage
+   fix-modules-config` to fill it in. A nested module may use this module's internal namespaces, as both do with
+   `interface`, `schemas.ir`, `sql` and `unsupported`.
 2. Parse the project into an `::ir/semantic-layer`:
    - `:source`: the `:tool` name prefixes every id the import derives (and names the default collection), so it has to
      be unique among sources and must never change;
    - `:warehouse`: the warehouse the project was written for and the Metabase driver that connects to it, as
-     `dbt.adapter` works it out, so that `check-driver` catches a config with the wrong driver;
-   - `:tables`: for OSI, one per dataset, with its relation, documented columns, dimensions, keys, and joins (its
-     relationships, each through a column of the table to another table);
+     `dbt.adapter` works it out from the adapter and `ossie.dialect` from the SQL dialect, so that `check-driver`
+     catches a config with the wrong driver;
+   - `:tables`: for Cube, one per cube, with its relation, documented columns, dimensions, named expressions (its
+     measures' SQL, which a metric refers to), keys, and joins (each through a column of the table to another table);
    - `:metrics`: each a `:simple` or `:cumulative` metric (one aggregation over one table) or a `:ratio` or `:derived`
      one (arithmetic over other metrics), with filters as SQL in which each reference to the semantic layer's own
-     objects is a placeholder. A format that defines a metric as a whole SQL expression, such as `SUM(amount)`, has
-     to take the aggregate function apart from its argument;
+     objects is a placeholder. A format with aggregation operators gives a simple metric an operator over an
+     expression; one that defines a metric as a whole SQL aggregate expression, such as `SUM(amount) / COUNT(DISTINCT
+     id)`, gives it that SQL with placeholders for its references, as Ossie's does (see [The IR](ir.md));
    - `:unsupported`: an entry with a reason for anything of the source's own the IR has no place for, thrown with
-     `unsupported/throw-reason` and caught per entry with `unsupported/catching`, as the dbt source does.
+     `unsupported/throw-reason` and caught per entry with `unsupported/catching`, as both sources do.
 3. Implement `interface/raw->ir` for the source's `:type` with `mu/defmethod` in `<source>.core`, giving the raw
-   project (dbt's is a manifest path) and the source's own options (dbt's `:entity-models`) schemas of their own, and
-   add the namespace to `core/source-namespaces` so that `convert!` loads it the first time the source is used.
-4. Test it with fixtures in its format, as `dbt/`'s tests do. `core_test.clj` runs an IR written by hand, for a
-   made-up tool, through the whole import: that is the contract a parser has to meet.
+   project (dbt's is a manifest path, Ossie's a document path) and the source's own options (dbt's `:entity-models`,
+   Ossie's `:dialect`) schemas of their own, and add the namespace to `core/source-namespaces` so that `convert!` loads
+   it the first time the source is used.
+4. Test it with fixtures in its format, as `dbt/`'s and `ossie/`'s tests do. `core_test.clj` runs an IR written by
+   hand, for a made-up tool, through the whole import: that is the contract a parser has to meet.
 
 When a format can say something Metabase can express but the IR cannot hold, extend the IR in its own terms (the
 schema in `schemas/ir.clj`, then the resolve stage) rather than teaching the shared stages about one source. Every

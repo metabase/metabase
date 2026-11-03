@@ -16,6 +16,15 @@
   the dialect's terms (see [[cast->value]] and [[default-like-escape]]). Anything else is reported as unsupported,
   naming the construct.
 
+  In aggregation mode the expression is a SQL aggregate expression, the shape a semantic layer's metric takes
+  (`SUM(net_amount) / COUNT(DISTINCT order_id)`), and converts to one Lib aggregation clause: each aggregate function
+  has a converter in [[aggregation-converters]], which converts its argument with the row-level converters above, and
+  the value converters apply between aggregates, so that arithmetic, `nullif`, `coalesce` and the functions over
+  aggregates convert too. `FILTER (WHERE ...)` and the `CASE` idioms for a filtered aggregate become `sum-where`,
+  `count-where`, `distinct-where` and `share`. A column outside an aggregate, an aggregate nested in another, a window
+  function and an aggregate with no exact Metabase equivalent (a sample standard deviation, an approximate count, a
+  discrete percentile) are reported; see [[::scope]].
+
   Column references are resolved through a callback, so this namespace knows nothing about tables or Metabase
   metadata. Unsupported constructs are thrown with [[throw-unsupported]], as an exception [[unsupported?]] recognises."
   (:require
@@ -23,6 +32,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -42,6 +52,11 @@
 (mr/def ::condition
   "What a SQL condition converts to: a Lib filter clause."
   ::lib.schema.expression/boolean)
+
+(mr/def ::aggregation
+  "What a SQL aggregate expression converts to: a Lib aggregation clause, an aggregate function or an expression over
+  aggregate functions. A literal or an expression over literals alone is not one."
+  ::lib.schema.aggregation/aggregation)
 
 (mr/def ::resolve-column
   "Callback turning a column name as written in the SQL (unquoted, unqualified) into the Lib ref that refers to it. A
@@ -63,12 +78,22 @@
             :keyword :any]]
    [:func  {:optional true} :string]])
 
+(mr/def ::scope
+  "Where a node sits, in aggregation mode: `:aggregation` outside any aggregate, where an aggregate function converts
+  (see [[aggregation-converters]]) and a bare column is reported, since it has no one value in an aggregation;
+  `:aggregated` inside an aggregate's argument or `FILTER` condition, where a column is a row's value and another
+  aggregate is reported as nested. nil in the value and condition modes, where an aggregate is reported like any
+  function with no Lib equivalent. The dispatch is [[->value]]."
+  [:maybe [:enum :aggregation :aggregated]])
+
 (mr/def ::context
   "What a converter needs besides its node: the dialect the SQL was parsed in, for the converters whose meaning depends
-  on the warehouse (see [[default-like-escape]] and [[cast->value]]), and the column callback."
+  on the warehouse (see [[default-like-escape]] and [[cast->value]]), the column callback, and in aggregation mode the
+  [[::scope]]."
   [:map {:closed true}
    [:dialect        ::dialect]
-   [:resolve-column ::resolve-column]])
+   [:resolve-column ::resolve-column]
+   [:scope          {:optional true} ::scope]])
 
 (mr/def ::converter
   "A function of a node and the [[::context]] that converts the node, see [[value-converters]] and
@@ -145,10 +170,14 @@
 
 (mu/defn- column->value :- ::value
   "A column reference, as the callback resolves it. The table qualifier, if any, is dropped: the callback is passed
-  the column's name alone."
+  the column's name alone. `t.*` is no value, and is [[throw-unsupported]]; `COUNT(t.*)` reads it before it gets here
+  (see [[never-null?]])."
   [node           :- ::node
    ctx            :- ::context]
-  ((:resolve-column ctx) (arg (arg node :this) :this)))
+  (let [identifier (arg node :this)]
+    (when (= "Star" (:class identifier))
+      (throw-unsupported "%s is not a value" (:sql node)))
+    ((:resolve-column ctx) (arg identifier :this))))
 
 (mu/defn- literal->value :- [:or :string number?]
   "A string literal as the string, a numeric literal as the number."
@@ -208,9 +237,12 @@
     (if (set? t) t #{t})))
 
 (mu/defn- integer-typed? :- :boolean
-  "Is `value` known to be an integer? A column whose ref has no type is `:type/*`, which is not known to be one."
+  "Is `value` known to be an integer? A column whose ref has no type is `:type/*`, which is not known to be one. Lib
+  types a `median` or a `percentile` as its argument, where the warehouse returns a double or a decimal, so neither
+  is."
   [value :- ::value]
-  (every? #(isa? % :type/Integer) (types-of value)))
+  (and (not (and (vector? value) (contains? #{:median :percentile} (first value))))
+       (every? #(isa? % :type/Integer) (types-of value))))
 
 (mu/defn- division->value :- ::value
   "`x / y`. [[throw-unsupported]] when sqlglot marks the division `typed` and both operands are known integers: on
@@ -311,24 +343,40 @@
                          (:sql node) (dialect-name (:dialect ctx))))
     (cast-fn value)))
 
+(mu/defn- case-condition :- ::condition
+  "The condition of the branch `if-node` of the `CASE` `case-node`. In the simple form, `CASE x WHEN v THEN ...`, it
+  is `x = v`, so neither `x` nor `v` may be `NULL` (see [[without-null-operands]]); `x` is converted once per branch so
+  that each branch gets a column ref of its own. In the searched form it is the `WHEN`'s own condition."
+  [case-node :- ::node
+   ctx       :- ::context
+   if-node   :- ::node]
+  (let [operand   (arg case-node :this)
+        when-node (arg if-node :this)]
+    (if operand
+      (do (without-null-operands case-node [operand when-node])
+          (lib/= (->value operand ctx) (->value when-node ctx)))
+      (->predicate when-node ctx))))
+
 (mu/defn- case->value :- ::value
-  "Both forms of `CASE`. The simple form, `CASE x WHEN v THEN ...`, is the searched form with `x = v` as each
-  condition, so neither `x` nor a `v` may be `NULL` (see [[without-null-operands]]); `x` is converted once per branch
-  so that each branch gets a column ref of its own."
+  "Both forms of `CASE`, each branch's condition as [[case-condition]] reads it."
   [node           :- ::node
    ctx            :- ::context]
-  (let [operand   (arg node :this)
-        condition (fn [when-node]
-                    (if operand
-                      (do (without-null-operands node [operand when-node])
-                          (lib/= (->value operand ctx) (->value when-node ctx)))
-                      (->predicate when-node ctx)))
-        branches  (mapv (fn [if-node]
-                          [(condition (arg if-node :this))
-                           (->value (arg if-node :true) ctx)])
-                        (arg node :ifs))]
+  (let [branches (mapv (fn [if-node]
+                         [(case-condition node ctx if-node)
+                          (->value (arg if-node :true) ctx)])
+                       (arg node :ifs))]
     (if (contains? (:args node) :default)
       (lib/case branches (->value (arg node :default) ctx))
+      (lib/case branches))))
+
+(mu/defn- if->value :- ::value
+  "`IF(c, a, b)` (BigQuery, Spark, Databricks, ClickHouse) and Snowflake's `IFF`, which sqlglot reads as one function:
+  a `CASE` of one branch, `b` its default when there is one."
+  [node           :- ::node
+   ctx            :- ::context]
+  (let [branches [[(->predicate (arg node :this) ctx) (->value (arg node :true) ctx)]]]
+    (if (arg node :false)
+      (lib/case branches (->value (arg node :false) ctx))
       (lib/case branches))))
 
 (mu/defn- log->value :- ::value
@@ -934,10 +982,390 @@
                (pattern-literal node ctx (if case-insensitive? "~*" "~"))
                case-insensitive?))
 
+(mu/defn- argument-context :- ::context
+  "`ctx` for the argument or the `FILTER` condition of an aggregate: row level, where another aggregate is nested (see
+  [[::scope]])."
+  [ctx :- ::context]
+  (assoc ctx :scope :aggregated))
+
+(mu/defn- plain-argument :- ::node
+  "The argument of the aggregate `node`, which may be neither `*` nor a `DISTINCT`: `SUM(*)` means nothing, and only
+  `COUNT` has a distinct form in Metabase, so `SUM(DISTINCT x)` and `AVG(DISTINCT x)` are [[throw-unsupported]]."
+  [node :- ::node]
+  (let [argument (arg node :this)]
+    (case (:class argument)
+      "Star"     (throw-unsupported "%s has no meaning: * is not a value" (:sql node))
+      "Distinct" (throw-unsupported "DISTINCT under %s has no Metabase aggregation, only COUNT(DISTINCT ...) does: %s"
+                                    (:func node) (:sql node))
+      argument)))
+
+(mu/defn- never-null? :- :boolean
+  "Is `node` an argument that is null for no row, so that a `COUNT` of it counts every row: `*`, `t.*`, or a literal
+  (`COUNT(1)`)?"
+  [node :- ::node]
+  (let [node (unparenthesized node)]
+    (case (:class node)
+      "Star"    true
+      "Column"  (= "Star" (:class (arg node :this)))
+      "Literal" true
+      "Boolean" true
+      false)))
+
+(mu/defn- literal-of? :- :boolean
+  "Is `node` the numeric literal `n`?"
+  [node :- ::node
+   n    :- number?]
+  (let [x (literal-number (unparenthesized node))]
+    (boolean (and x (== x n)))))
+
+(mr/def ::conditional-case
+  "A `CASE` with one `WHEN`, as [[conditional-case]] reads it: the node of its value, and what its `ELSE` is: absent,
+  `NULL`, the literal `0`, or anything else."
+  [:map {:closed true}
+   [:then-node ::node]
+   [:else      [:enum :none :null :zero :other]]])
+
+(mu/defn- conditional-case :- [:maybe ::conditional-case]
+  "The shape of `node` when it is a `CASE` with one `WHEN`, the way a filtered aggregate is written as a `CASE`
+  (`SUM(CASE WHEN c THEN x ELSE 0 END)`, `COUNT(CASE WHEN c THEN 1 END)`); nil for any other node, and for a `CASE`
+  whose value is `NULL`, which filters nothing in and is aggregated as the value it is. Its condition is
+  [[conditional-case-condition]]."
+  [node :- ::node]
+  (let [node      (unparenthesized node)
+        then-node (when (= "Case" (:class node))
+                    (arg (first (arg node :ifs)) :true))]
+    (when (and then-node
+               (= 1 (count (arg node :ifs)))
+               (not= "Null" (:class (unparenthesized then-node))))
+      (let [default (arg node :default)]
+        {:then-node then-node
+         :else      (cond
+                      (not (contains? (:args node) :default)) :none
+                      (= "Null" (:class default))             :null
+                      (literal-of? default 0)                 :zero
+                      :else                                   :other)}))))
+
+(mu/defn- conditional-case-condition :- ::condition
+  "The condition of the one branch of the [[conditional-case]] `node`."
+  [node :- ::node
+   ctx  :- ::context]
+  (let [node (unparenthesized node)]
+    (case-condition node ctx (first (arg node :ifs)))))
+
+(mu/defn- conjunction :- ::condition
+  "`conditions`, at least one, as one condition: the one, or their `and`."
+  [conditions :- [:sequential {:min 1} ::condition]]
+  (if (next conditions)
+    (apply lib/and conditions)
+    (first conditions)))
+
+(mu/defn- sum->aggregation :- ::aggregation
+  "`SUM(x)`, with the rows narrowed to those `condition` (a `FILTER`'s, or nil) holds for. `SUM(1)` is a row count.
+  `SUM(CASE WHEN c THEN x END)`, with no `ELSE`, `ELSE NULL` or `ELSE 0`, narrows the rows to those `c` holds for as
+  well, since the others add nothing either way. Narrowed, a sum is `sum-where`, and a sum of `1` `count-where`;
+  anything else is summed as the value it is."
+  [node      :- ::node
+   ctx       :- ::context
+   condition :- [:maybe ::condition]]
+  (let [argument                 (plain-argument node)
+        ctx                      (argument-context ctx)
+        {:keys [then-node else]} (conditional-case argument)
+        conditional?             (boolean (and then-node (contains? #{:none :null :zero} else)))
+        summed                   (if conditional? then-node argument)
+        conditions               (cond-> []
+                                   condition    (conj condition)
+                                   conditional? (conj (conditional-case-condition argument ctx)))]
+    (cond
+      (empty? conditions)    (if (literal-of? summed 1) (lib/count) (lib/sum (->value summed ctx)))
+      (literal-of? summed 1) (lib/count-where (conjunction conditions))
+      :else                  (lib/sum-where (->value summed ctx) (conjunction conditions)))))
+
+(mu/defn- count-non-null :- ::aggregation
+  "`COUNT(x)`, SQL's count of the rows where `x` is not null, as `count` over `x`, which compiles to `COUNT(x)`. With
+  `condition` (a `FILTER`'s, or nil), or when `x` is `CASE WHEN c THEN y END`, which counts the rows where `c` holds
+  and `y` is not null (just those where `c` holds when `y` is a literal), the rows are narrowed instead, as
+  `count-where`."
+  [argument  :- ::node
+   ctx       :- ::context
+   condition :- [:maybe ::condition]]
+  (let [{:keys [then-node else]} (conditional-case argument)
+        conditional?             (boolean (and then-node (contains? #{:none :null} else)))]
+    (if (and (not conditional?) (not condition))
+      (lib/count (->value argument ctx))
+      (lib/count-where (conjunction (cond-> []
+                                      condition          (conj condition)
+                                      conditional?       (conj (conditional-case-condition argument ctx))
+                                      (and conditional? (not (never-null? then-node)))
+                                      (conj (lib/not-null (->value then-node ctx)))
+                                      (not conditional?) (conj (lib/not-null (->value argument ctx)))))))))
+
+(mu/defn- count-if->aggregation :- ::aggregation
+  "`COUNT_IF(c)` (Snowflake, Databricks, Trino) and `COUNTIF(c)` (BigQuery), the count of the rows `c` holds for, as
+  `count-where`, with `condition` (a `FILTER`'s, or nil) conjoined."
+  [node      :- ::node
+   ctx       :- ::context
+   condition :- [:maybe ::condition]]
+  (let [counted (->predicate (arg node :this) (argument-context ctx))]
+    (lib/count-where (conjunction (cond->> [counted] condition (cons condition))))))
+
+(mu/defn- distinct-count :- ::aggregation
+  "`COUNT(DISTINCT x)`, `distinct-node` being the `DISTINCT`, as `distinct`, or `distinct-where` with `condition` (a
+  `FILTER`'s, or nil). `COUNT(DISTINCT CASE WHEN c THEN x END)` is `distinct-where` too. `DISTINCT` over more than one
+  expression, or over `*`, is [[throw-unsupported]]."
+  [node          :- ::node
+   distinct-node :- ::node
+   ctx           :- ::context
+   condition     :- [:maybe ::condition]]
+  (let [[counted & more] (arg distinct-node :expressions)]
+    (when (or more (= "Star" (:class (unparenthesized counted))))
+      (throw-unsupported "%s has no Metabase equivalent: only a distinct count of one expression does" (:sql node)))
+    (let [{:keys [then-node else]} (conditional-case counted)
+          conditional?             (boolean (and then-node (contains? #{:none :null} else)))
+          value                    (->value (if conditional? then-node counted) ctx)
+          conditions               (cond-> []
+                                     condition    (conj condition)
+                                     conditional? (conj (conditional-case-condition counted ctx)))]
+      (if (seq conditions)
+        (lib/distinct-where value (conjunction conditions))
+        (lib/distinct value)))))
+
+(mu/defn- count->aggregation :- ::aggregation
+  "`COUNT(x)`, with the rows narrowed to those `condition` (a `FILTER`'s, or nil) holds for. `COUNT(*)`, `COUNT(t.*)`
+  and `COUNT(1)` count every row; `COUNT(DISTINCT x)` is [[distinct-count]]; any other `x` is [[count-non-null]].
+  `COUNT(a, b)` is [[throw-unsupported]]."
+  [node      :- ::node
+   ctx       :- ::context
+   condition :- [:maybe ::condition]]
+  (when (seq (arg node :expressions))
+    (throw-unsupported "%s counts more than one expression, which has no Metabase equivalent" (:sql node)))
+  (let [argument (arg node :this)
+        ctx      (argument-context ctx)]
+    (cond
+      (never-null? argument)           (if condition (lib/count-where condition) (lib/count))
+      (= "Distinct" (:class argument)) (distinct-count node argument ctx condition)
+      :else                            (count-non-null argument ctx condition))))
+
+(def ^:private integer-avg-dialects
+  "The dialects whose `AVG` of an integer is an integer, the fraction dropped: SQL Server's and Redshift's. Metabase's
+  `avg` casts its argument to a float there (see the drivers' `:avg` methods), so `AVG(a)` over 1 and 2 is 1 to the
+  warehouse and 1.5 to Metabase."
+  #{"tsql" "redshift"})
+
+(mu/defn- avg->aggregation :- ::aggregation
+  "`AVG(x)`; `AVG(CASE WHEN c THEN 1 ELSE 0 END)` is `share`, the fraction of the rows `c` holds for. Both are
+  [[throw-unsupported]] on a dialect in [[integer-avg-dialects]] when the warehouse would average integers: `x` known
+  to be one, or the `1` and `0` of the share idiom."
+  [node :- ::node
+   {:keys [dialect] :as ctx} :- ::context]
+  (let [argument                 (plain-argument node)
+        ctx                      (argument-context ctx)
+        {:keys [then-node else]} (conditional-case argument)
+        integer-avg?             (contains? integer-avg-dialects dialect)]
+    (if (and then-node (= :zero else) (literal-of? then-node 1))
+      (do
+        (when integer-avg?
+          (throw-unsupported (str "%s averages the integers 1 and 0, which %s truncates to 0 or 1 where Metabase's"
+                                  " share is a fraction; write 1.0 and 0.0")
+                             (:sql node) dialect))
+        (lib/share (conditional-case-condition argument ctx)))
+      (let [value (->value argument ctx)]
+        (when (and integer-avg? (integer-typed? value))
+          (throw-unsupported (str "%s averages an integer, which %s truncates to a whole number where Metabase's avg"
+                                  " divides as a float, so the number would differ; cast the argument to a decimal or"
+                                  " float")
+                             (:sql node) dialect))
+        (lib/avg value)))))
+
+(mu/defn- unary-aggregation :- ::converter
+  "The converter for an aggregate of one argument with a Lib aggregation of the same meaning, `(lib-fn x)`, `x`
+  converted at row level (see [[plain-argument]])."
+  [lib-fn :- ifn?]
+  (fn [node ctx]
+    (lib-fn (->value (plain-argument node) (argument-context ctx)))))
+
+(mu/defn- filter->aggregation :- ::aggregation
+  "`agg(x) FILTER (WHERE c)`: the rows `c` holds for, summed or counted, as `sum-where`, `count-where` or
+  `distinct-where` (see [[sum->aggregation]] and [[count->aggregation]]); `c` is a row-level condition. Metabase has
+  no filtered form of any other aggregate, so `AVG(x) FILTER (WHERE c)` and the like are [[throw-unsupported]]."
+  [node :- ::node
+   ctx  :- ::context]
+  (let [aggregate (arg node :this)
+        condition (->predicate (arg (arg node :expression) :this) (argument-context ctx))]
+    (case (:class aggregate)
+      "Sum"     (sum->aggregation aggregate ctx condition)
+      "Count"   (count->aggregation aggregate ctx condition)
+      "CountIf" (count-if->aggregation aggregate ctx condition)
+      (throw-unsupported (str "FILTER over %s has no Metabase equivalent: only a sum, a count and a distinct count"
+                              " have a filtered form")
+                         (:sql aggregate)))))
+
+(def ^:private percentile-dialects
+  "The dialects on which Metabase's `percentile` and `median` are not the exact `PERCENTILE_CONT` and `MEDIAN` they
+  compile to elsewhere: `:approximate` where Metabase compiles them to an estimate (BigQuery's `APPROX_QUANTILES`,
+  SQL Server's `APPROX_PERCENTILE_CONT`, the Trino family's `approx_percentile`), so an exact percentile is
+  [[throw-unsupported]] there (see [[check-percentile]]) and the Trino family's `approx_percentile(x, p)`, the very
+  function Metabase emits, converts (see [[approx-quantile->aggregation]]); `:none` where Metabase has no percentile
+  aggregation at all (MySQL, SQLite), so a metric with one would fail when it runs. ClickHouse's `quantile(p)(x)` and
+  `median(x)` are what Metabase compiles to there, and convert (see [[quantile->aggregation]])."
+  {"bigquery" :approximate
+   "tsql"     :approximate
+   "presto"   :approximate
+   "trino"    :approximate
+   "athena"   :approximate
+   "mysql"    :none
+   "sqlite"   :none})
+
+(def ^:private approx-percentile-dialects
+  "The dialects whose `approx_percentile(x, p)` is the function Metabase's `percentile` compiles to."
+  #{"presto" "trino" "athena"})
+
+(mu/defn- check-percentile :- :nil
+  "[[throw-unsupported]] when `node`, an exact percentile or median, has no exact Metabase equivalent on `ctx`'s
+  dialect (see [[percentile-dialects]])."
+  [node                :- ::node
+   {:keys [dialect]}   :- ::context]
+  (case (get percentile-dialects dialect)
+    :approximate (throw-unsupported (str "%s is exact, where Metabase's percentile on %s is an approximation, so the"
+                                         " number would differ")
+                                    (:sql node) dialect)
+    :none        (throw-unsupported "%s has no Metabase equivalent on %s, which has no percentile aggregation"
+                                    (:sql node) dialect)
+    nil))
+
+(mu/defn- percentile-fraction :- number?
+  "The fraction `p-node`, a percentile's argument, is: a literal from 0 to 1, else [[throw-unsupported]] naming
+  `node`."
+  [node   :- ::node
+   p-node :- ::node]
+  (let [p (literal-number (unparenthesized p-node))]
+    (when-not (and p (<= 0 p 1))
+      (throw-unsupported "the percentile of %s has to be a literal from 0 to 1" (:sql node)))
+    p))
+
+(mu/defn- median->aggregation :- ::aggregation
+  "`MEDIAN(x)` as `median`, where Metabase's is exact (see [[check-percentile]])."
+  [node :- ::node
+   ctx  :- ::context]
+  (check-percentile node ctx)
+  (lib/median (->value (plain-argument node) (argument-context ctx))))
+
+(mu/defn- quantile->aggregation :- ::aggregation
+  "`quantile(p)(x)` and `median(x)` on ClickHouse, `PERCENTILE(x, p)` on Spark and Databricks, which sqlglot reads as
+  one function: `percentile`, which compiles to the same function on each (see [[check-percentile]])."
+  [node :- ::node
+   ctx  :- ::context]
+  (check-percentile node ctx)
+  (lib/percentile (->value (arg node :this) (argument-context ctx)) (percentile-fraction node (arg node :quantile))))
+
+(mu/defn- within-group->aggregation :- ::aggregation
+  "`PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x)` as `percentile`, `p` a literal from 0 to 1; ordered `DESC`, the
+  percentile `1 - p` of the ascending order, which is the same value. `PERCENTILE_DISC` picks a value from the data
+  where Metabase's percentile interpolates between two, so it is [[throw-unsupported]], as is any other `WITHIN GROUP`
+  function, and an exact percentile where Metabase's is not (see [[check-percentile]])."
+  [node :- ::node
+   ctx  :- ::context]
+  (let [function (arg node :this)
+        ordered  (arg (arg node :expression) :expressions)]
+    (case (:class function)
+      "PercentileCont"
+      (let [p (percentile-fraction node (arg function :this))]
+        (when-not (= 1 (count ordered))
+          (throw-unsupported "%s orders by more than one expression" (:sql node)))
+        (check-percentile node ctx)
+        (let [[{:keys [args] :as ordering}] ordered
+              p                             (if (:desc args) (double (- 1M (bigdec p))) p)]
+          (lib/percentile (->value (arg ordering :this) (argument-context ctx)) p)))
+
+      "PercentileDisc"
+      (throw-unsupported (str "%s picks a value from the data, where Metabase's percentile interpolates between two,"
+                              " so the number would differ")
+                         (:sql node))
+
+      (throw-unsupported "%s is not supported" (describe node)))))
+
+(def ^:private no-stddev-dialects
+  "The dialects on which Metabase has no `stddev` or `var` aggregation at all, so a metric with one would fail when it
+  runs: SQLite's."
+  #{"sqlite"})
+
+(mu/defn- population-statistic :- ::converter
+  "The converter for a population standard deviation or variance, `(lib-fn x)`, which [[throw-unsupported]] on a
+  dialect in [[no-stddev-dialects]]."
+  [lib-fn :- ifn?]
+  (fn [node {:keys [dialect] :as ctx}]
+    (when (contains? no-stddev-dialects dialect)
+      (throw-unsupported "%s has no Metabase equivalent on %s, which has no standard deviation or variance aggregation"
+                         (:sql node) dialect))
+    ((unary-aggregation lib-fn) node ctx)))
+
+(mu/defn- sample-statistic :- ::converter
+  "The converter for a sample standard deviation or variance, `statistic`, which divides by n - 1 where Metabase's
+  `stddev` and `var` are the population statistics and divide by n, as `population-function` does in SQL: the number
+  would differ, so it is [[throw-unsupported]]. MySQL's `STDDEV` is the population one, and converts there as
+  `STDDEV_POP` does (its `VARIANCE` and `VAR_SAMP` arrive as one node, so neither converts)."
+  [statistic           :- :string
+   population-function :- :string
+   population-lib-fn   :- ifn?]
+  (fn [{:keys [func] :as node} {:keys [dialect] :as ctx}]
+    (if (and (= "mysql" dialect) (= "STDDEV" func))
+      ((population-statistic population-lib-fn) node ctx)
+      (throw-unsupported "%s is the sample %s, where Metabase's is the population one; write %s for that"
+                         (:sql node) statistic population-function))))
+
+(mu/defn- approximate :- ::converter
+  "The converter for an approximate aggregate, whose estimate the exact Metabase aggregation `exact-function` would not
+  return: [[throw-unsupported]]."
+  [exact-function :- :string]
+  (fn [node _ctx]
+    (throw-unsupported "%s is approximate, where Metabase's %s is exact, so the number would differ"
+                       (:sql node) exact-function)))
+
+(mu/defn- approx-quantile->aggregation :- ::aggregation
+  "`APPROX_PERCENTILE(x, p)`: on the Trino family the function Metabase's `percentile` compiles to, so it converts to
+  that (see [[approx-percentile-dialects]]); elsewhere an estimate the exact `percentile` would not return, so it is
+  [[throw-unsupported]]."
+  [node                :- ::node
+   {:keys [dialect] :as ctx} :- ::context]
+  (if (contains? approx-percentile-dialects dialect)
+    (lib/percentile (->value (arg node :this) (argument-context ctx)) (percentile-fraction node (arg node :quantile)))
+    ((approximate "PERCENTILE_CONT") node ctx)))
+
+(mu/defn- window->value :- ::value
+  "A window function, `f(...) OVER (...)`: its value depends on the other rows of the result, which one expression or
+  aggregation has no say over, so it is [[throw-unsupported]]."
+  [node :- ::node
+   _ctx :- ::context]
+  (throw-unsupported (str "%s is a window function, whose value depends on the other rows of the result; one"
+                          " aggregation has no say over them")
+                     (:sql node)))
+
+(def ^:private aggregation-converters
+  "The converter for each sqlglot node class of an aggregate the subset covers, dispatched by [[->value]] in the
+  `:aggregation` scope (see [[::scope]]): each converts its argument with the row-level converters and builds the Lib
+  aggregation of the same meaning, or reports one Metabase lacks. `FILTER` and `WITHIN GROUP` wrap an aggregate."
+  {"Sum"            (fn [node ctx] (sum->aggregation node ctx nil))
+   "Count"          (fn [node ctx] (count->aggregation node ctx nil))
+   "CountIf"        (fn [node ctx] (count-if->aggregation node ctx nil))
+   "Avg"            avg->aggregation
+   "Min"            (unary-aggregation lib/min)
+   "Max"            (unary-aggregation lib/max)
+   "Median"         median->aggregation
+   "Quantile"       quantile->aggregation
+   "StddevPop"      (population-statistic lib/stddev)
+   "VariancePop"    (population-statistic lib/var)
+   ;; sqlglot reads `STDDEV` and `STDDEV_SAMP`, and `VARIANCE` and `VAR_SAMP`, as these
+   "Stddev"         (sample-statistic "standard deviation" "STDDEV_POP" lib/stddev)
+   "StddevSamp"     (sample-statistic "standard deviation" "STDDEV_POP" lib/stddev)
+   "Variance"       (sample-statistic "variance" "VAR_POP" lib/var)
+   "Filter"         filter->aggregation
+   "WithinGroup"    within-group->aggregation
+   "ApproxDistinct" (approximate "COUNT(DISTINCT ...)")
+   "ApproxQuantile" approx-quantile->aggregation})
+
 (def ^:private value-converters
   "The converter for each sqlglot node class the subset covers where a value is expected: columns, literals,
-  arithmetic, `CASE`, casts and the functions that have a Lib expression function of the same meaning. The dispatch
-  is [[->value]]."
+  arithmetic, `CASE`, casts and the functions that have a Lib expression function of the same meaning, and the window
+  function, which is reported (see [[window->value]]). The dispatch is [[->value]]."
   {"Column"           column->value
    "Literal"          literal->value
    "Boolean"          (fn [node _ctx] (boolean (arg node :this)))
@@ -954,6 +1382,7 @@
    ;; cannot be converted does, an error or a null
    "TryCast"          cast->value
    "Case"             case->value
+   "If"               if->value
    "Abs"              (unary lib/abs)
    "Floor"            (unary lib/floor)
    "Ceil"             (unary lib/ceil)
@@ -976,7 +1405,8 @@
    "TimestampTrunc"   date-trunc->value
    "DateTrunc"        date-trunc->value
    "CurrentTimestamp" (fn [_node _ctx] (lib/now))
-   "CurrentDate"      (fn [_node _ctx] (lib/today))})
+   "CurrentDate"      (fn [_node _ctx] (lib/today))
+   "Window"           window->value})
 
 (def ^:private predicate-converters
   "The converter for each sqlglot node class the subset covers where a boolean is expected: a whole filter, a `WHEN`,
@@ -1006,15 +1436,46 @@
 
 (mu/defn- ->value :- ::value
   "The Lib expression for the sqlglot `node` used as a value, through [[value-converters]]: a column, a literal (a
-  `NULL` is nil), arithmetic, or `CASE`. [[throw-unsupported]] for a node class the subset does not cover, naming
-  the function or the construct."
+  `NULL` is nil), arithmetic, or `CASE`. In the `:aggregation` scope (see [[::scope]]) an aggregate converts too,
+  through [[aggregation-converters]], and a column outside one is reported; in the `:aggregated` scope an aggregate is
+  reported as nested. [[throw-unsupported]] for a node class the subset does not cover, naming the function or the
+  construct."
   [node           :- ::node
    ctx            :- ::context]
-  (if-let [convert (get value-converters (:class node))]
-    (convert node ctx)
-    (if-let [function-name (:func node)]
+  (let [{:keys [scope]} ctx
+        node-class      (:class node)
+        aggregate       (get aggregation-converters node-class)]
+    (b/cond
+      (and aggregate (= scope :aggregation))
+      (aggregate node ctx)
+
+      (and aggregate (= scope :aggregated))
+      (throw-unsupported "%s is an aggregate nested inside another, which has no meaning in one query" (:sql node))
+
+      (and (= scope :aggregation) (= node-class "Column"))
+      (throw-unsupported "%s is a column outside an aggregate, so it has no one value in an aggregation" (:sql node))
+
+      :let [convert (get value-converters node-class)]
+      convert
+      (convert node ctx)
+
+      :let [function-name (:func node)]
+      function-name
       (throw-unsupported "the function %s is not supported" (u/lower-case-en function-name))
+
+      :else
       (throw-unsupported "%s is not supported" (describe node)))))
+
+(mu/defn- ->aggregation :- ::aggregation
+  "The Lib aggregation clause for the sqlglot `node`, a whole SQL aggregate expression, converted as a value in the
+  `:aggregation` scope (see [[->value]]). [[throw-unsupported]] when nothing in it aggregates, a literal or arithmetic
+  over literals, since that is no aggregation."
+  [node           :- ::node
+   ctx            :- ::context]
+  (let [value (->value node (assoc ctx :scope :aggregation))]
+    (when-not (mr/validate ::aggregation value)
+      (throw-unsupported "%s has no aggregate in it, so it is not an aggregation" (:sql node)))
+    value))
 
 (mu/defn- ->predicate :- ::condition
   "The Lib filter clause for the sqlglot `node` used where a boolean is expected, through [[predicate-converters]].
@@ -1025,33 +1486,41 @@
     (convert node ctx)
     (throw-unsupported "%s is not supported as a condition" (describe node))))
 
-(mr/def ::options
-  "Options for [[expression->mbql]]. `:condition?` says the SQL is a condition, read where SQL expects a boolean."
-  [:maybe [:map {:closed true}
-           [:condition? {:optional true} :boolean]]])
+(mu/defn- convert :- ::value
+  "Parse the SQL expression `sql`, written in `dialect`, and convert its tree with `->mbql`, one of [[->value]],
+  [[->predicate]] and [[->aggregation]], each column name resolved by `resolve-column`. Only an expression converts,
+  on its own, never a `SELECT`. Throws an exception [[unsupported?]] recognises, naming the construct, for SQL the
+  subset does not cover."
+  [dialect        :- ::dialect
+   sql            :- :string
+   resolve-column :- ::resolve-column
+   ->mbql         :- ifn?]
+  (->mbql (parse dialect sql) {:dialect dialect, :resolve-column resolve-column}))
 
-(mu/defn expression->mbql :- ::value
-  "The Lib expression for the SQL expression `sql`, written in `dialect`, with each column name resolved by
-  `resolve-column`. Only an expression converts, on its own: `sales / target` or `status = 'Shipped'`, never a
-  `SELECT`.
+(mu/defn value->mbql :- ::value
+  "The Lib expression for the SQL value expression `sql`, `sales / target`, written in `dialect`, with each column name
+  resolved by `resolve-column`: a Lib expression, or the literal itself when `sql` is one (nil for `NULL`). A
+  comparison is a condition and an aggregate is an aggregation, not a value, so each is reported here; see
+  [[condition->mbql]] and [[aggregation->mbql]]. See [[convert]] for what is thrown."
+  [dialect        :- ::dialect
+   sql            :- :string
+   resolve-column :- ::resolve-column]
+  (convert dialect sql resolve-column ->value))
 
-  With `:condition?` in `options`, `sql` is a condition, read where SQL expects a boolean (a `WHERE`, a `WHEN`), and
-  comes back as a Lib filter clause; a bare boolean column there is `column = true`. Otherwise it is a value, and
-  comes back as a Lib expression, or as itself when it is a literal (nil for `NULL`); a comparison is a condition, not
-  a value.
+(mu/defn condition->mbql :- ::condition
+  "The Lib filter clause for the SQL condition `sql`, `status = 'Shipped' AND amount > 0`, read where SQL expects a
+  boolean (a `WHERE`, a `WHEN`), written in `dialect`, with each column name resolved by `resolve-column`. A bare
+  boolean column is `column = true`. See [[convert]] for what is thrown."
+  [dialect        :- ::dialect
+   sql            :- :string
+   resolve-column :- ::resolve-column]
+  (convert dialect sql resolve-column ->predicate))
 
-  Throws an exception [[unsupported?]] recognises, naming the construct, for SQL the subset does not cover."
-  ([dialect        :- ::dialect
-    sql            :- :string
-    resolve-column :- ::resolve-column]
-   (expression->mbql dialect sql resolve-column nil))
-
-  ([dialect              :- ::dialect
-    sql                  :- :string
-    resolve-column       :- ::resolve-column
-    {:keys [condition?]} :- ::options]
-   (let [node (parse dialect sql)
-         ctx  {:dialect dialect, :resolve-column resolve-column}]
-     (if condition?
-       (->predicate node ctx)
-       (->value node ctx)))))
+(mu/defn aggregation->mbql :- ::aggregation
+  "The Lib aggregation clause for the SQL aggregate expression `sql`, `SUM(net_amount) / COUNT(DISTINCT order_id)`,
+  written in `dialect`, with each column name resolved by `resolve-column`: one clause, in which every column is
+  inside an aggregate (see [[aggregation-converters]]). See [[convert]] for what is thrown."
+  [dialect        :- ::dialect
+   sql            :- :string
+   resolve-column :- ::resolve-column]
+  (convert dialect sql resolve-column ->aggregation))

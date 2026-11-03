@@ -100,7 +100,7 @@
 
 (mu/defn- render-filter :- ::rendered-filter
   "Replace each MetricFlow reference in the filter `template` with a placeholder identifier, so the rest parses as SQL
-  with [[sql/expression->mbql]] as a condition, whose column callback then sees the placeholders as column names.
+  with [[sql/condition->mbql]], whose column callback then sees the placeholders as column names.
   `:references` says what each placeholder stood for, arguments the import does not read included, for
   [[ir-reference]] to report. The same reference written twice is one placeholder. Jinja the regex does not recognise
   is left alone and fails to parse."

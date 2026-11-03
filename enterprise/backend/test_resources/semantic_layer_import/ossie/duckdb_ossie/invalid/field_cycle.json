@@ -1,0 +1,62 @@
+{
+  "version": "0.2.0.dev0",
+  "name": "field_cycle",
+  "datasets": [
+    {
+      "name": "t",
+      "source": "tpcds.public.t",
+      "fields": [
+        {
+          "name": "k",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "k"
+              }
+            ]
+          }
+        },
+        {
+          "name": "a",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "b || 'A'"
+              }
+            ]
+          }
+        },
+        {
+          "name": "b",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "a || 'B'"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "relationships": [],
+  "metrics": [
+    {
+      "name": "m",
+      "expression": {
+        "dialects": [
+          {
+            "dialect": "ANSI_SQL",
+            "expression": "COUNT(t.k)"
+          }
+        ]
+      }
+    }
+  ]
+}

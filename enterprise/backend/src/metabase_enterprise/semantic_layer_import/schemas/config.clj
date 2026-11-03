@@ -64,6 +64,6 @@
    ;; `:creator-email` is the user the cards are created as. Serdes resolves it by email and synthesizes an inactive
    ;; user when none exists, but a card cannot be imported without one.
    [:creator-email   :string]
-   ;; `:collection-name` names the collection the content is written to; `<tool> metrics` (`dbt metrics`) when it is
-   ;; not given.
+   ;; `:collection-name` names the collection the content is written to; `<tool> metrics` (`dbt metrics`, `ossie metrics`)
+   ;; when it is not given.
    [:collection-name {:optional true} :string]])

@@ -208,6 +208,23 @@ destructuring in particular, since it names the local after the key. kondo's `:s
     (t2/insert! :model/Prompt prompts)))
 ```
 
+**Feed `into` a transducer, not a lazy seq:**
+
+```clojure
+;; good
+(into {} (map f) coll)
+(into [] (comp (filter pred) (map f)) coll)
+
+;; bad
+(into {} (map f coll))
+(into [] (map f (filter pred coll)))
+```
+
+When a function has an arity that returns a transducer and one that returns a lazy seq (`map`, `map-indexed`,
+`filter`, `remove`, `keep`, `distinct`, `take`, `partition-all`, ...), use the transducer arity and pass the
+collection to `into`. The lazy seq is an intermediate allocation `into` has to walk; the transducer form skips it, and
+several steps compose with `comp`.
+
 ## Tests
 
 **Organization:**
@@ -441,6 +458,7 @@ Organized by **problem you're solving**, not by namespace.
 | `(let [x (...)] (if x then else))`                                   | `(if-let [x (...)] then else)`       | —                                                                 |
 | `(filter #(= :a (:type %)) coll)` + same for `:b` …                  | `(group-by :type coll)` then dispatch | —                                                                 |
 | `(->> xs (map f) (remove g) (mapv h))`                               | `(into [] (comp (map f) (remove g) (map h)) xs)` | when readability of the threading wins                  |
+| `(into {} (map f xs))`, `(into [] (filter p xs))`                    | `(into {} (map f) xs)`, `(into [] (filter p) xs)` | —                                                      |
 | nested `let` / `if` / `if-let`                                       | `b/cond` with `:let`                 | a 2-level nest may be clearer as-is                               |
 | `(let [{:keys [k]} arg] …)` as first form of body                    | destructure in the arg list           | when the destructure also references something computed in `let` |
 | `(or (:k m) (get m (name k)))` per field                             | normalize once: `(update-keys m keyword)` then plain `:k` | when you genuinely need both shapes per-field             |

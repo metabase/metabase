@@ -8,12 +8,14 @@
 
 (mr/def ::raw
   "A semantic layer as its source writes it, before it is parsed: for dbt, the path of the `manifest.json` `dbt parse`
-  writes. Its shape is the source's own, which the source's [[raw->ir]] method checks."
+  writes; for Ossie, the path of a semantic model document, YAML or JSON. Its shape is the source's own, which the
+  source's [[raw->ir]] method checks."
   [:schema {::mr/deliberately-open true, :description "a semantic layer as its source writes it"} :any])
 
 (mr/def ::options
   "A source's own options, next to the import's config: for dbt, `:entity-models` (see
-  `:metabase-enterprise.semantic-layer-import.dbt.parse/options`). Each source's [[raw->ir]] method checks its own."
+  `:metabase-enterprise.semantic-layer-import.dbt.parse/options`); for Ossie, `:dialect` (see
+  `:metabase-enterprise.semantic-layer-import.ossie.parse/options`). Each source's [[raw->ir]] method checks its own."
   [:map {::mr/deliberately-open true, :description "a source's own options"}])
 
 (defmulti raw->ir

@@ -1,0 +1,143 @@
+{
+  "version": "0.2.0.dev0",
+  "name": "nested_field_model",
+  "datasets": [
+    {
+      "name": "sales",
+      "source": "tpcds.public.sales",
+      "fields": [
+        {
+          "name": "k",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "k"
+              }
+            ]
+          }
+        },
+        {
+          "name": "amt",
+          "datatype": "Decimal",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "amt"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "dim",
+      "source": "tpcds.public.dim",
+      "primary_key": [
+        "k"
+      ],
+      "fields": [
+        {
+          "name": "k",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "k"
+              }
+            ]
+          }
+        },
+        {
+          "name": "label",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "label"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mid",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "label || 'M'"
+              }
+            ]
+          }
+        },
+        {
+          "name": "outer_f",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "mid || 'O'"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deep",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "outer_f || 'D'"
+              }
+            ]
+          }
+        },
+        {
+          "name": "self_ref",
+          "datatype": "String",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "label || label"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "name": "sales_to_dim",
+      "from": "sales",
+      "to": "dim",
+      "from_columns": [
+        "k"
+      ],
+      "to_columns": [
+        "k"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "name": "total",
+      "expression": {
+        "dialects": [
+          {
+            "dialect": "ANSI_SQL",
+            "expression": "SUM(sales.amt)"
+          }
+        ]
+      }
+    }
+  ]
+}

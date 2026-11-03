@@ -1,8 +1,10 @@
 # SQL in the IR
 
-An aggregation's `expr`, a dimension's or key's `expr`, a derived metric's arithmetic and a filter may be SQL in the
-warehouse's dialect. The OSS `sql-to-mbql` module converts each to Lib clauses, parsing it with sqlglot in the dialect
-of the config's `:driver`. [Its README](../../../../../src/metabase/sql_to_mbql/README.md) lists the subset of SQL that
+An aggregation's `expr`, a dimension's, expression's or key's `expr`, a derived metric's arithmetic and a filter may be
+SQL in the warehouse's dialect, and an aggregation may be a whole SQL aggregate expression (see [The
+IR](ir.md#aggregations-written-as-sql)). The OSS `sql-to-mbql` module converts each to Lib clauses, parsing it with
+sqlglot in the dialect of the config's `:driver`: a value, a condition or, for a whole aggregate expression, one
+aggregation clause. [Its README](../../../../../src/metabase/sql_to_mbql/README.md) lists the subset of SQL that
 converts, [what does not](../../../../../src/metabase/sql_to_mbql/README.md#what-does-not-convert) and what it would
 take, and the one construct that converts with a difference for nulls. What is the import's own is in `sql.clj`:
 
@@ -17,12 +19,13 @@ A column's ref has the type the project gives the column, and a column the proje
 type. The converter trusts one of those as a boolean in a condition, and does not take it to be an integer, so a
 project that types its columns gets the integer-division and boolean-condition checks the README describes.
 
-In a filter, an identifier that is one of the filter's placeholders resolves to what its reference names (see
-`::ir/reference`): a dimension of the metric's table, of a table one of its joins leads to, or the metric's time
-dimension, perhaps bucketed by a grain, or a key of the metric's table. A dimension whose `expr` is SQL is inlined, so
-it can be filtered on even though it cannot be a curated dimension; a reference through a join that cannot be made
-reports the metric, since the filter cannot be written. Any other identifier is a column of the metric's table, by
-name. In a derived metric's `expr`, an identifier is one of the metric's inputs, by alias or name.
+In a filter, or in an aggregation written as SQL, an identifier that is one of the placeholders resolves to what its
+reference names (see `::ir/reference`): a dimension or a named expression of the metric's table, or of a table one of
+its joins leads to, or the metric's time dimension, perhaps bucketed by a grain, or a key of the metric's table. A
+dimension or expression whose `expr` is SQL is inlined, so it can be filtered on or aggregated even though it cannot be
+a curated dimension; a reference through a join that cannot be made reports the metric, since the SQL cannot be
+written. Any other identifier is a column of the metric's table, by name. In a derived metric's `expr`, an identifier is
+one of the metric's inputs, by alias or name.
 
 ## Weeks
 

@@ -1,0 +1,14 @@
+{
+  "version": "0.1.1",
+  "semantic_model": [
+    {
+      "name": "pre_0_2_shape",
+      "datasets": [
+        {
+          "name": "t",
+          "source": "tpcds.public.t"
+        }
+      ]
+    }
+  ]
+}
