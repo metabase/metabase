@@ -803,3 +803,24 @@
           (testing "the largest row limit wins"
             (is (= "completed" (:status (goal [{:max_rows 1} {:max_rows 2}]))))
             (is (= "failed" (:status (goal [{:max_rows 1} {:max_rows 1}]))))))))))
+
+(deftest card-endpoint-referenced-card-runs-as-saved-question-test
+  (testing "a viewer who can run saved questions, but not build queries, still gets a source card's value"
+    (mt/with-temp [:model/Card    {goal-id :id}    {:dataset_query (count-query :checkins)}
+                   :model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}
+                   :model/Card    {chart-id :id}   (chart-card :scalar {:scalar.segments
+                                                                        [{:min (goal-ref goal-id) :max nil :color "red"}
+                                                                         {:min   {:id measure-id :type "measure" :column "count"}
+                                                                          :max   nil
+                                                                          :color "blue"}]})]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-perm-for-group! (perms/all-users-group) :perms/view-data :unrestricted
+          (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" chart-id))]
+            (testing "the main card runs"
+              (is (= "completed" (:status response))))
+            (testing "the source card runs as a saved question"
+              (is (= [[1000]] (get-in (ref-entity response :card goal-id) [:data :rows]))))
+            (testing "a measure has no saved question to run as, so it needs query permissions on its table"
+              (is (= "failed" (:status (ref-entity response :measure measure-id)))))))))))
