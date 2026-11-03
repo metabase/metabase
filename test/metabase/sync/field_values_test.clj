@@ -14,6 +14,7 @@
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -342,9 +343,9 @@
       (testing "sanity check: the sync values show by default"
         (is (=? {:has_field_values nil, :visibility_type :normal}
                 (first (sync.db/fields-for-field-values [field-id])))))
-      (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id, :has_field_values :none, :visibility_type :sensitive}]
-        (is (=? {:has_field_values :none, :visibility_type :sensitive}
-                (first (sync.db/fields-for-field-values [field-id]))))))))
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:has_field_values :none, :visibility_type :sensitive})
+      (is (=? {:has_field_values :none, :visibility_type :sensitive}
+              (first (sync.db/fields-for-field-values [field-id])))))))
 
 (deftest can-batch-distinct?-test
   (testing "SQL driver with :nested-queries and no required filter → batch path"

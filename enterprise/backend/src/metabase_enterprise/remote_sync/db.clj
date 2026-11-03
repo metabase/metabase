@@ -8,7 +8,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private ConditionKey
@@ -170,23 +169,18 @@
                                         :limit limit}))
 
 (mu/defn instance
-  "The instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The instance of `model` with `id`, or nil."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one model :id id (if (= model :model/Table)
-                                {:from [(warehouse-schema-overlay/table-query)]}
-                                {})))
+  (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The `columns` of the instance of `model` with `id`, or nil."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
   (t2/select-one (into [model] columns)
-                 :id id
-                 (if (= model :model/Table)
-                   {:from [(warehouse-schema-overlay/table-query)]}
-                   {})))
+                 :id id))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -232,20 +226,20 @@
   (case model-key
     :model/TableUserSettings {:alias  "t"
                               :select [:t.name [:t.id :table_id] :t.collection_id [:t.name :table_name]]
-                              :from   [(warehouse-schema-overlay/table-query {:alias :t})]}
+                              :from   [[(t2/table-name :model/Table) :t]]}
     (:model/FieldUserSettings :model/Dimension)
     {:alias  "f"
      :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
      :from   [[:metabase_field :f]]
-     :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
+     :join   [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}
+                    :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]}
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
+                    :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
   "The name, table id, collection id, and table name of the `model-key` (TableUserSettings, FieldUserSettings,
@@ -305,7 +299,7 @@
 (mu/defn published-table-ids :- [:set ::lib.schema.id/table]
   "The ids of the Tables published in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (set (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
+  (set (t2/select-pks-set :model/Table {:from  [[(t2/table-name :model/Table) :t]]
                                         :where [:and [:= :t.is_published true] [:in :t.collection_id collection-ids]]})))
 
 (mu/defn table-ids-with-user-settings
@@ -319,7 +313,7 @@
   (t2/select-fn-vec :field_id :model/FieldUserSettings
                     {:select [:u.field_id]
                      :from   [[(t2/table-name :model/FieldUserSettings) :u]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
+                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                      :where  [:in :f.table_id table-ids]}))
 
 (mu/defn field-ids-with-dimensions
@@ -328,18 +322,8 @@
   (t2/select-fn-vec :field_id :model/Dimension
                     {:select [:d.field_id]
                      :from   [[(t2/table-name :model/Dimension) :d]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
+                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]]
                      :where  [:in :f.table_id table-ids]}))
-
-(mu/defn delete-table-user-settings!
-  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/TableUserSettings :table_id [:in table-ids]))
-
-(mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldUserSettings :field_id [:in field-ids]))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions of the Fields with `field-ids`, returning the number deleted."
@@ -347,9 +331,9 @@
   (t2/delete! :model/Dimension :field_id [:in field-ids]))
 
 (mu/defn tables-tracking-details
-  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`, read through the overlay."
+  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids]))
 
 (mu/defn fields-tracking-details
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
@@ -500,8 +484,7 @@
        (t2/exists? :model/Document :collection_id [:in collection-ids])
        (t2/exists? :model/Timeline :collection_id [:in collection-ids])
        (t2/exists? :model/Action :collection_id [:in collection-ids])
-       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+       (t2/exists? :model/Table {:where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
 
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
