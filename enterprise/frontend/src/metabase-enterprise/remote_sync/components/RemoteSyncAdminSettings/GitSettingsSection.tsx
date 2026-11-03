@@ -27,7 +27,7 @@ export const GitSettingsSection = () => {
       />
       <FormTextInput
         name={TOKEN_KEY}
-        label={t`Access Token`}
+        label={t`Access token`}
         description={
           <Text c="text-secondary" size="sm" lh="md" component="span">
             {t`Personal access token with write permissions`}
