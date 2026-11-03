@@ -10,8 +10,11 @@
 ;; the goal's own words, or common names for the thing, not words only the target card's text would suggest.
 ;; The user may also be an agent, which uses quotes and operators freely, so adapted queries may use any syntax
 ;; the engine supports.
-;; The vector arm keeps cards within cosine distance 0.7 of the query; with this model that admits unrelated
-;; cards and drops related ones, since both sit around 0.6 to 0.75.
+;; The vector arm keeps cards within cosine distance 0.7 of the query.
+;; With this model, wanted and unrelated cards overlap in distance, so the cutoff admits some unrelated cards and
+;; drops some wanted ones.
+;; Sometimes the wanted cards are still the nearest, and a looser cutoff would find them; sometimes an unrelated
+;; card is nearer, and no cutoff can.
 ;; Semantic search returns the union of a keyword arm and a vector arm.
 ;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
 ;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
@@ -254,6 +257,43 @@
            :appdb-h2       [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :C :D]}}}
+ {:id     "english-stem-prefix"
+  :focus  "English stems the final word before completing it"
+  :config "english"
+  :query  "shipping"
+  :docs   {:A {:name "Shipped orders"}
+           :B {:name "Shipments by carrier"}
+           :C {:name "Shipping costs"}
+           :D {:name "Ship dates"}
+           :E {:name "Membership tiers"}
+           :F {:name "Shopping carts"}}
+  ;; PostgreSQL stems "shipping" to "ship" and completes it, which finds every shipping card and not "Membership".
+  ;; Substring engines need the exact word.
+  :expect {:in-place       [:C]
+           :appdb-h2       [:C]
+           :appdb-postgres [:A :B :C :D]
+           :semantic       {:keyword [:A :B :C :D], :vector [:A :B :C :D]}}
+  :comparisons
+  ;; The shortest stem finds every shipping card on substring engines, and "Membership" too.
+  [{:focus   "anything about shipping"
+    :correct [:A :B :C :D]
+    :alternatives
+    {:in-place {:query "ship", :hits [:A :B :C :D :E]}
+     :appdb-h2 {:query "ship", :hits [:A :B :C :D :E]}}}]}
+ {:id     "simple-stem-prefix"
+  :focus  "same final word with simple, which completes it unstemmed"
+  :config "simple"
+  :query  "shipping"
+  :docs   {:A {:name "Shipped orders"}
+           :B {:name "Shipments by carrier"}
+           :C {:name "Shipping costs"}
+           :D {:name "Ship dates"}
+           :E {:name "Membership tiers"}
+           :F {:name "Shopping carts"}}
+  :expect {:in-place       [:C]
+           :appdb-h2       [:C]
+           :appdb-postgres [:C]
+           :semantic       {:keyword [:C], :vector [:A :B :C :D]}}}
  {:id     "not-literal"
   :focus  "not is an ordinary word, not a negation operator"
   :config "simple"
@@ -362,6 +402,110 @@
            :appdb-h2       [:D]
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
+ {:id     "possessive-apostrophe"
+  :focus  "an apostrophe splits a PostgreSQL word but is literal in substring search"
+  :config "simple"
+  :query  "customer's orders"
+  :docs   {:A {:name "Customer's orders"}
+           :B {:name "Customers orders"}
+           :C {:name "Customer orders"}
+           :D {:name "Orders"}}
+  ;; PostgreSQL reads "customer's" as "customer" and "s", and only the possessive card has a lone "s".
+  ;; H2 needs the apostrophe; in-place needs any one word.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A]
+           :semantic       {:keyword [:A], :vector [:A :B :C :D]}}
+  :comparisons
+  ;; Prefix completion finds "Customers" from "customer"; H2 finds both words as substrings.
+  [{:focus   "customer orders, however the possessive is written"
+    :correct [:A :B :C]
+    :alternatives
+    {:in-place       {:query "customer", :hits [:A :B :C]}
+     :appdb-h2       {:query "customer orders", :hits [:A :B :C]}
+     :appdb-postgres {:query "customer", :hits [:A :B :C]}
+     :semantic       {:query "customer", :hits [:A :B :C]}}}]}
+ {:id     "year-in-range"
+  :focus  "PostgreSQL reads the second year of a range as a negative number"
+  :config "simple"
+  :query  "2024"
+  :docs   {:A {:name "Revenue 2024"}
+           :B {:name "FY2024 revenue"}
+           :C {:name "Revenue 2023-2024"}
+           :D {:name "Ticket 20241 escalation"}
+           :E {:name "Revenue 2023"}}
+  ;; PostgreSQL parses "2023-2024" as "2023" and "-2024", and "FY2024" as one word, so it misses both.
+  ;; Prefix completion still matches the ticket number, as substring search does.
+  ;; The vector arm returns exactly the 2024 cards.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A :B :C :D]
+           :appdb-postgres [:A :D]
+           :semantic       {:keyword [:A :D], :vector [:A :B :C]}}
+  :comparisons
+  [{:focus   "cards about 2024"
+    :correct [:A :B :C]
+    :alternatives
+    {:appdb-postgres {:query "fy2024 or 2024", :hits [:A :B :D]}}}]}
+ {:id     "accent-literal"
+  :focus  "only the vector arm matches across an accent"
+  :config "simple"
+  :query  "cafe"
+  :docs   {:A {:name "Café sales"}
+           :B {:name "Cafe locations"}
+           :C {:name "Cafeteria costs"}
+           :D {:name "Coffee orders"}}
+  ;; Lexical engines treat "é" as a different letter, so "cafe" misses "Café sales" but matches "Cafeteria".
+  ;; The vector arm matches across the accent, and "Coffee orders" by meaning.
+  :expect {:in-place       [:B :C]
+           :appdb-h2       [:B :C]
+           :appdb-postgres [:B :C]
+           :semantic       {:keyword [:B :C], :vector [:A :B :D]}}
+  :comparisons
+  ;; Only the final PostgreSQL word is completed, so "cafe or café" keeps "Cafeteria" out.
+  [{:focus   "cafés, with or without the accent"
+    :correct [:A :B]
+    :alternatives
+    {:in-place       {:query "café cafe", :hits [:A :B :C]}
+     :appdb-h2       {:query "caf", :hits [:A :B :C]}
+     :appdb-postgres {:query "cafe or café", :hits [:A :B]}}}]}
+ {:id     "hyphenated-compound"
+  :focus  "PostgreSQL indexes a hyphenated word and its parts"
+  :config "simple"
+  :query  "e-commerce"
+  :docs   {:A {:name "E-commerce orders"}
+           :B {:name "Ecommerce revenue"}
+           :C {:name "E commerce returns"}
+           :D {:name "Commerce settings"}
+           :E {:name "Email campaigns"}}
+  ;; Each lexical engine finds only the hyphenated spelling; the vector arm finds all three.
+  :expect {:in-place       [:A]
+           :appdb-h2       [:A]
+           :appdb-postgres [:A]
+           :semantic       {:keyword [:A], :vector [:A :B :C]}}
+  :comparisons
+  ;; PostgreSQL also indexes "E-commerce" as "e" and "commerce", so "e commerce" matches it.
+  ;; Substring engines need the shared part, which "Commerce settings" also has.
+  [{:focus   "e-commerce, however spelled"
+    :correct [:A :B :C]
+    :alternatives
+    {:in-place       {:query "commerce", :hits [:A :B :C :D]}
+     :appdb-h2       {:query "commerce", :hits [:A :B :C :D]}
+     :appdb-postgres {:query "e commerce or ecommerce", :hits [:A :B :C]}}}]}
+ {:id     "camel-case-name"
+  :focus  "PostgreSQL indexes a camelCase name as one word"
+  :config "simple"
+  :query  "revenue"
+  :docs   {:A {:name "monthlyRevenue"}
+           :B {:name "MonthlyRevenueByRegion"}
+           :C {:name "monthly_revenue"}
+           :D {:name "Monthly revenue"}
+           :E {:name "Revenue"}}
+  ;; Substring engines find "revenue" inside the camelCase names, and PostgreSQL does not.
+  ;; Underscores separate PostgreSQL words, so it finds "monthly_revenue".
+  :expect {:in-place       [:A :B :C :D :E]
+           :appdb-h2       [:A :B :C :D :E]
+           :appdb-postgres [:C :D :E]
+           :semantic       {:keyword [:C :D :E], :vector [:A :C :D :E]}}}
  {:id     "english-phrase-stopword"
   :focus  "English stopword inside a positional phrase"
   :config "english"
@@ -378,14 +522,15 @@
   :comparisons
   ;; PostgreSQL keeps the stopword's position, so any word can fill it and C matches.
   ;; The user wants the sets, including "Salt & pepper shakers", which no phrase with "and" finds.
-  ;; Dropping the "and" and the quotes is the best a lexical engine can do, and it returns every card.
+  ;; Naming the items instead finds exactly the sets, except on H2, which cannot express OR and so names one.
+  ;; Any query that mentions salt and pepper brings the vector arm every card.
   [{:focus   "salt-and-pepper sets"
     :correct [:A :B]
     :alternatives
-    {:in-place       {:query "salt pepper", :hits [:A :B :C :D :E]}
-     :appdb-h2       {:query "salt pepper", :hits [:A :B :C :D :E]}
-     :appdb-postgres {:query "salt pepper", :hits [:A :B :C :D :E]}
-     :semantic       {:query "salt and pepper shaker sets", :hits [:A :B :C :D :E]}}}]}
+    {:in-place       {:query "shaker grinder", :hits [:A :B]}
+     :appdb-h2       {:query "shaker", :hits [:B]}
+     :appdb-postgres {:query "shaker or grinder", :hits [:A :B]}
+     :semantic       {:query "shakers and grinders", :hits [:A :B]}}}]}
  {:id     "simple-phrase-and"
   :focus  "same phrase with simple configuration retaining and"
   :config "simple"
@@ -559,28 +704,31 @@
            :appdb-h2       [:A :C]
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
- ;; The same controls with English, the default on an English-locale instance with a PostgreSQL app db.
- ;; Both words are English stopwords, so PostgreSQL cannot match them even when quoted.
- {:id     "english-or-word"
-  :focus  "same or control with English dropping or as a stopword"
-  :config "english"
-  :query  "or"
+ ;; Quoting the word makes PostgreSQL search for it instead of parsing an operator.
+ ;; Substring engines search for the quote marks too, so they find nothing.
+ ;; "and" behaves the same way.
+ {:id     "quoted-or-word"
+  :focus  "quoted or is a word for PostgreSQL but literal quotes for substring search"
+  :config "simple"
+  :query  "\"or\""
   :docs   {:A {:name "Refunds or returns"}
            :B {:name "Revenue"}
            :C {:name "Paid or trial users"}}
-  :expect {:in-place       [:A :C]
-           :appdb-h2       [:A :C]
-           :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}}
- {:id     "english-and-word"
-  :focus  "same and control with English dropping and as a stopword"
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres [:A :C]
+           :semantic       {:keyword [:A :C], :vector []}}}
+ ;; English, the default on an English-locale instance with a PostgreSQL app db, drops "or" as a stopword, so
+ ;; PostgreSQL cannot match it even when quoted.
+ {:id     "english-quoted-or-word"
+  :focus  "same quoted or with English dropping or as a stopword"
   :config "english"
-  :query  "and"
-  :docs   {:A {:name "Refunds and returns"}
+  :query  "\"or\""
+  :docs   {:A {:name "Refunds or returns"}
            :B {:name "Revenue"}
-           :C {:name "Salt and pepper grinders"}}
-  :expect {:in-place       [:A :C]
-           :appdb-h2       [:A :C]
+           :C {:name "Paid or trial users"}}
+  :expect {:in-place       []
+           :appdb-h2       []
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}}
  {:id     "field-term-agreement"
@@ -607,6 +755,18 @@
            :appdb-h2       [:A :B]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B]}}}
+ {:id     "case-agreement"
+  :focus  "letter case is ignored"
+  :config "simple"
+  :query  "REVENUE"
+  :docs   {:A {:name "Revenue"}
+           :B {:name "REVENUE BY REGION"}
+           :C {:name "revenue forecast"}
+           :D {:name "Orders"}}
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       [:A :B :C]
+           :appdb-postgres [:A :B :C]
+           :semantic       {:keyword [:A :B :C], :vector [:A :B :C]}}}
  {:id     "prefix-agreement"
   :focus  "final-word prefix without partial or infix distractors"
   :config "simple"
@@ -657,7 +817,7 @@
            :appdb-postgres [:C]
            :semantic       {:keyword [:C], :vector [:A :B :C]}}}
  ;; Vector-arm precision and recall on one realistic catalogue.
- ;; Cards that share a word or topic with the query sit around the 0.7 cutoff, on either side of it.
+ ;; In both scenarios an unrelated card is nearer the query than the wanted one, so no cutoff fixes them.
  {:id     "vector-noise"
   :focus  "the vector arm returns an unrelated card and misses the relevant one"
   :config "simple"
@@ -671,6 +831,7 @@
            :G {:name "Sales tax settings"}
            :H {:name "Support tickets"}}
   ;; "Sales team headcount" passes the cutoff; "Deals closed", the card this user wants, does not.
+  ;; At 0.85, "Deals closed" is farther than five other cards, including "Support tickets".
   :expect {:in-place       [:A :B :E :F :G]
            :appdb-h2       []
            :appdb-postgres []
@@ -687,6 +848,99 @@
            :F {:name "Salesforce sync errors"}
            :G {:name "Sales tax settings"}
            :H {:name "Support tickets"}}
+  ;; "Monthly sales", at 0.86, is farther than "Sales team headcount", at 0.83.
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}
+ ;; Queries whose words no card contains: a paraphrase, an acronym, another language, a misspelling.
+ {:id     "vector-paraphrase-hit"
+  :focus  "a paraphrase finds the card named for the idea"
+  :config "simple"
+  :query  "customers who stopped paying"
+  :docs   {:A {:name "Churned customers"}
+           :B {:name "Cancelled subscriptions"}
+           :C {:name "New customers"}
+           :D {:name "Customer lifetime value"}
+           :E {:name "Support tickets"}
+           :F {:name "Order volume"}}
+  ;; In-place matches "customers"; app-db needs every word.
+  :expect {:in-place       [:A :C]
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A]}}
+  :comparisons
+  ;; Lexical engines need the jargon word.
+  [{:focus   "churned customers"
+    :correct [:A]
+    :alternatives
+    {:in-place       {:query "churn", :hits [:A]}
+     :appdb-h2       {:query "churn", :hits [:A]}
+     :appdb-postgres {:query "churn", :hits [:A]}}}]}
+ {:id     "vector-acronym"
+  :focus  "the vector arm expands an acronym"
+  :config "simple"
+  :query  "MRR"
+  :docs   {:A {:name "Monthly recurring revenue"}
+           :B {:name "Annual recurring revenue"}
+           :C {:name "Monthly active users"}
+           :D {:name "Revenue by product"}
+           :E {:name "Marketing spend"}}
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :B]}}
+  :comparisons
+  ;; Spelling the acronym out is exact for app-db.
+  ;; It moves the vector arm toward every monthly and revenue card, so semantic does best with "MRR".
+  [{:focus   "monthly recurring revenue"
+    :correct [:A]
+    :alternatives
+    {:in-place       {:query "recurring", :hits [:A :B]}
+     :appdb-h2       {:query "monthly recurring revenue", :hits [:A]}
+     :appdb-postgres {:query "monthly recurring revenue", :hits [:A]}}}]}
+ {:id     "vector-multilingual"
+  :focus  "the vector arm matches a query in another language"
+  :config "simple"
+  :query  "ventas por región"
+  :docs   {:A {:name "Sales by region"}
+           :B {:name "Revenue by region"}
+           :C {:name "Customers by region"}
+           :D {:name "Monthly sales"}
+           :E {:name "Support tickets"}
+           :F {:name "Product inventory"}}
+  ;; In-place matches "por" inside "Support".
+  ;; The vector arm returns every regional card, nearest "Sales by region".
+  :expect {:in-place       [:E]
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :B :C]}}}
+ {:id     "vector-typo"
+  :focus  "the vector arm tolerates a misspelling among correct words"
+  :config "simple"
+  :query  "reveune by month"
+  :docs   {:A {:name "Revenue by month"}
+           :B {:name "Revenue by region"}
+           :C {:name "Orders by month"}
+           :D {:name "Support tickets"}
+           :E {:name "Customer reviews"}}
+  ;; In-place matches the other words; app-db needs the misspelled one too.
+  :expect {:in-place       [:A :B :C]
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:A :C]}}}
+ {:id     "vector-typo-alone"
+  :focus  "the cutoff drops the nearest cards for a lone misspelling"
+  :config "simple"
+  :query  "reveune"
+  :docs   {:A {:name "Revenue by month"}
+           :B {:name "Revenue by region"}
+           :C {:name "Orders by month"}
+           :D {:name "Support tickets"}
+           :E {:name "Customer reviews"}}
+  ;; Unlike vector-noise, the nearest cards are the wanted ones: both revenue cards sit at about 0.82, ahead of
+  ;; "Customer reviews" at 0.88.
+  ;; A looser cutoff would return them.
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-postgres []
