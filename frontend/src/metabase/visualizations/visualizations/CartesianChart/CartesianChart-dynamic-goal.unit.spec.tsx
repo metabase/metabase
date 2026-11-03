@@ -57,6 +57,11 @@ const MULTI_SERIES_ROWS = [
   ["Mar", 3, 30],
 ];
 
+const NORMALIZED_STACK_SETTINGS: VisualizationSettings = {
+  "graph.metrics": ["count", "sum"],
+  "stackable.stack_type": "normalized",
+};
+
 const GOAL_LABEL = "Target";
 
 const ANSWERED = createMockReferencedEntitiesResults({
@@ -256,6 +261,73 @@ describe("line chart with multiple series and a dynamic goal", () => {
     expect(screen.getByText("250")).toBeInTheDocument();
   });
 });
+
+describe("normalized stacked chart with a dynamic goal", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("reads the answered goal as a percentage of a stacked bar", async () => {
+    await setup({
+      cols: MULTI_SERIES_COLS,
+      display: "bar",
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 50,
+      }),
+      rows: MULTI_SERIES_ROWS,
+      settings: NORMALIZED_STACK_SETTINGS,
+    });
+
+    expectGoalLineHalfwayUpPercentAxis();
+  });
+
+  it("reads the answered goal as a percentage of a stacked area", async () => {
+    await setup({
+      cols: MULTI_SERIES_COLS,
+      display: "area",
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 50,
+      }),
+      rows: MULTI_SERIES_ROWS,
+      settings: NORMALIZED_STACK_SETTINGS,
+    });
+
+    expectGoalLineHalfwayUpPercentAxis();
+  });
+});
+
+function expectGoalLineHalfwayUpPercentAxis() {
+  // the axis stays within 0-100%, instead of stretching to a 50x stack
+  expect(screen.queryByText("5000%")).not.toBeInTheDocument();
+
+  const midpoint = (getTickY("0%") + getTickY("100%")) / 2;
+  expect(getGoalLineY()).toBeCloseTo(midpoint, 0);
+}
+
+function getTickY(label: string) {
+  const transform = screen.getByText(label).getAttribute("transform") ?? "";
+  const match = transform.match(/^translate\([\d.]+ ([\d.]+)\)$/);
+
+  if (match == null) {
+    throw new Error(`no y position in the ${label} tick transform`);
+  }
+
+  return Number(match[1]);
+}
+
+function getGoalLineY() {
+  // the goal line is drawn over its halo
+  const goalLine = Array.from(queryAllEChartsGoalLines()).at(-1);
+  const match = goalLine?.getAttribute("d")?.match(/^M[\d.]+ ([\d.]+)L/);
+
+  if (match == null) {
+    throw new Error("no goal line");
+  }
+
+  return Number(match[1]);
+}
 
 function createSeries({
   display,
