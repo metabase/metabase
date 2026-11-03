@@ -62,7 +62,11 @@
   MariaDB is not a MySQL alias: MySQL 8 dumps declare functional indexes (`KEY x ((case when ...)))`) that MariaDB
   cannot parse. It also needs two snapshots of its own, because `explicit_defaults_for_timestamp` changes the schema
   the very same migrations produce — see [[flavor]]."
-  #{:h2 :postgres :mysql :mariadb :mariadb-legacy-timestamp})
+  #{:h2
+    :mariadb
+    :mariadb-legacy-timestamp
+    :mysql
+    :postgres})
 
 (defn resource-path
   "Classpath location of the snapshot file for `version` and `flavor`, relative to `test_resources`."

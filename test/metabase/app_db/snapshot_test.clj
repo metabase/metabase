@@ -72,10 +72,19 @@
   - `ordinal_position` is a column's physical position, and a table rebuilt by a later changeset can hold the same
     columns in a different order. Where it means position *within an index* it is used for ordering before being
     dropped, so composite index column order is still compared."
-  #{:table_cat :table_schem :pktable_cat :pktable_schem :fktable_cat :fktable_schem
-    :index_name :index_qualifier :pk_name :fk_name
-    :cardinality :pages
-    :ordinal_position})
+  #{:cardinality
+    :fk_name
+    :fktable_cat
+    :fktable_schem
+    :index_name
+    :index_qualifier
+    :ordinal_position
+    :pages
+    :pk_name
+    :pktable_cat
+    :pktable_schem
+    :table_cat
+    :table_schem})
 
 (defn- comparable-row
   "A metadata row with the columns above dropped, and a `DEFAULT NULL` collapsed onto no default at all.
@@ -218,7 +227,11 @@
   "Columns migrations fill with freshly generated values — NanoIDs, password hashes, salts. Two runs never agree on
   them, so they are dropped before rows are compared. If a migration starts seeding randomness into some other column
   this test will fail on that column; add it here."
-  #{"ENTITY_ID" "PASSWORD" "PASSWORD_SALT" "RESET_TOKEN" "CREDENTIALS"})
+  #{"CREDENTIALS"
+    "ENTITY_ID"
+    "PASSWORD"
+    "PASSWORD_SALT"
+    "RESET_TOKEN"})
 
 (def ^:private unstable-id-tables
   "Tables whose auto-generated `id` two migration runs can disagree on.
@@ -235,7 +248,7 @@
   `databasechangelog_version` is here for a different reason. A loaded snapshot has no version rows, so the first
   run against it backfills one for the snapshot's deployment, which the per-major split then replaces. That uses up
   an id a full replay never does, and every later row is numbered one higher."
-  #{"METABOT_PERMISSIONS" "TRANSFORM_JOB_TRANSFORM_TAG" "DATABASECHANGELOG_VERSION"})
+  #{"DATABASECHANGELOG_VERSION" "METABOT_PERMISSIONS" "TRANSFORM_JOB_TRANSFORM_TAG"})
 
 (defn- unstable-columns
   "Columns of `table` whose values two separate migration runs cannot be expected to share: wall-clock times, the

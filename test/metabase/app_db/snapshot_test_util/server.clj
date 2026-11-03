@@ -23,35 +23,36 @@
   workflow starts its own servers with, and `ready` is run over TCP because the temporary server both the MySQL and
   Postgres images run during initialization listens on a unix socket only -- polling that would return ready while
   the real server is still coming up."
-  {:postgres                 {:image "postgres:14-alpine"
-                              :port  5432
+  {:postgres                 {:image   "postgres:14-alpine"
+                              :port    5432
                               :db-type :postgres
-                              :env   {"POSTGRES_USER" "mb_test", "POSTGRES_DB" "mb_test"
-                                      "POSTGRES_HOST_AUTH_METHOD" "trust"}
-                              :user  "mb_test"
-                              :db    "mb_test"
-                              :ready ["pg_isready" "-h" "127.0.0.1" "-p" "5432" "-U" "mb_test" "-d" "mb_test"]}
-   :mysql                    {:image "mysql:8.0"
-                              :port  3306
+                              :env     {"POSTGRES_USER"             "mb_test"
+                                        "POSTGRES_DB"               "mb_test"
+                                        "POSTGRES_HOST_AUTH_METHOD" "trust"}
+                              :user    "mb_test"
+                              :db      "mb_test"
+                              :ready   ["pg_isready" "-h" "127.0.0.1" "-p" "5432" "-U" "mb_test" "-d" "mb_test"]}
+   :mysql                    {:image   "mysql:8.0"
+                              :port    3306
                               :db-type :mysql
-                              :env   {"MYSQL_ALLOW_EMPTY_PASSWORD" "true", "MYSQL_DATABASE" "mb_test"}
-                              :user  "root"
-                              :db    "mb_test"
-                              :ready ["mysql" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}
-   :mariadb                  {:image "mariadb:12.2"
-                              :port  3306
+                              :env     {"MYSQL_ALLOW_EMPTY_PASSWORD" "true", "MYSQL_DATABASE" "mb_test"}
+                              :user    "root"
+                              :db      "mb_test"
+                              :ready   ["mysql" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}
+   :mariadb                  {:image   "mariadb:12.2"
+                              :port    3306
                               :db-type :mysql
-                              :env   {"MARIADB_ALLOW_EMPTY_ROOT_PASSWORD" "true", "MARIADB_DATABASE" "mb_test"}
-                              :user  "root"
-                              :db    "mb_test"
-                              :ready ["mariadb" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}
-   :mariadb-legacy-timestamp {:image "metabase/mariadb:10.6"
-                              :port  3306
+                              :env     {"MARIADB_ALLOW_EMPTY_ROOT_PASSWORD" "true", "MARIADB_DATABASE" "mb_test"}
+                              :user    "root"
+                              :db      "mb_test"
+                              :ready   ["mariadb" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}
+   :mariadb-legacy-timestamp {:image   "metabase/mariadb:10.6"
+                              :port    3306
                               :db-type :mysql
-                              :env   {"MARIADB_ALLOW_EMPTY_ROOT_PASSWORD" "true", "MARIADB_DATABASE" "mb_test"}
-                              :user  "root"
-                              :db    "mb_test"
-                              :ready ["mariadb" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}})
+                              :env     {"MARIADB_ALLOW_EMPTY_ROOT_PASSWORD" "true", "MARIADB_DATABASE" "mb_test"}
+                              :user    "root"
+                              :db      "mb_test"
+                              :ready   ["mariadb" "--protocol=TCP" "-h127.0.0.1" "-P3306" "-uroot" "-e" "SELECT 1"]}})
 
 (def ^:private ready-timeout-ms (* 3 60 1000))
 
@@ -104,8 +105,11 @@
       (.start c)
       (wait-until-ready! c ready)
       (f {:db-type db-type
-          :details {:host (.getHost c), :port (.getMappedPort c (int port))
-                    :user user, :password "", :db db}
+          :details {:host     (.getHost c)
+                    :port     (.getMappedPort c (int port))
+                    :user     user
+                    :password ""
+                    :db       db}
           :exec!   (fn [& args] (exec! c args))})
       (finally
         (.stop c)))))
