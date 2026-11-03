@@ -248,15 +248,17 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       H.seedSecurityAdvisories([DOWNLOADABLE_ADVISORY]);
 
       cy.log("The backend stores and returns download_jar_urls");
-      cy.request("GET", "/api/ee/security-center/advisories").then(({ body }) => {
-        const advisory = body.advisories.find(
-          (a: { advisory_id: string }) => a.advisory_id === "TEST-DL",
-        );
-        expect(advisory.download_jar_urls).to.deep.equal([
-          { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
-          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
-        ]);
-      });
+      cy.request("GET", "/api/ee/security-center/advisories").then(
+        ({ body }) => {
+          const advisory = body.advisories.find(
+            (a: { advisory_id: string }) => a.advisory_id === "TEST-DL",
+          );
+          expect(advisory.download_jar_urls).to.deep.equal([
+            { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
+            { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+          ]);
+        },
+      );
 
       cy.visit("/admin/security-center");
 

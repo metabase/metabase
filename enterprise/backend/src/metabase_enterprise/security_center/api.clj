@@ -65,8 +65,8 @@
    [:acknowledged_at [:maybe ms/TemporalInstant]]])
 
 (api.macros/defendpoint :get "/advisories" :- [:map
-                                     [:last_checked_at [:maybe ms/TemporalInstant]]
-                                     [:advisories [:sequential AdvisoryResponse]]]
+                                               [:last_checked_at [:maybe ms/TemporalInstant]]
+                                               [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
   (api/check-superuser)
