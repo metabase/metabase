@@ -1,3 +1,4 @@
+import { QueryStatus } from "@reduxjs/toolkit/query";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,10 +8,12 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { delay } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
+import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -75,16 +78,13 @@ type SetupOpts = {
 function mockRootCollectionRequest(
   rootCollectionRequest: NonNullable<SetupOpts["rootCollectionRequest"]>,
 ) {
+  const rootCollection = defer<Collection>();
   fetchMock.removeRoutes({ names: ["collection-root"] });
   fetchMock.get(
     "path:/api/collection/root",
-    rootCollectionRequest === "fails"
-      ? 403
-      : async () => {
-          await delay(300);
-          return createMockCollection(ROOT_COLLECTION);
-        },
+    rootCollectionRequest === "fails" ? 403 : () => rootCollection.promise,
   );
+  return () => rootCollection.resolve(createMockCollection(ROOT_COLLECTION));
 }
 
 async function setup({ rootCollectionRequest }: SetupOpts = {}) {
@@ -94,8 +94,9 @@ async function setup({ rootCollectionRequest }: SetupOpts = {}) {
 
   mockCollectionItemsEndpoint();
 
+  let resolveRootCollection = () => {};
   if (rootCollectionRequest) {
-    mockRootCollectionRequest(rootCollectionRequest);
+    resolveRootCollection = mockRootCollectionRequest(rootCollectionRequest);
     setupCollectionItemsEndpoint({
       collection: COLLECTIONS.PERSONAL,
       collectionItems: [
@@ -104,7 +105,7 @@ async function setup({ rootCollectionRequest }: SetupOpts = {}) {
     });
   }
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <SavedEntityPicker
       type="question"
       onSelect={jest.fn()}
@@ -112,6 +113,18 @@ async function setup({ rootCollectionRequest }: SetupOpts = {}) {
     />,
   );
   await waitForLoaderToBeRemoved();
+
+  return { store, resolveRootCollection };
+}
+
+function hasLoadedCollectionsTree(
+  store: Awaited<ReturnType<typeof setup>>["store"],
+) {
+  return Object.values(store.getState()["metabase-api"].queries).some(
+    (query) =>
+      query?.endpointName === "listCollectionsTree" &&
+      query.status === QueryStatus.fulfilled,
+  );
 }
 
 describe("SavedEntityPicker", () => {
@@ -136,7 +149,13 @@ describe("SavedEntityPicker", () => {
   });
 
   it("opens on Our analytics when the root collection loads after the collections", async () => {
-    await setup({ rootCollectionRequest: "loads-after-collections" });
+    const { store, resolveRootCollection } = await setup({
+      rootCollectionRequest: "loads-after-collections",
+    });
+
+    // answer "Our analytics" only once the collections tree has loaded
+    await waitFor(() => expect(hasLoadedCollectionsTree(store)).toBe(true));
+    resolveRootCollection();
 
     await screen.findByText("Our analytics");
     const options = await screen.findAllByTestId("option-text");
