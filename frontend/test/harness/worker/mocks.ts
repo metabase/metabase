@@ -152,6 +152,11 @@ export function requireActualFile(file: string): unknown {
 export function forgetMockExports(): void {
   mockExports.clear();
   actualModules.clear();
+  // The stubs live outside the project, so eviction spares them, and their
+  // cached exports would hand out the old mock objects.
+  for (const stubFile of stubFiles.values()) {
+    delete require.cache[stubFile];
+  }
 }
 
 /**
@@ -164,11 +169,6 @@ export function resetMocksForNextFile(): void {
     factories.set(key, factory);
   }
   forgetMockExports();
-  // The stubs live outside the project, so eviction spares them, and their
-  // cached exports would hand the next file objects from the old graph.
-  for (const stubFile of stubFiles.values()) {
-    delete require.cache[stubFile];
-  }
 }
 
 /**
