@@ -79,17 +79,16 @@
   {:arglists '([model event])}
   (fn [model _event] (keyword model)))
 
+;; This exists because Toucan cannot see database-level `ON DELETE CASCADE`.
+;; A consumer that tracks rows of *other* tables has no way to learn which ones a delete took with it: by the time
+;; the event arrives they are already gone, and their identity was never derivable from the deleted rows alone.
 (defmulti dependents
   "Identify whatever else the statement is about to destroy, while it still exists.
   Called with the pre-image `rows`, before the statement runs; the return value rides on the event as
   `:dependents`, and nil (the default) leaves the key off.
-
-  This exists because Toucan cannot see database-level `ON DELETE CASCADE`. A consumer that tracks rows of
-  *other* tables has no way to learn which ones a delete took with it: by the time the event arrives they are
-  already gone, and their identity was never derivable from the deleted rows alone.
-
-  Implementations run on the calling thread inside the statement's transaction. They may query — nothing has
-  failed yet at this point — but their failures propagate and abort the caller's delete, so keep them narrow."
+  Implementations run on the calling thread inside the statement's transaction.
+  They may query, since nothing has failed yet at this point, but their failures propagate and abort the caller's
+  delete, so keep them narrow."
   {:arglists '([model rows])}
   (fn [model _rows] (keyword model)))
 
