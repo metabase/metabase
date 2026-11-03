@@ -9,6 +9,8 @@ import {
   Button,
   Card,
   Group,
+  Icon,
+  Loader,
   Stack,
   Text,
   Title,
@@ -24,7 +26,6 @@ import {
 } from "../../api";
 import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
 import { HealthCheckItems } from "../HealthCheckItems/HealthCheckItems";
-import { RecheckButton } from "../RecheckButton/RecheckButton";
 import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
 import { RECHECK_ALL_CACHE_KEY, getHealthCheckSettingsUrl } from "../utils";
 
@@ -93,13 +94,15 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
               {t`Open settings`}
             </Button>
           )}
-          <RecheckButton
-            isRechecking={isRechecking}
-            isDisabled={isRecheckingAll}
+          <Button
+            leftSection={
+              isRechecking ? <Loader size="1rem" /> : <Icon name="sync" />
+            }
+            disabled={isRechecking || isRecheckingAll}
             onClick={handleRecheck}
           >
             {t`Re-check`}
-          </RecheckButton>
+          </Button>
           {showMetabaseLinks && (
             <Button component={ExternalLink} href={docsUrl} variant="subtle">
               {t`Read the docs`}

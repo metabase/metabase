@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Group, Stack, Title } from "metabase/ui";
+import { Button, Group, Icon, Loader, Stack, Title } from "metabase/ui";
 import type { HealthCheck } from "metabase-types/api";
 
 import {
@@ -16,7 +16,6 @@ import {
 } from "../../api";
 import { HealthCheckGroup } from "../HealthCheckGroup/HealthCheckGroup";
 import { HealthChecksSummary } from "../HealthChecksSummary/HealthChecksSummary";
-import { RecheckButton } from "../RecheckButton/RecheckButton";
 import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
 import {
   HEALTH_CHECK_STATUSES,
@@ -95,13 +94,16 @@ export const HealthChecksPage = () => {
       <Group gap="sm" justify="space-between">
         <Title order={1}>{t`Health checks`}</Title>
         {hasChecks && (
-          <RecheckButton
+          <Button
             variant="subtle"
-            isRechecking={isRecheckingAll}
+            leftSection={
+              isRecheckingAll ? <Loader size="1rem" /> : <Icon name="sync" />
+            }
+            disabled={isRecheckingAll}
             onClick={handleRecheckAll}
           >
             {t`Re-check all`}
-          </RecheckButton>
+          </Button>
         )}
       </Group>
       <HealthChecksContent
