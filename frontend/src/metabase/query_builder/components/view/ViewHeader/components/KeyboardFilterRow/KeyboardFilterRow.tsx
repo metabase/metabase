@@ -26,8 +26,9 @@ interface KeyboardFilterRowProps {
 
 /**
  * Prototype: the filters of the question as one expression bar, with OR and
- * parentheses typed between the pills. On data where filters apply as the
- * user changes them, every valid expression applies at once.
+ * parentheses typed between the pills. Every valid expression applies at
+ * once. On slow data, the question does not run again: the result only goes
+ * out of date.
  */
 export function KeyboardFilterRow({
   question,
@@ -39,7 +40,6 @@ export function KeyboardFilterRow({
   const query = question.query();
   const autoApply = useContext(FilterAutoApplyContext);
   const latestQuestion = useLatest(question);
-  const isAutoApply = autoApply?.isEnabled(query) ?? false;
 
   const setQuery = (newQuery: Lib.Query) => {
     const question = latestQuestion.current;
@@ -69,7 +69,7 @@ export function KeyboardFilterRow({
     >
       <FilterExpressionBar
         query={query}
-        isAutoApply={isAutoApply}
+        isAutoApply
         openKey={draftKey}
         onFold={onRemoveDraft}
         onChange={setQuery}

@@ -6,7 +6,7 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
@@ -76,7 +76,6 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       ) : null}
       <VisualizationDirtyState
         {...props}
-        estimateHint={estimateHint}
         hidden={!isDirtyStateShown}
         className={S.overlay}
       />
@@ -158,9 +157,7 @@ type VisualizationDirtyStateProps = {
   isResultDirty?: boolean;
   runQuestionQuery?: () => void;
   cancelQuery?: () => void;
-  onResetChanges?: () => void;
   hidden?: boolean;
-  estimateHint?: string | null;
 };
 
 export const VisualizationDirtyState = ({
@@ -168,9 +165,7 @@ export const VisualizationDirtyState = ({
   isRunning,
   runQuestionQuery,
   cancelQuery,
-  onResetChanges,
   hidden,
-  estimateHint,
 }: VisualizationDirtyStateProps) => {
   const keyboardShortcut = getRunQueryShortcut();
 
@@ -197,27 +192,21 @@ export const VisualizationDirtyState = ({
       gap="sm"
       data-testid="run-button-overlay"
     >
-      {/* Prototype: a larger run button with the shortcut inside, on a
-          tinted result. */}
+      {/* Prototype: a white play button on a tinted result, with the
+          shortcut in its tooltip. */}
       {!hidden && (
-        <button
-          className={S.runPill}
-          aria-label={t`Refresh`}
-          data-testid="run-button"
-          onClick={handleClick}
-        >
-          <Icon name="play" size={20} />
-          {t`Run`}
-          <span className={S.runPillShortcut}>{keyboardShortcut}</span>
-          {estimateHint != null && (
-            <span className={S.runPillHint}>{estimateHint}</span>
-          )}
-        </button>
-      )}
-      {!hidden && onResetChanges != null && (
-        <button className={S.resetButton} onClick={onResetChanges}>
-          {t`Reset changes instead`}
-        </button>
+        <Tooltip label={keyboardShortcut}>
+          <ActionIcon
+            className={S.runButton}
+            variant="default"
+            size="lg"
+            aria-label={t`Refresh`}
+            data-testid="run-button"
+            onClick={handleClick}
+          >
+            <Icon name="play" size={24} c="icon-brand" />
+          </ActionIcon>
+        </Tooltip>
       )}
     </Flex>
   );

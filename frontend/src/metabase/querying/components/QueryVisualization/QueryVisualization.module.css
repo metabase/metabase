@@ -44,9 +44,9 @@
   }
 }
 
-/* Prototype: the result is out of date. A tint on the result, a large run
-   button, and a button that puts back the question of the result. */
-/* Only the buttons react to clicks, so the overlay has the default cursor. */
+/* Prototype: the result is out of date. A tint on the result and a large run
+   button. Only the button reacts to clicks, so the overlay has the default
+   cursor. */
 .root .overlay.dirtyTint,
 .root .overlay.dirtyTint:hover {
   cursor: default;
@@ -57,60 +57,35 @@
   );
 }
 
-/* Prototype: looks like a large primary button. */
-.runPill {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  min-width: 9rem;
-  padding: 0.875rem 2.5rem 0.75rem;
+/* Prototype: a large white play button over the tinted result, as in the
+   Figma: 96 x 64px, and a play triangle of about 18 x 20px. The triangle
+   takes 9.5px of the 16px icon, so the icon is 34px. */
+.runButton {
+  --mb-ai-icon-size: 2.125rem;
+
+  width: 6rem;
+  height: 4rem;
   border: none;
   border-radius: 999px;
-  background-color: var(--mb-color-button-filled-brand-default);
-  box-shadow: 0 4px 16px var(--mb-color-shadow-default);
-  color: var(--mb-color-button_label-filled-brand-default);
-  font: inherit;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.15s ease-out;
 }
 
-.runPill:hover {
-  background-color: var(--mb-color-button-filled-brand-hover);
+/* Wins over the shadow of the action icon. */
+.root .runButton[data-variant] {
+  box-shadow: var(--mantine-shadow-xs_outline);
 }
 
-.runPillShortcut {
-  font-size: 0.75rem;
-  font-weight: normal;
-  opacity: 0.8;
+/* The triangle is 1px left of the centre of the icon, and the Figma puts it
+   2px right of the centre of the button, to centre it optically. */
+.runButton svg {
+  transform: translateX(3px);
 }
 
-.runPillHint {
-  font-size: 0.75rem;
-  font-weight: normal;
-  opacity: 0.8;
+/* The hover colour of the default variant is translucent: over the tint, the
+   button must stay opaque. */
+.root .runButton[data-variant]:hover:not([data-loading]) {
+  background-color: var(--mb-color-button-on_dark_primary-neutral-hover);
 }
 
-.resetButton {
-  padding: 0.125rem 0.625rem;
-  border: none;
-  border-radius: 999px;
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-background_surface-primary) 70%,
-    transparent
-  );
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  backdrop-filter: blur(12px) saturate(180%);
-  color: var(--mb-color-text-primary);
-  font: inherit;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  transition: background-color 0.15s ease-out;
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-primary);
-  }
+.root .runButton[data-variant]:active:not([data-loading]) {
+  background-color: var(--mb-color-button-on_dark_primary-neutral-pressed);
 }
