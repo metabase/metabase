@@ -24,6 +24,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.quartz]
    [metabase.classloader.core :as classloader]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
    [metabase.task.job-factory :as job-factory]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -41,15 +43,24 @@
 ;;; |                                               SCHEDULER INSTANCE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
-  *quartz-scheduler*
-  (atom nil))
+(def ^:private scheduler-component
+  (system/mutable-component-handle ::scheduler))
+
+;; There is no scheduler until [[init-scheduler!]] makes one, but the component exists from load time, so reads
+;; return nil rather than throwing. Reloading this namespace leaves an installed scheduler alone.
+(when-not (mc/root-entry scheduler-component)
+  (mc/alter-root scheduler-component nil))
+
+(defn scheduler-handle
+  "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the Quartz scheduler.
+  Bind it to run code against another scheduler; deref it, or use [[scheduler]], for the one this thread sees."
+  []
+  scheduler-component)
 
 (defn scheduler
-  "Fetch the instance of our Quartz scheduler."
+  "The Quartz scheduler this thread sees, or nil before [[init-scheduler!]] and after [[stop-scheduler!]]."
   ^Scheduler []
-  @*quartz-scheduler*)
+  @scheduler-component)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
@@ -120,10 +131,10 @@
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
   (classloader/the-classloader)
-  (when-not @*quartz-scheduler*
+  (when-not (scheduler)
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
-      (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
+      (when (mc/compare-and-set! scheduler-component nil new-scheduler)
         (qs/standby new-scheduler)
         (job-factory/add-to-scheduler new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
@@ -152,7 +163,7 @@
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
   []
-  (let [[old-scheduler] (reset-vals! *quartz-scheduler* nil)]
+  (let [[old-scheduler] (mc/reset-vals! scheduler-component nil)]
     (when old-scheduler
       (qs/shutdown old-scheduler))))
 

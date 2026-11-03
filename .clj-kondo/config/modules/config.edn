@@ -2926,6 +2926,7 @@
    :module-exports #{task.history task.secure-delegate}
    :api  #{metabase.task.core}
    :uses #{app-db
+           global-system
            tracing
            util
            util.classloader}}
