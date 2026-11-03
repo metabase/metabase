@@ -10,6 +10,7 @@ import type {
   GoalForeignColumnRef,
   MeasureId,
   ReferencedEntityType,
+  RowValue,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -72,10 +73,13 @@ const MEASURE_SOURCE = {
   },
 };
 
+const EMBEDDABLE_CHART_NAME = "Embeddable chart with a dynamic goal";
+
 type AnsweredReference = {
   type?: ReferencedEntityType;
   id: CardId | MeasureId;
-  rows: DatasetData["rows"];
+  column: string;
+  value: RowValue;
 };
 
 const ORDERS_COUNT_QUERY = {
@@ -137,7 +141,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
       .should("contain.text", "400");
     assertGoalLineValue("400");
     cy.get<CardId>("@singleColumnSourceId").then((id) => {
-      assertAnswered("@dataset", { id, rows: [[400]] });
+      assertAnswered("@dataset", { id, column: "TARGET", value: 400 });
     });
 
     cy.log("The goal line follows the viz type");
@@ -198,7 +202,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
     assertGoalLineValue("600");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@cardQuery", { id, rows: [[600]] });
+      assertAnswered("@cardQuery", { id, column: "HIGH", value: 600 });
     });
 
     cy.log("Goal-based alerts are offered for a dynamic goal");
@@ -208,6 +212,18 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.popover()
       .should("contain.text", "When results go above the goal")
       .and("contain.text", "When results go below the goal");
+    cy.realPress("Escape");
+    H.modal().button("Cancel").click();
+    H.modal().should("not.exist");
+
+    cy.log("A goal picked on a saved question resolves before it is saved");
+    H.openVizSettingsSidebar();
+    H.vizSettingsSidebar().within(() => {
+      cy.findByRole("tab", { name: "Display" }).click();
+      cy.findByRole("button", { name: "Change value source" }).click();
+    });
+    H.popover().findByRole("menuitem", { name: /LOW/ }).click();
+    assertGoalLineValue("300");
   });
 
   it("should resolve the goal of number, gauge and progress charts from a metric, a question and a measure", () => {
@@ -240,7 +256,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.findByTestId("scalar-value").realHover();
     H.tooltip().should("contain.text", "18,760 - 1");
     cy.get<CardId>("@metricSourceId").then((id) => {
-      assertAnswered("@dataset", { id, rows: [[18760]] });
+      assertAnswered("@dataset", { id, column: "count", value: 18760 });
     });
 
     cy.log("Gauge: search skips questions, as measures and metrics exist");
@@ -272,7 +288,12 @@ describe("scenarios > visualizations > dynamic goals", () => {
     pickGoalSource(MEASURE_SOURCE.name);
     H.queryBuilderMain().findByText("Goal 100").should("be.visible");
     cy.get<MeasureId>("@measureSourceId").then((id) => {
-      assertAnswered("@dataset", { type: "measure", id, rows: [[100]] });
+      assertAnswered("@dataset", {
+        type: "measure",
+        id,
+        column: "max",
+        value: 100,
+      });
     });
   });
 
@@ -286,6 +307,8 @@ describe("scenarios > visualizations > dynamic goals", () => {
             query: ORDERS_COUNT_BY_MONTH_QUERY,
             display: "line",
             visualization_settings: {
+              // visible data points leave the goal marker as the only hover target
+              "line.marker_enabled": true,
               "graph.metrics": ["count"],
               "graph.dimensions": ["CREATED_AT"],
               "graph.show_goal": true,
@@ -310,7 +333,11 @@ describe("scenarios > visualizations > dynamic goals", () => {
       H.getDashboardCard(0).within(() => {
         H.goalLine().should("exist");
       });
-      assertAnswered("@dashcardQuery", { id: sourceId, rows: [[400]] });
+      assertAnswered("@dashcardQuery", {
+        id: sourceId,
+        column: "TARGET",
+        value: 400,
+      });
     });
 
     cy.log("A goal set on the dashcard works before it is saved");
@@ -340,6 +367,13 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.modal()
       .findByRole("button", { name: "Change value source" })
       .should("contain.text", "300");
+    cy.get<CardId>("@multiColumnSourceId").then((id) => {
+      assertAnswered("@dataset", { id, column: "LOW", value: 300 });
+    });
+    H.modal().within(() => {
+      H.goalLineMarker().trigger("mousemove");
+    });
+    H.tooltip().should("contain.text", "300");
     H.saveDashcardVisualizerModal();
     H.saveDashboard();
 
@@ -350,7 +384,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
     H.getDashboardCard(1).findByText("Goal 600").should("be.visible");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@dashcardQuery", { id, rows: [[300]] });
+      assertAnswered("@dashcardQuery", { id, column: "LOW", value: 300 });
     });
   });
 
@@ -372,11 +406,13 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.get<CardId>("@singleColumnSourceId").then((sourceId) => {
       H.createQuestionAndDashboard({
         questionDetails: {
-          name: "Embeddable chart with a dynamic goal",
+          name: EMBEDDABLE_CHART_NAME,
           query: ORDERS_COUNT_BY_MONTH_QUERY,
           display: "line",
           enable_embedding: true,
           visualization_settings: {
+            // visible data points leave the goal marker as the only hover target
+            "line.marker_enabled": true,
             "graph.metrics": ["count"],
             "graph.dimensions": ["CREATED_AT"],
             "graph.show_goal": true,
@@ -403,21 +439,30 @@ describe("scenarios > visualizations > dynamic goals", () => {
           H.documentContent().within(() => {
             H.goalLine().should("exist");
           });
-          assertAnswered("@cardQuery", { id: sourceId, rows: [[400]] });
+          assertAnswered("@cardQuery", {
+            id: sourceId,
+            column: "TARGET",
+            value: 400,
+          });
 
           cy.log("Public document");
           H.visitPublicDocument("@documentId");
           H.goalLine().should("exist");
           assertAnswered("@publicDocumentCardQuery", {
             id: sourceId,
-            rows: [[400]],
+            column: "TARGET",
+            value: 400,
           });
 
           cy.log("Public question");
           cy.signInAsAdmin();
           H.visitPublicQuestion(questionId);
           H.goalLine().should("exist");
-          assertAnswered("@publicCardQuery", { id: sourceId, rows: [[400]] });
+          assertAnswered("@publicCardQuery", {
+            id: sourceId,
+            column: "TARGET",
+            value: 400,
+          });
 
           cy.log("Public dashboard");
           cy.signInAsAdmin();
@@ -425,7 +470,8 @@ describe("scenarios > visualizations > dynamic goals", () => {
           H.goalLine().should("exist");
           assertAnswered("@publicDashcardQuery", {
             id: sourceId,
-            rows: [[400]],
+            column: "TARGET",
+            value: 400,
           });
 
           cy.log("Static embed of a question");
@@ -435,7 +481,11 @@ describe("scenarios > visualizations > dynamic goals", () => {
             params: {},
           });
           H.goalLine().should("exist");
-          assertAnswered("@embedCardQuery", { id: sourceId, rows: [[400]] });
+          assertAnswered("@embedCardQuery", {
+            id: sourceId,
+            column: "TARGET",
+            value: 400,
+          });
 
           cy.log("Static embed of a dashboard");
           cy.signInAsAdmin();
@@ -446,7 +496,8 @@ describe("scenarios > visualizations > dynamic goals", () => {
           H.goalLine().should("exist");
           assertAnswered("@embedDashcardQuery", {
             id: sourceId,
-            rows: [[400]],
+            column: "TARGET",
+            value: 400,
           });
         },
       );
@@ -631,7 +682,7 @@ function assertGoalLineValue(value: string) {
 
 function assertAnswered(
   alias: string,
-  { type = "card", id, rows }: AnsweredReference,
+  { type = "card", id, column, value }: AnsweredReference,
 ) {
   cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
     const answers = interceptions.flatMap(
@@ -641,11 +692,21 @@ function assertAnswered(
     const isAnswered = answers.some(
       (answer) =>
         answer.status === "completed" &&
-        Cypress._.isEqual(answer.data.rows, rows),
+        getAnsweredValue(answer.data, column) === value,
     );
 
-    expect(isAnswered, `${type} ${id} answered with ${rows}`).to.equal(true);
+    expect(isAnswered, `${type} ${id} answered ${column} = ${value}`).to.equal(
+      true,
+    );
   });
+}
+
+function getAnsweredValue(
+  { cols, rows }: Pick<DatasetData, "cols" | "rows">,
+  column: string,
+) {
+  const index = cols.findIndex((col) => col.name === column);
+  return index === -1 ? undefined : rows[0]?.[index];
 }
 
 function createDocumentWithCard(cardId: CardId): DocumentContent {
