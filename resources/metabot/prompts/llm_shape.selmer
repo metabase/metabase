@@ -194,7 +194,7 @@ The chart is powered by the following queries:
 </chart>
 {% endif %}
 {% if is_chart %}
-<chart id="{{chart_id}}" type="{{chart_type}}" query-id="{{chart_query_id}}">
+<chart id="{{chart_id}}" type="{{chart_type}}"{% if chart_query_id %} query-id="{{chart_query_id}}"{% endif %}>
 Chart link: metabase://chart/{{chart_id}}
 </chart>
 {% endif %}

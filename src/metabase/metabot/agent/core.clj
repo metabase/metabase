@@ -462,13 +462,13 @@
           (:user_is_viewing context)))
 
 (defn chart-config->chart
-  "Create chart structure from chart-config"
-  [id {:keys [query timeline_events] :as chart-config}]
-  {:chart_id id
-   ;; `id` is the same viewing-context item id seed-state stores this chart's query
-   ;; under; reusing it as :query_id lets edit_chart carry a query-id through (see
-   ;; extract-charts below) instead of leaving charts seeded this way uncaptured.
-   :query_id id
+  "Create chart structure from chart-config.
+  `query-id` is the ID that seed-state stores the chart's query under, or nil if it stores no query for the chart."
+  [chart-id query-id {:keys [query timeline_events] :as chart-config}]
+  {:chart_id chart-id
+   ;; edit_chart carries :query_id through (see extract-charts). It is never a card ID: run_query runs the saved
+   ;; card by that ID.
+   :query_id query-id
    :queries [query]
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
@@ -482,7 +482,7 @@
   (reduce
    ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
    ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
-   (fn [acc {:keys [id chart_configs] :as _item}]
+   (fn [acc {:keys [id chart_configs] :as item}]
      ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
      (if-not (seq chart_configs)
        acc
@@ -490,7 +490,10 @@
                (into {}
                      (map (comp
                            (juxt :chart_id identity)
-                           (partial chart-config->chart id)))
+                           ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
+                           (partial chart-config->chart
+                                    (str id)
+                                    (first (extract-query-from-context-item item)))))
                      chart_configs))))
    state
    (:user_is_viewing context)))
@@ -503,7 +506,6 @@
   [context]
   (let [seeded (-> {} (seed-state context) (seed-charts context))]
     (into (set (keys (:queries seeded)))
-          (map str)
           (keys (:charts seeded)))))
 
 ;;; Main loop
