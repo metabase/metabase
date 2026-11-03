@@ -40,6 +40,7 @@
    :duplicate-new-id                   [:map {:closed true} [:id :int]]
    :missing-dashcard-id                [:map {:closed true}]
    :unknown-dashcard                   [:map {:closed true} [:dashcard-id :any]]
+   :unknown-card                       [:map {:closed true} [:card-id :any]]
    :missing-tab-id                     [:map {:closed true}]
    :unknown-tab                        [:map {:closed true} [:tab-id :any]]
    :no-free-space                      [:map {:closed true} [:tab-id [:maybe :int]]]
@@ -132,12 +133,12 @@
   (update state coll (partial filterv #(not= id (:id %)))))
 
 (defn- move-row
-  "Move the row with `id` so it sits at `index` among the remaining rows; nil when `index` falls
-   outside `[0, count-after-removal]`."
+  "Move the row with `id` so it sits at `index` among the remaining rows.
+   Nil when `index` is not an integer in `[0, count-after-removal]`."
   [state coll id index]
   (let [row   (find-row state coll id)
         rest* (filterv #(not= id (:id %)) (get state coll))]
-    (when (<= 0 index (count rest*))
+    (when (and (integer? index) (<= 0 index (count rest*)))
       (assoc state coll (vec (concat (subvec rest* 0 index) [row] (subvec rest* index)))))))
 
 (defn- map-rows
@@ -537,6 +538,8 @@
 
 (defmethod apply-op "add_parameter"
   [state {:keys [parameter_id] :as op}]
+  (when (nil? parameter_id)
+    (fail! :missing-parameter-id))
   (when (find-row state :parameters parameter_id)
     (fail! :parameter-exists {:parameter-id parameter_id}))
   (insert-row state :parameters
@@ -734,27 +737,52 @@
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
+(defn card-refs
+  "The ids of the cards `op` references.
+   Those are the cards it puts on the dashboard, and the card a parameter it adds or updates draws its values from.
+   The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
+  [op]
+  (remove nil?
+          (case (:op op)
+            "add_card"                           (cons (:card_id op) (:series op))
+            "replace_card"                       [(:card_id op)]
+            "set_series"                         (:card_ids op)
+            ("add_parameter" "update_parameter") [(get-in op [:values_source_config :card_id])]
+            nil)))
+
+(defn- check-cards-resolved!
+  "Every card `op` references must be in the caller's `cards` map.
+   The caller leaves out the cards its user cannot read, so this is where an op naming one fails."
+  [state op]
+  (doseq [card-id (card-refs op)
+          :when   (not (contains? (::cards state) card-id))]
+    (fail! :unknown-card {:card-id card-id})))
+
 (defn- apply-op-at
-  "Runs [[apply-op]] on `op`, the op at `idx`.
+  "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved.
    Adds `:op-index` and `:op-name` to any error it throws."
   [state idx op]
   (try
-    (apply-op state op)
+    ;; The card check runs second, so an op that is malformed in some other way reports that instead.
+    (doto (apply-op state op)
+      (check-cards-resolved! op))
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (error-data e)]
                (ex-info (ex-message e) (assoc data :op-index idx :op-name (:op op)) e)
                e)))))
 
 (defn compile-ops
-  "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
-   return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
-   saves. New rows carry the caller's negative ids. `cards` maps every card id the ops may touch
-   to its card row; this namespace does no I/O, so the caller resolves that. Throws an error from
-   [[errors]] on the first invalid op; read it with [[error-data]]."
-  ([current ops] (compile-ops current ops {}))
-  ([current ops cards]
-   (-> (reduce-kv apply-op-at
-                  (init-state current cards)
-                  (vec ops))
-       check-tab-coverage!
-       (select-keys [:dashcards :tabs :parameters]))))
+  "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
+   Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
+   New rows carry the caller's negative ids.
+   The `cards` map holds the row of each card the ops may touch, keyed by id.
+   It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
+   It leaves out cards the user cannot read.
+   This namespace does no I/O, so the caller resolves them.
+   Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
+  [current ops cards]
+  (-> (reduce-kv apply-op-at
+                 (init-state current cards)
+                 (vec ops))
+      check-tab-coverage!
+      (select-keys [:dashcards :tabs :parameters])))
