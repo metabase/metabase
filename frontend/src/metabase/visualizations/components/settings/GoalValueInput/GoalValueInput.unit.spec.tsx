@@ -842,7 +842,7 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith("count");
   });
 
-  it("opens the root menu when clicking the pill of a single-column source", async () => {
+  it("opens the root menu when clicking the pill of this question's only numeric column", async () => {
     setup({
       data: createMockDatasetData({
         cols: [
@@ -866,6 +866,48 @@ describe("GoalValueInput", () => {
         name: /Value from another question/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the root menu when clicking the pill of another question with a single numeric column", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({
+            name: "total",
+            display_name: "Total",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "total",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Total/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("resolves a measure reference and treats it as a single-column source", async () => {
