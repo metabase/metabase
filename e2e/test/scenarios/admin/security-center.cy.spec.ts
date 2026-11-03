@@ -273,6 +273,11 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
   describe("health checks", () => {
     const checkGroup = (name: RegExp) => cy.findByRole("region", { name });
 
+    const openCheckGroup = (name: RegExp) => {
+      cy.findByRole("button", { name, expanded: false }).click();
+      return checkGroup(name);
+    };
+
     const siteUrlCheck = () =>
       cy.findByTestId("health-check-card-https-site-url");
 
@@ -292,8 +297,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
         .click();
 
       cy.log("The check moves to Passed");
-      cy.findByRole("button", { name: /Passed/ }).click();
-      checkGroup(/Passed/).within(() => {
+      openCheckGroup(/Passed/).within(() => {
         siteUrlCheck().should("be.visible");
       });
     });
