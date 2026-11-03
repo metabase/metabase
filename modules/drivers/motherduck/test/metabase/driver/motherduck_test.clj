@@ -423,6 +423,31 @@
 ;;; |                                MotherDuck copies of Postgres-only tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(deftest native-query-static-analysis-test
+  (mt/test-driver :motherduck
+    ;; `:dependencies/native`. SQLGlot parses with the DuckDB dialect, so DuckDB-only syntax, here FROM-first and
+    ;; `* EXCLUDE`, must still resolve; unqualified names resolve against the `main` schema.
+    (let [mp     (mt/metadata-provider)
+          table  (lib.metadata/table mp (mt/id :venues))
+          column (:name (lib.metadata/field mp (mt/id :venues :name)))
+          query  #(lib/native-query mp (format % (:name table) column))]
+      (testing "native-query-deps"
+        (doseq [sql ["SELECT \"%2$s\" FROM \"%1$s\""
+                     "SELECT \"%2$s\" FROM main.\"%1$s\""
+                     "FROM \"%1$s\" SELECT \"%2$s\""
+                     "SELECT * EXCLUDE (\"%2$s\") FROM \"%1$s\""]]
+          (testing sql
+            (is (= #{{:table (mt/id :venues)}}
+                   (driver/native-query-deps :motherduck (query sql)))))))
+      (testing "native-result-metadata"
+        (is (=? [{:name column}]
+                (driver/native-result-metadata :motherduck (query "FROM \"%1$s\" SELECT \"%2$s\"")))))
+      (testing "validate-native-query-fields"
+        (is (= #{}
+               (driver/validate-native-query-fields :motherduck (query "SELECT \"%2$s\" FROM \"%1$s\""))))
+        (is (=? [{:type :missing-column, :name "xix"}]
+                (vec (driver/validate-native-query-fields :motherduck (query "SELECT \"%2$s\", xix FROM \"%1$s\"")))))))))
+
 ;; MotherDuck inherits this behaviour from `:postgres`, but these tests need different SQL, setup or expectations
 ;; here, so they're copies of tests in `metabase.driver.postgres-test` rather than shared with it.
 
