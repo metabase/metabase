@@ -1,10 +1,11 @@
 #!/usr/bin/env bb
-;; Prints one tab-separated line per deftest that a ./bin/test-agent run selected:
+;; Prints one tab-separated line per deftest or defspec that a ./bin/test-agent run selected:
 ;;
 ;;   <status>  <test file>  <namespace>/<test name>  <expected and actual, or the exception>
 ;;
 ;; Status is PASSED, FAILED (an `is` disagreed), ERROR (the test threw) or LOAD_ERROR (the run stopped before any test
 ;; ran, usually because a namespace failed to compile). Tests that the run's `:only` did not select are left out.
+;; A warning goes to stderr when the run's test count differs from the number of lines printed.
 ;;
 ;;   bb test-agent-summary.bb <test-agent-output> <checkout-root> <test-file> [<test-file> ...]
 ;;
@@ -56,10 +57,17 @@
       (str "expected: " (truncate (labelled-line after "expected:") (quot max-message-length 2))
            " | actual: " (truncate actual (quot max-message-length 2))))))
 
-(defn- load-error-line [lines]
-  (or (some #(when (re-find #"Syntax error|Could not locate|Unable to resolve|No such var|Exception" %) (str/trim %))
-            lines)
-      "the run stopped before any test ran"))
+(defn- load-error-line
+  "The two-line report the Clojure CLI prints last, which names the file and line, or else the first line that mentions
+  an error."
+  [lines]
+  (let [lines  (vec lines)
+        report (last (keep-indexed #(when (re-find #"^(Syntax|Execution) error" %2) %1) lines))]
+    (if report
+      (str/join " " (map str/trim (subvec lines report (min (count lines) (+ report 2)))))
+      (or (some #(when (re-find #"Syntax error|Could not locate|Unable to resolve|No such var|Exception" %) (str/trim %))
+                lines)
+          "the run stopped before any test ran"))))
 
 (let [[output-file root & test-files] *command-line-args*]
   (when (or (nil? root) (empty? test-files))
@@ -76,17 +84,25 @@
                         (some #(re-find (header "ERROR") %) lines) "ERROR"
                         (some #(re-find (header "FAIL") %) lines)  "FAILED"
                         :else                                      "PASSED")))]
-    (doseq [file  test-files
-            :let  [path                        (if (.isAbsolute (io/file file)) (io/file file) (io/file root file))
-                   {ns-name :ns, tests :tests} (test-names path)]
-            test  tests
-            :when (selected? selection ns-name test)
-            :let  [qualified-name (str ns-name "/" test)
-                   status         (status-of qualified-name)]]
-      (println (str/join "\t" [status
-                               file
-                               qualified-name
-                               (case status
-                                 "PASSED"     ""
-                                 "LOAD_ERROR" (load-error-line lines)
-                                 (first-failure-line lines qualified-name status))])))))
+    (let [rows (for [file  test-files
+                     :let  [path                        (if (.isAbsolute (io/file file)) (io/file file) (io/file root file))
+                            {ns-name :ns, tests :tests} (test-names path)]
+                     test  tests
+                     :when (selected? selection ns-name test)
+                     :let  [qualified-name (str ns-name "/" test)
+                            status         (status-of qualified-name)]]
+                 [status
+                  file
+                  qualified-name
+                  (case status
+                    "PASSED"     ""
+                    "LOAD_ERROR" (load-error-line lines)
+                    (first-failure-line lines qualified-name status))])
+          ran  (some #(some-> (re-find #"^Ran (\d+) tests in [\d.]+ seconds" %) second parse-long) lines)]
+      (doseq [row rows]
+        (println (str/join "\t" row)))
+      ;; PASSED only means no FAIL or ERROR header names the test, so a selected test that never ran would print it too.
+      (when (and ran (not= ran (count rows)))
+        (binding [*out* *err*]
+          (println (str "warning: the run reports " ran " tests but " (count rows) " are listed above."
+                        " A PASSED line may be a test that never ran.")))))))

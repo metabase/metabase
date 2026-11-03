@@ -96,6 +96,8 @@ Follow these rules for backend files:
 
 - `mt/user-http-request` takes a test user (`:crowberto` is an admin, `:rasta` is not), a method, the expected status, and the path without `/api/`.
 - `mt/with-temp` creates rows that are deleted after the body. Models are named like `:model/Card`, `:model/Dashboard`, `:model/Collection`.
+- A setting or endpoint whose surface in `context.md` lists `:feature :sso-saml` (or any other feature) works only inside `(mt/with-premium-features #{:sso-saml} ...)`. Outside it, reading the setting returns its default and writing it throws.
+- `(mt/with-temporary-setting-values [some-setting "value"] ...)` sets a setting for the length of the body and puts the old value back afterwards. A setting `foo` is read with `(foo)` and written with `(foo! "value")` from the namespace that defines it.
 - Queries against the sample data go through `(mt/run-mbql-query venues {:filter [:= $price 1]})` and friends.
 - In query results a joined column's `:name` is its own column name, with `_2` added when another column already has it (`ID_2`). The join alias appears only in its `:display_name`, as in `"Model → Category ID"`.
 

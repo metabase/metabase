@@ -69,4 +69,5 @@ Count Jest test cases, so each `it.each` row counts once, and count backend `def
 - Harness repairs: <number>, listed in `repairs.md`.
 - Not read: <Linear issues that could not be fetched, or "nothing">.
 - Uncommitted changes in the checkout, which were not tested: <"none" or the list>.
+- Commits on the branch after the PR head, which the PR description does not cover: <"none", "no PR" or the list>.
 ````

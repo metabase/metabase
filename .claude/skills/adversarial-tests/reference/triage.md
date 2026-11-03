@@ -15,7 +15,7 @@ Sort every failure into one of two kinds:
 
 You may change only these parts of a test:
 
-- import paths and imported names,
+- import paths and imported names, including a misnamed var behind a required alias (`No such var: sso-settings/jwt-idp-uri`), when the test's own setup or title names the var it means,
 - mock endpoints and their responses, when the response is a well-formed default (an empty list, a mock entity),
 - provider, store and router setup,
 - fixture construction, to make a fixture valid,
@@ -30,7 +30,7 @@ You must not change these parts:
 
 This applies to blind tests too. You have seen the diff, so a repair to a blind test must be mechanical: if fixing it needs knowledge of how the code works, drop the test as unrunnable instead. Write every repair to `repairs.md` as one line: the file, the test, what was wrong and what you changed.
 
-Repair at most twice per file, rerunning after each round. A test still failing with a harness error after that is unrunnable. Delete it from the head worktree, and record it in `triage.tsv` with the verdict `unrunnable`.
+Repair at most twice per file, rerunning after each round. Label the reruns `head-1-r1` and `head-1-r2`. After a backend `LOAD_ERROR`, rerun every generated namespace, because none of their tests ran. In `triage.tsv`, the head-1 column holds each test's result from the last run that included it, and `repairs.md` keeps the history. A test still failing with a harness error after two rounds is unrunnable. Delete it from the head worktree, and record it in `triage.tsv` with the verdict `unrunnable`.
 
 ## 3. Rerun every failure once
 

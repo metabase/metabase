@@ -39,31 +39,47 @@
       (= :meta (n/tag nm))                         (n/string (last (code-children nm)))
       :else                                        (n/string nm))))
 
+(defn- vector-node?
+  "A vector, or a vector with a type hint such as `^Boolean [s]`."
+  [node]
+  (or (= :vector (n/tag node))
+      (and (= :meta (n/tag node))
+           (= :vector (some-> (last (code-children node)) n/tag)))))
+
 (defn- arg-vector-index
   "Index of the first vector in `children` that is neither a `:-` schema nor a defmethod's dispatch value."
   [children]
   (let [method? (str/ends-with? (n/string (first children)) "defmethod")]
     (first (keep-indexed (fn [i child]
-                           (when (and (= :vector (n/tag child))
+                           (when (and (vector-node? child)
                                       (not (and (pos? i) (= ":-" (n/string (nth children (dec i))))))
                                       (not (and method? (= i 2))))
                              i))
                          children))))
 
+(declare name-and-doc)
+
 (defn- up-to-arg-vector
-  "Children up to and including the argument vector, or each arity's argument vector for a multi-arity form."
+  "Children up to and including the argument vector, or each arity's argument vector for a multi-arity form.
+  A form with neither prints only its name and docstring, because its other children can be function bodies."
   [node]
   (let [children (code-children node)
-        idx      (arg-vector-index children)]
-    (if idx
+        idx      (arg-vector-index children)
+        arities  (filter #(and (= :list (n/tag %))
+                               (= :vector (some-> (first (code-children %)) n/tag)))
+                         children)]
+    (cond
+      idx
       (str "(" (str/join " " (map n/string (take (inc idx) children))) " …)")
-      (let [arities (filter #(and (= :list (n/tag %))
-                                  (= :vector (some-> (first (code-children %)) n/tag)))
-                            children)
-            prefix  (take-while #(not (some #{%} arities)) children)]
+
+      (seq arities)
+      (let [prefix (take-while #(not (some #{%} arities)) children)]
         (str "(" (str/join " " (map n/string prefix)) "\n  "
              (str/join "\n  " (map #(str "(" (n/string (first (code-children %))) " …)") arities))
-             ")")))))
+             ")"))
+
+      :else
+      (name-and-doc node))))
 
 (defn- literal-value?
   "A def whose value is a literal or a schema vector is surface, as long as it is short."
@@ -76,6 +92,23 @@
         doc              (first (filter #(#{:token :multi-line} (n/tag %)) (take 1 more)))
         doc?             (and doc (str/starts-with? (n/string doc) "\""))]
     (str "(" (n/string head) " " (n/string nm) (when doc? (str " " (n/string doc))) " …)")))
+
+(defn- literal? [node]
+  (case (n/tag node)
+    (:token :multi-line :regex) true
+    (:vector :map :set)         (every? literal? (code-children node))
+    false))
+
+(defn- setting-form
+  "A defsetting with its description and options. Option values that are code print as `…`, so `:getter` and
+  `:setter` bodies stay out."
+  [node]
+  (let [[head nm desc & opts] (code-children node)]
+    (str "(" (n/string head) " " (n/string nm)
+         (when desc (str "\n  " (n/string desc)))
+         (str/join (for [[k v] (partition-all 2 opts)]
+                     (str "\n  " (n/string k) (when v (str " " (if (literal? v) (n/string v) "…"))))))
+         ")")))
 
 (defn- surface-form [node]
   (let [head (head-name node)
@@ -91,7 +124,8 @@
       (and (#{"def" "defonce"} base)
            (literal-value? node))       (n/string node)
       (#{"def" "defonce"} base)         (name-and-doc node)
-      (#{"defmulti" "defsetting"} base) (name-and-doc node)
+      (= base "defsetting")             (setting-form node)
+      (= base "defmulti")               (name-and-doc node)
       :else                             (up-to-arg-vector node))))
 
 (defn- parse-ranges [spec]

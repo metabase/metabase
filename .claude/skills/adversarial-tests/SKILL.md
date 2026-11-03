@@ -55,16 +55,42 @@ local/adversarial-tests/<run-id>/
 
 With no arguments, the target is the current branch. With `--pr <number>`, the target is that PR's head commit, which can be someone else's PR. Set `REPO` to the repo root (`git rev-parse --show-toplevel`), pick the run id, and create `RUN_DIR=$REPO/local/adversarial-tests/<run-id>` with `context/issues/` and `runs/` inside it. Every command below runs from `$REPO`. A command that needs another directory changes into it inside a subshell, so the session's working directory stays at `$REPO`.
 
-### 2. Set up the head and parent worktrees
+### 2. Find the PR and set up the head and parent worktrees
+
+The parent commit is the merge-base with the PR's base branch, so the PR is found before the merge-base is taken. A stacked PR has a base other than master, and a merge-base against master would make the whole stack look like this PR's change.
 
 For the current branch:
 
 ```bash
-git fetch origin master
 HEAD_SHA=$(git rev-parse HEAD)
-MERGE_BASE=$(git merge-base origin/master HEAD)
 git status --porcelain   # uncommitted changes are not tested; say so if this prints anything
+gh pr view --repo metabase/metabase \
+  --json number,title,body,url,baseRefName,headRefName,headRefOid,closingIssuesReferences,isDraft \
+  > "$RUN_DIR/context/pr.json" || rm -f "$RUN_DIR/context/pr.json"
 ```
+
+`gh pr view` finds a PR only when the branch tracks it or has the same name as its head branch. A branch made with `git checkout -b <name> FETCH_HEAD` after `git fetch origin pull/<n>/head` gets "no pull requests found". When that happens, search the open PRs for the branch's recent commits, newest first, and take the first PR whose head is one of them:
+
+```bash
+for sha in $(git rev-list -n 20 HEAD); do
+  n=$(gh pr list --repo metabase/metabase --state open --search "$sha" --json number,headRefOid \
+    --jq "[.[] | select(.headRefOid == \"$sha\") | .number][0] // empty")
+  [[ -n "$n" ]] && break
+done
+[[ -n "$n" ]] && gh pr view "$n" --repo metabase/metabase \
+  --json number,title,body,url,baseRefName,headRefName,headRefOid,closingIssuesReferences,isDraft \
+  > "$RUN_DIR/context/pr.json"
+```
+
+Then take the merge-base against the PR's base branch, or against master when no PR was found:
+
+```bash
+BASE=$(jq -r .baseRefName "$RUN_DIR/context/pr.json" 2>/dev/null || echo master)
+git fetch origin "$BASE"
+MERGE_BASE=$(git merge-base "origin/$BASE" HEAD)
+```
+
+If the PR's `headRefOid` is not `HEAD_SHA`, the branch has commits the PR description does not cover, so say so in the report.
 
 For `--pr <number>`:
 
@@ -79,7 +105,7 @@ git fetch origin "$BASE"
 MERGE_BASE=$(git merge-base "origin/$BASE" "$HEAD_SHA")
 ```
 
-A stacked PR has a base other than master, and its merge-base is taken against that base. Then create both worktrees and prepare them:
+Then create both worktrees and prepare them:
 
 ```bash
 WT="${TMPDIR:-/tmp}/metabase-adversarial-tests/<run-id>"
@@ -96,7 +122,7 @@ Each worktree gets its own install. A symlink to the main checkout's `node_modul
 
 ### 3. Gather the author's intent
 
-For a PR, `context/pr.json` already holds the title and body. When you target the current branch, look for its PR with `gh pr view --json number,title,body,url,baseRefName,closingIssuesReferences` and save it to the same path if one exists.
+`context/pr.json` holds the title and body when step 2 found a PR. When it did not, the blind context uses the branch's commit messages, and the issue references below come from `git log --format=%B "$MERGE_BASE"..HEAD` instead of a PR body.
 
 For each entry in `closingIssuesReferences`, and for any `#<number>` or `metabase/metabase/issues/<number>` link in the body, save the issue:
 
@@ -107,7 +133,7 @@ gh issue view <n> --repo metabase/metabase --json number,title,body \
 
 `gh issue view` also returns pull requests, and a `#<number>` in a PR body is often a related PR. Skip any number whose `gh issue view <n> --json url` URL contains `/pull/`, because another PR's description says nothing about what this one intends.
 
-For Linear issue ids in the body or branch name, match `[A-Za-z]{2,5}-[0-9]+` and uppercase the result, because branch names are usually lowercase (`sec-1343-model-metadata-positional-names`). Then run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. Without it, note in the report that the Linear issue was not read.
+For Linear issue ids in the body or branch name, match `\b[A-Za-z]{2,5}-[0-9]+\b` and uppercase the result, because branch names are usually lowercase (`sec-1343-model-metadata-positional-names`). Then run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. The pattern also matches ordinary words followed by a number, such as `TRIAL-79483` in the branch `adv-trial-79483`, so delete the file for any id the fetch does not find. Without the key, note in the report which ids were not read.
 
 ### 4. Name the risks
 
@@ -182,7 +208,7 @@ A running REPL is attached to one checkout, so it cannot run the parent commit's
 
 ### 9. Report and clean up
 
-Fill in `reference/report-template.md` and write it to `report.md`. Then:
+Fill in `reference/report-template.md` and write it to `report.md`. Inside a subagent, the Write tool refuses `report.md` with "Subagents should return findings as text, not write report files", so write the same content to `report.txt` and also return it as the subagent's answer. Then:
 
 1. Copy every generated file to `tests/<generator>/<repo-relative path>.txt`.
 2. Remove both worktrees with `git worktree remove --force <path>`, then run `git worktree prune`.
