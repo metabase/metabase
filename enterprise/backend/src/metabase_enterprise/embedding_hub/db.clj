@@ -4,7 +4,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn user-database-exists?
@@ -22,8 +21,7 @@
 (mu/defn upload-table-exists-in-database?
   "Whether the Database with `database-id` holds an active uploaded Table."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table {:from [(warehouse-schema-overlay/table-query)]
-                            :where [:and
+  (t2/exists? :model/Table {:where [:and
                                     [:= :active true]
                                     [:= :is_upload true]
                                     [:= :db_id database-id]]}))

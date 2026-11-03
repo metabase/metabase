@@ -7,7 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private ConditionKey
@@ -167,15 +166,12 @@
   (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The `columns` of the instance of `model` with `id`, or nil."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
   (t2/select-one (into [model] columns)
-                 :id id
-                 (if (= model :model/Table)
-                   {:from [(warehouse-schema-overlay/table-query)]}
-                   {})))
+                 :id id))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -226,15 +222,15 @@
     :model/Field   {:alias  "f"
                     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:metabase_field :f]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
+                    :join   [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}
+                    :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]}
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
+                    :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
   "The name, table id, collection id, and table name of the `model-key` (Field, Segment, Measure, or Action) instance
@@ -323,7 +319,7 @@
   (or (t2/exists? :model/TableUserSettings :table_id table-id)
       (t2/exists? :model/FieldUserSettings
                   {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
+                   :join  [[(t2/table-name :model/Field) :f]
                            [:= :f.id :u.field_id]]
                    :where [:= :f.table_id table-id]})))
 
@@ -442,8 +438,7 @@
        (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
        (t2/exists? :model/Document :collection_id [:in collection-ids])
        (t2/exists? :model/Timeline :collection_id [:in collection-ids])
-       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+       (t2/exists? :model/Table {:where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
 
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."

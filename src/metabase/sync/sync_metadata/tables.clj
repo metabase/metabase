@@ -182,13 +182,13 @@
   is the app-DB Table instance we already hold, so we don't re-select it."
   [database :- i/DatabaseInstance
    existing :- (ms/InstanceOf :model/Table)]
-  (sync.db/update-table! (:id existing)
-                         (cond-> (cruft-dependent-cols existing database ::reactivate)
-                           ;; do not unhide tables w/ cruft settings
-                           (some? (:visibility_type existing)) (dissoc :visibility_type)
-                           true                                (assoc :active true)
-                           (:is_sample database)               (assoc :data_authority :ingested
-                                                                      :data_source    :ingested))))
+  (sync-util/update-table-unless-user-set! (:id existing)
+                                           (cond-> (cruft-dependent-cols existing database ::reactivate)
+                                             ;; do not unhide tables w/ cruft settings
+                                             (some? (:visibility_type existing)) (dissoc :visibility_type)
+                                             true                                (assoc :active true)
+                                             (:is_sample database)               (assoc :data_authority :ingested
+                                                                                        :data_source    :ingested))))
 
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
@@ -298,7 +298,7 @@
                  v))
     (boolean
      (when (seq changes)
-       (sync.db/update-table! (:id metabase-table) changes)
+       (sync-util/update-table-unless-user-set! (:id metabase-table) changes)
        true))))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int

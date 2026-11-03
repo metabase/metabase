@@ -4,7 +4,6 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -127,7 +126,7 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           (field-user-settings/unset-user-settings!
+           (field-user-settings/unset-field-user-settings!
             (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
            {:base_type           new-base-type
             :effective_type      new-base-type
@@ -145,7 +144,7 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (field-user-settings/unset-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
+           (field-user-settings/unset-field-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
            {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
@@ -235,7 +234,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (sync.db/update-field! (u/the-id metabase-field) updates)))
+             (pos? (sync-util/update-field-unless-user-set! (u/the-id metabase-field) updates)))
       1
       0)))
 

@@ -6,6 +6,7 @@
    [metabase.sync.analyze.interestingness :as sync.interestingness]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 ;;; Smoke tests for the canonical weight profiles. The sync step itself is verified
@@ -152,8 +153,7 @@
                    :model/Table    table    {:db_id (:id database)}
                    :model/Field    visible  {:table_id (:id table)}
                    :model/Field    hidden   {:table_id (:id table)}]
-      (t2/insert! :model/FieldUserSettings {:field_id        (:id hidden)
-                                            :visibility_type :sensitive})
+      (field-user-settings/upsert-field-user-settings! hidden {:visibility_type :sensitive})
       (is (= {:fields-scored 1 :fields-failed 0}
              (#'sync.interestingness/score-missing-leftovers! database)))
       (is (some? (score-of visible)))

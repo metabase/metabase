@@ -142,7 +142,7 @@
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                          (assoc (get-field) :json_unfolding v)))
+                                                                          {:json_unfolding v}))
                     set-json-unfolding-for-db! (fn [v]
                                                  (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -189,7 +189,7 @@
                   get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                   set-json-unfolding-for-field! (fn [v]
                                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                        (assoc field :json_unfolding v)))
+                                                                        {:json_unfolding v}))
                   set-json-unfolding-for-db! (fn [v]
                                                (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
