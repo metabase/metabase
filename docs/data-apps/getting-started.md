@@ -13,7 +13,7 @@ summary: A step-by-step guide to using an AI coding agent to build a data app wi
 
 This page is a step-by-step guide to using an AI coding agent to build a [data app](./build.md) with Metabase.
 
-The basic setup:
+The basic workflow:
 
 - You build an app locally with an agent.
 - You can preview the app on your machine.
@@ -32,7 +32,7 @@ You do these steps once.
 
 ### 1. Make sure you have tables published to your Library
 
-Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library.
+Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library. If you haven't created your Semantic Layer yet:
 
 1. Click the **grid** icon in the upper right, and select **Data Studio**.
 2. In the left sidebar, click **Semantic layer**. If Metabase asks you to create your semantic layer, click **Create my semantic layer**.
@@ -46,16 +46,16 @@ If your Metabase already syncs in Read-only mode, and the tables that your app n
 Skip this step if your Metabase already syncs with a Git repository.
 
 1. Create a new repository on GitHub, GitLab, or Bitbucket, and initialize it with a README file. See [Set up a repository](../data-modeling/semantic-layer/remote-sync.md#1-set-up-a-repository-to-store-your-content).
-2. Create an access token that can read and write content  from the repository. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase).
+2. Create an access token that can read and write content from the repository. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase).
 3. On your Metabase, go to **Admin** > **Settings** > **Remote sync**.
 4. In **Repository URL**, enter the repository's URL, for example `https://github.com/your-org/your-repo`.
 5. Since this is your production Metabase, you should select **Read-only**. This means that everything in Library must be edited through Remote Sync. In Read-only mode, you and your agent won't be able to update the Library via the app or CLI. If you're just trying out Remote Sync for data apps, you can set it to Read-Write.
 6. In **Access Token**, paste the token.
 7. Click **Set up remote sync**.
 
-Metabase pulls from the repository's default branch, usually `main`. 
+Metabase pulls from the repository's default branch, usually `main`.
 
-**Anyone who can push to the repository can change the content in your Metabase, so give write access only to people that you trust as admins.** For auto-sync, local repositories, and the other options, see [Remote sync](../data-modeling/semantic-layer/remote-sync.md).
+**Anyone who can push to the repository can change the content in your Metabase, so give write access only to people that you trust as admins.**
 
 This guide assumes your Remote Sync setup in your production Metabase is set to "Read only."
 
@@ -87,13 +87,15 @@ The CLI offers to open Metabase in your browser. Sign in with your admin account
 
 ### 5. Add the metabase-cli skill to your agent
 
-The [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) tells your agent how to use the CLI, and how to build data apps. To add the skill to Claude Code, run:
+The [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) is the only skill you need to add to your agent. It tells your agent to use the CLI and to load the skills that come with the CLI, including the skills for building data apps. Those bundled skills update when you upgrade the CLI. To add the skill to Claude Code, run:
 
 ```sh
 npx skills add metabase/agent-skills --skill metabase-cli -a claude-code
 ```
 
 For other ways to install the skill, check out [The metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill).
+
+If you can't add the skill to your agent, tell your agent to run `mb skills get data-app` before it starts on the app.
 
 ### 6. Clone the repository
 
@@ -104,7 +106,7 @@ git clone https://github.com/your-org/your-repo
 cd your-repo
 ```
 
-Your agent works in this folder, on the branch that your production Metabase pulls from. To find that branch, go to **Admin** > **Settings** > **Remote sync** on your production Metabase, and look at **Sync branch**. It's probably `main` or `master`. 
+Your agent works in this folder, on the branch that your production Metabase pulls from. To find that branch, go to **Admin** > **Settings** > **Remote sync** on your production Metabase, and look at **Sync branch**. It's probably `main` or `master`.
 
 ## Build the app
 
