@@ -1596,6 +1596,22 @@ describe("GoalValueInput", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("says so when the picked measure has no result column", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 4, model: "measure", name: "Revenue" }),
+    ]);
+    setupMeasureEndpoint(createMockMeasure({ id: 4, name: "Revenue" }));
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Revenue");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   describe("opening the source in a new tab", () => {
     const NEW_TAB_HINT = `${METAKEY}+click to open in new tab`;
 
