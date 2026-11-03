@@ -998,6 +998,8 @@
       :metadata_tables_xml metadata-tables
       :metadata_models_xml metadata-models
       :metadata_questions_xml metadata-questions
+      ;; a curated-only Metabot omits `query_json`, and the export can return nil
+      :metadata_questions_have_query (boolean (some (comp repr-data->llm-block :query_json) questions))
       :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 
 (defn transform->xml
