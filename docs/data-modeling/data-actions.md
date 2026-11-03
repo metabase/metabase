@@ -12,7 +12,7 @@ redirect_from:
 
 _Data Studio > Data actions_
 
-Data actions let people change the data in your database. For example, you can create a data action to update a record in a table, like to add/edit/delete a product, customer, or order.
+Data actions let people change the data in your database. For example, a data action can add a product, update a customer's address, or mark an order as refunded.
 
 Each data action does one job: it inserts, updates, or deletes rows. An admin sets up the action once, and people can only make the changes that the action allows.
 
@@ -21,7 +21,7 @@ You can run data actions in two ways:
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
 
-Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md), and you can't add data actions as buttons to dashboards.
+Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md), and you can't add data actions as buttons to dashboards. For a [dashboard button](../dashboards/actions.md), use a model action.
 
 If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
 
@@ -63,7 +63,7 @@ You can create a data action in two ways:
 
 1. Go to [Data Studio](./data-studio.md#get-to-data-studio) > **Data actions**.
 2. Click **New** > **SQL query**.
-3. Write your SQL. Each {% raw %}{{ variable }}{% endraw %} in the SQL becomes a field on the action's form. For examples, see [Example custom actions](./models/actions/custom.md#example-custom-actions).
+3. Write your SQL. Each `{% raw %}{{ variable }}{% endraw %}` in the SQL becomes a field on the action's form. For examples, see [Example custom actions](./models/actions/custom.md#example-custom-actions).
 4. Click **Save**, enter a **Name**, pick a **Folder**, and click **Save** again.
 
 ### Create a data action that changes one row
@@ -90,7 +90,9 @@ If the **Run** button is grayed out, [data actions are turned off](#turn-on-data
 Go to **Data Studio** > **Data actions** and click the action.
 
 - **To change what the action does**, go to the **Definition** tab. For a SQL action, click **Edit definition**. For a table action, click **Change table** or pick another **Operation**.
-- **To change the action's form**, go to the **Fields** tab and click a field to change its type, input, default value, and more. A SQL action has one field for each {% raw %}{{ variable }}{% endraw %} in the SQL. A table action has one field for each column that it writes (for Delete, only the primary key), and you can only show or hide these fields. If you turn off **Show field**, the action uses the field's default value.
+- **To change the action's form**, go to the **Fields** tab and click a field to change its type, input, default value, and more. A SQL action has one field for each `{% raw %}{{ variable }}{% endraw %}` in the SQL. A table action has one field for each column that it writes (for Delete, only the primary key), and you can only show or hide these fields. If you turn off **Show field**, the action uses the field's default value.
+
+![The Fields tab of the Add review action, with the details of the Rating field](./images/data-action-fields.png)
 
 ## Share a data action as a public form
 
@@ -117,6 +119,8 @@ Anyone who can view a folder can run the actions in it. So use folders to give e
 - **Create a folder**: Click **New** > **Collection**.
 - **Change who can run a folder's actions**: Click the **three-dot** menu next to the folder, and select **Change permissions**. For actions that aren't in a folder, click the **three-dot** menu next to the **New** button, and select **Change permissions**.
 - **Move an action to another folder**: Open the action, click the **three-dot** menu next to its name, and select **Move**.
+
+![The permissions of the Reviews folder, where only the Data Analysts group can view the folder's actions](./images/data-action-folder-permissions.png)
 
 ## Archive and unarchive data actions
 

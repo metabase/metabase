@@ -28,7 +28,7 @@ Before you let more people open an app, check which data the app reads and write
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
-These tabs don't show everything that the app can read. The app can also query tables directly, and read the metrics in your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
+These tabs don't show everything that the app can read. The app can also query the tables and metrics published to your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
 
 To see what a question or action depends on, open the question or action, and go to its **Dependencies** tab. To see the whole app, look up the app in the [dependency graph](../data-modeling/tools/graph.md).
 

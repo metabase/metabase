@@ -17,10 +17,6 @@ A data app runs with the permissions of the person who opens it, so people see o
 
 This page is the reference for data apps. To set up your tools and build your first app step by step, check out [Getting started with data apps](./getting-started.md).
 
-## Getting started with data apps
-
-If you just want to start building a data app, check out the step-by-step [getting started with Data apps](./getting-started.md).
-
 ## Requirements for data apps
 
 - A Pro or Enterprise plan.
@@ -30,8 +26,8 @@ If you just want to start building a data app, check out the step-by-step [getti
 - Node.js 22.12 or later on your computer.
 - A Git repository that your Metabases connect to with [Remote Sync](../data-modeling/semantic-layer/remote-sync.md), and permission to push to it. Apps get into Metabase only when Metabase pulls them from the repository, and the repository also keeps each app's source code.
 - A Metabase where your agent builds each app. See [Choose where to build apps](#choose-where-to-build-apps).
-- A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics on a Remote-Synced Metabae in Read-write mode while it builds an app.
-- Only PostgreSQL or MySQL support actions that write back to the database. The  database must have [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database).
+- A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics on a Metabase in Read-write mode while it builds an app.
+- If your apps write data, a PostgreSQL or MySQL database with [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database). Only these databases support actions. An app that only shows data can read from any database that Metabase connects to.
 
 ## Choose where to build apps
 
@@ -51,7 +47,6 @@ An app can read:
 - Tables, with their [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md).
 - The metrics in your [Library](../data-modeling/semantic-layer/library.md), but no other metrics.
 - The questions in its own collection, but no other questions.
-
 
 An app can write data only through the actions in its own collection.
 

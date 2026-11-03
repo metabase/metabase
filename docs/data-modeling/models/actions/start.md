@@ -10,7 +10,7 @@ redirect_from:
 
 Model actions are actions that belong to a [model](../models.md).
 
-[Introduction to model actions](./introduction.md)
+## [Introduction to model actions](./introduction.md)
 
 Use model actions to update your data based on user input or values on the page.
 
