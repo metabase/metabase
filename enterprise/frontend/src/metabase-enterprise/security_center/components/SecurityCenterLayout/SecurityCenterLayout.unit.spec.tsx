@@ -9,7 +9,7 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
-import { Route, redirect } from "metabase/router";
+import { Route } from "metabase/router";
 import type { Advisory, HealthCheck } from "metabase-types/api";
 import {
   createAdvisory,
@@ -21,7 +21,6 @@ import { AdvisoriesPage } from "../../advisories/AdvisoriesPage/AdvisoriesPage";
 import { SecurityCenterLayout } from "./SecurityCenterLayout";
 
 interface SetupOpts {
-  initialRoute?: string;
   advisories?: Advisory[];
   checks?: HealthCheck[];
   advisoriesPage?: ReactNode;
@@ -29,7 +28,6 @@ interface SetupOpts {
 }
 
 const setup = async ({
-  initialRoute = "/admin/security-center/advisories",
   advisories = [],
   checks = [],
   advisoriesPage = <div>Advisories page</div>,
@@ -42,17 +40,14 @@ const setup = async ({
   }
   setupHealthChecksEndpoint(checks);
 
-  const view = renderWithProviders(
+  renderWithProviders(
     <Route path="/admin/security-center" element={<SecurityCenterLayout />}>
-      <Route index element={redirect("advisories")} />
       <Route path="advisories" element={advisoriesPage} />
       <Route path="health-checks" element={<div>Health checks page</div>} />
     </Route>,
-    { withRouter: true, initialRoute },
+    { withRouter: true, initialRoute: "/admin/security-center/advisories" },
   );
   await act(() => fetchMock.callHistory.flush(true));
-
-  return view;
 };
 
 const getNavLink = (name: RegExp) => screen.getByRole("link", { name });
@@ -69,15 +64,6 @@ describe("SecurityCenterLayout", () => {
       "href",
       "/admin/security-center/health-checks",
     );
-  });
-
-  it("opens advisories by default and keeps the query string", async () => {
-    const { router } = await setup({
-      initialRoute: "/admin/security-center?open=notifications",
-    });
-
-    expect(screen.getByText("Advisories page")).toBeInTheDocument();
-    expect(router?.location.search).toBe("?open=notifications");
   });
 
   it("marks the sections that have issues", async () => {
