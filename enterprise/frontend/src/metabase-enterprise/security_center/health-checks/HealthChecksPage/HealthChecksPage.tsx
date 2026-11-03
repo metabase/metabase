@@ -6,18 +6,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Button, Group, Icon, Stack, Title } from "metabase/ui";
 import type { HealthCheck } from "metabase-types/api";
 
-import {
-  trackHealthCheckRecheckClicked,
-  trackHealthChecksPageViewed,
-} from "../../analytics";
-import {
-  useListHealthChecksQuery,
-  useRecheckHealthChecksMutation,
-} from "../../api";
+import { trackHealthChecksPageViewed } from "../../analytics";
 import { HealthCheckGroup } from "../HealthCheckGroup/HealthCheckGroup";
 import { HealthChecksSummary } from "../HealthChecksSummary/HealthChecksSummary";
-import { HEALTH_CHECK_STATUSES, RECHECK_ALL_CACHE_KEY } from "../constants";
-import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
+import { HEALTH_CHECK_STATUSES } from "../constants";
+import { useHealthChecks } from "../hooks/use-health-checks";
 import { getChecksByStatus } from "../utils";
 
 type HealthChecksContentProps = {
@@ -65,26 +58,13 @@ const HealthChecksContent = ({
 };
 
 export const HealthChecksPage = () => {
-  const { data, isLoading, isError } = useListHealthChecksQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
-  const [recheckAll, { isLoading: isRecheckingAll }] =
-    useRecheckHealthChecksMutation({ fixedCacheKey: RECHECK_ALL_CACHE_KEY });
-  const showRecheckError = useRecheckErrorToast();
-  const checks = data?.checks ?? [];
+  const { checks, isLoading, isError, recheckAll, isRecheckingAll } =
+    useHealthChecks();
   const hasChecks = !isError && checks.length > 0;
 
   useEffect(() => {
     trackHealthChecksPageViewed();
   }, []);
-
-  const handleRecheckAll = async () => {
-    trackHealthCheckRecheckClicked("all");
-    const { error } = await recheckAll();
-    if (error) {
-      showRecheckError();
-    }
-  };
 
   return (
     <Stack gap="lg" data-testid="health-checks-page">
@@ -95,7 +75,7 @@ export const HealthChecksPage = () => {
             variant="subtle"
             leftSection={<Icon name="sync" />}
             loading={isRecheckingAll}
-            onClick={handleRecheckAll}
+            onClick={recheckAll}
           >
             {t`Re-check all`}
           </Button>

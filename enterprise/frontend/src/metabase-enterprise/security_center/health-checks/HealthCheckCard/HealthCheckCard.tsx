@@ -14,19 +14,12 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { isResourceNotFoundError } from "metabase/utils/errors";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { HealthCheck } from "metabase-types/api";
 
-import { trackHealthCheckRecheckClicked } from "../../analytics";
-import {
-  useRecheckHealthCheckMutation,
-  useRecheckHealthChecksMutation,
-} from "../../api";
 import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
 import { HealthCheckItems } from "../HealthCheckItems/HealthCheckItems";
-import { RECHECK_ALL_CACHE_KEY } from "../constants";
-import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
+import { useHealthCheckRecheck } from "../hooks/use-health-checks";
 import { getHealthCheckSettingsUrl } from "../utils";
 
 type HealthCheckCardProps = {
@@ -34,25 +27,14 @@ type HealthCheckCardProps = {
 };
 
 export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
-  const [recheck, { isLoading: isRechecking }] =
-    useRecheckHealthCheckMutation();
-  const [, { isLoading: isRecheckingAll }] = useRecheckHealthChecksMutation({
-    fixedCacheKey: RECHECK_ALL_CACHE_KEY,
-  });
-  const showRecheckError = useRecheckErrorToast();
+  const { recheck, isRechecking, isRecheckingAll } = useHealthCheckRecheck(
+    check.id,
+  );
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
   const isFailing = check.status === "fail";
   const settingsUrl = isFailing ? getHealthCheckSettingsUrl(check.id) : null;
-
-  const handleRecheck = async () => {
-    trackHealthCheckRecheckClicked(check.id);
-    const { error } = await recheck(check.id);
-    if (error && !isResourceNotFoundError(error)) {
-      showRecheckError();
-    }
-  };
 
   return (
     <Card p="xxl" withBorder data-testid={`health-check-card-${check.id}`}>
@@ -93,7 +75,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
             leftSection={<Icon name="sync" />}
             loading={isRechecking}
             disabled={isRecheckingAll}
-            onClick={handleRecheck}
+            onClick={recheck}
           >
             {t`Re-check`}
           </Button>

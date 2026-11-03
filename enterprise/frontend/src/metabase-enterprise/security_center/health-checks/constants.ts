@@ -5,5 +5,3 @@ export const HEALTH_CHECK_STATUSES = [
   "unknown",
   "pass",
 ] as const satisfies HealthCheckStatus[];
-
-export const RECHECK_ALL_CACHE_KEY = "security-center-recheck-all";
