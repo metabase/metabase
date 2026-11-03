@@ -51,15 +51,7 @@ const LIST_CASES: string[] = [
   "single dropdown search Contains custom large",
   "single dropdown search Contains custom small",
   "single dropdown list Is connected small",
-  "single dropdown list Is custom large",
-  "single dropdown list Is custom small",
   "single dropdown list Contains connected small",
-  "single dropdown list Contains custom large",
-  "single dropdown list Contains custom small",
-  "single dropdown plain Is custom large",
-  "single dropdown plain Is custom small",
-  "single dropdown plain Contains custom large",
-  "single dropdown plain Contains custom small",
   "multi search list Is connected small",
   "multi search list Contains connected small",
   "multi dropdown search Is custom large",
@@ -67,18 +59,20 @@ const LIST_CASES: string[] = [
   "multi dropdown search Contains custom large",
   "multi dropdown search Contains custom small",
   "multi dropdown list Is connected small",
-  "multi dropdown list Is custom large",
-  "multi dropdown list Is custom small",
   "multi dropdown list Contains connected small",
-  "multi dropdown list Contains custom large",
-  "multi dropdown list Contains custom small",
-  "multi dropdown plain Is custom large",
-  "multi dropdown plain Is custom small",
-  "multi dropdown plain Contains custom large",
-  "multi dropdown plain Contains custom small",
 ];
 
-const CASES: ValuesCase[] = ARITIES.flatMap((arity) =>
+// A parameter with a values source ignores the field, so `adminType` has no
+// effect for the `card` and `custom` sources. The `card` mock ignores `results`.
+// Keep one case for each distinct input.
+function isDistinctCase({ adminType, source, results }: ValuesCase) {
+  if (source !== "connected" && adminType !== "search") {
+    return false;
+  }
+  return source !== "card" || results === "large";
+}
+
+const ALL_CASES: ValuesCase[] = ARITIES.flatMap((arity) =>
   QUERY_TYPES.flatMap((queryType) =>
     ADMIN_TYPES.flatMap((adminType) =>
       OPERATORS.flatMap((operator) =>
@@ -96,6 +90,8 @@ const CASES: ValuesCase[] = ARITIES.flatMap((arity) =>
     ),
   ),
 );
+
+const CASES = ALL_CASES.filter(isDistinctCase);
 
 const FIELD_VALUES_TYPES = {
   search: "search",
