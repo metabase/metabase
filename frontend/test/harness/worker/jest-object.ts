@@ -107,6 +107,28 @@ export function finishSnapshots(): void {
 }
 
 /**
+ * Clears expect's count of assertions, as jest does when a test starts.
+ */
+export function resetAssertions(): void {
+  expect.extractExpectedAssertionsErrors();
+  expect.setState({ suppressedErrors: [] });
+}
+
+/**
+ * The errors of expect.assertions and expect.hasAssertions for the test that
+ * ran, after the errors that matchers held back. jest adds them to the test
+ * after its afterEach hooks.
+ */
+export function takeAssertionErrors(): unknown[] {
+  const { suppressedErrors } = expect.getState();
+  const expectedAssertionErrors = expect
+    .extractExpectedAssertionsErrors()
+    .map(({ error }) => error);
+  expect.setState({ suppressedErrors: [] });
+  return [...suppressedErrors, ...expectedAssertionErrors];
+}
+
+/**
  * jest joins the describe path and the test name with single spaces.
  */
 export function setCurrentTestName(name: string): void {

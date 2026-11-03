@@ -4,8 +4,6 @@
 // run-file.ts runs the tree as node:test subtests before the next file loads.
 import { bind as bindEach } from "jest-each";
 
-import type { TestIdentity } from "../types.ts";
-
 export type Mode = "run" | "skip" | "only" | "todo";
 export type TestFunction = () => unknown;
 export type HookKind = "beforeAll" | "afterAll" | "beforeEach" | "afterEach";
@@ -135,17 +133,6 @@ export function selectTests(fileSuite: Suite): void {
 
 export function fullName(test: TestNode, separator: string): string {
   return [...test.path, test.name].join(separator);
-}
-
-/**
- * The tests in a block and in the blocks inside it.
- */
-export function testsIn(suite: Suite): TestIdentity[] {
-  return suite.children.flatMap((child) =>
-    child.type === "suite"
-      ? testsIn(child.suite)
-      : [{ ancestors: child.path, title: child.name }],
-  );
 }
 
 /**
