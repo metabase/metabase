@@ -435,7 +435,9 @@
                         (assoc :viz-settings merged-viz)
                         (update :middleware (fn [middleware]
                                               (merge
-                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                               {:js-int-to-string?      true
+                                                :ignore-cached-results? ignore-cache
+                                                :display                (:display card)}
                                                middleware))))
         info        (cond-> {:executed-by            api/*current-user-id*
                              :context                context

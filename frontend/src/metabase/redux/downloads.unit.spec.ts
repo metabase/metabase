@@ -157,6 +157,24 @@ describe("getDatasetParams - public question (uuid-based)", () => {
   });
 });
 
+describe("getDatasetParams - ad-hoc question", () => {
+  it("sends the question display so the export can match the visualization (metabase#70909)", () => {
+    const question = new Question(
+      createMockCard({ id: undefined, display: "object" }),
+      undefined,
+    );
+
+    const downloadParams = getDatasetParams({
+      type: "csv",
+      question,
+      result: createMockDataset(),
+    });
+
+    expect(downloadParams.url).toBe("/api/dataset/csv");
+    expect(downloadParams.body).toMatchObject({ display: "object" });
+  });
+});
+
 describe("readDownloadBlob", () => {
   it("returns the blob when the response reads to completion", async () => {
     const blob = new Blob(["a,b,c"], { type: "text/csv" });

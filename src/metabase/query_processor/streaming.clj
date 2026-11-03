@@ -87,17 +87,20 @@
   [cols]
   (some #(= (:name %) "pivot-grouping") cols))
 
-(defn- hidden-in-table?
-  "The table viz never shows `:details-only` columns, whatever `table.columns` says; exports match it (#70909)."
-  [col]
-  (= (:visibility_type col) :details-only))
+(defn- hidden-by-display?
+  "The table viz hides `:details-only` columns whatever `table.columns` says, so a table export drops them too. Object
+  detail shows them and charts plot whatever they are given, so every other display keeps them (#70909)."
+  [display col]
+  (and (= display :table)
+       (= (:visibility_type col) :details-only)))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
+  `display` is the display of the card being exported; `nil` when unknown, which keeps every column.
 
   The resulting list of indices determines the order of column names and data in exports."
-  [cols table-columns]
+  [cols table-columns display]
   (if (pivot-grouping-exists? cols)
     ;; If the columns contain a pivot-grouping, we're exporting a pivot and the cols order is not used,
     ;; so we can just pass the indices in order.
@@ -138,7 +141,7 @@
                     remapped-to-name   (:remapped_to col)
                     remapped-from-name (:remapped_from col)]
                 (cond
-                  (hidden-in-table? col)
+                  (hidden-by-display? display col)
                   nil
 
                   remapped-to-name
@@ -154,7 +157,7 @@
   returns a list of indices which map the new order to the original order, and is used to reorder individual rows."
   [cols viz-settings]
   (let [deduped-cols  (deduplicate-col-names cols)
-        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
+        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings) (:display viz-settings))
         ordered-cols  (if output-order
                         (let [v (into [] deduped-cols)]
                           (for [i output-order] (v i)))

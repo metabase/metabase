@@ -92,6 +92,7 @@
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
+                              :display (:display card)
                               :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
@@ -1754,6 +1755,30 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))))))
+
+(deftest details-only-columns-export-test
+  (testing "The table viz hides `:details-only` columns, so table exports drop them; other displays keep them (#70909)"
+    (mt/dataset test-data
+      (mt/with-temp-vals-in-db :model/Field (mt/id :orders :discount) {:visibility_type :details-only}
+        (let [query           {:database (mt/id)
+                               :type     :query
+                               :query    {:source-table (mt/id :orders)
+                                          :limit        1}}
+              header-names    (fn [download] (set (first download)))
+              has-discount?   (fn [names] (boolean (some #(str/starts-with? % "Discount") names)))]
+          (mt/with-temp [:model/Card table-card  {:display :table, :dataset_query query}
+                         :model/Card object-card {:display :object, :dataset_query query}]
+            (doseq [export-format [:csv :xlsx :json]]
+              (testing (name export-format)
+                (testing "saved card"
+                  (is (false? (has-discount? (header-names (card-download table-card {:export-format export-format})))))
+                  (is (true? (has-discount? (header-names (card-download object-card {:export-format export-format}))))))
+                (testing "unsaved question"
+                  (is (false? (has-discount? (header-names (unsaved-card-download table-card {:export-format export-format})))))
+                  (is (true? (has-discount? (header-names (unsaved-card-download object-card {:export-format export-format})))))
+                  (testing "with no display given, nothing is dropped"
+                    (is (true? (has-discount? (header-names (unsaved-card-download (dissoc object-card :display)
+                                                                                   {:export-format export-format})))))))))))))))
 
 (deftest ^:parallel ^:mb/driver-tests pivot-xlsx-export-respects-custom-title
   (testing "Pivot tables exported as xlsx should respect column title viz settings #51342"
