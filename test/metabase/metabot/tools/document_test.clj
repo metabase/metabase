@@ -298,12 +298,13 @@
                                            :sql         "DELETE FROM VENUES WHERE 1 = 0")))))))
 
 (deftest document-construct-sql-chart-unknown-database-test
-  (testing "an unknown database ID sends the model back to the tool that returns the mentioned database's ID"
+  (testing "an unknown database ID sends the model to the database list and to the tool that returns a database's ID"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [result (invoke-document-tool "document_construct_sql_chart"
                                          (assoc sql-chart-args :database_id Integer/MAX_VALUE))]
         (is (= {:class :recoverable :code ::recoverable/unknown-database} (:error result)))
         (is (= (str "Database " Integer/MAX_VALUE " was not found.\n"
+                    "Read `metabase://databases` with `read_resource` to choose an available database ID, then retry.\n"
                     "Call `document_schema_collect`, then retry with the `database_id` it returns.")
                (:output result)))))))
 
@@ -361,11 +362,12 @@
                 ::recoverable.pipeline/missing-source-in-first-stage
                 (str no-source "\n`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; "
                      "`source-card:` takes an entity_id string.")]
-               ;; Its only step reads a resource, and this profile has no `read_resource`.
                [no-card
                 {:error :unknown-card :entity-id "abc"}
                 ::recoverable.pipeline/unknown-card
-                no-card]]]
+                (str no-card "\nDo not invent or guess entity_ids: call `read_resource` with "
+                     "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the "
+                     "exact `portable_entity_id` from the response into `source-card:`.")]]]
         (testing code
           (mt/with-dynamic-fn-redefs [construct-tools/execute-representations-query
                                       (fn [_ & _]
