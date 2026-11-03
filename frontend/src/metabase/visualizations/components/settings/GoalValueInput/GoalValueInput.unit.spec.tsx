@@ -1088,6 +1088,35 @@ describe("GoalValueInput", () => {
     );
   });
 
+  it("commits the only numeric column of a source that also has non-numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "name", base_type: "type/Text" }),
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Orders");
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "total",
+      }),
+    );
+  });
+
   it("shows values for all of the entity's columns", async () => {
     const card = createMockCard({
       id: 9,
