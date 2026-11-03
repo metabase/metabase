@@ -465,6 +465,14 @@
     (serdes/*export-field-fk* field-id)
     field-id))
 
+(defn- drop-merge-key-field-ids
+  "`target` without the `:field-id`s of its merge unique key. The merge reads only the column names, and
+  [[resolve-merge-key-field-ids]] fills the ids from the target table once it syncs, so a portable id would only make
+  the import stub out a table the transform has yet to create."
+  [target]
+  (m/update-existing-in target [:target-incremental-strategy :unique-key]
+                        (fn [unique-key] (mapv #(dissoc % :field-id) unique-key))))
+
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
@@ -503,8 +511,8 @@
                                                                     (mapv import-entry entries)))))
                                            (m/update-existing-in [:source-incremental-strategy :checkpoint-filter-field-id]
                                                                  import-maybe-int-field-fk))))}
-               :target             {:export #(serdes/export-mbql (dissoc % :table_id))
-                                    :import serdes/import-mbql}
+               :target             {:export #(serdes/export-mbql (drop-merge-key-field-ids (dissoc % :table_id)))
+                                    :import #(serdes/import-mbql (drop-merge-key-field-ids %))}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :entity_id)} opts))
                :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
