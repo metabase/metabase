@@ -107,7 +107,8 @@
     (mc/alter-root (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))))
 
 (defn application-db-handle
-  "Return a mutable component handle to the application db"
+  "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the application DB.
+  Deref it for the DB this thread sees, or use [[current-application-db]]."
   []
   application-db-component)
 
@@ -122,8 +123,8 @@
   (mc/binding (application-db-handle) application-db thunk))
 
 (defmacro with-application-db
-  "Run `body` with `application-db` as the application DB this thread sees. Threads that inherit this thread's
-  bindings, such as a `future` started in `body`, see it too."
+  "Run `body` with `application-db` as the application DB this thread sees.
+  Threads that inherit this thread's bindings, such as a `future` started in `body`, see it too."
   {:style/indent [:defn]}
   [application-db & body]
   `(do-with-application-db ~application-db (^:once fn* [] ~@body)))

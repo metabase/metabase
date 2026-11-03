@@ -1,15 +1,12 @@
 (ns metabase.global-system.system
-  "Storage for the global system: one value per component, addressed by a namespace-qualified keyword.
+  "Storage for the global system, with one value per component, addressed by a namespace-qualified keyword.
 
-   A dynamic Var has exactly two storage slots -- a root binding shared by every thread, and a per-thread
-   binding that shadows it. The two collections below are those same two slots, keyed by component.
-
-   Every root lives in one atom, so [[snapshot]] observes all components as of a single instant. The
-   thread-local slot is an overlay holding only the components actually bound on this thread -- never a
-   copy of the whole system. An unbound component therefore reads straight through to the root atom, which
-   is what keeps components independent: binding, mutating, or re-rooting one component is invisible to
-   every other, so a single var holding N components behaves the way N separate vars would, plus the
-   consistent multi-component read that N separate vars cannot give you."
+   A dynamic var has two slots: a root shared by every thread, and a per-thread binding that shadows it.
+   This namespace keeps the same two slots for every component.
+   All roots live in one atom, so [[snapshot]] reads every root at a single instant.
+   Each thread's bindings are an overlay holding only the components bound on that thread, never a copy of the system.
+   An unbound component reads straight through to its root, so binding or changing one component never affects
+   another."
   (:require
    [metabase.global-system.mutable-component :as mc])
   (:import
@@ -25,37 +22,38 @@
 ;; The dynamic var is the one place thread-local component values live, which is what lets a binding of one component
 ;; leave every other component reading its root.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^{:doc "Component key -> atom holding that component's value for this thread and any thread the
-             binding is conveyed to. Holds only the components bound here; everything else resolves
-             against [[roots]]."
+(def ^{:doc "Component key -> atom holding that component's value on this thread and on threads that inherit its
+             bindings.
+             Holds only the components bound here; everything else resolves against [[roots]]."
        :dynamic true
        :private true}
   *bound-boxes*
   {})
 
 (defn snapshot
-  "Every component's value as of a single instant, as this thread sees it: `(get (snapshot) k)` agrees with
-   dereferencing that component's handle.
-
-   Roots are read atomically, so components nobody has bound here can never disagree. Bound components are
-   read one box at a time: a [[mc/binding]] conveyed to another thread (`future`, `pmap`, `send`) that
-   mutates it while this runs can make those entries disagree. Snapshot from the thread that owns the
-   binding to avoid that."
+  "Every component's value as this thread sees it, so `(get (snapshot) k)` agrees with dereferencing the handle for `k`.
+   Roots are read in one step, so components nobody has bound here are consistent with each other.
+   Bound components are read one at a time, and a thread that inherited a binding can change one mid-read."
   []
   (merge @roots (update-vals *bound-boxes* deref)))
 
+(defn- no-value
+  "The error for a component `k` that has no root in the roots map `rs`."
+  [rs k]
+  (ex-info (str "Component has no value: " k)
+           {:component  k
+            :components (sort (keys rs))}))
+
 (defn- root-value
-  "The root value of `k` in the roots map `rs`. Throws if `k` was never given one, since only [[mc/alter-root]]
-   installs a component."
+  "The root value of `k` in the roots map `rs`.
+   Throws if `k` was never installed with [[mc/alter-root]]."
   [rs k]
   (if-let [entry (find rs k)]
     (val entry)
-    (throw (ex-info (str "Component has no value: " k)
-                    {:component  k
-                     :components (sort (keys rs))}))))
+    (throw (no-value rs k))))
 
 (defn- current-value
-  "The value of `k` visible to this thread: the thread-local one if `k` is bound here, otherwise the root."
+  "The value of `k` visible to this thread: the bound one if `k` is bound here, otherwise the root."
   [k]
   (if-let [box (get *bound-boxes* k)]
     @box
@@ -73,8 +71,9 @@
     (if-let [box (get *bound-boxes* k)]
       (clojure.core/reset! box new-value)
       (do (clojure.core/swap! roots (fn [rs]
-                                      (root-value rs k)
-                                      (assoc rs k new-value)))
+                                      (if (contains? rs k)
+                                        (assoc rs k new-value)
+                                        (throw (no-value rs k)))))
           new-value)))
   (swap!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
@@ -88,6 +87,6 @@
       (thunk))))
 
 (defn mutable-component-handle
-  "Make a component handle with state stored under a key in the global system."
+  "Make a handle for the component stored under `k` in the global system."
   [k]
   (->ComponentHandle k))
