@@ -76,8 +76,8 @@
 (def ^:private encryption-secret-key
   {:id                :encryption-secret-key
    :severity          :high
-   :title             (deferred-tru "Encryption secret key")
-   :description       (deferred-tru "MB_ENCRYPTION_SECRET_KEY encrypts the database connection details in the app DB.")
+   :title             (deferred-tru "Database connection details are encrypted")
+   :description       (deferred-tru "Without MB_ENCRYPTION_SECRET_KEY, connection details are stored in plain text in the app DB.")
    :remediation       (deferred-tru "Set MB_ENCRYPTION_SECRET_KEY and restart Metabase.")
    :docs-page         "databases/encrypting-details-at-rest"
    :requires-restart? true
@@ -90,8 +90,8 @@
 (def ^:private session-secret-key
   {:id                :session-secret-key
    :severity          :high
-   :title             (deferred-tru "Session secret key")
-   :description       (deferred-tru "MB_SESSION_SECRET_KEY signs the session cookies.")
+   :title             (deferred-tru "Session secret key is set")
+   :description       (deferred-tru "Without MB_SESSION_SECRET_KEY, sessions are signed with a generated key.")
    :remediation       (deferred-tru "Set MB_SESSION_SECRET_KEY and restart Metabase.")
    :docs-page         "configuring-metabase/environment-variables"
    :docs-anchor       "mb_session_secret_key"
@@ -106,8 +106,8 @@
 (def ^:private legacy-startup-encryption
   {:id                :legacy-startup-encryption
    :severity          :medium
-   :title             (deferred-tru "Legacy startup encryption")
-   :description       (deferred-tru "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION turns off the older way to decrypt settings at startup.")
+   :title             (deferred-tru "Legacy startup encryption is turned off")
+   :description       (deferred-tru "Legacy startup encryption keeps an older, weaker way to decrypt settings at startup.")
    :remediation       (deferred-tru "Set MB_DISABLE_LEGACY_STARTUP_ENCRYPTION to true and restart Metabase.")
    :docs-page         "configuring-metabase/environment-variables"
    :docs-anchor       "mb_disable_legacy_startup_encryption"
@@ -121,10 +121,10 @@
 (def ^:private https-site-url
   {:id                :https-site-url
    :severity          :high
-   :title             (deferred-tru "HTTPS site URL")
-   :description       (deferred-tru "The site URL is used in email links, auth redirects and embeds.")
-   :remediation       (deferred-tru "Set a site URL that starts with https:.")
-   :docs-page         "configuring-metabase/settings"
+   :title             (deferred-tru "Site URL uses HTTPS")
+   :description       (deferred-tru "Links in emails and embeds use the site URL.")
+   :remediation       (deferred-tru "Set a Site URL that starts with https:.")
+   :docs-page         "operations-guide/security"
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
@@ -137,10 +137,10 @@
 (def ^:private https-redirect
   {:id                :https-redirect
    :severity          :medium
-   :title             (deferred-tru "Redirect to HTTPS")
+   :title             (deferred-tru "All requests are redirected to HTTPS")
    :description       (deferred-tru "Without the redirect, people can open Metabase over plain HTTP.")
    :remediation       (deferred-tru "Turn on Redirect to HTTPS in Admin settings.")
-   :docs-page         "configuring-metabase/settings"
+   :docs-page         "operations-guide/security"
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
@@ -151,8 +151,8 @@
 (def ^:private sso-login
   {:id                :sso-login
    :severity          :medium
-   :title             (deferred-tru "SSO login")
-   :description       (deferred-tru "With SSO, the identity provider controls who signs in.")
+   :title             (deferred-tru "People sign in with SSO")
+   :description       (deferred-tru "SSO lets your identity provider enforce MFA.")
    :remediation       (deferred-tru "Turn on SAML, OIDC or JWT.")
    :docs-page         "people-and-groups/start"
    :requires-restart? false
@@ -170,8 +170,8 @@
 (def ^:private scim-provisioning
   {:id                :scim-provisioning
    :severity          :low
-   :title             (deferred-tru "SCIM provisioning")
-   :description       (deferred-tru "With SCIM, people who leave the identity provider lose their Metabase account.")
+   :title             (deferred-tru "Users are provisioned with SCIM")
+   :description       (deferred-tru "Without SCIM, people who leave your identity provider keep their Metabase accounts.")
    :remediation       (deferred-tru "Turn on SCIM user provisioning in Admin settings.")
    :docs-page         "people-and-groups/user-provisioning"
    :requires-restart? false
@@ -184,10 +184,10 @@
 (def ^:private mfa-required
   {:id                :mfa-required
    :severity          :medium
-   :title             (deferred-tru "Two-factor authentication")
-   :description       (deferred-tru "Without 2FA, a stolen password alone is enough to sign in.")
+   :title             (deferred-tru "Two-factor authentication is required")
+   :description       (deferred-tru "A stolen password alone is enough to sign in.")
    :remediation       (deferred-tru "Require 2FA for password and LDAP login.")
-   :docs-page         "people-and-groups/start"
+   :docs-page         "operations-guide/security"
    :requires-restart? false
    ;; Metabase 2FA covers password and LDAP login only, so the check is hidden when both are off.
    :applicable?       (fn []
@@ -202,9 +202,9 @@
 (def ^:private all-users-permissions
   {:id                :all-users-permissions
    :severity          :medium
-   :title             (deferred-tru "All Users permissions")
-   :description       (deferred-tru "Everyone who signs in gets the permissions of the All Users group.")
-   :remediation       (deferred-tru "Remove Curate on Our analytics and query access to every database from All Users.")
+   :title             (deferred-tru "All Users have limited permissions")
+   :description       (deferred-tru "Everyone who signs in gets the permissions of All Users.")
+   :remediation       (deferred-tru "Remove Curate on Our analytics from All Users.")
    :docs-page         "permissions/start"
    :requires-restart? false
    :applicable?       (constantly true)
@@ -276,7 +276,7 @@
 (def ^:private supported-version
   {:id                :supported-version
    :severity          :high
-   :title             (deferred-tru "Supported version")
+   :title             (deferred-tru "Metabase version is supported")
    :description       (deferred-tru "Versions past end of life get no security fixes.")
    :remediation       (deferred-tru "Upgrade to a supported version.")
    :docs-page         "installation-and-operation/upgrading-metabase"
