@@ -583,7 +583,8 @@
 
 (defn unarchived-card-collection-types-in-reducible
   "A reducible of the distinct Collection ID and type of the unarchived Cards in the Collections with
-  `collection-ids`, leaving out dashboard questions when `exclude-dashboard-questions?`."
+  `collection-ids`, leaving out Cards that live in a Document, and dashboard questions when
+  `exclude-dashboard-questions?`."
   [collection-ids exclude-dashboard-questions?]
   (t2/reducible-query {:select-distinct [:collection_id :type]
                        :from            [:report_card]
@@ -591,6 +592,7 @@
                                          (when exclude-dashboard-questions?
                                            [:= :dashboard_id nil])
                                          [:= :archived false]
+                                         [:= :document_id nil]
                                          [:in :collection_id collection-ids]]}))
 
 (defn published-table-collection-ids-in
