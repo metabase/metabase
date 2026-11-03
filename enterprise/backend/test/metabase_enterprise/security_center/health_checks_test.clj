@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.test :as mt]
@@ -298,3 +299,54 @@
                      :items  [{:status :pass}
                               {:status :fail, :message #"All Users can query: .*test-data.*"}]}
                     (run-check-by-id :all-users-permissions)))))))))
+
+;;; The supported-version check
+
+(def ^:private version-info
+  "A version feed with three majors, one of them past end of life."
+  {:major_version_support [{:major 65, :released "2026-10-12", :lts false, :eol "2027-01-01"}
+                           {:major 64, :released "2026-09-16", :lts true,  :eol "2027-12-01"}
+                           {:major 63, :released "2026-07-07", :lts false, :eol "2026-11-01"}]})
+
+(defn- supported-version-with-major
+  [major]
+  (mt/with-dynamic-fn-redefs [config/current-major-version (constantly major)]
+    (run-check-by-id :supported-version)))
+
+(deftest supported-version-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :supported-version))))
+  (testing "unknown when Check for updates is off"
+    (mt/with-temporary-setting-values [check-for-updates false]
+      (is (=? {:status :unknown, :items [{:status :unknown, :message "Check for updates is off"}]}
+              (run-check-by-id :supported-version)))))
+  (testing "unknown before the first fetch"
+    (mt/with-temporary-setting-values [check-for-updates true, version-info-last-checked nil]
+      (is (=? {:status :unknown, :items [{:status :unknown, :message "Version info has not been fetched yet"}]}
+              (run-check-by-id :supported-version)))))
+  (mt/with-temporary-setting-values [check-for-updates         true
+                                     version-info-last-checked #t "2026-11-03T10:00:00Z"]
+    (testing "unknown when the last fetch failed and left no version info"
+      (mt/with-temporary-setting-values [version-info {}]
+        (is (=? {:status :unknown, :items [{:status :unknown, :message "The last fetch of the version info failed"}]}
+                (supported-version-with-major 64)))))
+    (mt/with-temporary-setting-values [version-info version-info]
+      (testing "unknown for a build without a major version"
+        (is (=? {:status :unknown, :items [{:status :unknown, :message "This build has no version number"}]}
+                (supported-version-with-major nil))))
+      (testing "passes for a version newer than every version in the feed"
+        (is (=? {:status :pass, :items [{:status :pass, :message "Version 70 is newer than every version in the version info"}]}
+                (supported-version-with-major 70))))
+      (testing "fails for a version older than every version in the feed"
+        (is (=? {:status :fail, :items [{:status :fail, :message "Version 50 is older than every version in the version info"}]}
+                (supported-version-with-major 50))))
+      (testing "fails for a version past its end of life"
+        (is (=? {:status :fail, :items [{:status :fail, :message "Version 63 reached end of life on 2026-11-01"}]}
+                (supported-version-with-major 63))))
+      (testing "passes for a version before its end of life"
+        (is (=? {:status :pass, :items [{:status :pass, :message "Version 64 is supported until 2027-12-01"}]}
+                (supported-version-with-major 64)))))
+    (testing "unknown for a version the feed skips"
+      (mt/with-temporary-setting-values [version-info (update version-info :major_version_support
+                                                              (fn [support] (remove #(= 64 (:major %)) support)))]
+        (is (=? {:status :unknown, :items [{:status :unknown, :message "Version 64 is not in the version info"}]}
+                (supported-version-with-major 64)))))))

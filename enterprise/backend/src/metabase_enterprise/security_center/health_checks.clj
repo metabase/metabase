@@ -225,6 +225,65 @@
                                   :entity_id   group-id
                                   :entity_name group-name)]))})
 
+(mr/def ::major-version-support
+  "One entry of the version feed's `major_version_support`, as far as the supported-version check reads it. Open, so a
+  new feed key does not break the check."
+  [:map {:closed false, ::mr/deliberately-open true}
+   [:major :int]
+   [:eol   :string]])
+
+(defn- supported-version-items
+  []
+  (let [major   (config/current-major-version)
+        support (:major_version_support (setting/get :version-info))]
+    (cond
+      (not (setting/get :check-for-updates))
+      [(item :unknown (tru "Check for updates is off"))]
+
+      ;; the upgrade check writes the timestamp before each fetch, and empties the version info when the fetch fails
+      (nil? (setting/get :version-info-last-checked))
+      [(item :unknown (tru "Version info has not been fetched yet"))]
+
+      (not (mr/validate [:sequential {:min 1} ::major-version-support] support))
+      [(item :unknown (tru "The last fetch of the version info failed"))]
+
+      (nil? major)
+      [(item :unknown (tru "This build has no version number"))]
+
+      :else
+      (let [majors (map :major support)
+            eol    (->> support
+                        (filter #(= major (:major %)))
+                        (map :eol)
+                        sort
+                        last)]
+        (cond
+          (> major (apply max majors))
+          [(item :pass (tru "Version {0} is newer than every version in the version info" major))]
+
+          (< major (apply min majors))
+          [(item :fail (tru "Version {0} is older than every version in the version info" major))]
+
+          (nil? eol)
+          [(item :unknown (tru "Version {0} is not in the version info" major))]
+
+          (t/after? (t/local-date) (t/local-date eol))
+          [(item :fail (tru "Version {0} reached end of life on {1}" major eol))]
+
+          :else
+          [(item :pass (tru "Version {0} is supported until {1}" major eol))])))))
+
+(def ^:private supported-version
+  {:id                :supported-version
+   :severity          :high
+   :title             (deferred-tru "Supported version")
+   :description       (deferred-tru "Versions past end of life get no security fixes.")
+   :remediation       (deferred-tru "Upgrade to a supported version.")
+   :docs-page         "installation-and-operation/upgrading-metabase"
+   :requires-restart? true
+   :applicable?       (constantly true)
+   :run               supported-version-items})
+
 ;;; The registry
 
 (def ^:private checks
@@ -239,7 +298,8 @@
     :sso-login                 sso-login
     :scim-provisioning         scim-provisioning
     :mfa-required              mfa-required
-    :all-users-permissions     all-users-permissions}))
+    :all-users-permissions     all-users-permissions
+    :supported-version         supported-version}))
 
 (defn all-checks
   "Every registered check, in id order."
