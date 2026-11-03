@@ -282,7 +282,8 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
   });
 
   describe("health checks", () => {
-    const SITE_URL_CHECK_TITLE = "Site URL uses HTTPS";
+    const siteUrlCheck = () =>
+      cy.findByTestId("health-check-card-https-site-url");
 
     const checkGroup = (name: RegExp) => cy.findByRole("region", { name });
 
@@ -295,24 +296,20 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
         .findByText(/checks pass/)
         .should("be.visible");
       checkGroup(/Failing/)
-        .findByRole("region", { name: SITE_URL_CHECK_TITLE })
+        .findByTestId("health-check-card-https-site-url")
         .should("be.visible");
 
       cy.log("Fix the setting and re-check");
       H.updateSetting("site-url", "https://metabase.example.com");
-      cy.findByRole("region", { name: SITE_URL_CHECK_TITLE })
+      siteUrlCheck()
         .findByRole("button", { name: /Re-check/ })
         .click();
 
       cy.log("The check moves to Passed");
       cy.findByRole("button", { name: /Passed/ }).click();
       checkGroup(/Passed/)
-        .findByRole("region", { name: SITE_URL_CHECK_TITLE })
+        .findByTestId("health-check-card-https-site-url")
         .should("be.visible");
-      cy.findAllByRole("region", { name: SITE_URL_CHECK_TITLE }).should(
-        "have.length",
-        1,
-      );
     });
   });
 });

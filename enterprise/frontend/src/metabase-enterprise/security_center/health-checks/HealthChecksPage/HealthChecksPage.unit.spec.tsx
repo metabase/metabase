@@ -106,7 +106,7 @@ const setup = async ({ checks, showMetabaseLinks = true }: SetupOpts) => {
 
 const getCardTitles = () =>
   screen
-    .getAllByTestId("health-check-card")
+    .getAllByTestId(/^health-check-card-/)
     .map((card) => within(card).getByRole("heading").textContent);
 
 const openGroup = async (name: RegExp) => {
@@ -128,7 +128,7 @@ describe("HealthChecksPage", () => {
     await setup({ checks: [PASSING_CHECK] });
 
     expect(screen.getByText("All security checks pass")).toBeInTheDocument();
-    expect(screen.queryByTestId("health-check-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/^health-check-card-/)).not.toBeInTheDocument();
 
     await openGroup(/Passed/);
 
