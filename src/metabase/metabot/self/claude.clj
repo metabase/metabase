@@ -357,6 +357,7 @@
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
+   "claude-haiku-5-5"           {:display-name "Claude Haiku 5.5"  :max-tokens  64000 :context-window 1000000}
    "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000 :context-window  200000}})
 
 (def ^:private default-max-tokens
@@ -392,24 +393,24 @@
   (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet model id, or nil."
+  "`[family major minor]` for a Claude opus/sonnet/haiku model id, or nil."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d+))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|haiku)-(\d+)(?:[-.](\d+))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
 (defn- model-current-gen?
-  "Current-generation Claude (Fable, Opus >=4.7, Sonnet >=5): no sampling params;
+  "Current-generation Claude (Fable, Opus >=4.7, Sonnet >=5, Haiku >=5): no sampling params;
   thinking streams via `display: summarized`."
   [model]
   (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
       (when-let [[family major minor] (claude-model-version model)]
         (case family
-          "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
-          "sonnet" (>= major 5)))))
+          "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
+          ("sonnet" "haiku") (>= major 5)))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter. Sampling params
