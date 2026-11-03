@@ -114,7 +114,7 @@ describe("SecurityCenterBanner", () => {
     const link = await screen.findByText("Security center");
     expect(link).toHaveAttribute(
       "href",
-      "/admin/security-center?open=notifications",
+      "/admin/security-center/advisories?open=notifications",
     );
   });
 });

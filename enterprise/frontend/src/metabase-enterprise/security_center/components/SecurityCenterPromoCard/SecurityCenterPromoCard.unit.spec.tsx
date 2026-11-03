@@ -94,7 +94,10 @@ describe("SecurityCenterPromoCard", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Set up security alerts/i }),
-    ).toHaveAttribute("href", "/admin/security-center?open=notifications");
+    ).toHaveAttribute(
+      "href",
+      "/admin/security-center/advisories?open=notifications",
+    );
   });
 
   it("does not render when email is configured", async () => {
