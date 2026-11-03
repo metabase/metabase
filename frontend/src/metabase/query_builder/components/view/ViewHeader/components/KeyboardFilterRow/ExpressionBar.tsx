@@ -843,7 +843,7 @@ export function ExpressionBar({
   };
 
   // The bar's own keys in the pill's column step: logic tokens, caret moves
-  // between tokens and rows, Apply on Enter, and Escape to close.
+  // between tokens, Apply on Enter, and Escape to close.
   const handleColumnKeyDown = (
     event: KeyboardEvent<HTMLInputElement>,
     { text: typed, hasSelectedOption }: ColumnKeyState,
@@ -876,15 +876,8 @@ export function ExpressionBar({
       return false;
     }
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      // Up and Down move between the rows of a nested expression; with no
-      // row there, they move in the column list.
-      if (
-        !hasSelectedOption &&
-        typed.length === 0 &&
-        moveToAdjacentRow(event.key === "ArrowUp")
-      ) {
-        return true;
-      }
+      // While the column picker is open, arrows belong to its suggestions.
+      // Moving between expression rows is handled by the idle caret.
       setHasNavigated(true);
       return false;
     }
