@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupCardDataset } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -172,6 +174,32 @@ describe("gauge dynamic goal", () => {
 
     expect(await screen.findByText("$0 - $2,500")).toBeInTheDocument();
     expect(screen.getByText(/Target/)).toBeInTheDocument();
+  });
+
+  it("shows a loader until an unanswered bound is fetched, then draws the ranges", async () => {
+    setupCardDataset({
+      dataset: {
+        data: createMockDatasetData({
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "goal",
+            value: 75,
+          }),
+        }),
+      },
+    });
+
+    setup({ referencedEntities: {}, segments: SEGMENTS });
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByTestId("gauge-arc-0")).not.toBeInTheDocument();
+
+    expect(await screen.findByTestId("gauge-arc-2")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+    expect(await call.request?.json()).toMatchObject({
+      referenced_entities: [{ type: "card", id: 9 }],
+    });
   });
 
   it("renders the ranges that resolve with one warning for consecutive failed bounds in the query builder", async () => {
