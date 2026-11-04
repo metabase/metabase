@@ -1064,6 +1064,28 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
 
+(mu/defn database-card-read-rows
+  "The ID, Collection ID, and Document ID of the Cards of `database-id` with `ids`: the columns that `mi/can-read?`
+  reads."
+  [database-id :- ::lib.schema.id/database
+   ids         :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Card :id :collection_id :document_id] :id [:in ids] :database_id [:auto/param database-id]))
+
+(mu/defn snippet-read-rows
+  "The ID and Collection ID of the NativeQuerySnippets with `ids`: the columns that `mi/can-read?` reads."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/NativeQuerySnippet :id :collection_id] :id [:in ids]))
+
+(mu/defn database-table-names
+  "The schema and name of each active Table of `database-id` whose name case-insensitively is one of `table-names`,
+  whatever its visibility."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential :string]]
+  (t2/select [:model/Table :schema :name]
+             :db_id database-id
+             :active true
+             {:where [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]}))
+
 (mu/defn dashboard-curation-rows
   "The ID, Collection ID, and archived flag of the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

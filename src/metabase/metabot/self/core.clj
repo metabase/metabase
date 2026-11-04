@@ -106,6 +106,7 @@
    [:output            :string]
    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
    [:data-parts        {:optional true} [:sequential DataPart]]
+   [:non-terminal?     {:optional true} :boolean]
    [:error             {:optional true} [:map {:closed true}
                                          [:class        [:enum :validation :recoverable :unrecoverable]]
                                          [:code         :keyword]
