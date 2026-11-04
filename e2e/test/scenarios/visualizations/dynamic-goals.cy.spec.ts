@@ -271,7 +271,9 @@ describe("scenarios > visualizations > dynamic goals", () => {
       assertAnswered("@dataset", { id, column: "count", value: 18760 });
     });
 
-    cy.log("Gauge: search skips questions, as measures and metrics exist");
+    cy.log(
+      "Gauge: search skips questions, as measures and metrics exist (GDGT-3457)",
+    );
     switchChartType("Gauge");
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().findByRole("tab", { name: "Ranges" }).click();
