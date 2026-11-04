@@ -48,6 +48,11 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :once ssh-test/do-with-mock-servers)
 
+(defn- cached-hash
+  "The details hash recorded for the open pool under `cache-key`."
+  [cache-key]
+  (get-in (#'sql-jdbc.conn/pools-state) [:hashes cache-key]))
+
 ;;; this is mostly testing [[h2/*allow-testing-h2-connections*]] so it's ok to hardcode driver names below. [kondo-keep]
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel can-connect-with-details?-test
@@ -238,8 +243,8 @@
                   (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                   (driver.conn/with-write-connection
                     (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database)))
-                  (let [default-cached-hash (get (:hashes (#'sql-jdbc.conn/pools-state)) [db-id :default])
-                        write-cached-hash   (get (:hashes (#'sql-jdbc.conn/pools-state)) [db-id :write-data])]
+                  (let [default-cached-hash (cached-hash [db-id :default])
+                        write-cached-hash   (cached-hash [db-id :write-data])]
                     (is (some? default-cached-hash))
                     (is (some? write-cached-hash))
                     (is (not= default-cached-hash write-cached-hash))))
@@ -370,7 +375,7 @@
           (mt/with-dynamic-fn-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
                                       driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
-                  db-hash-1   (get (:hashes (#'sql-jdbc.conn/pools-state)) (#'sql-jdbc.conn/pool-cache-key (driver.u/ensure-lib-database db)))]
+                  db-hash-1   (cached-hash (#'sql-jdbc.conn/pool-cache-key (driver.u/ensure-lib-database db)))]
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
@@ -384,7 +389,7 @@
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db-perturbed))
-                        db-hash-2   (get (:hashes (#'sql-jdbc.conn/pools-state)) (#'sql-jdbc.conn/pool-cache-key (driver.u/ensure-lib-database db)))]
+                        db-hash-2   (cached-hash (#'sql-jdbc.conn/pool-cache-key (driver.u/ensure-lib-database db)))]
                     ;; to throw a wrench into things, kick off a sync of the original db (unperturbed); this
                     ;; simulates a long running sync that began before the perturbed details were saved to the app DB
                     ;; the sync steps SHOULD NOT invalidate the connection pool, because doing so could cause a seesaw
