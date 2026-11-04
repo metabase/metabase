@@ -866,7 +866,8 @@
   agent_used_tool events, so the fleet view can join a turn to its tool calls. Fires only when :source and
   :request-id are present in tracking-opts, like the tool event. `result` is success or error by
   [[finish-reason->result]]. The details carry the finish reason and the number of steps (LLM calls) the turn
-  took; `steps` is absent when the turn died before its first step."
+  took, which on an exception is the step it died on; `steps` is absent when the turn died before the loop
+  started."
   [{:keys [request-id session-id source profile-id]} finish-reason steps duration-ms]
   (when (and (some? source)
              (some? request-id))
@@ -972,8 +973,10 @@
                           :msg-count  (count (:messages opts))}
           (analytics/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms      (u/start-timer)
-                ;; set once the agent exists, so a turn that dies on an exception still reports its finish
-                turn-tracking (atom nil)]
+                ;; the agent's tracking opts and the step in progress, kept outside the loop state so a turn
+                ;; that dies on an exception still reports its finish and the step it died on
+                turn-tracking (atom nil)
+                turn-step     (atom nil)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
@@ -1001,7 +1004,9 @@
                                 usage-atom (atom {})
                                 {:keys [result iteration finish-reason consumer-stopped?]}
                                 (->> (initial-loop-state agent rf init usage-atom)
-                                     (iterate loop-step)
+                                     (iterate (fn [loop-state]
+                                                (reset! turn-step (:iteration loop-state))
+                                                (loop-step loop-state)))
                                      (drop-while #(= :continue (:status %)))
                                      first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
@@ -1036,7 +1041,7 @@
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
-                  (report-turn-finished! @turn-tracking :error nil (u/since-ms start-ms))
+                  (report-turn-finished! @turn-tracking :error @turn-step (u/since-ms start-ms))
                   (let [{:keys [api-error status provider]} (ex-data e)
                         msg (ex-message e)]
                     (cond

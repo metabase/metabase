@@ -2082,11 +2082,38 @@
                                        :context       {}
                                        :profile-id    :internal
                                        :tracking-opts {:session-id "00000000-0000-0000-0000-000000000005"}})))
-            (is (= [{"finish_reason" "error"}]
+            (is (= [{"finish_reason" "error" "steps" 1}]
                    (->> (snowplow-test/pop-event-data-and-user-id!)
                         (filter #(= "agent_turn_finished" (get-in % [:data "event"])))
                         (map #(get-in % [:data "event_details"])))))))))
-    (testing "a turn that dies on an exception finishes with reason error, before its first step"
+    (testing "a turn that dies on an exception reports the step it died on"
+      (let [call-count (atom 0)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (if (= 1 (swap! call-count inc))
+                                        (mut/mock-llm-response
+                                         [{:type :start :id "msg-1"}
+                                          {:type      :tool-input
+                                           :id        "t1"
+                                           :function  "search"
+                                           :arguments {:semantic_queries ["test"]
+                                                       :keyword_queries  ["test"]
+                                                       :entity_types     ["table"]}}])
+                                        (throw (ex-info "boom on step 2" {}))))
+                                    metabot-search/search
+                                    (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
+          (mt/with-log-level [metabase.metabot.agent.core :fatal]
+            (snowplow-test/with-fake-snowplow-collector
+              (run-agent-loop! {:messages      [{:role :user :content "test"}]
+                                :state         {}
+                                :context       {}
+                                :profile-id    :internal
+                                :tracking-opts {:session-id "00000000-0000-0000-0000-000000000006"}})
+              (is (= [{"finish_reason" "error" "steps" 2}]
+                     (->> (snowplow-test/pop-event-data-and-user-id!)
+                          (filter #(= "agent_turn_finished" (get-in % [:data "event"])))
+                          (map #(get-in % [:data "event_details"]))))))))))
+    (testing "a turn that dies on its first LLM call finishes with reason error on step 1"
       (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
         (mt/with-log-level [metabase.metabot.agent.core :fatal]
           (snowplow-test/with-fake-snowplow-collector
@@ -2102,7 +2129,7 @@
                        "duration_ms" nat-int?
                        "result"      "error"}
                       (:data (first turn-events))))
-              (is (= {"finish_reason" "error"}
+              (is (= {"finish_reason" "error" "steps" 1}
                      (get-in (first turn-events) [:data "event_details"]))))))))))
 
 (deftest token-usage-snowplow-test
