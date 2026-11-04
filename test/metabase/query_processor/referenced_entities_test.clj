@@ -523,15 +523,19 @@
         (is (= "completed" (:status goal)))
         (is (= [[100]] (get-in goal [:data :rows])))))))
 
+(defn- goal-chart
+  "A line chart whose goal line points at `entity-type` `goal-id`'s `count` column."
+  [entity-type goal-id]
+  {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+   :display                :line
+   :visualization_settings {:graph.show_goal  true
+                            :graph.goal_value {:id goal-id :type entity-type :column "count"}}})
+
 (defn- goal-chart-cards
   "A card with a `count` value and a line chart whose goal points at it."
   []
   {:goal  {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-   :chart (fn [goal-id]
-            {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-             :display       :line
-             :visualization_settings {:graph.show_goal  true
-                                      :graph.goal_value {:id goal-id :type "card" :column "count"}}})})
+   :chart (partial goal-chart "card")})
 
 (deftest export-formats-skip-referenced-entities-test
   (testing "only :api renders goals, so an export must not run the referenced queries"
@@ -608,14 +612,6 @@
           (testing "and so does the card its goal points at"
             (is (= "completed" (:status goal)))
             (is (= [[100]] (get-in goal [:data :rows])))))))))
-
-(defn- goal-chart
-  "A line chart whose goal line points at `entity-type` `goal-id`'s `count` column."
-  [entity-type goal-id]
-  {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
-   :display                :line
-   :visualization_settings {:graph.show_goal  true
-                            :graph.goal_value {:id goal-id :type entity-type :column "count"}}})
 
 (deftest goal-runs-keep-source-result-metadata-test
   (mt/with-temp [:model/Card    {card-id :id}    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
