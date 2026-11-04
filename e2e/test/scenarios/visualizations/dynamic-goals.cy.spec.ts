@@ -199,6 +199,8 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
 
     cy.log("Goal-based alerts are offered for a dynamic goal");
+    // without a channel, the alert menu opens the channel setup modal instead
+    H.mockSlackConfigured();
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Create an alert").click();
     H.modal().findByTestId("alert-goal-select").should("be.enabled").click();
