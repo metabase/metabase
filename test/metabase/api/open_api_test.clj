@@ -117,12 +117,12 @@
            {:parameters [{:in       :query
                           :name     "collection"
                           :required true
-                          :schema   {:oneOf [{:type :array :items {:type :integer :minimum 1}}
+                          :schema   {:anyOf [{:type :array :items {:type :integer :minimum 1}}
                                              {:type :null}]}}
                          {:in       :query
                           :name     "settings"
                           :required true
-                          :schema   {:oneOf [{:type :boolean} {:type :null}]}}
+                          :schema   {:anyOf [{:type :boolean} {:type :null}]}}
                          {:in       :query
                           :name     "data-model"
                           :required false
@@ -158,14 +158,14 @@
                  {:type     :object
                   :required ["dashcards"]
                   :properties
-                  {"name"      {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
+                  {"name"      {:anyOf [{:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
                                         {:type :null}]}
                    "dashcards" {:type :array
                                 :description string?
                                 :items       {:type       :object
                                               :required   ["id"]
                                               :properties {"id"     {:type :integer}
-                                                           "params" {:oneOf [{:type  :array
+                                                           "params" {:anyOf [{:type  :array
                                                                               :items {:type       :object
                                                                                       :required   ["param_id" "target"]
                                                                                       :properties {"param_id" {}

@@ -56,3 +56,33 @@
           (let [query (:dataset_query (yaml/parse-string (slurp f)))]
             (is (nil? (.validate validator
                                  (.parse (JsonParser. (json-util/encode query))))))))))))
+
+(defn- clause-validator ^Validator []
+  (let [schema-map (js/make-schema)
+        clause     {:$ref        "#/definitions/metabase.lib.schema.mbql-clause.clause"
+                    :definitions (:definitions schema-map)}]
+    (Validator/create (.load (SchemaLoader. (json-util/encode clause)))
+                      (ValidatorConfig. FormatValidationPolicy/ALWAYS))))
+
+(defn- valid-clause? [^Validator validator clause]
+  (nil? (.validate validator (.parse (JsonParser. (json-util/encode clause))))))
+
+(deftest ^:parallel clause-arguments-test
+  (let [validator (clause-validator)]
+    (testing "variadic clauses need their minimum argument count"
+      (is (valid-clause? validator ["and" {} true false]))
+      (is (not (valid-clause? validator ["and" {} true]))))
+    (testing "fixed-arity clauses need exactly their arguments"
+      (is (valid-clause? validator ["<" {} 1 2]))
+      (is (not (valid-clause? validator ["<" {} 1])))
+      (is (not (valid-clause? validator ["<" {} 1 2 3]))))
+    (testing "optional trailing arguments may be left out but not exceeded"
+      (is (valid-clause? validator ["case" {} [[true 1]]]))
+      (is (valid-clause? validator ["case" {} [[true 1]] 2]))
+      (is (not (valid-clause? validator ["case" {} []])))
+      (is (not (valid-clause? validator ["case" {} [[true 1]] 2 3]))))
+    (testing "nested arguments are checked against their clause"
+      (is (valid-clause? validator ["and" {} ["<" {} 1 2] true]))
+      (is (not (valid-clause? validator ["and" {} ["<" {} 1] true]))))
+    (testing "unknown clauses are rejected"
+      (is (not (valid-clause? validator ["no-such-clause" {} 1]))))))
