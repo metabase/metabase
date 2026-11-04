@@ -55,48 +55,50 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "premium-features/token/refresh"))))))
 
+;; The mock HTTP client handles each request on the test's own thread, so a binding of fresh state isolates a test, and
+;; brings a fresh circuit breaker that a failure in one test cannot trip for the next.
+(defmacro ^:private with-fresh-token-state
+  [& body]
+  `(mc/binding (token-check/state-handle) (token-check/initial-state) (fn [] ~@body)))
+
 (deftest post-token-refresh-returns-fresh-status-test
   (testing "POST /api/premium-features/token/refresh fetches from the store and returns what it said"
     (let [status (atom {:valid true :status "ok" :features ["sandboxes"]})]
-      ;; the mock HTTP client handles the request on this thread, so a binding of fresh state is enough
-      (mc/binding (token-check/state-handle) (token-check/initial-state)
-                  (fn []
-                    (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
-                      (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
-                        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 200 :body (json/encode @status)})]
-                          (is (=? {:valid true :features ["sandboxes"]}
-                                  (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
-                          (reset! status {:valid true :status "ok" :features ["sandboxes" "audit-app"]})
-                          (is (=? {:valid true :features ["sandboxes" "audit-app"]}
-                                  (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
-                          (is (= #{"sandboxes" "audit-app"} (token-check/*token-features*)))))))))))
+      (with-fresh-token-state
+        (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 200 :body (json/encode @status)})]
+              (is (=? {:valid true :features ["sandboxes"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (reset! status {:valid true :status "ok" :features ["sandboxes" "audit-app"]})
+              (is (=? {:valid true :features ["sandboxes" "audit-app"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (is (= #{"sandboxes" "audit-app"} (token-check/*token-features*))))))))))
 
 (deftest post-token-refresh-reports-a-failed-check-test
   (testing "POST /api/premium-features/token/refresh reports a failed store call, while feature checks keep the held status"
     (let [fail? (atom false)]
-      ;; a fresh state brings a fresh circuit breaker, so the failure here cannot trip the shared one
-      (mc/binding (token-check/state-handle) (token-check/initial-state)
-                  (fn []
-                    (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
-                      (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
-                        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
-                                                                             (if @fail?
-                                                                               (throw (ex-info "network failure!" {}))
-                                                                               {:status 200
-                                                                                :body   (json/encode {:valid    true
-                                                                                                      :status   "ok"
-                                                                                                      :features ["sandboxes"]})}))]
-                          (is (=? {:valid true :features ["sandboxes"]}
-                                  (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
-                          (reset! fail? true)
-                          (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
-                            (is (= {:valid         false
-                                    :canonical?    false
-                                    :status        "Unable to validate token"
-                                    :error-details "network failure!"}
-                                   (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))
-                          (is (premium-features/has-feature? :sandboxes))
-                          (is (=? {:valid true :features ["sandboxes"]} (premium-features/token-status)))))))))))
+      (with-fresh-token-state
+        (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                                 (if @fail?
+                                                                   (throw (ex-info "network failure!" {}))
+                                                                   {:status 200
+                                                                    :body   (json/encode {:valid    true
+                                                                                          :status   "ok"
+                                                                                          :features ["sandboxes"]})}))]
+              (is (=? {:valid true :features ["sandboxes"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (reset! fail? true)
+              (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
+                (is (= {:valid         false
+                        :canonical?    false
+                        :status        "Unable to validate token"
+                        :error-details "network failure!"}
+                       (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))
+              (is (premium-features/has-feature? :sandboxes))
+              (is (=? {:valid true :features ["sandboxes"]} (premium-features/token-status))))))))))
 
 (deftest post-token-refresh-invalidates-llm-proxy-cache-test
   (testing "POST /api/premium-features/token/refresh invalidates the AI service token cache when explicitly configured"
