@@ -1679,7 +1679,6 @@ describe("GoalValueInput", () => {
       expect(mockWindowOpen).not.toHaveBeenCalled();
     });
 
-    // an embedding host has no Metabase app to open the source in
     it("has nothing to open when Metabase is embedded", async () => {
       jest.mocked(isEmbedding).mockReturnValue(true);
       const { mockWindowOpen } = setupCardSource();
@@ -2085,7 +2084,7 @@ describe("GoalValueInput", () => {
     });
 
     it("tracks replacing a reference to a source that can't be loaded", async () => {
-      setupDeletedCard();
+      const cardResponse = setupSlowDeletedCard();
       const { onChange } = setup({
         data: createDeletedSourceData(),
         value: { type: "card", id: 9, column: "total" },
@@ -2094,9 +2093,14 @@ describe("GoalValueInput", () => {
         await screen.findByText("This source no longer exists"),
       ).toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Change value source" }),
-      );
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      await userEvent.click(pill);
+      await resolveAndSettle(cardResponse);
+      expect(
+        await screen.findByText("Couldn't load this source"),
+      ).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await userEvent.click(pill);
       await userEvent.click(
         await screen.findByRole("menuitem", {
           name: /Value from this question/,
@@ -2180,6 +2184,17 @@ async function resolveAndSettle(response: Deferred<void>) {
 
 function setupDeletedCard() {
   fetchMock.get("path:/api/card/9", 404);
+}
+
+function setupSlowDeletedCard() {
+  const response = defer<void>();
+
+  fetchMock.get("path:/api/card/9", async () => {
+    await response.promise;
+    return 404;
+  });
+
+  return response;
 }
 
 function createDeletedSourceData() {

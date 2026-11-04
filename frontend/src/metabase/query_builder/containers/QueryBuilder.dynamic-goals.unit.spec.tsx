@@ -46,7 +46,6 @@ const COUNT_DATA = {
   rows: [[50]],
 };
 
-// the card endpoint answers the goal source of the saved card
 const CARD_DATASET = createMockDataset({
   data: {
     ...COUNT_DATA,

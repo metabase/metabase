@@ -5,7 +5,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type { Dataset, ReferencedEntitiesResults } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
@@ -139,7 +139,7 @@ function createGoalQuestion() {
 function createGoalResult({
   referencedEntities,
 }: {
-  referencedEntities?: Dataset["data"]["referenced_entities"];
+  referencedEntities?: ReferencedEntitiesResults | null;
 } = {}) {
   return createMockDataset({
     data: createMockDatasetData({

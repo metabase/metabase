@@ -188,24 +188,35 @@
           (is (empty? (messages))))))))
 
 (deftest send-once-goal-alert-with-unresolved-dynamic-goal-test
-  (testing "a send-once goal alert whose dynamic goal can't resolve wasn't sent, so it stays active"
-    (mt/with-temp [:model/Card {goal-card-id :id}
-                   {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
-      (notification.tu/with-card-notification
-        [notification {:card              {:dataset_query          (mt/mbql-query orders
-                                                                     {:aggregation [["count"]]
-                                                                      :breakout    [!day.created_at]})
-                                           :display                :line
-                                           :visualization_settings {:graph.show_goal  true
-                                                                    :graph.goal_value {:id     goal-card-id
-                                                                                       :type   "card"
-                                                                                       :column "count"}}}
-                       :notification-card {:send_condition :goal_above
-                                           :send_once      true}
-                       :handlers          [@notification.tu/default-email-handler]}]
-        (u/ignore-exceptions
-          (notification/send-notification! (t2/select-one :model/Notification :id (:id notification))))
-        (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification))))))))
+  (mt/with-temp [:model/Card {goal-card-id :id}
+                 {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+    (notification.tu/with-card-notification
+      [notification {:card              {:dataset_query          (mt/mbql-query orders
+                                                                   {:aggregation [["count"]]
+                                                                    :breakout    [!day.created_at]})
+                                         :display                :line
+                                         :visualization_settings {:graph.show_goal  true
+                                                                  :graph.goal_value {:id     goal-card-id
+                                                                                     :type   "card"
+                                                                                     :column "count"}}}
+                     :notification-card {:send_condition :goal_above
+                                         :send_once      true}
+                     :handlers          [@notification.tu/default-email-handler]}]
+      (letfn [(stored-notification []
+                (t2/select-one :model/Notification :id (:id notification)))]
+        (testing "a send-once goal alert whose dynamic goal can't resolve isn't sent, so it stays active"
+          (let [messages (notification.tu/with-captured-channel-send!
+                           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                                                 (notification/send-notification! (stored-notification)))))]
+            (is (empty? (:channel/email messages)))
+            (is (true? (:active (stored-notification))))))
+        (testing "once the goal resolves, the alert is sent and archived"
+          (t2/update! :model/Card :id goal-card-id {:dataset_query (mt/native-query {:query "SELECT 0 AS \"count\""})})
+          (notification.tu/test-send-notification!
+           (stored-notification)
+           {:channel/email (fn [emails]
+                             (is (= 1 (count emails))))})
+          (is (false? (:active (stored-notification)))))))))
 
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"

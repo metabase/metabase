@@ -10,8 +10,8 @@ import {
 } from "__support__/dynamic-goals";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
-  DatasetData,
   RawSeries,
+  ReferencedEntitiesResults,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -101,7 +101,6 @@ describe.each(["bar", "area"] as const)(
 );
 
 describe("static line chart with multiple series and a dynamic goal", () => {
-  // each panel has its own y-axis, so unlike multiple y-axes the goal isn't tied to the first series
   it("draws the goal line in each split panel", () => {
     const svg = toSvg(
       createSeries(
@@ -166,7 +165,7 @@ function getGoalLineY(svg: string) {
 
 function createSeries(
   display: VisualizationDisplay,
-  referenced_entities?: DatasetData["referenced_entities"],
+  referenced_entities?: ReferencedEntitiesResults | null,
   settings?: VisualizationSettings,
 ): RawSeries {
   return [

@@ -23,8 +23,8 @@ import type {
   Dashboard,
   DashboardCard,
   Dataset,
-  DatasetData,
   GoalSegment,
+  ReferencedEntitiesResults,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -656,7 +656,7 @@ describe("fetchCardDataAction with goal references", () => {
     unsavedDashcardSettings,
     editing = false,
   }: {
-    referencedEntities?: DatasetData["referenced_entities"];
+    referencedEntities?: ReferencedEntitiesResults | null;
     cardSettings?: VisualizationSettings;
     unsavedDashcardSettings?: VisualizationSettings;
     editing?: boolean;
@@ -831,7 +831,7 @@ describe("fetchCardDataAction with goal references", () => {
   function setupVisualizerDashcard({
     referencedEntities = {},
   }: {
-    referencedEntities?: DatasetData["referenced_entities"];
+    referencedEntities?: ReferencedEntitiesResults | null;
   } = {}) {
     const card = createMockCard({ id: 1, display: "table" });
     const seriesCard = createMockCard({ id: 2, display: "table" });
@@ -892,7 +892,7 @@ describe("fetchCardDataAction with goal references", () => {
   }
 
   function createCachedResult(
-    referencedEntities: DatasetData["referenced_entities"],
+    referencedEntities: ReferencedEntitiesResults | null,
   ) {
     return createMockDataset({
       data: createMockDatasetData({
