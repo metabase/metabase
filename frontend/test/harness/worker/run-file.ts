@@ -6,6 +6,7 @@ import type { TestContext } from "node:test";
 import { setImmediate as realSetImmediate } from "node:timers";
 
 import { root, testTimeoutMs } from "../jest-config.ts";
+import type { TestIdentity } from "../types.ts";
 
 import {
   runInFileScope,
@@ -28,6 +29,7 @@ import {
   packageHooks,
   rootSuite,
   selectTests,
+  setRunningTest,
 } from "./collect.ts";
 import { currentWindow, replaceWindow } from "./dom.ts";
 import {
@@ -85,6 +87,7 @@ import {
   clearPendingTimers,
   fakeClock,
   isPoisoned,
+  realSystemTime,
   restoreTimerGlobals,
   trackTimers,
   withDeadline,
@@ -253,7 +256,7 @@ async function runAfterAll(hooks: TestFunction[]): Promise<void> {
 function runHook(fn: TestFunction): Promise<unknown> {
   const timeoutMs =
     hookTimeoutOf(fn) ?? HOOK_TIMEOUT_MS ?? defaultTestTimeoutMs();
-  return withDeadline(() => invokeTestFunction(fn), timeoutMs, "hook");
+  return withDeadline(() => invokeTestFunction(fn, "hook"), timeoutMs, "hook");
 }
 
 // The tests of a block that has none to run. A todo test stays a todo.
@@ -366,16 +369,19 @@ async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
     globals.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
   }
   setCurrentTestName(fullName(test, " "));
-  const identity = { ancestors: test.path, title: test.name };
+  const identity: TestIdentity = { ancestors: test.path, title: test.name };
   const testScope = {
     name: fullName(test, " > "),
     identity,
     hasEnded: false,
   };
 
+  setRunningTest(test.name);
+  const startedAt = realSystemTime();
   let failure = await runInTestScope(testScope, () =>
     runHooksAndBody(test, hooks),
-  );
+  ).finally(() => setRunningTest(null));
+  identity.durationMs = realSystemTime() - startedAt;
   const [assertionError] = takeAssertionErrors();
   if (assertionError) {
     failure ??= { error: assertionError };
@@ -443,7 +449,7 @@ async function runBeforeEachAndBody(
     setTestPhase("body");
     const body = test.fn ?? (() => {});
     await withDeadline(
-      () => invokeTestFunction(body),
+      () => invokeTestFunction(body, "test"),
       test.timeoutMs ?? defaultTestTimeoutMs(),
       "test",
     );
