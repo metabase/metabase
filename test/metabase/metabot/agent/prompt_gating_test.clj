@@ -326,6 +326,22 @@
       (is (re-find #"pass `show_chart: false` to `construct_notebook_query`" rendered))
       (is (not (re-find #"you cannot see query results" rendered))))))
 
+(deftest ^:parallel prompt-answers-questions-about-the-screen-from-it-test
+  (testing "with run_query the model is told to answer a question about what the user is viewing from that query"
+    (is (re-find #"answer from the query on their screen and don't build another one"
+                 (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"]))))
+  (testing "without run_query it can't read that query, so it is not told to"
+    (is (not (re-find #"answer from the query on their screen"
+                      (render-internal-template all-yes-perms ["construct_notebook_query"]))))))
+
+(deftest ^:parallel prompt-keeps-tools-out-of-answers-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"]]
+    (testing template
+      (is (re-find #"Don't mention your tools in your answer" (render-template template all-yes-perms))))))
+
 (deftest prompt-gates-sql-execution-guidance-test
   (let [tools ["construct_notebook_query" "create_sql_query" "run_query"]]
     (testing "with SQL execution off the model is told run_query runs notebook queries only"
