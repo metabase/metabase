@@ -33,6 +33,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
+   [metabase.native-query-snippets.core :as snippets]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -865,6 +866,8 @@
                                        llm-metabot-provider test-provider]
       (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
                                   metabot-search/search (constantly [])
+                                  snippets/list-native-query-snippets
+                                  (constantly [])
                                   openrouter/openrouter (fn [request]
                                                           (let [n (count (swap! requests conj request))]
                                                             (if (<= n 2)
