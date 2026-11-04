@@ -2273,16 +2273,17 @@
         (is (=? {:has_password false} (mt/user-http-request unused-user-id :get 200 "user/current")))
         (is (=? {:has_password true} (mt/user-http-request used-user-id :get 200 "user/current")))))))
 
-(deftest has-password-hidden-from-group-managers-test
-  (testing "GET /api/user/:id does not show group managers whether another user has password"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id          (mt/user->id :rasta)
-                                                          :group_id         group-id
-                                                          :is_group_manager true}]
-        (let [response (mt/user-http-request :rasta :get 200 (format "user/%d" (mt/user->id :crowberto)))]
-          (is (= "crowberto@metabase.com" (:email response)))
-          (is (not (contains? response :has_password))))))))
+(mt/when-ee-evailable
+ (deftest has-password-hidden-from-group-managers-test
+   (testing "GET /api/user/:id does not show group managers whether another user has password"
+     (mt/with-premium-features #{:advanced-permissions}
+       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                      :model/PermissionsGroupMembership _ {:user_id          (mt/user->id :rasta)
+                                                           :group_id         group-id
+                                                           :is_group_manager true}]
+         (let [response (mt/user-http-request :rasta :get 200 (format "user/%d" (mt/user->id :crowberto)))]
+           (is (= "crowberto@metabase.com" (:email response)))
+           (is (not (contains? response :has_password)))))))))
 
 (deftest password-reset-url-nonexistent-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"

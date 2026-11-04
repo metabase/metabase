@@ -98,10 +98,9 @@ export function initializePlugin() {
   if (hasPremiumFeature("disable_password_login")) {
     const passwordUserFunction = (user: User) =>
       Boolean(
-        (user.has_password === true ||
-          (user.sso_source !== "google" &&
-            user.sso_source !== "ldap" &&
-            user.sso_source !== "oidc")) &&
+        user.sso_source !== "google" &&
+        user.sso_source !== "ldap" &&
+        user.sso_source !== "oidc" &&
         MetabaseSettings.isPasswordLoginEnabled(),
       );
 
