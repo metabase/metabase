@@ -248,7 +248,13 @@
       (is (nil? (referenced-entities/viz-settings->goal-specs
                  :gauge
                  {:gauge.segments [{:min 0 :max 50}
-                                   {:min "self_col" :max 100}]})))))
+                                   {:min "self_col" :max 100}]}))))
+    (testing "a GoalSource whose type names no runnable entity is dropped"
+      (is (= [{:type "card" :id 1 :columns ["total"]}]
+             (referenced-entities/viz-settings->goal-specs
+              :gauge
+              {:gauge.segments [{:min {:id 2 :type "segment" :column "total"}
+                                 :max {:id 1 :type "card" :column "total"}}]})))))
   (testing "only the goal settings the display draws run"
     (let [viz {:graph.show_goal  true
                :graph.goal_value {:id 1 :type "card" :column "a"}
