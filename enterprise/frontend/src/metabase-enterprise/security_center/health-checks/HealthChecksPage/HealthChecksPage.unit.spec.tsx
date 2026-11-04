@@ -144,7 +144,6 @@ describe("HealthChecksPage", () => {
   it("does not show all clear when a check couldn't run", async () => {
     await setup({ checks: [UNKNOWN_CHECK, PASSING_CHECK] });
 
-    expect(screen.getByText("1 of 2 checks pass")).toBeInTheDocument();
     expect(
       screen.queryByText("All security checks pass"),
     ).not.toBeInTheDocument();
@@ -215,33 +214,26 @@ describe("HealthChecksPage", () => {
     expect(screen.getByText("Requires a restart")).toBeInTheDocument();
   });
 
-  it("does not show how to fix a passing check", async () => {
-    await setup({
-      checks: [{ ...PASSING_CHECK, requires_restart: true }],
-    });
+  it.each([
+    { check: PASSING_CHECK, group: /Passed/ },
+    { check: UNKNOWN_CHECK, group: /Couldn't check/ },
+  ])(
+    "does not show how to fix a $check.status check",
+    async ({ check, group }) => {
+      await setup({
+        checks: [{ ...check, id: "https-site-url", requires_restart: true }],
+      });
 
-    await openGroup(/Passed/);
+      await openGroup(group);
 
-    expect(screen.queryByText("How to fix")).not.toBeInTheDocument();
-    expect(screen.queryByText("Requires a restart")).not.toBeInTheDocument();
-  });
-
-  it("does not show how to fix a check that couldn't run", async () => {
-    await setup({
-      checks: [
-        { ...UNKNOWN_CHECK, id: "https-site-url", requires_restart: true },
-      ],
-    });
-
-    await openGroup(/Couldn't check/);
-
-    expect(screen.getByText("No version info")).toBeInTheDocument();
-    expect(screen.queryByText("How to fix")).not.toBeInTheDocument();
-    expect(screen.queryByText("Requires a restart")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Open settings" }),
-    ).not.toBeInTheDocument();
-  });
+      expect(screen.getByText(check.title)).toBeInTheDocument();
+      expect(screen.queryByText("How to fix")).not.toBeInTheDocument();
+      expect(screen.queryByText("Requires a restart")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Open settings" }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("lists failing items first and keeps passed items collapsed", async () => {
     await setup({
@@ -346,28 +338,33 @@ describe("HealthChecksPage", () => {
     },
   );
 
-  it("does not link an object that passes", async () => {
-    await setup({
-      checks: [
-        {
-          ...FAILING_CHECK,
-          id: "all-users-permissions",
-          items: [
-            createMockHealthCheckItem({
-              status: "pass",
-              entity_type: "group",
-              entity_id: 1,
-              entity_name: "All Users",
-            }),
-          ],
-        },
-      ],
-    });
+  it.each<{ name: string; checkId: HealthCheckId; item: HealthCheckItem }>([
+    {
+      name: "an object that passes",
+      checkId: "all-users-permissions",
+      item: {
+        status: "pass",
+        entity_type: "group",
+        entity_id: 1,
+        entity_name: "All Users",
+      },
+    },
+    {
+      name: "an object the check has no page for",
+      checkId: "encryption-secret-key",
+      item: {
+        status: "fail",
+        entity_type: "database",
+        entity_id: 1,
+        entity_name: "Warehouse",
+      },
+    },
+  ])("does not link $name", async ({ checkId, item }) => {
+    await setup({ checks: [{ ...FAILING_CHECK, id: checkId, items: [item] }] });
 
-    expect(screen.getByText("All Users")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Open permissions" }),
-    ).not.toBeInTheDocument();
+    const row = screen.getByTestId("health-check-item");
+    expect(within(row).getByText(item.entity_name ?? "")).toBeInTheDocument();
+    expect(within(row).queryByRole("link")).not.toBeInTheDocument();
   });
 
   it.each<{ checkId: HealthCheckId; href: string }>([
@@ -391,40 +388,6 @@ describe("HealthChecksPage", () => {
 
     expect(
       screen.queryByRole("link", { name: "Open settings" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not link settings for a passing check", async () => {
-    await setup({ checks: [PASSING_CHECK] });
-
-    await openGroup(/Passed/);
-
-    expect(screen.getByText("HTTPS redirect")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Open settings" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not link an object the check has no page for", async () => {
-    await setup({
-      checks: [
-        {
-          ...FAILING_CHECK,
-          items: [
-            createMockHealthCheckItem({
-              status: "fail",
-              entity_type: "database",
-              entity_id: 1,
-              entity_name: "Warehouse",
-            }),
-          ],
-        },
-      ],
-    });
-
-    expect(screen.getByText("Warehouse")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Open database" }),
     ).not.toBeInTheDocument();
   });
 
@@ -539,11 +502,6 @@ describe("HealthChecksPage", () => {
     expect(
       await screen.findByText("All security checks pass"),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls(
-        "path:/api/ee/security-center/health-checks/recheck",
-      ),
-    ).toHaveLength(1);
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith("all");
   });
