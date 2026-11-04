@@ -43,10 +43,6 @@ import {
   TableDetailsSkeleton,
 } from "./DetailPanel";
 import { FieldDetailsPanel } from "./FieldDetailsPanel";
-import {
-  HistoryDrawerPanels,
-  useHistoryDrawerPanels,
-} from "./HistoryCheckPanel";
 import { PropertyDetailsPanel } from "./PropertyDetailsPanel";
 import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
@@ -60,7 +56,6 @@ import {
   REVEAL_WIDTH_DURATION_MS,
   REVEAL_WIDTH_TRANSITION,
 } from "./constants";
-import { HistoryEntitySelectionProvider } from "./contexts/HistoryEntitySelectionContext";
 import {
   PropertySelectionProvider,
   usePropertySelection,
@@ -73,9 +68,7 @@ export const DataModel = () => {
   return (
     <SelectionProvider>
       <PropertySelectionProvider>
-        <HistoryEntitySelectionProvider>
-          <DataModelContent />
-        </HistoryEntitySelectionProvider>
+        <DataModelContent />
       </PropertySelectionProvider>
     </SelectionProvider>
   );
@@ -126,7 +119,6 @@ function DataModelContent() {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const { selectedPropertyName, setSelectedPropertyName } =
     usePropertySelection(table?.id);
-  const historyPanels = useHistoryDrawerPanels(table?.id);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
@@ -230,8 +222,6 @@ function DataModelContent() {
     activeTab === "properties" &&
     table != null &&
     selectedPropertyName != null;
-  const showHistoryPanels =
-    showTableDetailsSection && activeTab === "versions" && table != null;
 
   const isDrawerOpen =
     openContainer != null ||
@@ -272,8 +262,6 @@ function DataModelContent() {
   closeActivePanelRef.current = () => {
     if (showPropertyDetails) {
       setSelectedPropertyName(null);
-    } else if (showHistoryPanels && historyPanels.closeInnermost()) {
-      return;
     } else if (showFieldPreview) {
       closePreview();
     } else if (showFieldDetails) {
@@ -428,17 +416,6 @@ function DataModelContent() {
           defaultWidth={panelWidths.field}
           onWidthChange={handlePanelWidthChange("field")}
           onClose={() => setSelectedPropertyName(null)}
-        />
-      )}
-
-      {showHistoryPanels && (
-        <HistoryDrawerPanels
-          table={table}
-          panels={historyPanels}
-          panelWidth={panelWidths.field}
-          previewWidth={panelWidths.preview}
-          scrollToPanel={scrollToPanel}
-          onPanelWidthChange={handlePanelWidthChange("field")}
         />
       )}
 

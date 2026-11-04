@@ -18,7 +18,12 @@ import { useMetadataProvider } from "metabase/metadata-store";
 import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { type Location, useNavigate, useParams } from "metabase/router";
+import {
+  type Location,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -215,7 +220,13 @@ export function NewQueryTransformPage() {
 }
 
 export function NewNativeTransformPage() {
-  const initialSource = useMemo(() => getInitialNativeSource(), []);
+  const [searchParams] = useSearchParams();
+  const databaseId = Number(searchParams.get("databaseId")) || undefined;
+  const sql = searchParams.get("sql") ?? undefined;
+  const initialSource = useMemo(
+    () => getInitialNativeSource({ databaseId, sql }),
+    [databaseId, sql],
+  );
   return <NewTransformPage initialSource={initialSource} />;
 }
 

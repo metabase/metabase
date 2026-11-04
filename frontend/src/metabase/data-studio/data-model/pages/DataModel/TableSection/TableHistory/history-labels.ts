@@ -2,7 +2,6 @@ import { msgid, ngettext, t } from "ttag";
 
 import type {
   HistoryCheck,
-  HistoryCheckId,
   HistoryCheckStatus,
   HistoryProfile,
 } from "metabase/metadata/table-structure";
@@ -24,20 +23,6 @@ export const countOf = (count: number, noun: EntityNoun) =>
 
 export const formatDate = (value: string | null) =>
   value == null ? t`open` : value.slice(0, 10);
-
-export function getCheckTitle(id: HistoryCheckId) {
-  const titles: Record<HistoryCheckId, string> = {
-    "durable-key": t`The entity key groups versions`,
-    "one-current": t`One current version each`,
-    overlap: t`Versions don't overlap`,
-    gap: t`No gaps between versions`,
-    "valid-range": t`Valid to comes after valid from`,
-    "has-current": t`Every key has a current version`,
-    "version-order": t`Versions are numbered in order`,
-    "latest-tie": t`One latest row per key`,
-  };
-  return titles[id];
-}
 
 export function getCheckDescription(
   check: HistoryCheck,
@@ -122,31 +107,4 @@ export function getCheckScope(
   return total != null
     ? t`Checked on a sample of ${profile.rowCount.toLocaleString()} of about ${total.toLocaleString()} records.`
     : t`Checked on a sample of ${profile.rowCount.toLocaleString()} records.`;
-}
-
-export function getDataNote(check: HistoryCheck, noun: EntityNoun) {
-  const subject = countOf(check.entityKeys.length, noun);
-  const count = check.entityKeys.length;
-  switch (check.id) {
-    case "has-current":
-      return ngettext(
-        msgid`${subject} has no current record.`,
-        `${subject} have no current record.`,
-        count,
-      );
-    case "one-current":
-      return ngettext(
-        msgid`${subject} has two current records.`,
-        `${subject} have two current records.`,
-        count,
-      );
-    case "gap":
-      return ngettext(
-        msgid`${subject} has a gap in their history.`,
-        `${subject} have a gap in their history.`,
-        count,
-      );
-    default:
-      return null;
-  }
 }

@@ -7,6 +7,7 @@ import { DataSectionLayout } from "metabase/data-studio/app/pages/DataSectionLay
 import { DataStudioLayout } from "metabase/data-studio/app/pages/DataStudioLayout";
 import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/routes";
 import { Outlet, Route } from "metabase/router";
+import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -93,6 +94,7 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
               {getDataStudioMetadataRoutes(Outlet)}
             </Route>
           </Route>
+          <Route path="transforms">{getDataStudioTransformRoutes()}</Route>
         </Route>
       </Wrapper>
     </div>

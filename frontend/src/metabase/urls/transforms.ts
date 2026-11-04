@@ -50,8 +50,21 @@ export function newQueryTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/query`;
 }
 
-export function newNativeTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/native`;
+export function newNativeTransform({
+  databaseId,
+  sql,
+}: { databaseId?: DatabaseId; sql?: string } = {}) {
+  const searchParams = new URLSearchParams();
+  if (databaseId != null) {
+    searchParams.set("databaseId", String(databaseId));
+  }
+  if (sql != null) {
+    searchParams.set("sql", sql);
+  }
+  const queryString = searchParams.toString();
+  return queryString.length > 0
+    ? `${TRANSFORMS_ROOT_URL}/new/native?${queryString}`
+    : `${TRANSFORMS_ROOT_URL}/new/native`;
 }
 
 export function newPythonTransform() {
