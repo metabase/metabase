@@ -32,6 +32,7 @@ export function SetupModal({ opened, onSuccess, onCancel }: SetupModalProps) {
   return (
     <Modal
       title={t`Set up two-factor authentication`}
+      density="relaxed"
       opened={opened}
       onClose={onCancel}
     >

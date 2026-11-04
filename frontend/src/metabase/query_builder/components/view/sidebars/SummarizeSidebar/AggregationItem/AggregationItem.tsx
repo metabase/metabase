@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
-import { Box, Icon, Popover } from "metabase/ui";
+import { Box, Icon, Popover, useStablePopoverPosition } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
 import type * as Lib from "metabase-lib";
 
@@ -29,10 +29,17 @@ export function AggregationItem({
   operators,
 }: AggregationItemProps) {
   const [isOpened, { toggle }] = useDisclosure(false);
+  const stablePositionProps = useStablePopoverPosition();
 
   return (
     <PreventPopoverExitProvider>
-      <Popover opened={isOpened} onChange={toggle}>
+      <Popover
+        position={stablePositionProps.position}
+        middlewares={stablePositionProps.middlewares}
+        onClose={stablePositionProps.onClose}
+        opened={isOpened}
+        onChange={toggle}
+      >
         <Popover.Target>
           <button
             className={AggregationItemS.Root}

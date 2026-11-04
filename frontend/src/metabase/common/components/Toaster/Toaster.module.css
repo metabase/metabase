@@ -75,12 +75,12 @@
 }
 
 .dismiss:hover {
-  background-color: var(--mb-color-button-on_dark-secondary-hover);
+  background-color: var(--mb-color-button-on_dark_secondary-neutral-hover);
   color: var(--mb-color-tooltip-text);
 }
 
 .dismiss:active {
-  background-color: var(--mb-color-button-on_dark-secondary-pressed);
+  background-color: var(--mb-color-button-on_dark_secondary-neutral-pressed);
 }
 
 .toast[data-variant="negative"],

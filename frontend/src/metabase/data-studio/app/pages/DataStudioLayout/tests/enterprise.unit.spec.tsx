@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import {
   createMockDirtyCardEntity,
   createMockDirtyTransformEntity,
@@ -242,12 +243,12 @@ describe("DataStudioLayout", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+    it("should show dirty indicator for a pending transform removal when remote-sync-transforms setting is disabled", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        dirty: [createMockDirtyTransformEntity()],
+        dirty: [createMockDirtyTransformEntity({ sync_status: "removed" })],
         remoteSyncTransforms: false,
       });
 
@@ -257,8 +258,8 @@ describe("DataStudioLayout", () => {
 
       const transformsTab = screen.getByLabelText("Data transformation");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
+        await within(transformsTab).findByTestId("remote-sync-status"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -310,6 +311,46 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("data apps tab", () => {
+    const enterprisePlugins = [
+      ...(DEFAULT_EE_SETTINGS.enterprisePlugins ?? []),
+      "data-apps" as const,
+    ];
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("shows Data apps as an upsell without the data-apps feature", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, enterprisePlugins });
+
+      const dataAppsTab = await screen.findByRole("link", {
+        name: "Data apps",
+      });
+      expect(within(dataAppsTab).getByTestId("upsell-gem")).toBeInTheDocument();
+      expect(within(dataAppsTab).queryByText("Beta")).not.toBeInTheDocument();
+    });
+
+    it("shows Data apps without an upsell with the data-apps feature", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        enterprisePlugins,
+        tokenFeatures: {
+          ...DEFAULT_EE_SETTINGS.tokenFeatures,
+          "data-apps": true,
+        },
+      });
+
+      const dataAppsTab = await screen.findByRole("link", {
+        name: "Data apps",
+      });
+      expect(
+        within(dataAppsTab).queryByTestId("upsell-gem"),
+      ).not.toBeInTheDocument();
+      expect(within(dataAppsTab).getByText("Beta")).toBeInTheDocument();
     });
   });
 });

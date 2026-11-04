@@ -9,9 +9,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn library-root-collections
@@ -29,11 +29,10 @@
   authoritative."
   []
   (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:from [(warehouse-schema-overlay/table-query)]
-                        :where [:and
+                       {:where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]
-                                 [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
+                                 [:= :data_authority "authoritative"]]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."
@@ -72,8 +71,10 @@
 
 (defn- search-doc-select
   [{:keys [id model]}]
+  ;; these have to be real SQL literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot
+  ;; work out the type of a parameter in the select list of a CTE (`Unknown data type: "?, ?"`)
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline (str id)]] [^:allow-raw-sql [:inline model]]]})
+  {:select [[(h2x/literal (str id))] [(h2x/literal model)]]})
 
 (defn- search-index-select
   "A `search_index` CTE selecting the `:id` and `:model` of each of `search-results` (each `{:id :model}`)."

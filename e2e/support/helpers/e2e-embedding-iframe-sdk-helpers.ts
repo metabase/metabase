@@ -51,6 +51,9 @@ export interface BaseEmbedTestPageOptions {
   };
 
   onVisitPage?(win: Cypress.AUTWindow): void;
+
+  // The embed must not see the Cypress session cookie unless the test needs it
+  signOut?: boolean;
 }
 
 export interface MetabaseElement {
@@ -114,6 +117,7 @@ export function loadSdkIframeEmbedTestPage({
   origin = "",
   selector,
   onVisitPage,
+  signOut = true,
   ...options
 }: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
@@ -124,6 +128,10 @@ export function loadSdkIframeEmbedTestPage({
     body: testPageSource,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
@@ -203,11 +211,9 @@ const convertPropertiesToEmbedTagAttributes = (
 export function prepareSdkIframeEmbedTest({
   withToken = "bleeding-edge",
   enabledAuthMethods = ["jwt"],
-  signOut = false,
 }: {
   withToken?: false | "starter" | "bleeding-edge";
   enabledAuthMethods?: EnabledAuthMethods[];
-  signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
@@ -227,10 +233,6 @@ export function prepareSdkIframeEmbedTest({
   setupMockAuthProviders(enabledAuthMethods);
 
   mockEmbedJsToDevServer();
-
-  if (signOut) {
-    cy.signOut();
-  }
 }
 
 /**
@@ -352,9 +354,11 @@ export const visitCustomHtmlPage = (
   {
     origin = "",
     onVisitPage,
+    signOut = true,
   }: {
     origin?: string;
     onVisitPage?: () => void;
+    signOut?: boolean;
   } = {},
 ) => {
   const testPageUrl = `${origin}/custom-html-page`;
@@ -362,6 +366,10 @@ export const visitCustomHtmlPage = (
     body: html,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
 

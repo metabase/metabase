@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
+  setupContentDiagnosticsCountsEndpoint,
   setupInvalidateFindingsEndpoint,
   setupListStaleFindingsEndpoint,
   setupUpdateCardEndpointWithError,
@@ -10,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -97,6 +99,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupContentDiagnosticsCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { router, store } = renderWithProviders(
@@ -158,6 +161,46 @@ describe("StaleContentPage", () => {
     const list = await screen.findByRole("treegrid");
     expect(await within(list).findByText("Sales overview")).toBeInTheDocument();
     expect(within(list).getByText("Marketing funnel")).toBeInTheDocument();
+  });
+
+  it("shows a skeleton only initially and keeps rows under the loader while paging", async () => {
+    const pending = defer<ListStaleFindingsResponse>();
+    const firstPage = createMockListStaleFindingsResponse({
+      data: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_display_name: "First page finding",
+        }),
+      ],
+      total: 26,
+    });
+    const nextPage = createMockListStaleFindingsResponse({
+      data: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 26,
+          entity_display_name: "Next page finding",
+        }),
+      ],
+      total: 26,
+    });
+    setup({
+      getResponse: (url) =>
+        new URL(url).searchParams.get("offset") === "25"
+          ? pending.promise
+          : firstPage,
+    });
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await screen.findByText("First page finding");
+    await userEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+    );
+    expect(screen.getByText("First page finding")).toBeVisible();
+    expect(screen.queryByTestId("tree-table-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+    await act(async () => pending.resolve(nextPage));
+    expect(await screen.findByText("Next page finding")).toBeVisible();
+    expect(screen.queryByText("First page finding")).not.toBeInTheDocument();
   });
 
   it("shows an empty state when there are no findings", async () => {

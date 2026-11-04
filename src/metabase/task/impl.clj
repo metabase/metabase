@@ -160,6 +160,14 @@
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- schedule-trigger!
+  "Schedule `trigger` for `job`, scheduling `job` with it when Quartz deleted the job since it was registered."
+  [^Scheduler scheduler ^JobDetail job ^Trigger trigger]
+  (try
+    (.scheduleJob scheduler trigger)
+    (catch JobPersistenceException _
+      (.scheduleJob scheduler job trigger))))
+
 (mu/defn- reschedule-task!
   "Assuming that [[job]] is already registered, ensure that [[new-trigger]] is scheduled to trigger it."
   [^Scheduler scheduler   :- (ms/InstanceOfClass Scheduler)
@@ -173,7 +181,7 @@
           replaced-trigger (or matching-trigger (first triggers))]
       (log/debugf "Rescheduling job %s" (.getName job-key))
       (if-not replaced-trigger
-        (.scheduleJob scheduler new-trigger)
+        (schedule-trigger! scheduler job new-trigger)
         (let [replaced-key (.getKey ^Trigger replaced-trigger)]
           (when-not matching-trigger
             (log/warnf "Replacing trigger %s with trigger %s%s"
@@ -184,7 +192,8 @@
                          ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
                          ;; The current behavior is especially confounding if replacing N triggers with M ones.
                          (str " (chosen randomly from " (count triggers) " existing ones)"))))
-          (.rescheduleJob scheduler replaced-key new-trigger))))
+          (when-not (.rescheduleJob scheduler replaced-key new-trigger)
+            (schedule-trigger! scheduler job new-trigger)))))
     (catch Throwable e
       (log/errorf "Error rescheduling job: %s" (ex-message e)))))
 

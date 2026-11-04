@@ -1,0 +1,29 @@
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { DataPermissionValue } from "metabase-types/api";
+
+import { Messages } from "../../constants/messages";
+import { isRestrictivePermission } from "../../utils/graph";
+
+export const getNativePermissionDisabledTooltip = (
+  isAdmin: boolean,
+  accessPermissionValue: DataPermissionValue,
+) => {
+  if (isAdmin) {
+    return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+  }
+
+  // prevent tooltip from being disabled when the user can't modify the view data column
+  if (!PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn) {
+    return null;
+  }
+
+  if (accessPermissionValue === DataPermissionValue.LEGACY_NO_SELF_SERVICE) {
+    return Messages.UNABLE_TO_CHANGE_LEGACY_PERMISSIONS;
+  }
+
+  if (isRestrictivePermission(accessPermissionValue)) {
+    return Messages.NATIVE_PERMISSION_REQUIRES_DATA_ACCESS;
+  }
+
+  return null;
+};

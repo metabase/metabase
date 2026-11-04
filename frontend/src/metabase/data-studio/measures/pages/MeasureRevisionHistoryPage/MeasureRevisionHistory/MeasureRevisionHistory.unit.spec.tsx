@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupMeasureRevisionsEndpoint } from "__support__/server-mocks";
+import { setupEntityRevisionsEndpoint } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
@@ -41,7 +41,7 @@ function setup({
       body: "Server error",
     });
   } else {
-    setupMeasureRevisionsEndpoint(measure.id, revisions);
+    setupEntityRevisionsEndpoint("measure", measure.id, revisions);
   }
 
   const storeInitialState = createMockState({

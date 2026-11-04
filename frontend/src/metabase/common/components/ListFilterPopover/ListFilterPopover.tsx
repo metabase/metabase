@@ -63,8 +63,9 @@ export const ListFilterPopover = ({
       onChange={setOpened}
     >
       <Popover.Target>
-        <Indicator disabled={!hasActiveFilters} size={8} offset={8}>
+        <Indicator disabled={!hasActiveFilters} size={8} offset={12}>
           <Button
+            size="lg"
             leftSection={<Icon name="filter" />}
             aria-label={t`Show filters`}
             onClick={handleTriggerClick}

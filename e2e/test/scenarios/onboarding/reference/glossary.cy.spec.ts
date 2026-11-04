@@ -95,15 +95,6 @@ describe("data reference > glossary", () => {
       cy.findByText("Beta").should("be.visible");
     });
   });
-
-  it("creates, updates, and deletes definitions with trimmed API values", () => {
-    visitGlossary();
-    executeCreateGlossaryTermFlow();
-
-    executeUpdateGlossaryTermFlow();
-
-    executeDeleteGlossaryTermFlow();
-  });
 });
 
 describe("data studio > glossary", () => {

@@ -88,6 +88,11 @@
    [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
    [:metadata/own-model-query? {:optional true} :boolean]
    [:pivot/original-query    {:optional true} [:maybe [:ref :metabase.lib.schema/query]]]
+   ;; Hash of the pivot query as the caller submitted it, before the pivot QP rewrote it into subqueries. Added by
+   ;; [[metabase.query-processor.pivot]] to the first subquery only, so that
+   ;; [[metabase.query-processor.middleware.process-userland-query]] records the whole pivot's running time under the
+   ;; hash that the cache strategy's `:avg-execution-ms` lookup uses.
+   [:pivot/query-hash        {:optional true} [:maybe [:ref ::hash]]]
    ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
    ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
    ;; this gets added by [[metabase.query-processor.pivot]] for pivot queries; it's merged in to other metadata

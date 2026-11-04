@@ -1,20 +1,18 @@
 ---
-title: Actions overview
+title: Model actions
 redirect_from:
   - /docs/latest/data-modeling/models/actions/start
-  - /docs/latest/actions
-  - /docs/latest/actions/start
 ---
 
-# Actions overview
+# Model actions
 
 ![An action updating a plan on a dashboard](./images/dashboard-action.gif)
 
-Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements.
+Model actions are actions that belong to a [model](../models.md).
 
-## [Introduction to actions ](./introduction.md)
+## [Introduction to model actions](./introduction.md)
 
-Use actions to update your data based on user input or values on the page.
+Use model actions to update your data based on user input or values on the page.
 
 ## [Basic actions](./basic.md)
 

@@ -46,6 +46,12 @@ export function setupSearchEndpoints(
   );
 }
 
+export function setupSearchErrorEndpoint({ status = 400 } = {}) {
+  const name = "search";
+  fetchMock.removeRoute(name);
+  fetchMock.get("path:/api/search", { status }, { name });
+}
+
 export function setupEmbeddingDataPickerDecisionEndpoints(
   dataPicker: EmbeddingDataPicker,
 ) {

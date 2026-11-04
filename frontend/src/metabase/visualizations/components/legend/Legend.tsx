@@ -1,19 +1,16 @@
 import cx from "classnames";
 import { t } from "ttag";
-import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Flex, Popover, Text, rem } from "metabase/ui";
 import type { HoveredObject } from "metabase/viz-core";
 
 import S from "./Legend.module.css";
 import type { LegendItemData } from "./LegendItem";
 import { LegendItem } from "./LegendItem";
-import {
-  LEGEND_PADDING,
-  LEGEND_SIZES,
-  type LegendSize,
-  getOverflowLabel,
-} from "./layout";
+import { LEGEND_PADDING } from "./constants";
+import { getOverflowLabel } from "./measure";
+import { LEGEND_SIZES, type LegendSizeTier } from "./sizes";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;
@@ -26,13 +23,14 @@ interface LegendProps {
   visibleIndex?: number;
   visibleLength?: number;
   isVertical?: boolean;
-  size?: LegendSize;
+  size?: LegendSizeTier;
   onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
     event: React.MouseEvent,
     index: number,
     isReversed?: boolean,
   ) => void;
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -44,22 +42,25 @@ export const Legend = ({
   visibleIndex = 0,
   visibleLength = originalItems.length,
   isVertical,
-  size = "sm",
+  size = "smallCard",
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendProps) => {
-  const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
+  const items = isReversed ? [...originalItems].reverse() : originalItems;
 
   const overflowIndex = visibleIndex + visibleLength;
   const visibleItems = items.slice(visibleIndex, overflowIndex);
   const overflowLength = items.length - overflowIndex;
+  const shouldPinRowItemWidths = !isVertical && overflowLength > 0;
+  const lastVisibleIndex = visibleItems.length - 1;
   const { itemGap, rowGap, maxVerticalWidth, typography } = LEGEND_SIZES[size];
 
   return (
     <Flex
-      className={cx({ [S.horizontalRoot]: !isVertical }, className)}
+      className={cx({ [CS.overflowHidden]: !isVertical }, className)}
       aria-label={t`Legend`}
       direction={isVertical ? "column" : "row"}
       align={isVertical ? "stretch" : "center"}
@@ -77,6 +78,10 @@ export const Legend = ({
         return (
           <LegendItem
             key={item.key}
+            className={cx({
+              [S.pinnedRowItem]:
+                shouldPinRowItemWidths && index < lastVisibleIndex,
+            })}
             item={item}
             index={itemIndex}
             isMuted={hovered != null && itemIndex !== hovered.index}
@@ -84,6 +89,7 @@ export const Legend = ({
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
+            getSeriesHref={getSeriesHref}
             onToggleSeriesVisibility={onToggleSeriesVisibility}
           />
         );
@@ -97,8 +103,12 @@ export const Legend = ({
           <Popover.Target>
             <Text
               component="div"
-              className={S.overflowLabel}
-              c="text-secondary"
+              className={cx(
+                CS.textSecondary,
+                CS.textBrandHover,
+                CS.cursorPointer,
+                CS.textNoWrap,
+              )}
               fz={typography}
               lh={typography}
             >
@@ -112,10 +122,11 @@ export const Legend = ({
                 hovered={hovered}
                 visibleIndex={overflowIndex}
                 visibleLength={overflowLength}
-                isVertical={isVertical}
+                isVertical
                 size={size}
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}
+                getSeriesHref={getSeriesHref}
                 onToggleSeriesVisibility={onToggleSeriesVisibility}
                 isReversed={isReversed}
               />

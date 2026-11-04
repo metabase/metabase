@@ -12,9 +12,7 @@ import {
   Loader,
   Modal,
   type ModalProps,
-  Stack,
   Text,
-  Title,
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -36,6 +34,12 @@ export const TransformsSettingUpModal = ({
     skip: !opened,
   });
   const isSettingUp = !hasPremiumFeature(featureToCheck);
+  const settingUpTitle = isPython
+    ? t`Setting up Python transforms, please wait`
+    : t`Setting up transforms, please wait`;
+  const readyTitle = isPython
+    ? t`Python transforms are ready`
+    : t`Transforms are ready`;
 
   return (
     <Modal
@@ -45,10 +49,9 @@ export const TransformsSettingUpModal = ({
       closeOnEscape={false}
       withCloseButton={false}
       size="30rem"
-      padding="2.5rem"
       mah="80%"
-    >
-      <Stack align="center" gap="xl" my="4.5rem">
+      layout="centered"
+      illustration={
         <Box h={96} pos="relative" w={96}>
           <Flex
             align="center"
@@ -84,37 +87,21 @@ export const TransformsSettingUpModal = ({
             </Flex>
           )}
         </Box>
-
-        {isSettingUp ? (
-          <Box ta="center">
-            <Title c="text-primary" fz="lg">
-              {isPython
-                ? t`Setting up Python transforms, please wait`
-                : t`Setting up transforms, please wait`}
-            </Title>
-            <Text c="text-secondary" fz="md" lh={1.43}>
-              {t`This will take just a minute or so`}
-            </Text>
-          </Box>
-        ) : (
-          <>
-            <Box ta="center">
-              <Title c="text-primary" fz="lg">
-                {isPython
-                  ? t`Python transforms are ready`
-                  : t`Transforms are ready`}
-              </Title>
-              <Text c="text-secondary" fz="md" lh={1.43}>
-                {t`Happy transforming!`}
-              </Text>
-            </Box>
-
-            <Button variant="filled" onClick={onClose}>
-              {t`Done`}
-            </Button>
-          </>
-        )}
-      </Stack>
+      }
+      title={isSettingUp ? settingUpTitle : readyTitle}
+    >
+      <Text c="text-secondary">
+        {isSettingUp
+          ? t`This will take just a minute or so`
+          : t`Happy transforming!`}
+      </Text>
+      {!isSettingUp && (
+        <Modal.Footer>
+          <Button variant="filled" onClick={onClose}>
+            {t`Done`}
+          </Button>
+        </Modal.Footer>
+      )}
     </Modal>
   );
 };

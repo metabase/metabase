@@ -40,6 +40,8 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
   initialParameters: Yup.mixed().optional(),
   parameters: Yup.mixed().optional(),
   onParametersChange: Yup.mixed().optional(),
+  navigatedEntityParameters: Yup.mixed().optional(),
+  onNavigatedEntityParametersChange: Yup.mixed().optional(),
   onLoad: Yup.mixed().optional(),
   onLoadWithoutCards: Yup.mixed().optional(),
   plugins: Yup.object({

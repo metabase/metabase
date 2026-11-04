@@ -28,7 +28,6 @@ export const FormNumberInputWidget = forwardRef(function FormNumberInputWidget(
 
   return (
     <FormField
-      mb="lg"
       title={title}
       actions={actions}
       description={description}

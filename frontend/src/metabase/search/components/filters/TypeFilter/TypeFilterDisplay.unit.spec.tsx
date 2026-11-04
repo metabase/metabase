@@ -18,6 +18,7 @@ const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModel, string> = {
   document: "Document",
   exploration: "Research",
   transform: "Transform",
+  "data-app": "Data app",
 };
 
 const setup = (value: TypeFilterProps) => {

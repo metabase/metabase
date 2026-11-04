@@ -3,5 +3,7 @@
   once. Query execution waits on it whenever a warehouse pool does not exist yet, so take it only around pool creation
   and never around anything slow.")
 
+(set! *warn-on-reflection* true)
+
 (defonce ^{:doc "The monitor object. Take it with `locking`."} monitor
   (Object.))

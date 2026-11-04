@@ -88,10 +88,6 @@
                  (rows))))))))
 
 (deftest never-viewed-documents-created-before-cutoff-are-stale
-  ;; A serdes import restores the old `created_at` but :skip's `last_viewed_at`/`view_count`
-  ;; (make-spec "Document", document.clj), so an imported never-viewed doc has an OLD created_at
-  ;; yet a fresh `last_viewed_at` — only the `view_count = 0 AND created_at <= cutoff` arm catches
-  ;; it; the `last_viewed_at <= cutoff` arm can't.
   (mt/with-temp [:model/Document {never-viewed-id :id} {:name           "Never viewed, created before cutoff"
                                                         :collection_id  nil
                                                         :view_count     0

@@ -7,6 +7,8 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -43,13 +45,13 @@
 
 (deftest ^:parallel powerset-test
   (is (= [[]]
-         (#'qp.pivot/powerset [])))
+         (#'pivot.common/powerset [])))
   (is (= [[0] []]
-         (#'qp.pivot/powerset [0])))
+         (#'pivot.common/powerset [0])))
   (is (= [[0 1] [1] [0] []]
-         (#'qp.pivot/powerset [0 1])))
+         (#'pivot.common/powerset [0 1])))
   (is (= [[0 1 2] [1 2] [0 2] [2] [0 1] [1] [0] []]
-         (#'qp.pivot/powerset [0 1 2]))))
+         (#'pivot.common/powerset [0 1 2]))))
 
 (deftest ^:parallel breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -57,7 +59,7 @@
             [0 1]
             [0]
             []]
-           (#'qp.pivot/breakout-combinations 3 [0 1 2] [] true true)))))
+           (#'pivot.common/breakout-combinations 3 [0 1 2] [] true true)))))
 
 (deftest ^:parallel breakout-combinations-test-2
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -77,7 +79,7 @@
              [3]
              ;; bottom right corner
              []])
-           (#'qp.pivot/breakout-combinations 4 [0 1 2] [3] true true)))))
+           (#'pivot.common/breakout-combinations 4 [0 1 2] [3] true true)))))
 
 (deftest ^:parallel breakout-combinations-test-3
   (testing "Should return the combos that Paul specified in (#14329)"
@@ -90,71 +92,71 @@
               [1]
               [0]
               []]
-             (#'qp.pivot/breakout-combinations 3 [] [] true true))))))
+             (#'pivot.common/breakout-combinations 3 [] [] true true))))))
 
 (deftest ^:parallel breakout-combinations-test-row-totals-disabled
   (testing "Should return the correct combos when row totals are disabled but column totals are enabled"
     (is (= [[0 1] [0]]
-           (#'qp.pivot/breakout-combinations 2 [1] [0] false true)))))
+           (#'pivot.common/breakout-combinations 2 [1] [0] false true)))))
 
 (deftest ^:parallel breakout-combinations-test-col-totals-disabled
   (testing "Should return the correct combos when column totals are disabled but row totals are enabled"
     (is (= [[0 1] [1]]
-           (#'qp.pivot/breakout-combinations 2 [1] [0] true false)))))
+           (#'pivot.common/breakout-combinations 2 [1] [0] true false)))))
 
 (deftest ^:parallel breakout-combinations-test-row-col-totals-disabled
   (testing "Should return only the main query when both row and column totals are disabled"
     (is (= [[0 1]]
-           (#'qp.pivot/breakout-combinations 2 [1] [0] false false)))))
+           (#'pivot.common/breakout-combinations 2 [1] [0] false false)))))
 
 (deftest ^:parallel breakout-combinations-test-4
   (testing "The breakouts are sorted ascending."
     (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]
-           (#'qp.pivot/breakout-combinations 3 [1 0] [2] true true)))))
+           (#'pivot.common/breakout-combinations 3 [1 0] [2] true true)))))
 
 (deftest ^:parallel validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [0 1 2 3] [] true true))))
+         (#'pivot.common/breakout-combinations 3 [0 1 2 3] [] true true))))
   (testing "Should throw an Exception if you pass in invalid pivot-cols"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+         (#'pivot.common/breakout-combinations 3 [] [0 1 2 3] true true))))
   (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-rows: duplicate breakout indices"
-         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+         (#'pivot.common/breakout-combinations 3 [0 0 1] [] true true)))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: duplicate breakout indices"
-         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+         (#'pivot.common/breakout-combinations 3 [] [1 1] true true))))
   (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"pivot-rows and pivot-cols must not overlap"
-         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
+         (#'pivot.common/breakout-combinations 3 [0 1] [1 2] true true)))))
 
 (deftest ^:parallel breakout-combinations-powerset-cap-test
-  (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
+  (let [max-breakouts @#'pivot.common/max-powerset-breakouts]
     (testing "the powerset fallback is allowed up to the cap"
       (is (= (long (Math/pow 2 max-breakouts))
-             (count (#'qp.pivot/breakout-combinations max-breakouts [] [] true true)))))
+             (count (#'pivot.common/breakout-combinations max-breakouts [] [] true true)))))
     (testing "the powerset fallback is rejected past the cap, before any combinations are enumerated"
       (doseq [num-breakouts [(inc max-breakouts) 30 62]]
         (is (=? {:type          :invalid-query
                  :num-breakouts num-breakouts}
                 (try
-                  (#'qp.pivot/breakout-combinations num-breakouts [] [] true true)
+                  (#'pivot.common/breakout-combinations num-breakouts [] [] true true)
                   nil
                   (catch ExceptionInfo e
                     (ex-data e)))))))
     (testing "explicit pivot-rows/pivot-cols only produce a linear number of combinations, so they are not capped"
       (is (= 60
-             (count (#'qp.pivot/breakout-combinations 30 (range 29) [29] true true)))))))
+             (count (#'pivot.common/breakout-combinations 30 (range 29) [29] true true)))))))
 
 (defn- many-breakouts-query
   "A query against `checkins` with `n` distinct breakouts (the date bucketed by different temporal units)."
@@ -173,7 +175,7 @@
 (deftest powerset-breakout-cap-run-pivot-query-test
   (testing "a pivot query with no pivot rows/cols and too many breakouts fails as an invalid query instead of
            enumerating every breakout combination"
-    (let [query (qp.core/userland-query (many-breakouts-query (inc @#'qp.pivot/max-powerset-breakouts)))]
+    (let [query (qp.core/userland-query (many-breakouts-query (inc @#'pivot.common/max-powerset-breakouts)))]
       (doseq [native? [false true]]
         (testing (str "use-native-pivot-tables = " native?)
           (mt/with-temporary-setting-values [use-native-pivot-tables native?]
@@ -225,6 +227,61 @@
                     :error_type :invalid-query
                     :json_query map?}
                    (qp.pivot/run-pivot-query userland-query)))))))))
+
+(defn- orders-pivot-query
+  "Build a pivot query against `orders` with the breakouts in `fields` and an MBQL `:pivot` clause
+  pointing at the given row/column indexes into the breakout vector. Uses `lib.pivot/with-pivot` (not
+  legacy top-level keys) because the stale-UUID bug this test guards against is specific to the stage
+  `:pivot` clause — legacy keys never propagate to sub-queries' stages."
+  [fields rows-idx cols-idx]
+  (let [mp    (mt/metadata-provider)
+        base  (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) q
+                (reduce (fn [q f] (lib/breakout q (lib.metadata/field mp (mt/id :orders f)))) q fields)
+                (lib/aggregate q (lib/count)))
+        uuids (mapv lib.options/uuid (lib/breakouts base))]
+    (lib.pivot/with-pivot base
+      {:rows               (mapv uuids rows-idx)
+       :columns            (mapv uuids cols-idx)
+       :show-row-totals    true
+       :show-column-totals true})))
+
+(deftest ^:mb/driver-tests pivot-returns-every-rollup-bitmask-test
+  (testing "every pivot flow emits rows for every grouping-combo bitmask"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (mt/dataset test-data
+        (let [native? (driver.u/supports? driver/*driver* :native-pivot-tables (mt/db))
+              sql?    (isa? driver/hierarchy driver/*driver* :sql)
+              ;; `use-native-pivot-tables` picks the primary runner between `run-pivot-query-multi`
+              ;; (false) and `run-sql-pivot-query` (true). `:qp.pivot/forced-shape` picks which
+              ;; sub-shape `run-sql-pivot-query` compiles.
+              flows   (cond-> [{:flow :multi-query, :setting false, :shape nil}]
+                        sql?    (conj {:flow :union-all,          :setting true,  :shape :union-all})
+                        native? (conj {:flow :native-pivot-query, :setting true,  :shape :native-pivot-query}))
+              shapes  [{:label       "1 row x 1 col over 2 breakouts"
+                        :fields      [:product_id :user_id]
+                        :rows-idx    [0]
+                        :cols-idx    [1]
+                        :bitmask-set #{0 1 2 3}}
+                       {:label       "2 rows x 1 col over 3 breakouts"
+                        :fields      [:product_id :user_id :quantity]
+                        :rows-idx    [0 1]
+                        :cols-idx    [2]
+                        :bitmask-set #{0 2 3 4 6 7}}
+                       {:label       "1 row x 2 cols over 3 breakouts"
+                        :fields      [:product_id :user_id :quantity]
+                        :rows-idx    [2]
+                        :cols-idx    [0 1]
+                        :bitmask-set #{0 3 4 7}}]]
+          (doseq [{:keys [label fields rows-idx cols-idx bitmask-set]} shapes
+                  {:keys [flow setting shape]}                         flows]
+            (testing (str label " / flow = " flow)
+              (let [forced (cond-> (orders-pivot-query fields rows-idx cols-idx)
+                             shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))]
+                (mt/with-temporary-setting-values [use-native-pivot-tables setting]
+                  (qp.pivot.test-util/without-pivot-parity-check
+                   (let [rows     (mt/rows (qp.pivot/run-pivot-query forced))
+                         bitmasks (into (sorted-set) (map #(long (nth % (count fields)))) rows)]
+                     (is (= bitmask-set bitmasks)))))))))))))
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -285,7 +342,7 @@
         (is (= (assoc pivot-options :show-row-totals true :show-column-totals true)
                actual-pivot-options)))
       (are [num-breakouts expected] (= expected
-                                       (#'qp.pivot/breakout-combinations
+                                       (#'pivot.common/breakout-combinations
                                         num-breakouts
                                         (:pivot-rows pivot-options)
                                         (:pivot-cols pivot-options)
@@ -310,11 +367,11 @@
               :show-row-totals true, :show-column-totals true}
              pivot-options))
       (is (= [[0 1] [1] [0] []]
-             (#'qp.pivot/breakout-combinations 2
-                                               (:pivot-rows pivot-options)
-                                               (:pivot-cols pivot-options)
-                                               (:show-row-totals pivot-options)
-                                               (:show-column-totals pivot-options)))))))
+             (#'pivot.common/breakout-combinations 2
+                                                   (:pivot-rows pivot-options)
+                                                   (:pivot-cols pivot-options)
+                                                   (:show-row-totals pivot-options)
+                                                   (:show-column-totals pivot-options)))))))
 
 ;;; ---- apply-pivot-viz-settings ----
 
@@ -521,17 +578,17 @@
   (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
     (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
-        (let [query                  (-> (qp.pivot.test-util/pivot-query)
-                                         qp.middleware.normalize/normalize-preprocessing-middleware)
-              [multi-p multi-stub]   (capture-first-query)
-              [sql-p sql-stub]       (capture-first-query)]
+        (let [query                    (-> (qp.pivot.test-util/pivot-query)
+                                           qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]     (capture-first-query)
+              [single-p single-stub]   (capture-first-query)]
           (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
-            (#'qp.pivot/run-pivot-query-multi query nil))
-          (mt/with-dynamic-fn-redefs [qp.core/process-query sql-stub]
-            (#'qp.pivot/run-sql-pivot-query query nil))
+            (#'qp.pivot/run-multi-query-pivot query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query single-stub]
+            (#'qp.pivot/run-single-query-pivot query nil))
           (is (some? (get-in @multi-p [:middleware :pivot-options])))
-          (is (= (get-in @multi-p [:middleware :pivot-options])
-                 (get-in @sql-p   [:middleware :pivot-options]))))))))
+          (is (= (get-in @multi-p  [:middleware :pivot-options])
+                 (get-in @single-p [:middleware :pivot-options]))))))))
 
 (deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
   (testing "pivot with a breakout that references an expression"
@@ -833,11 +890,11 @@
                     :show-row-totals true, :show-column-totals true}
                    pivot-options))
             (is (= [[0 1] [1] [0] []]
-                   (#'qp.pivot/breakout-combinations 2
-                                                     (:pivot-rows pivot-options)
-                                                     (:pivot-cols pivot-options)
-                                                     (:show-row-totals pivot-options)
-                                                     (:show-column-totals pivot-options))))
+                   (#'pivot.common/breakout-combinations 2
+                                                         (:pivot-rows pivot-options)
+                                                         (:pivot-cols pivot-options)
+                                                         (:show-row-totals pivot-options)
+                                                         (:show-column-totals pivot-options))))
             (is (=? {:status    :completed
                      :row_count 156
                      :data {:cols [{:lib/desired-column-alias "CATEGORY"}
@@ -1513,8 +1570,8 @@
       (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
         ;; Use the standard pivot-query but override the pivot limit to be very small.
         ;; The master query (state × source × category) produces ~200+ rows.
-        ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
-        (binding [qp.pivot/*pivot-max-result-rows* 20]
+        ;; With pivot-max-result-rows 20, the limit is 20/2=10 per sub-query.
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20]
           (let [query   (qp.pivot.test-util/pivot-query)
                 results (qp.pivot/run-pivot-query query)
                 rows    (mt/rows results)]
@@ -1535,38 +1592,101 @@
         ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
         ;; which violates the constraint schema without the fix.
         ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
-        (binding [qp.pivot/*pivot-max-result-rows* 20]
-          (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
-            (let [query   (-> (qp.pivot.test-util/pivot-query)
-                              (assoc :constraints (qp.constraints/default-query-constraints)))
-                  results (qp.pivot/run-pivot-query query)]
-              (is (<= 2 (count (get-in query [:query :aggregation])))
-                  "Sanity check: pivot-query should have at least 2 aggregations")
-              (is (not= :failed (:status results))
-                  "Pivot query should not fail with a constraint violation"))))))))
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20
+                                           qp.settings/unaggregated-query-row-limit 15]
+          (let [query   (-> (qp.pivot.test-util/pivot-query)
+                            (assoc :constraints (qp.constraints/default-query-constraints)))
+                results (qp.pivot/run-pivot-query query)]
+            (is (<= 2 (count (get-in query [:query :aggregation])))
+                "Sanity check: pivot-query should have at least 2 aggregations")
+            (is (not= :failed (:status results))
+                "Pivot query should not fail with a constraint violation")))))))
 
-(deftest ^:parallel native-pivot-honors-max-results-constraint-test
-  (testing "Native pivot path honors the caller's :constraints :max-results — no special pivot-only cap"
-    (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
-      (let [max-results 50
-            mp          (mt/metadata-provider)
-            orders      (lib.metadata/table mp (mt/id :orders))
-            product-id  (lib.metadata/field mp (mt/id :orders :product_id))
-            user-id     (lib.metadata/field mp (mt/id :orders :user_id))
-            query       (-> (lib/query mp orders)
-                            (lib/breakout product-id)
-                            (lib/breakout user-id)
-                            (lib/aggregate (lib/count))
-                            (merge {:constraints {:max-results max-results}
+(defn- native-pivot-two-breakout-query
+  "An orders breakout product × user × count pivot query, used by the native-pivot limit/ordering tests to
+  exercise all four grouping sets `#{0 1 2 3}`."
+  []
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        user-id    (lib.metadata/field mp (mt/id :orders :user_id))]
+    (-> (lib/query mp orders)
+        (lib/breakout product-id)
+        (lib/breakout user-id)
+        (lib/aggregate (lib/count)))))
+
+(deftest native-pivot-exceeds-default-aggregated-cap-test
+  (testing "Native pivot path returns more than `default-aggregated-query-row-limit` rows when the detail set is bigger — the whole point of the pivot-specific cap"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        ;; `orders` has 18,760 rows, 18,076 unique `(product_id, user_id)` tuples. Add rollups + grand total
+        ;; and we're well past the plain aggregated cap of 10,000.
+        (let [default-aggregated-max (:max-results (qp.constraints/default-query-constraints))
+              query                  (-> (native-pivot-two-breakout-query)
+                                         (merge {:pivot_rows [0] :pivot_cols [1]}))
+              results                (qp.pivot/run-pivot-query query)]
+          (testing "row count exceeds the default aggregated cap"
+            (is (< default-aggregated-max (count (mt/rows results)))))
+          (testing "no truncation flag (we're well under `pivot-max-result-rows`)"
+            (is (not (contains? (:data results) :pivot_rows_truncated)))))))))
+
+(deftest native-pivot-caps-max-results-at-pivot-cap-test
+  (testing "Native pivot path caps `:constraints :max-results` at `pivot-max-result-rows` but honors a smaller caller-supplied value"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 100]
+          (let [run (fn [caller-max]
+                      (qp.pivot/run-pivot-query
+                       (-> (native-pivot-two-breakout-query)
+                           (cond-> caller-max (assoc :constraints {:max-results caller-max}))
+                           (assoc :pivot_rows [0] :pivot_cols [1]))))]
+            (testing "caller's smaller `:max-results` is honored"
+              (let [results (run 10)]
+                (is (= 10 (count (mt/rows results))))
+                (is (= 10 (get-in results [:data :pivot_rows_truncated])))))
+            (testing "caller's larger `:max-results` is clamped to `pivot-max-result-rows`"
+              (let [results (run 500)]
+                (is (= 100 (count (mt/rows results))))
+                (is (= 100 (get-in results [:data :pivot_rows_truncated])))))
+            (testing "no caller `:max-results` falls back to `pivot-max-result-rows`"
+              (let [results (run nil)]
+                (is (= 100 (count (mt/rows results))))
+                (is (= 100 (get-in results [:data :pivot_rows_truncated])))))))))))
+
+(deftest native-pivot-caps-max-results-bare-rows-test
+  (testing "Native pivot path caps `:max-results-bare-rows` at `pivot-max-result-rows` so it stays ≤ `:max-results`"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 10]
+          ;; `:max-results-bare-rows` (2000) > `pivot-max-result-rows` (10). Without the cap, the
+          ;; constraints middleware rejects the query with
+          ;; `max-results-bare-rows must be less than or equal to max-results`.
+          (let [query   (-> (native-pivot-two-breakout-query)
+                            (merge {:constraints {:max-results-bare-rows 2000}
                                     :pivot_rows  [0]
-                                    :pivot_cols  [1]})
-                            qp.middleware.normalize/normalize-preprocessing-middleware)
-            results     (#'qp.pivot/run-sql-pivot-query query nil)]
-        (testing "row count matches the requested cap"
-          (is (= max-results (count (mt/rows results)))))
-        (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
-          (is (= max-results (get-in results [:data :pivot_rows_truncated])))
-          (is (not (contains? (:data results) :rows_truncated))))))))
+                                    :pivot_cols  [1]}))
+                results (qp.pivot/run-pivot-query query)]
+            (testing "query completes without a constraint-schema violation"
+              (is (= :completed (:status results))))
+            (testing "row count is capped at `pivot-max-result-rows` and the truncation flag fires"
+              (is (= 10 (count (mt/rows results))))
+              (is (= 10 (get-in results [:data :pivot_rows_truncated]))))))))))
+
+(deftest native-pivot-emits-rollups-before-details-test
+  (testing "Native pivot path returns rows in pivot-grouping DESC order so totals survive `:max-results` truncation"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (doseq [shape [:native-pivot-query :union-all]]
+          (testing (str "forced-shape " shape)
+            (let [query   (-> (native-pivot-two-breakout-query)
+                              (merge {:pivot_rows [0] :pivot_cols [1]})
+                              qp.middleware.normalize/normalize-preprocessing-middleware
+                              (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))
+                  results (qp.pivot/run-pivot-query query)]
+              (testing "all four grouping sets present and emitted in rollups-first (DESC) order"
+                ;; `long` on each `pivot-grouping` so drivers that return it as BigDecimal (e.g. Oracle) compare equal.
+                (is (= [3 2 1 0] (into [] (comp (map #(long (nth % 2))) (distinct))
+                                       (mt/rows results))))))))))))
 
 (deftest ^:parallel filters-query-test
   (testing "Pivot queries with a filter on a breakout column complete successfully"

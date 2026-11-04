@@ -12,7 +12,7 @@ describe("EmbedHomepage (OSS)", () => {
       screen.getAllByRole("link", { name: "Read the docs" })[0],
     ).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+      "https://www.metabase.com/docs/latest/embedding/guest-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
   });
 
@@ -30,7 +30,7 @@ describe("EmbedHomepage (OSS)", () => {
 
     expect(readEmbedJsDocsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+      "https://www.metabase.com/docs/latest/embedding/modular-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
   });
 

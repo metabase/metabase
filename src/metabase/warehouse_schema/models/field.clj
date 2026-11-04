@@ -15,11 +15,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -124,6 +123,7 @@
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -165,15 +165,11 @@
     (-> (merge defaults field)
         enforce-effective-type-invariant)))
 
-(def field-user-settings
-  "Set of user-settable values for a Field; see [[warehouse-schema-overlay/user-settable-field-columns]]."
-  warehouse-schema-overlay/user-settable-field-columns)
-
 (t2/define-before-update :model/Field
   [field]
   (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
+    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
+    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
   (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field
@@ -385,16 +381,6 @@
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
-(defn hydrate-target-with-write-perms
-  "Hydrates :target on field, but if the `:fk_target_field_id` field is not writable, `:target` will be nil."
-  [field]
-  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
-                          (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
-                          (when (mi/can-write? (t2/hydrate target-field :table))
-                            target-field))]
-    (assoc field :target target-field)))
-
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
@@ -472,15 +458,15 @@
     field))
 
 (defmethod serdes/make-spec "Field" [_model-name _opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
+  {:schema    ::warehouse-schema.schema/external-field
+   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
-   :transform {:created_at         (serdes/date)
-               :table_id           (serdes/fk :model/Table)
+   :transform {:table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)}
    :defaults  {:active                     true

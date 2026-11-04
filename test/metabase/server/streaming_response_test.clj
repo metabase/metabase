@@ -25,7 +25,7 @@
    (java.io ByteArrayOutputStream Closeable InputStream)
    (java.util.concurrent CountDownLatch Executors Future TimeUnit)
    (java.util.concurrent.atomic AtomicBoolean)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
 (defn- do-with-streaming-response-thread-pool! [thunk]
   (let [pool (Executors/newFixedThreadPool thread-pool-size
                                            (.build
-                                            (doto (BasicThreadFactory$Builder.)
+                                            (doto (BasicThreadFactory/builder)
                                               (.namingPattern "streaming-response-test-thread-pool-%d")
                                               ;; Daemon threads do not block shutdown of the JVM
                                               (.daemon true))))]

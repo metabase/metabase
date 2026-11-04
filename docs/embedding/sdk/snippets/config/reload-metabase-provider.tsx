@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 const yourQuestionId = 1;
 const order = {};

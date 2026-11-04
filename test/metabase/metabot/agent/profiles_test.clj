@@ -7,7 +7,8 @@
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest get-profile-test
   ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
@@ -149,7 +150,7 @@
 (deftest embedding-next-matches-nlq-tools-test
   (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
                 "curated nlq swaps search for the library tool")
-    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
+    (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
           ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
@@ -176,7 +177,7 @@
                        [profile-id (contains? (profiles/get-tools-for-profile profile-id []) "run_query")]))))))))
 
 (deftest internal-sql-profile-test
-  (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
+  (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
     (testing "internal-sql is internal without the notebook builder"
       (let [internal     (profiles/get-profile :internal)
             internal-sql (profiles/get-profile :internal-sql)]
@@ -268,27 +269,12 @@
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
 
-(deftest terminal-tools-are-still-unconverted-test
-  (testing (str "Every tool a profile can end a turn on is still an `mu/defn` var. "
-                "`metabase.metabot.agent.core/answer-producing?` requires `:structured-output` "
-                "from them on top of the absence of `:error`, because each one catches its own "
-                "exceptions and returns `{:output \"Query 3 not found\"}` — a failure with no "
-                "`:error` for the adapter to find, which would otherwise end the turn and deliver "
-                "that sentence as the answer.\n\n"
-                "When one of these is converted it throws instead, its failure carries an `:error`, "
-                "and the extra requirement becomes wrong: a converted tool that answers without "
-                "structured output would stop being terminal. So this test is the tripwire — if it "
-                "fails because you converted one of these, delete the `:structured-output` clause "
-                "in `answer-producing?` and this test with it.")
-    (let [terminal (for [[profile-id profile] @@#'profiles/*profiles
-                         :let  [by-name (into {} (map (juxt #(:name (tools.legacy/declaration-of %))
-                                                            identity))
-                                              (:tools profile))]
-                         tool-name (:terminal-tools profile)]
-                     [profile-id tool-name (get by-name tool-name)])]
-      (is (seq terminal) "no terminal tools found — has :terminal-tools moved?")
-      (doseq [[profile-id tool-name tool-var] terminal]
-        (testing (str profile-id " / " tool-name)
-          (is (some? tool-var) "a profile lists a terminal tool it does not expose")
-          (is (tools.legacy/legacy-tool? tool-var)
-              (str tool-name " is converted now — see this test's docstring")))))))
+(deftest ^:parallel every-tool-is-in-a-profile-test
+  (testing "every tool is in a profile, except the snippet tools, which no profile offers yet"
+    ;; `profile->tools` adds load_skill to every profile that has skills
+    (let [offered (into #{#'tools/load-skill-tool} (mapcat :tools) (vals @@#'profiles/*profiles))]
+      (is (= #{#'tools/list-snippets-tool #'tools/get-snippet-details-tool}
+             (into #{}
+                   (comp (filter #(mr/validate @#'profiles/tool-var-schema %))
+                         (remove offered))
+                   (vals (ns-publics 'metabase.metabot.tools))))))))

@@ -7,11 +7,14 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------- Create Snippet API Tests -------------------------------------------
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest create-snippet-blocked-in-read-only-mode-test
   (testing "POST /api/native-query-snippet"

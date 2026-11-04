@@ -40,7 +40,7 @@
   "Apply `changes` to the NativeQuerySnippet with `id`."
   [id :- ::lib.schema.id/native-query-snippet
    changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
-  (t2/update! :model/NativeQuerySnippet id changes))
+  (t2/update! :model/NativeQuerySnippet :id id changes))
 
 (mu/defn snippet-id-by-name
   "The id of the NativeQuerySnippet named `snippet-name`, or nil."

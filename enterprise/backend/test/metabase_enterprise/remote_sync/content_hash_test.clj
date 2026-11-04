@@ -21,12 +21,25 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
+
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- count-definition
+  "A Measure definition counting the rows of the Table `table-id` in the Database `db-id`."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 (defn- noop-update-status!
   "Seeds a synced RemoteSyncObject for [model-type model-id] whose `content_hash` matches the entity's
@@ -129,7 +142,9 @@
                      :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db)
                                          :is_published true :collection_id (:id coll)}
                      :model/Field _ {:name "F" :table_id (:id table) :base_type :type/Integer}
-                     :model/Measure measure {:name "M" :table_id (:id table)}]
+                     :model/Measure measure {:name       "M"
+                                             :table_id   (:id table)
+                                             :definition (count-definition (:id db) (:id table))}]
         (is (= "synced" (noop-update-status! "Measure" (:id measure) :event/measure-update measure)))))))
 
 ;;; ------------------------------------------- transforms models (setting-gated) -------------------------------------------
@@ -181,7 +196,7 @@
                                              :status "synced"
                                              :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                                              :status_changed_at (t/offset-date-time)})
-        (t2/update! :model/Card (:id card) {:name "Renamed"})
+        (t2/update! :model/Card :id (:id card) {:name "Renamed"})
         (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
                                                    :previous-object card
                                                    :user-id (mt/user->id :rasta)})
@@ -220,7 +235,9 @@
                        :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
                        :model/Field _field {:name "F" :table_id (:id table) :base_type :type/Integer}
                        :model/TableUserSettings _ {:table_id (:id table) :display_name "curated"}
-                       :model/Measure measure {:name "M" :table_id (:id table)}]
+                       :model/Measure measure {:name       "M"
+                                               :table_id   (:id table)
+                                               :definition (count-definition (:id db) (:id table))}]
           (mt/with-model-cleanup [:model/RemoteSyncTask]
             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                   rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})

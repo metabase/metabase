@@ -34,7 +34,9 @@
   [_driver]
   ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
    "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
-   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"])
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"
+   ;; added by the 3.8.2 client
+   "GlueEndpoint" "SsoEndpoint" "SsoStartUrl"])
 
 (defmethod driver/non-host-parameters :athena
   [_driver]
@@ -60,7 +62,7 @@
 
 (defmethod driver/database-supports? [:athena :schemas]
   [_driver _feature db]
-  (not (seq (:dbname (driver.conn/effective-details db)))))
+  (not (seq (:dbname (:details db)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -72,6 +74,11 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
+
+;; the URL is built from the hostname, or from the region when there is none; everything else is a property
+(defmethod driver/url-building-detail-keys :athena
+  [_driver]
+  [:hostname :region])
 
 (defmethod driver/connection-hosts :athena
   [_driver {:keys [hostname region]}]

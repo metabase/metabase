@@ -43,7 +43,6 @@ function setup(themeId: ThemeEditorId = 1, applicationColors?: ColorSettings) {
     : undefined;
 
   return renderHookWithProviders(() => useEmbeddingThemeEditor(themeId), {
-    withUndos: true,
     withRouter: true,
     storeInitialState,
   });
@@ -490,7 +489,7 @@ describe("useEmbeddingThemeEditor", () => {
         expect(result.current.currentTheme).not.toBeNull();
       });
 
-      const saved = await result.current.handleSave();
+      const saved = await act(() => result.current.handleSave());
 
       expect(saved?.id).toBe(42);
       expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(

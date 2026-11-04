@@ -19,7 +19,7 @@ import {
 import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { dataStudioArchivedSnippets } from "metabase/urls";
-import type { User } from "metabase-types/api";
+import type { EnterpriseSettings, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockNativeQuerySnippet,
@@ -32,13 +32,18 @@ import { SnippetListPage } from "./SnippetListPage";
 type SetupOpts = {
   isEnterprise?: boolean;
   user?: Partial<User>;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
 const NATIVE_WRITE_USER: Partial<User> = {
   permissions: { can_create_native_queries: true },
 };
 
-function setup({ isEnterprise = false, user = NATIVE_WRITE_USER }: SetupOpts) {
+function setup({
+  isEnterprise = false,
+  user = NATIVE_WRITE_USER,
+  remoteSyncType,
+}: SetupOpts) {
   setupCollectionsEndpoints({
     collections: [
       createMockCollection({ id: "root", name: "Root", namespace: "snippets" }),
@@ -67,14 +72,20 @@ function setup({ isEnterprise = false, user = NATIVE_WRITE_USER }: SetupOpts) {
   });
   const state = createMockState({
     settings: mockSettings({
+      "remote-sync-type": remoteSyncType,
+      "remote-sync-enabled": remoteSyncType != null,
       "token-features": createMockTokenFeatures({
         snippet_collections: isEnterprise,
+        remote_sync: remoteSyncType != null,
       }),
     }),
     currentUser: createMockUser(user),
   });
   if (isEnterprise) {
     setupEnterpriseOnlyPlugin("snippets");
+  }
+  if (remoteSyncType != null) {
+    setupEnterpriseOnlyPlugin("remote_sync");
   }
 
   renderWithProviders(<Route path="/" element={<SnippetListPage />} />, {
@@ -180,27 +191,31 @@ describe("SnippetListPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the permissions of the snippets collection from the page menu", async () => {
-    setupGroupsEndpoint([]);
-    setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
-    setup({
-      isEnterprise: true,
-      user: { ...NATIVE_WRITE_USER, is_superuser: true },
-    });
+  it.each([undefined, "read-only"] as const)(
+    "opens the permissions of the snippets collection from the page menu with remote sync %s",
+    async (remoteSyncType) => {
+      setupGroupsEndpoint([]);
+      setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
+      setup({
+        isEnterprise: true,
+        user: { ...NATIVE_WRITE_USER, is_superuser: true },
+        remoteSyncType,
+      });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Snippet options" }),
-    );
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /Change permissions/ }),
-    );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Snippet options" }),
+      );
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Change permissions/ }),
+      );
 
-    expect(
-      await within(screen.getByRole("dialog")).findByRole("heading", {
-        name: "Permissions for Root",
-      }),
-    ).toBeInTheDocument();
-  });
+      expect(
+        await within(screen.getByRole("dialog")).findByRole("heading", {
+          name: "Permissions for Root",
+        }),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("offers only archived snippets without snippet folders", async () => {
     setup({ user: { ...NATIVE_WRITE_USER, is_superuser: true } });

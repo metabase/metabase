@@ -13,10 +13,12 @@ import {
   PLUGIN_CUSTOM_VIZ,
 } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { visualizations } from "metabase/viz-core";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   CustomVizPluginId,
@@ -41,11 +43,27 @@ import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount
 /**
  * EAJS has no eval-permissive page CSP in production, so its plugin sandbox
  * uses the hosted donor document (served with a per-document eval CSP). The
- * react-sdk npm package runs on the customer's own page and inherits its
- * CSP, so "blank" (about:blank) works there.
+ * react-sdk npm package runs on the customer's own page: it uses the donor
+ * page the host app passes as `customVisualizationsSandboxUrl`, or
+ * else "blank" (about:blank), which inherits the page CSP.
  */
-export function getSdkSandboxMode(): SandboxMode {
-  return isEmbeddingEajs() ? "hosted" : "blank";
+export function getSdkSandboxMode(sandboxUrl?: string): SandboxMode {
+  if (isEmbeddingEajs()) {
+    return "hosted";
+  }
+  return sandboxUrl ? { iframeSrc: sandboxUrl } : "blank";
+}
+
+function getSandboxUrl(): string | undefined {
+  return ensureMetabaseProviderPropsStore().getState().props
+    ?.customVisualizationsSandboxUrl;
+}
+
+function useSdkSandboxMode(): SandboxMode {
+  const { state } = useMetabaseProviderPropsStore();
+  const sandboxUrl = state?.props?.customVisualizationsSandboxUrl;
+  // `sandboxMode` is an effect dependency downstream, so keep it stable
+  return useMemo(() => getSdkSandboxMode(sandboxUrl), [sandboxUrl]);
 }
 
 /**
@@ -155,7 +173,7 @@ export function initializeSdkCustomVizPlugin() {
       }
       return eeLoadCustomVizPlugin(plugin, {
         ...options,
-        sandboxMode: getSdkSandboxMode(),
+        sandboxMode: getSdkSandboxMode(getSandboxUrl()),
       });
     },
 
@@ -167,27 +185,41 @@ export function initializeSdkCustomVizPlugin() {
         return { status: "unavailable" };
       }
       return eeLoadCustomVizPluginForDisplay(dispatch, display, {
-        sandboxMode: getSdkSandboxMode(),
+        sandboxMode: getSdkSandboxMode(getSandboxUrl()),
         onMessage: logUnavailableCustomVizMessage,
       });
     },
 
     useAutoLoadCustomVizPlugin: (display: string | undefined) => {
       const allowlist = useAllowlist();
+      const sandboxMode = useSdkSandboxMode();
       const allowed =
         // Regular (non-custom) displays are always allowed.
         !isCustomVizDisplay(display) || isCustomVizAllowed(display, allowlist);
 
-      useEffect(() => {
-        if (isCustomVizDisplay(display) && !allowed) {
-          unregisterCustomVizDisplay(display);
-        }
-      }, [display, allowed]);
+      // A plugin could have been loaded under a previous allow list and needs
+      // to be removed. We keep the viz unmounted (reporting loading) until it's
+      // unregistered, so it remounts with the fallback settings.
+      const needsUnregister =
+        isCustomVizDisplay(display) && !allowed && visualizations.has(display);
+      const forceUpdate = useForceUpdate();
 
-      return eeUseAutoLoadCustomVizPlugin(allowed ? display : undefined, {
-        sandboxMode: getSdkSandboxMode(),
-        onMessage: logUnavailableCustomVizMessage,
-      });
+      useEffect(() => {
+        if (needsUnregister && isCustomVizDisplay(display)) {
+          unregisterCustomVizDisplay(display);
+          forceUpdate();
+        }
+      }, [display, needsUnregister, forceUpdate]);
+
+      const result = eeUseAutoLoadCustomVizPlugin(
+        allowed ? display : undefined,
+        {
+          sandboxMode,
+          onMessage: logUnavailableCustomVizMessage,
+        },
+      );
+
+      return { ...result, loading: result.loading || needsUnregister };
     },
 
     useCustomVizPlugins: (opts?: { enabled?: boolean }) => {

@@ -5,8 +5,19 @@
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
+
+(defn hydrate-target-with-data-model-perms
+  "Hydrate the FK target of `field` as `:target`, or nil when `field` is not an FK or the current user cannot edit the
+  data model of the target's table."
+  [field]
+  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
+                          (:fk_target_field_id field))
+        target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
+                          (when (seq (schema.table/filter-tables-by-data-model-perms [(:table (t2/hydrate target-field :table))]))
+                            target-field))]
+    (assoc field :target target-field)))
 
 (defn get-field
   "Get `Field` with ID."
@@ -14,7 +25,7 @@
   (let [field (-> (api/check-404 (warehouse-schema.db/field id))
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
-                (field/hydrate-target-with-write-perms field)
+                (hydrate-target-with-data-model-perms field)
                 (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
@@ -25,7 +36,7 @@
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
     (if include-editable-data-model?
-      (api/write-check :model/Table (:table_id field))
+      (schema.table/check-data-model-perms (:table field))
       (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))

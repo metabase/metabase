@@ -1,9 +1,10 @@
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import type { TableModalState, TableModalTable } from "../../TableModal";
@@ -28,16 +29,12 @@ export function TableMoreMenu({ table, onOpenModal }: TableMoreMenuProps) {
     >
       <Menu withinPortal>
         <Menu.Target>
-          <ActionIcon
-            variant="subtle"
+          <MoreMenuButton
             aria-label={t`Show table options`}
-            size="md"
             onClick={(event) => {
               event.preventDefault();
             }}
-          >
-            <FixedSizeIcon name="ellipsis" size={16} />
-          </ActionIcon>
+          />
         </Menu.Target>
         <Menu.Dropdown>
           {dbId != null && (

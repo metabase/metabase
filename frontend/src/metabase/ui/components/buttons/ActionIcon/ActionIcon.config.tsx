@@ -25,31 +25,47 @@ const ACTION_ICON_COLORS = [
   "neutral",
 ] as const satisfies readonly ActionIconColor[];
 
+const CELL_VARIANTS = {
+  default: "default",
+  filled: "filled",
+  light: "light",
+  subtle: "subtle",
+  "on-dark-primary": "on_dark_primary",
+  "on-dark-secondary": "on_dark_secondary",
+} as const satisfies Record<ActionIconVariant, string>;
+
 const DEFAULT_COLORS: Partial<Record<ActionIconVariant, ActionIconColor>> = {
   default: "neutral",
   filled: "brand",
   light: "neutral",
   subtle: "neutral",
+  "on-dark-primary": "neutral",
+  "on-dark-secondary": "neutral",
 };
 
 const CELLS = [
   "default-neutral",
   "filled-brand",
   "light-neutral",
+  "on_dark_primary-neutral",
+  "on_dark_secondary-neutral",
   "subtle-brand",
   "subtle-negative",
   "subtle-neutral",
   "subtle-positive",
   "subtle-warning",
-] as const satisfies readonly `${ActionIconVariant}-${ActionIconColor}`[];
+] as const satisfies readonly `${CellVariant}-${ActionIconColor}`[];
 
 const DEFAULT_LABEL_HOVER_CELLS = [
   "default-neutral",
   "filled-brand",
   "light-neutral",
+  "on_dark_primary-neutral",
+  "on_dark_secondary-neutral",
   "subtle-neutral",
 ] as const satisfies readonly Cell[];
 
+type CellVariant = (typeof CELL_VARIANTS)[ActionIconVariant];
 type Cell = (typeof CELLS)[number];
 type DefaultLabelHoverCell = (typeof DEFAULT_LABEL_HOVER_CELLS)[number];
 
@@ -70,12 +86,13 @@ const getCell = (
   iconColor: MantineActionIconProps["color"],
 ): Cell | undefined => {
   const defaultColor = DEFAULT_COLORS[variant];
+  const cellVariant = CELL_VARIANTS[variant];
   const cellColor = isActionIconColor(iconColor) ? iconColor : defaultColor;
-  const cell = `${variant}-${cellColor}`;
+  const cell = `${cellVariant}-${cellColor}`;
   if (isCell(cell)) {
     return cell;
   }
-  const defaultCell = `${variant}-${defaultColor}`;
+  const defaultCell = `${cellVariant}-${defaultColor}`;
   return isCell(defaultCell) ? defaultCell : undefined;
 };
 

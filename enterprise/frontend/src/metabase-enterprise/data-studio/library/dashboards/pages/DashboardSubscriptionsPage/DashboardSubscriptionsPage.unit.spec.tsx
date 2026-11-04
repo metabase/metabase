@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
@@ -183,6 +184,7 @@ function setup({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
   setupListSubscriptionsEndpoint(subscriptions);
+  setupBookmarksEndpoints([]);
   if (hasChannelInfoError) {
     setupNotificationChannelsEndpointError();
   } else {

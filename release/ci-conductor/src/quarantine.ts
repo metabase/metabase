@@ -80,13 +80,14 @@ export function compareFailedToQuarantine(
   quarantineEntries: QuarantineEntry[],
 ): { quarantined: QuarantineEntry[]; unquarantined: FailedTest[] } {
   const quarantinedByKeys = new Map(
-    quarantineEntries.map((q) =>
-      [matchKey({
+    quarantineEntries.map((q) => [
+      matchKey({
         filePath: q.file_path,
         testPath: q.test_path,
         testName: q.test_name,
-      }), q],
-    ),
+      }),
+      q,
+    ]),
   );
   const quarantined: QuarantineEntry[] = [];
   const unquarantined: FailedTest[] = [];
@@ -98,7 +99,9 @@ export function compareFailedToQuarantine(
         testName: test.test_name,
       }),
     );
-    quarantineEntry ? quarantined.push(quarantineEntry) : unquarantined.push(test);
+    quarantineEntry
+      ? quarantined.push(quarantineEntry)
+      : unquarantined.push(test);
   }
   return { quarantined, unquarantined };
 }
@@ -242,7 +245,9 @@ const RULE = "─".repeat(60);
 
 /** `test_path › test_name`, or just the name when there's no path. */
 function title(test: FailedTest): string {
-  return test.test_path ? `${test.test_path} › ${test.test_name}` : test.test_name;
+  return test.test_path
+    ? `${test.test_path} › ${test.test_name}`
+    : test.test_name;
 }
 
 /**
@@ -311,13 +316,18 @@ export async function checkQuarantineGate(opts: {
   log(RULE);
 
   if (failures.length === 0) {
-    log("✅ no failures this run — nothing to gate.");
-    log(RULE);
-    return { shouldFail: false, enforced: false, reason: "no failures to gate" };
+    log("⚠️  the test step failed, but no failing tests were reported.");
+    return finish({
+      shouldFail: true,
+      reason: "the test step failed with no failing tests to check",
+      dryRun,
+    });
   }
 
   if (!baseUrl) {
-    log("⚠️  CI_CONDUCTOR_BASE_URL not set — can't fetch the quarantine list (local run or missing secret).");
+    log(
+      "⚠️  CI_CONDUCTOR_BASE_URL not set — can't fetch the quarantine list (local run or missing secret).",
+    );
     return finish({
       shouldFail: true,
       reason: "could not fetch the quarantine list",
@@ -341,7 +351,9 @@ export async function checkQuarantineGate(opts: {
   // and there's nothing to compare test by test.
   const suiteGlob = quarantinedSuiteGlob(suite, list.suites);
   if (suiteGlob) {
-    log(`🏷️  suite rule "${suiteGlob}" covers this suite — no failure here gates.`);
+    log(
+      `🏷️  suite rule "${suiteGlob}" covers this suite — no failure here gates.`,
+    );
     return finish({
       shouldFail: false,
       reason: `suite "${suite}" is quarantined by the rule "${suiteGlob}"`,
@@ -354,7 +366,9 @@ export async function checkQuarantineGate(opts: {
     list.tests,
   );
 
-  log(`📋 quarantine list: ${list.tests.length} test(s) registered for "${suite}"`);
+  log(
+    `📋 quarantine list: ${list.tests.length} test(s) registered for "${suite}"`,
+  );
   log(`💥 this run: ${failures.length} failure(s) to evaluate`);
   for (const test of quarantined) {
     log(`  🔒 quarantined      ${title(test)}`);
@@ -365,7 +379,7 @@ export async function checkQuarantineGate(opts: {
   }
   for (const test of unquarantined) {
     log(`  🚨 NOT quarantined  ${title(test)}`);
-    log(`                      ↳ ${test.file_path ?? "(no file)"}`); 
+    log(`                      ↳ ${test.file_path ?? "(no file)"}`);
     log(
       `                      ↳ View test in CI Conductor: ${testSearchUrl(baseUrl, test)}`,
     );

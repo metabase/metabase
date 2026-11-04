@@ -5,8 +5,8 @@ import { createMockTask } from "metabase-types/api/mocks";
 const { H } = cy;
 
 describe("issue 14636", () => {
-  const total = 57;
-  const limit = 50;
+  const total = 32;
+  const limit = 25;
 
   /**
    * @param {Object} payload
@@ -107,7 +107,7 @@ describe("issue 14636", () => {
     cy.signInAsAdmin();
 
     // The only reliable way to reproduce this issue is by stubing page responses!
-    // All previous attempts to generate enough real tasks (more than 50)
+    // All previous attempts to generate enough real tasks (more than one page)
     // resulted in flaky and unpredictable tests.
     stubPageResponses({ page: 0, alias: "first" });
     stubPageResponses({ page: 1, alias: "second" });
@@ -121,7 +121,9 @@ describe("issue 14636", () => {
 
     cy.findByRole("heading", { name: "Background tasks" }).should("be.visible");
 
-    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByLabelText("pagination")
+      .findByText(`1 - ${limit}`)
+      .should("be.visible");
     cy.findByTestId("tasks-table")
       .should("contain.text", "field values scanning")
       .and("contain.text", "513");
@@ -133,9 +135,11 @@ describe("issue 14636", () => {
     cy.location("search").should("eq", "?page=1");
 
     cy.findByLabelText("pagination")
-      .findByText(`51 - ${total}`)
+      .findByText(`${limit + 1} - ${total}`)
       .should("be.visible");
-    cy.findByLabelText("pagination").findByText("1 - 50").should("not.exist");
+    cy.findByLabelText("pagination")
+      .findByText(`1 - ${limit}`)
+      .should("not.exist");
     cy.findByTestId("tasks-table")
       .should("contain.text", "analyze")
       .and("contain.text", "200")
@@ -145,7 +149,9 @@ describe("issue 14636", () => {
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
-    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByLabelText("pagination")
+      .findByText(`1 - ${limit}`)
+      .should("be.visible");
     cy.findByTestId("tasks-table").should(
       "contain.text",
       "field values scanning",
@@ -229,13 +235,15 @@ describe("issue 14636", () => {
       .click();
     cy.location("search").should("eq", "");
     cy.wait("@unfilteredFirst");
-    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByLabelText("pagination")
+      .findByText(`1 - ${limit}`)
+      .should("be.visible");
 
     cy.log("it should respect page query param on page load");
     cy.visit("/monitor/tasks/list?page=1");
     cy.wait("@unfilteredSecond");
     cy.findByLabelText("pagination")
-      .findByText(`51 - ${total}`)
+      .findByText(`${limit + 1} - ${total}`)
       .should("be.visible");
 
     cy.log("should reset pagination when changing filters");
@@ -699,7 +707,7 @@ describe("scenarios > monitor > tools > task runs", () => {
         response.body = {
           data: [taskRun],
           total: 1,
-          limit: 50,
+          limit: 25,
           offset: 0,
         };
       });
@@ -784,8 +792,8 @@ describe("scenarios > monitor > tools > task runs", () => {
 });
 
 describe("scenarios > monitor > tools > task runs pagination", () => {
-  const total = 57;
-  const limit = 50;
+  const total = 32;
+  const limit = 25;
 
   function stubRunsPageResponses({
     page,
@@ -847,7 +855,9 @@ describe("scenarios > monitor > tools > task runs pagination", () => {
 
     cy.location("search").should("eq", "");
 
-    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByLabelText("pagination")
+      .findByText(`1 - ${limit}`)
+      .should("be.visible");
     cy.findByTestId("task-runs-table").should("contain.text", "Sync");
 
     cy.findByLabelText("Previous page").should("be.disabled");
@@ -858,7 +868,7 @@ describe("scenarios > monitor > tools > task runs pagination", () => {
 
     cy.findByLabelText("pagination")
       .scrollIntoView()
-      .findByText(`51 - ${total}`)
+      .findByText(`${limit + 1} - ${total}`)
       .should("be.visible");
     cy.findByTestId("task-runs-table").should("contain.text", "Fingerprint");
 
@@ -866,7 +876,9 @@ describe("scenarios > monitor > tools > task runs pagination", () => {
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
-    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByLabelText("pagination")
+      .findByText(`1 - ${limit}`)
+      .should("be.visible");
     cy.findByTestId("task-runs-table").should("contain.text", "Sync");
   });
 });
@@ -881,7 +893,7 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
         response.body = {
           data: [],
           total: 0,
-          limit: 50,
+          limit: 25,
           offset: 0,
         };
       });

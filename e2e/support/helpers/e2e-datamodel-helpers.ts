@@ -177,7 +177,9 @@ function visit({
   basePath?: string;
 } = {}) {
   const normalizedBasePath = getNormalizedBasePath(basePath);
-  cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+    "datamodel/visit/databases",
+  );
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
@@ -945,14 +947,11 @@ function getInterceptsForArea(area: Area) {
   cy.intercept("PUT", "/api/table").as("updateTables");
   cy.intercept("PUT", "/api/table/*").as("updateTable");
 
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as("databases");
+
   if (area === "admin") {
-    cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/field/*/values").as("fieldValues");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-  }
-
-  if (area === "data studio") {
-    cy.intercept("GET", "/api/database").as("databases");
   }
 }
 

@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { setupTableEndpoints } from "__support__/server-mocks";
 import {
+  act,
   renderHookWithProviders,
   screen,
   waitFor,
@@ -43,8 +44,10 @@ describe("useTableUpdateHandlers", () => {
       response: { status: 500 },
     });
 
-    await result.current.handleCustomFieldOrderChange(
-      (ORDERS_TABLE.fields ?? []).map(getRawTableFieldId).reverse(),
+    await act(() =>
+      result.current.handleCustomFieldOrderChange(
+        (ORDERS_TABLE.fields ?? []).map(getRawTableFieldId).reverse(),
+      ),
     );
 
     await waitFor(() => {

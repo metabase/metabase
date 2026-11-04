@@ -1,15 +1,12 @@
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLocation, useParams } from "metabase/router";
-import { TransformDisconnectedDatabaseBanner } from "metabase/transforms/components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { RunSection } from "metabase/transforms/pages/TransformRunPage/RunSection";
-import { isMissingSourceDatabase } from "metabase/transforms/utils";
 import { Alert, Center, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -42,37 +39,25 @@ export const TransformInspectPage = () => {
   return (
     <PageContainer data-testid="transform-inspect-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      {match({
-        hasSucceeded: transform.last_run?.status === "succeeded",
-        isMissingSourceDatabase: isMissingSourceDatabase(transform),
-      })
-        .with({ isMissingSourceDatabase: true }, () => (
-          <TransformDisconnectedDatabaseBanner transform={transform} />
-        ))
-        .with({ hasSucceeded: false }, () => (
-          <>
-            <Alert
-              size="compact"
-              color="core-brand"
-              icon={<Icon name="info" />}
-            >
-              {t`To inspect the transform you need to run it first.`}
-            </Alert>
-            <RunSection
-              transform={transform}
-              noTitle={true}
-              readOnly={readOnly}
-              permissionsReadOnly={permissionsReadOnly}
-            />
-          </>
-        ))
-        .otherwise(() => (
-          <InspectorContent
+      {transform.last_run?.status !== "succeeded" ? (
+        <>
+          <Alert size="compact" color="core-brand" icon={<Icon name="info" />}>
+            {t`To inspect the transform you need to run it first.`}
+          </Alert>
+          <RunSection
             transform={transform}
-            params={params}
-            location={location}
+            noTitle={true}
+            readOnly={readOnly}
+            permissionsReadOnly={permissionsReadOnly}
           />
-        ))}
+        </>
+      ) : (
+        <InspectorContent
+          transform={transform}
+          params={params}
+          location={location}
+        />
+      )}
     </PageContainer>
   );
 };

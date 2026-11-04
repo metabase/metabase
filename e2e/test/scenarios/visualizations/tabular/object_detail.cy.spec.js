@@ -94,6 +94,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").should("not.exist");
 
     cy.log("Open object details by clicking the PK cell (metabase#27094)");
+    // `openObjectDetail` opens row 1's "View details" tooltip with a synthetic
+    // hover that never ends, and the tooltip covers row 0's PK cell.
+    cy.realPress("Escape");
     drillPK({ id: 1 });
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(

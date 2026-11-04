@@ -103,6 +103,20 @@
                 :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
              (triggers))))))
 
+(deftest reschedule-after-job-was-deleted-test
+  (testing "rescheduling schedules the new trigger when the job and its trigger are deleted while it reschedules, as
+           Quartz does when the last run of a one-shot trigger completes"
+    (with-temp-scheduler-and-cleanup!
+      (task/schedule-task! (job) (trigger-1))
+      (let [get-triggers (mt/original-fn #'qs/get-triggers-of-job)]
+        (mt/with-dynamic-fn-redefs [qs/get-triggers-of-job (fn [scheduler job-key]
+                                                             (u/prog1 (get-triggers scheduler job-key)
+                                                               (qs/delete-job scheduler job-key)))]
+          (task/schedule-task! (job) (trigger-2))))
+      (is (= #{{:cron-expression     "0 0 6 * * ? *"
+                :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
+             (triggers))))))
+
 (deftest scheduler-info-test
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
     (mt/with-temp-scheduler!

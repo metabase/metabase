@@ -14,4 +14,4 @@ export type {
   DataAppDiagnosticPayload,
   DataAppDiagnosticsReport,
 } from "./data-app-dev/types/diagnostics-channel";
-export { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
+export { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";

@@ -1,5 +1,5 @@
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useListSlowFindingsQuery } from "metabase-enterprise/api";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
 import { type SlowContentParams, slowContentConfig } from "../config";
 

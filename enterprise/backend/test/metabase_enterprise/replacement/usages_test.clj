@@ -76,7 +76,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [source-card (card/create-card! (card-with-query "Source card" :products) user)
                   child-card  (card/create-card! (card-sourced-from "Child card" source-card) user)
-                  _            (deps.test/synchronously-run-backfill!)
+                  _            (deps.test/synchronously-run-dependency-job!)
                   found-usages (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages"))))))))
@@ -90,7 +90,7 @@
             (let [source-card      (card/create-card! (card-with-query "Source card" :products) user)
                   child-card       (card/create-card! (card-sourced-from "Child card" source-card) user)
                   grandchild-card  (card/create-card! (card-sourced-from "Grandchild card" child-card) user)
-                  _                (deps.test/synchronously-run-backfill!)
+                  _                (deps.test/synchronously-run-dependency-job!)
                   found-usages     (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages")
@@ -104,7 +104,7 @@
         (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [lonely-card  (card/create-card! (card-with-query "Lonely card" :products) user)
-                  _            (deps.test/synchronously-run-backfill!)
+                  _            (deps.test/synchronously-run-dependency-job!)
                   found-usages (replacement.usages/transitive-usages [:card (:id lonely-card)])]
               (is (empty? found-usages)
                   "Card with no dependents should have empty usages"))))))))
@@ -116,7 +116,7 @@
         (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card-on-table (card/create-card! (card-with-query "Card on products" :products) user)
-                  _             (deps.test/synchronously-run-backfill!)
+                  _             (deps.test/synchronously-run-dependency-job!)
                   found-usages  (replacement.usages/transitive-usages [:table (mt/id :products)])]
               (is (some #(= [:card (:id card-on-table)] %) found-usages)
                   "Card using table should appear in usages"))))))))

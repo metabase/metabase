@@ -202,8 +202,12 @@
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id title-job]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot    metabot
-                                                                  :profile-id (keyword profile-id)})
+  (let [enriched-context (metabot.context/create-context
+                          ;; Server-authoritative: decided from the request's client header here, on the
+                          ;; handler thread, before the agent moves to the streaming thread.
+                          (assoc context :in_host_app (metabot.context/host-app-request? (request/current-request)))
+                          {:metabot    metabot
+                           :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     ;; a reasoning model can spend longer than MB_JETTY_ASYNC_RESPONSE_TIMEOUT on one turn
     (sr/streaming-response {:content-type     "text/event-stream"

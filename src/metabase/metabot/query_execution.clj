@@ -5,9 +5,11 @@
    [metabase.api.common :as api]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.quoting :as quoting])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)))
 
@@ -35,7 +37,8 @@
   (ex-info (tru "Query timed out: it did not finish within {0} seconds. A narrower query may finish in time."
                 (quot timeout-ms 1000))
            {:agent-error? true
-            :error        :query-timed-out}))
+            :error        :query-timed-out
+            :timeout-ms   timeout-ms}))
 
 (defonce ^:private time-limit-executor
   (delay
@@ -65,6 +68,18 @@
       (thunk)
       (finally
         (.cancel task false)))))
+
+(defn caller-facing-failure?
+  "Whether failed QP `result` is about the query or its database, so that the caller may see its error text.
+   The database rejecting the query is one such failure. A failure inside Metabase, such as an app DB lookup, is not:
+   its error text can carry app DB SQL and class names."
+  [{error-type :error_type :as result}]
+  (let [status-code (get-in result [:ex-data :status-code])]
+    (boolean
+     (or (and status-code (<= 400 status-code 499))
+         (qp.error-type/client-error? error-type)
+         (qp.error-type/connection-pool-saturated? error-type)
+         (contains? #{qp.error-type/db qp.error-type/timed-out} error-type)))))
 
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
@@ -109,11 +124,12 @@
       (throw e))
     (when-not (= (:status result) :completed)
       (throw (ex-info (if-let [error (:error result)]
-                        (tru "Query failed: {0}" error)
+                        (tru "Query failed: {0}" (quoting/quoted error))
                         (tru "Query failed: unknown error"))
                       {:agent-error?       true
                        :error              :query-failed
                        :query-error        (:error result)
+                       :caller-facing?     (caller-facing-failure? result)
                        ;; The QP's own refusal, as opposed to an error from the database.
                        :permissions-error? (= :missing-required-permissions (:error_type result))})))
     result))
@@ -122,15 +138,16 @@
   "Run `serialized-query` for one page of at most `row-limit` rows, recorded under the QP `context`.
    Returns `{:cols :rows :returned :truncated?}`.
    The `truncated?` flag is true only when more rows exist, so a result that fills the page exactly is complete.
-   A run that doesn't complete throws an agent error whose message carries the QP's error text.
+   A query failure throws an agent error with the QP's error text in quotes.
    Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
-   `:permissions-error?` when the QP refused the query because the current user may not run it.
+   `:permissions-error?` when the QP refused the query because the current user may not run it, and a true
+   `:caller-facing?` when [[caller-facing-failure?]] accepts the failure.
 
    Two options stop a run early, each with an agent error of its own:
    - `:request-canceled-chan`, a promise channel that receives a value when the request being served is canceled.
      The error is `:query-canceled`.
    - `:timeout-ms`, a time limit for the run. The database query timeout still applies when it is shorter.
-     The error is `:query-timed-out`."
+     The error is `:query-timed-out`, with the shorter of the two limits as `:timeout-ms`."
   ([serialized-query row-limit context]
    (execute-page! serialized-query row-limit context nil))
   ([serialized-query row-limit context options]

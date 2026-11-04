@@ -103,8 +103,7 @@ export type MetricReference<TTable = unknown> = Omit<
 
 /**
  * A dimension on the query's own source table — what `filter`, `breakout`, and
- * `orderBy` take. Apps with a generated `metabase.data.ts` schema get these from
- * it; an app building one by hand (from a field id and table id) names this type.
+ * `orderBy` take. A table query builds one from a field id and table id.
  * `FieldReference` is deliberately not the type to reach for: it also admits
  * FK-joined dimensions, which a local source table can't accept.
  */
@@ -136,25 +135,12 @@ export type FieldReference<TTable = unknown> =
 
 // `name` names the result column, which is how a later stage refers to it. A
 // query with two aggregations of the same kind needs it to tell them apart.
-export type CountAggregation = {
+export type CountAggregation<TName extends string = string> = {
   type: "operator";
   operator: "count";
   args: [];
-  name?: string;
+  name?: TName;
 };
-
-export type CountAggregationSchema<TName extends string = "count"> =
-  CountAggregation & {
-    columns: readonly [
-      {
-        name: TName;
-        displayName: "Count";
-        jsType: "number";
-      },
-    ];
-  };
-
-type CountAggregationColumn = CountAggregationSchema["columns"][number];
 
 export type FieldAggregationOperator =
   | "sum"
@@ -167,31 +153,57 @@ export type FieldAggregationOperator =
 export type FieldAggregation<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
+  TName extends string = string,
 > = {
   type: "operator";
   operator: TOperator;
   args: readonly [TDimension];
-  name?: string;
+  name?: TName;
 };
+
+export type AggregationResultColumnDefaultName<TOperator> =
+  TOperator extends "distinct" ? "count" : TOperator;
+
+export type AggregationResultColumnJavaScriptType<TOperator, TDimension> =
+  TOperator extends "min" | "max"
+    ? TDimension extends {
+        jsType?: infer TJavaScriptType extends SchemaJavaScriptType;
+      }
+      ? [Exclude<NonNullable<TJavaScriptType>, "unknown">] extends [never]
+        ? "number"
+        : Exclude<NonNullable<TJavaScriptType>, "unknown">
+      : "number"
+    : "number";
+
+export type AggregationColumn<
+  TName extends string = string,
+  TJavaScriptType extends SchemaJavaScriptType = SchemaJavaScriptType,
+> = {
+  name: TName;
+  displayName: string;
+  jsType: TJavaScriptType;
+};
+
+export type CountAggregationSchema<TName extends string = "count"> =
+  CountAggregation<TName> & {
+    columns: readonly [AggregationColumn<TName, "number">];
+  };
 
 export type FieldAggregationSchema<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
-  TJavaScriptType extends SchemaJavaScriptType = "number",
-  TName extends string = TOperator extends "distinct" ? "count" : TOperator,
-> = FieldAggregation<TOperator, TDimension> & {
+  TName extends string = AggregationResultColumnDefaultName<TOperator>,
+> = FieldAggregation<TOperator, TDimension, TName> & {
   columns: readonly [
-    {
-      name: TName;
-      displayName: string;
-      jsType: TJavaScriptType;
-    },
+    AggregationColumn<
+      TName,
+      AggregationResultColumnJavaScriptType<TOperator, TDimension>
+    >,
   ];
 };
 
 type AggregationForDimension<TDimension> =
   | CountAggregation
-  | CountAggregationSchema
   | FieldAggregation<
       "sum" | "avg" | "median",
       NumericAggregationDimension<TDimension>
@@ -399,13 +411,18 @@ type AggregationResultOrderBy = {
   direction?: MetabaseOrderByDirection;
 };
 
+/**
+ * Allowed bin counts, for use with the num-bins binning strategy.
+ **/
+export type BinCount = 10 | 50 | 100;
+
 export type DefaultBinningOptions = {
   strategy: "default";
 };
 
 export type NumBinsBinningOptions = {
   strategy: "num-bins";
-  numBins: number;
+  numBins: BinCount;
 };
 
 export type BinWidthBinningOptions = {
@@ -443,13 +460,11 @@ type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
   /**
-   * The entity ID of this query's saved question in the app's collection,
-   * under the repository's `collections/data_apps/`. A production build runs
-   * that card instead of the table: it sits in the app's collection, which the
-   * app's viewers can read, and a table source isn't. The dev preview ignores
-   * it and runs the table source.
+   * The entity ID of this query's question in the app's collection. A
+   * production build runs that question, which holds the query's clauses; the
+   * dev preview runs the table query itself.
    */
-  savedQuestionEntityId?: string;
+  entityId?: string;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,
@@ -467,17 +482,36 @@ export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
-export type AggregationResultColumnName<TAggregation> = TAggregation extends {
-  columns: readonly [{ name: infer TName }, ...unknown[]];
+type AggregationClauseDimension<TAggregation> = TAggregation extends {
+  args: readonly [infer TDimension, ...unknown[]];
 }
-  ? TName
+  ? TDimension
+  : unknown;
+
+type AggregationClauseColumnName<TAggregation, TOperator> =
+  TAggregation extends { name: infer TName extends string }
+    ? TName
+    : Extract<AggregationResultColumnDefaultName<TOperator>, string>;
+
+type AggregationResultColumn<TAggregation> = TAggregation extends {
+  columns: infer TColumns;
+}
+  ? TupleElement<NonNullable<TColumns>>
   : TAggregation extends { type: "operator"; operator: infer TOperator }
-    ? TAggregation extends { name: infer TName extends string }
-      ? TName
-      : TOperator extends "distinct"
-        ? "count"
-        : TOperator
-    : string;
+    ? AggregationColumn<
+        AggregationClauseColumnName<TAggregation, TOperator>,
+        AggregationResultColumnJavaScriptType<
+          TOperator,
+          AggregationClauseDimension<TAggregation>
+        >
+      >
+    : never;
+
+export type AggregationResultColumnName<TAggregation> = [
+  AggregationResultColumn<TAggregation>,
+] extends [never]
+  ? string
+  : ColumnName<AggregationResultColumn<TAggregation>>;
 
 type ColumnName<TColumn> = TColumn extends { name: infer TName }
   ? TName
@@ -534,10 +568,34 @@ type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
         ColumnName<QueryResultColumns<TEntity, TQuery>>
       >;
 
-export type MetabaseQueryOptions<
-  TEntity = unknown,
-  _TSchema = unknown,
-> = TableQuery<TEntity>;
+/**
+ * The saved question a data app built against an older SDK runs, by its
+ * entity ID.
+ *
+ * @deprecated A data app defines a query on a table of its schema, with `entityId`.
+ */
+export type LegacyQuestionSource = { type: "card"; entityId: string };
+
+/**
+ * A query of a data app built against an older SDK, which runs the saved
+ * question its `source` names.
+ *
+ * @deprecated A data app defines a query on a table of its schema, with `entityId`.
+ */
+type LegacyQuestionQuery = {
+  source: LegacyQuestionSource;
+  enabled?: boolean;
+  fields?: never;
+  filters?: never;
+  aggregations?: never;
+  breakouts?: never;
+  orderBys?: never;
+  limit?: never;
+};
+
+export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> =
+  | TableQuery<TEntity>
+  | LegacyQuestionQuery;
 
 type EmptyRow = Record<never, never>;
 
@@ -573,13 +631,7 @@ type QueryBreakoutColumns<TQuery> = TQuery extends {
 type QueryAggregationColumns<TQuery> = TQuery extends {
   aggregations?: infer TAggregations;
 }
-  ? TupleElement<NonNullable<TAggregations>> extends infer TAggregation
-    ? TAggregation extends { columns: infer TColumns }
-      ? TupleElement<NonNullable<TColumns>>
-      : TAggregation extends CountAggregation
-        ? CountAggregationColumn
-        : never
-    : never
+  ? AggregationResultColumn<TupleElement<NonNullable<TAggregations>>>
   : never;
 
 /**
@@ -708,6 +760,14 @@ export type UseMetabaseQueryResult<
   refetch: () => Promise<void>;
 };
 
+export type MetabaseQueryRow<TQuery, TDynamic = undefined> = NonNullable<
+  UseMetabaseQueryResult<
+    QueryEntity<undefined, TQuery>,
+    TQuery,
+    TDynamic
+  >["data"]
+>["rows"][number];
+
 /**
  * Marks a query as declared through `defineQuery`. The query hooks accept only
  * marked queries, so an inline query object is a compile-time error.
@@ -717,6 +777,16 @@ export type UseMetabaseQueryResult<
 export declare class DefinedQuery {
   private readonly definedWithDefineQuery: true;
 }
+
+export type DynamicQueryArgument<TEntity, TQuery, TDynamic> = TDynamic &
+  (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
+    ? RequireAggregationsForBreakouts<TDynamic> &
+        RequireDynamicOrderByNames<
+          QueryEntity<TEntity, TQuery>,
+          TQuery,
+          TDynamic
+        >
+    : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>);
 
 export type UseMetabaseQuery = <
   TEntity extends TableSchema | undefined = undefined,
@@ -732,15 +802,7 @@ export type UseMetabaseQuery = <
             RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-  dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<
-            QueryEntity<TEntity, TQuery>,
-            TQuery,
-            TDynamic
-          >
-      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+  dynamicQuery?: DynamicQueryArgument<TEntity, TQuery, TDynamic>,
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;
 
 export type UseMetabaseQueryObject = <
@@ -757,15 +819,7 @@ export type UseMetabaseQueryObject = <
             RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-  dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<
-            QueryEntity<TEntity, TQuery>,
-            TQuery,
-            TDynamic
-          >
-      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+  dynamicQuery?: DynamicQueryArgument<TEntity, TQuery, TDynamic>,
 ) => UseMetabaseQueryObjectResult;
 
 export type UseMetabaseQueryObjectResult = {

@@ -9,10 +9,13 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.create :as collections.create]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest apply-defaults-to-collection-test
   (testing "Child inherits :namespace from a non-default-namespace parent"

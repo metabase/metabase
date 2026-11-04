@@ -1,0 +1,148 @@
+# Metabase Development Guide
+
+## Do Not Edit `docs/` Alongside Code Changes
+
+**NEVER** change files under `docs/` as part of a code change, even if the change makes the docs out of date.
+A dedicated team of technical writers owns `docs/` and updates it. Edit `docs/` only when the task is
+explicitly a documentation task. If your code change affects documented behavior, say so in your summary
+or PR description so the writers can follow up.
+
+Exception: engineers maintain `docs/developers-guide/`. Update it alongside code changes when needed, for
+example the driver changelog for new driver multimethods or the API changelog for breaking API changes.
+
+# Skills
+
+For detailed guidance on writing and reviewing code and documentation, see the skills in [.claude/skills/](.claude/skills/):
+
+## Clojure
+
+### clojure-mcp tools
+
+- **[clojure-eval](.claude/skills/clojure-eval/SKILL.md)** - Always use this to evaluate Clojure code, **run tests**, and verify edits/compile. Prefer this over shell commands.
+- **[clojure-write](.claude/skills/clojure-write/SKILL.md)** - Clojure/ClojureScript development with REPL-driven workflow and coding conventions
+- **[clojure-review](.claude/skills/clojure-review/SKILL.md)** - Clojure/ClojureScript code review guidelines and style enforcement
+
+### clojure-mcp-lite tools
+
+- **clj-nrepl-eval** - This is another good mechanism for running Clojure code on an nrepl server.
+
+### Application database
+
+- **[app-db-migrations](.claude/skills/app-db-migrations/SKILL.md)** - Add, test, run and roll back application-database (Liquibase) migrations: version-less changesets, lint rules, dev rollback by deployment
+
+## TypeScript
+
+- **[typescript-write](.claude/skills/typescript-write/SKILL.md)** - TypeScript/JavaScript development and best practices
+- **[typescript-review](.claude/skills/typescript-review/SKILL.md)** - TypeScript/JavaScript code review guidelines
+
+## Documentation
+
+- **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
+- **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review checklist
+
+## Serialization
+
+- **[serdes-workflow](.claude/skills/serdes-workflow/SKILL.md)** - Export, validate, and import Metabase content via serdes
+- **[serdes-yaml-edit](.claude/skills/serdes-yaml-edit/SKILL.md)** - Edit exported YAML files with correct portable references
+
+## Frontend
+
+- **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
+
+**Important**: When working with frontend code, read [frontend/AGENTS.md](frontend/AGENTS.md) for project-specific guidelines on component preferences, styling, testing requirements, and available scripts.
+
+## Running Backend Tests
+
+If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not fall back to `clj -X:dev:test` directly. Instead, use `./bin/test-agent`. It produces clean, plain-text output with no progress bars or ANSI codes.
+
+```bash
+./bin/test-agent :only '[metabase.foo-test]'              # run a namespace
+./bin/test-agent :only '[metabase.foo-test/some-test]'    # run a single test
+./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
+```
+
+For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves each module to its test directory through its `:ns-prefix`: `lib.schema` → `test/metabase/lib/schema`, `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo` (see `metabase.test-runner/module-folders`).
+
+```bash
+./bin/test-agent :module enterprise/workspaces
+./bin/test-agent :modules '[sql-parsing query-processor]'
+# Driver tests: --drivers=LIST adds the driver aliases and sets DRIVERS=LIST in one step.
+./bin/test-agent --drivers=mysql,h2,postgres :module enterprise/workspaces
+```
+
+Once again, do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
+
+## Module Boundaries
+
+The linter config at `.clj-kondo/config/modules/config.edn` records each module's `:api`, `:uses`,
+`:model-exports`, and `:model-imports`. `metabase.core.modules-test` fails when it drifts from the source.
+
+After **any** backend change that could shift module boundaries, regenerate it:
+
+```bash
+./bin/mage fix-modules-config
+```
+
+Changes that shift boundaries include: adding/removing/renaming a `src` namespace, adding or dropping a
+cross-module `require` or `:model/X` reference, or creating a new module. When unsure, just run it — it is
+a no-op (exits `unchanged`) when nothing drifted.
+
+It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is running (~15s). It only edits
+the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
+modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
+
+Run all repository-level checks, or one named suite:
+
+```bash
+./bin/mage project-tests
+./bin/mage project-tests <backend|migrations|modules|ratchets>
+```
+
+### Nested modules
+
+Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `search` exists,
+`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy, or add `--html` for an
+interactive explorer with a dependency graph.
+
+- Namespace ownership uses the most specific matching prefix. Declaring `lib.schema` assigns
+  `metabase.lib.schema.*` to it without moving files. Use `:ns-prefix` when namespaces do not match the
+  module name.
+- Every cross-module dependency still requires `:uses`.
+- A child may use an ancestor's internal namespaces. Parents, siblings, and unrelated modules must use the
+  target's `:api`.
+- Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
+  make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
+
+## Moving or Renaming Quartz Jobs
+
+Keep a job's `:saved-class` the same when you move its namespace or rename its type. Quartz stores that
+class name in the app DB, and `task/defjob` gives the class exactly that name, so a move changes nothing
+that is stored.
+A new job needs one too: compile without it, and the error prints the entry to paste.
+
+Changing a `:saved-class` deletes the jobs stored under the old name, and their triggers, at the next startup.
+The tests in `metabase.app-db.quartz-test` fail with instructions when a job's class name changes, or a job
+is added.
+
+## Ratchets
+
+After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.
+Fix the underlying issue when possible; suppressions are a last resort and need a nearby explanation.
+
+Inline-ignore budgets live in `.clj-kondo/ratchets.edn` for production code and `.clj-kondo/ratchets-test.edn`
+for anything under a `test` directory. Module-boundary escape hatches live in
+`.clj-kondo/config/modules/ratchets.edn`.
+
+Explain budget increases in the PR. Do not record reductions in feature PRs: post-merge automation opens
+a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
+inline-ignore budget. If any ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
+
+`metabase.core.module-cycles-test` checks that each cyclic cluster of the module require graph has exactly one
+name in `.clj-kondo/config/modules/cycle-clusters.edn`. When it fails, its message says what to change.
+
+`./bin/mage kondo-ratchets` needs the Clojure CLI as well as Babashka. Each ratchet task's `--help` lists its
+options, and `./bin/mage kondo-ratchets-history` reports which commits shrank and grew the budgets.
+
+## Tool Preferences
+
+If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.

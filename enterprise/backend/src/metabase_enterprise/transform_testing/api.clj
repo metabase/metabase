@@ -8,17 +8,24 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.request.core :as request]
+   [metabase.transforms.util :as transforms.u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- refusing
+(mu/defn- refusing :- [:maybe ::transform-testing.schema/run-result]
   "Call `thunk`, rethrowing a typed transform-test refusal as the status and `:error-code` it publishes.
 
   400 — the test is wrong, and its author can fix it.
   422 — the test is fine; the transform or its database prevents a run here.
   501 — the test asks for something not built yet."
-  [thunk]
+  [thunk :- ifn?]
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
@@ -29,27 +36,31 @@
                                :error-code  (transform-testing.errors/code error-type))))
         (throw e)))))
 
-(api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test]
-  "List the transform tests, optionally only those of one transform."
+(api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test.response]
+  "List the transform tests with their newest runs, optionally only those of one transform."
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-studio-access)
-  (filter mi/can-read? (transform-testing.db/transform-tests {:transform-id transform-id})))
+  (-> (filter mi/can-read? (transform-testing.db/transform-tests {:transform-id transform-id}))
+      (t2/hydrate :last_run)))
 
-(api.macros/defendpoint :get "/:id" :- ::transform-testing.schema/transform-test
-  "Get a transform test."
+(api.macros/defendpoint :get "/:id" :- ::transform-testing.schema/transform-test.response
+  "Get a transform test with its newest run."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/read-check (transform-testing.db/transform-test id)))
+  (-> (api/read-check :model/TransformTest id)
+      (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::transform-testing.schema/transform-test
   "Create a transform test."
   [_route-params
    _query-params
    {:keys [transform_id inputs expectations] :as body} :- ::transform-testing.schema/transform-test.create]
-  (api/write-check :model/Transform transform_id)
-  (refusing #(transform-testing.runner/validate-transform-test transform_id inputs expectations))
+  (api/create-check :model/TransformTest body)
+  (refusing #(transform-testing.runner/validate-test (transforms.u/->definition (transform-testing.db/transform transform_id))
+                                                     inputs
+                                                     expectations))
   (transform-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::transform-testing.schema/transform-test
@@ -57,14 +68,15 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [transform_id] :as body} :- ::transform-testing.schema/transform-test.update]
-  (let [transform-test (api/write-check (transform-testing.db/transform-test id))]
-    (when transform_id
-      (api/write-check :model/Transform transform_id))
+   body :- ::transform-testing.schema/transform-test.update]
+  (let [transform-test (api/read-check :model/TransformTest id)]
+    (api/update-check transform-test body)
+    (when (some #(contains? body %) [:transform_id :inputs :expectations])
+      (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
+        (refusing #(transform-testing.runner/validate-test (transforms.u/->definition (transform-testing.db/transform transform_id))
+                                                           inputs
+                                                           expectations))))
     (when (seq body)
-      (when (some #(contains? body %) [:transform_id :inputs :expectations])
-        (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
-          (refusing #(transform-testing.runner/validate-transform-test transform_id inputs expectations))))
       (transform-testing.db/update-transform-test! id body)))
   (transform-testing.db/transform-test id))
 
@@ -72,12 +84,48 @@
   "Delete a transform test."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check (transform-testing.db/transform-test id))
+  (api/write-check :model/TransformTest id)
   (transform-testing.db/delete-transform-test! id)
   nil)
 
+(mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]
+  "The `[start end]` instants of the date filter `date-string`, or nil when it is nil."
+  [date-string :- [:maybe :string]]
+  (when date-string
+    (let [{:keys [start end]} (try
+                                (params.dates/date-string->range date-string {:inclusive-end? false})
+                                (catch Exception e
+                                  (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
+                                                  {:status-code 400}
+                                                  e))))]
+      [(some-> start u.date/parse) (some-> end u.date/parse)])))
+
+(api.macros/defendpoint :get "/:id/run" :- ::transform-testing.schema/transform-test-runs.response
+  "List the runs of a transform test, newest first."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   {:keys [statuses start-time end-time]} :- [:map {:closed true}
+                                              [:statuses   {:optional true} [:maybe (ms/QueryVectorOf ::transform-testing.schema/run-status)]]
+                                              [:start-time {:optional true} [:maybe ms/NonBlankString]]
+                                              [:end-time   {:optional true} [:maybe ms/NonBlankString]]]]
+  (api/read-check :model/TransformTest id)
+  (let [[started-at-start started-at-end] (timestamp-range start-time)
+        [ended-at-start ended-at-end]     (timestamp-range end-time)
+        filters                           {:transform-test-id id
+                                           :statuses          statuses
+                                           :started-at-start  started-at-start
+                                           :started-at-end    started-at-end
+                                           :ended-at-start    ended-at-start
+                                           :ended-at-end      ended-at-end}
+        limit                             (or (request/limit) 20)
+        offset                            (or (request/offset) 0)]
+    {:data   (t2/hydrate (transform-testing.db/transform-test-runs filters limit offset) :initiated_by_user)
+     :limit  limit
+     :offset offset
+     :total  (transform-testing.db/transform-test-run-count filters)}))
+
 (api.macros/defendpoint :post "/:id/run" :- ::transform-testing.schema/run-result
-  "Run a transform test.
+  "Run a transform test, which reading it is enough to do.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation
   reports what it found — including one that could not be evaluated, which comes back as that
@@ -87,9 +135,9 @@
   naming which refusal it was, as [[refusing]] describes."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (refusing #(-> (transform-testing.db/transform-test id)
-                 api/write-check
-                 transform-testing.runner/run-transform-test!)))
+  (let [transform-test (api/read-check :model/TransformTest id)
+        transform      (api/read-check :model/Transform (:transform_id transform-test))]
+    (refusing #(transform-testing.runner/run-saved-test! transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."

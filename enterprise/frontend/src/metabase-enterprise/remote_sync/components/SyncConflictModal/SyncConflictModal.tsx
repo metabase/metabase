@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useGetSettingsQuery, useSetting } from "metabase/settings";
-import { Box, Button, Icon, Modal } from "metabase/ui";
+import { Button, Icon, Modal, Stack } from "metabase/ui";
 import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,
@@ -195,48 +195,42 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       title={getModalTitle(variant, canMerge)}
       withCloseButton={false}
     >
-      {variant === "setup" ? (
-        <SetupConflictInfo />
-      ) : conflicts && conflicts.length > 0 ? (
-        <ConflictingChangesList conflicts={conflicts} />
-      ) : (
-        <ChangesLists />
-      )}
+      <Stack gap="xl">
+        <ConflictSummary variant={variant} conflicts={conflicts} />
 
-      <OutOfSyncOptions
-        currentBranch={currentBranch}
-        handleOptionChange={setOptionValue}
-        isRemoteSyncReadOnly={isRemoteSyncReadOnly}
-        optionValue={optionValue}
-        variant={variant}
-        canMerge={canMerge}
-      />
-
-      {optionValue === "force-push" && forcePushCasualties && (
-        <ForcePushWarning
-          casualties={forcePushCasualties}
-          branch={currentBranch}
-          historyRewritten={historyRewritten}
+        <OutOfSyncOptions
+          currentBranch={currentBranch}
+          handleOptionChange={setOptionValue}
+          isRemoteSyncReadOnly={isRemoteSyncReadOnly}
+          optionValue={optionValue}
+          variant={variant}
+          canMerge={canMerge}
         />
-      )}
 
-      {optionValue === "new-branch" && (
-        <BranchNameInput
-          existingBranches={existingBranches}
-          setValue={setNewBranchName}
-          value={newBranchName}
-        />
-      )}
+        {optionValue === "force-push" && forcePushCasualties && (
+          <ForcePushWarning
+            casualties={forcePushCasualties}
+            branch={currentBranch}
+            historyRewritten={historyRewritten}
+          />
+        )}
 
-      {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
-      {variant === "push" && optionValue && optionValue !== "discard" && (
-        <Box mt="xl">
+        {optionValue === "new-branch" && (
+          <BranchNameInput
+            existingBranches={existingBranches}
+            setValue={setNewBranchName}
+            value={newBranchName}
+          />
+        )}
+
+        {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
+        {variant === "push" && optionValue && optionValue !== "discard" && (
           <CommitMessageSection
             value={commitMessage}
             onChange={setCommitMessage}
           />
-        </Box>
-      )}
+        )}
+      </Stack>
 
       <Modal.Footer>
         <Button onClick={onClose} variant="subtle" color="neutral">
@@ -263,3 +257,20 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     </Modal>
   );
 };
+
+interface ConflictSummaryProps {
+  variant: RemoteSyncConflictVariant;
+  conflicts?: string[];
+}
+
+function ConflictSummary({ variant, conflicts }: ConflictSummaryProps) {
+  if (variant === "setup") {
+    return <SetupConflictInfo />;
+  }
+
+  if (conflicts && conflicts.length > 0) {
+    return <ConflictingChangesList conflicts={conflicts} />;
+  }
+
+  return <ChangesLists />;
+}

@@ -12,7 +12,7 @@ module.exports = {
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
     `cross-env LINT_CSS_MODULES=true ${lintFix}`,
     "oxfmt --write",
-    "node ./bin/verify-doc-links",
+    "bun bin/verify-doc-links/verify-doc-links.ts",
   ],
   "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,tsx}": [
     lintFix,
@@ -24,8 +24,13 @@ module.exports = {
   ],
   "e2e/test/scenarios/**/*.{js,ts}": ["node e2e/validate-e2e-test-files.js"],
   "enterprise/frontend/src/embedding-sdk-package/README.md": ["oxfmt --write"],
-  "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}":
-    ["oxfmt --write"],
+  "+(frontend|enterprise/frontend|e2e)/**/*.{mjs,cjs,mts,cts}": [
+    "oxfmt --write",
+  ],
+  "!(frontend|enterprise|e2e)/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": [
+    "oxfmt --write",
+  ],
+  "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": ["oxfmt --write"],
   "**/*": [
     /**
      * Run mage token-scan for each staged file individually.

@@ -71,8 +71,9 @@ export const useRemoteSyncSubmit = ({
         ...values[COLLECTIONS_KEY],
       };
 
-      const wantsSyncLibrary = values[SYNC_LIBRARY_PENDING_KEY];
-      if (isModalVariant && !libraryCollection && wantsSyncLibrary) {
+      const isReadOnly = values[TYPE_KEY] === "read-only";
+      const wantsSyncLibrary = !isReadOnly && values[SYNC_LIBRARY_PENDING_KEY];
+      if (!libraryCollection && wantsSyncLibrary) {
         try {
           const newLibrary = await createLibrary().unwrap();
           // A freshly created library always has a numeric id; only seeded collections use string ids.
@@ -97,7 +98,6 @@ export const useRemoteSyncSubmit = ({
       const hasCollectionChanges = Object.keys(changedCollections).length > 0;
 
       // Listed key by key so the sync-library-pending form field, which is not a setting, stays out.
-      const isReadOnly = values[TYPE_KEY] === "read-only";
       const settingsToSave: RemoteSyncConfigurationSettings = {
         [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
         [URL_KEY]: values[URL_KEY],
@@ -105,7 +105,7 @@ export const useRemoteSyncSubmit = ({
         [TYPE_KEY]: values[TYPE_KEY],
         [BRANCH_KEY]: values[BRANCH_KEY],
         [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
-        [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
+        ...(isReadOnly ? {} : { [TRANSFORMS_KEY]: values[TRANSFORMS_KEY] }),
         ...(isReadOnly || !hasCollectionChanges
           ? {}
           : {

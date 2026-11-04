@@ -1,11 +1,16 @@
-import { render, renderRoutes, screen } from "__support__/ui";
+import { type JSX, useEffect } from "react";
+
+import { act, render, renderRoutes, screen } from "__support__/ui";
 import {
+  type MemoryTestRouterHolder,
   type NavigateFunction,
   type RouteObject,
   RouterProviderMemory,
   getIsNavigationPending,
   useNavigate,
 } from "metabase/router";
+
+import { CHUNK_WAIT_MS } from "./lazy-page";
 
 function Home() {
   return <span data-testid="home">home</span>;
@@ -37,7 +42,9 @@ describe("a lazy route", () => {
       seen.push(pathname),
     );
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
 
     expect(router?.location.pathname).toBe("/");
     expect(seen).toEqual([]);
@@ -52,7 +59,9 @@ describe("a lazy route", () => {
   it("keeps the previous page mounted while the module loads", async () => {
     const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
 
     expect(screen.getByTestId("home")).toBeInTheDocument();
     expect(await screen.findByTestId("split")).toBeInTheDocument();
@@ -66,7 +75,7 @@ describe("a lazy route", () => {
       <RouterProviderMemory
         routes={makeRoutes()}
         initialRoute="/split"
-        hydrateFallback={<span data-testid="hydrating">loading</span>}
+        loadingFallback={<span data-testid="hydrating">loading</span>}
       />,
     );
 
@@ -84,8 +93,12 @@ describe("a lazy route", () => {
   it("drops a pending navigation if another one lands first", async () => {
     const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
 
-    router?.navigate("/split");
-    router?.navigate("/");
+    act(() => {
+      router?.navigate("/split");
+    });
+    act(() => {
+      router?.navigate("/");
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -102,7 +115,9 @@ describe("a lazy route", () => {
   it("reports the window to a caller navigating in the same tick", async () => {
     const { navigate } = setupCapturingNavigate();
 
-    navigate?.("/split");
+    act(() => {
+      navigate?.("/split");
+    });
     expect(getIsNavigationPending()).toBe(true);
 
     expect(await screen.findByTestId("split")).toBeInTheDocument();
@@ -117,7 +132,9 @@ describe("a lazy route", () => {
   it("reports no window for a navigation that commits during the call", () => {
     const { navigate } = setupCapturingNavigate();
 
-    navigate?.("/plain");
+    act(() => {
+      navigate?.("/plain");
+    });
 
     expect(getIsNavigationPending()).toBe(false);
   });
@@ -140,11 +157,43 @@ describe("a lazy route", () => {
 
     await load();
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
     expect(router?.location.pathname).toBe("/");
 
     expect(await screen.findByTestId("split")).toBeInTheDocument();
     expect(router?.location.pathname).toBe("/split");
+  });
+
+  // The wait is a cap, not a delay. A chunk that comes back inside it commits
+  // the way it always did, and the page mounts with no fallback in between: one
+  // that mounted here would flash on every first visit to a route.
+  it("does not mount the fallback when the chunk arrives inside the wait", async () => {
+    const fallbackMounted = jest.fn();
+
+    function Fallback() {
+      useEffect(() => fallbackMounted(), []);
+      return <span data-testid="loading">loading</span>;
+    }
+
+    const routerHolder: MemoryTestRouterHolder = { current: null };
+
+    render(
+      <RouterProviderMemory
+        routes={makeRoutes()}
+        initialRoute="/"
+        routerHolder={routerHolder}
+        loadingFallback={<Fallback />}
+      />,
+    );
+
+    await act(async () => {
+      routerHolder.current?.navigate("/split");
+    });
+
+    expect(screen.getByTestId("split")).toBeInTheDocument();
+    expect(fallbackMounted).not.toHaveBeenCalled();
   });
 
   // react-router resolves `lazy` onto the route object itself, so the cost is
@@ -152,17 +201,123 @@ describe("a lazy route", () => {
   it("is synchronous again on the second visit", async () => {
     const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
     expect(await screen.findByTestId("split")).toBeInTheDocument();
 
-    router?.navigate("/");
+    act(() => {
+      router?.navigate("/");
+    });
     expect(await screen.findByTestId("home")).toBeInTheDocument();
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
 
     expect(router?.location.pathname).toBe("/split");
   });
 });
+
+/**
+ * What happens when the chunk does not come back quickly. The point of the wait
+ * running out is that a slow network can no longer leave a click looking like
+ * nothing happened: the location commits, and the page shows a spinner until
+ * the chunk lands.
+ */
+describe("a lazy route whose chunk is slow", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("commits the location once the wait runs out, then shows the page", async () => {
+    jest.useFakeTimers();
+    const chunk = deferChunk();
+    const routerHolder: MemoryTestRouterHolder = { current: null };
+
+    render(
+      <RouterProviderMemory
+        routes={[
+          { path: "/", element: <Home /> },
+          { path: "/split", lazy: () => chunk.promise },
+        ]}
+        initialRoute="/"
+        routerHolder={routerHolder}
+        loadingFallback={<span data-testid="loading">loading</span>}
+      />,
+    );
+
+    act(() => {
+      routerHolder.current?.navigate("/split");
+    });
+
+    expect(routerHolder.current?.state.location.pathname).toBe("/");
+    expect(screen.getByTestId("home")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(CHUNK_WAIT_MS);
+    });
+
+    expect(routerHolder.current?.state.location.pathname).toBe("/split");
+    expect(screen.getByTestId("loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("home")).not.toBeInTheDocument();
+
+    await act(async () => {
+      chunk.resolve();
+    });
+
+    expect(screen.getByTestId("split")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading")).not.toBeInTheDocument();
+  });
+
+  // The wait is per chunk, not per route: the routes that share a loader share
+  // the component that stands in for it, so moving between two of them is still
+  // one mount. A dozen query builder routes depend on that.
+  it("keeps one component across the routes that share a chunk", async () => {
+    const mount = jest.fn();
+
+    function Split() {
+      useEffect(() => mount(), []);
+      return <span data-testid="split">split</span>;
+    }
+
+    const load = async () => ({ Component: Split });
+    const { router } = renderRoutes(
+      [
+        { path: "/one", lazy: load },
+        { path: "/two", lazy: load },
+      ],
+      { initialRoute: "/one" },
+    );
+
+    expect(await screen.findByTestId("split")).toBeInTheDocument();
+
+    await act(async () => {
+      router?.navigate("/two");
+    });
+    await screen.findByTestId("split");
+
+    expect(router?.location.pathname).toBe("/two");
+    expect(mount).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * A chunk that arrives when the test says so, standing in for a fetch that is
+ * still in flight when the wait runs out.
+ */
+function deferChunk() {
+  let resolve: () => void = () => undefined;
+
+  const promise = new Promise<{ Component: () => JSX.Element }>((settle) => {
+    resolve = () => settle({ Component: Split });
+  });
+
+  return {
+    promise,
+    resolve: () => resolve(),
+  };
+}
 
 /**
  * Renders with a `useNavigate` handle, so a test can navigate and then read the

@@ -243,6 +243,11 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
+  createElement({
+    type: "shared",
+    name: "permissions",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "prototype", enforcePublicApi: true }),
   createElement({ type: "shared", name: "pulse" }),
@@ -340,13 +345,13 @@ const elements = [
   createElement({
     type: "feature",
     name: "data-app-sandbox",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/sandbox/**",
     mode: "full",
   }),
   createElement({
     type: "app",
     name: "data-app-runtime",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/runtime/**",
     mode: "full",
   }),
   createElement({

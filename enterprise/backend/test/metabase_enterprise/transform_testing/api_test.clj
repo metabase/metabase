@@ -1,7 +1,11 @@
 (ns metabase-enterprise.transform-testing.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -18,7 +22,7 @@
   "A transform reading the table `inputs` stands in for, writing the table `expectations` reads, so that a test of
   it is one the write endpoints accept."
   []
-  {:source {:type  "query"
+  {:source {:type  :query
             :query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")}
    :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}})
 
@@ -41,7 +45,8 @@
                              [:get 402 path]
                              [:put 402 path {:name "t"}]
                              [:delete 402 path]
-                             [:post 402 (str path "/run")]]]
+                             [:post 402 (str path "/run")]
+                             [:get 402 (str path "/run")]]]
               (mt/assert-has-premium-feature-error
                "Transforms Testing"
                (apply mt/user-http-request :crowberto request)))))))))
@@ -69,7 +74,7 @@
                      :expectations expectations}
                     created)))
           (testing "GET returns the test"
-            (is (= created (mt/user-http-request :crowberto :get 200 path))))
+            (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
           (testing "GET / filters by transform"
             (is (= [(:id created)]
                    (map :id (mt/user-http-request :crowberto :get 200 "ee/transform-test" :transform-id transform-id))))
@@ -79,10 +84,10 @@
                     (mt/user-http-request :crowberto :put 200 path {:name "Renamed" :transform_id other-id}))))
           (testing "DELETE removes the test"
             (mt/user-http-request :crowberto :delete 204 path)
-            (is (not (t2/exists? :model/TransformTest (:id created))))
+            (is (not (t2/exists? :model/TransformTest :id (:id created))))
             (mt/user-http-request :crowberto :get 404 path))
           (finally
-            (t2/delete! :model/TransformTest (:id created))))))))
+            (t2/delete! :model/TransformTest :id (:id created))))))))
 
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (with-transforms-enabled
@@ -112,7 +117,7 @@
           (let [path     (str "ee/transform-test/" test-id)
                 response (mt/user-http-request :crowberto :put 400 path {:inputs []})]
             (is (= "transform-test.missing-inputs" (:error-code response)))
-            (is (= (:inputs (t2/select-one :model/TransformTest test-id))
+            (is (= (:inputs (t2/select-one :model/TransformTest :id test-id))
                    (mapv #(update % :format keyword) inputs))))
           (testing "while an update that touches nothing a run reads is let through"
             (is (=? {:name "Renamed"}
@@ -132,15 +137,15 @@
         (testing "expectations need a name"
           (mt/user-http-request :crowberto :post 400 "ee/transform-test"
                                 (assoc valid :expectations [{:type "empty" :sql "SELECT 1"}])))
-        (testing "the transform must exist"
-          (mt/user-http-request :crowberto :post 404 "ee/transform-test" (assoc valid :transform_id Integer/MAX_VALUE))
-          (mt/user-http-request :crowberto :put 404 (str "ee/transform-test/" test-id) {:transform_id Integer/MAX_VALUE}))))))
+        (testing "transform must exist"
+          (mt/user-http-request :crowberto :post 403 "ee/transform-test" (assoc valid :transform_id Integer/MAX_VALUE))
+          (mt/user-http-request :crowberto :put 403 (str "ee/transform-test/" test-id) {:transform_id Integer/MAX_VALUE}))))))
 
 (deftest run-transform-test-endpoint-test
   (mt/test-driver :h2
     (with-transforms-enabled
       (mt/with-temp [:model/Transform {transform-id :id}
-                     {:source {:type  "query"
+                     {:source {:type  :query
                                :query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")}
                       :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}}]
         (let [run (fn [expected-status transform-test]
@@ -167,25 +172,134 @@
           (testing "rejects a test that doesn't replace every table the transform reads"
             (run 400 {:inputs [] :expectations []})))))))
 
+(defn- people-id-transform
+  "An MBQL transform selecting `ID` from `PEOPLE` into `PEOPLE_SUMMARY`."
+  []
+  (let [mp (mt/metadata-provider)]
+    {:source {:type  :query
+              :query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                         (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))]))}
+     :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}}))
+
 (deftest permissions-test
   (with-transforms-enabled
-    (mt/with-temp [:model/Transform     {transform-id :id} {}
-                   :model/TransformTest {test-id :id}      {:transform_id transform-id}]
-      (let [path (str "ee/transform-test/" test-id)
-            body {:transform_id transform-id :name "nope" :inputs [] :expectations []}]
-        (testing "users without transform access can't read or change transform tests"
-          (mt/user-http-request :rasta :get 403 "ee/transform-test")
-          (mt/user-http-request :rasta :get 403 path)
-          (mt/user-http-request :rasta :post 403 "ee/transform-test" body)
-          (mt/user-http-request :rasta :put 403 path {:name "nope"})
-          (mt/user-http-request :rasta :delete 403 path)
-          (mt/user-http-request :rasta :post 403 (str path "/run")))
-        (testing "data analysts who can read but not write the transform can read but not change its tests"
+    (mt/with-temp [:model/Transform     {transform-id :id} (people-id-transform)
+                   :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                            :inputs       inputs
+                                                            :expectations expectations}]
+      (let [path  (str "ee/transform-test/" test-id)
+            body  {:transform_id transform-id :name "nope" :inputs inputs :expectations expectations}
+            refused-writes (fn [user]
+                             (mt/user-http-request user :post 403 "ee/transform-test" body)
+                             (mt/user-http-request user :put 403 path {:name "nope"})
+                             (mt/user-http-request user :delete 403 path))]
+        (try
+          (testing "users without transform access can't read, change, or run transform tests"
+            (mt/user-http-request :rasta :get 403 "ee/transform-test")
+            (mt/user-http-request :rasta :get 403 path)
+            (mt/user-http-request :rasta :post 403 (str path "/run"))
+            (refused-writes :rasta))
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (is (some #{test-id} (map :id (mt/user-http-request :lucky :get 200 "ee/transform-test"))))
-            (mt/user-http-request :lucky :get 200 path)
-            (mt/user-http-request :lucky :post 403 "ee/transform-test" body)
-            (mt/user-http-request :lucky :put 403 path {:name "nope"})
-            (mt/user-http-request :lucky :delete 403 path)
-            (mt/user-http-request :lucky :post 403 (str path "/run"))))
-        (is (t2/exists? :model/TransformTest test-id))))))
+            (testing "data analysts who can read transform can read and run its tests"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                            :perms/create-queries :query-builder}
+                (is (some #{test-id} (map :id (mt/user-http-request :lucky :get 200 "ee/transform-test"))))
+                (mt/user-http-request :lucky :get 200 path)
+                (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))))
+            (testing "saving or deleting tests needs transforms permission on source database"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                            :perms/create-queries :query-builder-and-native}
+                (refused-writes :lucky)))
+            (testing "saving or deleting tests needs native access to source database"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                            :perms/create-queries :query-builder}
+                (refused-writes :lucky)))
+            (testing "with both, data analysts can change tests"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                            :perms/create-queries :query-builder-and-native}
+                (is (=? {:name "renamed"} (mt/user-http-request :lucky :put 200 path {:name "renamed"}))))))
+          (is (t2/exists? :model/TransformTest :id test-id))
+          (finally
+            (t2/delete! :model/TransformTestRun :initiated_by (mt/user->id :lucky))))))))
+
+(deftest update-transform-id-needs-access-to-both-transforms-test
+  (testing "moving test to another transform needs permission to save tests of both transforms"
+    (with-transforms-enabled
+      (mt/with-temp [:model/Database      {other-db-id :id}  {}
+                     :model/Transform     {transform-id :id} (people-id-transform)
+                     :model/Transform     {other-id :id}     {:source {:type  :query
+                                                                       :query (lib/native-query (lib-be/application-database-metadata-provider other-db-id) "SELECT 1")}}
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations expectations}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (perms.tu/with-no-data-perms-for-all-users!
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/transforms     :yes
+                                                                          :perms/create-queries :query-builder-and-native}
+              (let [path (str "ee/transform-test/" test-id)]
+                (mt/user-http-request :lucky :put 403 path {:transform_id other-id})
+                (is (= transform-id (t2/select-one-fn :transform_id :model/TransformTest :id test-id)))
+                (is (=? {:name "renamed"} (mt/user-http-request :lucky :put 200 path {:name "renamed"})))))))))))
+
+(deftest list-runs-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform        {transform-id :id} {}
+                   :model/TransformTest    {test-id :id}      {:transform_id transform-id}
+                   :model/TransformTest    {other-id :id}     {:transform_id transform-id}
+                   :model/TransformTestRun {old-id :id}       {:transform_test_id test-id
+                                                               :status            :passed
+                                                               :start_time        #t "2026-01-01T10:00:00Z"
+                                                               :end_time          #t "2026-01-01T10:00:02Z"}
+                   :model/TransformTestRun {failed-id :id}    {:transform_test_id test-id
+                                                               :initiated_by      (mt/user->id :crowberto)
+                                                               :status            :failed
+                                                               :start_time        #t "2026-02-01T10:00:00Z"
+                                                               :end_time          #t "2026-02-01T10:00:02Z"}
+                   :model/TransformTestRun {new-id :id}       {:transform_test_id test-id
+                                                               :status            :passed
+                                                               :start_time        #t "2026-03-01T10:00:00Z"
+                                                               :end_time          #t "2026-03-01T10:00:02Z"}
+                   :model/TransformTestRun _                  {:transform_test_id other-id
+                                                               :status            :error
+                                                               :start_time        #t "2026-04-01T10:00:00Z"}]
+      (let [path (str "ee/transform-test/" test-id "/run")]
+        (testing "lists the runs of the test, newest first, with who started them"
+          (is (=? {:data   [{:id new-id :status "passed" :initiated_by_user nil}
+                            {:id failed-id :status "failed" :initiated_by_user {:common_name "Crowberto Corv"}}
+                            {:id old-id :status "passed"}]
+                   :total  3
+                   :offset 0}
+                  (mt/user-http-request :crowberto :get 200 path))))
+        (testing "pages"
+          (is (=? {:data [{:id failed-id}] :total 3 :limit 1 :offset 1}
+                  (mt/user-http-request :crowberto :get 200 path :limit 1 :offset 1))))
+        (testing "filters by status"
+          (is (=? {:data [{:id failed-id}] :total 1}
+                  (mt/user-http-request :crowberto :get 200 path :statuses "failed"))))
+        (testing "filters by start and end time"
+          (is (=? {:data [{:id failed-id}] :total 1}
+                  (mt/user-http-request :crowberto :get 200 path :start-time "2026-02-01~2026-02-28")))
+          (is (=? {:data [{:id new-id}] :total 1}
+                  (mt/user-http-request :crowberto :get 200 path :end-time "2026-03-01"))))
+        (testing "refuses users who can't read the test"
+          (mt/user-http-request :rasta :get 403 path))))))
+
+(deftest last-run-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform        {transform-id :id} {}
+                   :model/TransformTest    {test-id :id}      {:transform_id transform-id :name "a"}
+                   :model/TransformTest    {never-id :id}     {:transform_id transform-id :name "b"}
+                   :model/TransformTestRun _                  {:transform_test_id test-id
+                                                               :status            :passed
+                                                               :start_time        #t "2026-01-01T10:00:00Z"}
+                   :model/TransformTestRun {new-id :id}       {:transform_test_id test-id
+                                                               :status            :failed
+                                                               :start_time        #t "2026-02-01T10:00:00Z"}]
+      (testing "the list carries each test's newest run"
+        (is (=? [{:id test-id :last_run {:id new-id :status "failed"}}
+                 {:id never-id :last_run nil}]
+                (mt/user-http-request :crowberto :get 200 "ee/transform-test" :transform-id transform-id))))
+      (testing "a single test carries its newest run"
+        (is (=? {:id test-id :last_run {:id new-id}}
+                (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" test-id))))))))

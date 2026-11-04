@@ -1,5 +1,5 @@
 import {
-  setupSegmentRevisionsEndpoint,
+  setupEntityRevisionsEndpoint,
   setupSegmentRevisionsEndpointError,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
@@ -39,7 +39,7 @@ function setup({
   if (hasError) {
     setupSegmentRevisionsEndpointError(segment.id);
   } else {
-    setupSegmentRevisionsEndpoint(segment.id, revisions);
+    setupEntityRevisionsEndpoint("segment", segment.id, revisions);
   }
 
   const storeInitialState = createMockState({

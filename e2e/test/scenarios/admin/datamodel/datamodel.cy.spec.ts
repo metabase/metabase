@@ -22,7 +22,7 @@ describe("scenarios > admin > datamodel", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept({ method: "GET", pathname: "/api/database" }).as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");

@@ -5,6 +5,7 @@ import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   canAccessDataModel as canAccessDataModelSelector,
+  getUserIsAdmin,
   useUserKeyValue,
 } from "metabase/current-user";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks/use-data-studio-settings";
@@ -13,11 +14,12 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import { Badge } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";
@@ -36,6 +38,7 @@ export function DataStudioLayout() {
   const { pathname } = useLocation();
   const canAccessDataModel = useSelector(canAccessDataModelSelector);
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const isAdmin = useSelector(getUserIsAdmin);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -147,6 +150,21 @@ export function DataStudioLayout() {
             ) : null
           }
         />
+        {isAdmin && (
+          <AreaTab
+            label={t`Data apps`}
+            icon="app"
+            to={Urls.dataStudioDataApps()}
+            isSelected={currentTab === "data-apps"}
+            showLabel={isNavbarOpened}
+            rightSection={
+              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
+                <Badge color="brand">{t`Beta`}</Badge>
+              ) : null
+            }
+            isGated={!PLUGIN_DATA_APPS.isEnabled}
+          />
+        )}
         <AreaTab
           label={t`Glossary`}
           icon="glossary"

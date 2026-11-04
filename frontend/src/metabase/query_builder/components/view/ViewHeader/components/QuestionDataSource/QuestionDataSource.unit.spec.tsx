@@ -627,6 +627,29 @@ describe("QuestionDataSource", () => {
     });
   });
 
+  it("should not display a filter value in the breadcrumbs (metabase#16198)", async () => {
+    setup({
+      card: {
+        ...BASE_GUI_QUESTION,
+        dataset_query: createMockStructuredDatasetQuery({
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            filter: [
+              "and",
+              ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+              ["=", ["field", PRODUCTS.ID, null], 1],
+            ],
+          },
+        }),
+      },
+    });
+
+    const breadcrumbs = await screen.findByTestId("head-crumbs-container");
+    await waitFor(() => expect(breadcrumbs).toHaveTextContent("Products"));
+    expect(breadcrumbs).not.toHaveTextContent("Gizmo");
+  });
+
   it("should show info icon on an ad-hoc question header", async () => {
     setup({ card: SOURCE_CARD });
     expect(await screen.findByLabelText("More info")).toBeInTheDocument();

@@ -31,7 +31,7 @@ const DARK_THEME = {
 
 describe("scenarios > embedding > sdk iframe embedding > theming", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest({ signOut: true });
+    H.prepareSdkIframeEmbedTest();
   });
 
   it("should measure table column widths based on themed font size", () => {

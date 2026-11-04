@@ -189,7 +189,7 @@
               ;; populate dependencies
               (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
                                       [:stages 0 :source-card]))))
@@ -243,7 +243,7 @@
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (let [original-swap! (mt/original-fn #'replacement.source-swap/swap-source!)]
                 (mt/with-dynamic-fn-redefs [replacement.source-swap/swap-source!
                                             (fn [entity object old-source new-source]
@@ -263,7 +263,7 @@
                                             [:stages 0 :source-card]))))))))))))))
 
 (deftest copy-model-metadata-overrides!-test
-  (testing "copies user-edited metadata from model result_metadata to FieldUserSettings only"
+  (testing "copies user-edited metadata from model result_metadata as user settings"
     (mt/with-temp [:model/Table {table-id :id} {:name   "transform_output"
                                                 :db_id  (mt/id)
                                                 :active true}
@@ -296,14 +296,14 @@
                                              :base_type     "type/DateTimeWithLocalTZ"}])}
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-      (testing "Field records are untouched; they stay sync-owned"
+      (testing "Field rows show copied metadata"
         (let [field-1 (t2/select-one :model/Field :id field-1-id)
               field-2 (t2/select-one :model/Field :id field-2-id)]
-          (is (= "Total" (:display_name field-1)))
-          (is (nil? (:description field-1)))
-          (is (nil? (:semantic_type field-1)))
-          (is (= "Created At" (:display_name field-2)))
-          (is (nil? (:semantic_type field-2)))))
+          (is (= "Order Total" (:display_name field-1)))
+          (is (= "The total amount" (:description field-1)))
+          (is (= :type/Currency (:semantic_type field-1)))
+          (is (= "Order Date" (:display_name field-2)))
+          (is (= :type/CreationTimestamp (:semantic_type field-2)))))
       (testing "FieldUserSettings are created so overrides survive sync"
         (let [fus-1 (t2/select-one :model/FieldUserSettings :field_id field-1-id)
               fus-2 (t2/select-one :model/FieldUserSettings :field_id field-2-id)]
@@ -341,8 +341,8 @@
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (let [field (t2/select-one :model/Field :id field-id)]
-        (is (= "Products  ID" (:display_name field)))
-        (is (nil? (:description field))))
+        (is (= "Product ID" (:display_name field)))
+        (is (= "The product identifier" (:description field))))
       (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]
         (is (some? fus))
         (is (= "Product ID" (:display_name fus)))

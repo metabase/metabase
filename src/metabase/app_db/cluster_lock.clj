@@ -85,11 +85,14 @@
                  " LOCK IN SHARE MODE"
                  " FOR SHARE")))
 
+;; TODO (Cam 2026-10-06) this isn't going to work if we change the app DB type in tests or the REPL, use
+;; [[metabase.app-db.core/memoize-for-application-db]] instead of a delay to fix this
 (def ^:private base-lock-sql
   (delay
     (first (mdb.query/compile {:select [:lock.lock_name]
                                :from [[:metabase_cluster_lock :lock]]
-                               :where [:= :lock.lock_name [:raw "?"]]}))))
+                               ;; `(Object.)` here to force this to spit out a `?`
+                               :where [:= :lock.lock_name (Object.)]}))))
 
 (defn- lock-sql ^String [mode]
   (str @base-lock-sql (lock-clause mode)))
@@ -194,7 +197,7 @@
   [lock-name-str timeout]
   (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
                                   :columns     [:lock_name]
-                                  :values      [[[:raw "?"]]]})]
+                                  :values      [[(Object.)]]})]
     (with-open [conn (checkout-connection!)
                 stmt (.prepareStatement conn ^String sql)]
       ;; The row must be durable before the SELECT below can find it, and the pool does not guarantee autocommit.
@@ -236,7 +239,7 @@
   [^Connection conn lock-name-str timeout]
   (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
                                   :columns     [:lock_name]
-                                  :values      [[[:raw "?"]]]})]
+                                  :values      [[(Object.)]]})]
     (with-open [insert-stmt (.prepareStatement conn ^String sql)]
       (u.connection/set-query-timeout! insert-stmt timeout)
       (.setString insert-stmt 1 lock-name-str)

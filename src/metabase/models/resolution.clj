@@ -16,6 +16,7 @@
     :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
+    :model/AnalysisFindingStatus             metabase-enterprise.dependencies.models.analysis-finding-status
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApiKeyUsageLog                    metabase.api-keys.models.api-key-usage-log
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
@@ -38,7 +39,6 @@
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app
-    :model/DataAppGroupAssignment            metabase-enterprise.data-apps.models.data-app-group-assignment
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -69,6 +69,7 @@
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/ImplicitAction                    metabase.actions.models
+    :model/ImpersonationQueryCache           metabase-enterprise.impersonation.models.impersonation-query-cache
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
@@ -126,6 +127,7 @@
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
+    :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret

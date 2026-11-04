@@ -130,6 +130,21 @@
             (is (= "Monthly revenue trend over the past year" (:chart-description out)))
             (is (= "Total monthly revenue from completed orders" (:metric-description out)))))))))
 
+(deftest score-and-describe-uses-mini-model-test
+  (testing "scoring runs on the quick-task model, not the Metabot chat model"
+    (let [model (atom nil)]
+      (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
+                                         llm-mini-model       "anthropic/claude-haiku-4-5-20251001"]
+        (mt/with-dynamic-fn-redefs
+          [metabot.self/call-llm-structured
+           (fn [provider-and-model & _]
+             (reset! model provider-and-model)
+             {:score 0.5 :chart_description "c" :reasoning "x"})]
+          (with-llm-configured!
+            (fn []
+              (call {})
+              (is (= "anthropic/claude-haiku-4-5-20251001" @model)))))))))
+
 (deftest score-and-describe-with-card-description-test
   (testing "When card-description is provided, the schema does not require metric_description and parse-response surfaces it as nil"
     (mt/with-dynamic-fn-redefs

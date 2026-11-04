@@ -468,7 +468,7 @@
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting ai-service-base-url
-  (deferred-tru "Base URL for the managed Metabase AI service.")
+  "Base URL for the managed Metabase AI service."
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
   :encryption       :when-encryption-key-set

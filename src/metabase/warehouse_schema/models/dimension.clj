@@ -6,7 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -39,10 +39,10 @@
   ((get-method serdes/load-update! :default) model-name (merge {:human_readable_field_id nil} ingested) local))
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
-  {:copy      [:name :type :entity_id]
+  {:schema    ::warehouse-schema.schema/external-dimension
+   :copy      [:name :type :entity_id]
    :skip      []
-   :transform {:created_at              (serdes/date)
-               :human_readable_field_id (serdes/fk :model/Field)
+   :transform {:human_readable_field_id (serdes/fk :model/Field)
                :field_id                {::serdes/fk true
                                          :export     #(serdes/*export-field-fk* %)
                                          :import-with-context

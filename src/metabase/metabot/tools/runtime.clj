@@ -14,8 +14,10 @@
   checks it.
 
   Codes come in two flavours. Tool code uses qualified keywords, so a code says which namespace
-  raised it. The runtime's own codes are a closed, unqualified vocabulary — [[runtime-codes]] — and
-  the agent loop adds one more (`:repeated-error`)."
+  raised it. The runtime's own codes are a closed, unqualified vocabulary, [[runtime-codes]].
+  Every unrecoverable failure ends the turn except `:internal`, the code of an ordinary exception no
+  tool declared: the agent loop lets a turn survive one of those, or none when its profile requires
+  a tool call. A tool that writes gets none either: its undeclared failure is an [[unconfirmed-write]]."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -28,19 +30,47 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+;; Declared in `tools.error` so that the declarations this namespace loads can budget against the same limit
+(p/import-vars
+ [tools.error
+  max-output-length
+  output-budget])
 
 (def runtime-codes
   "Every error code the runtime itself produces, with the class each one takes.
 
   Written down as data so the agent loop, the adapters and the tests share one list rather than
-  three sets of literal keywords. `:repeated-error` is the agent loop's and is not raised here."
+  three sets of literal keywords."
   {:unknown-tool       :validation
    :invalid-arguments  :validation
    :scope-denied       :unrecoverable
-   :internal           :unrecoverable})
+   :internal           :unrecoverable
+   :jvm-error          :unrecoverable
+   :interrupted        :unrecoverable
+   :unconfirmed-write  :unrecoverable})
+
+(defn undeclared?
+  "Whether `code` is `:internal`, the code of an ordinary exception that no tool declared."
+  [code]
+  (= :internal code))
+
+(defn- unconfirmed-write
+  "The ToolError to report for `error` from a tool whose declaration sets `:metabot/writes?`.
+
+  A failure that no tool declared, coded by `tools.error/classify`, may have come after the write. It
+  becomes `:unconfirmed-write`, which ends the turn and tells the user to check before trying again,
+  so the model can't write a second time. A declared error passes through unchanged."
+  [{:keys [code] :as error}]
+  (if (#{:internal :jvm-error :interrupted} code)
+    {:class        :unrecoverable
+     :code         :unconfirmed-write
+     :user-message (tru "Something went wrong. The change may have been saved, so check before you try again.")}
+    error))
 
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
@@ -145,17 +175,24 @@
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
 
-(defn- unrecoverable-output
-  "What the model is told about an unrecoverable failure: the code, and not to retry.
+(def ^:private undeclared-failure-sentence
+  "How the model's text about an ordinary exception that no tool declared starts, and all that a later
+  turn replays of it (see [[replay-text]])."
+  "This call failed with an unexpected error.")
 
-  Nothing else. The user is being shown the real error on another channel, so the model's job here
-  is to stop rather than to explain. The code is safe to include because it is ours — a closed
-  vocabulary we wrote — and it gives the model something stable to refer to if it says anything at
-  all. Note that the model only ever sees this *within the turn*, to pair the remaining tool calls
-  of the iteration with results; a turn that ends in an error event is dropped from history whole,
-  so later turns never read it."
+(defn- unrecoverable-output
+  "What the model is told about an unrecoverable failure, which never includes the failure's own text.
+
+  `:internal` is an ordinary exception that no tool declared. The agent loop can carry on after one,
+  so the model is told to try another way rather than make the same call again.
+
+  For any other code the user is shown the real error on another channel, so the model's job is to
+  stop rather than to explain. The code is safe to include because it is ours, a closed vocabulary
+  we wrote, and it gives the model something stable to refer to if it says anything at all."
   [code]
-  (str "This call failed and the user was shown the error (" code "). Don't retry it."))
+  (if (undeclared? code)
+    (str undeclared-failure-sentence " Don't retry the same call. Try another approach, or tell the user it failed.")
+    (str "This call failed and the user was shown the error (" code "). Don't retry it.")))
 
 (def ^:private leak-patterns
   "Shapes that mean a raw exception or EDN dump reached agent-bound text: a stack-trace frame,
@@ -175,11 +212,6 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(def ^:private max-output-length
-  "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
-  so that a pathological payload cannot spend the turn's context on one failure."
-  4000)
-
 (defn render
   "The failure [[::outcome]] for a ToolError, given the tool names available this turn.
 
@@ -187,11 +219,13 @@
   | ---------------- | --------------------------------------------------------- |
   | `:validation`    | the message                                               |
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
-  | `:unrecoverable` | a fixed sentence carrying only the code                    |
+  | `:unrecoverable` | a fixed sentence, with the code unless it is `:internal`  |
+
+  Failure text is capped at [[max-output-length]] characters.
 
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."
-  [{:keys [class code message recovery user-message]} tool-names]
+  [{:keys [class code message recovery user-message] :as error} tool-names]
   (let [output (case class
                  :validation  message
                  ;; The same assembly an item's failure gets, so a `not-found!` reads identically
@@ -205,11 +239,25 @@
       ;; in `metabase.metabot.tools.error-test` rather than on every render — which also means this
       ;; path needs no exemption for `tools.core/all-items-failed`, whose message is not authored at
       ;; all but assembled from text each item already had filtered for this profile.
-      (assert-authored! output (str class " " code)))
+      (assert-authored! (if (= :recoverable class)
+                          (tools.error/authored-text error output)
+                          output)
+                        (str class " " code)))
     {:output (cond-> output
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}
                user-message (assoc :user-message user-message))}))
+
+(defn replay-text
+  "The text that a later turn replays to the model for the failure [[::outcome]] `outcome`.
+
+  An ordinary exception that no tool declared replays as one neutral sentence. Its live text also
+  tells the model not to make the same call again, and that holds only for the turn that failed: by a
+  later turn the cause may be gone. Every other failure replays the text the model read live."
+  [{:keys [output error]}]
+  (if (undeclared? (:code error))
+    undeclared-failure-sentence
+    output))
 
 ;;; ------------------------------------------------ Invocation ----------------------------------------------------
 
@@ -324,7 +372,8 @@
   3. the scope is checked, and a denial is unrecoverable;
   4. the tool runs with the dynamic vars bound from `ctx`, through `tools.core/call`;
   5. its result is validated against `tools.core/result` and its `:output` rendered to a string;
-  6. any exception is classified, logged in full, and rendered for its audience."
+  6. any exception is classified, logged in full, and rendered for its audience; a tool that writes
+     has a failure no tool declared reported as an [[unconfirmed-write]]."
   [entries ctx tool-name args]
   (let [tool-names (:tool-names ctx)]
     (try
@@ -336,6 +385,7 @@
             (->> (checked-result tool-name))
             rendered-output))
       (catch Throwable e
-        (let [error (tools.error/classify e)]
+        (let [error (cond-> (tools.error/classify e)
+                      (get-in entries [tool-name :declaration :metabot/writes?]) unconfirmed-write)]
           (log-failure! tool-name error e)
           (render error tool-names))))))

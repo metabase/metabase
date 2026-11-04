@@ -8,7 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.native-query-snippets.schema]
+   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
@@ -17,6 +17,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -192,24 +194,32 @@
                            serdes/import-mbql
                            (lib/normalize :metabase.lib.schema.template-tag/template-tag-map))]
     {:tags    tags
-     :renames (into {}
-                    (keep (fn [[tag-name tag]]
-                            (some->> (serdes/card-template-tag-rename tag) (vector tag-name))))
-                    tags)}))
+     :renames (serdes/card-template-tag-renames serdes/card-template-tag-rename (vals tags))}))
+
+(defn- export-renames
+  "The renames of the card tags in `template-tags` whose `#<id>-slug` name embeds this instance's card id."
+  [template-tags]
+  (serdes/card-template-tag-renames serdes/card-template-tag-export-rename (vals template-tags)))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :description :entity_id :name]
+  {:schema    ::native-query-snippets.schema/external-native-query-snippet
+   :copy      [:archived :description :entity_id :name]
    :skip      []
-   :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+   :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               :content       {:export identity
+               :content       {:export-with-context
+                               (fn [current _ content]
+                                 (let [renames (export-renames (:template_tags current))]
+                                   (cond-> content
+                                     (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))
                                :import-with-context
                                (fn [current _ content]
                                  (let [{:keys [renames]} (import-template-tags (:template_tags current))]
                                    (cond-> content
                                      (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames))))}
-               :template_tags {:export serdes/export-mbql
+               :template_tags {:export (fn [template-tags]
+                                         (serdes/export-mbql
+                                          (some-> template-tags (lib/rename-template-tags (export-renames template-tags)))))
                                :import (fn [template-tags]
                                          (let [{:keys [tags renames]} (import-template-tags template-tags)]
                                            (some-> tags (lib/rename-template-tags renames))))}}

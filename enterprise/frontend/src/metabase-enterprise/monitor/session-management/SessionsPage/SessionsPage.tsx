@@ -17,6 +17,7 @@ import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Button, Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -31,7 +32,6 @@ import { SessionsTabs } from "../SessionsTabs";
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
-  PAGE_SIZE,
   TAB_SORT_COLUMNS,
 } from "./constants";
 import type { RouteParams } from "./types";
@@ -51,7 +51,10 @@ export const SessionsPage = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
+  const [urlState, { patchUrlState, searchString }] = useUrlState(
+    location,
+    urlStateConfig,
+  );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelection = useCallback(() => setRowSelection({}), []);
 
@@ -151,10 +154,10 @@ export const SessionsPage = () => {
           id === undefined
             ? Urls.monitorSessions()
             : Urls.monitorSessionDetail(id),
-        search: location.search,
+        search: searchString,
       });
     },
-    [navigate, location.search],
+    [navigate, searchString],
   );
 
   const handleSidebarClose = useCallback(
@@ -226,7 +229,7 @@ export const SessionsPage = () => {
             <SessionsFilters state={urlState} onChange={patchUrlState} />
             {!isEndedTab && (
               // not tied to the listed total: revoking all ignores the search and filters
-              <Button disabled={isRevoking} onClick={revokeAll} size="lg">
+              <Button size="lg" disabled={isRevoking} onClick={revokeAll}>
                 {t`Revoke all active sessions`}
               </Button>
             )}

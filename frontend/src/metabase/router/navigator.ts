@@ -1,5 +1,6 @@
 import type {
   DataRouter,
+  Location,
   NavigateFunction,
   NavigateOptions,
   To,
@@ -56,6 +57,21 @@ export function setRouter(router: DataRouter | null): void {
 }
 
 /**
+ * Clears every module-level router holder. These outlive a single React tree,
+ * so without a reset one test leaks router state into the next: a test that
+ * never mounts a router can queue a navigation (because `isRouterExpected`
+ * stayed true from an earlier test) that the next test's router then flushes.
+ * The jest harness calls this after each test.
+ */
+export function resetRouterForTests(): void {
+  currentNavigate = null;
+  pendingNavigations = [];
+  isRouterExpected = false;
+  currentRouter = null;
+  locationListeners.clear();
+}
+
+/**
  * Whether the router has accepted a navigation it has not committed yet.
  *
  * `useIsNavigating` answers the same question during a render. This is for the
@@ -78,6 +94,24 @@ export function getIsNavigationPending(): boolean {
   return (
     currentRouter != null && currentRouter.state.navigation.state !== "idle"
   );
+}
+
+export const getRouterLocation = (): Location | undefined =>
+  currentRouter?.state.location;
+
+/**
+ * The pathname of the navigation the router has accepted but not committed, or
+ * null when none is pending.
+ *
+ * Callers that only want to avoid clobbering a navigation to a *different*
+ * destination need the target, not just whether one is pending: a pending
+ * navigation to the same path they are about to write is theirs to keep, not a
+ * redirect to sit out. Under React 19 the pending window stays open across the
+ * lazy chunk load a render longer, so a blanket "is anything pending" check
+ * drops legitimate same-destination URL syncs.
+ */
+export function getPendingNavigationPath(): string | null {
+  return currentRouter?.state.navigation.location?.pathname ?? null;
 }
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {

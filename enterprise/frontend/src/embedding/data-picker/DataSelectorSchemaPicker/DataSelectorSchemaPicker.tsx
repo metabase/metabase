@@ -1,33 +1,66 @@
-import { AccordionList } from "metabase/common/components/AccordionList";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/common/components/AccordionList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import type { DataSelectorSchema } from "metabase/querying/common/components/DataSelector";
-import { Box, Icon } from "metabase/ui";
+import type {
+  DataSelectorDatabase,
+  DataSelectorSchema,
+} from "metabase/querying/common/components/DataSelector";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { SchemaId } from "metabase-types/api";
 
 import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorSchemaPickerProps = {
-  hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   schemas: DataSelectorSchema[];
+  selectedDatabase?: DataSelectorDatabase | null;
   selectedSchemaId?: SchemaId | null;
+  onBack?: (() => void) | null;
   onChangeSchema: (schema?: DataSelectorSchema) => void;
+};
+
+type Item = {
+  name: string | null;
+  schema: DataSelectorSchema;
 };
 
 export const DataSelectorSchemaPicker = ({
   schemas,
+  selectedDatabase,
   selectedSchemaId,
+  onBack,
   onChangeSchema,
   hasNextStep,
-  hasFiltering,
   hasInitialFocus,
 }: DataSelectorSchemaPickerProps) => {
   const tc = useTranslateContent();
-  const sections = [
+  const sections: Section<Item>[] = [
     {
+      name: (
+        <UnstyledButton
+          display="flex"
+          fz="inherit"
+          disabled={!onBack}
+          style={{ alignItems: "center" }}
+          onClick={onBack ?? undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.stopPropagation();
+            }
+          }}
+        >
+          {onBack && <Icon name="chevronleft" size={18} />}
+          <Box component="span" ml="sm">
+            {selectedDatabase && tc(selectedDatabase.name)}
+          </Box>
+        </UnstyledButton>
+      ),
+      type: "back",
       items: schemas.map((schema) => ({
         name: tc(getSchemaDisplayName(schema.name)),
         schema: schema,
@@ -43,7 +76,6 @@ export const DataSelectorSchemaPicker = ({
         className={CS.textBrand}
         hasInitialFocus={hasInitialFocus}
         sections={sections}
-        searchable={hasFiltering}
         onChange={({ schema }: any) => onChangeSchema(schema)}
         itemIsSelected={(item: { schema: DataSelectorSchema }) =>
           item?.schema.id === selectedSchemaId

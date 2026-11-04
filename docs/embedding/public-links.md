@@ -37,6 +37,8 @@ To share a dashboard via a public link, admins can click on the **Share** button
 
 ![Sharing a dashboard](./images/dashboard-sharing.png)
 
+Public dashboards show the [events](../exploration-and-organization/events-and-timelines.md#events-in-public-links-and-embeds) each question was saved with to anyone who has the link, even people who can't access the timeline's collection.
+
 To embed a dashboard, see [guest embedding](./guest-embedding.md).
 
 ## Create a public link for a document

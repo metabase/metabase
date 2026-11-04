@@ -371,9 +371,13 @@ describe("scenarios > embedding > embedding hub > security", () => {
         // OSS leaves PLUGIN_ADMIN_SETTINGS.useUpsellFlow without a trigger, so
         // UpsellCta renders the store link; paid builds get a button that
         // opens the in-app flow instead.
-        cy.findByRole("link", { name: "Try Metabase Pro" }).should(
-          "be.visible",
-        );
+        cy.findByRole("link", { name: "Try Metabase Pro" })
+          .should("be.visible")
+          .and(
+            "have.attr",
+            "href",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
+          );
 
         cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
       });
