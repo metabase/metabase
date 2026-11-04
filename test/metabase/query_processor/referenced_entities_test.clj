@@ -13,10 +13,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.db :as qp.db]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.referenced-entities :as referenced-entities]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [toucan2.core :as t2]))
 
 (defn- ref-entity
   "The test HTTP client keywordizes the type key and parses numeric JSON keys back to ints."
@@ -606,6 +608,39 @@
           (testing "and so does the card its goal points at"
             (is (= "completed" (:status goal)))
             (is (= [[100]] (get-in goal [:data :rows])))))))))
+
+(defn- goal-chart
+  "A line chart whose goal line points at `entity-type` `goal-id`'s `count` column."
+  [entity-type goal-id]
+  {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+   :display                :line
+   :visualization_settings {:graph.show_goal  true
+                            :graph.goal_value {:id goal-id :type entity-type :column "count"}}})
+
+(deftest goal-runs-keep-source-result-metadata-test
+  (mt/with-temp [:model/Card    {card-id :id}    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                 :model/Card    {metric-id :id}  {:type          :metric
+                                                  :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                                                        :breakout    [$price]})}
+                 :model/Measure {measure-id :id} {:name       "Venue count"
+                                                  :table_id   (mt/id :venues)
+                                                  :definition (venues-count-measure)}]
+    (testing "resolving a goal doesn't write result_metadata to the card, metric or measure it points at"
+      (doseq [[entity-type goal-id] [["card" card-id] ["card" metric-id] ["measure" measure-id]]]
+        (testing (str entity-type " " goal-id)
+          (mt/with-temp [:model/Card {chart-id :id} (goal-chart entity-type goal-id)]
+            (let [written (atom #{})]
+              (mt/with-dynamic-fn-redefs [qp.db/set-card-result-metadata! (fn [id _] (swap! written conj id))]
+                (let [response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))]
+                  (is (= "completed" (get-in response [:data :referenced_entities (keyword entity-type) goal-id
+                                                       :status])))))
+              (is (empty? (disj @written chart-id))))))))
+    (testing "a metric goal keeps the metric's breakout column"
+      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" metric-id))
+      (mt/with-temp [:model/Card {chart-id :id} (goal-chart "card" metric-id)]
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+        (is (= ["PRICE" "count"]
+               (mapv :name (t2/select-one-fn :result_metadata :model/Card :id metric-id))))))))
 
 (deftest dataset-endpoint-unreadable-measure-test
   (testing "a referenced measure whose table the caller can't read fails softly without failing the main query"
