@@ -17,7 +17,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -609,7 +609,8 @@
       (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
-  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+  {:schema    ::warehouse-schema.schema/external-table
+   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :owner_email :is_published]

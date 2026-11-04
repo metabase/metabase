@@ -144,7 +144,8 @@
           (warehouse-schema.db/update-field! field-id (select-keys settings (user-settings/user-set-field-columns settings))))))))
 
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
-  {:copy      [:semantic_type :description :display_name :visibility_type
+  {:schema    ::warehouse-schema.schema/external-field-user-settings
+   :copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
                :description_set :semantic_type_set :fk_target_field_id_set]
