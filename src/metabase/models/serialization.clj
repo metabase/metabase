@@ -684,13 +684,18 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
-(defmethod load-update! :default [model-name ingested local]
+(defn default-load-update!
+  "Default implementation of `load-update!`."
+  [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
     (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
     (models.db/entity-by-pk model pk id)))
+
+(defmethod load-update! :default [model-name ingested local]
+  (default-load-update! model-name ingested local))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
