@@ -1192,11 +1192,15 @@
                                                                                            :max   100
                                                                                            :color "red"}]}}
                      :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Dashboard {embedded-id :id} {:enable_embedding true}
                      :model/Dashboard {private-id :id} {}
                      :model/DashboardCard {public-dashcard-id :id} {:dashboard_id public-id :card_id card-id}
+                     :model/DashboardCard {embedded-dashcard-id :id} {:dashboard_id embedded-id :card_id card-id}
                      :model/DashboardCard {private-dashcard-id :id} {:dashboard_id private-id :card_id card-id}]
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
-        (doseq [[dashboard-id dashcard-id] [[public-id public-dashcard-id] [private-id private-dashcard-id]]]
+        (doseq [[dashboard-id dashcard-id] [[public-id public-dashcard-id]
+                                            [embedded-id embedded-dashcard-id]
+                                            [private-id private-dashcard-id]]]
           (create-dashboard-revision! dashboard-id true :crowberto)
           (t2/delete! :model/DashboardCard :id dashcard-id)
           (create-dashboard-revision! dashboard-id false :crowberto))
@@ -1207,6 +1211,10 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 "revision/revert" (revert-req public-id))))
             (is (empty? (t2/select :model/DashboardCard :dashboard_id public-id))))
+          (testing "is rejected on an embedded dashboard, leaving the card off it"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "revision/revert" (revert-req embedded-id))))
+            (is (empty? (t2/select :model/DashboardCard :dashboard_id embedded-id))))
           (testing "is allowed on a dashboard that is not shared"
             (mt/user-http-request :rasta :post 200 "revision/revert" (revert-req private-id))
             (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id private-id)))))
