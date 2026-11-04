@@ -96,6 +96,13 @@
                                   (format-ids external))))))
   nil)
 
+(defn- card-refusal
+  "The message refusing `data-app` the card with `card-id`."
+  [data-app card-id]
+  (if (preview? data-app)
+    (tru "A data app''s dev preview cannot use saved cards but Library metrics, not the card {0}." (str card-id))
+    (tru "A data app can use only the cards in its own collection and Library metrics, not the card {0}." (str card-id))))
+
 (defenterprise-schema check-card :- :nil
   "Throws a 400 unless the card with `card-id` is a Library metric, or `data-app` is an app and the card is in its
   collection, after a read check of the card; a dev preview uses no saved card but Library metrics."
@@ -103,14 +110,24 @@
   [data-app :- ::data-apps.schema/data-app-info
    card-id  :- ::lib.schema.id/card]
   (let [card (api/read-check :model/Card card-id)]
-    (when (seq (data-apps.db/external-metric-ids #{card-id}))
-      (when (preview? data-app)
-        (throw (data-app-error (tru "A data app''s dev preview cannot use saved cards but Library metrics, not the card {0}."
-                                    (str card-id)))))
-      (when-not (in-app-collection? data-app card)
-        (throw (data-app-error (tru "A data app can use only the cards in its own collection and Library metrics, not the card {0}."
-                                    (str card-id)))))))
+    (when (and (seq (data-apps.db/external-metric-ids #{card-id}))
+               (or (preview? data-app) (not (in-app-collection? data-app card))))
+      (throw (data-app-error (card-refusal data-app card-id)))))
   nil)
+
+(defenterprise-schema check-referenced-entities :- [:map-of [:tuple :string :int] :string]
+  "The refusal message of each card among the referenced-entity `specs` that is neither in `data-app`'s collection nor
+  a Library metric, by `[type id]`, as [[check-card]] refuses it. A card that doesn't exist gets the message an outside
+  one does; the cards that pass are still read-checked when they run. Measures pass."
+  :feature :data-apps
+  [data-app :- ::data-apps.schema/data-app-info
+   specs    :- [:sequential [:map [:type :string] [:id :int]]]]
+  (let [{card-ids true, invalid-ids false} (group-by pos-int? (keep #(when (= "card" (:type %)) (:id %)) specs))
+        external (some->> (not-empty (set card-ids))
+                          (data-apps.db/external-card-ids (app-collection-id data-app))
+                          not-empty
+                          data-apps.db/external-metric-ids)]
+    (into {} (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)])) (concat invalid-ids external))))
 
 (defn- published-table?
   "Whether the table with `table-id` is published to the Library."
