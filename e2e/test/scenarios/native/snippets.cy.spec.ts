@@ -240,7 +240,7 @@ describe("scenarios > native > snippets", () => {
     H.NativeEditor.type(
       "select id from products where {{snippet: field-filter}}",
     );
-    cy.findByTestId("native-query-top-bar").icon("variable").click();
+    // The variables sidebar opens by itself when a new variable tag appears.
     cy.findByTestId("variable-type-select").click();
     H.popover().findByText("Field Filter").click();
     H.popover().findByText("Products").click();
