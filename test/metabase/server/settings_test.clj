@@ -5,7 +5,9 @@
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +39,7 @@
       (doseq [[env expected] [["https://apps.example.com"            "https://apps.example.com"]
                               ["https://apps.example.com/"           "https://apps.example.com"]
                               ["  https://apps.example.com  "        "https://apps.example.com"]
-                              ["https://Apps.Example.com/x/y?z=1#h"  "https://apps.example.com"]
+                              ["https://Apps.Example.com"            "https://apps.example.com"]
                               ["https://apps.example.com:443"        "https://apps.example.com"]
                               ["https://apps.example.com:8443/"      "https://apps.example.com:8443"]
                               ["apps.example.com"                    "https://apps.example.com"]]]
@@ -51,14 +53,25 @@
   (testing "an unusable value turns data apps off rather than serving them without the isolated origin, and logs why
             once"
     (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
-      (doseq [env ["https://" "ftp://apps.example.com" "https://apps example.com"
-                   "https://mb.example.com:8443" "https://MB.example.com" "http://apps.example.com"]]
+      (doseq [[env problem] [["https://"                     "not an http(s) URL"]
+                             ["ftp://apps.example.com"       "not an http(s) URL"]
+                             ["https://apps example.com"     "not an http(s) URL"]
+                             ;; The isolated origin is a whole host, so a value that names part of one is a mistake.
+                             ["https://apps.example.com/x/y" "path, query or fragment"]
+                             ["https://apps.example.com?z=1" "path, query or fragment"]
+                             ["https://apps.example.com/#h"  "path, query or fragment"]
+                             ["apps.example.com/metabase"    "path, query or fragment"]
+                             ["https://mb.example.com:8443"  "the site URL's host name"]
+                             ["https://MB.example.com"       "the site URL's host name"]
+                             ["http://apps.example.com"      "uses http while the site URL uses https"]]]
         (testing (pr-str env)
           (mt/with-temp-env-var-value! [mb-isolated-origin env]
             (mt/with-log-messages-for-level [messages [metabase.server.settings :error]]
               (is (nil? (server.settings/isolated-origin)))
               (is (true? (server.settings/isolated-origin-misconfigured?)))
-              (is (= 1 (count (messages)))))))))))
+              (is (=? [{:message (re-pattern (str "(?s)MB_ISOLATED_ORIGIN .* can't be used: .*"
+                                                  (Pattern/quote problem) ".*"))}]
+                      (messages))))))))))
 
 (deftest isolated-origin-needs-a-site-url-test
   (testing "without a site URL the value can't be used, and data apps are off"

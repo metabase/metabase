@@ -187,7 +187,8 @@
         ;; load works. One the main host leaks with a `Domain` stays, and keeps the app refused.
         (respond (request/clear-session-cookie
                   {:status 403
-                   :body   "Data apps are misconfigured: a Metabase session reached the isolated origin."})))
+                   :body   (str "Data apps are misconfigured: a Metabase session reached the isolated origin. "
+                                "Reload the page. If this message comes back, ask your Metabase administrator.")})))
 
       (or isolated? user-id)
       (data-app-shell request respond raise)
