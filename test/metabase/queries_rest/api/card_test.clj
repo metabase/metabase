@@ -3267,7 +3267,15 @@
                (testing "a user who can read the goal source can move the card"
                  (is (= dash-id
                         (:dashboard_id (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
-                                                             {:dashboard_id dash-id})))))))))))))
+                                                             {:dashboard_id dash-id}))))))))
+         (testing "private: the same user can move the card"
+           (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                     :display                :gauge
+                                                     :visualization_settings viz-settings}
+                          :model/Dashboard {dash-id :id} {}]
+             (is (= dash-id
+                    (:dashboard_id (mt/user-http-request :rasta :put 200 (str "card/" card-id)
+                                                         {:dashboard_id dash-id})))))))))))
 
 (deftest archived-card-with-restricted-goal-on-shared-dashboard-test
   (testing "PUT /api/card/:id moving an archived card onto a shared dashboard unarchives and autoplaces it, so it still needs goal read access"
@@ -3289,7 +3297,16 @@
                (testing "a user who can read the goal source can still move it"
                  (is (=? {:archived false, :dashboard_id dash-id}
                          (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
-                 (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))))))
+                 (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))
+         (testing "private: the same user can move it"
+           (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                     :display                :gauge
+                                                     :archived               true
+                                                     :visualization_settings viz-settings}
+                          :model/Dashboard {dash-id :id} {}]
+             (is (=? {:archived false, :dashboard_id dash-id}
+                     (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+             (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))))
 
 (deftest copy-card-onto-public-dashboard-timeline-permissions-test
   (testing "POST /api/card/:id/copy autoplaces the copy on the source's dashboard, so it needs timeline read access"
@@ -3344,7 +3361,23 @@
                  (testing "a user who can read the goal source can copy it"
                    (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (format "card/%d/copy" card-id)))]
                      (is (= [copy-id]
-                            (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))))))))
+                            (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))
+         (testing "private: the same user can copy it"
+           (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                          :model/Card {card-id :id :as source-card} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                                     :display                :gauge
+                                                                     :dashboard_id           dash-id
+                                                                     :visualization_settings viz-settings}]
+             (mt/with-model-cleanup [:model/Card]
+               (let [copy-id    (:id (mt/user-http-request :rasta :post 200 (format "card/%d/copy" card-id)))
+                     save-as-id (:id (mt/user-http-request :rasta :post 200 "card"
+                                                           (assoc (card-with-name-and-query)
+                                                                  :display                "gauge"
+                                                                  :source_card_id         card-id
+                                                                  :dashboard_id           dash-id
+                                                                  :visualization_settings (:visualization_settings source-card))))]
+                 (is (= #{copy-id save-as-id}
+                        (set (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))))))
 
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"

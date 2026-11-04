@@ -144,7 +144,14 @@
                 (testing "a user who can read the goal source can add it"
                   (tool-result (add-card! :crowberto))
                   (is (= [(:id card)]
-                         (map :card_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))))))))
+                         (map :card_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))))
+        (testing "private: the same user can add it"
+          (mt/with-temp [:model/Dashboard dashboard {}]
+            (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                     (wire {:method "update" :id (:id dashboard)
+                                            :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))
+            (is (= [(:id card)]
+                   (map :card_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard)))))))))))
 
 (deftest duplicate-dashcard-with-inaccessible-goal-test
   (testing "a new dashcard may carry a goal the caller cannot read when the dashboard already carries it, as in the REST writer"
