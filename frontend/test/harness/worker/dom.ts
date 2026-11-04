@@ -308,6 +308,12 @@ function installWindowGlobals({ again }: { again: boolean }): void {
       configurable: true,
     });
   }
+  // Under jest the window is the global object, and libraries compare the two
+  // or reach the window through the document.
+  Object.defineProperty(dom.window.document, "defaultView", {
+    get: () => globalThis,
+    configurable: true,
+  });
 }
 
 function installWindowGlobal(
