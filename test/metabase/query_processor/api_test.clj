@@ -13,6 +13,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
@@ -1284,3 +1285,132 @@
         (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))]
           (is (= "completed" (:status response)))
           (is (nil? (get-in response [:data :native_form]))))))))
+
+(defn- orders-count-by-month-query
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
+        lib/prepare-for-serialization)))
+
+(deftest portable-resolve-query-round-trip-test
+  (mt/test-driver :h2
+    (let [{db-name :name}                   (lib.metadata/database (mt/metadata-provider))
+          {table-name :name schema :schema} (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
+          {field-name :name}                (lib.metadata/field (mt/metadata-provider) (mt/id :orders :created_at))
+          portable                          (mt/user-http-request :rasta :post 200 "dataset/portable"
+                                                                  {:query (orders-count-by-month-query)})]
+      (testing "POST /api/dataset/portable replaces ids with names"
+        (is (=? {:database db-name
+                 :stages   [{:source-table [db-name schema table-name]
+                             :breakout     [["field" {:temporal-unit "month"} [db-name schema table-name field-name]]]}]}
+                portable)))
+      (testing "POST /api/dataset/resolve replaces names with ids"
+        (is (=? {:database (mt/id)
+                 :stages   [{:source-table (mt/id :orders)
+                             :breakout     [["field" {:temporal-unit "month"} (mt/id :orders :created_at)]]}]}
+                (mt/user-http-request :rasta :post 200 "dataset/resolve" {:query portable})))))))
+
+(defn- orders-count-by-month-portable-query
+  []
+  (walk/postwalk #(cond-> % (seq? %) vec)
+                 (mt/user-http-request :crowberto :post 200 "dataset/portable" {:query (orders-count-by-month-query)})))
+
+(defn- inaccessible-message
+  [entity-name portable-ref]
+  (str entity-name " " (pr-str portable-ref) " does not exist or you don't have access to it."))
+
+(deftest resolve-query-missing-entity-test
+  (mt/test-driver :h2
+    (let [portable  (orders-count-by-month-portable-query)
+          table-ref (assoc (get-in portable [:stages 0 :source-table]) 2 "MISSING_TABLE")
+          field-ref (assoc (get-in portable [:stages 0 :breakout 0 2]) 3 "MISSING_FIELD")
+          card-eid  (u/generate-nano-id)
+          counts    #(mapv t2/count [:model/Database :model/Table :model/Field])
+          before    (counts)]
+      (doseq [[query message] {(assoc portable :database "MISSING_DATABASE")
+                               (inaccessible-message "Database" "MISSING_DATABASE")
+
+                               (assoc-in portable [:stages 0 :source-table] table-ref)
+                               (inaccessible-message "Table" table-ref)
+
+                               (assoc-in portable [:stages 0 :breakout 0 2] field-ref)
+                               (inaccessible-message "Field" field-ref)
+
+                               (update-in portable [:stages 0] #(-> % (dissoc :source-table) (assoc :source-card card-eid)))
+                               (inaccessible-message "Card" card-eid)}]
+        (testing message
+          (is (= message (mt/user-http-request :rasta :post 400 "dataset/resolve" {:query query})))))
+      (testing "POST /api/dataset/resolve creates no entities"
+        (is (= before (counts)))))))
+
+(deftest resolve-query-inaccessible-entity-test
+  (mt/test-driver :h2
+    (let [portable  (orders-count-by-month-portable-query)
+          db-name   (:database portable)
+          table-ref (get-in portable [:stages 0 :source-table])]
+      (mt/with-no-data-perms-for-all-users!
+        (testing "POST /api/dataset/resolve reports unreadable database as missing, before resolving its tables"
+          (doseq [query [portable (assoc-in portable [:stages 0 :source-table 2] "MISSING_TABLE")]]
+            (is (= (inaccessible-message "Database" db-name)
+                   (mt/user-http-request :rasta :post 400 "dataset/resolve" {:query query})))))
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permissions! (perms/all-users-group) :perms/create-queries {(mt/id :orders) :no
+                                                                                     (mt/id :venues) :query-builder})
+        (testing "POST /api/dataset/resolve reports unreadable table as missing"
+          (is (= (inaccessible-message "Table" table-ref)
+                 (mt/user-http-request :rasta :post 400 "dataset/resolve" {:query portable}))))))
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       {card-eid :entity_id} {:collection_id (:id collection)
+                                                            :dataset_query (orders-count-by-month-query)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (testing "POST /api/dataset/resolve reports unreadable card as missing"
+          (is (= (inaccessible-message "Card" card-eid)
+                 (mt/user-http-request :rasta :post 400 "dataset/resolve"
+                                       {:query (update-in (orders-count-by-month-portable-query) [:stages 0]
+                                                          #(-> % (dissoc :source-table :breakout :aggregation)
+                                                               (assoc :source-card card-eid)))}))))))))
+
+(deftest portable-query-inaccessible-entity-test
+  (mt/test-driver :h2
+    (let [orders-query (fn [field-id]
+                         {:lib/type "mbql/query"
+                          :database (mt/id)
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table (mt/id :orders)
+                                      :fields       [["field" {} field-id]]}]})]
+      (testing "POST /api/dataset/portable rejects missing field"
+        (is (= (inaccessible-message "Field" Integer/MAX_VALUE)
+               (mt/user-http-request :rasta :post 400 "dataset/portable" {:query (orders-query Integer/MAX_VALUE)}))))
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permissions! (perms/all-users-group) :perms/create-queries {(mt/id :orders) :no
+                                                                                     (mt/id :venues) :query-builder})
+        (testing "POST /api/dataset/portable reports unreadable table as missing"
+          (is (= (inaccessible-message "Table" (mt/id :orders))
+                 (mt/user-http-request :rasta :post 400 "dataset/portable"
+                                       {:query (orders-query (mt/id :orders :total))}))))))
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       {card-id :id} {:collection_id (:id collection)
+                                                    :dataset_query (orders-count-by-month-query)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (testing "POST /api/dataset/portable reports unreadable card as missing"
+          (is (= (inaccessible-message "Card" card-id)
+                 (mt/user-http-request :rasta :post 400 "dataset/portable"
+                                       {:query {:lib/type "mbql/query"
+                                                :database (mt/id)
+                                                :stages   [{:lib/type    "mbql.stage/mbql"
+                                                            :source-card card-id}]}}))))))))
+
+(deftest portable-resolve-native-query-without-native-perms-test
+  (mt/test-driver :h2
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+      (let [query    (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))
+            portable (mt/user-http-request :rasta :post 200 "dataset/portable" {:query query})]
+        (testing "POST /api/dataset/portable converts native query user cannot run"
+          (is (= (:name (lib.metadata/database (mt/metadata-provider))) (:database portable))))
+        (testing "POST /api/dataset/resolve converts native query user cannot run"
+          (is (= (mt/id) (:database (mt/user-http-request :rasta :post 200 "dataset/resolve" {:query portable})))))))))

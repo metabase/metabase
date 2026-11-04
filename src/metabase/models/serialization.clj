@@ -1031,13 +1031,6 @@
 
 ;;; ## Fields
 
-;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
-;; database and table exporters above. Fields are unbounded in number (millions on large
-;; instances), and the dominant traffic — each field's own path during a data-model export —
-;; has no reuse, so a cache would retain an O(field-count) map for near-zero hits and can OOM
-;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
-;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
-;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
@@ -1045,9 +1038,7 @@
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
-    (let [fields                      (field-hierarchy field-id)
-          [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
-      (into [db-name schema table-name] (map :name fields)))))
+    (resolve/export-field-fk (export-resolver) field-id)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-field-fk*
@@ -1406,6 +1397,19 @@
           (cond-> (not *skip-schema-validation?*) validate-imported-query!)
           repair-card-template-tag-names
           legacy-mbql-query->mbql5))
+
+(defn export-mbql-strict
+  "Like [[export-mbql]], but throws a 400 for a referenced entity that is missing or that the current user cannot read."
+  [x]
+  (binding [resolve/*export-resolver* resolve.default/strict-export-resolver]
+    (export-mbql x)))
+
+(defn import-mbql-strict
+  "Like [[import-mbql]], but throws a 400 for a referenced entity that is missing or that the current user cannot read,
+  instead of creating it."
+  [x]
+  (binding [resolve/*import-resolver* resolve.default/strict-import-resolver]
+    (import-mbql x)))
 
 (declare ^:private mbql-deps-map)
 

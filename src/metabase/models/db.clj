@@ -250,27 +250,22 @@
               :from           [:parents]
               :select         [:name :table_id]}))
 
-(mu/defn table-ref-columns
-  "The id, Database id, name, and schema of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id))
-
 (mu/defn database-name
   "The name of the Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
-(mu/defn database-id-by-name
-  "The id of the Database named `database-name`, or nil."
+(mu/defn database-by-name
+  "The Database named `database-name`, with only its id, or nil."
   [database-name :- :string]
-  (t2/select-one-fn :id :model/Database :name database-name))
+  (t2/select-one [:model/Database :id] :name database-name))
 
-(mu/defn table-id-by-name
-  "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
+(mu/defn table-by-name
+  "The Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [table-name  :- :string
    schema      :- [:maybe :string]
    database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id))
+  (t2/select-one :model/Table :name table-name :schema schema :db_id database-id))
 
 (mu/defn insert-stub-database!
   "Insert a stub Postgres Database named `database-name` with empty connection details and return its id."
