@@ -126,7 +126,7 @@
                         :name          "Grandchild via Native"}
 
                        :model/Transform {transform-id :id}
-                       {:source {:type  "query"
+                       {:source {:type  :query
                                  :query (lib/query mp (lib.metadata/card mp old-id))}
                         :name   "acceptance_transform"
                         :target {:database (mt/id) :type "table" :name "acceptance_transform"}}

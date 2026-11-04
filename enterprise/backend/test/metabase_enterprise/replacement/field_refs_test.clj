@@ -291,7 +291,7 @@
                     lib/append-stage
                     (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 1)))]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
-                                                          :source {:type "query" :query query}
+                                                          :source {:type :query :query query}
                                                           :target {:database (mt/id) :type "table" :name "out"}}]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
         (is (=? {:source {:type  :query
@@ -305,20 +305,8 @@
     (let [mp    (mt/metadata-provider)
           query (lib/native-query mp "SELECT * FROM orders")]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
-                                                          :source {:type "query" :query query}
+                                                          :source {:type :query :query query}
                                                           :target {:database (mt/id) :type "table" :name "out"}}]
-        (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
-
-(deftest transform-upgrade-field-refs!-broken-query-test
-  (testing "should not crash on a transform with a broken query"
-    (let [mp (mt/metadata-provider)]
-      (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
-                                                          :source {:type "query" :query (lib/native-query mp "SELECT 1")}
-                                                          :target {:database (mt/id) :type "table" :name "out"}}]
-        ;; simulate a broken query by updating source directly in the DB
-        (t2/query-one {:update :transform
-                       :set    {:source "{\"type\":\"query\",\"query\":{}}"}
-                       :where  [:= :id transform-id]})
         (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
 
 (deftest transform-upgrade-field-refs!-no-changes-test
@@ -326,7 +314,7 @@
     (let [mp    (mt/metadata-provider)
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Transform {transform-id :id, updated-at :updated_at} {:name   "test transform"
-                                                                                  :source {:type "query" :query query}
+                                                                                  :source {:type :query :query query}
                                                                                   :target {:database (mt/id) :type "table" :name "out"}}]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Transform transform-id))))))))

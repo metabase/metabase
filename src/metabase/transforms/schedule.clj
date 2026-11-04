@@ -10,36 +10,62 @@
    [metabase.task.core :as task]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.jobs :as transforms.jobs]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.settings :as transforms.settings]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey CronExpression)))
+   (org.quartz CronTrigger CronExpression JobKey TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
-(defn validate-cron-expression
+(mr/def ::trigger-info
+  "A Quartz trigger as `metabase.task.core/existing-triggers` describes it."
+  [:map {:closed true}
+   [:description         [:maybe :string]]
+   [:end-time            [:maybe inst?]]
+   [:final-fire-time     [:maybe inst?]]
+   [:key                 :string]
+   [:state               [:maybe :string]]
+   [:next-fire-time      [:maybe inst?]]
+   [:previous-fire-time  [:maybe inst?]]
+   [:priority            :int]
+   [:start-time          [:maybe inst?]]
+   [:may-fire-again?     :boolean]
+   [:data                [:map-of :string :string]]
+   [:schedule            :string]
+   [:timezone            :string]
+   [:misfire-instruction :string]])
+
+(mu/defn validate-cron-expression :- :boolean
   "Returns true if valid, false otherwise."
-  [expr]
+  [expr :- :string]
   (try
     ;; throwing is its only mechanism:
     (CronExpression/validateExpression expr)
     true
     (catch Exception _ false)))
 
-(defn- job-key [job-id] (jobs/key (str "metabase.task.transforms.schedule." job-id)))
+(mu/defn- job-key :- (ms/InstanceOfClass JobKey)
+  [job-id :- ms/PositiveInt]
+  (jobs/key (str "metabase.task.transforms.schedule." job-id)))
 
-(defn- timezone
+(mu/defn- timezone :- :string
   []
   (or (driver/report-timezone)
       (qp.timezone/system-timezone-id)
       "UTC"))
 
-(defn- trigger-key ^TriggerKey [job-id]
+(mu/defn- trigger-key :- (ms/InstanceOfClass TriggerKey)
+  [job-id :- ms/PositiveInt]
   (triggers/key (str "metabase.task.transforms.trigger." job-id)))
 
-(defn- build-trigger
-  ^CronTrigger [job-id schedule]
+(mu/defn- build-trigger :- (ms/InstanceOfClass CronTrigger)
+  [job-id   :- ms/PositiveInt
+   schedule :- :string]
   (triggers/build
    (triggers/with-description (str "Transform Job Schedule " job-id))
    (triggers/with-identity (trigger-key job-id))
@@ -55,23 +81,24 @@
    ;; higher than sync
    (triggers/with-priority 6)))
 
-(defn- create-trigger!
+(mu/defn- create-trigger! :- [:maybe inst?]
   "Creates the trigger for a transform job."
-  [job-id schedule]
+  [job-id   :- ms/PositiveInt
+   schedule :- [:maybe :string]]
   (when schedule
     (log/info "Creating trigger for transform job" job-id "with schedule" schedule)
     (task/add-trigger! (build-trigger job-id schedule))))
 
-(defn existing-trigger
+(mu/defn existing-trigger :- [:maybe ::trigger-info]
   "Return the existing trigger for `job-id-or-trigger`, or nil, if the trigger doesn't exist."
-  [job-id-or-trigger]
+  [job-id-or-trigger :- ms/PositiveInt]
   (first (task/existing-triggers (job-key job-id-or-trigger)
                                  (trigger-key job-id-or-trigger))))
 
-(defn delete-trigger!
+(mu/defn delete-trigger! :- [:maybe :boolean]
   "Delete the trigger for a transform job. Leaves the underlying Quartz job definition intact so it
   can be re-scheduled later via [[initialize-job!]]."
-  ([job-id-or-trigger]
+  ([job-id-or-trigger :- [:or ms/PositiveInt ::trigger-info]]
    (if (number? job-id-or-trigger)
      (if-let [trigger (existing-trigger job-id-or-trigger)]
        (delete-trigger! trigger)
@@ -104,9 +131,9 @@
         ;; which is misleading. The task_history row above still records the skipped firing.
         (log/info "Skipping scheduled run of transform job" job-id "because transforms are disabled")))))
 
-(defn initialize-job!
+(mu/defn initialize-job! :- [:maybe inst?]
   "Initialize a schedule for a transform job."
-  [{job-id :id :keys [schedule]}]
+  [{job-id :id :keys [schedule]} :- ::transforms.schema/transform-job]
   (log/info "Initializing schedule for transform job" job-id)
   (let [job (jobs/build
              (jobs/with-identity (job-key job-id))
@@ -117,9 +144,10 @@
         trigger (build-trigger job-id schedule)]
     (task/schedule-task! job trigger)))
 
-(defn update-job!
+(mu/defn update-job! :- [:maybe inst?]
   "Update the trigger for a transform job."
-  [job-id schedule]
+  [job-id   :- ms/PositiveInt
+   schedule :- [:maybe :string]]
   (log/info "Updating schedule for transform job" job-id "to" schedule)
   (let [existing-trigger (first (task/existing-triggers (job-key job-id) (trigger-key job-id)))]
     (if (not= schedule (:schedule existing-trigger))
@@ -130,9 +158,9 @@
           (create-trigger! job-id schedule)))
       (log/info "No changes to the trigger for transform job" job-id))))
 
-(defn delete-job!
+(mu/defn delete-job! :- [:maybe :boolean]
   "Delete a job."
-  [job-id]
+  [job-id :- ms/PositiveInt]
   (log/info "Deleting schedule for transform job" job-id)
   (task/delete-task! (job-key job-id) (trigger-key job-id)))
 

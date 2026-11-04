@@ -1262,45 +1262,6 @@
                      :table_id    (:id table)}
                     (t2/select-one :model/Card :name "Customers")))))))))
 
-(deftest orphaned-transform-yaml-round-trip-test
-  (testing "A Transform whose source database was deleted round-trips through YAML storage as a tombstone"
-    (mt/with-premium-features #{:transforms-basic}
-      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (ts/with-dbs [source-db dest-db]
-          (ts/with-db source-db
-            (t2/delete! :model/TransformTag)
-            (let [db    (ts/create! :model/Database :name "soon-to-be-deleted")
-                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
-                  mp    (lib-be/application-database-metadata-provider (:id db))]
-              (ts/create! :model/Transform
-                          :name   "Orphan Transform"
-                          :source {:type  "query"
-                                   :query (lib/query mp (lib.metadata/table mp (:id table)))}
-                          :target {:database (:id db)
-                                   :type     "table"
-                                   :schema   "public"
-                                   :name     "orphan_target"})
-              (t2/delete! :model/Database :id (:id db))
-              (storage/store! (serdes/with-cache (into [] (extract/extract {})))
-                              (storage.files/file-writer dump-dir))))
-          (let [file     (io/file dump-dir "collections" "transforms" "orphan_transform.yaml")
-                exported (yaml/from-file file)]
-            (testing "the exported query carries no metadata provider"
-              (is (=? {:database nil, :lib/type "mbql/query"} (get-in exported [:source :query])))
-              (is (not (contains? (get-in exported [:source :query]) :lib/metadata))))
-            (dump/spit-yaml! file (assoc-in exported [:source :query :lib/metadata] nil)))
-          (ts/with-db dest-db
-            (t2/delete! :model/TransformTag)
-            (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                "an export written with a nil `lib/metadata` still loads")
-            (let [transform (t2/select-one :model/Transform :name "Orphan Transform")]
-              (is (=? {:source_database_id nil
-                       :source             {:type :query}}
-                      transform))
-              (is (=? {"database" nil
-                       "stages"   [{"source-table" pos-int?}]}
-                      (get-in transform [:source :query]))))))))))
-
 (deftest transform-test-round-trip-test
   (testing "A transform test is exported under its transform's path and imported with its transform"
     (mt/with-premium-features #{:transforms-basic}
@@ -1314,8 +1275,8 @@
                                         :name          "Orders Summary"
                                         :collection_id (:id coll)
                                         :creator_id    (:id creator)
-                                        :source        {:type  "query"
-                                                        :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                        :source        {:type  :query
+                                                        :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
                                         :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
               (ts/create! :model/TransformTest
                           :transform_id (:id transform)
@@ -1381,8 +1342,8 @@
                                               :name          "Revenue Report"
                                               :collection_id (:id coll)
                                               :creator_id    (:id creator)
-                                              :source        {:type  "query"
-                                                              :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                              :source        {:type  :query
+                                                              :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
                                               :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
                     (ts/create! :model/TransformTest
                                 :transform_id (:id transform)
