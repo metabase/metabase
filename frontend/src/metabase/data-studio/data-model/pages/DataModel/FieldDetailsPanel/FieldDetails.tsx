@@ -67,13 +67,13 @@ export function FieldDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Display name`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={field.display_name}
                 placeholder={t`Give this field a name`}
                 maxLength={254}
                 isDisabled={readOnly}
-                fw="bold"
                 onChange={saveName}
                 data-testid="field-display-name-input"
               />
@@ -85,6 +85,7 @@ export function FieldDetails({
           />
           <DetailsRow
             label={t`Description`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={field.description}

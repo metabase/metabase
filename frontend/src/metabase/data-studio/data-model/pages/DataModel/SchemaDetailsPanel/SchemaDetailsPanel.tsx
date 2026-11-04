@@ -40,6 +40,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  DETAILS_CELL_INPUT_CLASS_NAMES,
   DetailPanel,
   DetailPanelHeader,
   DetailsEditableText,
@@ -235,6 +236,7 @@ function SchemaDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Display name`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={displayName}
@@ -242,7 +244,6 @@ function SchemaDetails({
                 placeholder={schemaName}
                 maxLength={254}
                 isOptional
-                fw="bold"
                 onChange={handleDisplayNameChange}
                 data-testid="schema-display-name-input"
               />
@@ -272,9 +273,11 @@ function SchemaDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Layer`}
+            fillValue
             value={
               <Select
                 aria-label={t`Data layer`}
+                classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
                 data={dataLayers.map((layer) => ({
                   value: layer.id,
                   label: layer.name,

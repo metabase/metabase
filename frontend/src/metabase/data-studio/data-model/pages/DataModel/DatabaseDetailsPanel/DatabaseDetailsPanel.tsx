@@ -193,12 +193,12 @@ function DatabaseDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Name`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={database.name}
                 placeholder={t`Give this database a name`}
                 maxLength={NAME_MAX_LENGTH}
-                fw="bold"
                 onChange={handleNameChange}
                 data-testid="database-name-input"
               />
@@ -206,6 +206,7 @@ function DatabaseDetails({
           />
           <DetailsRow
             label={t`Description`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={database.description}

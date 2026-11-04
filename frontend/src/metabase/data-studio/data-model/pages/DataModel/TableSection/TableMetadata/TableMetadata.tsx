@@ -50,13 +50,13 @@ export function TableMetadata({
       <DetailsTable>
         <DetailsRow
           label={t`Display name`}
+          fillValue
           value={
             <DetailsEditableText
               initialValue={table.display_name}
               placeholder={t`Give this table a name`}
               maxLength={254}
               isDisabled={readOnly}
-              fw="bold"
               onChange={handleNameChange}
               data-testid="table-display-name-input"
             />
@@ -65,6 +65,7 @@ export function TableMetadata({
         <DetailsRow label={t`Raw name`} value={<Code>{table.name}</Code>} />
         <DetailsRow
           label={t`Description`}
+          fillValue
           value={
             <DetailsEditableText
               initialValue={table.description}

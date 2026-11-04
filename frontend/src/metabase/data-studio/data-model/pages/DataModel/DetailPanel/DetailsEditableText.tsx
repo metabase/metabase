@@ -1,13 +1,30 @@
+import cx from "classnames";
+
 import {
   EditableText,
   type EditableTextProps,
 } from "metabase/common/components/EditableText";
+import { Box, Icon } from "metabase/ui";
 
-// Pulls EditableText's own padding and border into the row's padding so its
-// text lines up with the plain values in the other rows
-const EDITABLE_TEXT_OFFSET = "-0.3125rem";
+import S from "./DetailsEditableText.module.css";
 
-/** Click-to-edit value for a `DetailsRow`, aligned with the row's plain values. */
-export function DetailsEditableText(props: EditableTextProps) {
-  return <EditableText m={EDITABLE_TEXT_OFFSET} {...props} />;
+/**
+ * Click-to-edit value that fills a `DetailsRow` with `fillValue`: tinted on
+ * hover, with a pencil to show it's editable unless it's disabled.
+ */
+export function DetailsEditableText({
+  className,
+  isDisabled,
+  ...props
+}: EditableTextProps) {
+  return (
+    <Box className={cx(S.cell, { [S.disabled]: isDisabled })}>
+      <EditableText
+        {...props}
+        isDisabled={isDisabled}
+        className={cx(S.editableText, className)}
+      />
+      {!isDisabled && <Icon name="pencil" size={14} className={S.editIcon} />}
+    </Box>
+  );
 }
