@@ -24,6 +24,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
@@ -853,8 +854,9 @@
    :slackbot                  ["search" {}]})
 
 (defn- step-limit-turn!
-  "Run a turn of `profile-id` whose model reads until a step limit of 2 and answers any later call with
-  `(last-response)`, which may throw. Return the requests that the model got and the turn's parts."
+  "Run a turn of `profile-id` whose model reads until a step limit of 2, each call reporting 100 prompt and 20
+  completion tokens, and answers any later call with the stream `(last-response)` returns, which may throw. Return
+  the requests that the model got and the turn's parts."
   [profile-id last-response & {:keys [request-canceled-chan]}]
   (let [get-profile          (mt/original-fn #'profiles/get-profile)
         [function arguments] (read-calls profile-id)
@@ -865,13 +867,15 @@
                                   metabot-search/search (constantly [])
                                   openrouter/openrouter (fn [request]
                                                           (let [n (count (swap! requests conj request))]
-                                                            (mut/mock-llm-response
-                                                             (if (<= n 2)
+                                                            (if (<= n 2)
+                                                              (mut/mock-llm-response
                                                                [{:type      :tool-input
                                                                  :id        (str "t" n)
                                                                  :function  function
-                                                                 :arguments arguments}]
-                                                               (last-response)))))]
+                                                                 :arguments arguments}
+                                                                {:type  :usage
+                                                                 :usage {:promptTokens 100 :completionTokens 20}}])
+                                                              (last-response))))]
         {:parts    (into [] (run-agent-loop
                              (cond-> {:messages   [{:role :user :content "Chart revenue by month"}]
                                       :profile-id profile-id
@@ -886,7 +890,8 @@
       (doseq [profile-id [:document-generate-content :sql]]
         (testing profile-id
           (let [reply "The customer table has no link to orders, so I couldn't chart revenue by customer segment."
-                {:keys [parts requests]} (step-limit-turn! profile-id (constantly [{:type :text :text reply}]))
+                {:keys [parts requests]} (step-limit-turn! profile-id
+                                                           #(mut/mock-llm-response [{:type :text :text reply}]))
                 last-request             (last requests)]
             (is (= 3 (count requests)))
             (is (=? {:tool_choice "none" :tools seq} last-request))
@@ -899,7 +904,8 @@
     (testing "the web chat and Slack profiles end at the step limit with no other call"
       (doseq [profile-id [:internal :slackbot]]
         (testing profile-id
-          (let [{:keys [parts requests]} (step-limit-turn! profile-id (constantly [{:type :text :text "Unexpected"}]))]
+          (let [{:keys [parts requests]} (step-limit-turn! profile-id
+                                                           #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))]
             (is (= 2 (count requests)))
             (is (=? [{:type :tool-output}
                      {:type :data :data-type "state"}
@@ -909,9 +915,9 @@
 (deftest step-limit-reply-fallback-test
   (mt/as-admin
     (testing "a last call that fails, throws or answers with no text leaves the fixed reply"
-      (doseq [[ending last-response] [["fails" (constantly [{:type :error :errorText "Overloaded"}])]
+      (doseq [[ending last-response] [["fails" #(mut/mock-llm-response [{:type :error :errorText "Overloaded"}])]
                                       ["throws" #(throw (ex-info "The provider closed the stream" {}))]
-                                      ["answers with no text" (constantly [])]]]
+                                      ["answers with no text" #(mut/mock-llm-response [])]]]
         (testing ending
           (let [{:keys [parts requests]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
                                            (step-limit-turn! :document-generate-content last-response))]
@@ -926,11 +932,28 @@
       (let [canceled (a/promise-chan)]
         (a/>!! canceled true)
         (let [{:keys [parts requests]} (step-limit-turn! :document-generate-content
-                                                         (constantly [{:type :text :text "Unexpected"}])
+                                                         #(mut/mock-llm-response [{:type :text :text "Unexpected"}])
                                                          :request-canceled-chan canceled)]
           (is (= 2 (count requests)))
           (is (=? {:type :text :text step-limit-text}
                   (last (filter #(= :text (:type %)) parts)))))))))
+
+(deftest step-limit-reply-usage-test
+  (testing "the usage that the last call reports before its stream breaks counts toward the turn's saved usage"
+    (mt/as-admin
+      (let [broken-stream   #(eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                       (chat-completions/usage-once
+                                        (reify clojure.lang.IReduceInit
+                                          (reduce [_ rf init]
+                                            (rf init {:usage {:prompt_tokens 700 :completion_tokens 30}})
+                                            (throw (java.io.IOException. "Connection reset after the usage chunk"))))))
+            {:keys [parts]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                              (step-limit-turn! :document-generate-content broken-stream))]
+        (is (=? {:type :text :text step-limit-text}
+                (last (filter #(= :text (:type %)) parts))))
+        (is (= {test-provider {:prompt 900 :completion 70}}
+               (metabot.persistence/extract-usage parts)))
+        (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj

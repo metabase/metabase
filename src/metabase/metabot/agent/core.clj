@@ -706,9 +706,10 @@
   "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.
 
   The call asks the model to tell the user what it couldn't do and why. It is not made when the request this turn
-  serves was canceled, and its parts are nil when it throws. The tools stay declared, since a changed tool set
-  invalidates the prompt cache and the thinking that Claude replays, but the `none` tool choice lets the model call
-  none of them."
+  serves was canceled. When it throws, its parts are only the usage it reported before that, which the turn's saved
+  usage still has to count. The tools stay declared, since a changed tool set misses the prompt cache's tool and
+  system prefix and invalidates the thinking that Claude replays, but the `none` tool choice lets the model call none
+  of them."
   [{:keys [agent iteration usage-atom]} sent-parts]
   (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
         memory @memory-atom]
@@ -716,20 +717,21 @@
       (let [iteration          (inc iteration)
             link-registry-atom (atom (get-in memory [:state :link-registry] {}))
             input-parts        (conj (turn-input-parts sent-parts context memory tools @link-registry-atom)
-                                     {:role :user :content step-limit-instruction})]
+                                     {:role :user :content step-limit-instruction})
+            parts-atom         (atom [])]
         (try
           (u/prog1 (ait/with-llm-call {:ai/iteration iteration
                                        :ai/model     (:model profile)}
-                     (let [parts (into [] (accumulate-usage-xf usage-atom (:model profile))
-                                       (call-llm memory profile tools system-msg iteration
-                                                 (assoc tracking-opts :iteration iteration)
-                                                 link-registry-atom input-parts "none"))]
-                       (record-response! iteration parts)
-                       parts))
+                     (u/prog1 (into [] (comp (accumulate-usage-xf usage-atom (:model profile))
+                                             (u/tee-xf parts-atom))
+                                    (call-llm memory profile tools system-msg iteration
+                                              (assoc tracking-opts :iteration iteration)
+                                              link-registry-atom input-parts "none"))
+                       (record-response! iteration <>)))
             (swap! memory-atom memory/set-link-registry @link-registry-atom))
           (catch Exception e
             (log/warn e "The last call of a turn at its step limit failed")
-            nil))))))
+            (filterv #(= :usage (:type %)) @parts-atom)))))))
 
 (defn- text-reply?
   "Whether `parts`, from the last call of a turn at its step limit, hold a reply: text, and no tool call, error or
