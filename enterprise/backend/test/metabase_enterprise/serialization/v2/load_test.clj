@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -1328,6 +1329,21 @@
       (testing "The extraneous keys do not interfere with loading"
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))
+
+(deftest library-import-across-locales-test
+  (mt/with-premium-features #{:data-studio}
+    (doseq [[export-locale import-locale] [["en" "fr"] ["fr" "en"]]]
+      (testing (format "Library exported under %s loads under %s" export-locale import-locale)
+        (mt/with-empty-h2-app-db!
+          (let [library    (collection/create-library-collection!)
+                serialized (mt/with-user-locale export-locale
+                             (into [] (serdes.extract/extract {:no-settings   true
+                                                               :no-data-model true
+                                                               :targets       [["Collection" (:id library)]]})))]
+            (mt/with-user-locale import-locale
+              (serdes.load/load-metabase! (ingestion-in-memory serialized)))
+            (is (= "Library"
+                   (t2/select-one-fn :name :collection :id (:id library))))))))))
 
 (deftest tx-test
   (mt/with-empty-h2-app-db!
