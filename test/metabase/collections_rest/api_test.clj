@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -3512,41 +3513,43 @@
 
 (deftest move-collection-to-namespace-root-checks-that-root-test
   (testing "PUT /api/collection/:id checks write perms on the root of the collection's own namespace"
-    (mt/with-premium-features #{:snippet-collections}
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-          (let [all-users     (perms/all-users-group)
-                snippets-root (assoc collection/root-collection :namespace "snippets")]
-            (letfn [(location-after-move [user status archived?]
-                      (mt/with-temp [:model/Collection parent {:namespace "snippets"}
-                                     :model/Collection folder {:namespace "snippets"
-                                                               :location  (collection/children-location parent)}]
-                        (doseq [coll [parent folder]]
-                          ;; a folder created under a granted root already inherited the grant
-                          (perms/revoke-collection-permissions! all-users coll)
-                          (perms/grant-collection-readwrite-permissions! all-users coll))
-                        (let [url (str "collection/" (u/the-id folder))]
-                          (when archived?
-                            (mt/user-http-request :crowberto :put 200 url {:archived true}))
-                          (mt/user-http-request user :put status url
-                                                (cond-> {:parent_id nil} archived? (assoc :archived false))))
-                        (t2/select-one-fn :location :model/Collection :id (u/the-id folder))))
-                    (with-root-write [root f]
-                      (perms/grant-collection-readwrite-permissions! all-users root)
-                      (try
-                        (f)
-                        (finally
-                          (perms/revoke-collection-permissions! all-users root))))]
-              (doseq [archived? [false true]]
-                (testing (if archived? "unarchive to root" "move to root")
-                  (testing "write on the default root but not the snippets root is not enough"
-                    (with-root-write collection/root-collection
-                      #(is (not= "/" (location-after-move :rasta 403 archived?)))))
-                  (testing "write on the snippets root is enough without write on the default root"
-                    (with-root-write snippets-root
-                      #(is (= "/" (location-after-move :rasta 200 archived?)))))
-                  (testing "an admin can do it"
-                    (is (= "/" (location-after-move :crowberto 200 archived?)))))))))))))
+    ;; without EE, snippet collections have no-op perms
+    (when config/ee-available?
+      (mt/with-premium-features #{:snippet-collections}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (let [all-users     (perms/all-users-group)
+                  snippets-root (assoc collection/root-collection :namespace "snippets")]
+              (letfn [(location-after-move [user status archived?]
+                        (mt/with-temp [:model/Collection parent {:namespace "snippets"}
+                                       :model/Collection folder {:namespace "snippets"
+                                                                 :location  (collection/children-location parent)}]
+                          (doseq [coll [parent folder]]
+                            ;; a folder created under a granted root already inherited the grant
+                            (perms/revoke-collection-permissions! all-users coll)
+                            (perms/grant-collection-readwrite-permissions! all-users coll))
+                          (let [url (str "collection/" (u/the-id folder))]
+                            (when archived?
+                              (mt/user-http-request :crowberto :put 200 url {:archived true}))
+                            (mt/user-http-request user :put status url
+                                                  (cond-> {:parent_id nil} archived? (assoc :archived false))))
+                          (t2/select-one-fn :location :model/Collection :id (u/the-id folder))))
+                      (with-root-write [root f]
+                        (perms/grant-collection-readwrite-permissions! all-users root)
+                        (try
+                          (f)
+                          (finally
+                            (perms/revoke-collection-permissions! all-users root))))]
+                (doseq [archived? [false true]]
+                  (testing (if archived? "unarchive to root" "move to root")
+                    (testing "write on the default root but not the snippets root is not enough"
+                      (with-root-write collection/root-collection
+                        #(is (not= "/" (location-after-move :rasta 403 archived?)))))
+                    (testing "write on the snippets root is enough without write on the default root"
+                      (with-root-write snippets-root
+                        #(is (= "/" (location-after-move :rasta 200 archived?)))))
+                    (testing "an admin can do it"
+                      (is (= "/" (location-after-move :crowberto 200 archived?))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
