@@ -533,7 +533,7 @@ describe("issue 32750", () => {
 
 function setupBasicActionsInModel() {
   H.questionInfoButton().click();
-  H.sidesheet().findByText("Actions").click();
+  H.sidesheet().findByRole("link", { name: "Actions" }).click();
   cy.button(/Create basic actions/).click();
 }
 

@@ -39,7 +39,9 @@ describe("scenarios > models > revision history", () => {
 
 function openRevisionHistory() {
   H.questionInfoButton().click();
-  cy.findByTestId("saved-question-history-list").should("be.visible");
+  cy.findByTestId("saved-question-history-list")
+    .scrollIntoView()
+    .should("be.visible");
 }
 
 function revertTo(history) {
