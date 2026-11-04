@@ -175,7 +175,18 @@
     (t2/insert! ::bird [(bird 63 0 "a") (bird 63 0 "b")])
     (with-redefs [dml-capture/max-pre-image-rows 2]
       (is (= 2 (t2/delete! ::bird :group_id 63))))
-    (is (=? [{:rows [{:group_id 63} {:group_id 63}]}] (events)))))
+    (is (=? [{:rows [{:group_id 63} {:group_id 63}]}] (events))))
+  (testing "the snapshot asks the database for at most one row past the ceiling"
+    (reset-capture!)
+    (t2/insert! ::bird (bird 64 0 "a"))
+    (let [queries         (atom [])
+          reducible-query t2.execute/reducible-query]
+      (with-redefs [dml-capture/max-pre-image-rows 2
+                    t2.execute/reducible-query      (fn [sql-args]
+                                                      (swap! queries conj (first sql-args))
+                                                      (reducible-query sql-args))]
+        (is (= 1 (t2/delete! ::bird :group_id 64))))
+      (is (=? [#"(?is).*\bLIMIT\b.*"] @queries)))))
 
 (deftest pre-image-build-failure-skips-capture-test
   (testing "a snapshot query that fails to build skips capture, and the delete still runs"
@@ -249,6 +260,14 @@
                    {:delete-from (keyword table-name)
                     :using       [:other_table]
                     :where       [:= :group_id 112]})))
+        (is (zero? @build-calls)))))
+  (testing "deletes carrying a CTE are rejected too, since the snapshot would run the CTE a second time"
+    (let [build-calls (atom 0)]
+      (with-redefs [t2.pipeline/build (fn [& _] (swap! build-calls inc))]
+        (is (nil? (#'dml-capture/pre-image-rows
+                   :toucan.query-type/select.instances ::bird [:id] {}
+                   {:with  [[:doomed {:select [:id], :from [(keyword table-name)]}]]
+                    :where [:in :id {:select [:id], :from [:doomed]}]})))
         (is (zero? @build-calls))))))
 
 (deftest uncaptured-ops-fire-nothing-test
