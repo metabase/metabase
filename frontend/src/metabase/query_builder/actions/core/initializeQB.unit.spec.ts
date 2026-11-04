@@ -1,14 +1,16 @@
 import fetchMock from "fetch-mock";
 
+import { getStore } from "__support__/entities-store";
 import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { cardApi, databaseApi, snippetApi } from "metabase/api";
+import { Api, cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
+import type { Dispatch } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
@@ -49,7 +51,7 @@ import * as qbActions from "../../store/actions";
 import * as querying from "../querying";
 
 import * as cardActions from "./card";
-import { initializeQB } from "./initializeQB";
+import { initializeQB, resolveCards } from "./initializeQB";
 
 type DisplayLock = { displayIsLocked?: boolean };
 type TestCard = (Card & DisplayLock) | (UnsavedCard & DisplayLock);
@@ -1091,5 +1093,96 @@ describe("QB Actions > initializeQB", () => {
         ),
       );
     });
+  });
+});
+
+describe("QB Actions > resolveCards", () => {
+  const SAVED_CARD_ID = 1;
+  const PUBLIC_UUID = "public-uuid";
+
+  let activeStore: ReturnType<typeof getStore> | undefined;
+
+  afterEach(() => {
+    // Aborts the running queries before their fetch routes are removed.
+    activeStore?.dispatch(Api.util.resetApiState());
+    activeStore = undefined;
+  });
+
+  it.each([
+    {
+      name: "a save made while queries are running",
+      change: (store: ReturnType<typeof getStore>) => {
+        // Two, because RTK Query's pending-request count drops by one on every
+        // cache hit, so a single running query stops holding back the
+        // invalidation on load. The dashboardId only gives the second query its
+        // own cache entry.
+        fetchMock.post(
+          `path:/api/card/${SAVED_CARD_ID}/query`,
+          new Promise(() => {}),
+        );
+        store.dispatch(
+          cardApi.endpoints.getCardQuery.initiate({ cardId: SAVED_CARD_ID }),
+        );
+        store.dispatch(
+          cardApi.endpoints.getCardQuery.initiate({
+            cardId: SAVED_CARD_ID,
+            dashboardId: 1,
+          }),
+        );
+        return store.dispatch(
+          cardApi.endpoints.updateCard.initiate({
+            id: SAVED_CARD_ID,
+            name: "After the change",
+          }),
+        );
+      },
+      expected: { name: "After the change" },
+    },
+    {
+      name: "creating a public link",
+      change: (store: ReturnType<typeof getStore>) =>
+        store.dispatch(
+          cardApi.endpoints.createCardPublicLink.initiate({
+            id: SAVED_CARD_ID,
+          }),
+        ),
+      expected: { public_uuid: PUBLIC_UUID },
+    },
+  ])("opens the saved card after $name", async ({ change, expected }) => {
+    const store = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
+      Api.middleware,
+    ]);
+    activeStore = store;
+    // getStore's middleware typing loses the thunk overload, but the API middleware handles thunks.
+    const dispatch = store.dispatch as Dispatch;
+    const open = async () =>
+      (
+        await resolveCards({
+          cardId: SAVED_CARD_ID,
+          options: {},
+          dispatch,
+          getState: store.getState,
+        })
+      ).card;
+
+    let serverCard = createMockCard({
+      id: SAVED_CARD_ID,
+      name: "Before the change",
+    });
+    fetchMock.get(`path:/api/card/${SAVED_CARD_ID}`, () => serverCard);
+    fetchMock.put(`path:/api/card/${SAVED_CARD_ID}`, () => {
+      serverCard = { ...serverCard, name: "After the change" };
+      return serverCard;
+    });
+    fetchMock.post(`path:/api/card/${SAVED_CARD_ID}/public_link`, () => {
+      serverCard = { ...serverCard, public_uuid: PUBLIC_UUID };
+      return { uuid: PUBLIC_UUID };
+    });
+
+    expect(await open()).toMatchObject({ name: "Before the change" });
+
+    await change(store);
+
+    expect(await open()).toMatchObject(expected);
   });
 });
