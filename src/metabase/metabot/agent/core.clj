@@ -565,19 +565,6 @@
                     {:status-code 403
                      :type        :metabot/permission-denied}))))
 
-(defn- turn-tracking-opts
-  "The tracking opts of one turn: the caller's `tracking-opts` over the defaults, among them the request id that
-  ties the turn's analytics events together. Built by [[run-agent-loop]] before [[init-agent]], which takes the
-  result as given, so a turn that dies in the agent's setup still reports its finish."
-  [profile-id tracking-opts]
-  (merge {:profile-id          profile-id
-          :request-id          (str (random-uuid))
-          :source              "metabot_agent"
-          :tag                 "agent"
-          :required-permission (or (profile-id->required-permission profile-id)
-                                   :permission/metabot)}
-         tracking-opts))
-
 (defn- init-agent
   "Initialize agent state.
 
@@ -959,9 +946,17 @@
                           :msg-count  (count (:messages opts))}
           (analytics/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms      (u/start-timer)
-                ;; built before the agent, and the step in progress kept outside the loop state, so a turn that
-                ;; dies on an exception still reports its finish and the step it died on
-                turn-tracking (turn-tracking-opts profile-id (:tracking-opts opts))
+                ;; The turn's tracking opts, the caller's over the defaults, among them the request id that ties
+                ;; the turn's analytics events together. Built here, before the agent, and the step in progress
+                ;; kept outside the loop state, so a turn that dies on an exception still reports its finish and
+                ;; the step it died on.
+                turn-tracking (merge {:profile-id          profile-id
+                                      :request-id          (str (random-uuid))
+                                      :source              "metabot_agent"
+                                      :tag                 "agent"
+                                      :required-permission (or (profile-id->required-permission profile-id)
+                                                               :permission/metabot)}
+                                     (:tracking-opts opts))
                 turn-step     (atom nil)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
