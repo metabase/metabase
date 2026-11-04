@@ -139,6 +139,10 @@ describe("file-paths.yaml", () => {
     // The SDK component and host-app suites boot a Metabase instance, so their CI entry points
     // have to build one.
     ".github/workflows/embedding-sdk.yml",
+    "cross-version/test.sh",
+    "cross-version/docker-compose.head.yml",
+    ".github/scripts/build-cross-version-matrix.js",
+    "release/src/cross-version-helpers.ts",
   ])("builds the uberjar for %s", (path) => {
     expect(matches("build_uberjar", path)).toBe(true);
   });
