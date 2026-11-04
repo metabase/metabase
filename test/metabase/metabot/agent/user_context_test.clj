@@ -2,11 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -16,6 +18,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (def ^:private absent-entity-id
@@ -593,7 +596,8 @@
       (mt/with-test-user :crowberto
         (let [out (user-context/format-viewing-context viewing)]
           (is (str/includes? out "notebook editor"))
-          (is (str/includes? out "source-table")))))
+          (is (str/includes? out "source-table"))
+          (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text")))))
     (testing "omits the query when the user can read the database but not query it"
       (mt/with-no-data-perms-for-all-users!
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
@@ -603,7 +607,10 @@
           (is (not (mi/can-query? :model/Database (mt/id))))
           (let [out (user-context/format-viewing-context viewing)]
             (is (str/includes? out "notebook editor"))
-            (is (not (str/includes? out "source-table")))))))))
+            (is (not (str/includes? out "source-table")))
+            (testing "and omits the column list with it"
+              (is (not (str/includes? out "Columns")))
+              (is (not (str/includes? out "\"NAME\""))))))))))
 
 (deftest adhoc-viewing-context-unpermissionable-native-source-test
   (testing "native SQL under a later stage is withheld when its permissions cannot be calculated"
@@ -674,6 +681,200 @@
                 (is (= [:audited] (distinct @used)))
                 (is (str/includes? out "notebook editor"))
                 (is (not (str/includes? out "Query")))))))))))
+
+(deftest adhoc-viewing-context-lists-model-columns-test
+  (testing "an ad-hoc query on a model lists the columns that its last stage can use"
+    (mt/with-temp [:model/Card {model-id :id} {:name          "Venues model"
+                                               :type          :model
+                                               :database_id   (mt/id)
+                                               :table_id      (mt/id :venues)
+                                               :dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    {:source-table (mt/id :venues)}}}]
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context
+                   {:user_is_viewing [{:type  "adhoc"
+                                       :query {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (str "card__" model-id)}}}]})]
+          (is (str/includes? out "Columns"))
+          (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text"))
+          (is (str/includes? out "- \"PRICE\", display name \"Price\", type/Integer"))
+          (testing "a column of a model is referred to by its name, so its line has no portable FK"
+            (is (not (str/includes? out "portable FK [")))))))))
+
+(deftest adhoc-viewing-context-table-column-ref-builds-test
+  (testing "a column of a source table is listed with a portable FK that builds in stage 0 of a new query"
+    (mt/with-test-user :crowberto
+      (let [out  (user-context/format-viewing-context
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :venues)}}}]})
+            line (re-find #"- \"NAME\", display name \"Name\", type/Text, portable FK (\[.*\])" out)
+            fk   (some-> line second json/decode)]
+        (is (some? line))
+        (is (= 4 (count fk)))
+        (when fk
+          (is (some? (construct/execute-representations-query
+                      (walk/keywordize-keys
+                       {"lib/type" "mbql/query"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" (vec (take 3 fk))
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} fk]]}]})))))))))
+
+(deftest adhoc-viewing-context-escapes-portable-fk-test
+  (testing "the portable FK escapes a line separator and an invisible character, as the quoted name does"
+    (let [table-name  (str "T" (char 0x2028) "X")
+          column-name (str "C" (char 0x202E) "D")]
+      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC" :name table-name :active true}
+                     :model/Field _              {:table_id      table-id
+                                                  :name          column-name
+                                                  :display_name  "Column"
+                                                  :base_type     :type/Text
+                                                  :database_type "VARCHAR"}]
+        (mt/with-test-user :crowberto
+          (let [out  (user-context/format-viewing-context
+                      {:user_is_viewing [{:type  "adhoc"
+                                          :query {:database (mt/id)
+                                                  :type     :query
+                                                  :query    {:source-table table-id}}}]})
+                line (some #(when (str/includes? % "display name \"Column\"") %) (str/split-lines out))
+                fk   (second (re-find #"(?s)portable FK (\[.*\])" (str line)))]
+            (is (some? fk))
+            (is (not (str/includes? (str fk) (str (char 0x2028)))))
+            (is (not (str/includes? (str fk) (str (char 0x202E)))))
+            (testing "the escaped FK is still JSON for the same names"
+              (is (= ["PUBLIC" table-name column-name]
+                     (some-> fk json/decode rest vec))))))))))
+
+(deftest adhoc-viewing-context-lists-joined-columns-with-join-alias-test
+  (testing "a joined column is listed with its join alias, also when the join returns no fields"
+    (let [mp    (mt/metadata-provider)
+          query (lib/join (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (-> (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                               [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                       (lib.metadata/field mp (mt/id :categories :id)))])
+                              (lib/with-join-alias "Cat")
+                              (lib/with-join-fields :none)))]
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+          (is (str/includes? out "- [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK ["))
+          (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text")))))))
+
+(deftest adhoc-viewing-context-lists-earlier-stage-joined-column-by-source-alias-test
+  (testing "after a stage boundary, a joined column is listed by the name that resolves to it"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                   [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                           (lib.metadata/field mp (mt/id :categories :id)))])
+                                  (lib/with-join-alias "Cat")
+                                  (lib/with-join-fields :all)))
+                    lib/append-stage)]
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+          (is (str/includes? out "- \"Cat__NAME\", display name \"Cat → Name\""))
+          (is (= 1 (count (re-seq #"- \"NAME\"," out)))))))))
+
+(deftest adhoc-viewing-context-earlier-stage-joined-column-name-builds-test
+  (testing "the listed name of an earlier-stage joined column resolves to the joined table in a new query"
+    (mt/with-test-user :crowberto
+      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+            out     (construct/execute-representations-query
+                     (walk/keywordize-keys
+                      {"lib/type" "mbql/query"
+                       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                    "source-table" [db-name "PUBLIC" "VENUES"]
+                                    "joins"        [{"lib/type"   "mbql/join"
+                                                     "alias"      "Cat"
+                                                     "fields"     "all"
+                                                     "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                                    "source-table" [db-name "PUBLIC" "CATEGORIES"]}]
+                                                     "conditions" [["=" {}
+                                                                    ["field" {} [db-name "PUBLIC" "VENUES" "CATEGORY_ID"]]
+                                                                    ["field" {"join-alias" "Cat"}
+                                                                     [db-name "PUBLIC" "CATEGORIES" "ID"]]]]}]}
+                                   {"lib/type"    "mbql.stage/mbql"
+                                    "aggregation" [["count" {}]]
+                                    "breakout"    [["field" {} "Cat__NAME"]]}]}))
+            query   (get-in out [:structured-output :query])]
+        (is (=? [{:table-id                (mt/id :categories)
+                  :lib/original-join-alias "Cat"}]
+                (lib/breakouts-metadata query)))))))
+
+(deftest adhoc-viewing-context-omits-implicitly-joinable-columns-test
+  (testing "columns reachable only through a foreign key are not listed"
+    (mt/with-test-user :crowberto
+      (let [out (user-context/format-viewing-context
+                 {:user_is_viewing [{:type  "adhoc"
+                                     :query {:database (mt/id)
+                                             :type     :query
+                                             :query    {:source-table (mt/id :checkins)}}}]})]
+        (is (str/includes? out "\"VENUE_ID\""))
+        (is (not (str/includes? out "\"LATITUDE\"")))))))
+
+(deftest adhoc-viewing-context-column-list-failure-logs-warning-test
+  (testing "a failure of the column list omits the list and logs a warning with the exception"
+    (let [error (ex-info "Boom" {})]
+      (mt/with-test-user :crowberto
+        (mt/with-dynamic-fn-redefs [entity-details/permission-filter-columns (fn [_] (throw error))]
+          (mt/with-log-messages-for-level [messages [metabase.metabot.agent.user-context :warn]]
+            (let [out (user-context/format-viewing-context
+                       {:user_is_viewing [{:type  "adhoc"
+                                           :query {:database (mt/id)
+                                                   :type     :query
+                                                   :query    {:source-table (mt/id :venues)}}}]})]
+              (is (str/includes? out "Query"))
+              (is (not (str/includes? out "Columns the query can use")))
+              (let [warnings (filter #(re-find #"Omitting the column list" (:message %)) (messages))]
+                (is (= [:warn] (map :level warnings)))
+                (is (identical? error (:e (first warnings))))))))))))
+
+(defn- fake-column
+  [column-name display-name base-type]
+  {:lib/type     :metadata/column
+   :name         column-name
+   :display-name display-name
+   :base-type    base-type})
+
+(def ^:private fake-query
+  "A query for the fake columns. `column-line` needs one to compute a display name."
+  (lib/query meta/metadata-provider (meta/table-metadata :venues)))
+
+(defn- fake-columns
+  [n]
+  (for [i (range n)]
+    (fake-column (str "C" i) (str "Col " i) :type/Integer)))
+
+(deftest ^:parallel column-list-cap-test
+  (let [column-list #'user-context/column-list]
+    (testing "an empty list renders nothing"
+      (is (nil? (column-list fake-query []))))
+    (testing "99 and 100 columns show every column and no \"more\" line"
+      (doseq [n [99 100]]
+        (let [out (column-list fake-query (fake-columns n))]
+          (is (str/includes? out (str "- \"C" (dec n) "\"")))
+          (is (not (str/includes? out "more"))))))
+    (testing "101 columns show 100 columns and then one \"more\" line"
+      (let [out (column-list fake-query (fake-columns 101))]
+        (is (str/includes? out "- \"C99\""))
+        (is (not (str/includes? out "- \"C100\"")))
+        (is (str/ends-with? out "- ... and 1 more"))))))
+
+(deftest ^:parallel column-list-line-test
+  (testing "a column without a field id keeps its line, and names are quoted on one line"
+    (is (= "- \"total\\nx\", display name \"Total \\\"x\\\"\", type/Text"
+           (#'user-context/column-line fake-query (fake-column "total\nx" "Total \"x\"" :type/Text)))))
+  (testing "the effective type wins over the base type"
+    (is (= "- \"A\", display name \"A\", type/Float"
+           (#'user-context/column-line fake-query (assoc (fake-column "A" "A" :type/Text)
+                                                         :effective-type :type/Float)))))
+  (testing "a joined column starts with its quoted join alias, and its display name has the alias"
+    (is (= "- [join \"Cat \\\"1\\\"\"] \"A\", display name \"Cat \\\"1\\\" → A\", type/Text"
+           (#'user-context/column-line fake-query (assoc (fake-column "A" "A" :type/Text)
+                                                         :lib/join-alias "Cat \"1\""))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
