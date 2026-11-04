@@ -28,7 +28,6 @@ import {
   getDimensionItems,
   getFieldSections,
   getValueItems,
-  getValueOperatorOptions,
   getWellFieldSections,
   replaceWellWithField,
 } from "./utils";
@@ -316,6 +315,59 @@ describe("getValueItems", () => {
   });
 });
 
+describe("chip keys", () => {
+  it("are distinct for clauses whose labels and names repeat", () => {
+    const query = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            { name: "Total", value: { type: "column", name: "SUBTOTAL" } },
+          ],
+          aggregations: [
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+            { type: "operator", operator: "count" },
+          ],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "year" },
+            { type: "column", name: "TOTAL" },
+            { type: "column", name: "Total" },
+            { type: "column", name: "CREATED_AT", unit: "month" },
+          ],
+        },
+      ],
+    });
+
+    const valueKeys = getValueItems(query, STAGE_INDEX).map(({ key }) => key);
+    const dimensionKeys = getDimensionItems(query, STAGE_INDEX).map(
+      ({ key }) => key,
+    );
+
+    expect(valueKeys).toEqual(["sum", "sum_2", "count"]);
+    expect(dimensionKeys).toEqual([
+      "CREATED_AT",
+      "TOTAL",
+      "Total_2",
+      "CREATED_AT_2",
+    ]);
+    expect(getDimensionLabels(query)).toEqual([
+      "Created At: Year",
+      "Total",
+      "Total",
+      "Created At: Month",
+    ]);
+  });
+});
+
 describe("getDimensionItems", () => {
   it("names breakouts with their bucket", () => {
     const query = createOrdersQuery({
@@ -479,7 +531,7 @@ describe("changeValueOperator", () => {
     if (total.kind !== "column") {
       throw new Error("Expected a column value");
     }
-    const options = getValueOperatorOptions(query, STAGE_INDEX, total);
+    const options = total.operatorOptions;
 
     expect(options.map((option) => option.shortName)).toEqual(
       expect.arrayContaining(["sum", "avg", "min", "max", "distinct"]),
@@ -495,7 +547,7 @@ describe("changeValueOperator", () => {
     if (total.kind !== "column") {
       throw new Error("Expected a column value");
     }
-    const average = getValueOperatorOptions(query, STAGE_INDEX, total).find(
+    const average = total.operatorOptions.find(
       (option) => option.shortName === "avg",
     );
     if (average == null) {

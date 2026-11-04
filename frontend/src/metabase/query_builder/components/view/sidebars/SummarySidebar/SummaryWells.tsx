@@ -26,7 +26,6 @@ import {
   changeValueOperator,
   getDimensionItems,
   getValueItems,
-  getValueOperatorOptions,
   getWellFieldSections,
 } from "./utils";
 
@@ -90,9 +89,9 @@ export function SummaryWells({
             }
           }}
         >
-          {valueItems.map((item, index) => (
+          {valueItems.map((item) => (
             <ValueChip
-              key={index}
+              key={item.key}
               query={query}
               stageIndex={stageIndex}
               item={item}
@@ -115,9 +114,9 @@ export function SummaryWells({
             }
           }}
         >
-          {dimensionItems.map((item, index) => (
+          {dimensionItems.map((item) => (
             <WellChip
-              key={index}
+              key={item.key}
               label={item.label}
               onRemove={() => handleRemove("columns", item.clause)}
             >
@@ -256,11 +255,6 @@ function ColumnValueMenu({
   item,
   onChange,
 }: ColumnValueMenuProps) {
-  const options = useMemo(
-    () => getValueOperatorOptions(query, stageIndex, item),
-    [query, stageIndex, item],
-  );
-
   return (
     <Menu position="bottom-start">
       <Menu.Target>
@@ -273,7 +267,7 @@ function ColumnValueMenu({
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
-        {options.map((option) => (
+        {item.operatorOptions.map((option) => (
           <Menu.Item
             key={option.shortName}
             rightSection={

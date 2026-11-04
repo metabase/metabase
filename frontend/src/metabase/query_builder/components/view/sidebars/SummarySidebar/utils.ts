@@ -174,23 +174,6 @@ function getColumnOperatorOptions(
     }));
 }
 
-/** The operators a column value can switch to, with the one it uses selected. */
-export function getValueOperatorOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  item: Extract<SummaryValueItem, { kind: "column" }>,
-): SummaryOperatorOption[] {
-  return getColumnOperatorOptions(
-    query,
-    stageIndex,
-    Lib.selectedAggregationOperators(
-      Lib.availableAggregationOperators(query, stageIndex),
-      item.clause,
-    ),
-    item.column,
-  );
-}
-
 /** Sum when the column can be summed, else Distinct values, else the first operator that fits. */
 function getDefaultOperatorOption(
   query: Lib.Query,
@@ -226,43 +209,58 @@ function getColumnAggregation(
     : null;
 }
 
+/**
+ * The names of the stage's result columns, which are unique: the breakouts' in breakout order,
+ * then the aggregations' in aggregation order. Clause display names repeat, e.g. two sums of
+ * one column, a column and a custom column with the same name, or one column by year and by month.
+ */
+function getResultColumnNames(query: Lib.Query, stageIndex: number) {
+  const infos = Lib.returnedColumns(query, stageIndex).map((column) =>
+    Lib.displayInfo(query, stageIndex, column),
+  );
+  return {
+    breakoutNames: infos.filter((info) => info.isBreakout).map((i) => i.name),
+    aggregationNames: infos
+      .filter((info) => info.isAggregation)
+      .map((info) => info.name),
+  };
+}
+
 function getValueItem(
   query: Lib.Query,
   stageIndex: number,
   clause: Lib.AggregationClause,
-  index: number,
+  key: string,
+  operators: Lib.AggregationOperator[],
+  entityKind: "metric" | "measure" | null,
 ): SummaryValueItem {
   const { displayName } = Lib.displayInfo(query, stageIndex, clause);
-  const base = { clause, label: displayName };
-  const operators = Lib.selectedAggregationOperators(
-    Lib.availableAggregationOperators(query, stageIndex),
-    clause,
-  );
-  const selectedOperator = operators.find(
+  const base = { clause, key, label: displayName };
+  const clauseOperators = Lib.selectedAggregationOperators(operators, clause);
+  const selectedOperator = clauseOperators.find(
     (operator) => Lib.displayInfo(query, stageIndex, operator).selected,
   );
-  if (selectedOperator != null) {
-    // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column
-    const column = Lib.aggregationOperatorColumns(selectedOperator).find(
-      (column) => Lib.displayInfo(query, stageIndex, column).selected,
-    );
-    return column
-      ? { ...base, kind: "column", column }
-      : { ...base, kind: "count" };
+  if (selectedOperator == null) {
+    return { ...base, kind: entityKind ?? "expression" };
   }
-  const isMetric = Lib.availableMetrics(query, stageIndex).some(
-    (metric) =>
-      Lib.displayInfo(query, stageIndex, metric).aggregationPosition === index,
+  // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column
+  const column = Lib.aggregationOperatorColumns(selectedOperator).find(
+    (column) => Lib.displayInfo(query, stageIndex, column).selected,
   );
-  if (isMetric) {
-    return { ...base, kind: "metric" };
+  if (column == null) {
+    return { ...base, kind: "count" };
   }
-  const isMeasure = Lib.availableMeasures(query, stageIndex).some((measure) =>
-    Lib.displayInfo(query, stageIndex, measure).aggregationPositions?.includes(
-      index,
+  return {
+    ...base,
+    kind: "column",
+    column,
+    operatorOptions: getColumnOperatorOptions(
+      query,
+      stageIndex,
+      clauseOperators,
+      column,
     ),
-  );
-  return { ...base, kind: isMeasure ? "measure" : "expression" };
+  };
 }
 
 /** The stage's aggregations as Summarize by chips. */
@@ -270,8 +268,35 @@ export function getValueItems(
   query: Lib.Query,
   stageIndex: number,
 ): SummaryValueItem[] {
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
+  const metricPositions = new Set(
+    Lib.availableMetrics(query, stageIndex).map(
+      (metric) =>
+        Lib.displayInfo(query, stageIndex, metric).aggregationPosition,
+    ),
+  );
+  const measurePositions = new Set(
+    Lib.availableMeasures(query, stageIndex).flatMap(
+      (measure) =>
+        Lib.displayInfo(query, stageIndex, measure).aggregationPositions ?? [],
+    ),
+  );
+  const getEntityKind = (index: number) => {
+    if (metricPositions.has(index)) {
+      return "metric";
+    }
+    return measurePositions.has(index) ? "measure" : null;
+  };
+  const { aggregationNames } = getResultColumnNames(query, stageIndex);
   return Lib.aggregations(query, stageIndex).map((clause, index) =>
-    getValueItem(query, stageIndex, clause, index),
+    getValueItem(
+      query,
+      stageIndex,
+      clause,
+      aggregationNames[index],
+      operators,
+      getEntityKind(index),
+    ),
   );
 }
 
@@ -280,8 +305,10 @@ export function getDimensionItems(
   query: Lib.Query,
   stageIndex: number,
 ): SummaryDimensionItem[] {
-  return Lib.breakouts(query, stageIndex).map((clause) => ({
+  const { breakoutNames } = getResultColumnNames(query, stageIndex);
+  return Lib.breakouts(query, stageIndex).map((clause, index) => ({
     clause,
+    key: breakoutNames[index],
     label: Lib.displayInfo(query, stageIndex, clause).longDisplayName,
   }));
 }

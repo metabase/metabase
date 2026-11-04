@@ -24,13 +24,28 @@ export type SummaryFieldSection = {
   items: SummaryFieldItem[];
 };
 
+export type SummaryOperatorOption = {
+  operator: Lib.AggregationOperator;
+  shortName: string;
+  displayName: string;
+  /** Whether a column value is aggregated with this operator now. */
+  isSelected: boolean;
+};
+
 /** An aggregation in Summarize by, with what kind of chip shows it. */
 export type SummaryValueItem = {
   clause: Lib.AggregationClause;
+  /** The name of the aggregation's result column, unique within the stage. */
+  key: string;
   label: string;
 } & (
   | { kind: "count" }
-  | { kind: "column"; column: Lib.ColumnMetadata }
+  | {
+      kind: "column";
+      column: Lib.ColumnMetadata;
+      /** The operators the column can switch to, with the one in use selected. */
+      operatorOptions: SummaryOperatorOption[];
+    }
   | { kind: "metric" }
   | { kind: "measure" }
   | { kind: "expression" }
@@ -39,13 +54,7 @@ export type SummaryValueItem = {
 /** A breakout in Group by. */
 export type SummaryDimensionItem = {
   clause: Lib.BreakoutClause;
+  /** The name of the breakout's result column, unique within the stage. */
+  key: string;
   label: string;
-};
-
-export type SummaryOperatorOption = {
-  operator: Lib.AggregationOperator;
-  shortName: string;
-  displayName: string;
-  /** Whether a column value is aggregated with this operator now. */
-  isSelected: boolean;
 };

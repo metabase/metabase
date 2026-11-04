@@ -1,4 +1,9 @@
-import { type ReactNode, type SyntheticEvent, useState } from "react";
+import {
+  type ReactNode,
+  type SyntheticEvent,
+  useEffect,
+  useState,
+} from "react";
 import { ResizableBox, type ResizeCallbackData } from "react-resizable";
 
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
@@ -29,6 +34,11 @@ export function ResizableSummaryPanel({
   const [width, setWidth] = useState(DEFAULT_PANEL_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
 
+  useEffect(() => {
+    document.body.classList.toggle(S.isResizing, isResizing);
+    return () => document.body.classList.remove(S.isResizing);
+  }, [isResizing]);
+
   // the container measures 0 until its first layout; clamping to that would flash a narrow panel
   const maxWidth =
     containerWidth > 0
@@ -49,15 +59,9 @@ export function ResizableSummaryPanel({
       axis="x"
       resizeHandles={["w"]}
       handle={<ResizeHandle handleAxis="w" />}
-      onResizeStart={() => {
-        setIsResizing(true);
-        document.body.classList.add(S.isResizing);
-      }}
+      onResizeStart={() => setIsResizing(true)}
       onResize={handleResize}
-      onResizeStop={() => {
-        setIsResizing(false);
-        document.body.classList.remove(S.isResizing);
-      }}
+      onResizeStop={() => setIsResizing(false)}
     >
       <Box
         className={S.content}

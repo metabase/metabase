@@ -196,7 +196,7 @@ describe("SummaryWells", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("offers the join path's columns under the joined table's name", async () => {
+  it("names a grouping through a join path by that path", () => {
     setup({
       spec: {
         stages: [
