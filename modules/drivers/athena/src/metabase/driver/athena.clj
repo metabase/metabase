@@ -71,6 +71,11 @@
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
 
+;; the URL is built from the hostname, or from the region when there is none; everything else is a property
+(defmethod driver/url-building-detail-keys :athena
+  [_driver]
+  [:hostname :region])
+
 (defmethod driver/connection-hosts :athena
   [_driver {:keys [hostname region]}]
   (driver/hosts-from-details
@@ -458,10 +463,23 @@
 (defn- table-has-nested-fields? [columns]
   (some #(= "struct" (:type_name %)) columns))
 
+(defn- escape-metadata-pattern
+  "Escape a literal schema or table name for JDBC metadata pattern arguments."
+  [^DatabaseMetaData metadata entity-name]
+  (when entity-name
+    (let [escape (.getSearchStringEscape metadata)]
+      (-> entity-name
+          (str/replace escape (str escape escape))
+          (str/replace "_" (str escape "_"))
+          (str/replace "%" (str escape "%"))))))
+
 (defn- get-columns
   [^DatabaseMetaData metadata catalog schema table-name]
   (try
-    (with-open [rs (.getColumns metadata catalog schema table-name nil)]
+    (with-open [rs (.getColumns metadata catalog
+                                (escape-metadata-pattern metadata schema)
+                                (escape-metadata-pattern metadata table-name)
+                                nil)]
       (jdbc/metadata-result rs))
     (catch Throwable e
       (log/warnf "`.getColumns` failed for catalog `%s`, schema `%s`, table name `%s` with message: `%s`"
@@ -504,7 +522,10 @@
    database
    nil
    (fn [^Connection conn]
-     (let [metadata (.getMetaData conn)]
+     (let [metadata (.getMetaData conn)
+           catalog  (if (and (str/blank? catalog) (not (str/blank? dbname)))
+                      (.getCatalog conn)
+                      catalog)]
        (assoc (select-keys table [:name :schema])
               :fields (try
                         (describe-table-fields metadata database driver table catalog dbname)
@@ -514,7 +535,8 @@
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+  (with-open [rs (.getTables metadata db-name-or-nil
+                             (escape-metadata-pattern metadata schema-or-nil) "%"
                              (into-array String ["TABLE"
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))

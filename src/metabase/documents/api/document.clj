@@ -247,12 +247,15 @@
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
     ;; Handle archiving logic
-    (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
+    (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)
+          ;; The frontend omits `:collection_id` when saving an existing document, so fall back to the document's
+          ;; current collection rather than root.
+          target-collection-id (if (contains? body :collection_id)
+                                 collection_id
+                                 (:collection_id existing-document))]
       (t2/with-transaction [_conn]
         (when collection_position
-          (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
-                                                                                        collection_id
-                                                                                        (:collection_id existing-document))
+          (api/maybe-reconcile-collection-position! existing-document {:collection_id       target-collection-id
                                                                        :collection_position collection_position}))
         (t2/update! :model/Document document-id
                     (cond-> document-updates
@@ -261,7 +264,7 @@
                                         :content_type (:content_type existing-document)}
                                        (merge
                                         (clone-cards-in-document! (assoc existing-document :document document))
-                                        (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
+                                        (when-not (empty? cards) (create-cards-for-document! cards document-id target-collection-id @api/*current-user*)))))
                       name (assoc :name name)
                       (contains? body :collection_id) (assoc :collection_id collection_id)))
         (collections/check-for-remote-sync-update existing-document))

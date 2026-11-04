@@ -9,12 +9,14 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
@@ -138,7 +140,7 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  *query-caching-min-ttl*})
+   :min_duration_ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy)
@@ -254,7 +256,7 @@
             (is (nil? (qp (test-query {}) qp.reducible/default-rff)))))))))
 
 (deftest not-eligible-refresh-deletes-outdated-entry-test
-  (testing "when a rerun is no longer cache-eligible (ran under min-duration-ms), the outdated entry is deleted
+  (testing "when a rerun is no longer cache-eligible (ran under min_duration_ms), the outdated entry is deleted
             instead of being left to be served to later requests"
     (with-mock-cache! [save-chan]
       (run-query)
@@ -340,6 +342,25 @@
         (mt/wait-for-result save-chan)
         (is (= :cached
                (run-query)))))))
+
+(deftest min-duration-honored-from-stored-config-test
+  (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
+                "(regression for #78340)")
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (cache-config/store! (mt/user->id :crowberto)
+                           {:model    "root"
+                            :model_id 0
+                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (with-mock-cache! [save-chan]
+        (let [strategy (-> (cache-config/root-strategy)
+                           cache-config/row->config
+                           :strategy
+                           (assoc :avg-execution-ms 1000))]
+          (run-query :cache-strategy strategy)
+          (is (= :metabase.test.util.async/timed-out
+                 (mt/wait-for-result save-chan)))
+          (is (= :not-cached
+                 (run-query :cache-strategy strategy))))))))
 
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"
@@ -813,3 +834,56 @@
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
+
+(deftest cached-results-native-form-requires-native-query-perms-test
+  (testing "Cached results don't return the compiled query to a user without native query perms"
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (with-mock-cache! [save-chan]
+          (letfn [(run-query []
+                    (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                             :cache-strategy (ttl-strategy))))]
+            (testing "Run query as superuser to populate the cache"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:data {:native_form some?}}
+                        (run-query)))))
+            (mt/wait-for-result save-chan)
+            (testing "Cached results for the superuser still include the compiled query"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:cache/details {:cached true}
+                         :data          {:native_form some?}}
+                        (run-query)))))
+            (testing "Cached results for a user without native query perms don't include the compiled query"
+              (mt/with-test-user :rasta
+                (let [result (run-query)]
+                  (is (=? {:cache/details {:cached true}
+                           :data          {:rows [[1000]]}}
+                          result))
+                  (is (nil? (get-in result [:data :native_form]))))))))))))
+
+(deftest ^:parallel cached-results-rff-preserves-fresh-accumulator-test
+  (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares
+            like update-viz-settings) must not be clobbered by the replayed cached final-metadata
+            map. Before the fix, `([acc row] (vreset! final-metadata row))` returned the row,
+            replacing `acc`. Regression for #72922."
+    (let [cached-results-rff @#'cache/cached-results-rff
+          ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
+          ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
+          fresh-injecting-rff (fn [metadata]
+                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
+          rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
+              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+          ;; Simulate a cached replay: two actual row vectors, then the final cached
+          ;; result map (which used to stomp acc).
+          acc (reduce rf (rf)
+                      [[1] [2]
+                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+          result (rf acc)]
+      (is (= "fresh-value" (get-in result [:data :fresh]))
+          "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
+      (is (= "stale-value" (get-in result [:data :stale]))
+          "Stale-only keys from @final-metadata are still deep-merged in")
+      (is (= [[1] [2]] (get-in result [:data :rows]))
+          "Replayed cached rows are preserved"))))

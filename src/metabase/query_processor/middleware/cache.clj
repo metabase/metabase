@@ -109,7 +109,7 @@
                                (m/dissoc-in result [:data :rows])
                                {}))
        (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-             min-duration-ms (:min-duration-ms strategy 0)
+             min-duration-ms (:min_duration_ms strategy 0)
              eligible?       (and @has-rows?
                                   (> duration-ms min-duration-ms))]
          (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
@@ -158,8 +158,16 @@
 
         ([acc row]
          (if (map? row)
-           (vreset! final-metadata row)
-           (rf acc row)))))))
+           ;; The map-row is the cached final-metadata; stash it and preserve the fresh
+           ;; acc (returning `row` would clobber anything middlewares wrote at init,
+           ;; e.g. :viz-settings). `unreduced` strips any reduced marker so it doesn't
+           ;; leak out through the stashed handoff.
+           (do (vreset! final-metadata row) (unreduced acc))
+           ;; `reducible-rows` keeps reading past a reduced acc (see cache/impl.clj);
+           ;; propagate it here instead of calling `rf` past the short-circuit.
+           (if (reduced? acc)
+             acc
+             (rf acc row))))))))
 
 (mu/defn- maybe-reduce-cached-results :- [:tuple
                                           #_status

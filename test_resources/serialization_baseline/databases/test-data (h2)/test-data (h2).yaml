@@ -14,7 +14,6 @@ auto_run_queries: true
 refingerprint: null
 is_full_sync: true
 is_on_demand: false
-is_sample: false
 is_audit: false
 is_attached_dwh: false
 metadata_sync_schedule: 0 33 * * * ? *

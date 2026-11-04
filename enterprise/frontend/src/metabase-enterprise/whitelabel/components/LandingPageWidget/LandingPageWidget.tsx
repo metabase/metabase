@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
-import type { GenericErrorResponse } from "metabase/lib/errors";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { TextInput } from "metabase/ui";
 
 import { getRelativeLandingPageUrl } from "./utils";
@@ -36,10 +36,7 @@ export function LandingPageWidget() {
     });
 
     if (result.error) {
-      const message =
-        (result.error as { data: GenericErrorResponse })?.data?.message ||
-        t`Something went wrong`;
-      setError(message);
+      setError(getErrorMessage(result.error));
     }
   };
 

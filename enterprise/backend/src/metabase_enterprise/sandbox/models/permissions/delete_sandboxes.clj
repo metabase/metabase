@@ -44,7 +44,14 @@
 (defn- delete-gtaps-for-group-schema! [{:keys [group-id database-id schema-name], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d, schema %s. Graph changes: %s"
               group-id database-id (pr-str schema-name) (pr-str changes))
-  (if (keyword? changes)
+  (cond
+    ;; the frontend collapses a schema whose tables are all sandboxed into a schema-level `:sandboxed`, which keeps
+    ;; the sandboxes under it
+    (= changes :sandboxed)
+    (log/debugf "Group %d now has sandboxed perms for Database %d schema %s. Do not need to delete GTAPs."
+                group-id database-id (pr-str schema-name))
+
+    (keyword? changes)
     (do
       (log/debugf "Group %d changes has %s perms for Database %d schema %s, deleting all sandboxes for this schema"
                   group-id changes database-id (pr-str schema-name))
@@ -54,18 +61,28 @@
                                               (if (= schema-name "")
                                                 [:= :table.schema nil]
                                                 [:= :table.schema schema-name])]))
+
+    :else
     (doseq [table-id (set (keys changes))]
       (delete-gtaps-for-group-table! (assoc context :table-id table-id) (get changes table-id)))))
 
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (if (keyword? changes)
+  (cond
+    ;; as with schemas, a DB whose tables are all sandboxed can be collapsed into a DB-level `:sandboxed`
+    (= changes :sandboxed)
+    (log/debugf "Group %d now has sandboxed perms for Database %d. Do not need to delete GTAPs."
+                group-id database-id)
+
     ;; If we're setting a single permission type for the entire DB, clear all sandboxes in the DB
+    (keyword? changes)
     (do
       (log/debugf "Group %d now has %s perms for Database %d, deleting all sandboxes for this schema"
                   group-id changes database-id)
       (delete-gtaps-with-condition! group-id [:= :table.db_id database-id]))
+
+    :else
     (doseq [schema-name (set (keys changes))]
       (delete-gtaps-for-group-schema!
        (assoc context :schema-name schema-name)

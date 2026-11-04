@@ -2,7 +2,6 @@ import { Group } from "@visx/group";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
@@ -15,7 +14,6 @@ import {
   trimData,
 } from "metabase/visualizations/shared/utils/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import type { RemappingHydratedChartData } from "metabase/visualizations/types";
 import {
   getColumnValueFormatter,
   getFormatters,
@@ -63,9 +61,7 @@ export const StaticRowChart = ({
   height = HEIGHT,
   hasDevWatermark = false,
 }: StaticChartProps) => {
-  const data = extractRemappedColumns(
-    rawSeries[0].data,
-  ) as RemappingHydratedChartData;
+  const data = rawSeries[0].data;
   const { getColor } = renderingContext;
   const columnValueFormatter = getColumnValueFormatter();
 

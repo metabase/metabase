@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -395,8 +396,11 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [details (:details (mt/db))]
+      ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
+      ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
+      ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               (:db details) (:db details) (:db details))])
       (thunk))))
@@ -531,7 +535,7 @@
                                                              (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
-             net.snowflake.client.jdbc.SnowflakeSQLException
+             net.snowflake.client.api.exception.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
         (is (can-connect? (-> (:details (mt/db))
@@ -1016,25 +1020,24 @@
       nil "" "asdf" "snowflake:jdbc://x")))
 
 (deftest ^:parallel connection-str->parameters-test-2
-  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
-    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
-      "jdbc:snowflake://x.snowflakecomputing.com"
-      "jdbc:snowflake://x.snowflakecomputing.com/"
-      "jdbc:snowflake://x.snowflakecomputing.com/?")))
+  (testing "Returns nil for valid strings of no parameters"
+    (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?x" nil)))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role}
+      (is (= {"ROLE" role}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role))))))))
 
 (deftest ^:parallel connection-str->parameters-test-4
   (testing "Returns multiple url parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role
+      (is (= {"ROLE" role
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
@@ -1524,3 +1527,57 @@
                                          (lib/relative-datetime -30 :day))))]
         (mt/with-native-query-testing-context query
           (is (some? (mt/rows (qp/process-query query)))))))))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client connects to these instead of (or as well as) the account host, so a value naming an internal host has
+  ;; to be refused like the account host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [check! #(driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                   :additional-options %})
+          refusal #(try (check! %) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (testing "an internal host is refused whichever parameter names it"
+        (doseq [opts ["authenticator=OAUTH_CLIENT_CREDENTIALS&oauthTokenRequestUrl=http://localhost:18078/steal"
+                      "oauthAuthorizationUrl=http://localhost/authorize"
+                      "serverURL=https://localhost/"
+                      "authenticator=https://localhost/"
+                      "AUTHENTICATOR=http://localhost:8080/okta"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "the client percent-decodes names and values, so an encoded one is refused like the plain one"
+        (doseq [opts ["serverURL=https%3A%2F%2Flocalhost%2F"
+                      "useProxy=true&proxy%48ost=localhost"
+                      "useProxy=true&proxyHost=%6Cocalhost"
+                      "authenticator=https%3A%2F%2Flocalhost%2F"
+                      "authenticat%6Fr=https://localhost/"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "every `authenticator` is checked when one is given more than once"
+        (doseq [opts ["authenticator=SNOWFLAKE_JWT&authenticator=https://localhost/"
+                      "authenticator=https://localhost/&authenticator=SNOWFLAKE_JWT"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "an `authenticator` naming a flow rather than a URL is not treated as a host"
+        (doseq [opts [nil
+                      "authenticator=SNOWFLAKE_JWT"
+                      "authenticator=OAUTH_CLIENT_CREDENTIALS"
+                      "authenticator=externalbrowser"
+                      "authenticator=SNOWFLAKE%5FJWT"]]
+          (is (nil? (check! opts))
+              (str "should be allowed: " opts))))
+      (testing "an `authenticator` detail key reaches the client as a connection property too, in any case"
+        (doseq [k [:authenticator :AUTHENTICATOR :Authenticator]]
+          (is (=? {:status-code 400}
+                  (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                        k "https://localhost/"
+                                                                        :additional-options "authenticator=SNOWFLAKE_JWT"})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              (str "should be refused: " k)))))))
+
+(deftest authenticator-values-read-connection-uri-test
+  ;; private-key auth moves the connection string from `:subname` into `:connection-uri`
+  (testing "an `authenticator` in `:connection-uri` is found as well as one in `:subname`"
+    (doseq [k [:subname :connection-uri]]
+      (is (= ["https://localhost/"]
+             (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
+          (str "should be found in " k)))))

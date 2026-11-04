@@ -21,7 +21,9 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -117,10 +119,66 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
-  ;; TODO -- we should require these columns to be distinct as well (I think?)
-  ;; TODO -- require all numbers to be positive
-  ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+  (testing "Should throw an Exception if pivot-rows or pivot-cols contain duplicates"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [0 0 1] [] true true)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: duplicate breakout indices"
+         (#'qp.pivot/breakout-combinations 3 [] [1 1] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"pivot-rows and pivot-cols must not overlap"
+         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true)))))
+
+(deftest ^:parallel breakout-combinations-powerset-cap-test
+  (let [max-breakouts @#'qp.pivot/max-powerset-breakouts]
+    (testing "the powerset fallback is allowed up to the cap"
+      (is (= (long (Math/pow 2 max-breakouts))
+             (count (#'qp.pivot/breakout-combinations max-breakouts [] [] true true)))))
+    (testing "the powerset fallback is rejected past the cap, before any combinations are enumerated"
+      (doseq [num-breakouts [(inc max-breakouts) 30 62]]
+        (is (=? {:type          :invalid-query
+                 :num-breakouts num-breakouts}
+                (try
+                  (#'qp.pivot/breakout-combinations num-breakouts [] [] true true)
+                  nil
+                  (catch ExceptionInfo e
+                    (ex-data e)))))))
+    (testing "explicit pivot-rows/pivot-cols only produce a linear number of combinations, so they are not capped"
+      (is (= 60
+             (count (#'qp.pivot/breakout-combinations 30 (range 29) [29] true true)))))))
+
+(defn- many-breakouts-query
+  "A query against `checkins` with `n` distinct breakouts (the date bucketed by different temporal units)."
+  [n]
+  (let [mp    (mt/metadata-provider)
+        units [:day :week :month :quarter :year :day-of-week :day-of-month :day-of-year
+               :week-of-year :month-of-year :quarter-of-year]
+        date  (lib.metadata/field mp (mt/id :checkins :date))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                  (lib/aggregate (lib/count)))
+        cols  (concat (map #(lib/with-temporal-bucket date %) units)
+                      (map #(lib.metadata/field mp (mt/id :checkins %)) [:id :user_id :venue_id]))]
+    (assert (<= n (count cols)))
+    (reduce lib/breakout query (take n cols))))
+
+(deftest powerset-breakout-cap-run-pivot-query-test
+  (testing "a pivot query with no pivot rows/cols and too many breakouts fails as an invalid query instead of
+           enumerating every breakout combination"
+    (let [query (qp/userland-query (many-breakouts-query (inc @#'qp.pivot/max-powerset-breakouts)))]
+      (is (=? {:status     :failed
+               :error      #"Too many breakouts.*"
+               :error_type :invalid-query}
+              (qp.pivot/run-pivot-query query))))))
+
+;; TODO -- we should require these columns to be distinct as well (I think?)
+;; TODO -- require all numbers to be positive
+;; TODO -- can you specify something in both pivot-rows and pivot-cols?
 
 (defn- test-query []
   (mt/dataset test-data
@@ -141,6 +199,23 @@
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
+
+(deftest ^:parallel error-generating-pivot-queries-test
+  (testing "An error thrown while generating the pivot sub-queries, i.e. before the QP proper (and its error-handling middleware) runs"
+    (let [query (assoc (test-query) :pivot-rows [0 1 2 3])]
+      (testing "is thrown as-is for a non-userland query"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Error generating pivot queries"
+             (qp.pivot/run-pivot-query query))))
+      (testing "is returned in the usual formatted error shape for a userland query, like any other QP error"
+        (doseq [userland-query [(qp/userland-query query)
+                                (assoc query :info {:context :ad-hoc})]]
+          (is (=? {:status     :failed
+                   :error      #"Invalid pivot-rows: specified breakout at index 3, but we only have 3 breakouts"
+                   :error_type :invalid-query
+                   :json_query map?}
+                  (qp.pivot/run-pivot-query userland-query))))))))
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -242,6 +317,40 @@
                                                (:pivot-cols pivot-options)
                                                (:show-row-totals pivot-options)
                                                (:show-column-totals pivot-options)))))))
+
+(deftest ^:parallel pivot-with-fields-and-summary-in-same-stage-test
+  (testing "Pivot completes when the summary stage also carries an explicit :fields clause (#81203)"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          created   (lib.metadata/field mp (mt/id :orders :created_at))
+          product   (lib.metadata/field mp (mt/id :orders :product_id))
+          total     (lib.metadata/field mp (mt/id :orders :total))
+          ;; :fields carries a subset of stage-0 columns (what the notebook column picker leaves behind
+          ;; when some columns are unselected); :aggregation + :breakout are added on the same stage.
+          query     (-> (lib/query mp orders)
+                        (lib/with-fields [created product total])
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib/with-temporal-bucket created :month))
+                        (lib/breakout product))
+          bo-names  (mapv :name (filter :lib/breakout? (lib/returned-columns query)))
+          count-nm  (:name (first (filter #(= (:lib/source %) :source/aggregations)
+                                          (lib/returned-columns query))))
+          viz       {:pivot_table.column_split {:rows    [(first bo-names)]
+                                                :columns [(second bo-names)]
+                                                :values  [count-nm]}}]
+      (testing "sanity: the QP drops :fields on summary stages, so regular execution returns breakouts + agg"
+        (is (=? {:status :completed
+                 :data   {:cols [{:name (first bo-names)}
+                                 {:name (second bo-names)}
+                                 {:name count-nm}]}}
+                (qp/process-query query))))
+      (testing "pivot returns breakouts + pivot-grouping + aggregation"
+        (is (=? {:status :completed
+                 :data   {:cols [{:name (first bo-names)}
+                                 {:name (second bo-names)}
+                                 {:name "pivot-grouping"}
+                                 {:name count-nm}]}}
+                (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz}))))))))
 
 (deftest ^:parallel nested-question-pivot-options-test
   (testing "#35025"

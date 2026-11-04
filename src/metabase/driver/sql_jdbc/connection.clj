@@ -21,8 +21,8 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
-   (java.sql Connection)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
+   (java.sql Connection SQLException)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -246,6 +246,8 @@
   ;; here as well as at connection-test time narrows the DNS-rebinding window and covers databases that never
   ;; went through a connection test (serialization import, config files).
   (driver.u/validate-connection-hosts! driver details)
+  ;; likewise for parameters that were disallowed after the database was saved
+  (driver.u/validate-connection-parameters! driver details)
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
@@ -253,6 +255,8 @@
                              driver
                              id
                              details-with-tunnel)
+        ;; the auth provider's response is merged into the details, so it can set parameters too
+        _                   (driver.u/validate-connection-parameters! driver details-with-auth)
         spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
@@ -305,6 +309,31 @@
   "Invalidates the connection pool for the given database by closing it and removing it from the cache."
   [database]
   (set-pool! (u/the-id database) nil nil))
+
+(defn- empty-pool?
+  [data-source]
+  (and (instance? PooledDataSource data-source)
+       (try
+         (zero? (.getNumConnectionsDefaultUser ^PooledDataSource data-source))
+         (catch SQLException _
+           false))))
+
+(defn invalidate-empty-pool!
+  "Closes the cached pool for a given `data-source` if it has no connections. This should be called
+   after a checkout from a pool fails, otherwise c3p0 will make repeated requests which can lock
+   out certain DBs (#84206). We find the pool by its data source to avoid looking up the database
+   object from the app DB, which could fail or have a race condition across multiple pods."
+  [data-source]
+  (when (empty-pool? data-source)
+    (doseq [[db-id pool-spec] @database-id->connection-pool
+            :when (identical? (:datasource pool-spec) data-source)]
+      (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
+      ;; do not remove a newer pool that another thread put in the cache
+      (swap! database-id->connection-pool
+             #(cond-> %
+                (identical? (get % db-id) pool-spec) (dissoc db-id)))
+      (destroy-pool! db-id pool-spec)
+      (swap! database-id->jdbc-spec-hash dissoc db-id))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
@@ -415,12 +444,15 @@
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
+  (driver.u/validate-connection-parameters! driver details)
   (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver
                                details-with-tunnel)
-            spec (connection-details->spec driver details-with-auth)]
+            ;; the auth provider's response is merged into the details, so it can set parameters too
+            _                 (driver.u/validate-connection-parameters! driver details-with-auth)
+            spec              (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
 (defmacro with-connection-spec-for-testing-connection

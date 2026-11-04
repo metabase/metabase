@@ -10,6 +10,7 @@
   and TODO: send it out in `summarize-execution`."
   (:require
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -56,15 +57,20 @@
   (or (= client embedding-sdk-client)
       (= client embedding-iframe-client)))
 
+(defn- truncate-header
+  "The embedding columns are varchar(254); truncate rather than fail the row insert on an oversized header."
+  [s]
+  (some-> s (u/truncate 254)))
+
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
   [handler]
   (fn embedding-mw-fn
     [request respond raise]
     (let [sdk-client (get-in request [:headers "x-metabase-client"])
-          version (get-in request [:headers "x-metabase-client-version"])
+          version (truncate-header (get-in request [:headers "x-metabase-client-version"]))
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")]
-      (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
+      (binding [*client* (truncate-header (if preview? (str sdk-client "-preview") sdk-client))
                 *version* version]
         (handler request
                  (fn responder [response]

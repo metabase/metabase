@@ -84,7 +84,6 @@ export default function QueryVisualization(props) {
             className={CS.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via}
             question={question}
             duration={result.duration}
           />

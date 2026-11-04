@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -169,6 +170,34 @@
            (is (false? (.isClosed prepared-stmt)))
            (.close prepared-stmt)
            (is (true? (.isClosed prepared-stmt)))))))))
+
+(deftest failed-checkout-destroys-empty-pool-test
+  (testing "When a checkout fails, do-with-resolved-connection destroys the pool only if the pool has no Connections"
+    (doseq [[num-connections destroyed?] [[0 true] [1 false]]]
+      (let [db-id       Integer/MAX_VALUE
+            data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException. "password authentication failed")))
+                          (getNumConnectionsDefaultUser [_] num-connections))
+            pool-spec   {:datasource data-source}
+            destroyed   (atom [])
+            pool-cache  @#'sql-jdbc.conn/database-id->connection-pool]
+        (swap! pool-cache assoc db-id pool-spec)
+        (try
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                      (fn [_driver _db-or-id-or-spec _options] data-source)
+                                      sql-jdbc.conn/destroy-pool!
+                                      (fn [id spec] (swap! destroyed conj [id spec]))]
+            (is (thrown-with-msg?
+                 java.sql.SQLException
+                 #"password authentication failed"
+                 (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+            (is (= (if destroyed? [[db-id pool-spec]] [])
+                   @destroyed))
+            (is (= (not destroyed?)
+                   (contains? @pool-cache db-id))))
+          (finally
+            (swap! pool-cache dissoc db-id)))))))
 
 (defn- venues-rows
   "Run an unaggregated venues query limited to `n` rows."

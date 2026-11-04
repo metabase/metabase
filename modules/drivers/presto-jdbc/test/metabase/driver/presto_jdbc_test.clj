@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
@@ -286,3 +287,13 @@
 (deftest bytes-to-varbinary-test
   (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
          (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 8080 :catalog "c" :schema "a?b"}
+                   {:host "localhost" :port 8080 :catalog "c" :schema "a%26b"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :presto-jdbc details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

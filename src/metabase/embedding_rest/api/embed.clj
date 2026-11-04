@@ -184,6 +184,7 @@
   (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
+    (api.embed.common/check-active-card card-id)
     (api.embed.common/process-query-for-dashcard
      :export-format export-format
      :dashboard-id dashboard-id
@@ -431,6 +432,7 @@
   (let [unsigned (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
+    (api.embed.common/check-active-card card-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard
        dashboard-id dashcard-id card-id

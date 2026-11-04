@@ -85,6 +85,8 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  remapping?: Map<RowValue, RowValue>;
 }
 
 export interface ResultsMetadata {

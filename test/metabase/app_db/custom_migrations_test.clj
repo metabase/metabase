@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected.
 
   As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
@@ -2754,6 +2754,16 @@
         (migrate!)
         (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
           (is (= "7" (encryption/maybe-decrypt value)))
+          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+  (testing "a plaintext numeric value written by a version predating encryption of this setting is taken as-is"
+    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+        (migrate!)
+        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+          (is (= "7" value))
+          (is (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")}))
           (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
   (testing "without a key both columns stay plaintext"
     (encryption-test/with-secret-key nil

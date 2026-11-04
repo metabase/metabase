@@ -471,7 +471,9 @@
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
-                        {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+                        {:status-code   400
+                         :error-details "Token should be 64 hexadecimal characters."
+                         :response/keys #{:error-details}})))
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
           (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
@@ -549,7 +551,7 @@
   [feature-name]
   (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                 feature-name)
-           {:status-code 402 :status "error-premium-feature-not-available"}))
+           {:status-code 402 :status "error-premium-feature-not-available" :response/keys #{:status}}))
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.

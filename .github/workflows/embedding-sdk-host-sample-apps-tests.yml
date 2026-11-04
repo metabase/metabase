@@ -34,7 +34,7 @@ jobs:
       branch_name: ${{ fromJson(steps.build-sample-apps-data.outputs.result).branch_name }}
       matrix: ${{ toJSON(fromJson(steps.build-sample-apps-data.outputs.result).matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
@@ -119,7 +119,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/maximize-disk-space
 
@@ -266,7 +266,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact

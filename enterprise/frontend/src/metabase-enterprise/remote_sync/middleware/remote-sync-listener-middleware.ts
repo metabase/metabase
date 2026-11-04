@@ -24,6 +24,7 @@ import type {
 import type { State } from "metabase-types/store";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
+import { getCurrentTask, getIsRunning } from "../selectors";
 import {
   modalDismissed,
   taskCleared,
@@ -349,10 +350,25 @@ const terminalTaskStates: RemoteSyncTaskStatus[] = [
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.getRemoteSyncCurrentTask.matchFulfilled,
-  effect: async (action, { dispatch }) => {
+  effect: async (action, { dispatch, getState, getOriginalState }) => {
     const task = action.payload;
 
     if (task) {
+      // The query is subscribed whenever remote sync is enabled, so a fetch made while nothing is being
+      // watched is discovery, not an event: a task still running elsewhere is picked up so this tab can
+      // follow it, while a finished one is history and is left alone. Treating history as an event would
+      // replay an old conflict on every page load and, since the terminal handling invalidates this
+      // query's own tag, refetch forever.
+      const previous = getCurrentTask(getOriginalState());
+      const wasRunning = previous !== null && previous.ended_at === null;
+
+      if (!wasRunning) {
+        if (task.ended_at === null) {
+          dispatch(taskUpdated(task));
+        }
+        return;
+      }
+
       dispatch(taskUpdated(task));
 
       const isTerminalState = terminalTaskStates.includes(task.status);
@@ -363,7 +379,9 @@ remoteSyncListenerMiddleware.startListening({
 
         if (isSuccessful) {
           setTimeout(() => {
-            dispatch(modalDismissed());
+            if (!getIsRunning(getState())) {
+              dispatch(modalDismissed());
+            }
           }, 500);
 
           if (isImportTask) {

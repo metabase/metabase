@@ -8,7 +8,10 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.schema :as ms]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel include-card-parameters-test
   (testing "Expanding a Card reference in a native query should include its parameters (#12236)"

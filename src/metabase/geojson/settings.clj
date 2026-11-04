@@ -2,11 +2,12 @@
   (:require
    [clojure.java.io :as io]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.http :as http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URL)))
+   (java.net URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,28 +60,27 @@
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
 
-(def ^:private invalid-hosts
-  #{"metadata.google.internal"}) ; internal metadata for GCP
-
-(defn- valid-host?
-  [^URL url]
-  (let [host (.getHost url)
-        host->url (fn [host] (URL. (str "http://" host)))
-        base-url  (host->url (.getHost url))]
-    (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
-                   (map host->url invalid-hosts))
-         (not (.isLinkLocalAddress (InetAddress/getByName host))))))
-
 (defn- valid-protocol?
   [^URL url]
   (#{"http" "https"} (.getProtocol url)))
+
+(defn- external-host?
+  "True only when `url`'s host resolves and *every* resolved address is a public, externally-routable
+  unicast address (see [[metabase.util.http/address-allowed-for-network-policy?]]). Unlike
+  [[metabase.util.http/host-allowed-for-network-policy?]] this rejects a host that does not resolve,
+  matching geojson's stricter set-time validation -- a bad URL should fail to save.
+  The fetch itself will still re-check the security at each request to handle changes in settings."
+  [^URL url]
+  (boolean
+   (when-let [addrs (http/host->inet-addresses (.getHost url))]
+     (every? #(http/address-allowed-for-network-policy? :external-only %) addrs))))
 
 (defn- valid-url?
   [url-string]
   (try
     (let [url (URL. url-string)]
       (and (valid-protocol? url)
-           (valid-host? url)))
+           (external-host? url)))
     (catch Throwable e
       (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
 

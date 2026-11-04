@@ -5,7 +5,10 @@
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private valid-paths
   [;; execution permissions

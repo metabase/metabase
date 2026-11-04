@@ -608,7 +608,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite}))))
+           (t2/update! :model/Database id {:engine :sqlite})))
+      (testing "is refused before the details are validated against the new driver"
+        (mt/with-dynamic-fn-redefs [driver.u/validate-connection-parameters! (fn [& _]
+                                                                               (throw (ex-info "validated" {})))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The engine on a sample database cannot be changed."
+               (t2/update! :model/Database id {:engine :postgres}))))))
     (testing " updating other attributes of a sample database is allowed"
       (t2/update! :model/Database id {:name "My New Name"})
       (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
@@ -637,6 +644,27 @@
 
 ;; master also has `overlay-details-are-validated-the-way-they-are-resolved-test` here; this branch predates the
 ;; `:write_data_details`/`:admin_details` overlay columns, so there is nothing to exercise.
+
+(deftest disallowed-connection-parameters-are-refused-on-save-test
+  ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which
+  ;; write a Database without testing a connection -- cannot store one either
+  (testing "a disallowed connection parameter cannot be stored"
+    (doseq [details [{:host "db.example.com" :additional-options "socketFactory=a.b.C"}
+                     {:host "db.example.com" :sslfactory "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (mt/with-temp [:model/Database _ {:engine :postgres :details details}]))))))
+  (testing "...including by adding it to an existing database"
+    (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"dangerous"
+           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+  (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
+    (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
+      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (is (=? {:details {:host "db2.example.com"}}
+              (t2/select-one :model/Database (:id db)))))))
 
 (deftest audit-db-is-not-subject-to-the-network-policy-test
   ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
@@ -680,6 +708,22 @@
              (serdes/identity-hash db)))
       (is (= "b6f1a9e8"
              (serdes/identity-hash db))))))
+
+(deftest ^:parallel serdes-is-sample-not-trusted-test
+  (testing "serdes never trusts an archive's :is_sample (SEC-1175): the only real Sample Database is the bundled H2 one,
+            which import rejects, so an incoming is_sample is forged. It is dropped from :copy and imported as false."
+    (let [spec (serdes/make-spec "Database" nil)]
+      (is (not (contains? (set (:copy spec)) :is_sample)))
+      (is (false? ((get-in spec [:transform :is_sample :import]) true))))))
+
+(deftest assert-sqlite-not-hosted-test
+  (testing "serdes import refuses a SQLite Database on a hosted instance (SEC-1175); self-hosted and non-SQLite are fine"
+    (mt/with-premium-features #{:hosting}
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
+                            (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x" :details {:db "/etc/hosts"}})))
+      (is (nil? (database/assert-sqlite-not-hosted! {:engine :postgres :name "x"}))))
+    (mt/with-premium-features #{}
+      (is (nil? (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x"}))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"

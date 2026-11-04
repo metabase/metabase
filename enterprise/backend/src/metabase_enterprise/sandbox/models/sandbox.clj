@@ -6,6 +6,7 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions
   system."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
@@ -68,12 +69,13 @@
       (when-not (isa? col-base-type table-col-base-type)
         (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
           (throw (ex-info msg
-                          {:type        qp.error-type/bad-configuration
-                           :status-code 400
-                           :message     msg
-                           :new-col     col
-                           :expected    table-col-base-type
-                           :actual      (:base_type col)})))))))
+                          {:type          qp.error-type/bad-configuration
+                           :status-code   400
+                           :message       msg
+                           :new-col       col
+                           :expected      table-col-base-type
+                           :actual        (:base_type col)
+                           :response/keys #{:expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
@@ -204,15 +206,34 @@
                               (ex-data e)
                               e)))))))))
 
-(defenterprise pre-update-check-sandbox-constraints
-  "Checks that an update to a Card does not break the sandboxes built out of it.
+(defn- without-lib-bookkeeping-keys
+  "`result-metadata` without the `:metabase.lib.*` keys lib writes into each column on this release branch (they are
+  renamed to `:lib/*` in later releases). The API drops them from a request, so a client sending back the metadata it
+  was served would otherwise always look like it was changing it."
+  [result-metadata]
+  (mapv (fn [col]
+          (into {}
+                (remove (fn [[k _v]]
+                          (and (qualified-keyword? k)
+                               (str/starts-with? (namespace k) "metabase.lib."))))
+                col))
+        result-metadata))
 
-  A change to the query itself, or archiving the Card, decides what those sandboxes return rather than merely
-  constraining it, so those are admin-only. A change to `:result_metadata` is not -- the query processor rewrites it
-  for whoever ran the Card -- so it is held to the columns of the Table being sandboxed instead."
+(defn- result-metadata-changed?
+  [card new-result-metadata]
+  (not= (without-lib-bookkeeping-keys (:result_metadata (t2/original card)))
+        (without-lib-bookkeeping-keys new-result-metadata)))
+
+(defenterprise pre-update-check-sandbox-constraints
+  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches `:dataset_query`,
+  `:archived`, or `:result_metadata` (for a Card-backed sandbox, the column allow-list). If the result metadata
+  changes, also checks that it does not violate the constraints placed on sandboxes (the Card cannot add fields or
+  change types vs. the original Table)."
   :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (some #(contains? changes %) [:dataset_query :archived])
+  [{new-result-metadata :result_metadata, card-id :id, :as card} changes]
+  (when (or (some #(contains? changes %) [:dataset_query :archived])
+            (and (contains? changes :result_metadata)
+                 (result-metadata-changed? card new-result-metadata)))
     (check-non-admin-cannot-affect-sandboxing! card-id))
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))

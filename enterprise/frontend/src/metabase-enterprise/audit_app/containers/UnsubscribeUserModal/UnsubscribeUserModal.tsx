@@ -2,9 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Stack, Text } from "metabase/ui";
@@ -40,7 +40,7 @@ export const UnsubscribeUserModal = ({
       dispatch(addUndo({ message: t`Unsubscribe successful` }));
       onClose();
     } catch (error) {
-      const msg = getResponseErrorMessage(error);
+      const msg = findErrorMessage(error);
       setErrorMessage(msg ?? t`Unknown error encountered`);
     }
   };

@@ -52,6 +52,26 @@
     (when (seq duplicates)
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
+(defn- year-dir-migration-file?
+  "Returns true if the file lives in a year-based migration directory (e.g., `2026/20260905_workspaces.yaml`). Year
+  directories are not tied to a Metabase version: their changeset IDs are version-less and the version a changeset
+  ships with is decided by which branch it is merged into."
+  [file]
+  (boolean (re-find #"[/\\]\d{4}[/\\]\d{8}_[a-z0-9_]+\.yaml$" (str file))))
+
+(defn- require-version-less-ids
+  "Ensures that the changesets of a year-based directory file have version-less IDs (see
+  [[change-set.strict/valid-version-less-id?]]): no version or timestamp, so they can be backported unchanged."
+  [change-log]
+  (when-let [bad-ids (seq (remove change-set.strict/valid-version-less-id? (change-set-ids change-log)))]
+    (throw (validation-error
+            #_:clj-kondo/ignore
+            (format (str "Migration file contains invalid changeset IDs (use a version-less ID: lowercase "
+                         "letters/digits/underscores with at least one letter, no leading 'v', and no "
+                         "timestamp or version prefix): %s")
+                    (str/join ", " bad-ids))
+            {:invalid-ids (vec bad-ids)}))))
+
 (defn- require-change-set-ids-in-order [change-log]
   (let [ids (change-set-ids change-log)
         out-of-order-ids (->> ids
@@ -68,10 +88,12 @@
         ids (change-set-ids change-log)
         wrong-file-ids (->> ids
                             (filter (fn [id]
-                                      (let [id-version (parse-long (re-find #"\d+" id))]
-                                        (if (= file-version 1)
-                                          (> id-version 55)
-                                          (not= file-version id-version))))))]
+                                      ;; a version-less id has no version, and belongs in no per-release file
+                                      (let [id-version (some-> (re-find #"\d+" (str id)) parse-long)]
+                                        (cond
+                                          (or (nil? id-version) (change-set.strict/valid-version-less-id? id)) true
+                                          (= file-version 1)                                                  (> id-version 55)
+                                          :else                                                               (not= file-version id-version))))))]
     (when (seq wrong-file-ids)
       (throw (validation-error "Change set IDs are in the wrong file"
                                {:wrong-file-ids wrong-file-ids})))))
@@ -129,11 +151,18 @@
   [change-log]
   (require-no-types-in-change-log! #{"blob" "text"} change-log))
 
+(defn- version-less-or-after
+  "An id filter for [[require-no-types-in-change-log!]]: version-less ids are newer than every `vNN.` id."
+  [threshold]
+  (fn [id]
+    (or (change-set.strict/valid-version-less-id? id)
+        (pos? (compare id threshold)))))
+
 (defn require-no-bare-boolean-types
   "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
   \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
   [change-log]
-  (require-no-types-in-change-log! #{"boolean"} change-log #(pos? (compare % "v49.00-032"))))
+  (require-no-types-in-change-log! #{"boolean"} change-log (version-less-or-after "v49.00-032")))
 
 (defn require-no-datetime-type
   "Ensures that no \"datetime\" or \"timestamp without time zone\".
@@ -142,7 +171,21 @@
   (require-no-types-in-change-log!
    #{"datetime" "timestamp" "timestamp without time zone"}
    change-log
-   #(pos? (compare % "v49.00-000"))))
+   (version-less-or-after "v49.00-000")))
+
+(defn- require-no-run-always
+  "Rejects `runAlways`: Liquibase records each run as a new execution, so every boot sees it as an unrun migration --
+  and with MB_DB_AUTOMIGRATE=false, Metabase would never start."
+  [change-log]
+  (doseq [{:keys [changeSet]} change-log
+          :when (true? (:runAlways changeSet))]
+    (throw (validation-error
+            #_:clj-kondo/ignore
+            (format (str "Migration '%s' uses runAlways, which Metabase does not support: every boot would run it as a "
+                         "new migration, and with MB_DB_AUTOMIGRATE=false Metabase would never start. See "
+                         "require-no-run-always in bin/lint-migrations-file.")
+                    (:id changeSet))
+            {:id (:id changeSet)}))))
 
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
@@ -158,11 +201,16 @@
     (throw (validation-error "Expected `:databaseChangeLog` to be a map, not a string.")))
 
   (require-distinct-change-set-ids change-log)
-  (require-change-set-ids-in-correct-file change-log file)
-  (require-change-set-ids-in-order change-log)
+  (if (year-dir-migration-file? file)
+    ;; version-less ids are in the order they are written, and are not tied to the version of a file
+    (require-version-less-ids change-log)
+    (do
+      (require-change-set-ids-in-correct-file change-log file)
+      (require-change-set-ids-in-order change-log)))
   (require-no-bare-blob-or-text-types change-log)
   (require-no-bare-boolean-types change-log)
   (require-no-datetime-type change-log)
+  (require-no-run-always change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet})
@@ -182,7 +230,8 @@
   (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
         dir (io/file dir-str)]
     (->> (file-seq dir)
-         (filter #(and (.isFile %) (str/ends-with? (.getName %) "_update_migrations.yaml"))))))
+         (filter #(and (.isFile %) (or (str/ends-with? (.getName %) "_update_migrations.yaml")
+                                       (year-dir-migration-file? %)))))))
 
 (defn- migrations [file]
   (assert (.exists file) (format "%s does not exist" file))

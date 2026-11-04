@@ -194,14 +194,17 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
+const TASK_POLL_LIMIT = 30;
+
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
-) => {
-  if (retries > 3) {
+): Cypress.Chainable => {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+
+  return cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });

@@ -5,6 +5,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -32,7 +33,8 @@
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
         (log/errorf e "Error calculating result metadata for Card: %s" (ex-message e))
-        []))))
+        ;; sentinel: callers distinguish this from "the query produced no columns"
+        ::recompute-failed))))
 
 (def ^:private metadata-sync-wait-ms
   "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
@@ -61,24 +63,35 @@ saved later when it is ready."
                         ;; existing usage, don't use this going forward
                         #_{:clj-kondo/ignore [:deprecated-var]}
                         (qp.util/combine-metadata metadata')))]
-    (if (= result ::timed-out)
+    (cond
+      (= result ::timed-out)
       {:metadata-future (future
                           (try
-                            (combiner @futur)
+                            (let [awaited @futur]
+                              (if (= awaited ::recompute-failed)
+                                metadata'
+                                (combiner awaited)))
                             (catch Throwable e
                               (future-cancel futur)
                               (log/errorf e "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
+
+      (= result ::recompute-failed)
+      {:metadata metadata'}
+
+      :else
       {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query]
+  [query             :- ::lib-be.schema/maybe-legacy-or-empty-query
+   original-metadata :- [:maybe analyze/ResultsMetadata]]
   (log/debug "Querying for metadata")
-  (let [futur (legacy-result-metadata-future query)
+  (let [futur  (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
-    (if (= result ::timed-out)
-      {:metadata-future futur}
-      {:metadata result})))
+    (cond
+      (= result ::timed-out)      {:metadata-future futur}
+      (= result ::recompute-failed) {:metadata original-metadata}
+      :else                       {:metadata result})))
 
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
@@ -133,7 +146,7 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query))))
+      (maybe-async-recomputed-metadata query original-metadata))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
@@ -156,6 +169,9 @@ saved later when it is ready."
             (do
               (log/infof "Metadata not ready in %s, abandoning" (u/format-milliseconds metadata-async-timeout-ms))
               (future-cancel result-metadata-future))
+
+            (= metadata ::recompute-failed)
+            (log/infof "Not updating metadata asynchronously for card %s because the recompute failed" id)
 
             (not (seq metadata))
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))

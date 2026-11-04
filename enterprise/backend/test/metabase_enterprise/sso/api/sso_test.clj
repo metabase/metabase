@@ -9,7 +9,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.random :as u.random]))
+   [metabase.util :as u]
+   [metabase.util.random :as u.random]
+   [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,6 +56,50 @@
                               "W6HSXlA%2FP2W1xFSMV7isYbynM%2BTPZ1vp88zQCpb0xVzDWt"
                               "%2FYw11yAqadb8%3D")
                              (:saml-logout-url response))))))))))))))
+
+(deftest saml-logout-session-index
+  (testing "the SessionIndex recorded at login is sent in the LogoutRequest"
+    ;; Auth0 maps several sessions to one email and rejects a LogoutRequest that does not name
+    ;; which session to end (#77837).
+    (mt/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [saml-enabled                       true
+                                         saml-identity-provider-uri         "http://idp.example.com/login"
+                                         saml-identity-provider-certificate (slurp "test_resources/sso/auth0-public-idp.cert")
+                                         saml-keystore-path                 "test_resources/keystore.jks"
+                                         saml-keystore-password             "123456"
+                                         saml-keystore-alias                "sp"
+                                         site-url                           "http://localhost:3000"
+                                         saml-slo-enabled                   true
+                                         saml-identity-provider-slo-uri     "http://idp.example.com/logout"]
+        (binding [client/*url-prefix* ""]
+          (letfn [(logout-url [session-index]
+                    (let [session-key (session/generate-session-key)]
+                      (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                                     :model/Session _ {:user_id            (:id user)
+                                                       :id                 (session/generate-session-id)
+                                                       :key_hashed         (session/hash-session-key session-key)
+                                                       :saml_session_index session-index}]
+                        (-> (client/client :post "/auth/sso/logout"
+                                           (assoc-in {} [:request-options :cookies
+                                                         request/metabase-session-cookie :value]
+                                                     session-key))
+                            :saml-logout-url))))
+                  (saml-request [url]
+                    ;; The LogoutRequest is deflated + base64'd into the SAMLRequest query param.
+                    (let [param (second (re-find #"SAMLRequest=([^&]+)" url))
+                          bytes (-> param codec/url-decode u/decode-base64-to-bytes)]
+                      (with-open [in (java.util.zip.InflaterInputStream.
+                                      (java.io.ByteArrayInputStream. bytes)
+                                      (java.util.zip.Inflater. true))]
+                        (slurp in))))]
+            (testing "a session with a SessionIndex names it in the request"
+              (let [xml (saml-request (logout-url "_session-index-from-idp"))]
+                (is (str/includes? xml "<saml2p:SessionIndex>_session-index-from-idp</saml2p:SessionIndex>"))))
+            (testing "a session without one omits the element entirely"
+              ;; A fabricated or fixed SessionIndex broke Azure AD before (#41600), so IdPs that
+              ;; never send one must keep seeing exactly the request they saw before.
+              (let [xml (saml-request (logout-url nil))]
+                (is (not (str/includes? xml "SessionIndex")))))))))))
 
 (def ^:private default-jwt-secret (u.random/secure-hex 32))
 

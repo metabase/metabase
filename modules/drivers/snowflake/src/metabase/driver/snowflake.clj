@@ -29,6 +29,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -37,18 +38,53 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
+   (java.net URI URLDecoder)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.util Properties)
-   (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
+   (net.snowflake.client.api.exception SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+;; `authenticator` is left out: it names a host only for native Okta (`https://<okta-account>.okta.com`), and otherwise
+;; a flow such as `SNOWFLAKE_JWT`, which is not a name to hand the resolver. See the `connection-parameter-hosts` method
+;; below.
 (defmethod driver/host-carrying-parameters :snowflake
   [_driver]
-  ["proxyHost" "host"])
+  ["proxyHost" "host" "serverURL" "oauthTokenRequestUrl" "oauthAuthorizationUrl"])
+
+(defmethod driver/non-host-parameters :snowflake
+  [_driver]
+  ["oauthRedirectUri" "nonProxyHosts" "proxyPort" "proxyUser" "proxyPassword" "proxyProtocol" "useProxy"
+   "disableSocksProxy" "allowUnderscoresInHost" "disableSamlURLCheck"])
+
+(defn- authenticator-values
+  "Every `authenticator` the client could be handed by `spec`: each one in the connection string, as written and as the
+  client percent-decodes it, and each property whose name matches regardless of case -- the client looks property
+  names up case-insensitively, and details the driver does not recognize are passed through as properties. All are
+  returned rather than guessing which one the client lets win. The connection string is `:connection-uri` when the
+  driver has built one (private-key auth does), otherwise `:subname`; both are read."
+  [spec]
+  (into (into []
+              (mapcat #(sql-jdbc.common/connection-string-parameter-values % "authenticator"))
+              [(:connection-uri spec) (:subname spec)])
+        (keep (fn [[k v]]
+                (when (= "authenticator" (u/lower-case-en (str/trim (name k))))
+                  v)))
+        spec))
+
+(defmethod driver/connection-parameter-hosts :snowflake
+  [driver details]
+  (let [spec (try
+               (sql-jdbc.conn/connection-details->spec driver details)
+               ;; details that do not make a spec cannot open a connection either; the `:sql-jdbc` method below
+               ;; answers the same way
+               (catch Throwable _ nil))]
+    (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
+          (comp (filter #(and (string? %) (re-find #"(?i)^\s*https?://" %)))
+                (keep u.http/->hostname))
+          (authenticator-values spec))))
 
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]
@@ -145,14 +181,31 @@
   (when raw-name
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
+(def ^:private snowflake-url-prefix "jdbc:snowflake://")
+
 (defn connection-str->parameters
   "Get map of parameters from Snowflake `conn-str`, where keys are uppercase string parameter names and values
-  are strings. Returns nil when string is invalid."
+  are strings. Returns nil when string is invalid.
+  This is based on the implementation of SnowflakeConnectString.parse in https://github.com/snowflakedb/snowflake-jdbc"
   [conn-str]
-  (let [^SnowflakeConnectString conn-str* (SnowflakeConnectString/parse conn-str (Properties.))]
-    (if-not (.isValid conn-str*)
-      (log/warn "Invalid connection string.")
-      (.getParameters conn-str*))))
+  (when (and conn-str (str/starts-with? conn-str snowflake-url-prefix))
+    (let [after-prefix (subs conn-str (count snowflake-url-prefix))
+          after-prefix' (if (or (str/starts-with? after-prefix "http://")
+                                (str/starts-with? after-prefix "https://"))
+                          after-prefix
+                          (subs conn-str (str/index-of conn-str "snowflake:")))
+          uri (URI. after-prefix')]
+      (when-let [query-data (.getRawQuery uri)]
+        (->> (str/split query-data #"&")
+             (keep (fn [param]
+                     (let [key-val (str/split param #"=")]
+                       (if-not (= 2 (count key-val))
+                         (log/warn "Invalid Snowflake connection URI parameter")
+                         (let [[k v] key-val]
+                           [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
+                            (URLDecoder/decode ^String v "UTF-8")])))))
+             (into {})
+             not-empty)))))
 
 (defn- maybe-add-role-to-spec-url
   "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing

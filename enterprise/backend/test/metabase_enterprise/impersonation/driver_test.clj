@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
+   [metabase-enterprise.impersonation.middleware :as impersonation.middleware]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
@@ -14,6 +15,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.request.core :as request]
@@ -710,7 +712,7 @@
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
-          (is (= "class net.snowflake.client.jdbc.SnowflakeSQLException"
+          (is (= "class net.snowflake.client.api.exception.SnowflakeSQLException"
                  (try
                    (mt/run-mbql-query venues {:aggregation [[:count]]})
                    (catch Exception e
@@ -763,7 +765,27 @@
                     (testing "Query from admin hits the model cache"
                       (is (str/includes? (-> admin-result :data :native_form :query)
                                          (:table_name persisted-info))
-                          "Did not use the persisted model cache")))
+                          "Did not use the persisted model cache"))
+                    (testing "Native query referencing the model via a {{#N}} template tag"
+                      ;; an impersonated user only needs to be able to *read* a saved native Card that references the
+                      ;; persisted Model to hit this code path
+                      (mt/with-temp [:model/Card card {:dataset_query
+                                                       (lib/native-query (mt/metadata-provider)
+                                                                         (format "SELECT count(*) FROM {{#%d}} AS m"
+                                                                                 (:id model)))}]
+                        (let [run-card            #(mt/user-http-request % :post 202 (format "card/%d/query" (:id card)))
+                              impersonated-result (run-card :rasta)
+                              ;; Make sure we run admin query second to reset the DB role on the connection!
+                              admin-result        (run-card :crowberto)]
+                          (testing "Impersonated user (rasta) does not hit the model cache"
+                            (is (= 200 (-> impersonated-result mt/rows ffirst)))
+                            (is (not (str/includes? (-> impersonated-result :data :native_form :query)
+                                                    (:table_name persisted-info)))
+                                "Erroneously used the persisted model cache"))
+                          (testing "Query from admin hits the model cache"
+                            (is (str/includes? (-> admin-result :data :native_form :query)
+                                               (:table_name persisted-info))
+                                "Did not use the persisted model cache"))))))
                   (finally
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]
@@ -893,38 +915,8 @@
                              (mt/run-mbql-query venues
                                {:aggregation [[:count]]})))))))))))))))
 
-;; TODO(rileythomp, 2026-01-23): Enable this test when we upgrade ClickHouse JDBC driver past 0.8.4
-#_(deftest clickhouse-double-hyphen-test
-    (testing "can use impersonation on clickhouse with role containing a double hyphen (#57016)"
-      (mt/test-driver :clickhouse
-        (mt/with-premium-features #{:advanced-permissions}
-          (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
-                role-a "role--with--double--hyphens"]
-            (tx/with-temp-roles! driver/*driver*
-              (impersonation-granting-details driver/*driver* (mt/db))
-              {role-a {venues-table {}}}
-              (impersonation-default-user driver/*driver*)
-              (impersonation-default-role driver/*driver*)
-              (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                       :details (impersonation-details driver/*driver* (mt/db))}]
-                (mt/with-db database
-                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                    (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-                  (sync/sync-database! database {:scan :schema})
-                  (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                                 :attributes     {"impersonation_attr" role-a}}
-                    (is (= [[100]]
-                           (mt/formatted-rows [int]
-                                              (mt/run-mbql-query venues
-                                                {:aggregation [[:count]]}))))
-                    (is (thrown?
-                         java.lang.Exception
-                         (mt/run-mbql-query checkins
-                           {:aggregation [[:count]]}))))))))))))
-
-;; TODO(rileythomp, 2026-01-28): Verify this test can be removed after upgrading ClickHouse JDBC driver past 0.8.4
-(deftest clickhouse-double-hyphen-role-doesnt-break-all-queries-test
-  (testing "using an unknown role on clickhouse won't break queries for other users (68674)"
+(deftest clickhouse-double-hyphen-test
+  (testing "can use impersonation on clickhouse with role containing a double hyphen (#57016)"
     (mt/test-driver :clickhouse
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -934,27 +926,17 @@
             {role-a {venues-table {}}}
             (impersonation-default-user driver/*driver*)
             (impersonation-default-role driver/*driver*)
-            (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                     :details (impersonation-details driver/*driver* (mt/db))}]
-              (mt/with-db database
-                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-                (sync/sync-database! database {:scan :schema})
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" role-a}}
-                  (testing "using double hyphen role causes an error"
-                    (is (thrown?
-                         java.lang.Exception
-                         (mt/run-mbql-query venues
-                           {:aggregation [[:count]]}))))
-                  (testing "admin should still be able to query"
-                    (request/as-admin
-                      (is (= [100]
-                             (map
-                              long
-                              (mt/first-row
-                               (mt/run-mbql-query venues
-                                 {:aggregation [[:count]]}))))))))))))))))
+            (with-impersonation-db!
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" role-a}}
+                (is (= [[100]]
+                       (mt/formatted-rows [int]
+                                          (mt/run-mbql-query venues
+                                            {:aggregation [[:count]]}))))
+                (is (thrown?
+                     java.lang.Exception
+                     (mt/run-mbql-query checkins
+                       {:aggregation [[:count]]})))))))))))
 
 (deftest reject-multiple-and-non-select-statements-impersonation-test
   (testing "Impersonated native queries with multiple or non-select statements are rejected under impersonation"
@@ -1037,12 +1019,131 @@
 (deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
   (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
     (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
-      (let [query (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})]
+      (let [query (fn [sql] (lib/native-query meta/metadata-provider sql))]
         (testing "a multi-statement native query is rejected"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"single select statement"
                (driver/validate-impersonated-query driver/*driver* (query "SELECT 1; SELECT 2")))))
+        (testing "a bare role-switch is rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"single select statement"
+               (driver/validate-impersonated-query driver/*driver* (query "SET ROLE NONE")))))
         (testing "a single select statement is still allowed"
           (let [result (driver/validate-impersonated-query :mysql (query "SELECT 1"))]
             (is (map? result))
             (is (string? (get-in result [:stages 0 :native])))))))))
+
+(deftest validate-impersonated-query-inherited-by-sql-drivers-test
+  (testing "every SQL driver inherits the single-statement validator via the :sql method"
+    ;; The validator used to be registered on `:sql-jdbc`, so a SQL driver that is not JDBC-backed resolved
+    ;; to the `:default` no-op instead. It is now a `:sql` defmethod, and every driver advertising
+    ;; connection impersonation is a `:sql-jdbc` (hence `:sql`) descendant, so they all inherit it.
+    (let [default-method (get-method driver/validate-impersonated-query :default)
+          sql-method     (get-method driver/validate-impersonated-query :sql)]
+      (is (some? sql-method) "a :sql validator must be registered")
+      (is (not= default-method sql-method) "the :sql validator must be distinct from the :default no-op")
+      (testing "sql-jdbc drivers resolve to the :sql validator, not the no-op default"
+        ;; A driver only takes its place under :sql in the hierarchy once its namespace has loaded, and
+        ;; module drivers are only on the classpath when their alias is active. Initialize each driver we
+        ;; can, then assert; skip the ones this run can't load. :h2 is always present. :redshift is left out
+        ;; because it registers its own delegating method.
+        (doseq [d [:h2 :postgres :sqlserver :snowflake :mysql :clickhouse :starburst]
+                :when (try (driver/the-initialized-driver d) true (catch Throwable _ false))]
+          (testing d
+            (is (= sql-method (get-method driver/validate-impersonated-query d))
+                "must inherit the shared validator, not fall through to the :default no-op")))))))
+
+(deftest ^:parallel impersonation-refuses-native-without-a-validator-test
+  (testing "native is refused when the driver has no validate-impersonated-query of its own"
+    ;; The `:sql` method covers every sql-jdbc driver, but a future impersonation driver that does not
+    ;; descend from `:sql` would resolve to the `:default` no-op, which says nothing about the native SQL.
+    ;; Refusing surfaces that as an error rather than letting the check be skipped silently.
+    (let [guard  #'impersonation.middleware/assert-native-validation-supported
+          native (lib/native-query meta/metadata-provider "SELECT 1")
+          mbql   (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (testing "a driver with no validator (resolves to the :default no-op) refuses a native query"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"does not support native queries"
+             (guard ::driver-without-validator native))))
+      (testing "the same driver lets an MBQL query through — only native SQL is checked"
+        (is (nil? (guard ::driver-without-validator mbql))))
+      (testing "a driver that supplies the :sql validator is not refused"
+        (driver/the-initialized-driver :h2)
+        (is (nil? (guard :h2 native)))))))
+
+(deftest ^:parallel impersonated-native-join-source-is-validated-test
+  (testing "a native query used as a join source is validated like a top-level native stage"
+    ;; sql.qp inlines a native join source verbatim as a sub-select, so it needs the same single-statement
+    ;; check as a top-level native stage. The validator must walk join stages, not just the top-level
+    ;; `:stages`.
+    (let [mp         meta/metadata-provider
+          orders     (lib/query mp (meta/table-metadata :orders))
+          [a b]      (lib/visible-columns orders)
+          join-query (fn [native-sql]
+                       ;; an MBQL query whose join source is a native query — the join carries its own
+                       ;; `:stages`, which the top-level walk would miss.
+                       (lib/join orders (-> (lib/join-clause (lib/native-query mp native-sql) [(lib/= a b)])
+                                            (lib/with-join-alias "j"))))]
+      (testing "a second statement in a native join source is rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"single select statement"
+             (driver.sql/validate-impersonated-query* :postgres (join-query "SELECT 1; DROP TABLE t")))))
+      (testing "a bare role-switch in a native join source is rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"single select statement"
+             (driver.sql/validate-impersonated-query* :postgres (join-query "SET ROLE NONE")))))
+      (testing "a single SELECT native join source is accepted (the join stage is walked and passes)"
+        (is (some? (driver.sql/validate-impersonated-query* :postgres (join-query "SELECT 1"))))))))
+
+(deftest impersonated-native-multi-statement-rejected-test
+  (testing "a non-admin's multi-statement native query is rejected, comment-nested separator and all"
+    ;; End-to-end check that the rejection holds through the real QP preprocess chain, and that it happens
+    ;; *before* execution: we ask the warehouse directly rather than trusting the QP status, so that a
+    ;; refactor moving validation after execution begins would fail here.
+    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a       (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (let [granting-details (impersonation-granting-details driver/*driver* (mt/db))
+                  spec             (sql-jdbc.conn/connection-details->spec driver/*driver* granting-details)
+                  ;; The second statement creates a table instead of changing data: whether that table
+                  ;; exists afterwards is the ground truth for "a second statement ran", and observing it
+                  ;; costs no existing row. The impersonated role is granted nothing but `venues`, so the
+                  ;; table can only appear if the statement ran as the connection user.
+                  check-table      (str "mb_single_stmt_check_" (u/lower-case-en (mt/random-name)))
+                  check-table?     (fn []
+                                     (boolean (seq (jdbc/query spec ["SELECT 1 FROM information_schema.tables WHERE table_name = ?"
+                                                                     check-table]))))
+                  ;; A long VALUES list whose last tuple opens a line comment, so a paren-balancing scan of
+                  ;; the text would read one SELECT where there are really two statements.
+                  sql              (str "SELECT * FROM (VALUES " (str/join "," (repeat 101 "(1)"))
+                                        ",( -- ((\n 1 )) t ; SET ROLE NONE ; CREATE TABLE " check-table
+                                        " (id integer) --)) t")]
+              (mt/with-temp [:model/Database database {:engine  driver/*driver*
+                                                       :details (impersonation-details driver/*driver* (mt/db))}]
+                (mt/with-db database
+                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                    (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                  (sync/sync-database! database {:scan :schema})
+                  (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                 :attributes     {"impersonation_attr" role-a}}
+                    (try
+                      (testing "the query is rejected"
+                        (is (thrown-with-msg?
+                             clojure.lang.ExceptionInfo
+                             #"(?i)single select statement|unable to parse"
+                             (-> (lib/native-query (mt/metadata-provider) sql)
+                                 (qp/process-query)
+                                 (mt/rows)))))
+                      (testing "the warehouse never saw the second statement"
+                        (is (not (check-table?))))
+                      (finally
+                        (jdbc/execute! spec [(format "DROP TABLE IF EXISTS %s" check-table)])))))))))))))

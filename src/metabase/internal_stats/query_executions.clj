@@ -45,8 +45,11 @@
 (defn query-execution-last-utc-day
   "Calculate query executions over a window of the the previous UTC day 00:00-23:59"
   []
-  (let [yesterday-utc (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
+  (let [today-start-utc (t/truncate-to (t/offset-date-time (t/zone-offset "+00")) :days)]
+    ;; A bare range on `started_at` lets the DB use `idx_query_execution_started_at`; casting the column would not.
     (-> (t2/select-one query-execution-statistics
-                       {:where [:= [:cast :started_at :date] [:cast yesterday-utc :date]]})
+                       {:where [:and
+                                [:>= :started_at (t/minus today-start-utc (t/days 1))]
+                                [:< :started_at today-start-utc]]})
         (dissoc :row_count)
         (update-keys #(keyword (str "query_executions_" (name %)))))))

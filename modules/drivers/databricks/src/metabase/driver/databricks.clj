@@ -43,7 +43,13 @@
 
 (defmethod driver/host-carrying-parameters :databricks
   [_driver]
-  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+  ["ProxyHost" "CFProxyHost" "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint"
+   "OAuth2AuthorizationEndPoint" "OAuth2TokenEndpoint" "OAuthDiscoveryURL" "OIDCDiscoveryEndpoint"])
+
+(defmethod driver/non-host-parameters :databricks
+  [_driver]
+  ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
+   "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
@@ -68,6 +74,13 @@
     #"timestamp_ntz" :type/DateTime
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
+
+(defmethod driver/disallowed-connection-parameters :databricks
+  [driver]
+  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
+  ;; the older spelling of the same setting, and the client still honors it
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]

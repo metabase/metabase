@@ -2,12 +2,14 @@
   "TODO -- consider whether this belongs here or if we should move some or all of this code into the `model-persistence`
   module."
   (:require
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.permissions.core :as perms]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]))
 
@@ -45,3 +47,19 @@
              driver
              :table
              table-name))))
+
+(defn allowed-for-current-user?
+  "Whether the current user may read directly from a persisted Model cache table. The cache holds the Model's full,
+  unfiltered results as seen through the Database's own connection, so it must never be substituted for a user whose
+  queries would otherwise be rewritten by sandboxing or connection impersonation, or routed to a Destination Database.
+  Substituting the cache here skips `qp.compile/compile` (and thus preprocessing) for the referenced Model entirely,
+  so we cannot rely on the [[metabase.query-processor.middleware.persistence/substitute-persisted-query]] middleware
+  to disable it for us."
+  [database-id]
+  (not (and api/*current-user-id*
+            (or (and (not api/*is-superuser?*)
+                     ;; any sandbox is enough: this is conservative for sandboxes on other databases, but never lets a
+                     ;; sandboxed user read the cache
+                     (boolean (seq (perms/sandboxes-for-user))))
+                (perms/impersonation-enforced-for-db? database-id)
+                (perms/row-restricted-by-routing? database-id)))))

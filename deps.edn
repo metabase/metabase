@@ -37,6 +37,8 @@
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
+  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.7"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
+  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.7"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -91,13 +93,13 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "4.2.1"
+  metabase/saml20-clj                       {:mvn/version "4.3.0"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
-  metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
+  metabase/throttle                         {:mvn/version "1.0.3"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
                                              :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
@@ -129,7 +131,7 @@
   org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
-  org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
+  org.apache.tika/tika-core                 {:mvn/version "3.3.3"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.85"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.85.2"}
@@ -251,6 +253,7 @@
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
+    com.google.jimfs/jimfs       {:mvn/version "1.3.2"}                     ; in-memory NIO filesystems (e.g. Windows) for testing path handling
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
@@ -627,6 +630,7 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
+                                 :unused-ret-vals-in-try
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
                                  :wrong-arity
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
@@ -879,13 +883,14 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
-  ;; Migrate CLI:
-  ;;    clojure -M:migrate <command>
+  ;; Migrate CLI (combine with :dev -- dev/src/user.clj needs the :dev classpath):
+  ;;    clojure -M:dev:migrate <command>
   ;; E.g.
-  ;;    clojure -M:migrate up                       ;; migrate up to the latest
-  ;;    clojure -M:migrate rollback count 2         ;; rollback 2 migrations
-  ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
-  ;;    clojure -M:migrate status                   ;; print the latest migration id
+  ;;    clojure -M:dev:migrate up                          ;; migrate up to the latest
+  ;;    clojure -M:dev:migrate rollback last-deployment    ;; roll back the last migrate run
+  ;;    clojure -M:dev:migrate rollback deployment <id>    ;; roll back everything after that deployment_id
+  ;;    clojure -M:dev:migrate rollback count 2            ;; raw Liquibase rollback of 2 changesets
+  ;;    clojure -M:dev:migrate status                      ;; print the latest migration id
   :migrate
   {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
    :extra-paths ["dev/src"]

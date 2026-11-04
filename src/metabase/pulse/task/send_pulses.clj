@@ -56,11 +56,14 @@
                                                          :archived false
                                                          ;; alerts should all be migrated to notifications by now
                                                          :alert_condition nil)]
-        (do
-          (log/debugf "Starting Pulse Execution: %d" pulse-id)
-          (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
-          (log/debugf "Finished Pulse Execution: %d" pulse-id)
-          :done)
+        ;; a trashed Dashboard keeps its triggers so restoring it resumes them
+        (if (t2/exists? :model/Dashboard :id (:dashboard_id pulse) :archived true)
+          (log/debugf "Dashboard of Pulse %d is archived, Skipping." pulse-id)
+          (do
+            (log/debugf "Starting Pulse Execution: %d" pulse-id)
+            (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
+            (log/debugf "Finished Pulse Execution: %d" pulse-id)
+            :done))
         (log/debugf "Pulse %d not found, Skipping." pulse-id)))
     (catch Throwable e
       (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))

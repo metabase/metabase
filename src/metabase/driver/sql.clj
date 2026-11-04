@@ -1,6 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
    ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
@@ -17,13 +17,14 @@
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some mapv]]
+   [metabase.util.performance :refer [some]]
    [potemkin :as p])
   (:import
    [net.sf.jsqlparser.parser CCJSqlParserUtil]
@@ -420,24 +421,35 @@
     (catch Exception e
       {:is-single-select? false :error (.getMessage e)})))
 
+(defn- validate-impersonated-native-stage
+  "Validate one native `stage`, returning it with `:native` replaced by the SQL reconstructed from the parse, or
+  throwing a [[metabase.query-processor.error-type/invalid-query]] `ex-info` when it must be refused."
+  [stage]
+  (let [{:keys [is-single-select? sql error]} (is-single-select-stmt? (:native stage))]
+    (cond error
+          (do
+            (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
+            (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
+                            {:type qp.error-type/invalid-query
+                             :sql  (:native stage)})))
+          (not is-single-select?)
+          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                          {:type qp.error-type/invalid-query
+                           :sql  (:native stage)}))
+          :else (assoc stage :native sql))))
+
 (defn validate-impersonated-query*
-  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  "Validates a native query by parsing it and ensuring that it is a single select statement.
+   Registered as the `:sql` method of [[driver/validate-impersonated-query]], so every SQL driver inherits it."
   [_driver query]
-  (update query :stages
-          (fn [stages]
-            (mapv (fn [stage]
-                    (if (lib.util/native-stage? stage)
-                      (let [{:keys [is-single-select? sql error]} (is-single-select-stmt? (:native stage))]
-                        (cond error
-                              (do
-                                (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
-                                (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
-                                                {:type qp.error-type/invalid-query
-                                                 :sql  (:native stage)})))
-                              (not is-single-select?)
-                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
-                                              {:type qp.error-type/invalid-query
-                                               :sql  (:native stage)}))
-                              :else (assoc stage :native sql)))
-                      stage))
-                  stages))))
+  ;; Walk *every* stage, including those nested inside joins — a native query used as a join source is inlined
+  ;; verbatim as a sub-select, so it needs the same single-statement guard as a top-level native stage.
+  (lib/walk-stages
+   query
+   (fn [_query _path stage]
+     (when (lib.util/native-stage? stage)
+       (validate-impersonated-native-stage stage)))))
+
+(defmethod driver/validate-impersonated-query :sql
+  [driver query]
+  (validate-impersonated-query* driver query))

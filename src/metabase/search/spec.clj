@@ -347,7 +347,7 @@
    - `:attrs` - Map of search index attributes (required)
    - `:search-terms` - Vector of searchable text fields (required)
    - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only)
    - `:where` - HoneySQL where clause to filter indexed records
    - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
    - `:joins` - Map of join aliases to [model join-condition] tuples

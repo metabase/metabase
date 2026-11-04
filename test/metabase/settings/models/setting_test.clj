@@ -1905,3 +1905,17 @@
           (mt/with-temporary-setting-values [test-setting-that-is-not-included-when-listing-in-api "fun-times"]
             (is (= ::not-present
                    (f :test-setting-that-is-not-included-when-listing-in-api)))))))))
+
+(deftest env-var-source-names-the-variable-test
+  (testing "the value comes back with the name of the variable that supplied it, so a message about the value can
+           point at the variable the operator set"
+    (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV VALUE"]
+      (is (= ["MB_TEST_SETTING_1" "ENV VALUE"]
+             (setting/env-var-source :test-setting-1)))
+      (is (= "ENV VALUE" (setting/env-var-value :test-setting-1))))
+    (testing "an empty value means explicitly unset"
+      (mt/with-temp-env-var-value! [mb-test-setting-1 ""]
+        (is (nil? (setting/env-var-source :test-setting-1)))))
+    (testing "nil when not set"
+      (mt/with-temp-env-var-value! [mb-test-setting-1 nil]
+        (is (nil? (setting/env-var-source :test-setting-1)))))))

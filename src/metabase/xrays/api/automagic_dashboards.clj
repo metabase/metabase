@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexed-entities.core :as indexed-entities]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -297,11 +298,18 @@
                                                        :description nil}}}}
      cards)))
 
+(defn- linked-dashboard-name
+  [model-name model-pk indexed-value]
+  (if indexed-value
+    (format "Here's a look at \"%s\" from \"%s\"" indexed-value model-name)
+    (format "Here's a look at \"%s\" #%s" model-name model-pk)))
+
 (defn- create-linked-dashboard
-  "For each joinable table from `model`, create an x-ray dashboard as a tab."
-  [{{indexed-entity-name :name :keys [model_pk]} :model-index-value
-    {model-name :name :as model}                 :model
-    :keys                                        [linked-tables]}]
+  "For each joinable table from `model`, create an x-ray dashboard as a tab, filtered on the record whose primary key
+  is `model-pk`. `indexed-value` is that record's display value as the requesting user sees it, or nil when they may
+  not read it; it only ever decorates the name and description."
+  [{{model-name :name :as model} :model
+    :keys                        [linked-tables model-pk indexed-value]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
                                   (let [table (t2/select-one :model/Table :id linked-table-id)
@@ -309,12 +317,13 @@
                                     (automagic-dashboards.core/automagic-analysis
                                      table
                                      {:show         :all
-                                      :query-filter [(lib/= (lib.metadata/field mp linked-field-id) model_pk)]})))
+                                      :query-filter [(lib/= (lib.metadata/field mp linked-field-id) model-pk)]})))
                                 linked-tables)
           seed-dashboard   (-> (first child-dashboards)
                                (merge
-                                {:name         (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-                                 :description  (format "A dashboard focusing on information linked to %s" indexed-entity-name)
+                                {:name         (linked-dashboard-name model-name model-pk indexed-value)
+                                 :description  (format "A dashboard focusing on information linked to %s"
+                                                       (or indexed-value (format "\"%s\" #%s" model-name model-pk)))
                                  :parameters   []
                                  :param_fields {}})
                                (dissoc :transient_name
@@ -341,7 +350,7 @@
                        :tabs      []})))
         (update seed-dashboard
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
-    {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+    {:name      (linked-dashboard-name model-name model-pk indexed-value)
      :dashcards (add-source-model-link
                  model
                  [{:row                    0
@@ -361,25 +370,24 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/model_index/:model-index-id/primary_key/:pk-id"
-  "Return an automagic dashboard for an entity detail specified by `entity`
-  with id `id` and a primary key of `indexed-value`."
+  "Return an automagic dashboard for the record of the model indexed by `model-index-id` whose primary key is
+  `pk-id`. The record's value, used in the title, is read through the QP as the requesting user (never from
+  `model_index_value`, which is not permission-checked); a `pk-id` they cannot resolve yields a dashboard titled
+  by the pk, with no matching rows, rather than a 404."
   [{:keys [model-index-id pk-id]} :- [:map
                                       [:model-index-id :int]
                                       [:pk-id          :int]]]
   (api/let-404 [model-index (t2/select-one :model/ModelIndex model-index-id)
-                model (t2/select-one :model/Card (:model_id model-index))
-                model-index-value (t2/select-one :model/ModelIndexValue
-                                                 :model_index_id model-index-id
-                                                 :model_pk pk-id)]
-               ;; `->entity` does a read check on the model but this is here as well to be extra sure.
+                model (t2/select-one :model/Card (:model_id model-index))]
+    ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check :model/Card (:model_id model-index))
-    (let [linked (linked-entities {:model             model
-                                   :model-index       model-index
-                                   :model-index-value model-index-value})]
-      (create-linked-dashboard {:model             model
-                                :linked-tables     linked
-                                :model-index       model-index
-                                :model-index-value model-index-value}))))
+    (let [linked (linked-entities {:model       model
+                                   :model-index model-index})]
+      (create-linked-dashboard {:model         model
+                                :linked-tables linked
+                                :model-index   model-index
+                                :model-pk      pk-id
+                                :indexed-value (indexed-entities/value-for-pk model-index pk-id)}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

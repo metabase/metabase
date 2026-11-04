@@ -15,7 +15,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -53,7 +53,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Tailscale
         uses: tailscale/github-action@v2
         with:

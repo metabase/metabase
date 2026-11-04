@@ -13,8 +13,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
@@ -243,7 +245,7 @@
             (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"actions/.*"]})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
-                                (serialization/load-metabase! ingestable-snapshot))
+                                (serialization/load-metabase! ingestable-snapshot :reindex? false))
                   imported-entities-by-model (->> (:seen load-result)
                                                   (map last) ; Get the last element of each path (the entity itself)
                                                   (group-by :model)
@@ -256,6 +258,12 @@
                 (sync-objects! sync-timestamp imported-entities-by-model)
                 (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
                   (collection/create-remote-synced-collection!)))
+              ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
+              ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
+              (try
+                (search/reindex! :async? (not= :h2 (mdb/db-type)))
+                (catch Exception e
+                  (log/warn e "Search reindex after import failed")))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
                task-id
@@ -386,8 +394,9 @@
         has-dirty? (remote-sync.object/dirty-global?)]
     (when (and has-dirty? (not force?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true})))
+                      {:status-code   400
+                       :conflicts     true
+                       :response/keys #{:conflicts}})))
     (run-async! "import" branch (fn [task-id] (import! (source.p/snapshot source) task-id (assoc import-args :force? force?))))))
 
 (defn async-export!
@@ -406,8 +415,9 @@
         current-source-version (source.p/version snapshot)]
     (when (and (not force?) (some? last-task-version) (not= last-task-version current-source-version))
       (throw (ex-info "Cannot export changes that will overwrite new changes in the branch."
-                      {:status-code 400
-                       :conflicts true})))
+                      {:status-code   400
+                       :conflicts     true
+                       :response/keys #{:conflicts}})))
     (run-async! "export" branch (fn [task-id] (export! snapshot task-id message)))))
 
 (defn finish-remote-config!

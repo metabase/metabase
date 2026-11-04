@@ -170,6 +170,8 @@
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
  sync-util/name-for-logging
+ system/ensure-readable-path!
+ system/ensure-writable-path!
  system/site-uuid
  upload/current-database)
 

@@ -19,7 +19,7 @@ interface Table {
   id: number;
 }
 
-describe("bulk table operations", () => {
+describe("bulk table operations", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -46,10 +46,10 @@ describe("bulk table operations", () => {
   });
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
+    H.restore("postgres-12");
     H.activateToken("bleeding-edge");
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("QA Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
       const tables = response?.body ?? [];
       const accountTableId = getTableId(tables, "Orders");
@@ -104,13 +104,15 @@ describe("bulk table operations", () => {
     "allows publishing and unpublishing multiple tables",
     { tags: ["@external"] },
     () => {
-      H.restore("postgres-writable");
+      // Not `postgres-writable`: restoring it empties the warehouse but keeps
+      // the old table metadata, so any sync deactivates the tables we use here.
+      H.restore("postgres-12");
       H.activateToken("bleeding-edge");
       cy.signInAsAdmin();
       H.DataModel.visitDataStudio();
 
       cy.log("select multiple tables");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getDatabase("QA Postgres12").click();
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -145,11 +147,11 @@ describe("bulk table operations", () => {
   );
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
+    H.restore("postgres-12");
     H.activateToken("bleeding-edge");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
@@ -260,12 +262,12 @@ describe("bulk table operations", () => {
   );
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
+    H.restore("postgres-12");
     H.activateToken("bleeding-edge");
     H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12")
+    TablePicker.getDatabase("QA Postgres12")
       .find('input[type="checkbox"]')
       .check();
 
@@ -291,11 +293,11 @@ describe("bulk table operations", () => {
     // and the schema fetch that populates the tables never fires. Wait for the
     // expand toggle to render collapsed, click it, then confirm it expanded so the
     // schema request reliably occurs before we assert on the tables.
-    TablePicker.getDatabaseToggle("Writable Postgres12")
+    TablePicker.getDatabaseToggle("QA Postgres12")
       .should("have.attr", "aria-expanded", "false")
       .click();
     cy.wait("@getSchema");
-    TablePicker.getDatabaseToggle("Writable Postgres12").should(
+    TablePicker.getDatabaseToggle("QA Postgres12").should(
       "have.attr",
       "aria-expanded",
       "true",

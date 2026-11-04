@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 
 import { Description, Error, Label } from "../../DatabaseFeatureComponents";
@@ -24,7 +24,7 @@ export function ModelActionsSection({
       setError(null);
       await onToggleModelActionsEnabled(enabled);
     } catch (err) {
-      setError(getResponseErrorMessage(err) || t`An error occurred`);
+      setError(findErrorMessage(err) || t`An error occurred`);
     }
   };
 

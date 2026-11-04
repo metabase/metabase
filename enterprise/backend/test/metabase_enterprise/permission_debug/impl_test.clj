@@ -22,7 +22,7 @@
       (let [regular-user-id (mt/user->id :rasta)
             result (permission-debug.impl/debug-permissions
                     {:user-id regular-user-id
-                     :model-id (str (:id card))
+                     :model-id (:id card)
                      :action-type :card/read})]
         (is (= "allow" (:decision result)))
         (is (= #{} (:segment result)))
@@ -37,7 +37,7 @@
         (with-temp-revoke-collection-perms! (perms/all-users-group) collection
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
-                         :model-id (str (:id card))
+                         :model-id (:id card)
                          :action-type :card/read})]
             (is (= "denied" (:decision result)))
             (is (= #{} (:segment result)))
@@ -51,7 +51,7 @@
       (let [admin-user-id (mt/user->id :crowberto)
             result (permission-debug.impl/debug-permissions
                     {:user-id admin-user-id
-                     :model-id (str (:id card))
+                     :model-id (:id card)
                      :action-type :card/read})]
         (is (= "allow" (:decision result)))))))
 
@@ -64,7 +64,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/query})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
@@ -83,7 +83,7 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
-                         :model-id (str (:id card))
+                         :model-id (:id card)
                          :action-type :card/query})]
             (is (= "denied" (:decision result)))
             (is (= #{} (:segment result)))
@@ -99,7 +99,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
@@ -120,7 +120,7 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
-                         :model-id (str (:id card))
+                         :model-id (:id card)
                          :action-type :card/query})]
             (is (= "allow" (:decision result)))
             (is (= #{} (:segment result)))
@@ -137,7 +137,7 @@
       (let [admin-user-id (mt/user->id :crowberto)
             result (permission-debug.impl/debug-permissions
                     {:user-id admin-user-id
-                     :model-id (str (:id card))
+                     :model-id (:id card)
                      :action-type :card/query})]
         (is (= "allow" (:decision result)))))))
 
@@ -152,7 +152,7 @@
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/query})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
@@ -171,7 +171,7 @@
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/query})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
@@ -191,7 +191,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
@@ -210,7 +210,7 @@
         (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
@@ -248,7 +248,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id joined-card))
+                       :model-id (:id joined-card)
                        :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
@@ -266,7 +266,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :one-million-rows)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/download-data})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
@@ -286,7 +286,7 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :one-million-rows)
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
-                         :model-id (str (:id card))
+                         :model-id (:id card)
                          :action-type :card/download-data})]
             (is (= "denied" (:decision result)))
             (is (= #{} (:segment result)))
@@ -303,7 +303,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :no)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/download-data})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
@@ -324,7 +324,7 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :no)
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
-                         :model-id (str (:id card))
+                         :model-id (:id card)
                          :action-type :card/download-data})]
             (is (= "allow" (:decision result)))
             (is (= #{} (:segment result)))
@@ -344,7 +344,7 @@
       (let [admin-user-id (mt/user->id :crowberto)
             result (permission-debug.impl/debug-permissions
                     {:user-id admin-user-id
-                     :model-id (str (:id card))
+                     :model-id (:id card)
                      :action-type :card/download-data})]
         (is (= "allow" (:decision result)))))))
 
@@ -358,7 +358,7 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :ten-thousand-rows)
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
-                       :model-id (str (:id card))
+                       :model-id (:id card)
                        :action-type :card/download-data})]
           (is (= "limited" (:decision result)))
           (is (= #{} (:segment result)))
@@ -380,7 +380,7 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :no)
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
-                         :model-id (str (:id card))
+                         :model-id (:id card)
                          :action-type :card/download-data})]
             (is (= "limited" (:decision result)))
             (is (= #{} (:segment result)))

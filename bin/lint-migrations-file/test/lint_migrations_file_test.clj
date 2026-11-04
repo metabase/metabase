@@ -400,3 +400,79 @@
                                                                                   :remarks "none"
                                                                                   :type "timestamp with time zone"}}]}}]
                                      :rollback nil))))))
+
+(def ^:private year-file (io/file "migrations/2026/20260616_workspaces.yaml"))
+
+(deftest ^:parallel migration-files-include-year-dirs-test
+  (testing "the linter checks the version-less files in year-based directories, as well as the per-release files"
+    (is (every? #(or (str/ends-with? (.getName %) "_update_migrations.yaml")
+                     (re-find #"[/\\]\d{4}[/\\]\d{8}_[a-z0-9_]+\.yaml$" (str %)))
+                (#'lint-migrations-file/migration-files)))
+    (is (some #(str/ends-with? (.getName %) "_update_migrations.yaml") (#'lint-migrations-file/migration-files)))))
+
+(deftest ^:parallel year-dir-accepts-valid-version-less-ids-test
+  (testing "year-based directories accept lowercase alphanumeric/underscore IDs with at least one letter"
+    (doseq [good-id ["aeiagus09e" "workspaces_init" "a1234567" "widgets_v2" "phase_2026"]]
+      (is (= :ok (validate-file year-file (mock-change-set :id good-id)))
+          good-id)))
+  (testing "they are not in version order, and not tied to the version of a file"
+    (is (= :ok (validate-file year-file (mock-change-set :id "zzz_first") (mock-change-set :id "aaa_second"))))))
+
+(deftest ^:parallel year-dir-rejects-invalid-version-less-ids-test
+  (testing "year-based directories reject invalid version-less IDs"
+    (doseq [bad-id ["foo-bar"                  ; dash
+                    "v60.aeiagus09e"           ; version-prefixed
+                    "v58.2026-01-01T10:30:00"  ; versioned timestamp id
+                    "foo.bar"                  ; dot
+                    "20260703"                 ; all digits: looks like a pre-4.2 changeset id
+                    "view_metrics"             ; any leading v: old binaries' max `id LIKE 'v%'` scan would pick it
+                    "Foo_bar"                  ; uppercase
+                    20260703                   ; unquoted YAML number
+                    true]]                     ; unquoted YAML boolean
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid changeset IDs"
+                            (validate-file year-file (mock-change-set :id bad-id)))
+          (pr-str bad-id)))))
+
+(deftest ^:parallel per-release-files-reject-version-less-ids-test
+  (testing "a version-less id may not go in a per-release file"
+    (doseq [file ["058_update_migrations.yaml" "001_update_migrations.yaml"]]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (validate-file (io/file file) (mock-change-set :id "aeiagus09e")))
+          file))))
+
+(deftest ^:parallel year-dir-requires-rollback-test
+  (testing "year-based directory migrations still require rollback for non-auto-rollback change types"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid change set\."
+                          (validate-file year-file
+                                         (update (mock-change-set :id "aeiagus09e" :changes [{:sql {:sql "select 1"}}])
+                                                 :changeSet dissoc :rollback))))
+    (testing "an id with a digit below 45 in it is not taken for a pre-v45 id"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid change set\."
+                            (validate-file year-file
+                                           (update (mock-change-set :id "q7m2xd" :changes [{:sql {:sql "select 1"}}])
+                                                   :changeSet dissoc :rollback)))))
+    (is (= :ok (validate-file year-file (mock-change-set :id "aeiagus09e" :changes [(mock-add-column-changes)]))))))
+
+(deftest ^:parallel year-dir-prevent-bare-types-test
+  (testing "year-dir migrations may use the parameterized types"
+    (doseq [t ["${boolean.type}" "${timestamp_type}" "${text.type}"]]
+      (is (= :ok (validate-file year-file (mock-change-set :id "aeiagus09e"
+                                                           :changes [(mock-add-column-changes :columns [(mock-column :type t)])])))
+          t)))
+  (testing "year-dir migrations cannot add bare boolean, datetime or text columns"
+    (doseq [bad-type ["boolean" "datetime" "timestamp" "timestamp without time zone" "text"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"uses invalid types"
+                            (validate-file year-file (mock-change-set :id "aeiagus09e"
+                                                                      :changes [(mock-add-column-changes :columns [(mock-column :type bad-type)])])))
+          bad-type))))
+
+(deftest ^:parallel require-no-run-always-test
+  (testing "runAlways is rejected"
+    (is-thrown-with-error-info?
+     "Migration 'v49.2024-01-01T10:30:00' uses runAlways, which Metabase does not support: every boot would run it as a new migration, and with MB_DB_AUTOMIGRATE=false Metabase would never start. See require-no-run-always in bin/lint-migrations-file."
+     {:id "v49.2024-01-01T10:30:00"}
+     (validate (mock-change-set :runAlways true)))
+    (is (thrown? clojure.lang.ExceptionInfo (validate-file year-file (mock-change-set :id "aeiagus09e" :runAlways true)))))
+  (testing "runAlways: false and runOnChange pass"
+    (is (= :ok (validate (mock-change-set :runAlways false))))
+    (is (= :ok (validate (mock-change-set :runOnChange true))))))

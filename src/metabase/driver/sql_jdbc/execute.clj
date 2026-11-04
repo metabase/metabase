@@ -343,7 +343,16 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (let [get-conn (^:once fn* [] (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options)))]
+      (let [get-conn (^:once fn* []
+                       (let [conn-data-source (do-with-resolved-connection-data-source driver db-or-id-or-spec options)]
+                         (try
+                           (.getConnection conn-data-source)
+                           (catch Throwable e
+                             (try
+                               (sql-jdbc.conn/invalidate-empty-pool! conn-data-source)
+                               (catch Exception e2
+                                 (log/warnf e2 "Error closing the connection pool for database %s" (u/id db-or-id-or-spec))))
+                             (throw e)))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]

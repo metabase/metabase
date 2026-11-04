@@ -301,7 +301,7 @@
           template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id)]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
-                        {:status        400
+                        {:status-code   400
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
@@ -352,7 +352,7 @@
 
 (t2/deftransforms :model/NotificationRecipient
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
-   :details mi/transform-json})
+   :details (mi/transform-encrypted-json "notification_recipient.details")})
 
 (defn- notification-recipient-schema
   [{:keys [with-id?]}]
@@ -568,8 +568,10 @@
   [_ notification]
   (or (mi/superuser?)
       (and (current-user-can-read-payload? notification)
-           ;; if advanced-permissions is enabled, we require users to have subscription permissions
-           (or (not (premium-features/has-feature? :advanced-permissions))
+           ;; if advanced-permissions is enabled, we require users to have subscription permissions.
+           ;; Not a bare `has-feature?`: that ignores whether EE code is present, so an OSS jar with a
+           ;; stale paid token would demand a permission it can never grant.
+           (or (not (premium-features/enable-advanced-permissions?))
                (perms/current-user-has-application-permissions? :subscription)))))
 
 (defmethod mi/can-update? :model/Notification
@@ -585,7 +587,7 @@
      ;; if advanced-permissions is enabled, we require users to have subscription permissions
      ;; and is the owner of the notification and can read the payload
      (or
-      (not (premium-features/has-feature? :advanced-permissions))
+      (not (premium-features/enable-advanced-permissions?))
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? instance)
      (current-user-can-read-payload? (merge instance changes))))))
@@ -598,7 +600,7 @@
     (and
      (current-user-is-creator? notification)
      (or
-      (not (premium-features/has-feature? :advanced-permissions))
+      (not (premium-features/enable-advanced-permissions?))
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? notification))))
   ([_model pk]

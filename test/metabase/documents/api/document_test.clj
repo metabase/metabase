@@ -2336,9 +2336,7 @@
 
                (is (malli= [:map
                             [:status [:= "failed"]]
-                            [:error_type [:= "missing-required-permissions"]]
-                            [:ex-data [:map
-                                       [:permissions-error? [:= true]]]]]
+                            [:error_type [:= "missing-required-permissions"]]]
                            (mt/user-http-request :rasta
                                                  :post 200
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2662,3 +2660,25 @@
                                 {:name "Should Fail"
                                  :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
+
+(deftest put-document-create-card-without-collection-id-in-body-test
+  (testing "PUT /api/document/:id - new cards default to the document's collection when the body omits :collection_id"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Document {doc-id :id} {:name          "My Doc"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "")}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/user-http-request :rasta
+                                :put 200 (str "document/" doc-id)
+                                {:document {:type    "doc"
+                                            :content [{:type "cardEmbed" :attrs {:id -1 :name nil}}]}
+                                 :cards    {-1 {:name                   "New Card"
+                                                :type                   :question
+                                                :dataset_query          (mt/mbql-query venues)
+                                                :display                :table
+                                                :visualization_settings {}}}})
+          (testing "the card is created in the document's collection"
+            (is (=? [{:name "New Card" :collection_id coll-id}]
+                    (t2/select :model/Card :document_id doc-id)))))))))

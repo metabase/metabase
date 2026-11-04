@@ -147,7 +147,7 @@ embedding_sdk_host_sample_apps:
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
 snowplow: &snowplow
-  - ".github/workflows/snowplow.yml"
+  - ".github/workflows/lint.yml"
   - "snowplow/**"
 
 e2e_all:
@@ -171,7 +171,7 @@ yaml:
   - "**/*.yaml"
 
 codeql:
-  - ".github/workflows/codeql.yml"
+  - ".github/workflows/lint.yml"
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
 
@@ -179,7 +179,7 @@ i18n:
   - *default
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
-  - ".github/workflows/i18n.yml"
+  - ".github/workflows/lint.yml"
   - *sources
 
 cljs:
@@ -187,3 +187,19 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+serialization_baseline:
+  - ".github/workflows/serialization.yml"
+  - "test_resources/serialization_baseline/**"
+
+openapi:
+  - ".github/workflows/lint.yml"
+  - "src/metabase/api/**"
+  - "src/metabase/api_routes/**"
+  - "src/metabase/*_rest/api.clj"
+  - "src/metabase/*/api.clj"
+  - "src/metabase/*/api/*.clj"
+  - "enterprise/backend/src/metabase_enterprise/**/api.clj"
+  - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
+  - "resources/openapi/**"
+  - "package.json"

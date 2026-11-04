@@ -57,7 +57,7 @@
 (defn- set-role-throws-test!
   [details-map]
   (testing "throws when assigning a non-existent role"
-    (is (thrown-with-msg? SQLException #"There is no role `asdf` in user directories."
+    (is (thrown-with-msg? SQLException #"There is no role `asdf` in `user directories`."
                           (sql-jdbc.execute/do-with-connection-with-options
                            :clickhouse (sql-jdbc.conn/connection-details->spec :clickhouse details-map) nil
                            (fn [^java.sql.Connection conn]

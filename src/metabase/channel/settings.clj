@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -313,11 +315,18 @@
   :visibility :internal
   :default    :external-only
   :export?    false
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-host-strategy new-value)))
+  :setter     :none
+  :doc        (str "Set this when a notification webhook must reach a host on your private network "
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+  :getter     (fn []
+                (let [[env-var-name raw-value] (setting/env-var-source :http-channel-host-strategy)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      :external-only))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first webhook.
+(defmethod startup/def-startup-validation! ::http-channel-host-strategy [_]
+  (http-channel-host-strategy))
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

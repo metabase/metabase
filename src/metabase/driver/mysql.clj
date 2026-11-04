@@ -19,7 +19,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
+   [metabase.driver.sql-jdbc.quoting :as quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -208,12 +208,10 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
-(def ^:private disallowed-additional-opts #"(?:allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
-
-(defmethod driver/validate-db-details! :mysql
-  [_driver details]
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+(defmethod driver/disallowed-connection-parameters :mysql
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile" "allowLoadLocalInfileInPath"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -337,10 +335,16 @@
   :sunday)
 
 (defmethod driver/rename-tables!* :mysql
-  [_driver db-id sorted-rename-map]
-  (let [rename-clauses (map (fn [[from-table to-table]]
-                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
-                            sorted-rename-map)
+  [driver db-id sorted-rename-map]
+  ;; `with-quoting` is what binds the dialect: a bare `sql/format-entity` leaves it nil, and
+  ;; then HoneySQL's quote fn is `identity` and every identifier goes out raw
+  (let [rename-clauses (quoting/with-quoting driver
+                         (doall
+                          (map (fn [[from-table to-table]]
+                                 (str (sql/format-entity from-table)
+                                      " TO "
+                                      (sql/format-entity to-table)))
+                               sorted-rename-map)))
         sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
     (sql-jdbc.execute/do-with-connection-with-options
      :mysql
@@ -694,6 +698,14 @@
         (set-prog-nm-fn))
       (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
 
+(defn- set-local-infile
+  "Pin `allowLocalInfile` to `allowed?` on `spec`'s connection string.
+
+  Appending is what makes this stick: the driver lets URL parameters override connection `Properties`, and lets a later
+  duplicate parameter override an earlier one, so this only wins if it comes after `:additional-options`."
+  [spec allowed?]
+  (sql-jdbc.common/handle-additional-options spec {:additional-options (str "allowLocalInfile=" allowed?)}))
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -733,7 +745,8 @@
                          (dissoc :ssl)))]
        (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
-           (sql-jdbc.common/handle-additional-options details))))))
+           (sql-jdbc.common/handle-additional-options details)
+           (set-local-infile false))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
@@ -997,12 +1010,14 @@
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
-          (sql-jdbc.execute/do-with-connection-with-options
-           driver
-           db-id
-           nil
-           (fn [conn]
-             (jdbc/execute! {:connection conn} sql))))
+          ;; Bulk-loading needs a connection that will service `LOAD DATA LOCAL INFILE`, which the pooled connections
+          ;; refuse (see [[set-local-infile]]), so open a dedicated unpooled one for this statement. That is safe here
+          ;; where it is not for user-supplied SQL: the driver only sends the server the file named in the statement,
+          ;; and this statement names the temp file we just wrote.
+          (driver-api/with-metadata-provider db-id
+            (let [details (:details (driver-api/database (driver-api/metadata-provider)))]
+              (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+                (jdbc/execute! (set-local-infile spec true) sql)))))
         (finally
           (.delete temp-file))))))
 

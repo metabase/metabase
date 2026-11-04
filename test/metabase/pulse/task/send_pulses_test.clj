@@ -137,6 +137,25 @@
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
 
+(deftest send-pulse!*-skips-archived-dashboard-test
+  (testing "a trigger firing for a trashed Dashboard sends nothing"
+    (let [sent-channel-ids (atom #{})]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse! (fn [_pulse & {:keys [channel-ids]}]
+                                                           (swap! sent-channel-ids set/union channel-ids))]
+        (mt/with-temp [:model/Dashboard    {dash-id :id}  {}
+                       :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
+                       :model/PulseChannel {pc-id :id}    (merge {:pulse_id     pulse-id
+                                                                  :channel_type :slack
+                                                                  :details      {:channel "#random"}}
+                                                                 daily-at-1am)]
+          (t2/update! :model/Dashboard dash-id {:archived true})
+          (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
+          (is (= #{} @sent-channel-ids))
+          (testing "once the Dashboard is restored, the same fire sends"
+            (t2/update! :model/Dashboard dash-id {:archived false})
+            (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
+            (is (= #{pc-id} @sent-channel-ids))))))))
+
 (deftest init-dashboard-subscription-triggers!-group-runs-test
   (testing "a SendPulse trigger will send pulse to channels that have the same schedueld time"
     (pulse-channel-test/with-send-pulse-setup!
