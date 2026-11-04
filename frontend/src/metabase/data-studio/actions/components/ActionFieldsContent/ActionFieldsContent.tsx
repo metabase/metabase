@@ -2,29 +2,39 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type { FieldSettings } from "metabase-types/api";
 
 import { ActionFieldDetails } from "./ActionFieldDetails";
 import { ActionFieldEmptyState } from "./ActionFieldEmptyState";
 import { ActionFieldList } from "./ActionFieldList";
 import S from "./ActionFieldsContent.module.css";
-import { useActionFields } from "./hooks";
+import type { ActionField } from "./hooks";
 
 type ActionFieldsContentProps = {
-  action: WritebackQueryAction;
+  fields: ActionField[];
   fieldId: string | undefined;
+  description: string;
+  canReorder: boolean;
+  canChangeSettings: boolean;
   canChangeFieldType: boolean;
+  canChangeVisibility: boolean;
   getFieldsUrl: (fieldId?: string) => string;
+  onUpdateField: (fieldId: string, patch: Partial<FieldSettings>) => void;
+  onReorderFields: (fieldIds: string[]) => void;
 };
 
 export function ActionFieldsContent({
-  action,
+  fields,
   fieldId,
+  description,
+  canReorder,
+  canChangeSettings,
   canChangeFieldType,
+  canChangeVisibility,
   getFieldsUrl,
+  onUpdateField,
+  onReorderFields,
 }: ActionFieldsContentProps) {
-  const readOnly = !action.can_write;
-  const { fields, updateField, reorderFields } = useActionFields(action);
   const field = fields.find((field) => field.parameter.id === fieldId);
 
   return (
@@ -41,9 +51,10 @@ export function ActionFieldsContent({
         <ActionFieldList
           fields={fields}
           activeFieldId={field?.parameter.id}
-          readOnly={readOnly}
+          description={description}
+          isDraggable={canReorder}
           getFieldUrl={getFieldsUrl}
-          onReorder={reorderFields}
+          onReorder={onReorderFields}
         />
       </Stack>
       {field != null && (
@@ -79,15 +90,18 @@ export function ActionFieldsContent({
           <ActionFieldDetails
             key={field.parameter.id}
             field={field}
-            disabled={readOnly}
+            canChangeSettings={canChangeSettings}
             canChangeFieldType={canChangeFieldType}
-            onChange={(patch) => updateField(field.parameter.id, patch)}
+            canChangeVisibility={canChangeVisibility}
+            onChange={(patch) => onUpdateField(field.parameter.id, patch)}
           />
         </Stack>
       )}
       {field == null && fields.length > 0 && (
         <Flex align="center" flex="1" justify="center" miw={240}>
-          <ActionFieldEmptyState readOnly={readOnly} />
+          <ActionFieldEmptyState
+            readOnly={!canChangeSettings && !canChangeVisibility}
+          />
         </Flex>
       )}
     </Flex>

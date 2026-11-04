@@ -5,8 +5,12 @@
   job — so it has its own table rather than overloading `transform_job_run`. Member runs link back
   via `transform_run.dag_run_id`."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,13 +35,16 @@
   {:status    mi/transform-keyword
    :direction mi/transform-keyword})
 
-(defn start-dag-run!
+(mu/defn start-dag-run! :- ::transforms.schema/transform-dag-run
   "Start a DAG-reprocess run seeded from `source-transform-id`, traversing `direction`
   (`:upstream`/`:downstream`). `user-id` is the user who triggered it; `transform-count` is the
   number of transforms the run's plan selected to run, stored for display in run listings.
   Snapshots the seed transform's name and entity_id so the run stays displayable after the
   transform is deleted (its FK is SET NULL, as for `transform_run.transform_id`)."
-  [source-transform-id direction user-id transform-count]
+  [source-transform-id :- ::lib.schema.id/transform
+   direction           :- [:enum :upstream :downstream]
+   user-id             :- [:maybe ::lib.schema.id/user]
+   transform-count     :- :int]
   (let [transform (transforms.db/transform-snapshot source-transform-id)]
     (transforms.db/insert-dag-run! {:source_transform_id        source-transform-id
                                     :source_transform_name      (:name transform)
@@ -48,12 +55,12 @@
                                     :status                     :started
                                     :is_active                  true})))
 
-(defn running-run-for-source-transform-id
+(mu/defn running-run-for-source-transform-id :- [:maybe ::transforms.schema/transform-dag-run]
   "Return the single active DAG run seeded from `source-transform-id`, or nil."
-  [source-transform-id]
+  [source-transform-id :- ::lib.schema.id/transform]
   (transforms.db/active-dag-run-for-transform source-transform-id))
 
-(defn transform-runs-for-dag-run
+(mu/defn transform-runs-for-dag-run :- [:sequential ::transforms.schema/transform-run]
   "Return the transform runs that were part of the given DAG run, ordered by start time."
-  [dag-run-id]
+  [dag-run-id :- ms/PositiveInt]
   (transforms.db/runs-for-dag-run dag-run-id))

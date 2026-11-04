@@ -12,6 +12,17 @@
   [n]
   (format "00000000-0000-0000-0000-%012d" n))
 
+(deftest validate-external!-test
+  (let [spec {:schema [:map {:closed true} [:name :string]]}]
+    (testing "an export matching its spec's schema passes"
+      (is (nil? (serdes/validate-external! "Model" spec {:name "x"}))))
+    (testing "an export with a key its spec's schema does not declare throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid export of Model"
+                            (serdes/validate-external! "Model" spec {:name "x" :id 1}))))
+    (testing "a spec without a schema throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :schema"
+                            (serdes/validate-external! "Model" {} {:name "x"}))))))
+
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
   (binding [serdes/*export-field-fk* (constantly ::field-id)]
     (is (= [:field {} :metabase.models.serialization-test/field-id]

@@ -6,7 +6,6 @@ import { inputTypeHasOptions } from "metabase/actions/utils";
 import { TitledSection } from "metabase/metadata/components";
 import {
   Alert,
-  Code,
   Icon,
   SegmentedControl,
   Select,
@@ -19,24 +18,27 @@ import {
 import type { FieldSettings, FieldType } from "metabase-types/api";
 
 import { getFieldSettingsForFieldType } from "../../../utils";
+import { ActionFieldSourceCode } from "../ActionFieldSourceCode";
 import type { ActionField } from "../hooks";
 
 import { getDefaultValueInputType, textToOptions } from "./utils";
 
 type ActionFieldDetailsProps = {
   field: ActionField;
-  disabled: boolean;
+  canChangeSettings: boolean;
   canChangeFieldType: boolean;
+  canChangeVisibility: boolean;
   onChange: (patch: Partial<FieldSettings>) => void;
 };
 
 export function ActionFieldDetails({
   field,
-  disabled,
+  canChangeSettings,
   canChangeFieldType,
+  canChangeVisibility,
   onChange,
 }: ActionFieldDetailsProps) {
-  const { settings, variableName } = field;
+  const { settings, source } = field;
   const inputTypes = useMemo(
     () => getInputTypes()[settings.fieldType],
     [settings.fieldType],
@@ -54,18 +56,20 @@ export function ActionFieldDetails({
         <BlurTextInput
           label={t`Display name`}
           value={settings.title}
-          disabled={disabled}
+          disabled={!canChangeSettings}
           onChange={(title) => onChange({ title })}
         />
         <BlurTextarea
           label={t`Description`}
           value={settings.description ?? ""}
-          disabled={disabled}
+          disabled={!canChangeSettings}
           onChange={(description) => onChange({ description })}
         />
         <Stack gap="xs">
-          <Text fw="bold">{t`SQL variable`}</Text>
-          <Code w="fit-content">{`{{${variableName}}}`}</Code>
+          <Text fw="bold">
+            {source.type === "variable" ? t`SQL variable` : t`Column`}
+          </Text>
+          <ActionFieldSourceCode source={source} w="fit-content" />
         </Stack>
       </TitledSection>
       <TitledSection>
@@ -81,7 +85,7 @@ export function ActionFieldDetails({
               value,
               label: name,
             }))}
-            disabled={disabled || !canChangeFieldType}
+            disabled={!canChangeFieldType}
             onChange={(value) => {
               const fieldType = getFieldTypes().find(
                 (option) => option.value === value,
@@ -96,7 +100,7 @@ export function ActionFieldDetails({
           label={t`Input type`}
           value={settings.inputType}
           data={inputTypes.map(({ value, name }) => ({ value, label: name }))}
-          disabled={disabled}
+          disabled={!canChangeSettings}
           allowDeselect={false}
           onChange={(value) => {
             const inputType = inputTypes.find(
@@ -112,7 +116,7 @@ export function ActionFieldDetails({
             label={t`Options`}
             description={t`One option per line`}
             value={(settings.valueOptions ?? []).join("\n")}
-            disabled={disabled}
+            disabled={!canChangeSettings}
             onChange={(value) =>
               onChange({
                 valueOptions: textToOptions(value, settings.fieldType),
@@ -123,7 +127,7 @@ export function ActionFieldDetails({
         <BlurTextInput
           label={t`Placeholder`}
           value={settings.placeholder ?? ""}
-          disabled={disabled}
+          disabled={!canChangeSettings}
           onChange={(placeholder) => onChange({ placeholder })}
         />
         <BlurTextInput
@@ -133,7 +137,7 @@ export function ActionFieldDetails({
           value={
             settings.defaultValue != null ? String(settings.defaultValue) : ""
           }
-          disabled={disabled}
+          disabled={!canChangeSettings}
           onChange={(value) =>
             onChange({
               defaultValue: parseDefaultValue(value, settings.fieldType),
@@ -146,7 +150,7 @@ export function ActionFieldDetails({
           label={t`Required`}
           description={t`People must fill in this field to run the action`}
           checked={settings.required}
-          disabled={disabled}
+          disabled={!canChangeSettings}
           onChange={(event) =>
             onChange({ required: event.currentTarget.checked })
           }
@@ -155,7 +159,7 @@ export function ActionFieldDetails({
           label={t`Show field`}
           description={t`Hidden fields use their default value`}
           checked={!settings.hidden}
-          disabled={disabled}
+          disabled={!canChangeVisibility}
           onChange={(event) =>
             onChange({ hidden: !event.currentTarget.checked })
           }

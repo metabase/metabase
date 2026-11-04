@@ -62,10 +62,20 @@
 (def ^:private id-keys
   "For each code whose recovery steps name a table or a database, a map from the payload key to the
   function that reads that id from the `ex-data`."
+  ;; Repair and resolve throw these errors. The permission sweep query-checks the tables of
+  ;; `:table-id` and `:source-table` before repair and resolve run.
   {:unknown-table   {:database-id readable-database-id}
    :ambiguous-table {:database-id readable-database-id}
    :unknown-field   {:table-id :table-id}
    :ambiguous-fk    {:table-id :source-table}})
+
+(defn error-ids
+  "The `:table-id` or `:database-id` that the recovery steps for `error` name, read from the `ex-data` `data`.
+
+  For example, `(error-ids :ambiguous-fk {:source-table 5})` is `{:table-id 5}`, and a code whose steps
+  name no id gives `{}`. A table id is the raw `ex-data` value, so check it with `pos-int?`."
+  [error data]
+  (update-vals (id-keys error) #(% data)))
 
 (defn payload
   "The [[::payload]] for the pipeline exception `e`, whose `:error` code is `error`.
@@ -73,7 +83,7 @@
   A database id is kept only when [[readable-database-id]] returns it."
   [error e]
   (let [{:keys [entity-type entity-id source-card source-card-type] :as data} (ex-data e)
-        {:keys [table-id database-id]} (update-vals (id-keys error) #(% data))]
+        {:keys [table-id database-id]} (error-ids error data)]
     (cond-> {:message (or (ex-message e) "")}
       entity-type         (assoc :entity-type entity-type)
       (some? entity-id)   (assoc :entity-id entity-id)
@@ -172,6 +182,14 @@
      {:message  (:message payload#)
       :recovery ~recovery}))
 
+;;; Curation
+
+(defpipeline-error uncurated-source!
+  "The query reads a table, model, metric, measure, or segment that a curated-only Metabot may not use."
+  [{:uses #{"search"}
+    :text (str "Call `search` to find curated tables, models, or metrics and build the query on those instead. "
+               "A table related to a curated one may be joined, but not used as the query's source.")}])
+
 ;;; Table resolution
 
 (defrecoverable unknown-table!
@@ -249,8 +267,8 @@
 
 (defpipeline-error unresolved-join-alias-field!
   "A reference through a join alias named a column that join does not return."
-  ;; No step: the message already lists the columns the join returns, and for a grouped join those
-  ;; are its breakouts and aggregations, not a table's fields.
+  ;; No step: the message already lists the columns the join returns, and says how to reach another
+  ;; table's column through a plain table join.
   [])
 
 (defrecoverable column-not-returned!
@@ -346,6 +364,14 @@
   ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
+(defpipeline-error metric-as-source-card!
+  "A metric was the stage's `source-card:`, and the stage did not aggregate it."
+  ;; The message names the source the metric needs, or says to drop the metric when it has none. The step gives
+  ;; the reference form for the first case.
+  [{:uses #{}
+    :text (str "When you build the stage on the metric's source, reference the metric by its `portable_entity_id`: "
+               "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}])
+
 ;;; Query shape
 
 (defpipeline-error missing-source-in-first-stage!
@@ -375,6 +401,11 @@
 (defpipeline-error query-not-runnable!
   "The query parsed but would not run — the editor's own run gate rejects it."
   [])
+
+(defpipeline-error query-preprocessing-failed!
+  "The query processor rejected the constructed query while preparing it to run."
+  [{:uses #{}
+    :text "Fix that part of the query and retry."}])
 
 (defpipeline-error not-implemented-yet!
   "The query used a representations feature the pipeline does not support yet."

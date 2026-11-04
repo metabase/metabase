@@ -3,12 +3,13 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
+import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppsNavbarSection } from "./DataAppsNavbarSection";
 
 describe("DataAppsNavbarSection", () => {
   it("does not show apps section when there are no data apps", async () => {
-    fetchMock.get("path:/api/ee/apps?available=true", []);
+    fetchMock.get("path:/api/ee/apps", []);
 
     renderWithProviders(<DataAppsNavbarSection onItemSelect={jest.fn()} />);
 
@@ -19,10 +20,20 @@ describe("DataAppsNavbarSection", () => {
     );
   });
 
-  it("shows every data app as a link", async () => {
-    fetchMock.get("path:/api/ee/apps?available=true", [
-      { name: "gizmo", display_name: "Gizmo" },
-      { name: "gadget", display_name: "Gadget" },
+  it("shows every enabled, current data app as a link", async () => {
+    fetchMock.get("path:/api/ee/apps", [
+      createMockDataApp({ name: "gizmo", display_name: "Gizmo" }),
+      createMockDataApp({ name: "gadget", display_name: "Gadget" }),
+      createMockDataApp({
+        name: "disabled",
+        display_name: "Disabled",
+        enabled: false,
+      }),
+      createMockDataApp({
+        name: "outdated",
+        display_name: "Outdated",
+        outdated: true,
+      }),
     ]);
 
     const onItemSelect = jest.fn();
@@ -60,6 +71,9 @@ describe("DataAppsNavbarSection", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /Contents/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Disabled|Outdated/ }),
     ).not.toBeInTheDocument();
   });
 });

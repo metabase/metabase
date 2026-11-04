@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -36,6 +37,14 @@
                                    {:stored_result_id sr-id
                                     :card_id          (:id card)
                                     :exploration_id   (:id expl)}))))))))
+
+(deftest stored-result-gate-inputs-for-card-test
+  (testing "a card's snapshots are read without their result blob"
+    (mt/with-temp [:model/Card card {}]
+      (let [sr-id (stored-result!)]
+        (t2/insert! :model/StoredResultUse {:stored_result_id sr-id :card_id (:id card)})
+        (is (= [#{:id :database_id :dataset_query :data_access_token :resolved_source_ids}]
+               (map (comp set keys) (queries.db/stored-result-gate-inputs-for-card (:id card)))))))))
 
 (deftest exploration-reference-test
   (testing "exploration_id only succeeds"

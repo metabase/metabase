@@ -39,7 +39,7 @@
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
 (defn- usable-sources-hint
-  "Return the usable source IDs from an `:incompatible-metric` error as MCP guidance."
+  "Return the usable source IDs from an `:incompatible-metric` or `:metric-as-source-card` error as MCP guidance."
   [usable-sources]
   (when (seq usable-sources)
     (apply message/msg
@@ -59,10 +59,15 @@
 
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
+  [{:keys [error entity-type entity-id metric-ids usable-sources source-card source-card-type]}]
   (case error
     :incompatible-metric
     (usable-sources-hint usable-sources)
+
+    :metric-as-source-card
+    (when-let [sources-hint (usable-sources-hint usable-sources)]
+      (message/msg ["%s Then reference the metric by its numeric ID: `aggregation: [[\"metric\", {}, %s]]`."]
+                   sources-hint (first metric-ids)))
 
     :uri-in-source-table
     (uri-hint entity-type entity-id)
@@ -121,5 +126,8 @@
 
     :missing-source-in-first-stage
     (message/msg ["`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."])
+
+    :query-preprocessing-failed
+    (message/msg ["Fix that part of the query and retry."])
 
     nil))

@@ -25,11 +25,13 @@
 (defn- invoke-sql-tool
   [profile memory tool-name args]
   (binding [scope/*current-user-scope* api-scope/unrestricted]
-    (let [entries (tools/->entries [#'tools/edit-sql-query-tool #'tools/replace-sql-query-tool
-                                    (if (= profile :sql)
-                                      #'tools/create-sql-query-code-edit-tool
-                                      #'tools/create-sql-query-tool)
-                                    #'tools/read-resource-tool]
+    (let [entries (tools/->entries (cond-> [#'tools/edit-sql-query-tool #'tools/replace-sql-query-tool
+                                            (if (= profile :sql)
+                                              #'tools/create-sql-query-code-edit-tool
+                                              #'tools/create-sql-query-tool)
+                                            #'tools/read-resource-tool]
+                                     ;; Like the real profiles: :internal has the notebook builder, :sql does not.
+                                     (= profile :internal) (conj #'tools/construct-notebook-query-tool))
                                    (atom memory) nil profile)]
       ((get-in entries [tool-name :fn])
        (merge {:title "Birds"}
@@ -219,6 +221,16 @@
       (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
       (is (str/includes? (:output result) "SQL for this edit: \"SELECT 'owl'\\n-- \\u001b[4mnotes\"")))))
 
+(def ^:private native-refusal
+  {:class        :unrecoverable
+   :code         ::sql.common/no-native-permission
+   :user-message (str "You do not have permission to write SQL queries against this database."
+                      " Native query permissions are required.")})
+
+(def ^:private notebook-fallback
+  {:class :recoverable
+   :code  ::sql/no-native-permission-with-notebook-fallback})
+
 (deftest sql-edit-permission-error-test
   (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
@@ -227,15 +239,35 @@
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-db db
           (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")]
-            (doseq [tool-name ["edit_sql_query" "replace_sql_query"]]
-              (let [result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} tool-name
-                                            {:edits [{:old_string "1" :new_string "2"}]
-                                             :new_query "SELECT 2"})]
-                (is (= {:class :unrecoverable
-                        :code ::sql.common/no-native-permission
-                        :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}
-                       (:error result)))
-                (is (str/includes? (:output result) "Don't retry"))))))))))
+            (doseq [tool-name ["edit_sql_query" "replace_sql_query"]
+                    :let [invoke #(invoke-sql-tool % {:state {:queries {"q1" query}}} tool-name
+                                                   {:edits [{:old_string "1" :new_string "2"}]
+                                                    :new_query "SELECT 2"})]]
+              (testing (str tool-name " without the notebook builder")
+                (let [result (invoke :sql)]
+                  (is (= native-refusal (:error result)))
+                  (is (str/includes? (:output result) "Don't retry"))))
+              (testing (str tool-name " with the notebook builder")
+                (let [result (invoke :internal)]
+                  (is (= notebook-fallback (:error result)))
+                  (is (str/includes? (:output result) "Build the question with `construct_notebook_query`")))))))))))
+
+(deftest sql-edit-without-database-test
+  (testing "editing a SQL query with no database reports the missing database, not a permission refusal"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [query (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))]
+        (doseq [[label draft] {"no database key" (dissoc query :database)
+                               "nil database"    (assoc query :database nil)}
+                profile       [:sql :internal]
+                tool-name     ["edit_sql_query" "replace_sql_query"]]
+          (testing (str label " / " profile " / " tool-name)
+            (let [result (invoke-sql-tool profile {:state {:queries {"q1" draft}}} tool-name
+                                          {:edits [{:old_string "1" :new_string "2"}] :new_query "SELECT 2"})]
+              (is (= {:class        :unrecoverable
+                      :code         ::sql.common/no-database
+                      :user-message "No database is selected for this query. Select a database and try again."}
+                     (:error result)))
+              (is (str/includes? (:output result) "Don't retry")))))))))
 
 (deftest missing-sql-editor-test
   (doseq [memory [nil {} {:context {:user_is_viewing [{:type "code_editor" :buffers []}]}}]]
@@ -273,22 +305,25 @@
   (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
       (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
-      (doseq [[permission expected-error]
-              [[:query-builder-and-native nil]
-               [:query-builder {:class :unrecoverable
-                                :code ::sql.common/no-native-permission
-                                :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}]
-               [:no {:class :unrecoverable
-                     :code ::sql.create/database-access-denied
-                     :user-message "You do not have access to this database."}]]]
+      (doseq [:let [access-denied {:class        :unrecoverable
+                                   :code         ::sql.create/database-access-denied
+                                   :user-message "You do not have access to this database."}]
+              [permission profile expected-error]
+              [[:query-builder-and-native :internal nil]
+               [:query-builder-and-native :sql      nil]
+               [:query-builder            :internal notebook-fallback]
+               [:query-builder            :sql      native-refusal]
+               [:no                       :internal access-denied]
+               [:no                       :sql      access-denied]]]
         (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries permission)
         (mt/with-current-user (mt/user->id :rasta)
-          (doseq [editor? [false true]]
-            (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id})]
+          (testing (str permission " " profile)
+            (let [result (invoke-sql-tool profile editor-memory "create_sql_query" {:database_id db-id})]
               (is (= expected-error (:error result)))
-              (if expected-error
-                (is (str/includes? (:output result) "Don't retry"))
-                (is (some? (:structured-output result)))))))))))
+              (case (:class expected-error)
+                nil            (is (some? (:structured-output result)))
+                :recoverable   (is (str/includes? (:output result) "Build the question with `construct_notebook_query`"))
+                :unrecoverable (is (str/includes? (:output result) "Don't retry"))))))))))
 
 (deftest creation-delivers-query-to-the-profile-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -415,6 +450,51 @@
               (is (str/includes? output "Rewrite the SQL as one statement"))
               (is (not (str/includes? output "Common issues to check:")))
               (is (nil? (:structured-output result))))))))))
+
+(deftest invalid-template-syntax-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [engine [:postgres :h2]]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine engine}]
+        (mt/with-db db
+          (doseq [profile [:internal :sql]
+                  tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+            (testing (str engine " / " profile " / " tool-name)
+              (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT * FROM t [[WHERE x = {{x}}")
+                    output (:output result)]
+                (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax} (:error result)))
+                (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
+                (is (= (= tool-name "edit_sql_query")
+                       (str/includes? output "The problem can be in SQL that this edit did not change.")))
+                (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
+                (is (str/includes? output "No changes were saved."))
+                (is (nil? (:structured-output result)))))))))))
+
+(deftest brackets-without-template-tags-test
+  (testing "SQL with `[[` but no template tag passes, because Metabase sends it to the database as it is"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [profile [:internal :sql]
+              tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+        (testing (str profile " / " tool-name)
+          (let [result (invoke-with-proposed-sql profile tool-name (mt/id) "SELECT 1 AS \"[[x]]\"")]
+            (is (nil? (:error result)))
+            (is (= "SELECT 1 AS \"[[x]]\"" (get-in result [:structured-output :query-content])))))))))
+
+(deftest edit-elsewhere-in-sql-with-invalid-template-syntax-test
+  (testing "An edit that leaves an existing unclosed tag in place returns a recoverable error, and an edit that closes it succeeds"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [memory (assoc editor-memory :state {:queries {"q1" {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "SELECT * FROM venues [[WHERE id = {{id}}"}}}})]
+        (doseq [profile [:internal :sql]]
+          (testing profile
+            (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax}
+                   (:error (invoke-sql-tool profile memory "edit_sql_query"
+                                            {:edits [{:old_string "*" :new_string "name"}]}))))
+            (let [result (invoke-sql-tool profile memory "edit_sql_query"
+                                          {:edits [{:old_string "{{id}}" :new_string "{{id}}]]"}]})]
+              (is (nil? (:error result)))
+              (is (= "SELECT * FROM venues [[WHERE id = {{id}}]]"
+                     (get-in result [:structured-output :query-content]))))))))))
 
 (deftest closest-sql-match-test
   (mt/with-current-user (mt/user->id :crowberto)

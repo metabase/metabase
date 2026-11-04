@@ -209,7 +209,7 @@
       (str/join (repeat 150 "x"))            (str "\"" (str/join (repeat 100 "x")) "...\""))))
 
 (deftest ^:parallel analyze-chart-tool-unexpected-error-test
-  (testing "an unexpected error ends the turn without reaching the model"
+  (testing "an unexpected error is `:internal`, so its text never reaches the model"
     (mt/with-dynamic-fn-redefs [interestingness/compute-chart-stats (fn [& _] (throw (ex-info "boom" {})))]
       (is (= {:class :unrecoverable :code :internal}
              (failure "c1" (numeric-series-config)))))))

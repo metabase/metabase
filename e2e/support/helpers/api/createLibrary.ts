@@ -1,41 +1,42 @@
-import type { Collection } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionType,
+  ListCollectionItemsResponse,
+} from "metabase-types/api";
 
-import { retryRequest } from "../e2e-request-helpers";
-
-type LibraryResponse = Collection & {
-  effective_children?: Collection[];
+export type LibraryCollectionIds = {
+  libraryCollectionId: CollectionId;
+  dataCollectionId: CollectionId;
+  metricsCollectionId: CollectionId;
+  dashboardsCollectionId: CollectionId;
 };
 
-const hasLibraryRootCollections = (collections: Collection[]) => {
-  const libraryCollection = collections.find(({ type }) => type === "library");
-
-  return Boolean(
-    libraryCollection?.children?.some(({ type }) => type === "library-data") &&
-    libraryCollection?.children?.some(({ type }) => type === "library-metrics"),
-  );
-};
-
-export const createLibrary = (): Cypress.Chainable<
-  Cypress.Response<LibraryResponse>
-> => {
-  cy.log("Initialize library");
-
+export function createLibrary(): Cypress.Chainable<LibraryCollectionIds> {
   return cy
-    .request("POST", "/api/ee/library")
-    .then(() => cy.request<LibraryResponse>("GET", "/api/ee/library"))
-    .then((response) => {
-      return retryRequest(
-        () =>
-          cy.request<Collection[]>({
-            method: "GET",
-            url: "/api/collection/tree",
-            qs: {
-              "exclude-other-user-collections": true,
-              "exclude-archived": true,
-              "include-library": true,
-            },
-          }),
-        ({ body }) => hasLibraryRootCollections(body),
-      ).then(() => response);
-    });
-};
+    .request<Collection>("POST", "/api/ee/library")
+    .then(({ body: library }) =>
+      cy
+        .request<ListCollectionItemsResponse>({
+          method: "GET",
+          url: `/api/collection/${library.id}/items`,
+          qs: { models: "collection" },
+        })
+        .then(({ body: { data: children } }) => {
+          const childId = (type: CollectionType): CollectionId => {
+            const child = children.find((item) => item.type === type);
+            if (child == null) {
+              throw new Error(`The Library has no ${type} collection`);
+            }
+            return child.id;
+          };
+
+          return {
+            libraryCollectionId: library.id,
+            dataCollectionId: childId("library-data"),
+            metricsCollectionId: childId("library-metrics"),
+            dashboardsCollectionId: childId("library-dashboards"),
+          };
+        }),
+    );
+}

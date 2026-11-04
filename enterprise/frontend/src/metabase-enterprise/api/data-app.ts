@@ -15,15 +15,12 @@ import { idTag, invalidateTags, listTag } from "./tags";
 // when a sync changes things.
 const REPO_STATUS_TAG = idTag("data-app", "REPO-STATUS");
 
-type ListDataAppsOptions = { available?: boolean };
-
 export const dataAppApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listDataApps: builder.query<DataApp[], ListDataAppsOptions | void>({
-      query: (options) => ({
+    listDataApps: builder.query<DataApp[], void>({
+      query: () => ({
         method: "GET",
         url: "/api/ee/apps",
-        params: options,
       }),
       providesTags: (apps = []) => [
         listTag("data-app"),
@@ -124,14 +121,6 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { name }) =>
         invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
     }),
-    deleteDataApp: builder.mutation<void, string>({
-      query: (name) => ({
-        method: "DELETE",
-        url: `/api/ee/apps/${encodeURIComponent(name)}`,
-      }),
-      invalidatesTags: (_, error, name) =>
-        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
-    }),
   }),
 });
 
@@ -144,5 +133,4 @@ export const {
   useAddDataAppGroupsMutation,
   useRemoveDataAppGroupMutation,
   useSetDataAppEnabledMutation,
-  useDeleteDataAppMutation,
 } = dataAppApi;

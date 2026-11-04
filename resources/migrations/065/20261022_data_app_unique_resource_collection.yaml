@@ -1,7 +1,8 @@
 ## Two data apps can't share one resource collection. A plain index on the column comes first, on every database: on
 ## MySQL and MariaDB a unique index would otherwise take the place of the index behind the foreign key, and a rollback
-## could not drop it. Postgres has that index already (20261006_data_app_resource_collection). Apps that share a
-## collection keep it for the first app only; the others are left without one, which an app may be given again.
+## could not drop it. On Postgres an instance upgraded from 64 has the index already, from
+## 2026/20261023_data_app_resource_collection_index. Apps that share a collection keep it for the first app only; the
+## others are left without one, which an app may be given again.
 
 databaseChangeLog:
   - changeSet:

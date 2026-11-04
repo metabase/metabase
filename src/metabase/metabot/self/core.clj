@@ -1094,11 +1094,10 @@
                                 (catch Throwable e
                                   ;; `invoke` does not throw. If something gets past it, pairing the
                                   ;; call with a result still matters more than the diagnosis, so
-                                  ;; log and report the same shape a server fault reports.
+                                  ;; log it and report it the way `invoke` reports a failure.
                                   (log/error e "Tool invocation escaped the runtime"
                                              {:tool-name safe-name})
-                                  {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                                   :error  {:class :unrecoverable :code :internal}}))))))
+                                  (tools.runtime/render (tools.error/classify e) (keys tools))))))))
               results  (collect-tool-result tool-call-id tool-name outcome)]
           (when (ait/capture-active?)
             (ait/record! {:ai/tool-output results}))

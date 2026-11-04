@@ -1,6 +1,9 @@
+import _ from "underscore";
+
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { ActionDefinitionContent } from "metabase/data-studio/actions/components/ActionDefinitionContent";
+import { ImplicitActionDefinitionContent } from "metabase/data-studio/actions/components/ImplicitActionDefinitionContent";
+import { QueryActionDefinitionContent } from "metabase/data-studio/actions/components/QueryActionDefinitionContent";
 import { Center } from "metabase/ui";
 
 import { DataAppActionHeader } from "../../components/DataAppActionHeader";
@@ -20,7 +23,17 @@ export function DataAppActionDefinitionPage() {
   return (
     <PageContainer data-testid="data-app-action-definition">
       <DataAppActionHeader app={app} action={action} />
-      <ActionDefinitionContent action={action} databases={databases} />
+      {action.type === "implicit" ? (
+        <ImplicitActionDefinitionContent
+          tableId={action.table_id}
+          kind={action.kind}
+          readOnly
+          onChangeTable={_.noop}
+          onChangeKind={_.noop}
+        />
+      ) : (
+        <QueryActionDefinitionContent action={action} databases={databases} />
+      )}
     </PageContainer>
   );
 }

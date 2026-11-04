@@ -55,7 +55,6 @@
     :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -157,6 +156,7 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/ImpersonationQueryCache
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment

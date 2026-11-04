@@ -186,7 +186,7 @@ export function DashCardCardParameterMapper({
                 fw="bold"
                 fz="sm"
                 lh={1}
-                color="text-disabled"
+                color="text-secondary"
               >{t`Auto-connected`}</Text>
             </Flex>
           );

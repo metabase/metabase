@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -651,7 +652,7 @@
                     :type          :metric
                     :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
       ;; Straight to the table: the model's `:in` transform would not store a blank query.
-      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (t2/update! (t2/table-name :model/Card) :id metric-id {:dataset_query "{}"})
       (is (= (mt/id :orders) (t2/select-one-fn :table_id :model/Card :id metric-id))
           "the base table is still recorded, so it is there to be wrongly offered")
       (mt/with-current-user (mt/user->id :crowberto)
@@ -1296,3 +1297,20 @@
                                               :with-field-values?         false}))]
                 (is (nil? (:queryable-dimensions out)))
                 (is (nil? (:join-required-dimensions out)))))))))))
+
+(deftest card-details-check-types-before-reading-metadata-test
+  (mt/as-admin
+    (doseq [actual-type [:model :question :metric]]
+      (mt/with-temp [:model/Card {card-id :id} {:type actual-type}]
+        (doseq [expected-type [:model :question :metric]
+                :when (not= actual-type expected-type)]
+          (is (=? {:class :recoverable
+                   :code :metabase.metabot.tools.util/wrong-source-type
+                   :message (str "Card " card-id " is a " (name actual-type)
+                                 ", not a " (name expected-type) ".")}
+                  (tools.error/classify
+                   (is (thrown? clojure.lang.ExceptionInfo
+                                (if (= expected-type :metric)
+                                  (entity-details/get-metric-details {:metric-id card-id})
+                                  (entity-details/get-table-details
+                                   {:entity-type expected-type :entity-id card-id}))))))))))))

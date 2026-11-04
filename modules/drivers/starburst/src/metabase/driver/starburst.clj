@@ -594,16 +594,6 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
-     (when-let [db (cond
-                     ;; id?
-                     (integer? db-or-id-or-spec)
-                     (driver-api/with-metadata-provider db-or-id-or-spec
-                       (driver-api/database (driver-api/metadata-provider)))
-                     ;; db?
-                     (u/id db-or-id-or-spec)     db-or-id-or-spec
-                     ;; otherwise it's a spec and we can't get the db
-                     :else nil)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
@@ -958,6 +948,11 @@
               details)]
     ;; in any case, remove the standalone Kerberos properties from details map
     (apply dissoc (cons det (keys kerb-props->url-param-names)))))
+
+;; `jdbc-spec` splices the schema into the URL path after the catalog
+(defmethod driver/url-building-detail-keys :starburst
+  [driver]
+  (conj ((get-method driver/url-building-detail-keys :default) driver) :schema))
 
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to starburst via JDBC, from the given `opts`."

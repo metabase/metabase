@@ -29,18 +29,19 @@ driver:
       default: key-pair
       required: true
       options:
-        - {name: "RSA key pair",                 value: "key-pair"}
-        - {name: "Workload Identity Federation", value: "wif"}
-        - {name: "Username & password",          value: "password"}
+        - {name: "RSA key pair",                      value: "key-pair"}
+        - {name: "Workload Identity Federation",      value: "wif"}
+        - {name: "OAuth 2.0 (client credentials)",    value: "oauth-client-credentials"}
+        - {name: "Username & password",               value: "password"}
     - name: wif-provider
       display-name: Workload identity provider
       type: select
       required: true
       options:
         - {name: "OpenID Connect (JWT)", value: "OIDC"}
-        - {name: "AWS",                  value: "AWS"}
-        - {name: "Azure",                value: "AZURE"}
-        - {name: "Google Cloud",         value: "GCP"}
+        - {name: "AWS",                  value: "AWS",   hidden-when-hosted: true}
+        - {name: "Azure",                value: "AZURE", hidden-when-hosted: true}
+        - {name: "Google Cloud",         value: "GCP",   hidden-when-hosted: true}
       visible-if:
         auth-mode: wif
     - name: wif-token
@@ -57,6 +58,33 @@ driver:
       placeholder: "/var/run/secrets/tokens/oidc-token"
       visible-if:
         wif-provider: OIDC
+    - name: oauth-client-id
+      display-name: OAuth client ID
+      helper-text: The client ID issued by your identity provider for Snowflake access.
+      visible-if:
+        auth-mode: oauth-client-credentials
+      required: true
+    - merge:
+      - password
+      - name: oauth-client-secret
+        display-name: OAuth client secret
+        helper-text: The client secret issued by your identity provider.
+        visible-if:
+          auth-mode: oauth-client-credentials
+        required: true
+    - name: oauth-token-request-url
+      display-name: OAuth token request URL
+      helper-text: Your identity provider's token endpoint.
+      placeholder: https://your-idp.example.com/oauth2/v1/token
+      visible-if:
+        auth-mode: oauth-client-credentials
+      required: true
+    - name: oauth-scope
+      display-name: OAuth scope (optional)
+      helper-text: Space-separated scopes. Leave blank to use the configured role.
+      placeholder: session:role:ANALYST
+      visible-if:
+        auth-mode: oauth-client-credentials
     - name: private-key
       display-name: RSA private key (PKCS#8/.p8)
       type: secret

@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
@@ -19,6 +20,11 @@
    (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
+
+(defn app-url
+  "The API URL of the data `app`, followed by `parts`."
+  [{app-name :name} & parts]
+  (str/join "/" (list* "ee/apps" app-name parts)))
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -59,7 +65,7 @@
         :as   options}]
   (let [entity-id       (or entity_id (app-entity-id dir))
         collection      (if (contains? options :collection) collection (collection-entity-id dir))
-        collection-name (str "Data App: " slug)
+        collection-name (data-apps.db/resource-collection-name slug)
         resources       (if (contains? options :resources)
                           resources
                           (when collection {(collection-path collection-name) (collection-file collection collection-name)}))]
@@ -149,6 +155,14 @@
                         (extract "Action" (action-copy action (copy-id action)))))))]
     (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
 
+(defn do-with-app-collection
+  "Call `f` with the id of the resource collection of a data app named `birds`, with the data-apps feature on; deleting
+  the app afterwards deletes what it holds."
+  [f]
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
+      (f collection-id))))
+
 (defn do-with-library!
   "Call `f` with the IDs of the root data library (`:data-id`) and metrics library (`:metrics-id`) collections, creating the
   library for the call when the instance has none."
@@ -165,8 +179,8 @@
           (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
 
 (defn do-with-sources!
-  "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and a query action
-  that belongs to no model, and with what it can't, a venues model and an action on it, as
+  "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and an implicit action
+  on venues that belongs to no model, and with what it can't, a venues model and an action on it, as
   `{:metric-id :action-id :model-id :model-action-id}`."
   [f]
   (do-with-library!
@@ -183,11 +197,13 @@
                                                   :database_id   (mt/id)
                                                   :dataset_query query}]
          (f {:metric-id       metric-id
-             :action-id       (actions/insert! {:name          "Rename venue"
-                                                :type          :query
-                                                :database_id   (mt/id)
-                                                :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}}")
-                                                :parameters    [{:id "name" :slug "name" :type :string/=}]})
+             :action-id       (let [action-id (t2/insert-returning-pk! :model/Action {:name       "Update venue"
+                                                                                      :type       :implicit
+                                                                                      :creator_id (mt/user->id :crowberto)})]
+                                (t2/insert! :model/ImplicitAction {:action_id action-id
+                                                                   :kind      "row/update"
+                                                                   :table_id  (mt/id :venues)})
+                                action-id)
              :model-id        model-id
              :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
                                                 :model_id model-id})}))))))

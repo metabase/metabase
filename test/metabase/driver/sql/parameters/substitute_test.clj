@@ -1356,6 +1356,19 @@
                            :target [:variable [:template-tag "names_list"]]
                            :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
+(deftest ^:parallel multiple-value-number-array-test
+  (testing "an array of values for a number variable is substituted as a list of numbers"
+    (is (= {:query  "SELECT * FROM CATEGORIES where id IN (10, 20)"
+            :params []}
+           (expand*
+            {:native     {:query         "SELECT * FROM CATEGORIES [[where id IN ({{ids_list}})]]"
+                          :template-tags {"ids_list" {:name         "ids_list"
+                                                      :display-name "Ids list"
+                                                      :type         :number}}}
+             :parameters [{:type   "number/="
+                           :target [:variable [:template-tag "ids_list"]]
+                           :value  [10 20]}]})))))
+
 (deftest ^:parallel multiple-value-test-3
   (testing "Make sure arrays of values also work for 'field filter' params"
     (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"CATEGORIES\".\"NAME\" IN (?, ?, ?)",

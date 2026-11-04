@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -39,23 +38,34 @@
   "Map of table name to id for the tables of the Database with `database-id` in `schema`."
   [database-id :- ::lib.schema.id/database
    schema      :- :string]
-  (t2/select-fn->pk :name :model/Table :db_id database-id :schema schema :active true
-                    {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-fn->pk :name :model/Table :db_id database-id :schema schema :active true))
 
 (mu/defn field-ids-by-name :- [:map-of :string ::lib.schema.id/field]
   "Map of field name to id for the top-level fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->pk :name :model/Field :table_id table-id :parent_id nil
-                    {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn->pk :name :model/Field :table_id table-id :parent_id nil))
+
+(defn- set-user-values!
+  "Write `values` to the row of `model` with `id` and record them as user values in its `settings-model` row, so that
+  sync does not change them. `flags` go only to the settings row."
+  ([model settings-model settings-pk id values]
+   (set-user-values! model settings-model settings-pk id values {}))
+  ([model settings-model settings-pk id values flags]
+   (let [settings (merge values flags)]
+     (t2/with-transaction [_]
+       (if (t2/exists? settings-model id)
+         (t2/update! settings-model id settings)
+         (t2/insert! settings-model (assoc settings settings-pk id)))
+       (t2/update! model id values)))))
 
 (mu/defn set-field-semantic-type!
   "Set the semantic type of the Field with `field-id` as a user value, so that sync does not change it. A nil
   semantic type is a user value too: the Field has no semantic type."
   [field-id      :- ::lib.schema.id/field
    semantic-type :- [:maybe :keyword]]
-  (if (t2/exists? :model/FieldUserSettings field-id)
-    (t2/update! :model/FieldUserSettings field-id {:semantic_type semantic-type})
-    (t2/insert! :model/FieldUserSettings {:field_id field-id, :semantic_type semantic-type})))
+  ;; The settings row records a nil semantic type as a user value only with its flag.
+  (set-user-values! :model/Field :model/FieldUserSettings :field_id field-id
+                    {:semantic_type semantic-type} {:semantic_type_set true}))
 
 (mu/defn set-table-display-name-and-description!
   "Set the display name and the description of the Table with `table-id` as user values, the same as an edit in the
@@ -63,18 +73,14 @@
   [table-id     :- ::lib.schema.id/table
    display-name :- :string
    description  :- :string]
-  (let [values {:display_name display-name, :description description}]
-    (if (t2/exists? :model/TableUserSettings table-id)
-      (t2/update! :model/TableUserSettings table-id values)
-      (t2/insert! :model/TableUserSettings (assoc values :table_id table-id)))))
+  (set-user-values! :model/Table :model/TableUserSettings :table_id table-id
+                    {:display_name display-name, :description description}))
 
 (mu/defn set-field-description!
   "Set the description of the Field with `field-id` as a user value, the same as an edit in the data model."
   [field-id    :- ::lib.schema.id/field
    description :- :string]
-  (if (t2/exists? :model/FieldUserSettings field-id)
-    (t2/update! :model/FieldUserSettings field-id {:description description})
-    (t2/insert! :model/FieldUserSettings {:field_id field-id, :description description})))
+  (set-user-values! :model/Field :model/FieldUserSettings :field_id field-id {:description description}))
 
 (mu/defn first-admin-id :- [:maybe ::lib.schema.id/user]
   "The id of the first active admin, or nil before the setup."
@@ -133,20 +139,17 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (if (empty? field-ids)
     {}
-    (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]
-                      {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+    (t2/select-pk->fn :table_id :model/Field :id [:in field-ids])))
 
 (mu/defn active-table-ids :- [:sequential ::lib.schema.id/table]
   "The ids of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-vec :model/Table :db_id database-id :active true
-                     {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-pks-vec :model/Table :db_id database-id :active true))
 
 (mu/defn table-for-categories :- [:maybe :map]
   "The Table with `table-id`, with the user values, for field categorization."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :name :display_name :description] :id table-id
-                 {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one [:model/Table :id :db_id :name :display_name :description] :id table-id))
 
 (mu/defn fields-for-categories :- [:sequential :map]
   "The active, visible Fields of the Table with `table-id`, with the user values, in table order."
@@ -155,8 +158,7 @@
              :table_id table-id
              :active true
              :visibility_type [:not-in ["sensitive" "retired"]]
-             {:from     [(warehouse-schema-overlay/field-query)]
-              :order-by [[:position :asc] [:id :asc]]}))
+             {:order-by [[:position :asc] [:id :asc]]}))
 
 (defn root-collection-id-by-name
   "The id of the top-level, not archived Collection named `collection-name`, or nil. Prototype: reads the table
@@ -180,8 +182,7 @@
   [field-id :- ::lib.schema.id/field]
   (when-let [field (t2/select-one [:model/Field :id :table_id :name :display_name :description :base_type
                                    :semantic_type :fingerprint]
-                                  :id field-id
-                                  {:from [(warehouse-schema-overlay/field-query)]})]
+                                  :id field-id)]
     (assoc field :table (table-for-categories (:table_id field)))))
 
 (mu/defn field-values-for-filter :- [:maybe [:sequential :any]]
@@ -198,6 +199,5 @@
                                                :field_id [:in field-ids]
                                                :type :full)]
       (for [field (t2/select [:model/Field :id :description :semantic_type :fingerprint]
-                             :id [:in field-ids]
-                             {:from [(warehouse-schema-overlay/field-query)]})]
+                             :id [:in field-ids])]
         (assoc field :values (get values-by-field-id (:id field)))))))
