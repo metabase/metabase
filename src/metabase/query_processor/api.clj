@@ -161,7 +161,12 @@
                                                        {:decode/api (fn [x]
                                                                       (cond-> x
                                                                         (string? x) (json/decode viz-setting-key-fn)))})]
-       [:display                {:optional true} [:maybe ms/KeywordOrString]]
+       ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
+       [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
+                                                                  {:decode/api (fn [x]
+                                                                                 (cond-> x
+                                                                                   (and (string? x) (= (first x) \"))
+                                                                                   json/decode))})]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]

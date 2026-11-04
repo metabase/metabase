@@ -385,6 +385,18 @@ describe("issue 70909", () => {
     });
   });
 
+  it("should not export columns hidden by 'Only in detail views' field visibility from an unsaved question (metabase#70909)", () => {
+    H.openOrdersTable();
+    H.tableInteractive().findByText("Tax").should("be.visible");
+    H.tableInteractive().findByText("Discount").should("not.exist");
+
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: false,
+      assertResponseBody: assertCsvHeaderMatchesTable,
+    });
+  });
+
   it("should not attach columns hidden by 'Only in detail views' field visibility to subscriptions (metabase#70909)", () => {
     H.setupSMTP();
     H.visitDashboard(ORDERS_DASHBOARD_ID);

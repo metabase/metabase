@@ -83,7 +83,7 @@
           updated-card-viz-settings    (cond-> (-> normalized-card-viz-settings
                                                    (assoc ::mb.viz/column-settings updated-column-viz-settings)
                                                    (assoc ::mb.viz/global-column-settings global-settings))
-                                         display (assoc :display display))]
+                                         display (assoc ::mb.viz/display display))]
       (fn update-viz-settings-rff* [metadata]
         (rff (assoc metadata :viz-settings updated-card-viz-settings))))
     rff))

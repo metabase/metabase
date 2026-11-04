@@ -94,6 +94,18 @@
   (and (= display :table)
        (= (:visibility_type col) :details-only)))
 
+(defn- legacy-pivot?
+  "Does the Table viz's \"Pivot table\" toggle apply to `cols`? Mirrors the browser's `isPivoted`: `:table.pivot` is
+  set, there are exactly three columns, and `:table.pivot_column` and `:table.cell_column` name two different columns."
+  [cols viz-settings]
+  (boolean
+   (when (and (:table.pivot viz-settings)
+              (= 3 (count cols)))
+     (let [index-of  (fn [k] (u/index-of #(= (:name %) (get viz-settings k)) cols))
+           pivot-idx (index-of :table.pivot_column)
+           cell-idx  (index-of :table.cell_column)]
+       (and pivot-idx cell-idx (not= pivot-idx cell-idx))))))
+
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
@@ -157,7 +169,10 @@
   returns a list of indices which map the new order to the original order, and is used to reorder individual rows."
   [cols viz-settings]
   (let [deduped-cols  (deduplicate-col-names cols)
-        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings) (:display viz-settings))
+        ;; the pivot grid is built from every column, so details-only ones are not hidden there
+        display       (when-not (legacy-pivot? deduped-cols viz-settings)
+                        (::mb.viz/display viz-settings))
+        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings) display)
         ordered-cols  (if output-order
                         (let [v (into [] deduped-cols)]
                           (for [i output-order] (v i)))

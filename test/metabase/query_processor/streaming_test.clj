@@ -787,6 +787,20 @@
       (is (= [0 1 2]
              (@#'qp.streaming/export-column-order cols table-columns nil))))))
 
+(deftest ^:parallel order-cols-details-only-test
+  (let [cols [{:id 0, :name "Col1", :field_ref [:field 0 nil]}
+              {:id 1, :name "Col2", :field_ref [:field 1 nil], :visibility_type :details-only}
+              {:id 2, :name "Col3", :field_ref [:field 2 nil]}]]
+    (testing "a table export drops details-only columns (#70909)"
+      (is (= ["Col1" "Col3"]
+             (map :name (first (qp.streaming/order-cols cols {::mb.viz/display :table}))))))
+    (testing "unless the legacy \"Pivot table\" toggle applies, since the pivot grid is built from every column"
+      (is (= ["Col1" "Col2" "Col3"]
+             (map :name (first (qp.streaming/order-cols cols {::mb.viz/display      :table
+                                                              :table.pivot         true
+                                                              :table.pivot_column  "Col2"
+                                                              :table.cell_column   "Col3"}))))))))
+
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil
 

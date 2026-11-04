@@ -1760,12 +1760,12 @@
   (testing "The table viz hides `:details-only` columns, so table exports drop them; other displays keep them (#70909)"
     (mt/dataset test-data
       (mt/with-temp-vals-in-db :model/Field (mt/id :orders :discount) {:visibility_type :details-only}
-        (let [query           {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)
-                                          :limit        1}}
-              header-names    (fn [download] (set (first download)))
-              has-discount?   (fn [names] (boolean (some #(str/starts-with? % "Discount") names)))]
+        (let [query         {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table (mt/id :orders)
+                                        :limit        1}}
+              header-names  (fn [download] (set (first download)))
+              has-discount? (fn [names] (boolean (some #(str/starts-with? % "Discount") names)))]
           (mt/with-temp [:model/Card table-card  {:display :table, :dataset_query query}
                          :model/Card object-card {:display :object, :dataset_query query}]
             (doseq [export-format [:csv :xlsx :json]]
@@ -1778,7 +1778,19 @@
                   (is (true? (has-discount? (header-names (unsaved-card-download object-card {:export-format export-format})))))
                   (testing "with no display given, nothing is dropped"
                     (is (true? (has-discount? (header-names (unsaved-card-download (dissoc object-card :display)
-                                                                                   {:export-format export-format})))))))))))))))
+                                                                                   {:export-format export-format})))))))))
+            (testing "the browser form-encodes ad-hoc downloads, so the display arrives as a JSON string"
+              (is (false? (has-discount? (header-names (unsaved-card-download (assoc table-card :display "\"table\"")
+                                                                              {:export-format :csv}))))))
+            (testing "a visualizer dashcard exports as the display it renders, not the card's"
+              (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                             :model/DashboardCard plain-dashcard {:dashboard_id dashboard-id
+                                                                  :card_id      (:id object-card)}
+                             :model/DashboardCard table-dashcard {:dashboard_id           dashboard-id
+                                                                  :card_id                (:id object-card)
+                                                                  :visualization_settings {:visualization {:display "table"}}}]
+                (is (true? (has-discount? (header-names (dashcard-download plain-dashcard {:export-format :csv})))))
+                (is (false? (has-discount? (header-names (dashcard-download table-dashcard {:export-format :csv})))))))))))))
 
 (deftest ^:parallel ^:mb/driver-tests pivot-xlsx-export-respects-custom-title
   (testing "Pivot tables exported as xlsx should respect column title viz settings #51342"
