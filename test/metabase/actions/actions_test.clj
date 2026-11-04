@@ -843,13 +843,13 @@
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before action execution"
-              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
             (binding [*current-user-permissions-set* (delay #{"/"})]
               (actions/perform-action! :model.row/create
                                        (assoc (mt/mbql-query categories)
                                               :create-row {(format-field-name :name) "write_pool_test"})))
             (testing "write pool is created during action execution"
-              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+              (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key)))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 
