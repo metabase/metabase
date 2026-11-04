@@ -298,7 +298,7 @@ export type ReferencedEntitiesResults = {
 export interface ReferencedEntityResult {
   status: "completed" | "failed";
   error?: string;
-  error_type?: "too-many-rows";
+  error_type?: "too-many-rows" | "not-found" | null;
   data?: {
     cols: DatasetColumn[];
     rows: RowValues[];

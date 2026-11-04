@@ -10,6 +10,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -19,15 +20,19 @@ import {
 } from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
+import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/utils/browser";
+import { type Deferred, defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  Card,
   ColumnSettings,
   DatasetData,
   GoalForeignColumnRef,
   GoalValue,
   ReferencedEntitiesResults,
   ReferencedEntity,
+  RowValues,
   SearchResult,
 } from "metabase-types/api";
 import {
@@ -46,6 +51,11 @@ import { GoalValueInput } from "./GoalValueInput";
 
 const { trackSimpleEvent } =
   jest.requireMock<typeof Analytics>("metabase/analytics");
+
+jest.mock("metabase/embedding/config", () => ({
+  ...jest.requireActual("metabase/embedding/config"),
+  isEmbedding: jest.fn(() => false),
+}));
 
 const DATA = createMockDatasetData({
   cols: [
@@ -434,6 +444,92 @@ describe("GoalValueInput", () => {
     expect(within(pill).getByText("250")).toBeInTheDocument();
   });
 
+  describe("multi-column source", () => {
+    const HIGH_REF = { type: "card", id: 9, column: "HIGH" } as const;
+
+    it("renders the value of the referenced column rather than the first one", () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, 600]]),
+        }),
+        value: HIGH_REF,
+      });
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("600")).toBeInTheDocument();
+    });
+
+    it("shows an empty pill and an error when the referenced column is null, even though the other column is a number", async () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, null]]),
+        }),
+        value: HIGH_REF,
+      });
+
+      expect(
+        await screen.findByText("This value isn't a number"),
+      ).toBeInTheDocument();
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("—")).toBeInTheDocument();
+    });
+
+    it("shows an error when the referenced column is text, even though the other column is a number", async () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, "text"]]),
+        }),
+        value: HIGH_REF,
+      });
+
+      expect(
+        await screen.findByText("This value isn't a number"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error when the source returned no rows", async () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([]),
+        }),
+        value: HIGH_REF,
+      });
+
+      expect(
+        await screen.findByText("This value isn't a number"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error for a column the source no longer has, even though its other columns resolve", async () => {
+      setupMultiColumnSourceCard();
+      setupCardDatasetWithReferencedEntities(
+        createMultiColumnSourceResults([[300, 600]]),
+      );
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, 600]]),
+        }),
+        referencedEntities: [{ type: "card", id: 9 }],
+        value: { ...HIGH_REF, column: "MISSING" },
+      });
+
+      expect(
+        await screen.findByText("This column no longer exists"),
+      ).toBeInTheDocument();
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("—")).toBeInTheDocument();
+    });
+  });
+
   it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
     setupCardDatasetWithReferencedEntities(
@@ -632,6 +728,87 @@ describe("GoalValueInput", () => {
     expect(within(pill).getByText("—")).toBeInTheDocument();
   });
 
+  it("explains that a referenced question no longer exists", async () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error: "Not found.",
+          error_type: "not-found",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText("This question no longer exists"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Not found.")).not.toBeInTheDocument();
+  });
+
+  it("explains that a deleted card, which can't tell its kind, no longer exists", async () => {
+    setupDeletedCard();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error: "Not found.",
+          error_type: "not-found",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText("This source no longer exists"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders a source in the trash like any other source", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Low and high",
+        archived: true,
+        result_metadata: [
+          createMockField({
+            name: "LOW",
+            display_name: "Minimum",
+            base_type: "type/Integer",
+          }),
+          createMockField({
+            name: "HIGH",
+            display_name: "Maximum",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities(
+      createMultiColumnSourceResults([[300, 600]]),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMultiColumnSourceResults([[300, 600]]),
+      }),
+      value: { type: "card", id: 9, column: "HIGH" },
+    });
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("600")).toBeInTheDocument();
+
+    await userEvent.click(pill);
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Low and high/ }),
+    ).toBeInTheDocument();
+    const lowItem = await screen.findByRole("menuitem", { name: /Minimum/ });
+    expect(await within(lowItem).findByText("300")).toBeInTheDocument();
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+  });
+
   it("exposes the menu relationship on the pill for a11y", () => {
     setup({ value: "sum" });
 
@@ -661,25 +838,22 @@ describe("GoalValueInput", () => {
   });
 
   it("moves focus to the static input after deleting the pill with backspace", async () => {
-    const Harness = () => {
-      const [value, setValue] = useState<GoalValue | null>("sum");
-      return (
-        <GoalValueInput
-          aria-label="Min"
-          data={DATA}
-          datasetQuery={DATASET_QUERY}
-          display="progress"
-          id="goal-value"
-          referencedEntities={[]}
-          value={value}
-          onChange={setValue}
-        />
-      );
-    };
-    renderWithProviders(<Harness />);
+    renderWithProviders(<ControlledGoalValueInput />);
 
     const pill = screen.getByRole("group", { name: "Min" });
     fireEvent.keyDown(pill, { key: "Backspace" });
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Min" })).toHaveFocus(),
+    );
+  });
+
+  it("moves focus to the static input after clearing the reference with the remove button", async () => {
+    renderWithProviders(<ControlledGoalValueInput />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove value source" }),
+    );
 
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "Min" })).toHaveFocus(),
@@ -707,7 +881,7 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith("count");
   });
 
-  it("opens the root menu when clicking the pill of a single-column source", async () => {
+  it("opens the root menu when clicking the pill of this question's only numeric column", async () => {
     setup({
       data: createMockDatasetData({
         cols: [
@@ -731,6 +905,48 @@ describe("GoalValueInput", () => {
         name: /Value from another question/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the root menu when clicking the pill of another question with a single numeric column", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({
+            name: "total",
+            display_name: "Total",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "total",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Total/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("resolves a measure reference and treats it as a single-column source", async () => {
@@ -837,7 +1053,7 @@ describe("GoalValueInput", () => {
     expect(screen.queryByText(/Other question/)).not.toBeInTheDocument();
   });
 
-  it("searches questions and metrics, but not models, when the instance has no measures", async () => {
+  it("searches questions, but not models, when the instance has no measures or metrics", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
     ]);
@@ -852,7 +1068,7 @@ describe("GoalValueInput", () => {
     const url = new URL(
       checkNotNull(fetchMock.callHistory.lastCall("path:/api/search")).url,
     );
-    expect(url.searchParams.getAll("models")).toEqual(["card", "metric"]);
+    expect(url.searchParams.getAll("models")).toEqual(["card"]);
     expect(url.searchParams.get("limit")).toBe("5");
     expect(url.searchParams.has("ids")).toBe(false);
   });
@@ -881,6 +1097,134 @@ describe("GoalValueInput", () => {
       }),
     );
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+  });
+
+  it("commits the sole column of a metric picked from search as a card reference", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "metric", name: "Revenue" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Revenue",
+        type: "metric",
+        result_metadata: [
+          createMockField({ name: "sum", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Revenue");
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "sum",
+      }),
+    );
+  });
+
+  it("commits the only numeric column of a source that also has non-numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "name", base_type: "type/Text" }),
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Orders");
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "total",
+      }),
+    );
+  });
+
+  it("ignores a slow pick once a later pick was committed", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Slow question" }),
+      createMockSearchResult({ id: 16, model: "card", name: "Fast question" }),
+    ]);
+    const slowResponse = setupSlowCardEndpoint(
+      createMockCard({
+        id: 15,
+        name: "Slow question",
+        result_metadata: [
+          createMockField({ name: "revenue", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    setupCardEndpoints(
+      createMockCard({
+        id: 16,
+        name: "Fast question",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Slow question");
+    await openMenu();
+    await pickEntity("Fast question");
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 16,
+        column: "total",
+      }),
+    );
+
+    await resolveAndSettle(slowResponse);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a slow pick abandoned by closing the menu", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Slow question" }),
+    ]);
+    const slowResponse = setupSlowCardEndpoint(
+      createMockCard({
+        id: 15,
+        name: "Slow question",
+        result_metadata: [
+          createMockField({ name: "revenue", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Slow question");
+    await openMenu();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
+    );
+
+    await resolveAndSettle(slowResponse);
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("shows values for all of the entity's columns", async () => {
@@ -1188,6 +1532,65 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 
+  it("says so when the picked source has only non-numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "No numbers" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 15,
+        name: "No numbers",
+        result_metadata: [
+          createMockField({ name: "name", base_type: "type/Text" }),
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("No numbers");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("says so when the picked measure has no result column", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 4, model: "measure", name: "Revenue" }),
+    ]);
+    setupMeasureEndpoint(createMockMeasure({ id: 4, name: "Revenue" }));
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Revenue");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("treats a picked question without result metadata as having no numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Not run yet" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({ id: 15, name: "Not run yet", result_metadata: null }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Not run yet");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   describe("opening the source in a new tab", () => {
     const NEW_TAB_HINT = `${METAKEY}+click to open in new tab`;
 
@@ -1225,6 +1628,7 @@ describe("GoalValueInput", () => {
 
     afterEach(() => {
       jest.restoreAllMocks();
+      jest.mocked(isEmbedding).mockReturnValue(false);
     });
 
     it("shows a hint in the pill tooltip", async () => {
@@ -1270,6 +1674,23 @@ describe("GoalValueInput", () => {
       const { mockWindowOpen } = setupCardSource();
 
       await userEvent.click(await getLoadedPill());
+
+      expect(await screen.findByRole("menu")).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    // an embedding host has no Metabase app to open the source in
+    it("has nothing to open when Metabase is embedded", async () => {
+      jest.mocked(isEmbedding).mockReturnValue(true);
+      const { mockWindowOpen } = setupCardSource();
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      await userEvent.hover(pill);
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Orders → total");
+      expect(tooltip).not.toHaveTextContent(NEW_TAB_HINT);
+
+      fireEvent.click(pill, { ctrlKey: true });
 
       expect(await screen.findByRole("menu")).toBeInTheDocument();
       expect(mockWindowOpen).not.toHaveBeenCalled();
@@ -1442,6 +1863,47 @@ describe("GoalValueInput", () => {
       });
     });
 
+    it("tracks picking a column of a multi-column saved question with its card type", async () => {
+      setupEntityPicker([
+        createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+      ]);
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          type: "question",
+          result_metadata: [
+            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockField({
+              name: "avg",
+              display_name: "Average",
+              base_type: "type/Integer",
+            }),
+          ],
+        }),
+      );
+      setupCardDatasetWithReferencedEntities({});
+      const { onChange } = setup();
+
+      await openMenu();
+      await pickEntity("Orders");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Average/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "avg",
+      });
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "question",
+      });
+    });
+
     it("tracks replacing a column of this question with another one", async () => {
       const { onChange } = setup({ value: "sum" });
 
@@ -1571,6 +2033,87 @@ describe("GoalValueInput", () => {
         event_detail: "metric",
       });
     });
+
+    it("tracks removing a reference to a source that can't be loaded as a card", async () => {
+      setupDeletedCard();
+      setup({
+        data: createDeletedSourceData(),
+        value: { type: "card", id: 9, column: "total" },
+      });
+      expect(
+        await screen.findByText("This source no longer exists"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove value source" }),
+      );
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_unset",
+        triggered_from: "progress",
+        event_detail: "card",
+      });
+    });
+
+    it("tracks removing a reference to a source that is still loading as a card", async () => {
+      const response = setupSlowCardEndpoint(
+        createMockCard({ id: 9, name: "Orders", type: "metric" }),
+      );
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "total",
+            value: 250,
+          }),
+        }),
+        value: { type: "card", id: 9, column: "total" },
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove value source" }),
+      );
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_unset",
+        triggered_from: "progress",
+        event_detail: "card",
+      });
+      await resolveAndSettle(response);
+    });
+
+    it("tracks replacing a reference to a source that can't be loaded", async () => {
+      setupDeletedCard();
+      const { onChange } = setup({
+        data: createDeletedSourceData(),
+        value: { type: "card", id: 9, column: "total" },
+      });
+      expect(
+        await screen.findByText("This source no longer exists"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", {
+          name: /Value from this question/,
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Count/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith("count");
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_replaced",
+        triggered_from: "progress",
+        event_detail: "self_column",
+      });
+    });
   });
 });
 
@@ -1581,6 +2124,71 @@ function setupCardDatasetWithReferencedEntities(
     dataset: {
       data: createMockDatasetData({ referenced_entities: referencedEntities }),
     },
+  });
+}
+
+function setupMultiColumnSourceCard() {
+  setupCardEndpoints(
+    createMockCard({
+      id: 9,
+      name: "Low and high",
+      result_metadata: [
+        createMockField({ name: "LOW", base_type: "type/Integer" }),
+        createMockField({ name: "HIGH", base_type: "type/Integer" }),
+      ],
+    }),
+  );
+}
+
+function createMultiColumnSourceResults(
+  rows: RowValues[],
+): ReferencedEntitiesResults {
+  return {
+    card: {
+      9: {
+        status: "completed",
+        data: {
+          cols: [
+            createMockColumn({ name: "LOW" }),
+            createMockColumn({ name: "HIGH" }),
+          ],
+          rows,
+        },
+      },
+    },
+  };
+}
+
+function setupSlowCardEndpoint(card: Card) {
+  const response = defer<void>();
+
+  fetchMock.get(`path:/api/card/${card.id}`, async () => {
+    await response.promise;
+    return card;
+  });
+
+  return response;
+}
+
+async function resolveAndSettle(response: Deferred<void>) {
+  await act(async () => {
+    response.resolve();
+    await response.promise;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+function setupDeletedCard() {
+  fetchMock.get("path:/api/card/9", 404);
+}
+
+function createDeletedSourceData() {
+  return createMockDatasetData({
+    ...DATA,
+    referenced_entities: createMockFailedReferencedEntitiesResults({
+      error: "Not found.",
+      error_type: "not-found",
+    }),
   });
 }
 
@@ -1619,4 +2227,21 @@ async function openMenuWithKeyboard() {
   await userEvent.keyboard("{Enter}");
   await screen.findByRole("menu");
   await waitFor(() => expect(trigger).not.toHaveFocus());
+}
+
+function ControlledGoalValueInput() {
+  const [value, setValue] = useState<GoalValue | null>("sum");
+
+  return (
+    <GoalValueInput
+      aria-label="Min"
+      data={DATA}
+      datasetQuery={DATASET_QUERY}
+      display="progress"
+      id="goal-value"
+      referencedEntities={[]}
+      value={value}
+      onChange={setValue}
+    />
+  );
 }
