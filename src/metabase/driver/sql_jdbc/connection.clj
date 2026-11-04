@@ -16,7 +16,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.connection :as u.connection]
    [metabase.util.i18n :refer [tru]]
@@ -319,7 +319,8 @@
   [{:keys [id], driver :engine, :as database} :- ::lib.schema.metadata/database]
   (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (%s) ..."
                              driver id (driver.conn/connection-telemetry-info)))
-  (let [details             (driver.conn/effective-details database)
+  (let [hosted?             (premium-features/is-hosted?)
+        details             (driver.conn/effective-details database)
         ;; before the tunnel is set up, since incorporating it rewrites `:host` to the local tunnel entrance. Checking
         ;; here as well as at connection-test time narrows the DNS-rebinding window and covers databases that never
         ;; went through a connection test (serialization import, config files).
@@ -327,13 +328,16 @@
                               (driver.u/validate-connection-hosts! driver details))
         ;; likewise for parameters that were disallowed after the database was saved
         _                   (driver.u/validate-connection-parameters! driver details)
-        details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
-                             driver
-                             (update details :port #(or % (default-ssh-tunnel-target-port driver))))
-        details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
-                             driver
-                             id
-                             details-with-tunnel)
+        details-with-port   (update details :port #(or % (default-ssh-tunnel-target-port driver)))
+        ;; Validate Cloud auth responses before SSH replaces the warehouse host with the local tunnel entrance.
+        details-before-ssh  (if hosted?
+                              (driver.u/with-database-network-policy database
+                                (driver.u/fetch-and-incorporate-auth-provider-details driver id details-with-port))
+                              details-with-port)
+        details-with-tunnel (driver/incorporate-ssh-tunnel-details driver details-before-ssh)
+        details-with-auth   (if hosted?
+                              details-with-tunnel
+                              (driver.u/fetch-and-incorporate-auth-provider-details driver id details-with-tunnel))
         ;; the auth provider's response is merged into the details, so it can set parameters too
         _                   (driver.u/validate-connection-parameters! driver details-with-auth)
         spec                (connection-details->spec driver details-with-auth)
@@ -584,13 +588,16 @@
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
   (driver.u/validate-connection-parameters! driver details)
-  (let [details (-> details
-                    (update :port #(or % (default-ssh-tunnel-target-port driver)))
-                    (ssh/resolve-known-hosts driver))]
+  (let [hosted? (premium-features/is-hosted?)
+        details (update details :port #(or % (default-ssh-tunnel-target-port driver)))
+        details (if hosted?
+                  (driver.u/fetch-and-incorporate-auth-provider-details driver details)
+                  details)
+        details (ssh/resolve-known-hosts details driver)]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
-                               driver
-                               details-with-tunnel)
+      (let [details-with-auth (if hosted?
+                                details-with-tunnel
+                                (driver.u/fetch-and-incorporate-auth-provider-details driver details-with-tunnel))
             ;; the auth provider's response is merged into the details, so it can set parameters too
             _                 (driver.u/validate-connection-parameters! driver details-with-auth)
             spec              (connection-details->spec driver details-with-auth)]

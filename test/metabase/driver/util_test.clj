@@ -19,8 +19,10 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.snake-hating-map :as snake-hating-map])
   (:import
+   (java.net InetAddress)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -683,6 +685,41 @@
 
 (defn- ssrf-error [thunk]
   (try (thunk) nil (catch clojure.lang.ExceptionInfo e (ex-data e))))
+
+(deftest cloud-connection-host-resolution-test
+  (mt/with-premium-features #{:hosting}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (mt/with-dynamic-fn-redefs [u.http/host->inet-addresses
+                                  (fn [host]
+                                    (case host
+                                      "public.example.com" [(InetAddress/getByAddress (byte-array [8 8 8 8]))]
+                                      "mixed.example.com"  [(InetAddress/getByAddress (byte-array [8 8 8 8]))
+                                                            (InetAddress/getByAddress (byte-array [10 0 0 1]))]
+                                      nil))]
+        (testing "Cloud refuses a host whose addresses cannot be established"
+          (is (=? {:status-code 400 :message #".*could not apply security policy.*"}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "missing.invalid"})))))
+        (testing "every resolved address must be public"
+          (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "public.example.com"})))
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "mixed.example.com"})))))))))
+
+(deftest cloud-attached-warehouse-network-policy-test
+  (mt/with-premium-features #{:hosting :attached-dwh}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (when config/ee-available?
+        (testing "the Cloud auth-validation step preserves the attached warehouse's private-network exemption"
+          (mt/with-dynamic-fn-redefs [sql-jdbc.conn/connection-pool-spec
+                                      (fn [_spec _properties] (throw (ex-info "Pool reached" {})))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"Pool reached"
+                 (#'sql-jdbc.conn/create-pool! {:lib/type :metadata/database :id Integer/MAX_VALUE
+                                                :engine :postgres :is-attached-dwh true
+                                                :details {:host "10.0.0.1" :port 5432 :dbname "birds"}})))))
+        (driver.u/with-database-network-policy {:is_attached_dwh true}
+          (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.0.0.1"})))
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))))))))
 
 (deftest validate-connection-hosts!-hosted-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]

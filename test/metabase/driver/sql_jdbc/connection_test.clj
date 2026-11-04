@@ -108,6 +108,101 @@
                (sql-jdbc.conn/with-connection-spec-for-testing-connection [_spec [driver/*driver* details]]
                  ::reached))))))))
 
+(driver/register! ::cloud-jdbc, :parent :sql-jdbc, :abstract? true)
+
+(defmethod sql-jdbc.conn/connection-details->spec ::cloud-jdbc
+  [_driver details]
+  (assoc (sql-jdbc.conn/connection-details->spec :postgres details) ::details details))
+
+(defn- connection-spec-thunks! [details]
+  {"pool creation" #(mt/with-dynamic-fn-redefs [sql-jdbc.conn/connection-pool-spec
+                                                (fn [spec _properties]
+                                                  (throw (ex-info "Spec reached" {:details (::details spec)})))]
+                      (#'sql-jdbc.conn/create-pool!
+                       (driver.u/ensure-lib-database
+                        (t2/instance :model/Database {:id Integer/MAX_VALUE :engine ::cloud-jdbc :details details}))))
+   "connection test" #(sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [::cloud-jdbc details]]
+                        (throw (ex-info "Spec reached" {:details (::details spec)})))})
+
+(deftest cloud-auth-provider-destination-test
+  (mt/with-premium-features #{:hosting :database-auth-providers}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (let [details {:host "8.8.8.8" :port 5432 :dbname "birds"
+                     :use-auth-provider true :auth-provider "http" :http-auth-url "https://8.8.4.4/token"}]
+        (doseq [response [{:host "10.0.0.1"}
+                          {:host "127.0.0.1"}
+                          {:host "169.254.169.254"}
+                          {:additional-options "host=10.0.0.1"}
+                          {:host "10.0.0.1" :tunnel-enabled true :tunnel-host "127.0.0.1"}]]
+          (mt/with-dynamic-fn-redefs [auth-provider/fetch-auth (constantly response)]
+            (doseq [[label thunk] (connection-spec-thunks! details)]
+              (testing (str label " refuses auth-provider destination " (pr-str response))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"private or internal network address" (thunk)))))))))))
+
+(deftest cloud-auth-provider-ssh-ordering-test
+  (mt/with-premium-features #{:hosting :database-auth-providers}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (let [details {:host "127.0.0.1" :port 5432 :dbname "birds"
+                     :tunnel-enabled true :tunnel-host "8.8.8.8"
+                     :use-auth-provider true :auth-provider "http" :http-auth-url "https://8.8.4.4/token"}
+            events (atom [])
+            tunnel! (fn [db-details]
+                      (swap! events conj :tunnel)
+                      (assoc db-details :host "localhost" :port 15432))]
+        (mt/with-dynamic-fn-redefs [auth-provider/fetch-auth
+                                    (fn [_provider _id db-details]
+                                      (swap! events conj [:auth (:host db-details)])
+                                      {:user "bird" :password "secret"})
+                                    ssh/include-ssh-tunnel! tunnel!]
+          (doseq [[label thunk] (connection-spec-thunks! details)]
+            (testing label
+              (reset! events [])
+              (let [result (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+                (is (=? {:details {:host "localhost" :port 15432 :user "bird"}} result)))
+              (is (= [[:auth "127.0.0.1"] :tunnel] @events)))))))))
+
+(deftest cloud-auth-provider-public-destination-test
+  (mt/with-premium-features #{:hosting :database-auth-providers}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (let [details {:host "8.8.8.8" :port 5432 :dbname "birds"
+                     :use-auth-provider true :auth-provider "http" :http-auth-url "https://8.8.4.4/token"}]
+        (mt/with-dynamic-fn-redefs [auth-provider/fetch-auth (constantly {:host "8.8.4.4" :password "secret"})]
+          (doseq [[label thunk] (connection-spec-thunks! details)]
+            (testing label
+              (let [result (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+                (is (=? {:details {:host "8.8.4.4" :password "secret"}} result))))))))))
+
+(deftest cloud-unresolved-jdbc-host-test
+  (mt/with-premium-features #{:hosting :database-auth-providers}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (doseq [details [{:host "missing.invalid" :port 5432}
+                       {:host "8.8.8.8" :port 5432 :use-auth-provider true :auth-provider "http"
+                        :http-auth-url "https://8.8.4.4/token"}]]
+        (mt/with-dynamic-fn-redefs [auth-provider/fetch-auth (constantly {:host "missing.invalid"})]
+          (doseq [[label thunk] (connection-spec-thunks! details)]
+            (testing label
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"could not apply security policy" (thunk))))))))))
+
+(deftest self-hosted-auth-provider-ssh-ordering-test
+  (mt/with-premium-features #{:database-auth-providers}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (let [details {:host "10.0.0.1" :port 5432 :tunnel-enabled true :tunnel-host "127.0.0.1"
+                     :use-auth-provider true :auth-provider "http"}
+            seen-host (atom nil)
+            tunnel! #(assoc % :host "localhost" :port 15432)]
+        (mt/with-dynamic-fn-redefs [auth-provider/fetch-auth
+                                    (fn [_provider _id db-details]
+                                      (reset! seen-host (:host db-details))
+                                      {:host "10.0.0.2"})
+                                    ssh/include-ssh-tunnel! tunnel!]
+          (doseq [[label thunk] (connection-spec-thunks! details)]
+            (testing label
+              (reset! seen-host nil)
+              (let [result (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+                (is (=? {:details {:host "10.0.0.2"}} result)))
+              (is (= "localhost" @seen-host)))))))))
+
 (deftest db->pooled-connection-spec-test
   (mt/test-driver :h2
     (testing "creating and removing specs works"

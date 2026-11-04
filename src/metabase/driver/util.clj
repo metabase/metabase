@@ -1,6 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv empty? some])
+  (:refer-clojure :exclude [empty? every? mapv some])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -25,7 +25,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? some]]
+   [metabase.util.performance :refer [empty? every? mapv some]]
    [metabase.warehouses.schema :as warehouses.schema]
    [ring.util.codec :as codec])
   (:import
@@ -223,9 +223,18 @@
     (when (some #(not (u.http/address-allowed-for-network-policy? policy %)) addresses)
       (throw (blocked-network-address-exception)))))
 
+(defn- connection-host-allowed? [policy host]
+  (if (premium-features/is-hosted?)
+    (let [addresses (u.http/host->inet-addresses (u.http/->hostname host))]
+      (when-not (seq addresses)
+        (throw (unknown-connection-hosts-exception nil)))
+      (every? #(u.http/address-allowed-for-network-policy? policy %) addresses))
+    (u.http/host-allowed-for-network-policy? policy host)))
+
 (defn validate-connection-hosts!
   "Throw a 400 if `details` would have Metabase open a connection to an address disallowed by
-  [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
+  [[driver.settings/warehouse-allowed-networks]]. On Cloud, restricted policies also refuse unresolvable hosts.
+  Returns nil when the details are acceptable."
   [driver details]
   (let [policy (effective-warehouse-allowed-networks)]
     (when (not= policy :allow-all)
@@ -234,7 +243,7 @@
                     (catch Throwable e
                       (log/error e "Could not determine the hosts a connection to this database would open")
                       (throw (unknown-connection-hosts-exception e))))]
-        (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
+        (when (some #(not (connection-host-allowed? policy %)) hosts)
           (throw (blocked-network-address-exception)))))))
 
 (defn- fold-case
@@ -977,20 +986,24 @@
   (fields-hidden-by-form-marker driver "write-data-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
-  "Incorporates auth-provider responses with db-details.
+  "Incorporates auth-provider responses with db-details. On Cloud, validates the merged parameters and hosts;
+  pass details before any SSH tunnel rewrites their destination.
 
   If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
   ([driver db-details]
    (fetch-and-incorporate-auth-provider-details driver nil db-details))
   ([driver database-id {:keys [use-auth-provider auth-provider] :as db-details}]
-   (if use-auth-provider
-     (let [auth-provider (keyword auth-provider)]
-       (driver/incorporate-auth-provider-details
-        driver
-        auth-provider
-        (auth-provider/fetch-auth auth-provider database-id db-details)
-        db-details))
-     db-details)))
+   (u/prog1 (if use-auth-provider
+              (let [auth-provider (keyword auth-provider)]
+                (driver/incorporate-auth-provider-details
+                 driver
+                 auth-provider
+                 (auth-provider/fetch-auth auth-provider database-id db-details)
+                 db-details))
+              db-details)
+     (when (premium-features/is-hosted?)
+       (validate-connection-parameters! driver <>)
+       (validate-connection-hosts! driver <>)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Macaw parsing helpers                                                |
