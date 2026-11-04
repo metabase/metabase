@@ -20,6 +20,16 @@ const realClearTimeout = globalThis.clearTimeout;
 const realSetInterval = globalThis.setInterval;
 const realClearInterval = globalThis.clearInterval;
 const realQueueMicrotask = globalThis.queueMicrotask;
+const realNextTick = process.nextTick;
+const realDateNow = Date.now;
+
+/**
+ * The time on Node's own clock, as jest.getRealSystemTime gives it. The
+ * global Date is the fake one while a test fakes the clock.
+ */
+export function realSystemTime(): number {
+  return realDateNow();
+}
 
 const TEST_HEAP_LIMIT_MB = Number(process.env.NT_TEST_HEAP_MB ?? 800);
 const HEAP_CHECK_INTERVAL_MS = 250;
@@ -93,31 +103,36 @@ export function fakeClock(): ModernFakeTimers {
 /**
  * jest.useFakeTimers. jest's clock installs on a sandboxed jsdom global, so
  * Node and jsdom keep the real nextTick and queueMicrotask while the code
- * under test gets fake ones. Here there is one global object. nextTick stays
- * real for everyone, because Node's streams run on it. queueMicrotask is fake
- * for every caller except the runtime, so code that batches its work with it
- * runs when the test advances the clock, as under jest.
+ * under test gets fake ones. Here there is one global object, so both are
+ * fake for every caller except the runtime, and code that batches its work
+ * with them runs when the test advances the clock, as under jest. Node's own
+ * streams use an internal nextTick, which no clock replaces.
  */
 export function useFakeTimers(config?: FakeTimersConfig): void {
-  fakeClock().useFakeTimers({
-    ...config,
-    doNotFake: [
-      ...new Set([...(config?.doNotFake ?? []), "nextTick" as const]),
-    ],
-  });
-  const fakeQueueMicrotask = globalThis.queueMicrotask;
-  if (fakeQueueMicrotask === realQueueMicrotask) {
-    return;
+  fakeClock().useFakeTimers(config);
+  if (globalThis.queueMicrotask !== realQueueMicrotask) {
+    globalThis.queueMicrotask = fakeForCodeUnderTest(
+      globalThis.queueMicrotask,
+      realQueueMicrotask,
+    );
   }
-  // The clock marks the functions it installs, and reads the marks to put the
-  // real ones back. Object.assign copies the marks onto the wrapper.
-  globalThis.queueMicrotask = Object.assign(function queueMicrotask(
-    callback: VoidFunction,
-  ) {
-    return isCalledFromRuntime()
-      ? realQueueMicrotask(callback)
-      : fakeQueueMicrotask(callback);
-  }, fakeQueueMicrotask);
+  if (process.nextTick !== realNextTick) {
+    process.nextTick = fakeForCodeUnderTest(process.nextTick, realNextTick);
+  }
+}
+
+// The clock marks the functions it installs, and reads the marks to put the
+// real ones back. Object.assign copies the marks onto the wrapper.
+function fakeForCodeUnderTest<T extends (...args: never[]) => unknown>(
+  fake: T,
+  real: T,
+): T {
+  // The wrapper takes and returns what both functions take and return, which
+  // TypeScript cannot infer for a generic function.
+  const wrapper = function (this: unknown, ...args: Parameters<T>) {
+    return isCalledFromRuntime() ? real(...args) : fake(...args);
+  } as T;
+  return Object.assign(wrapper, fake);
 }
 
 /**
