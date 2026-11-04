@@ -1,8 +1,6 @@
-## GDGT-3440: a transforms folder is deleted, never archived. An archived transforms folder hid the transforms in it,
-## which kept running on their jobs, and no page in the UI restored the folder. This changeset unarchives every archived
-## transforms folder, so the folder and its transforms show again in the Transforms list, in their old place:
-## archiving keeps a collection's location, so clearing the three archive columns is enough.
-## The rollback does nothing: the archive state is not kept, and an archived transforms folder cannot be rebuilt.
+## An archived transforms folder hides its transforms, which keep running on their jobs, and no page restores it.
+## Clearing the three archive columns puts every archived transforms folder back in the Transforms list, in its old
+## place, because archiving keeps a collection's location. The rollback does nothing: the archive state is gone.
 
 databaseChangeLog:
   - changeSet:
