@@ -324,13 +324,14 @@
   "The pools state `state` with `pool-spec` gone: its identity token always, and its cache entry and details hash
   only while `pool-spec` is still the pool cached under `cache-key`, so a newer pool another thread cached stays."
   [state cache-key pool-spec]
-  (cond-> state
-    (identical? pool-spec (get-in state [:pools cache-key]))
-    (-> (update :pools dissoc cache-key)
-        (update :hashes dissoc cache-key))
+  (let [token (pool-token pool-spec)]
+    (cond-> state
+      (identical? pool-spec (get-in state [:pools cache-key]))
+      (-> (update :pools dissoc cache-key)
+          (update :hashes dissoc cache-key))
 
-    (pool-token pool-spec)
-    (update :databases dissoc (pool-token pool-spec))))
+      token
+      (update :databases dissoc token))))
 
 (defn- pool-cache-key->connection-pool
   "The open pools, keyed by `[database-id connection-type]`."
@@ -448,12 +449,15 @@
   (let [[database-id _connection-type] cache-key
         [old-state] (swap-pools-state!
                      (fn [state]
-                       (let [old-pool-spec (get-in state [:pools cache-key])]
-                         (cond-> (assoc-in state [:hashes cache-key] details-hash)
-                           pool-spec-or-nil       (assoc-in [:pools cache-key] pool-spec-or-nil)
-                           (not pool-spec-or-nil) (update :pools dissoc cache-key)
-                           (and old-pool-spec (not (identical? old-pool-spec pool-spec-or-nil)))
-                           (update :databases dissoc (pool-token old-pool-spec))))))]
+                       (let [old-pool-spec (get-in state [:pools cache-key])
+                             replaced?     (and old-pool-spec (not (identical? old-pool-spec pool-spec-or-nil)))]
+                         (-> state
+                             (assoc-in [:hashes cache-key] details-hash)
+                             (update :pools (fn [pools]
+                                              (if pool-spec-or-nil
+                                                (assoc pools cache-key pool-spec-or-nil)
+                                                (dissoc pools cache-key))))
+                             (cond-> replaced? (update :databases dissoc (pool-token old-pool-spec)))))))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get-in old-state [:pools cache-key])]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
