@@ -73,7 +73,7 @@ If you can't add the skill to your agent, tell your agent to run `mb skills get 
 
 Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your semantic layer. The [semantic layer](../data-modeling/semantic-layer/library.md) is your set of curated tables and metrics: the data that you've checked, and that people and AI should use. Building on it means your app shows the same vetted numbers as the rest of your Metabase. So publish trusted tables that are ready for analysis.
 
-Your agent can do this for you, but ideally you only [publish trusted tables to your semantic layer](./build.md#publish-tables-to-your-semantic-layer).
+Your agent can create your semantic layer and publish tables for you, but only if you ask. To see how publishing works in each Remote sync mode, check out [Publish tables to your semantic layer](./build.md#publish-tables-to-your-semantic-layer).
 
 You can also create your semantic layer and add tables manually:
 

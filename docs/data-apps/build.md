@@ -24,7 +24,7 @@ This page is the reference for data apps. To set up your tools and build your fi
 - An AI coding agent, like Claude Code or Codex.
 - The [Metabase CLI](../installation-and-operation/metabase-cli.md) (`mb`), version 0.5.10 or later. To update the CLI, run `mb upgrade`.
 - Node.js 22.12 or later on your computer.
-- A Git repository that your Metabases connect to with [Remote Sync](../data-modeling/semantic-layer/remote-sync.md), and permission to push to it. Apps get into Metabase only when Metabase pulls them from the repository, and the repository also keeps each app's source code.
+- A Git repository that your Metabases connect to with [Remote sync](../data-modeling/semantic-layer/remote-sync.md), and permission to push to it. Apps get into Metabase only when Metabase pulls them from the repository, and the repository also keeps each app's source code.
 - A Metabase where your agent builds each app. See [Choose where to build apps](#choose-where-to-build-apps).
 - A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics on a Metabase in Read-write mode while it builds an app. See [Publish tables to your semantic layer](#publish-tables-to-your-semantic-layer).
 - If your apps write data, a PostgreSQL or MySQL database with [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database). Only these databases support actions. An app that only shows data can read from any database that Metabase connects to.
@@ -33,20 +33,20 @@ This page is the reference for data apps. To set up your tools and build your fi
 
 Your agent builds and ships each app from a Metabase that it logs in to. You can set this up in two ways:
 
-- **A development Metabase and a production Metabase (recommended).** Set up two Metabases: one for trying things out, and one for the content that people rely on. Your agent builds each app on the development Metabase, where it can also publish tables and create metrics for the app. You review the app before it reaches production. To set this up, connect both Metabases to the same Git repository with [Remote Sync](../data-modeling/semantic-layer/remote-sync.md): your development Metabase in Read-write mode, and your production Metabase in Read-only mode.
+- **A development Metabase and a production Metabase (recommended).** Set up two Metabases: one for trying things out, and one for the content that people rely on. Your agent builds each app on the development Metabase, where it can also publish tables and create metrics for the app. You review the app before it reaches production. To set this up, connect both Metabases to the same Git repository with [Remote sync](../data-modeling/semantic-layer/remote-sync.md): your development Metabase in Read-write mode, and your production Metabase in Read-only mode.
 - **Only your production Metabase.** This setup has fewer steps, but each change that your agent ships goes to production without review. [Getting started with data apps](./getting-started.md) uses this setup.
 
 The rest of this page uses a development Metabase and a production Metabase.
 
 ## Publish tables to your semantic layer
 
-Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your [semantic layer](../data-modeling/semantic-layer/library.md). The semantic layer the place to store your set of curated tables and metrics. Building on your semantic layer means that your app shows the same vetted numbers as the rest of your Metabase, so publish only trusted tables that are ready for analysis.
+Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your [semantic layer](../data-modeling/semantic-layer/library.md). The semantic layer is the place to store your set of curated tables and metrics. Building on your semantic layer means that your app shows the same vetted numbers as the rest of your Metabase, so publish only trusted tables that are ready for analysis.
 
 If your app needs a table that isn't published, your agent stops and tells you what's missing. Your agent publishes a table only if you ask it to. How you publish depends on how your Metabase syncs with your Git repository:
 
 - **No repository yet.** Ideally, publish your tables now, before you connect a repository. You can [publish the tables yourself](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer). Or start your agent in any folder, and ask it to create your semantic layer and publish the tables that your app needs.
 - **Read-write mode** (Metabase can also write to the repository). Publish the tables yourself, or ask your agent to publish them. Your agent pushes the tables to the repository when it [ships the app](#ship-the-app-to-your-development-metabase).
-- **Read-only mode** (Metabase only reads from the repository). You can't change your semantic layer in Metabase directly. You (or your agent) can only change the semantic layer via Remote Sync.
+- **Read-only mode** (Metabase only reads from the repository). You can't change your semantic layer in Metabase directly. You (or your agent) can only change the semantic layer via Remote sync.
 
 ## What a data app can read and write
 
@@ -176,7 +176,7 @@ Any admin can change an app from their own computer. Git doesn't keep the app's 
 
 ### Fix an app after a Metabase upgrade
 
-Most Metabase upgrades don't change your apps. But if an upgrade makes a breaking change to data apps, apps that were built for the older version of data apps stop opening, and show as **outdated** in the [list of data apps](./manage.md). To fix an app, ask your agent to migrate the app to the current version of data apps, build it again, and ship it.
+Most Metabase upgrades don't change your apps. But if an upgrade makes a breaking change to data apps, apps that were built for the older version of data apps stop opening, and show as **outdated** in the [list of data apps](./manage.md). To fix an app, ask your agent to migrate the app to the current version of data apps, build it again, and [ship it to your development Metabase](#ship-the-app-to-your-development-metabase). Then [move it to production](#move-the-app-to-production).
 
 ## Let an app fetch data from other sites
 
