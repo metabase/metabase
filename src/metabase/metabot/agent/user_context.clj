@@ -13,8 +13,10 @@
    [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.quoting :as quoting])
   (:import
@@ -265,28 +267,109 @@
 
 ;;; Viewing Context Formatting
 
-(defn- exported-query-text
-  "The client-supplied query rendered for the LLM, only when the current user can read its
-  database and query the tables it references. The database refusal is audited for the same
-  reason the query's card ids get the audited store: the id is the caller's own."
+(def ^:private max-listed-columns
+  "The most columns that the ad-hoc query's column list shows."
+  100)
+
+(def ^:private columns-header
+  "The text before the column list. It tells the LLM how to refer to each column."
+  (str "Columns the query can use (name, display name, type, and the portable FK of a table column). "
+       "Refer to a column by its portable FK when its line has one, and by its name otherwise. "
+       "A joined column also needs its `join-alias`:"))
+
+(defn- column-portable-fk
+  "The portable FK of `column` when it comes from a table of `query`, or nil."
+  [query column]
+  ;; In stage 0 of a table source, the construct tool resolves a field ref only by its portable FK. A
+  ;; column of a card or of an earlier stage is referred to by its name, so it gets no portable FK.
+  (when (and (#{:source/table-defaults :source/joins} (:lib/source column))
+             (nil? (:lib/card-id column)))
+    (:portable_fk (metabot.tools.u/->result-column query column))))
+
+(defn- column-ref-name
+  "The name by which a ref in the last stage of the query refers to `column`.
+
+  A string ref resolves against the column's `:lib/source-column-alias`, so a joined column of an earlier
+  stage is \"Cat__NAME\", not \"NAME\". The fallback is `:name`."
+  [column]
+  ((some-fn :lib/source-column-alias :name) column))
+
+(defn- column-line
+  "One column of `query` as a list line.
+
+    - [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK [\"DB\",\"PUBLIC\",\"CATEGORIES\",\"NAME\"]"
+  [query column]
+  (str "- "
+       (when-let [join-alias (lib/current-join-alias column)]
+         (str "[join " (quoting/quoted join-alias) "] "))
+       (quoting/quoted (column-ref-name column))
+       ;; The `:long` style adds the join alias, as the UI shows a joined column: "Cat → Name".
+       ", display name " (quoting/quoted (lib/display-name query -1 column :long))
+       ", " (u/qualified-name (or (:effective-type column) (:base-type column)))
+       (when-let [portable-fk (column-portable-fk query column)]
+         (str ", portable FK " (quoting/escape-code-points (json/encode portable-fk) quoting/invisible-code-point?)))))
+
+(defn- column-list
+  "The column list for `columns` of `query`, at most [[max-listed-columns]] lines and then a count of the rest.
+
+  Nil when `columns` is empty."
+  [query columns]
+  (when (seq columns)
+    (let [extra (- (count columns) max-listed-columns)]
+      (te/lines (map #(column-line query %) (take max-listed-columns columns))
+                (when (pos? extra)
+                  (str "- ... and " extra " more"))))))
+
+(defn- permitted-column-list
+  "The column list of the last stage of a cleared `query`, without the columns that the current user cannot see.
+
+  Nil when the columns cannot be calculated."
+  [query mp]
+  (try
+    (let [query (lib/query mp query)]
+      (column-list query
+                   ;; Implicitly joinable columns are not included, so that foreign-key targets do not
+                   ;; multiply the list.
+                   (->> (lib/visible-columns query -1 {:include-implicitly-joinable?                 false
+                                                       :include-implicitly-joinable-for-source-card? false})
+                        ;; Remove the columns that table permissions or a sandbox hide.
+                        entity-details/permission-filter-columns)))
+    (catch Exception e
+      (log/warn e "Omitting the column list of an ad-hoc query")
+      nil)))
+
+(defn- exported-query
+  "The client-supplied query rendered for the LLM, with its column list, or nil when the current user may not see the query.
+
+  The column list is present only when the permission check cleared the query with a metadata
+  provider."
   [query]
-  (some-> (shared.content-store/query-for-export query true)
-          (query-export/export->text shared.content-store/audited-store)))
+  ;; The database refusal is audited for the same reason that the query's card ids get the audited
+  ;; store: the id is the caller's own.
+  ;; One check per item: a refusal is not cached, and each check writes an audit entry.
+  (when-let [{:keys [mp] :as export} (shared.content-store/query-for-export query true)]
+    (when-let [text (query-export/export->text export shared.content-store/audited-store)]
+      {:text    text
+       :columns (when mp
+                  (permitted-column-list (:query export) mp))})))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
   (if (native-query-item? item)
     (format-native-query item)
-    (te/lines "The user is currently in the notebook editor viewing a query."
-              (te/field "Query ID" (:id item))
-              (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (exported-query-text (:query item)))
-              (when-let [config-ids (format-chart-config-ids item)]
-                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-              (te/field "Tables used" (some->> (:used_tables item)
-                                               (map format-entity)
-                                               te/lines)))))
+    (let [{:keys [text columns]} (exported-query (:query item))]
+      (te/lines "The user is currently in the notebook editor viewing a query."
+                (te/field "Query ID" (:id item))
+                (te/field "Database ID" (get-in item [:query :database]))
+                (te/field "Query" text)
+                (when columns
+                  (te/lines columns-header columns ""))
+                (when-let [config-ids (format-chart-config-ids item)]
+                  (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+                (te/field "Tables used" (some->> (:used_tables item)
+                                                 (map format-entity)
+                                                 te/lines))))))
 
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]
