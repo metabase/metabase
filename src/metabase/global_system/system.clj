@@ -144,57 +144,81 @@
 
 ;;; ------------------------------------------------ Lifecycle ------------------------------------------------
 
-(defonce ^{:doc "The components [[ensure-started!]] started, as `{:handle h, :stop f}` maps in start order."
+;; Entries are matched by component key, not handle, since reloading a namespace makes a new handle for the same key.
+(defonce ^{:doc "The components [[ensure-started!]] started, as `{:k key, :handle h, :stop f}` maps in start order."
            :private true}
   started
   (atom []))
 
+(defn- handle-key
+  [^ComponentHandle handle]
+  (.-k handle))
+
 (defn- bound-here?
   "Whether this thread has a binding of the component behind `handle`."
-  [^ComponentHandle handle]
-  (contains? *bound-boxes* (.-k handle)))
+  [handle]
+  (contains? *bound-boxes* (handle-key handle)))
+
+(defn- registered-stop
+  "The stop function [[ensure-started!]] recorded for the component behind `handle`, or nil if it did not start it."
+  [handle]
+  (some #(when (= (handle-key handle) (:k %)) (:stop %)) @started))
 
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
-   Starting calls `start` with no arguments, installs its result as the root, and records `stop`, a function of that
-   value, for [[stop!]] and [[halt!]].
+   Starting calls `start` with no arguments, which must return a non-nil value, installs that as the root, and records
+   `stop`, a function of the value, for [[stop!]] and [[halt!]].
    Threads racing to start the component start it once.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
-   The component's root must already be installed, usually as nil by [[mutable-component-handle]]."
+   The component's root must already be installed, usually as nil by [[mutable-component-handle]].
+   A component started while [[halt!]] runs may be left running."
   [handle start stop]
   (if (bound-here? handle)
     @handle
-    (or @handle
+    (let [value @handle]
+      (if (some? value)
+        value
         (mc/with-slot-lock handle
-          (or @handle
-              (let [value (start)]
-                (mc/reset! handle value)
+          (let [value @handle]
+            (if (some? value)
+              value
+              (let [k     (handle-key handle)
+                    value (start)]
+                (when (nil? value)
+                  (throw (ex-info (str "Starting component returned nil: " k) {:component k})))
+                ;; Registered before the root is published, so the root is never visible unregistered, and anything
+                ;; that starts after seeing it, and so may depend on it, registers after it and halts before it.
+                ;; Components `start` itself started registered first, for the same reason.
                 (swap! started (fn [entries]
-                                 (conj (filterv #(not= handle (:handle %)) entries)
-                                       {:handle handle, :stop stop})))
-                value))))))
+                                 (conj (filterv #(not= k (:k %)) entries)
+                                       {:k k, :handle handle, :stop stop})))
+                (mc/reset! handle value)
+                value))))))))
 
 (defn- unregister!
-  "Remove the [[started]] entry for `handle`, returning its stop function, or nil if it had none."
+  "Remove the [[started]] entry for the component behind `handle`."
   [handle]
-  (let [[before _] (swap-vals! started (fn [entries] (filterv #(not= handle (:handle %)) entries)))]
-    (some #(when (= handle (:handle %)) (:stop %)) before)))
+  (let [k (handle-key handle)]
+    (swap! started (fn [entries] (filterv #(not= k (:k %)) entries)))))
 
 (defn stop!
   "Stop the component behind `handle` if [[ensure-started!]] started it: set its root back to nil, then call the stop
    function recorded at start on the value it held.
    Returns true if there was a running component to stop.
-   Ignores any binding on this thread, since bindings are never started."
+   Leaves alone a component [[ensure-started!]] did not start, and any binding on this thread, since bindings are
+   never started."
   [handle]
   (mc/without-binding
    handle
    (fn []
      (mc/with-slot-lock handle
-       (let [[old _] (mc/reset-vals! handle nil)
-             stop    (unregister! handle)]
-         (when (and (some? old) stop)
-           (stop old))
-         (some? old))))))
+       (if-let [stop (registered-stop handle)]
+         (let [[old _] (mc/reset-vals! handle nil)]
+           (unregister! handle)
+           (when (some? old)
+             (stop old))
+           (some? old))
+         false)))))
 
 (defn- stop-all!
   "Call [[stop!]] on each of `handles` in order.

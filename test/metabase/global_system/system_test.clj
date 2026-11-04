@@ -517,3 +517,41 @@
         (doseq [handle handles]
           (system/stop! handle)
           (mc/remove-root handle))))))
+
+(deftest ^:synchronized lifecycle-edge-cases-test
+  (testing "a start that returns false still counts as started, so it runs once"
+    (let [handle (system/mutable-component-handle ::starts-false (constantly nil))
+          starts (atom 0)]
+      (try
+        (dotimes [_ 3]
+          (system/ensure-started! handle #(do (swap! starts inc) false) (constantly nil)))
+        (is (= 1 @starts))
+        (finally
+          (system/stop! handle)
+          (mc/remove-root handle)))))
+  (testing "a start that returns nil throws, and leaves nothing registered"
+    (let [handle (system/mutable-component-handle ::starts-nil (constantly nil))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Starting component returned nil"
+                              (system/ensure-started! handle (constantly nil) (constantly nil))))
+        (is (false? (system/stop! handle)))
+        (finally
+          (mc/remove-root handle)))))
+  (testing "stop! leaves alone a root that ensure-started! did not start"
+    (let [handle (system/mutable-component-handle ::unmanaged (constantly :installed))]
+      (try
+        (is (false? (system/stop! handle)))
+        (is (= :installed @handle))
+        (finally
+          (mc/remove-root handle)))))
+  (testing "a handle made again for the same key, as a reload does, stops what the old handle started"
+    (let [stopped (atom [])
+          old     (system/mutable-component-handle ::reloaded (constantly nil))
+          _       (system/ensure-started! old (constantly :running) #(swap! stopped conj %))
+          new     (system/mutable-component-handle ::reloaded (constantly nil))]
+      (try
+        (is (true? (system/stop! new)))
+        (is (= [:running] @stopped))
+        (finally
+          (system/stop! new)
+          (mc/remove-root new))))))
