@@ -19,7 +19,12 @@
   (is (impossible? [:and [:= 1 :this.id] [:!= "card" "card"]]))
   (is (not (impossible? [:and [:= 1 :this.id] [:!= "card" "dashboard"]])))
   (is (not (impossible? [:or [:= 1 :this.id] [:!= "card" "dashboard"]])))
-  (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]])))
+  (is (impossible? [:or [:= "oh" "no"] [:= "card" "dashboard"]]))
+  (testing "booleans and numbers fold like strings, e.g. the most_recent flag of a superseded revision"
+    (is (impossible? [:and [:= "card" "card"] [:= 1 :this.id] [:= false true]]))
+    (is (not (impossible? [:and [:= "card" "card"] [:= 1 :this.id] [:= true true]])))
+    (is (impossible? [:= 1 2]))
+    (is (impossible? [:!= 1 1]))))
 
 ;;; ============================================================================
 ;;; Postgres-specific utility tests
