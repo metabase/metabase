@@ -4354,3 +4354,39 @@
       (is (= [] (t2/select :data_app_group_assignment)))
       (migrate!)
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
+
+(deftest transform-source-database-delete-cascade-test
+  (testing "pz7hdr..kq4w2m delete orphan query transforms, then transforms with their source database"
+    (impl/test-migrations ["pz7hdr" "kq4w2m"] [migrate!]
+      (let [user-id          (t2/insert-returning-pk! :core_user {:first_name    "Transform"
+                                                                  :last_name     "Owner"
+                                                                  :email         "transform-owner@test.com"
+                                                                  :entity_id     (u/generate-nano-id)
+                                                                  :date_joined   :%now
+                                                                  :password      "password"
+                                                                  :password_salt "salt"})
+            db-id            (t2/insert-returning-pk! :metabase_database {:name       "Transform Source DB"
+                                                                          :engine     "h2"
+                                                                          :created_at :%now
+                                                                          :updated_at :%now
+                                                                          :details    "{}"})
+            insert-transform (fn [source-type source-db-id]
+                               (t2/insert-returning-pk! :transform {:name               (mt/random-name)
+                                                                    :source             "{}"
+                                                                    :target             "{}"
+                                                                    :source_type        source-type
+                                                                    :source_database_id source-db-id
+                                                                    :creator_id         user-id
+                                                                    :entity_id          (u/generate-nano-id)
+                                                                    :created_at         :%now
+                                                                    :updated_at         :%now}))
+            transform-id     (insert-transform "native" db-id)
+            native-orphan-id (insert-transform "native" nil)
+            mbql-orphan-id   (insert-transform "mbql" nil)
+            python-id        (insert-transform "python" nil)]
+        (migrate!)
+        (is (not (t2/exists? :transform :id native-orphan-id)))
+        (is (not (t2/exists? :transform :id mbql-orphan-id)))
+        (is (t2/exists? :transform :id python-id))
+        (t2/delete! :metabase_database :id db-id)
+        (is (not (t2/exists? :transform :id transform-id)))))))

@@ -46,8 +46,8 @@
    [:ended-at-start    {:optional true} [:maybe ms/TemporalInstant]]
    [:ended-at-end      {:optional true} [:maybe ms/TemporalInstant]]])
 
-(defn- run-filter-clause
-  [{:keys [transform-test-id statuses started-at-start started-at-end ended-at-start ended-at-end]}]
+(mu/defn- run-filter-clause :- vector?
+  [{:keys [transform-test-id statuses started-at-start started-at-end ended-at-start ended-at-end]} :- RunFilters]
   (cond-> [:and [:= :transform_test_id transform-test-id]]
     (seq statuses)   (conj [:in :status (map name statuses)])
     started-at-start (conj [:>= :start_time started-at-start])

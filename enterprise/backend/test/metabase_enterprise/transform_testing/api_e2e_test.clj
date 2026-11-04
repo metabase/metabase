@@ -25,7 +25,7 @@
   (let [mp                            (mt/metadata-provider)
         {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
     (mt/with-temp [:model/Transform {transform-id :id}
-                   {:source {:type  "query"
+                   {:source {:type  :query
                              :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
                     :target {:type     "table"
                              :schema   schema
@@ -108,7 +108,10 @@
       (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
-                         {:source {:type "python" :source-database (mt/id)}}
+                         {:source {:type            :python
+                                   :source-database (mt/id)
+                                   :source-tables   [{:alias "people" :table_id (mt/id :people)}]
+                                   :body            "def transform(people):\n    return people"}}
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
                                                  (format "ee/transform-test/%d/run" test-id))]

@@ -101,9 +101,9 @@
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Transform {transform-id :id} {:name "Test Transform"
-                                                            :source {:type "query"
-                                                                     :query (mt/mbql-query nil
-                                                                              {:source-table (str "card__" card-id)})}
+                                                            :source {:type :query
+                                                                     :query (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+                                                                              (lib/query mp (lib.metadata/card mp card-id)))}
                                                             :target {:type "table" :name (mt/random-name)}}]
           (forget-status! :card card-id)
           (forget-status! :transform transform-id)
