@@ -180,6 +180,9 @@
         (testing "the app document is refused when a live session reaches the isolated origin"
           (let [response (doc-with-cookie (str "metabase.SESSION=" session-key))]
             (is (=? {:status 403} response))
+            (testing "and tells people to reload, which works when the deleted cookie was the cause, before asking an
+                      admin"
+              (is (=? {:body #"(?s).*Reload the page.*administrator.*"} response)))
             (testing "and the refusal deletes the cookie if it is the isolated origin's own, left from when the host
                       served Metabase: a cookie the main host leaks with a `Domain` stays, and keeps the app refused"
               (is (some #(and (str/starts-with? % "metabase.SESSION=;")
