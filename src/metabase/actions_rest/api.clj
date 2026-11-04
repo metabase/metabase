@@ -86,10 +86,6 @@
    {:keys [model_id parameters database_id]
     action-type :type
     :as action} :- ::actions.schema/action.for-insert]
-  (when (= action-type :http)
-    (throw (ex-info (tru "HTTP actions are not supported.")
-                    {:type        :http
-                     :status-code 400})))
   (when (and (nil? database_id)
              (= action-type :query))
     (throw (ex-info (tru "Must provide a database_id for query actions")
@@ -113,7 +109,7 @@
     (u/prog1 (if action-id
                (actions/select-action :id action-id)
                ;; t2/insert! does not return a value when used with h2
-               ;; so we return the most recently updated http action.
+               ;; so we return the most recently updated action.
                (last (actions/select-actions nil :type action-type)))
       (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
 
@@ -127,16 +123,8 @@
                     [:id ::actions.schema/id]]
    _query-params
    action :- ::actions.schema/action.for-update]
-  (when (= (:type action) :http)
-    (throw (ex-info (tru "HTTP actions are not supported.")
-                    {:type        :http
-                     :status-code 400})))
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]
-    (when (= (:type existing-action) :http)
-      (throw (ex-info (tru "HTTP actions are not supported.")
-                      {:type        :http
-                       :status-code 400})))
     (when-let [model-id (:model_id action)]
       (when (not= model-id (:model_id existing-action))
         (api/write-check :model/Card model-id)))
@@ -246,10 +234,6 @@
                                                [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
-    (when (= type :http)
-      (throw (ex-info (tru "HTTP actions are not supported.")
-                      {:type        :http
-                       :status-code 400})))
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail

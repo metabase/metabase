@@ -100,7 +100,6 @@
     :model/ParameterCard
     :model/Action
     :model/ImplicitAction
-    :model/HTTPAction
     :model/QueryAction
     :model/DashboardTab
     :model/ModelIndex
@@ -410,7 +409,6 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
     :model/ImplicitAction
-    :model/HTTPAction
     :model/FieldUserSettings
     :model/TableUserSettings
     :model/QueryAction
