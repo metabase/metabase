@@ -198,6 +198,22 @@ describe("TagEditorParam", () => {
       });
     });
 
+    it("should be able to change the type of the tag to boolean", async () => {
+      const tag = createMockTemplateTag({ type: "text" });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Boolean"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "boolean",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+    });
+
     it("should not throw when the original question is an mbql query (metabase#50662)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",

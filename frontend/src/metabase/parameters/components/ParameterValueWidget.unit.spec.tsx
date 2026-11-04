@@ -502,7 +502,7 @@ describe("ParameterValueWidget", () => {
   });
 
   describe("legacy category parameter", () => {
-    it("should list the field values and set the picked one", async () => {
+    it("should list the field values and set the picked ones", async () => {
       setupParameterValuesEndpoints(
         createMockParameterValues({
           values: [["Doohickey"], ["Gizmo"]],
@@ -519,11 +519,12 @@ describe("ParameterValueWidget", () => {
       await userEvent.click(
         screen.getByTestId("parameter-value-widget-target"),
       );
-      await userEvent.click(await screen.findByText("Gizmo"));
+      await userEvent.click(await screen.findByText("Doohickey"));
+      await userEvent.click(screen.getByText("Gizmo"));
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
 
       expect(setValue).toHaveBeenCalledTimes(1);
-      expect(setValue).toHaveBeenCalledWith(["Gizmo"]);
+      expect(setValue).toHaveBeenCalledWith(["Doohickey", "Gizmo"]);
     });
   });
 
