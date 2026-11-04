@@ -24,6 +24,7 @@ export const StructuredQueryRightSidebar = ({
   isShowingTimelineSidebar,
   onSave,
   question,
+  updateQuestion,
 }: StructuredQueryRightSidebarProps) => {
   return match({
     isSaved: question.isSaved(),
@@ -33,7 +34,14 @@ export const StructuredQueryRightSidebar = ({
     isShowingQuestionSettingsSidebar,
   })
     .with({ isShowingSummarySidebar: true }, () => (
-      <SummarySidebar query={question.query()} stageIndex={-1} />
+      <SummarySidebar
+        query={question.query()}
+        onQueryChange={(nextQuery) => {
+          const nextQuestion = question.setQuery(nextQuery);
+          updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
+        }}
+        stageIndex={-1}
+      />
     ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
     .with(

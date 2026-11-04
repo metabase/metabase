@@ -1,8 +1,12 @@
-import { type ReactNode, useMemo, useState } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import {
   Box,
   Card,
@@ -12,50 +16,40 @@ import {
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { MatchedLabel } from "./MatchedLabel";
 import S from "./SummarySidebar.module.css";
-import {
-  type SummaryFieldItem,
-  type SummaryFieldSection,
-  filterFieldSections,
-  getFieldSections,
-} from "./utils";
+import type {
+  SummaryField,
+  SummaryFieldItem,
+  SummaryFieldSection,
+} from "./types";
+import { filterFieldSections } from "./utils";
 
 type SummaryFieldListProps = {
-  query: Lib.Query;
-  stageIndex: number;
+  sections: SummaryFieldSection[];
+  /** A field was clicked: it replaces what its well holds. */
+  onSelect: (field: SummaryField) => void;
+  /** A field was alt-clicked (option-clicked on a Mac): it joins what its well holds. */
+  onAdd: (field: SummaryField) => void;
 };
-
-function translateSections(
-  sections: SummaryFieldSection[],
-  tc: ContentTranslationFunction,
-): SummaryFieldSection[] {
-  return sections.map((section) => ({
-    ...section,
-    name: tc(section.name),
-    items: section.items.map((item) => ({ ...item, name: tc(item.name) })),
-  }));
-}
 
 /**
  * The fields a summary can be built from, in collapsible sections: measures, metrics, then a
  * section per table the query reaches. A search keeps only the matching fields and opens every
  * section, so no match is hidden.
  */
-export function SummaryFieldList({ query, stageIndex }: SummaryFieldListProps) {
-  const tc = useTranslateContent();
+export function SummaryFieldList({
+  sections,
+  onSelect,
+  onAdd,
+}: SummaryFieldListProps) {
   const [searchText, setSearchText] = useState("");
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
   const isSearching = searchText.trim().length > 0;
 
-  const sections = useMemo(
-    () => translateSections(getFieldSections(query, stageIndex), tc),
-    [query, stageIndex, tc],
-  );
   const matchingSections = useMemo(
     () => filterFieldSections(sections, searchText),
     [sections, searchText],
@@ -110,7 +104,10 @@ export function SummaryFieldList({ query, stageIndex }: SummaryFieldListProps) {
           }
         }}
       />
-      <Box className={S.fieldListScroll}>
+      <Box
+        className={S.fieldListScroll}
+        data-testid="summary-field-list-scroll"
+      >
         {matchingSections.length > 0 ? (
           matchingSections.map((section) => (
             <CollapsibleSection
@@ -126,6 +123,8 @@ export function SummaryFieldList({ query, stageIndex }: SummaryFieldListProps) {
                   key={item.key}
                   item={item}
                   searchText={searchText}
+                  onSelect={onSelect}
+                  onAdd={onAdd}
                 />
               ))}
             </CollapsibleSection>
@@ -186,17 +185,35 @@ function CollapsibleSection({
 type FieldListItemProps = {
   item: SummaryFieldItem;
   searchText: string;
+  onSelect: (field: SummaryField) => void;
+  onAdd: (field: SummaryField) => void;
 };
 
-function FieldListItem({ item, searchText }: FieldListItemProps) {
+function FieldListItem({
+  item,
+  searchText,
+  onSelect,
+  onAdd,
+}: FieldListItemProps) {
+  const pick = (event: MouseEvent | KeyboardEvent) =>
+    event.altKey ? onAdd(item.field) : onSelect(item.field);
+
   return (
-    <Box
-      component="li"
-      className={S.fieldItem}
-      data-testid="summary-field-item"
-    >
-      <Icon name={item.icon} c="text-secondary" aria-hidden />
-      <MatchedLabel label={item.name} searchText={searchText} />
-    </Box>
+    <li data-testid="summary-field-item">
+      <UnstyledButton
+        className={S.fieldItem}
+        onClick={pick}
+        onKeyDown={(event) => {
+          // a click from Enter or Space carries no modifier, so the key handles alt itself
+          if (event.altKey && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            pick(event);
+          }
+        }}
+      >
+        <Icon name={item.icon} c="text-secondary" aria-hidden />
+        <MatchedLabel label={item.name} searchText={searchText} />
+      </UnstyledButton>
+    </li>
   );
 }

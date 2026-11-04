@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { SummaryFieldList } from "./SummaryFieldList";
+import type { SummaryField } from "./types";
+import { getFieldSections } from "./utils";
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -13,7 +15,16 @@ type SetupOpts = {
 function setup({
   query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 }: SetupOpts = {}) {
-  renderWithProviders(<SummaryFieldList query={query} stageIndex={-1} />);
+  const onSelect = jest.fn<void, [SummaryField]>();
+  const onAdd = jest.fn<void, [SummaryField]>();
+  renderWithProviders(
+    <SummaryFieldList
+      sections={getFieldSections(query, -1)}
+      onSelect={onSelect}
+      onAdd={onAdd}
+    />,
+  );
+  return { onSelect, onAdd };
 }
 
 function getSection(name: string) {
@@ -41,6 +52,35 @@ describe("SummaryFieldList", () => {
     ).toEqual(["Orders", "Product", "User"]);
     expect(getItemNames(getSection("Orders"))).toContain("Total");
     expect(getItemNames(getSection("Product"))).toContain("Category");
+  });
+
+  it("selects a field on click and adds it on alt-click", async () => {
+    const { onSelect, onAdd } = setup();
+    const total = within(getSection("Orders")).getByRole("button", {
+      name: "Total",
+    });
+
+    await userEvent.click(total);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0][0].kind).toBe("column");
+    expect(onAdd).not.toHaveBeenCalled();
+
+    fireEvent.click(total, { altKey: true });
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(onAdd.mock.calls[0][0].kind).toBe("column");
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("selects a focused field on Enter and adds it on Alt+Enter", async () => {
+    const { onSelect, onAdd } = setup();
+    within(getSection("Orders")).getByRole("button", { name: "Total" }).focus();
+
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledTimes(1);
+
+    await userEvent.keyboard("{Alt>}{Enter}{/Alt}");
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it("collapses and expands a section from its name", async () => {

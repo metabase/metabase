@@ -49,6 +49,7 @@ export const useDefaultQueryAggregation = ({
   return {
     query,
     hasAggregations,
+    hasDefaultAggregation,
     onUpdateQuery,
     onAggregationChange,
   };

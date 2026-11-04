@@ -5,6 +5,7 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import type { TestQuerySpec } from "metabase-types/api";
 import {
   createMockCard,
   createMockMeasure,
@@ -18,15 +19,27 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { filterFieldSections, getFieldSections } from "./utils";
+import type { SummaryField, SummaryFieldSection } from "./types";
+import {
+  addField,
+  changeValueOperator,
+  clearWell,
+  filterFieldSections,
+  getDimensionItems,
+  getFieldSections,
+  getValueItems,
+  getValueOperatorOptions,
+  getWellFieldSections,
+  replaceWellWithField,
+} from "./utils";
 
 const STAGE_INDEX = -1;
 
-function createOrdersQuery() {
-  return Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+function createOrdersQuery(spec: TestQuerySpec = DEFAULT_TEST_QUERY) {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, spec);
 }
 
-function createOrdersQueryWithMetricsAndMeasures() {
+function createProviderWithMetricAndMeasure() {
   const metric = createMockCard({
     id: 1,
     name: "Revenue",
@@ -53,25 +66,62 @@ function createOrdersQueryWithMetricsAndMeasures() {
       ],
     }),
   });
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-    questions: [metric],
-    measures: [measure],
+  return createMetadataProvider({
+    metadata: createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [metric],
+      measures: [measure],
+    }),
   });
-  return Lib.createTestQuery(createMetadataProvider({ metadata }), {
+}
+
+function createOrdersQueryWithMetricsAndMeasures(
+  spec: TestQuerySpec = {
     stages: [{ source: { type: "table", id: ORDERS_ID } }],
-  });
+  },
+) {
+  return Lib.createTestQuery(createProviderWithMetricAndMeasure(), spec);
+}
+
+function findField(
+  sections: SummaryFieldSection[],
+  name: string,
+): SummaryField {
+  const item = sections
+    .flatMap((section) => section.items)
+    .find((item) => item.name === name);
+  if (item == null) {
+    throw new Error(`No field named ${name}`);
+  }
+  return item.field;
+}
+
+// a failed identity assertion on two queries makes jest print their whole structures, which
+// never finishes; a boolean keeps the failure readable
+function isSameQuery(query: Lib.Query, other: Lib.Query) {
+  return Object.is(query, other);
+}
+
+function getSectionNames(sections: SummaryFieldSection[]) {
+  return sections.map((section) => section.name);
+}
+
+function getValueLabels(query: Lib.Query) {
+  return getValueItems(query, STAGE_INDEX).map(({ kind, label }) => [
+    kind,
+    label,
+  ]);
+}
+
+function getDimensionLabels(query: Lib.Query) {
+  return getDimensionItems(query, STAGE_INDEX).map(({ label }) => label);
 }
 
 describe("getFieldSections", () => {
   it("lists the source table first, then the tables it links to", () => {
     const sections = getFieldSections(createOrdersQuery(), STAGE_INDEX);
 
-    expect(sections.map((section) => section.name)).toEqual([
-      "Orders",
-      "Product",
-      "User",
-    ]);
+    expect(getSectionNames(sections)).toEqual(["Orders", "Product", "User"]);
   });
 
   it("lists breakoutable columns with their names and icons", () => {
@@ -92,6 +142,9 @@ describe("getFieldSections", () => {
     expect(orders.items.find((item) => item.name === "Total")?.icon).toBe(
       "int",
     );
+    expect(orders.items.every((item) => item.field.kind === "column")).toBe(
+      true,
+    );
   });
 
   it("lists measures, then metrics, before the tables", () => {
@@ -103,11 +156,11 @@ describe("getFieldSections", () => {
     expect(
       sections.map((section) => [
         section.name,
-        section.items.map((item) => [item.name, item.icon]),
+        section.items.map((item) => [item.name, item.icon, item.field.kind]),
       ]),
     ).toEqual([
-      ["Measures", [["Order count", "ruler"]]],
-      ["Metrics", [["Revenue", "metric"]]],
+      ["Measures", [["Order count", "ruler", "measure"]]],
+      ["Metrics", [["Revenue", "metric", "metric"]]],
       ["Orders", expect.any(Array)],
       ["Product", expect.any(Array)],
       ["User", expect.any(Array)],
@@ -129,7 +182,7 @@ describe("getFieldSections", () => {
   });
 
   it("lists an explicitly joined table by its join, in place of the link to it", () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    const query = createOrdersQuery({
       stages: [
         {
           source: { type: "table", id: ORDERS_ID },
@@ -143,11 +196,42 @@ describe("getFieldSections", () => {
       ],
     });
 
-    const sections = getFieldSections(query, STAGE_INDEX);
-
-    expect(sections.map((section) => section.name)).toEqual([
+    expect(getSectionNames(getFieldSections(query, STAGE_INDEX))).toEqual([
       "Orders",
       "Products",
+      "User",
+    ]);
+  });
+});
+
+describe("getWellFieldSections", () => {
+  const sections = getFieldSections(
+    createOrdersQueryWithMetricsAndMeasures(),
+    STAGE_INDEX,
+  );
+
+  it("offers Count of rows, measures and metrics, then the columns, to Summarize by", () => {
+    const wellSections = getWellFieldSections(sections, "values");
+
+    expect(
+      wellSections.map((section) => [
+        section.name,
+        section.items.map((item) => item.name),
+      ]),
+    ).toEqual([
+      ["Basic", ["Count of rows"]],
+      ["Measures", ["Order count"]],
+      ["Metrics", ["Revenue"]],
+      ["Orders", expect.any(Array)],
+      ["Product", expect.any(Array)],
+      ["User", expect.any(Array)],
+    ]);
+  });
+
+  it("offers the table columns to Group by", () => {
+    expect(getSectionNames(getWellFieldSections(sections, "columns"))).toEqual([
+      "Orders",
+      "Product",
       "User",
     ]);
   });
@@ -176,9 +260,7 @@ describe("filterFieldSections", () => {
   });
 
   it("matches measures and metrics too", () => {
-    const matches = filterFieldSections(sections, "e");
-
-    expect(matches.map((section) => section.name)).toEqual([
+    expect(getSectionNames(filterFieldSections(sections, "e"))).toEqual([
       "Measures",
       "Metrics",
       "Orders",
@@ -189,5 +271,247 @@ describe("filterFieldSections", () => {
 
   it("returns no sections when nothing matches", () => {
     expect(filterFieldSections(sections, "nothing like this")).toEqual([]);
+  });
+});
+
+describe("getValueItems", () => {
+  it("tells a count, a column aggregation, a metric, a measure and a custom expression apart", () => {
+    const query = createOrdersQueryWithMetricsAndMeasures({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+            { type: "metric", id: 1 },
+            { type: "measure", id: 1 },
+            {
+              type: "operator",
+              operator: "*",
+              args: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "TOTAL" }],
+                },
+                { type: "literal", value: 2 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(getValueLabels(query)).toEqual([
+      ["count", "Count"],
+      ["column", "Sum of Total"],
+      ["metric", "Revenue"],
+      ["measure", "Order count"],
+      ["expression", "Sum of Total × 2"],
+    ]);
+  });
+});
+
+describe("getDimensionItems", () => {
+  it("names breakouts with their bucket", () => {
+    const query = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(getDimensionLabels(query)).toEqual([
+      "Created At: Month",
+      "Product → Category",
+    ]);
+  });
+});
+
+describe("addField", () => {
+  const query = createOrdersQueryWithMetricsAndMeasures();
+  const sections = getFieldSections(query, STAGE_INDEX);
+
+  it("groups by a column with its default bucket, once", () => {
+    const createdAt = findField(sections, "Created At");
+    const grouped = addField(query, STAGE_INDEX, "columns", createdAt);
+
+    expect(getDimensionLabels(grouped)).toEqual(["Created At: Month"]);
+    expect(
+      isSameQuery(
+        addField(grouped, STAGE_INDEX, "columns", createdAt),
+        grouped,
+      ),
+    ).toBe(true);
+  });
+
+  it("sums a number dropped on Summarize by, and counts the distinct values of a text", () => {
+    const total = findField(sections, "Total");
+    const category = findField(sections, "Category");
+    const summed = addField(query, STAGE_INDEX, "values", total);
+    const counted = addField(summed, STAGE_INDEX, "values", category);
+
+    expect(getValueLabels(counted)).toEqual([
+      ["column", "Sum of Total"],
+      ["column", "Distinct values of Category"],
+    ]);
+  });
+
+  it("adds Count of rows, a metric and a measure once each", () => {
+    const count: SummaryField = { kind: "count" };
+    const revenue = findField(sections, "Revenue");
+    const orderCount = findField(sections, "Order count");
+    const withAll = [count, revenue, orderCount].reduce(
+      (query, field) => addField(query, STAGE_INDEX, "values", field),
+      query,
+    );
+
+    expect(getValueLabels(withAll)).toEqual([
+      ["count", "Count"],
+      ["metric", "Revenue"],
+      ["measure", "Order count"],
+    ]);
+    expect(
+      isSameQuery(addField(withAll, STAGE_INDEX, "values", count), withAll),
+    ).toBe(true);
+    expect(
+      isSameQuery(addField(withAll, STAGE_INDEX, "values", revenue), withAll),
+    ).toBe(true);
+    expect(
+      isSameQuery(
+        addField(withAll, STAGE_INDEX, "values", orderCount),
+        withAll,
+      ),
+    ).toBe(true);
+  });
+
+  it("leaves a metric out of Group by", () => {
+    expect(
+      isSameQuery(
+        addField(query, STAGE_INDEX, "columns", findField(sections, "Revenue")),
+        query,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("replaceWellWithField", () => {
+  const query = createOrdersQuery({
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          { type: "operator", operator: "count" },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "TOTAL" }],
+          },
+        ],
+        breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+      },
+    ],
+  });
+  const sections = getFieldSections(query, STAGE_INDEX);
+
+  it("swaps the groupings for the column", () => {
+    const next = replaceWellWithField(
+      query,
+      STAGE_INDEX,
+      "columns",
+      findField(sections, "Category"),
+    );
+
+    expect(getDimensionLabels(next)).toEqual(["Product → Category"]);
+    expect(getValueLabels(next)).toHaveLength(2);
+  });
+
+  it("swaps the values for the field", () => {
+    const next = replaceWellWithField(query, STAGE_INDEX, "values", {
+      kind: "count",
+    });
+
+    expect(getValueLabels(next)).toEqual([["count", "Count"]]);
+    expect(getDimensionLabels(next)).toEqual(["Created At: Month"]);
+  });
+
+  it("clears a well", () => {
+    expect(getValueLabels(clearWell(query, STAGE_INDEX, "values"))).toEqual([]);
+    expect(
+      getDimensionLabels(clearWell(query, STAGE_INDEX, "columns")),
+    ).toEqual([]);
+  });
+});
+
+describe("changeValueOperator", () => {
+  const query = createOrdersQuery({
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          { type: "operator", operator: "count" },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "TOTAL" }],
+          },
+        ],
+      },
+    ],
+  });
+
+  it("offers the operators that fit the column, with Sum selected", () => {
+    const [, total] = getValueItems(query, STAGE_INDEX);
+    if (total.kind !== "column") {
+      throw new Error("Expected a column value");
+    }
+    const options = getValueOperatorOptions(query, STAGE_INDEX, total);
+
+    expect(options.map((option) => option.shortName)).toEqual(
+      expect.arrayContaining(["sum", "avg", "min", "max", "distinct"]),
+    );
+    expect(options.map((option) => option.shortName)).not.toContain("count");
+    expect(
+      options.filter((option) => option.isSelected).map((o) => o.shortName),
+    ).toEqual(["sum"]);
+  });
+
+  it("replaces the aggregation in place", () => {
+    const [, total] = getValueItems(query, STAGE_INDEX);
+    if (total.kind !== "column") {
+      throw new Error("Expected a column value");
+    }
+    const average = getValueOperatorOptions(query, STAGE_INDEX, total).find(
+      (option) => option.shortName === "avg",
+    );
+    if (average == null) {
+      throw new Error("Expected an Average operator");
+    }
+
+    const next = changeValueOperator(
+      query,
+      STAGE_INDEX,
+      total,
+      average.operator,
+    );
+
+    expect(getValueLabels(next)).toEqual([
+      ["count", "Count"],
+      ["column", "Average of Total"],
+    ]);
   });
 });
