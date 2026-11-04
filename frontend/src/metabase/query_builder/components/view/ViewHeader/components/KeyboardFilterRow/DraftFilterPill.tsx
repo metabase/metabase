@@ -228,6 +228,19 @@ export function DraftFilterPill({
     if (step === "column") {
       onColumnTextChange?.(newText);
     }
+    // A space after a symbol of a number operator, like ">= ", selects the
+    // operator, the same as Tab.
+    if (step === "operator" && newText.endsWith(" ")) {
+      const symbol = newText.trim();
+      const symbolOperator = column?.operators?.find(
+        (operator) =>
+          operator.isNumeric && getOperatorAliases(operator)?.includes(symbol),
+      );
+      if (symbolOperator != null) {
+        selectOperator(symbolOperator);
+        return;
+      }
+    }
     // Commas separate values. Elsewhere, the text can be a request to the AI,
     // which can have commas.
     if (step !== "value" || isAiPrompt(newText)) {
