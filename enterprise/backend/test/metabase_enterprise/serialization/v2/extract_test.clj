@@ -2983,7 +2983,7 @@
                        goal-eid))))))
 
 (deftest card-dynamic-goal-descendants-test
-  (testing "a card's descendants leave out the card its dynamic goal reads, the same as click behavior"
+  (testing "a card's descendants leave out the card its dynamic goal reads, the same as click behavior (GDGT-3459)"
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Database   {db-id :id}    {:name "My Database"}
                          :model/Collection {coll-id :id}  {:name "Goals"}
