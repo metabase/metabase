@@ -288,10 +288,14 @@
   (system/mutable-component-handle ::pools (constantly nil)))
 
 (defn- close-all-pools!
-  "Destroy every pool in the pools state `state`. Runs when the global system halts."
+  "Destroy every pool in the pools state `state`. Runs when the global system halts, so a pool that fails to close is
+  logged and the rest are still closed."
   [{:keys [pools]}]
   (doseq [[[database-id _connection-type] pool-spec] pools]
-    (destroy-pool! database-id pool-spec)))
+    (try
+      (destroy-pool! database-id pool-spec)
+      (catch Throwable e
+        (log/warnf e "Failed to close the connection pool for database %s" database-id)))))
 
 (defn- pools-state
   "The current pools state, starting an empty one on first use."
@@ -301,10 +305,13 @@
                           close-all-pools!))
 
 (defn- swap-pools-state!
-  "Apply `f` and `args` to the pools state, and return `[old new]`."
+  "Apply `f` and `args` to the pools state, and return `[old new]`.
+  Holds the root lock that [[system/stop!]] takes, so a write never lands between a halt clearing the state and the
+  next start, where it would bring back state the lifecycle no longer tracks."
   [f & args]
-  (pools-state)
-  (apply mc/swap-vals! pools-component f args))
+  (mc/with-slot-lock pools-component
+    (pools-state)
+    (apply mc/swap-vals! pools-component f args)))
 
 (defn- pool-token
   "The c3p0 identity token of the pool in `pool-spec`, or nil if it is not a c3p0 pool."
@@ -329,12 +336,6 @@
   "The open pools, keyed by `[database-id connection-type]`."
   []
   (:pools (pools-state)))
-
-(defn- pool-cache-key->jdbc-spec-hash
-  "The details hash each open pool was made from, keyed by `[database-id connection-type]`, used to tell when a
-  Database's details changed in the app DB."
-  []
-  (:hashes (pools-state)))
 
 (defonce ^:private ^ThreadLocal checkout-error
   (ThreadLocal.))
@@ -555,12 +556,11 @@
     pool-spec))
 
 (defn- canonical-pool-hash-changed?
-  "Check if the canonical pool's hash differs from the expected hash.
+  "Check if `curr-hash`, the details hash the canonical pool was made from, differs from the expected hash.
   Handles stale DatabaseInstance by re-fetching from app DB.
   `cache-key` is a `[database-id, connection-type]` tuple."
-  [cache-key expected-hash]
-  (let [database-id (first cache-key)
-        curr-hash   (get (pool-cache-key->jdbc-spec-hash) cache-key)]
+  [cache-key curr-hash expected-hash]
+  (let [database-id (first cache-key)]
     (when (and (some? curr-hash) (not= curr-hash expected-hash))
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
@@ -573,14 +573,16 @@
   "Get a canonical pool if it exists and is valid, otherwise return nil.
   `cache-key` is a `[database-id, connection-type]` tuple."
   [cache-key details-hash log-invalidation?]
+  ;; the pool and its hash come from one read of the state, so they belong together
   (let [database-id (first cache-key)
-        pool-spec   (get (pool-cache-key->connection-pool) cache-key ::not-found)]
+        state       (pools-state)
+        pool-spec   (get-in state [:pools cache-key] ::not-found)]
     (cond
       (= ::not-found pool-spec)
       nil
 
       ;; Check if the hash has changed (details were updated in DB)
-      (canonical-pool-hash-changed? cache-key details-hash)
+      (canonical-pool-hash-changed? cache-key (get-in state [:hashes cache-key]) details-hash)
       (do
         (when log-invalidation?
           (log-pool-invalidation! database-id :hash-changed))
