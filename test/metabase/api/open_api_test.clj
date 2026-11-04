@@ -185,6 +185,21 @@
   (testing "Make sure we can successfully generate an OpenAPI spec for the entire API"
     (is (open-api/root-open-api-object #'routes/routes))))
 
+(defn- undeclared-empty-schemas
+  "The malli forms that make generating the OpenAPI spec of `routes` fail for compiling to a JSON Schema that accepts
+  anything without saying so."
+  [routes]
+  (try
+    (open-api/root-open-api-object routes)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (or (some (comp :forms ex-data) (take-while some? (iterate ex-cause e)))
+          (throw e)))))
+
+(deftest ^:parallel openapi-no-undeclared-empty-schemas-test
+  (testing "every endpoint schema that compiles to a JSON Schema accepting anything says so with :json-schema"
+    (is (= nil (undeclared-empty-schemas #'routes/routes)))))
+
 (deftest ^:parallel openapi-info-version-test
   (testing "OpenAPI spec includes required info.version field (see #67748)"
     (let [spec (open-api/root-open-api-object #'routes/routes)]
