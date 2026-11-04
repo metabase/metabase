@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -219,3 +220,40 @@
       (testing sql
         (is (= "ok" (:status (sql-parsing/validate-query
                               dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
+
+;;;; system-table?
+
+(deftest system-table?-test
+  ;; Load the core drivers, so the hierarchy knows that they are JDBC drivers.
+  (run! driver/the-initialized-driver [:postgres :mysql])
+  (doseq [[driver default-schema written expected]
+          [[:postgres           "public" {:schema "pg_catalog" :table "pg_class"}                 true]
+           [:postgres           "public" {:table "pg_tables"}                                    true]
+           [:postgres           "public" {:schema "core" :table "pg_tables"}                     false]
+           [:postgres           "public" {:schema "sys" :table "tables"}                         false]
+           [:postgres           "public" {:schema "system" :table "tables"}                      false]
+           [:postgres           "public" {:table "accounts"}                                     false]
+           [:mysql              nil      {:schema "INFORMATION_SCHEMA" :table "TABLES"}          true]
+           [:mysql              nil      {:schema "mysql" :table "user"}                         true]
+           [:oracle             "SCOTT"  {:table "DUAL"}                                         true]
+           [:oracle             "SCOTT"  {:table "EMP"}                                          false]
+           [:bigquery-cloud-sdk nil      {:schema "region-us" :table "INFORMATION_SCHEMA.JOBS"}  true]
+           [:bigquery-cloud-sdk nil      {:table "INFORMATION_SCHEMA.SCHEMATA"}                  true]
+           [:bigquery-cloud-sdk nil      {:schema "mydataset" :table "orders"}                   false]]]
+    (testing (str driver " " written)
+      (is (= expected (#'metabot.tools.sql.validation/system-table? driver default-schema written))))))
+
+;;;; names-table?
+
+(deftest ^:parallel names-table?-test
+  (let [names-table? #'metabot.tools.sql.validation/names-table?]
+    (testing "on a database without schemas, such as MySQL, the qualifier that the SQL writes names the database"
+      (is (names-table? nil {:schema "mydb" :table "orders"} {:schema nil :table "orders"}))
+      (is (names-table? nil {:schema nil :table "orders"} {:schema nil :table "orders"})))
+    (testing "a spec without a schema, as the :macaw parser backend gives, is in the default schema"
+      (is (names-table? "public" {:schema nil :table "account"} {:table "account"}))
+      (is (not (names-table? "public" {:schema "core" :table "account"} {:table "account"}))))
+    (testing "where the database has schemas, the schemas must match"
+      (is (names-table? "public" {:schema nil :table "Account"} {:schema "public" :table "account"}))
+      (is (not (names-table? "public" {:schema nil :table "account"} {:schema "core" :table "account"})))
+      (is (not (names-table? "public" {:schema "public" :table "account"} {:schema "public" :table "orders"}))))))

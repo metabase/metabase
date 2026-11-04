@@ -50,15 +50,18 @@
   - name: Name for the query (optional)
   - description: Description for the query (optional)
   - collection-id: Collection to save the query in (optional, defaults to user's personal collection)
+  - check-fields?: Whether to check the table and column references (optional, default true). The card and snippet
+    references are always checked.
 
   Returns a map with:
   - :query-id - The ID of the created query
   - :query-content - The SQL content
   - :database - Database ID"
-  [{:keys [database-id sql]} :- [:map {:closed true}
-                                 [:database-id :int]
-                                 [:sql :string]
-                                 [:name {:optional true} [:maybe :string]]]]
+  [{:keys [database-id sql check-fields?] :or {check-fields? true}} :- [:map {:closed true}
+                                                                        [:database-id :int]
+                                                                        [:sql :string]
+                                                                        [:name {:optional true} [:maybe :string]]
+                                                                        [:check-fields? {:optional true} :boolean]]]
   (log/info "Creating SQL query"
             {:database-id database-id
              :sql-length (count sql)})
@@ -67,10 +70,8 @@
   (validate-database-access database-id)
   (metabot.tools.sql.common/check-nonblank-sql! sql)
 
-  (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
-
-        {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-sql dialect sql)]
+  (let [{:keys [valid? transpiled-sql] :as validation-result}
+        (metabot.tools.sql.validation/validate-database-sql database-id sql nil check-fields?)]
     (merge {:validation-result validation-result}
            (when valid?
              (let [;; Create the in-memory query structure

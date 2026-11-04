@@ -163,6 +163,17 @@
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
+(deftest sql-reference-warning-keeps-turn-open-test
+  (let [terminal #{"create_sql_query"}
+        warned   [{:type :tool-input :id "a" :function "create_sql_query"}
+                  {:type :tool-output :id "a" :result {:output "Created, with warnings" :non-terminal? true}}]]
+    (testing "a successful terminal-tool call whose result is marked :non-terminal? does not end the turn"
+      (is (not (#'agent/terminal-tool-call? terminal warned)))
+      (is (#'agent/should-continue? 0 20 terminal warned)))
+    (testing "another successful terminal call in the same iteration still ends it"
+      (is (#'agent/terminal-tool-call? terminal (into warned [{:type :tool-input :id "b" :function "create_sql_query"}
+                                                              {:type :tool-output :id "b" :result {:output "ok"}}]))))))
+
 (defn- tools-registered-for-request!
   ([capabilities] (tools-registered-for-request! :internal capabilities))
   ([profile-id capabilities]
@@ -539,6 +550,41 @@
                          :text          #"Metabase can't send alerts or subscriptions to this conversation\..*"}
                         (outcome call))
                     function)))))))))
+
+(deftest sql-reference-warning-gets-one-more-iteration-test
+  (testing (str "in the :sql profile, SQL with a reference warning keeps the turn open, the model reads the warning, "
+                "and the same SQL again ends the turn")
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; The BOT-1154 shape: a bare name of a table that exists only in another schema. The query does not run, so
+        ;; the warehouse needs no `core.account` table.
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [call                               (fn [id]
+                                                     [{:type      :tool-input
+                                                       :id        id
+                                                       :function  "create_sql_query"
+                                                       :arguments {:database_id (mt/id)
+                                                                   :sql_query   "SELECT a.customer_name FROM account a"
+                                                                   :title       "Results"}}])
+                {:keys [llm-calls requests parts]} (run-turn! :sql "Fix this SQL query" [(call "t1") (call "t2")]
+                                                              :context {:capabilities    ["permission:write_sql_queries"]
+                                                                        :user_is_viewing sql-editor-viewing})
+                outputs                            (filter #(= :tool-output (:type %)) parts)
+                ;; Only the tool result holds this text: the tool arguments hold the table and column names too.
+                holds-warning?                     (fn [request]
+                                                     (some #(and (string? %)
+                                                                 (str/includes? % "checking its table and column references"))
+                                                           (tree-seq coll? seq (:input request))))]
+            (is (= 2 llm-calls))
+            (is (= [true nil] (map #(get-in % [:result :non-terminal?]) outputs)))
+            (testing "the second LLM request holds the warning, and the first does not"
+              (is (not (holds-warning? (first requests))))
+              (is (holds-warning? (second requests))))
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
 
 (deftest a-turn-survives-one-undeclared-failure-test
   (mt/with-current-user (mt/user->id :crowberto)

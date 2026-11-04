@@ -94,6 +94,15 @@
         (tools.error/throw-recoverable! recovery-code {} {:cause e})
         (throw e)))))
 
+(defn- non-terminal-on-new-warnings
+  "`result` marked `:non-terminal?` when `validation-result` has reference warnings that are new in this turn.
+
+  A profile that ends its turn on this tool then gives the model one more turn to act on them. Warnings that this turn
+  has already shown do not, so sending the SQL again accepts it instead of looping."
+  [result {:keys [warnings repeated-warnings?]}]
+  (cond-> result
+    (and (seq warnings) (not repeated-warnings?)) (assoc :non-terminal? true)))
+
 (defn- query-viz-part
   [{:keys [query-id query]} title]
   (streaming/viz-part {:entity-id (str (random-uuid))
@@ -126,19 +135,24 @@
                       (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
                           (tools/unrecoverable! ::missing-editor
                                                 {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
-          action-result (sql.common/validated-sql-action!
-                         (do-with-notebook-fallback
-                          ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
+          {:keys [validation-result] :as operation-result}
+          (do-with-notebook-fallback
+           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query}))
+          action-result (sql.common/validated-sql-action! operation-result)
           {:keys [query-id query-content]} action-result
           structured (assoc action-result :result-type :query)
-          instr (if code-edit?
-                  instructions/query-loaded-in-editor-instructions
-                  (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))]
-      {:output (format-query-output structured instr {:preamble? true})
-       :structured-output structured
-       :data-parts [(if code-edit?
-                      (code-edit-part buffer-id query-content)
-                      (query-viz-part action-result title))]})))
+          instr (instructions/with-sql-reference-warnings
+                  (if code-edit?
+                    instructions/query-loaded-in-editor-instructions
+                    (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))
+                  validation-result)]
+      (non-terminal-on-new-warnings
+       {:output (format-query-output structured instr {:preamble? true})
+        :structured-output structured
+        :data-parts [(if code-edit?
+                       (code-edit-part buffer-id query-content)
+                       (query-viz-part action-result title))]}
+       validation-result))))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."
@@ -163,19 +177,22 @@
    [:title :string]])
 
 (defn- sql-edit-result!
-  [operation-result title instruction-fn ctx & {:keys [edit?]}]
+  [{:keys [validation-result] :as operation-result} title instruction-fn ctx & {:keys [edit?]}]
   (let [{:keys [query-id query query-content] :as action-result} (sql.common/validated-sql-action!
                                                                   operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
-        instr (instruction-fn query-id (some? buffer-id))]
+        instr (instructions/with-sql-reference-warnings (instruction-fn query-id (some? buffer-id))
+                validation-result)]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
-    {:output (format-query-output structured instr)
-     :structured-output structured
-     :data-parts [(if buffer-id
-                    (code-edit-part buffer-id query-content)
-                    (query-viz-part action-result title))]}))
+    (non-terminal-on-new-warnings
+     {:output (format-query-output structured instr)
+      :structured-output structured
+      :data-parts [(if buffer-id
+                     (code-edit-part buffer-id query-content)
+                     (query-viz-part action-result title))]}
+     validation-result)))
 
 (defrecord EditSqlQueryTool []
   tools/Tool
