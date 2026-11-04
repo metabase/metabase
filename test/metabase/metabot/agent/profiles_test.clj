@@ -319,4 +319,6 @@
               tool-var   (:tools (profiles/get-profile profile-id))]
         (testing (str profile-id " " tool-var)
           (is (contains? #{:gated :filtered :conversation-state :viewing-context :sql :navigation}
-                         (:metabot/curation (tools.legacy/declaration-of tool-var)))))))))
+                         (:metabot/curation (tools.legacy/declaration-of tool-var)))))))
+    (testing "load_skill, which profile->tools adds after registration, declares one"
+      (is (= :navigation (:metabot/curation (tools.legacy/declaration-of #'tools/load-skill-tool)))))))

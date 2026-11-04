@@ -91,16 +91,18 @@
 
 (mr/def ::curation
   "How a tool keeps a curated-only Metabot (one with `use_verified_content` on, see
-  `metabase.metabot.curation/curated-only?`) within curated content. Every tool a profile exposes
-  declares one of these under `:metabot/curation`; `metabase.metabot.agent.profiles` refuses a tool
+  [[metabase.metabot.curation/curated-only?]]) within curated content. Every tool a profile exposes
+  declares one of these under `:metabot/curation`; [[metabase.metabot.agent.profiles]] refuses a tool
   without it, so a new tool that names an entity cannot be registered open by omission.
 
-  - `:gated` — the handler checks the entity or query it names against `metabase.metabot.curation`
-    and refuses an uncurated one with `recoverable.common/not-curated!` or the construct pipeline's
-    `uncurated-source!`. A test runs every gated tool of every profile against an uncurated id.
+  - `:gated` — the handler checks the entity or query it names against [[metabase.metabot.curation]]
+    and refuses an uncurated one with [[metabase.metabot.tools.recoverable.common/not-curated!]] or the
+    construct pipeline's uncurated-source refusal. A test runs every gated tool of every profile against
+    an uncurated id.
   - `:filtered` — a listing: uncurated items are left out of its results, and it names nothing.
-  - `:conversation-state` — takes a query or chart id the conversation holds, which was judged when
-    it was put there, and sends no rows.
+  - `:conversation-state` — takes a query or chart id the conversation holds (from
+    `construct_notebook_query`, which judged it, or from the client's viewing context, which nothing
+    judged) and sends no rows. A tool that sends rows for one is `:gated`.
   - `:viewing-context` — works on what the client already sent, and reads nothing by the id it takes.
   - `:sql` — native SQL, which the product decision leaves outside the rule until BOT-2538.
   - `:navigation` — names no data entity."

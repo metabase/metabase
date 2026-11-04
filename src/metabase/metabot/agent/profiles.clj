@@ -41,8 +41,8 @@
 
 (defn- validate-tool-var!
   "Validate that a var holds a tool, that its declaration is valid, that its `:scope` is registered, and that it
-  declares how it keeps a curated-only Metabot within curated content (`:metabot/curation`, see
-  `metabase.metabot.tools.core/::curation`). The last is required of every tool a profile exposes, exempt
+  declares how it keeps a curated-only Metabot within curated content (`:metabot/curation`, the
+  `:metabase.metabot.tools.core/curation` schema). The last is required of every tool a profile exposes, exempt
   profiles included: the value describes the handler, not the profile, and a tool without one would otherwise
   be open until a reviewer noticed."
   [tool-var]
@@ -291,6 +291,10 @@
                     #'tools/list-timelines-tool
                     #'tools/get-timeline-details-tool
                     #'tools/select-exploration-timelines-tool]})
+
+;; [[profile->tools]] adds `load_skill` to every profile that has skills, after registration, so the tool
+;; is checked here, once, like a profile's own tools.
+(validate-tool-var! #'tools/load-skill-tool)
 
 (defn- filter-by-capabilities
   "Filter tools by user capabilities.

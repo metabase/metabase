@@ -452,7 +452,7 @@
     {:name        "set_research_name"
      :description "Set the name of the research artifact."
      :scope       scope/agent-explorations-write
-     :metabot/curation :conversation-state
+     :metabot/curation :navigation
      :args        set-exploration-name-schema})
 
   (handle [_ {:keys [name]} _ctx]
@@ -483,7 +483,7 @@
                        " Timelines already in the plan stay; to drop one, use"
                        " `remove_from_research_plan`.")
      :scope       scope/agent-explorations-write
-     :metabot/curation :conversation-state
+     :metabot/curation :navigation
      :args        select-exploration-timelines-schema})
 
   (handle [_ {:keys [timeline_ids]} _ctx]

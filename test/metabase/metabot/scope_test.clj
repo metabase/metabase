@@ -243,7 +243,7 @@
   (let [validate! @(resolve 'metabase.metabot.agent.profiles/validate-tool-var!)]
     (testing "tool with registered scope passes validation"
       (let [v (make-tool-var! 'test-ok-tool {:tool-name "ok" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"
-                                                :curation :navigation})]
+                                             :curation :navigation})]
         (is (true? (validate! v)))))
     (testing "tool with unregistered scope throws"
       (let [v (make-tool-var! 'test-bad-tool {:tool-name "bad" :schema [:=> [:cat :map] :map] :scope "agent:bogus:scope"})]

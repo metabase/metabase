@@ -1475,8 +1475,8 @@
             (is (true? (curation/measure-or-segment-curated? :measure hop-measure)))))))))
 
 (deftest every-gated-tool-refuses-an-uncurated-id-test
-  (testing "every tool declared :gated, in every profile the rule applies to, refuses an uncurated entity named by id, so
-            a declaration and its handler can't disagree and a gated tool without a probe here fails"
+  (testing "every tool declared :gated, in every profile the rule applies to, refuses an uncurated entity named by id,
+            and a gated tool without a probe here fails"
     (with-slack
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card {plain-card :id} {:dataset_query (orders-query)}
