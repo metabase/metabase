@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupDashboardEndpoints } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { screen, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -22,6 +22,8 @@ import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 import { setup } from "./setup";
 
 const DESCRIPTION = "abc";
+// Longer than the Sidesheet exit transition, so a closing sheet would be gone
+const SIDESHEET_EXIT_WAIT_MS = 300;
 
 describe("QuestionInfoSidebar", () => {
   describe("description", () => {
@@ -87,7 +89,7 @@ describe("QuestionInfoSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("opens the usage analytics upsell from the Insights action for admins", async () => {
+    it("opens the usage analytics upsell for admins, and Escape closes only the upsell", async () => {
       await setup({
         user: { is_superuser: true },
         settings: createMockSettings({
@@ -102,6 +104,19 @@ describe("QuestionInfoSidebar", () => {
       expect(
         await screen.findByText(/See who.s doing what, when/),
       ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/See who.s doing what, when/),
+        ).not.toBeInTheDocument(),
+      );
+      await act(
+        () =>
+          new Promise((resolve) => setTimeout(resolve, SIDESHEET_EXIT_WAIT_MS)),
+      );
+      expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
     });
   });
 

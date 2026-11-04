@@ -9,6 +9,7 @@ describe("InsightsAction (OSS)", () => {
     await setup({ isUserAdmin: true });
 
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByTestId("upsell-gem")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Insights" }));
 
