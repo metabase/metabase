@@ -336,7 +336,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus and buttons) automatically. To also translate content like dashboard titles and filter labels, upload a [translation dictionary](./translations.md). Translation dictionaries are available on Pro and Enterprise plans.
+The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus and buttons) automatically. On Pro and Enterprise plans, you can also translate content (like dashboard titles and filter labels) by uploading a [translation dictionary](./translations.md).
 
 ## How guest embedding works
 
