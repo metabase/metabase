@@ -393,16 +393,23 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.saveDashboard();
 
     cy.log("Saved dashcard and visualizer goals are resolved after a reload");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "reloadedDashcardQuery",
-    );
+    H.getDashboardCard(0)
+      .findByTestId("dashcard")
+      .invoke("attr", "data-dashcard-key")
+      .then((dashcardId) => {
+        cy.intercept(
+          "POST",
+          `/api/dashboard/*/dashcard/${dashcardId}/card/*/query`,
+        ).as("visualizerDashcardQuery");
+      });
     cy.reload();
     H.getDashboardCard(0).within(() => {
-      H.goalLine().should("exist");
+      H.goalLineMarker().trigger("mousemove");
     });
+    H.tooltip().should("contain.text", "300");
     H.getDashboardCard(1).findByText("Goal 600").should("be.visible");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@reloadedDashcardQuery", {
+      assertAnswered("@visualizerDashcardQuery", {
         id,
         column: "LOW",
         value: 300,
