@@ -1111,7 +1111,7 @@
   - A call to a tool whose entry sets `:runs-alone?` starts once the calls before it have finished, and the calls
     after it start once it has finished
   - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
-  - At completion, waits for all tools and appends results
+  - At completion, waits for all tools and appends results, in call order once a call has run alone
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
@@ -1127,7 +1127,10 @@
            (when (seq chunks)
              (log/warn "Multiple tool calls were not collected fully before stream finish"
                        {:tool-calls (map first chunks)}))
-           (if-let [tasks (some->> (seq tasks) (map #(:task (second %))))]
+           ;; The agent loop stores the queries in results in arrival order, so edits must arrive in call order
+           (if-let [tasks (if @alone
+                            (seq @started)
+                            (some->> (seq tasks) (map #(:task (second %)))))]
              (rf (reduce rf result (mapcat deref tasks)))
              (rf result))))
 
