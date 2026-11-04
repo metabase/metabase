@@ -638,7 +638,7 @@
     (is (=? {:subprotocol "redshift:iam"}
             (sql-jdbc.conn/connection-details->spec :redshift {:host "test.example.com"
                                                                :db "test-db"
-                                                               :auth-mode "iam"}))
+                                                               :auth-mode "iam-instance-profile"}))
         "auth-type should set subprotocol")))
 
 ;; Unfortunately testing IAM auth can't be done in CI because it depends on

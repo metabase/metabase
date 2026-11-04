@@ -29,10 +29,7 @@ driver:
       required: true
       options:
         - {name: "Username & password", value: "password"}
-        - {name: "IAM", value: "iam"}
-    - name: schema-filters
-      type: schema-filters
-      display-name: Schemas
+        - {name: "IAM instance profile", value: "iam-instance-profile"}
     - merge:
       - user
       - visible-if:
@@ -41,6 +38,9 @@ driver:
       - password
       - visible-if:
           auth-mode: password
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
     - cloud-ip-address-info
     - group:
         container-style: ["component", "backdrop"]

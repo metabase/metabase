@@ -749,7 +749,8 @@
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      ;; https://docs.aws.amazon.com/redshift/latest/mgmt/jdbc20-configure-authentication-ssl.html#jdbc20-configure-iam-authentication
-     :subprotocol                   (if (= "iam" auth-mode)
+     :subprotocol                   (if (and (string? auth-mode)
+                                             (re-find #"^iam" auth-mode))
                                       "redshift:iam"
                                       "redshift")
      :subname                       (str "//" host ":" port "/" (or db dbname))
