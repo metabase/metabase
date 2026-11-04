@@ -234,7 +234,7 @@ describe("gauge dynamic goal", () => {
     expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
   });
 
-  it("renders the ranges that resolve without a warning outside the query builder", async () => {
+  it("renders the ranges that resolve without a warning outside the query builder (metabase#85062)", async () => {
     setup({ segments: SEGMENTS });
 
     expect(await screen.findByTestId("gauge-arc-0")).toBeInTheDocument();

@@ -80,11 +80,11 @@ describe("static progress chart with a dynamic goal", () => {
     expect(root).toHaveTextContent("Goal $2,500");
   });
 
-  it("measures progress against a goal of 0 for a reference the dataset has not answered", () => {
+  it("measures progress against a goal of 0 for a reference the dataset has not answered (metabase#85219)", () => {
     expect(setup()).toHaveTextContent("Goal 0");
   });
 
-  it("measures progress against a goal of 0 for a reference the dataset reports as failed", () => {
+  it("measures progress against a goal of 0 for a reference the dataset reports as failed (metabase#85219)", () => {
     const root = setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
     });

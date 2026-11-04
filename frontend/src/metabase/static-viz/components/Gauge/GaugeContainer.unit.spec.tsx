@@ -120,7 +120,7 @@ describe("GaugeContainer", () => {
     expect(fill?.toUpperCase()).toBe(getColor("text-secondary").toUpperCase());
   });
 
-  it("runs a segment with a missing bound to that end of the gauge", () => {
+  it("runs a segment with a missing bound to that end of the gauge (metabase#86183)", () => {
     const root = setup({
       segments: [
         { min: null, max: 50, color: RED },
@@ -213,7 +213,7 @@ describe("GaugeContainer", () => {
       expect(getSegmentPaths(root)).toEqual(getSegmentPaths(expected));
     }
 
-    it("runs a segment bound to a reference nothing has answered yet to the end of the gauge", () => {
+    it("runs a segment bound to a reference nothing has answered yet to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(DATA, {
         type: "card",
         id: 9,
@@ -223,7 +223,7 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a reference whose query failed to the end of the gauge", () => {
+    it("runs a segment bound to a reference whose query failed to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(
         {
           ...DATA,
@@ -235,7 +235,7 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a referenced column that does not exist to the end of the gauge", () => {
+    it("runs a segment bound to a referenced column that does not exist to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(
         {
           ...DATA,
@@ -254,13 +254,13 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a self-column reference that does not exist to the end of the gauge", () => {
+    it("runs a segment bound to a self-column reference that does not exist to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(DATA, "missing");
 
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a self-column reference that is not a number to the end of the gauge", () => {
+    it("runs a segment bound to a self-column reference that is not a number to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(
         { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
         "goal",
@@ -269,7 +269,7 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("renders finite positions when an unresolved min sits among segments that give the gauge's bounds", () => {
+    it("renders finite positions when an unresolved min sits among segments that give the gauge's bounds (metabase#86183)", () => {
       const root = setup({
         segments: [
           { min: 0, max: 30, color: GREEN },
@@ -288,7 +288,7 @@ describe("GaugeContainer", () => {
       expect(getNaNAttributes(root)).toEqual([]);
     });
 
-    it("renders finite positions when an unresolved max sits among segments that give the gauge's bounds", () => {
+    it("renders finite positions when an unresolved max sits among segments that give the gauge's bounds (metabase#86183)", () => {
       const root = setup({
         segments: [
           { min: 0, max: 30, color: GREEN },
