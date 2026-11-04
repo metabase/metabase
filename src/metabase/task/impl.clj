@@ -43,13 +43,10 @@
 ;;; |                                               SCHEDULER INSTANCE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private scheduler-component
-  (system/mutable-component-handle ::scheduler))
-
 ;; There is no scheduler until [[init-scheduler!]] makes one, but the component exists from load time, so reads
-;; return nil rather than throwing. Reloading this namespace leaves an installed scheduler alone.
-(when-not (mc/root-entry scheduler-component)
-  (mc/alter-root scheduler-component nil))
+;; return nil rather than throwing.
+(def ^:private scheduler-component
+  (system/mutable-component-handle ::scheduler (constantly nil)))
 
 (defn scheduler-handle
   "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the Quartz scheduler.
