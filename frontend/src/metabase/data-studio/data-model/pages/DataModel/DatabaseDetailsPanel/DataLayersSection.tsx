@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -41,6 +42,14 @@ export function DataLayersSection({
 }: DataLayersSectionProps) {
   const { modalContent: confirmationModal, show: showConfirmation } =
     useConfirmation();
+  // The layer just added with "Add layer", whose name gets focus to be typed over
+  const [addedLayerId, setAddedLayerId] = useState<string | null>(null);
+
+  const addLayer = () => {
+    const layer = createDataLayer();
+    setAddedLayerId(layer.id);
+    onChange([...layers, layer]);
+  };
 
   const confirmDeleteLayer = (index: number) => {
     const layer = layers[index];
@@ -80,7 +89,7 @@ export function DataLayersSection({
           size="compact-md"
           variant="subtle"
           leftSection={<Icon name="add" />}
-          onClick={() => onChange([...layers, createDataLayer()])}
+          onClick={addLayer}
         >
           {t`Add layer`}
         </Button>
@@ -114,6 +123,8 @@ export function DataLayersSection({
           <DataLayerRow
             key={layer.id}
             layer={layer}
+            isNameFocused={layer.id === addedLayerId}
+            onNameFocused={() => setAddedLayerId(null)}
             isFirst={index === 0}
             isLast={index === layers.length - 1}
             canDelete={layers.length > 1}
@@ -131,6 +142,9 @@ export function DataLayersSection({
 
 interface DataLayerRowProps {
   layer: DataLayer;
+  /** Focus the name with its text selected, so typing replaces it */
+  isNameFocused: boolean;
+  onNameFocused: () => void;
   isFirst: boolean;
   isLast: boolean;
   canDelete: boolean;
@@ -142,6 +156,8 @@ interface DataLayerRowProps {
 
 function DataLayerRow({
   layer,
+  isNameFocused,
+  onNameFocused,
   isFirst,
   isLast,
   canDelete,
@@ -167,7 +183,7 @@ function DataLayerRow({
   };
 
   return (
-    <Flex align="center" gap="sm" px="lg" py="sm" data-testid="data-layer-row">
+    <Flex align="center" gap="sm" p="lg" data-testid="data-layer-row">
       <TextInputBlurChange
         aria-label={t`Layer name`}
         flex={1}
@@ -176,6 +192,17 @@ function DataLayerRow({
         placeholder={t`Layer name`}
         maxLength={254}
         resetOnEsc
+        autoFocus={isNameFocused}
+        onFocus={(event) => {
+          if (!isNameFocused) {
+            return;
+          }
+          const input = event.currentTarget;
+          // The input fills in its value after mounting, so select on the
+          // next frame, once the name is there
+          requestAnimationFrame(() => input.select());
+          onNameFocused();
+        }}
         leftSection={
           <Icon
             name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]}
