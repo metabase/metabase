@@ -24,7 +24,7 @@ const useRecheckErrorToast = () => {
 };
 
 export const useHealthChecks = () => {
-  const { data, isLoading, isError } = useListHealthChecksQuery(undefined, {
+  const { data, isLoading, error } = useListHealthChecksQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
   const [recheckAllMutation, { isLoading: isRecheckingAll }] =
@@ -33,8 +33,8 @@ export const useHealthChecks = () => {
 
   const recheckAll = async () => {
     trackHealthCheckRecheckClicked("all");
-    const { error } = await recheckAllMutation();
-    if (error) {
+    const { error: recheckError } = await recheckAllMutation();
+    if (recheckError) {
       showRecheckError();
     }
   };
@@ -42,7 +42,7 @@ export const useHealthChecks = () => {
   return {
     checks: data?.checks ?? [],
     isLoading,
-    isError,
+    error,
     recheckAll,
     isRecheckingAll,
   };

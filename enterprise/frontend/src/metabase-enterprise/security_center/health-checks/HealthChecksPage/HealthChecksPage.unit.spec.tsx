@@ -610,9 +610,7 @@ describe("HealthChecksPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(
-      screen.getByText("Something went wrong loading health checks."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("An error occurred")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "sync icon Re-check all" }),
     ).not.toBeInTheDocument();

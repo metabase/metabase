@@ -16,25 +16,16 @@ import { getChecksByStatus } from "../utils";
 type HealthChecksContentProps = {
   checks: HealthCheck[];
   isLoading: boolean;
-  isError: boolean;
+  error: unknown;
 };
 
 const HealthChecksContent = ({
   checks,
   isLoading,
-  isError,
+  error,
 }: HealthChecksContentProps) => {
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  if (isError) {
-    return (
-      <EmptyState
-        icon="warning_triangle_filled"
-        message={t`Something went wrong loading health checks.`}
-      />
-    );
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   if (checks.length === 0) {
@@ -58,9 +49,9 @@ const HealthChecksContent = ({
 };
 
 export const HealthChecksPage = () => {
-  const { checks, isLoading, isError, recheckAll, isRecheckingAll } =
+  const { checks, isLoading, error, recheckAll, isRecheckingAll } =
     useHealthChecks();
-  const hasChecks = !isError && checks.length > 0;
+  const hasChecks = !error && checks.length > 0;
 
   useEffect(() => {
     trackHealthChecksPageViewed();
@@ -84,7 +75,7 @@ export const HealthChecksPage = () => {
       <HealthChecksContent
         checks={checks}
         isLoading={isLoading}
-        isError={isError}
+        error={error}
       />
     </Stack>
   );
