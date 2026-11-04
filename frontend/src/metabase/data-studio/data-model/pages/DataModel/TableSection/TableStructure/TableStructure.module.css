@@ -12,3 +12,33 @@
     color: var(--mb-color-core-brand);
   }
 }
+
+.structureSection {
+  scroll-margin-top: var(--mantine-spacing-xl);
+}
+
+.reveal {
+  border-radius: var(--mantine-radius-md);
+}
+
+/* The spread shadow paints the highlight past the section's edges without shifting layout */
+.highlighted {
+  animation: reveal-highlight 1.6s ease-out;
+}
+
+@keyframes reveal-highlight {
+  from {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-core-brand) 12%,
+      transparent
+    );
+    box-shadow: 0 0 0 0.75rem
+      color-mix(in srgb, var(--mb-color-core-brand) 12%, transparent);
+  }
+
+  to {
+    background-color: transparent;
+    box-shadow: 0 0 0 0.75rem transparent;
+  }
+}
