@@ -25,13 +25,14 @@ Browsers never send the Metabase session cookie to the second address. A data ap
    MB_ISOLATED_ORIGIN=https://example-isolated.com
    ```
 
-If Metabase runs under a path, like `https://metabase.example.com/analytics`, serve it under the same path on the second address (`https://example-isolated.com/analytics`). `MB_ISOLATED_ORIGIN` only needs the scheme and host name; Metabase ignores any path in it.
+If Metabase runs under a path, like `https://metabase.example.com/analytics`, serve it under the same path on the second address (`https://example-isolated.com/analytics`). Leave the path out of `MB_ISOLATED_ORIGIN`: give only the scheme and host name, plus the port if it isn't the default.
 
 ## Metabase turns data apps off when it can't use the address
 
 Metabase only uses the second address when:
 
 - A Site URL is set.
+- The address is only a scheme, host name, and port, with no path, query, or fragment. The second address is a whole host, so Metabase refuses a value that looks like it names part of one.
 - The address has a different host name from the Site URL. A different port isn't enough, since the session cookie reaches every port of a host.
 - The address uses `https` when the Site URL does. A page on `https` can't show a data app from `http`.
 

@@ -973,12 +973,13 @@ Point this address at the same Metabase. The browser never sends the session coo
   Metabase goes through the page that shows them. The address must meet these requirements:
 
   - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
   - Its host name differs from the site URL's host name. A different port isn't enough.
   - It uses https when the site URL does.
   - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
-  - If Metabase runs under a path, both addresses serve it under that path.
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
 
-  If the value breaks one of the first three requirements, Metabase turns data apps off until you fix it. A separate
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
   domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
   `SameSite` is `lax` or `strict`.
 
