@@ -38621,11 +38621,7 @@
                 "type" : "object",
                 "properties" : {
                   "data_authority" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.data-studio.api.table.data-authorities"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.data-studio.api.table.data-authorities"
                   },
                   "data_layer" : {
                     "oneOf" : [ {
@@ -46474,8 +46470,10 @@
           "name" : "model_id",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          }
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         }, {
           "in" : "query",
           "name" : "action_type",
@@ -48966,12 +48964,14 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "type" : "string"
+              "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"
             }, {
               "type" : "null"
             } ]
           },
-          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"
+          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"
         }, {
           "in" : "query",
           "name" : "collection",
@@ -51782,12 +51782,8 @@
                     } ]
                   },
                   "visibility_type" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "enum" : [ "retired", "sensitive", "normal", "hidden", "details-only" ]
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "type" : "string",
+                    "enum" : [ "retired", "sensitive", "normal", "hidden", "details-only" ]
                   },
                   "coercion_strategy" : {
                     "oneOf" : [ {
@@ -51797,11 +51793,7 @@
                     } ]
                   },
                   "json_unfolding" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "type" : "boolean"
                   },
                   "data_sensitivity" : {
                     "oneOf" : [ {
@@ -51819,30 +51811,11 @@
                     } ]
                   },
                   "has_field_values" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.has-field-values"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.has-field-values"
                   },
                   "display_name" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "minLength" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "nfc_path" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "type" : "string",
+                    "minLength" : 1
                   },
                   "caveats" : {
                     "oneOf" : [ {
@@ -56314,6 +56287,54 @@
           }
         },
         "tags" : [ "/api/metabot" ]
+      }
+    },
+    "/api/metaplow-proxy/send" : {
+      "post" : {
+        "operationId" : "post-api-metaplow-proxy-send",
+        "summary" : "POST /api/metaplow-proxy/send",
+        "description" : "Forward a Metabase Track payload to the configured collector server-side, bypassing the customer page's\n  `connect-src` CSP.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "description" : "a Metabase Track send envelope",
+                "type" : "object",
+                "properties" : {
+                  "payload" : {
+                    "description" : "a Metabase Track event payload",
+                    "type" : "object",
+                    "properties" : {
+                      "website" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "website" ]
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "event" ]
+                  }
+                },
+                "required" : [ "type", "payload" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metaplow-proxy" ]
       }
     },
     "/api/metric" : {
@@ -64926,7 +64947,7 @@
       "put" : {
         "operationId" : "put-api-table",
         "summary" : "PUT /api/table",
-        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/data-studio/table/edit`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -64961,11 +64982,7 @@
                     } ]
                   },
                   "data_authority" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "data_layer" : {
                     "oneOf" : [ {
@@ -65011,6 +65028,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "data_source" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -65028,6 +65054,14 @@
                   "entity_type" : {
                     "oneOf" : [ {
                       "description" : "value must be a valid entity type (keyword or string)."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "field_order" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "alphabetical", "custom", "database", "smart" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -65193,11 +65227,7 @@
                     } ]
                   },
                   "data_authority" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "data_layer" : {
                     "oneOf" : [ {
@@ -66650,7 +66680,7 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : "false",
+            "default" : false,
             "type" : "boolean"
           }
         }, {
