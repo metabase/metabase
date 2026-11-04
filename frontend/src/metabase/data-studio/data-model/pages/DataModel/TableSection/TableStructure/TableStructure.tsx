@@ -51,7 +51,6 @@ import {
   HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
-  ScdTypeSelect,
   SharedPointerNote,
   getTableHistoryKind,
 } from "../TableHistory";
@@ -468,6 +467,30 @@ function FieldSelect({
   );
 }
 
+function CurrentFlagSelect({
+  fields,
+  binding,
+  disabled,
+  onChange,
+}: {
+  fields: Field[];
+  binding: HistoryBinding;
+  disabled: boolean;
+  onChange: (binding: Partial<HistoryBinding>) => void;
+}) {
+  return (
+    <FieldSelect
+      label={t`Current flag`}
+      fields={fields}
+      value={binding.currentFlagFieldId}
+      placeholder={t`No current flag`}
+      clearable
+      disabled={disabled}
+      onChange={(currentFlagFieldId) => onChange({ currentFlagFieldId })}
+    />
+  );
+}
+
 function HistoryBindingSection({
   table,
   fields,
@@ -486,6 +509,13 @@ function HistoryBindingSection({
   const binding = structure.history;
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
   const isHistory = getTableHistoryKind(structure) !== "not-history";
+  const hasCurrentFlag = binding.currentFlagFieldId != null;
+  const showAdvancedLabel = hasCurrentFlag
+    ? t`Show version`
+    : t`Show current flag and version`;
+  const hideAdvancedLabel = hasCurrentFlag
+    ? t`Hide version`
+    : t`Hide current flag and version`;
 
   return (
     <SidebarSection title={t`History`}>
@@ -552,33 +582,37 @@ function HistoryBindingSection({
           <DetailsRow
             label={t`Valid to`}
             value={
-              <FieldSelect
-                label={t`Valid to`}
-                fields={fields}
-                value={binding.validToFieldId}
-                placeholder={t`No valid to`}
-                clearable
-                disabled={disabled}
-                onChange={(validToFieldId) => onChange({ validToFieldId })}
-              />
+              <Stack gap="xs" py="xs">
+                <FieldSelect
+                  label={t`Valid to`}
+                  fields={fields}
+                  value={binding.validToFieldId}
+                  placeholder={t`No valid to`}
+                  clearable
+                  disabled={disabled}
+                  onChange={(validToFieldId) => onChange({ validToFieldId })}
+                />
+                {!hasCurrentFlag && (
+                  <CurrentRuleHint
+                    table={table}
+                    structure={structure}
+                    fields={fields}
+                  />
+                )}
+              </Stack>
             }
           />
         )}
-        {isHistory && (
+        {isHistory && hasCurrentFlag && (
           <DetailsRow
             label={t`Current flag`}
             value={
               <Stack gap="xs" py="xs">
-                <FieldSelect
-                  label={t`Current flag`}
+                <CurrentFlagSelect
                   fields={fields}
-                  value={binding.currentFlagFieldId}
-                  placeholder={t`No current flag`}
-                  clearable
+                  binding={binding}
                   disabled={disabled}
-                  onChange={(currentFlagFieldId) =>
-                    onChange({ currentFlagFieldId })
-                  }
+                  onChange={onChange}
                 />
                 <CurrentRuleHint
                   table={table}
@@ -608,34 +642,35 @@ function HistoryBindingSection({
             value={<HistoryVersionsSummary table={table} />}
           />
         )}
-        <DetailsRow
-          label={t`Advanced`}
-          value={
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              px={0}
-              onClick={toggleAdvanced}
-            >
-              {isAdvancedOpen
-                ? t`Hide SCD type and version`
-                : t`Show SCD type and version`}
-            </Button>
-          }
-        />
-        {isAdvancedOpen && (
+        {isHistory && (
           <DetailsRow
-            label={t`SCD type`}
+            label={t`Advanced`}
             value={
-              <ScdTypeSelect
-                structure={structure}
+              <Button
+                size="compact-sm"
+                variant="subtle"
+                px={0}
+                onClick={toggleAdvanced}
+              >
+                {isAdvancedOpen ? hideAdvancedLabel : showAdvancedLabel}
+              </Button>
+            }
+          />
+        )}
+        {isHistory && isAdvancedOpen && !hasCurrentFlag && (
+          <DetailsRow
+            label={t`Current flag`}
+            value={
+              <CurrentFlagSelect
+                fields={fields}
+                binding={binding}
                 disabled={disabled}
-                onChange={onScdTypeChange}
+                onChange={onChange}
               />
             }
           />
         )}
-        {isAdvancedOpen && (
+        {isHistory && isAdvancedOpen && (
           <DetailsRow
             label={t`Version`}
             value={

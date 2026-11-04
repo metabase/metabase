@@ -9,11 +9,9 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Select, Stack, Text } from "metabase/ui";
+import { Checkbox, Select, Stack, Text } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
-
-import { CorrectionCheckbox } from "../TableSection/TableHistory/HistoryColumnsSection";
 
 const HISTORY_FIELD_ROLES = [
   "durableKeyFieldId",
@@ -92,6 +90,28 @@ export function FieldHistoryRoleInput({
           : t`Same setting as the table's History section.`}
       </Text>
     </Stack>
+  );
+}
+
+function CorrectionCheckbox({
+  fieldName,
+  checked,
+  disabled,
+  onChange,
+}: {
+  fieldName: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <Checkbox
+      label={t`Changes are corrections — always show the latest value`}
+      aria-label={t`Changes to ${fieldName} are corrections`}
+      checked={checked}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.checked)}
+    />
   );
 }
 

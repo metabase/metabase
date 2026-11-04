@@ -70,7 +70,7 @@ export function HistoryEntityPanel({
       ? status.profileState.profile
       : undefined;
   const entity = profile?.entities.find((entity) => entity.key === entityKey);
-  const noun = getEntityNoun(table, profile?.durableKeyField.name);
+  const noun = getEntityNoun(profile?.durableKeyField);
 
   return (
     <DetailPanel

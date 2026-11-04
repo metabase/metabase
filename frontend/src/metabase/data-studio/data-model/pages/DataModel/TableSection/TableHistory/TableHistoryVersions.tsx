@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -7,9 +8,13 @@ import {
 } from "metabase/common/components/DetailSidebar";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import {
   type CurrentRule,
+  type HistoryBinding,
   type HistoryCheck,
+  type HistoryCheckId,
+  type HistoryEntity,
   type HistoryProfile,
   getFailedChecks,
   getWarningChecks,
@@ -24,21 +29,20 @@ import {
   Group,
   Icon,
   Paper,
-  Select,
   Stack,
   Text,
+  TextInput,
+  Title,
   UnstyledButton,
 } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
+import type { Field, Table } from "metabase-types/api";
 
 import { useHistoryEntitySelection } from "../../contexts/HistoryEntitySelectionContext";
 
 import { CheckCountBadges } from "./CheckCountBadges";
 import { describeCurrentRule } from "./HistoryBindingRows";
-import {
-  HistoryColumnsSection,
-  HistoryPreviewSection,
-} from "./HistoryColumnsSection";
+import { HistoryPreviewSection } from "./HistoryPreviewSection";
 import {
   CHECK_STATUS_ICON,
   type EntityNoun,
@@ -51,6 +55,7 @@ import {
 } from "./history-labels";
 
 const MAX_LISTED_ENTITIES = 3;
+const CHECK_PAGE_SIZE = 10;
 
 export function TableHistoryVersions({
   table,
@@ -60,6 +65,7 @@ export function TableHistoryVersions({
   readOnly: boolean;
 }) {
   const status = useHistoryReviewStatus(table);
+  const [openCheckId, setOpenCheckId] = useState<HistoryCheckId | null>(null);
 
   if (status == null) {
     return null;
@@ -83,7 +89,20 @@ export function TableHistoryVersions({
   }
 
   const { profile } = profileState;
-  const noun = getEntityNoun(table, profile.durableKeyField.name);
+  const noun = getEntityNoun(profile.durableKeyField);
+  const openCheck = profile.checks.find((check) => check.id === openCheckId);
+
+  if (openCheck != null) {
+    return (
+      <CheckDetails
+        table={table}
+        check={openCheck}
+        profile={profile}
+        noun={noun}
+        onBack={() => setOpenCheckId(null)}
+      />
+    );
+  }
 
   return (
     <Stack gap="xxl" data-testid="table-history-versions">
@@ -99,16 +118,10 @@ export function TableHistoryVersions({
         profile={profile}
         noun={noun}
         readOnly={readOnly}
+        onOpenCheck={setOpenCheckId}
       />
       <CoverageSection profile={profile} noun={noun} />
-      <ExampleSection profile={profile} noun={noun} />
       <HistoryPreviewSection
-        table={table}
-        profile={profile}
-        noun={noun}
-        readOnly={readOnly}
-      />
-      <HistoryColumnsSection
         table={table}
         profile={profile}
         noun={noun}
@@ -163,7 +176,7 @@ function ReviewBar({
             onClick={() => confirm(structure)}
             data-testid="confirm-history-button"
           >
-            {hasIssues ? t`Confirm metadata anyway` : t`Confirm metadata`}
+            {hasIssues ? t`Confirm with known issues` : t`Confirm metadata`}
           </Button>
         )}
       </Group>
@@ -176,11 +189,13 @@ function ChecksSection({
   profile,
   noun,
   readOnly,
+  onOpenCheck,
 }: {
   table: Table;
   profile: HistoryProfile;
   noun: EntityNoun;
   readOnly: boolean;
+  onOpenCheck: (checkId: HistoryCheckId) => void;
 }) {
   return (
     <SidebarSection title={t`Checks`}>
@@ -193,11 +208,24 @@ function ChecksSection({
             profile={profile}
             noun={noun}
             readOnly={readOnly}
+            onOpen={() => onOpenCheck(check.id)}
           />
         ))}
       </DetailsTable>
     </SidebarSection>
   );
+}
+
+function getAlternativeBinding(
+  history: HistoryBinding,
+): Partial<HistoryBinding> | null {
+  if (history.currentFlagFieldId != null) {
+    return { currentFlagFieldId: null };
+  }
+  if (history.validToFieldId != null) {
+    return { validToFieldId: null };
+  }
+  return null;
 }
 
 function CheckRow({
@@ -206,18 +234,24 @@ function CheckRow({
   profile,
   noun,
   readOnly,
+  onOpen,
 }: {
   table: Table;
   check: HistoryCheck;
   profile: HistoryProfile;
   noun: EntityNoun;
   readOnly: boolean;
+  onOpen: () => void;
 }) {
+  const structure = useTableStructures().getTableStructure(table);
   const icon = CHECK_STATUS_ICON[check.status];
+  const affectedCount = check.entityKeys.length;
   const listedKeys = check.entityKeys.slice(0, MAX_LISTED_ENTITIES);
-  const hiddenCount = check.entityKeys.length - listedKeys.length;
+  const isFailed = check.status === "failed";
   const offersRuleComparison =
-    check.id === "one-current" && check.status === "failed";
+    isFailed &&
+    check.id === "one-current" &&
+    getAlternativeBinding(structure.history) != null;
 
   return (
     <Group
@@ -234,7 +268,7 @@ function CheckRow({
         <Text size="sm" c="text-secondary">
           {getCheckDescription(check, profile, noun)}
         </Text>
-        {listedKeys.length > 0 && (
+        {affectedCount > 0 && (
           <Group gap="xs">
             {listedKeys.map((entityKey) => (
               <EntityLink
@@ -243,11 +277,17 @@ function CheckRow({
                 profile={profile}
               />
             ))}
-            {hiddenCount > 0 && (
-              <Text size="sm" c="text-secondary">
-                {t`and ${hiddenCount} more`}
-              </Text>
-            )}
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              rightSection={<Icon name="chevronright" size={12} />}
+              onClick={onOpen}
+              data-testid="open-history-check"
+            >
+              {affectedCount === 1
+                ? t`View details`
+                : t`View all ${countOf(affectedCount, noun)}`}
+            </Button>
           </Group>
         )}
         {offersRuleComparison && (
@@ -258,6 +298,11 @@ function CheckRow({
             noun={noun}
             readOnly={readOnly}
           />
+        )}
+        {isFailed && !offersRuleComparison && (
+          <Text size="sm" c="text-secondary">
+            {t`This is in the data, not in these settings. Fix it where the table is built, or confirm with known issues so analysts see a note.`}
+          </Text>
         )}
       </Stack>
     </Group>
@@ -287,19 +332,20 @@ function CurrentRuleComparison({
   const { getTableStructure, setHistoryBinding } = useTableStructures();
   const structure = getTableStructure(table);
   const fields = table.fields ?? [];
+  const alternativeBinding = getAlternativeBinding(structure.history);
   const alternative = {
     ...structure,
-    history: { ...structure.history, currentFlagFieldId: null },
+    history: { ...structure.history, ...alternativeBinding },
   };
   const alternativeState = useHistoryProfile(table, alternative.history, {
-    skip: structure.history.currentFlagFieldId == null,
+    skip: alternativeBinding == null,
   });
-  if (
-    structure.history.currentFlagFieldId == null ||
-    alternativeState.status !== "loaded"
-  ) {
+  if (alternativeBinding == null || alternativeState.status !== "loaded") {
     return null;
   }
+  const dropsValidTo =
+    "validToFieldId" in alternativeBinding &&
+    structure.history.validToFieldId != null;
   const alternativeProfile = alternativeState.profile;
   const alternativeConflicts =
     alternativeProfile.checks.find((item) => item.id === "one-current")
@@ -347,15 +393,18 @@ function CurrentRuleComparison({
                 ? t`${countOf(alternativeConflicts, noun)} with two current records`
                 : t`No conflicts. ${countOf(currentEntityCount, noun)} have a current record.`}
             </Text>
+            {dropsValidTo && (
+              <Text size="sm" c="text-secondary">
+                {t`${displayNameOf(fields, structure.history.validToFieldId)} won't be used. Each version ends where the next one starts.`}
+              </Text>
+            )}
           </Stack>
           <Button
             size="compact-sm"
             variant="filled"
             flex="0 0 auto"
             disabled={readOnly}
-            onClick={() =>
-              setHistoryBinding(table, { currentFlagFieldId: null })
-            }
+            onClick={() => setHistoryBinding(table, alternativeBinding)}
             data-testid="use-alternative-current-rule"
           >
             {t`Use this rule`}
@@ -440,34 +489,130 @@ function CoverageSection({
   );
 }
 
-function ExampleSection({
+function displayNameOf(fields: Field[], fieldId: number | null) {
+  return fields.find((field) => field.id === fieldId)?.display_name ?? "";
+}
+
+function CheckDetails({
+  table,
+  check,
   profile,
   noun,
+  onBack,
 }: {
+  table: Table;
+  check: HistoryCheck;
   profile: HistoryProfile;
   noun: EntityNoun;
+  onBack: () => void;
 }) {
-  const { selectedEntityKey, setSelectedEntityKey } =
-    useHistoryEntitySelection();
-  const entities = [...profile.entities].sort(
-    (a, b) => b.versions.length - a.versions.length,
+  const [searchText, setSearchText] = useState("");
+  const [page, setPage] = useState(0);
+  const icon = CHECK_STATUS_ICON[check.status];
+  const entitiesByKey = useMemo(
+    () => new Map(profile.entities.map((entity) => [entity.key, entity])),
+    [profile],
   );
-  const options = entities.map((entity) => ({
-    value: entity.key,
-    label: t`${entity.label ?? entity.key} (${entity.key}), ${entity.versions.length} versions`,
-  }));
+  const query = searchText.trim().toLowerCase();
+  const matchingEntities = check.entityKeys
+    .map((entityKey) => entitiesByKey.get(entityKey))
+    .filter(isNotNull)
+    .filter(
+      (entity) =>
+        query === "" ||
+        entity.key.toLowerCase().includes(query) ||
+        (entity.label?.toLowerCase().includes(query) ?? false),
+    );
+  const pageEntities = matchingEntities.slice(
+    page * CHECK_PAGE_SIZE,
+    (page + 1) * CHECK_PAGE_SIZE,
+  );
 
   return (
-    <SidebarSection title={t`Look at one ${noun.one}`}>
-      <Select
-        aria-label={t`Pick a ${noun.one}`}
-        data={options}
-        value={selectedEntityKey}
-        placeholder={t`Pick a ${noun.one} to see their versions`}
-        searchable
-        leftSection={<Icon name="history" />}
-        onChange={(entityKey) => setSelectedEntityKey(entityKey)}
+    <Stack gap="lg" data-testid="history-check-details">
+      <Button
+        variant="subtle"
+        px={0}
+        w="fit-content"
+        leftSection={<Icon name="chevronleft" />}
+        onClick={onBack}
+      >
+        {t`All checks`}
+      </Button>
+      <Group gap="sm" wrap="nowrap" align="flex-start">
+        <Icon name={icon.name} c={icon.color} mt={4} flex="0 0 auto" />
+        <Stack gap={4} miw={0}>
+          <Title order={4}>{getCheckTitle(check.id)}</Title>
+          <Text size="sm" c="text-secondary">
+            {getCheckDescription(check, profile, noun)}{" "}
+            {getCheckScope(profile, table)}
+          </Text>
+        </Stack>
+      </Group>
+      <TextInput
+        aria-label={t`Search ${noun.other}`}
+        placeholder={t`Search ${noun.other}`}
+        leftSection={<Icon name="search" />}
+        value={searchText}
+        onChange={(event) => {
+          setSearchText(event.target.value);
+          setPage(0);
+        }}
       />
-    </SidebarSection>
+      {pageEntities.length > 0 ? (
+        <DetailsTable>
+          {pageEntities.map((entity) => (
+            <AffectedEntityRow key={entity.key} entity={entity} />
+          ))}
+        </DetailsTable>
+      ) : (
+        <Text c="text-secondary">{t`No ${noun.other} match.`}</Text>
+      )}
+      <Group justify="flex-end">
+        <PaginationControls
+          page={page}
+          pageSize={CHECK_PAGE_SIZE}
+          itemsLength={pageEntities.length}
+          total={matchingEntities.length}
+          showTotal
+          onNextPage={() => setPage(page + 1)}
+          onPreviousPage={() => setPage(page - 1)}
+        />
+      </Group>
+    </Stack>
+  );
+}
+
+function AffectedEntityRow({ entity }: { entity: HistoryEntity }) {
+  const { setSelectedEntityKey } = useHistoryEntitySelection();
+  return (
+    <UnstyledButton
+      px="lg"
+      py="md"
+      w="100%"
+      onClick={() => setSelectedEntityKey(entity.key)}
+      data-testid="history-check-entity"
+    >
+      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
+        <Stack gap={4} miw={0}>
+          <Text fw="bold" truncate>
+            {entity.label ? `${entity.label} · ${entity.key}` : entity.key}
+          </Text>
+          {entity.versions.map((version) => (
+            <Group key={version.rowIndex} gap="xs" wrap="nowrap">
+              <Text size="sm" c="text-secondary">
+                {t`${formatDate(version.validFrom)} to ${formatDate(version.validTo)}`}
+              </Text>
+              {version.isCurrent && (
+                <Badge color="brand" variant="light" size="sm">
+                  {t`Current`}
+                </Badge>
+              )}
+            </Group>
+          ))}
+        </Stack>
+        <Icon name="chevronright" c="text-secondary" mt={4} flex="0 0 auto" />
+      </Group>
+    </UnstyledButton>
   );
 }

@@ -6,7 +6,6 @@ import {
   type CurrentRule,
   type HistoryBinding,
   type HistoryKind,
-  SCD_TYPES,
   type TableStructure,
   countsDurableKeys,
   filtersCurrentRows,
@@ -14,9 +13,7 @@ import {
   getHistoryKind,
   getHistoryKindOptions,
   getHistorySignalLabel,
-  getScdTypeLabel,
   getWarningChecks,
-  isScdType,
   useHistoryReview,
   useHistoryReviewStatus,
   useTableStructures,
@@ -28,7 +25,6 @@ import {
   Group,
   Loader,
   Radio,
-  Select,
   Stack,
   Switch,
   Text,
@@ -182,42 +178,6 @@ export function HistoryKindInput({
   );
 }
 
-export function ScdTypeSelect({
-  structure,
-  disabled,
-  onChange,
-}: {
-  structure: TableStructure;
-  disabled: boolean;
-  onChange: (scdType: TableStructure["scdType"]) => void;
-}) {
-  return (
-    <Stack gap="xs" py="xs">
-      <Select
-        aria-label={t`SCD type`}
-        data={SCD_TYPES.map((type) => ({
-          value: String(type),
-          label: getScdTypeLabel(type),
-        }))}
-        value={structure.scdType != null ? String(structure.scdType) : null}
-        placeholder={t`Not set`}
-        allowDeselect={false}
-        disabled={disabled}
-        onChange={(value) => {
-          const type = Number(value);
-          if (isScdType(type)) {
-            onChange(type);
-          }
-        }}
-        data-testid="table-scd-type-select"
-      />
-      <Text size="sm" c="text-secondary">
-        {t`Exported as scd_type. The History setting picks it for you.`}
-      </Text>
-    </Stack>
-  );
-}
-
 export function CurrentRuleHint({
   table,
   structure,
@@ -342,7 +302,7 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
   }
 
   const { profile } = profileState;
-  const noun = getEntityNoun(table, profile.durableKeyField.name);
+  const noun = getEntityNoun(profile.durableKeyField);
   const durableKeyCheck = profile.checks.find(
     (check) => check.id === "durable-key",
   );

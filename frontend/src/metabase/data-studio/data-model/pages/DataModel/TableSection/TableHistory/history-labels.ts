@@ -7,27 +7,16 @@ import type {
   HistoryProfile,
 } from "metabase/metadata/table-structure";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName, Table } from "metabase-types/api";
+import type { Field, IconName, Table } from "metabase-types/api";
 
 export type EntityNoun = { one: string; other: string };
 
-const TABLE_PREFIX_RE = /^(dim_|d_|stg_|int_)/;
-const TABLE_SUFFIX_RE = /_(history|snapshots?|versions?|scd\d?)$/;
-
-const ENTITY_KEY_RE = /^(.+)_id$/;
-
 export function getEntityNoun(
-  table: Pick<Table, "name">,
-  durableKeyName?: string,
+  keyField?: Pick<Field, "display_name"> | null,
 ): EntityNoun {
-  const fromKey = durableKeyName?.toLowerCase().match(ENTITY_KEY_RE)?.[1];
-  const fromTable = table.name
-    .toLowerCase()
-    .replace(TABLE_PREFIX_RE, "")
-    .replace(TABLE_SUFFIX_RE, "");
-  const base = (fromKey ?? fromTable).replace(/_/g, " ");
-  const one = base.endsWith("s") ? base.slice(0, -1) : base;
-  return { one, other: `${one}s` };
+  const one = keyField?.display_name ?? t`key`;
+  const other = one.endsWith("s") ? one : `${one}s`;
+  return { one, other };
 }
 
 export const countOf = (count: number, noun: EntityNoun) =>
@@ -67,7 +56,7 @@ export function getCheckDescription(
     case "durable-key":
       return profile.entityCount === profile.rowCount
         ? t`Every ${keyName} appears on one row only, so no versions are grouped. It's probably a per-version key.`
-        : t`${keyName} is also the version, so each version looks like its own ${noun.one}.`;
+        : t`${keyName} is also the version, so each version looks like a separate key.`;
     case "one-current":
       return ngettext(
         msgid`${subject} has more than one current version.`,

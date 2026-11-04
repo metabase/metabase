@@ -31,6 +31,7 @@ type CustomerTimeline = {
 const LAST_CHANGE_DATE = "2026-10-28";
 const GENERATED_CUSTOMER_COUNT = 132;
 const SNAPSHOT_CUSTOMER_COUNT = 90;
+const OVERLAP_EVERY_NTH_CUSTOMER = 2;
 const ACCOUNT_COUNT = 64;
 
 const SEGMENTS = ["SMB", "Mid-market", "Enterprise"];
@@ -269,7 +270,10 @@ function getCustomersSnapshotRows(): Row[] {
       const rows = versions.map((version, index): Row => {
         const next = versions[index + 1];
         const validFrom = timeOf(version.validFrom, customerIndex + index);
-        const overlapDays = timeline.customerId === "C-104" && next ? 9 : 0;
+        const hasOverlap =
+          timeline.customerId === "C-104" ||
+          customerIndex % OVERLAP_EVERY_NTH_CUSTOMER === 1;
+        const overlapDays = hasOverlap && next ? 9 : 0;
         const isDeleted = customerIndex === 49 && next == null;
         const validTo = next
           ? timeOf(next.validFrom, customerIndex + index + 1)

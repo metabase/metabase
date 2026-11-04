@@ -4,7 +4,6 @@ export {
   HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
-  ScdTypeSelect,
   SharedPointerNote,
   describeCurrentRule,
   getCurrentRule,

@@ -1,13 +1,7 @@
-import { useDisclosure } from "@mantine/hooks";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { SidebarSection } from "metabase/common/components/DetailSidebar";
 import {
-  DetailsTable,
-  SidebarSection,
-} from "metabase/common/components/DetailSidebar";
-import {
-  type ColumnChangeProfile,
   type HistoryProfile,
   type HistoryVersion,
   countsDurableKeys,
@@ -17,176 +11,14 @@ import {
   useHistoryReview,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Group,
-  Icon,
-  Progress,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type { Field, RowValue, Table } from "metabase-types/api";
 
 import { HistoryPreviewGrid, type PreviewColumn } from "./HistoryPreviewGrid";
-import {
-  type EntityNoun,
-  countOf,
-  formatDate,
-  getDataNote,
-} from "./history-labels";
+import { type EntityNoun, countOf, getDataNote } from "./history-labels";
 
 const PREVIEW_GRID_HEIGHT = 240;
-
-const shareOf = (count: number, total: number) =>
-  Math.round((count / Math.max(1, total)) * 100);
-
-function CollapsibleSection({
-  title,
-  summary,
-  children,
-}: {
-  title: string;
-  summary: string;
-  children: ReactNode;
-}) {
-  const [isOpen, { toggle }] = useDisclosure(false);
-  return (
-    <SidebarSection
-      title={title}
-      titleAside={
-        <Button size="compact-sm" variant="subtle" onClick={toggle}>
-          {isOpen ? t`Hide` : t`Show`}
-        </Button>
-      }
-    >
-      {!isOpen && (
-        <Text size="sm" c="text-secondary">
-          {summary}
-        </Text>
-      )}
-      {isOpen && children}
-    </SidebarSection>
-  );
-}
-
-export function HistoryColumnsSection({
-  table,
-  profile,
-  noun,
-  readOnly,
-}: {
-  table: Table;
-  profile: HistoryProfile;
-  noun: EntityNoun;
-  readOnly: boolean;
-}) {
-  const { isCorrectionField, setCorrectionField } = useHistoryReview(table);
-  const changing = profile.columns
-    .filter((column) => column.changeCount > 0)
-    .sort((a, b) => b.changedEntityCount - a.changedEntityCount);
-  const unchanged = profile.columns.filter(
-    (column) => column.changeCount === 0,
-  );
-  const correctionCount = changing.filter((column) =>
-    isCorrectionField(column.field),
-  ).length;
-
-  return (
-    <CollapsibleSection
-      title={t`Columns over time`}
-      summary={t`${changing.length} columns change between versions, ${unchanged.length} never do. ${correctionCount} marked as corrections.`}
-    >
-      <Text size="sm" c="text-secondary">
-        {t`What changed in the checked rows. Only you can say whether a change is history or a correction.`}
-      </Text>
-      <DetailsTable>
-        {changing.map((column) => (
-          <ColumnRow
-            key={getRawTableFieldId(column.field)}
-            column={column}
-            profile={profile}
-            noun={noun}
-            isCorrection={isCorrectionField(column.field)}
-            disabled={readOnly}
-            onChange={(isCorrection) =>
-              setCorrectionField(getRawTableFieldId(column.field), isCorrection)
-            }
-          />
-        ))}
-      </DetailsTable>
-      {unchanged.length > 0 && (
-        <Text size="sm" c="text-secondary">
-          {t`Never changed: ${unchanged.map((column) => column.field.display_name).join(", ")}.`}
-        </Text>
-      )}
-    </CollapsibleSection>
-  );
-}
-
-function ColumnRow({
-  column,
-  profile,
-  noun,
-  isCorrection,
-  disabled,
-  onChange,
-}: {
-  column: ColumnChangeProfile;
-  profile: HistoryProfile;
-  noun: EntityNoun;
-  isCorrection: boolean;
-  disabled: boolean;
-  onChange: (isCorrection: boolean) => void;
-}) {
-  return (
-    <Stack px="lg" py="md" gap={6} data-testid="history-column">
-      <Group gap="sm" justify="space-between" wrap="nowrap">
-        <Text fw="bold" truncate>
-          {column.field.display_name}
-        </Text>
-        <Text size="sm" c="text-secondary" flex="0 0 auto">
-          {t`Changed for ${shareOf(column.changedEntityCount, profile.entityCount)}% of ${noun.other}, last on ${formatDate(column.lastChangedAt)}`}
-        </Text>
-      </Group>
-      <Progress
-        value={shareOf(column.changedEntityCount, profile.entityCount)}
-        size="sm"
-      />
-      <CorrectionCheckbox
-        fieldName={column.field.display_name}
-        checked={isCorrection}
-        disabled={disabled}
-        onChange={onChange}
-      />
-    </Stack>
-  );
-}
-
-export function CorrectionCheckbox({
-  fieldName,
-  checked,
-  disabled,
-  onChange,
-}: {
-  fieldName: string;
-  checked: boolean;
-  disabled: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <Checkbox
-      label={t`Changes are corrections — always show the latest value`}
-      aria-label={t`Changes to ${fieldName} are corrections`}
-      checked={checked}
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.checked)}
-    />
-  );
-}
 
 type PreviewRow = {
   entityKey: string;
@@ -290,7 +122,7 @@ export function HistoryPreviewSection({
   return (
     <SidebarSection title={t`What people see`}>
       <Text>
-        {t`Each row is one ${noun.one} record.`}{" "}
+        {t`Each row is one record.`}{" "}
         {showsCurrentRecords && <strong>{t`Showing current records.`}</strong>}
       </Text>
       <Group gap="sm">
