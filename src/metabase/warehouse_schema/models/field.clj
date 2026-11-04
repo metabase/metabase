@@ -18,7 +18,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -458,7 +458,8 @@
     field))
 
 (defmethod serdes/make-spec "Field" [_model-name _opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
+  {:schema    ::warehouse-schema.schema/external-field
+   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
