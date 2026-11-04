@@ -115,10 +115,10 @@ describe("queryCompleted", () => {
     ]);
   });
 
-  it("keeps the column settings when the query recovers from an error (metabase#16914)", async () => {
+  it("keeps the column settings when the query fails (metabase#16914)", async () => {
     const { completedCard } = await setup({
-      previousResult: ERROR_DATASET,
-      newResult: getDataset(["VISIBLE", "HIDDEN"]),
+      previousResult: getDataset(["VISIBLE", "HIDDEN"]),
+      newResult: ERROR_DATASET,
     });
 
     expect(completedCard.visualization_settings["table.columns"]).toEqual([

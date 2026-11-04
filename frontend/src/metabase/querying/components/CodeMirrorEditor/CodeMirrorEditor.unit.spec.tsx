@@ -20,7 +20,11 @@ import type {
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockField,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
@@ -32,6 +36,7 @@ import { getDiffControls } from "./test-utils";
 const ORIGINAL =
   "SELECT *\nFROM orders\nWHERE id = 1\nGROUP BY id\nORDER BY id\nLIMIT 10";
 const PROPOSED = ORIGINAL.replace("WHERE id = 1", "WHERE id = 2");
+const MONGO_DB_ID = 2;
 
 type SetupOpts = {
   text?: string;
@@ -527,6 +532,33 @@ describe("CodemirrorEditor", () => {
         ["[", "  {", '    "foo": "bar",', '    "baz"', "  }", "]"].join("\n"),
         expect.anything(),
       );
+    });
+
+    it("indents with two spaces after the query switches to a json-like database (metabase#53299)", async () => {
+      const mongoDatabase = createMockDatabase({
+        id: MONGO_DB_ID,
+        engine: "mongo",
+      });
+      fetchMock.get(
+        `path:/api/database/${MONGO_DB_ID}/autocomplete_suggestions`,
+        [],
+      );
+      fetchMock.get(
+        `path:/api/database/${MONGO_DB_ID}/card_autocomplete_suggestions`,
+        [],
+      );
+      const mongoProvider = createMetadataProvider({
+        databaseId: MONGO_DB_ID,
+        metadata: createMockMetadata({ databases: [mongoDatabase] }),
+      });
+      const { onChange, rerender } = setup();
+
+      rerender({
+        query: Lib.createTestNativeQuery(mongoProvider, { query: "" }),
+      });
+      await typeAtEnd("{Tab}");
+
+      expect(onChange).toHaveBeenLastCalledWith("  ", expect.anything());
     });
   });
 });
