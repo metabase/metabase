@@ -214,9 +214,9 @@
   (mu/with-api-error-message
    [:fn {:json-schema {:type "string"}}
     (fn [k]
-          (let [k (keyword k)]
-            (or (isa? k :Semantic/*)
-                (isa? k :Relation/*))))]
+      (let [k (keyword k)]
+        (or (isa? k :Semantic/*)
+            (isa? k :Relation/*))))]
    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
 (def CoercionStrategyKeywordOrString

@@ -192,19 +192,19 @@
         [repeated & more] more
         prefix            (mp/mapv :item (concat required optional))]
     (with-meta
-      (if (or (seq more)
-              (and (seq optional) repeated)
-              (mp/some nil? (map :item segs)))
-        (let [known (take-while some? (map :item required))]
-          (cond-> {:type "array" :minItems (count known)}
-            (seq known) (assoc :prefixItems (vec known))))
-        (cond-> {:type     "array"
-                 :items    (if repeated (:item repeated) false)
-                 :minItems (+ (count required) (:min repeated 0))}
-          (seq prefix)                 (assoc :prefixItems prefix)
-          (nil? repeated)              (assoc :maxItems (count prefix))
-          (some-> repeated :max some?) (assoc :maxItems (+ (count prefix) (:max repeated)))))
-      {::segments segs})))
+     (if (or (seq more)
+             (and (seq optional) repeated)
+             (mp/some nil? (map :item segs)))
+       (let [known (take-while some? (map :item required))]
+         (cond-> {:type "array" :minItems (count known)}
+           (seq known) (assoc :prefixItems (vec known))))
+       (cond-> {:type     "array"
+                :items    (if repeated (:item repeated) false)
+                :minItems (+ (count required) (:min repeated 0))}
+         (seq prefix)                 (assoc :prefixItems prefix)
+         (nil? repeated)              (assoc :maxItems (count prefix))
+         (some-> repeated :max some?) (assoc :maxItems (+ (count prefix) (:max repeated)))))
+     {::segments segs})))
 
 (defn- repeat-schema
   "Compile a malli repetition of `child` between `lo` and `hi` times, which repeats a single item only."
@@ -253,24 +253,24 @@
      (if (or (:json-schema properties) (= :any (mc/type schema)))
        (vary-meta (malli-walker schema path children options) assoc ::declared true)
        (into (case (#(if (= 'some? %) :some %) (mc/type schema))
-              ::mc/val     (first items)
-              (::mc/schema :ref) (registered-schema schema path children options)
-              (:cat :catn) (sequence-schema (into [] (mapcat segments) items))
-              (:alt :altn) (sequence-schema [{:item (when-not (mp/some (comp ::segments meta) items)
-                                                      {:anyOf (vec items)})
-                                              :min  1
-                                              :max  1}])
-              :?           (repeat-schema (first items) 0 1)
-              :*           (repeat-schema (first items) 0 nil)
-              :+           (repeat-schema (first items) 1 nil)
-              :repeat      (repeat-schema (first items) (:min properties 0) (:max properties))
-              :some        {:not {:type "null"}}
-              :time/local-date          {:type "string" :format "date"}
-              :time/offset-date-time    {:type "string" :format "date-time"}
-              (:time/local-time :time/offset-time :time/local-date-time :time/zoned-date-time :time/instant)
-              {:type "string"}
-              (default-schema schema path children items options))
-            (mjs/select properties)))
+               ::mc/val     (first items)
+               (::mc/schema :ref) (registered-schema schema path children options)
+               (:cat :catn) (sequence-schema (into [] (mapcat segments) items))
+               (:alt :altn) (sequence-schema [{:item (when-not (mp/some (comp ::segments meta) items)
+                                                       {:anyOf (vec items)})
+                                               :min  1
+                                               :max  1}])
+               :?           (repeat-schema (first items) 0 1)
+               :*           (repeat-schema (first items) 0 nil)
+               :+           (repeat-schema (first items) 1 nil)
+               :repeat      (repeat-schema (first items) (:min properties 0) (:max properties))
+               :some        {:not {:type "null"}}
+               :time/local-date          {:type "string" :format "date"}
+               :time/offset-date-time    {:type "string" :format "date-time"}
+               (:time/local-time :time/offset-time :time/local-date-time :time/zoned-date-time :time/instant)
+               {:type "string"}
+               (default-schema schema path children items options))
+             (mjs/select properties)))
      #(merge {::form (mc/form schema)} %))))
 
 (defn- walk [schema options]
