@@ -7,6 +7,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
@@ -82,25 +84,31 @@
    :schema   (t2/select-one-fn :schema :model/Table (mt/id :order_status))
    :database (mt/id)})
 
+(defn- native-query-with-table-tag
+  "Create a native query whose `tag-name` template tag points at `table-id`."
+  [sql tag-name display-name table-id]
+  (lib/with-template-tags
+    (lib/native-query (mt/metadata-provider) sql)
+    {tag-name {:id           tag-name
+               :name         tag-name
+               :display-name display-name
+               :type         :table
+               :table-id     table-id
+               :required     true}}))
+
 (defn- merge-source-query []
-  {:database (mt/id)
-   :type     :native
-   :native   {:query         (format "SELECT %s, %s FROM {{order_status}} AS %s"
-                                     (sql.u/quote-name driver/*driver* :field "order_id")
-                                     (sql.u/quote-name driver/*driver* :field "status")
-                                     (sql.u/quote-name driver/*driver* :field "order_status"))
-              :template-tags {"order_status" {:id           "order_status"
-                                              :name         "order_status"
-                                              :display-name "Order Status"
-                                              :type         "table"
-                                              :table-id     (mt/id :order_status)
-                                              :required     true}}}})
+  (native-query-with-table-tag
+   (format "SELECT %s, %s FROM {{order_status}} AS %s"
+           (sql.u/quote-name driver/*driver* :field "order_id")
+           (sql.u/quote-name driver/*driver* :field "status")
+           (sql.u/quote-name driver/*driver* :field "order_status"))
+   "order_status" "Order Status" (mt/id :order_status)))
 
 (defn- merge-transform-payload [target-table & {:keys [validate?] :or {validate? true}}]
   (let [seq-field-id (t2/select-one-pk :model/Field :name "change_seq" :table_id (mt/id :order_status))]
     {:name               "Merge Transform"
      :source_database_id (mt/id)
-     :source             {:type                         "query"
+     :source             {:type                         :query
                           :query                        (merge-source-query)
                           :source-incremental-strategy  {:type "checkpoint"
                                                          :checkpoint-filter-field-id seq-field-id}}
@@ -168,19 +176,13 @@
             (let [q           (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   ts-field-id (t2/select-one-pk :model/Field :name "changed_at"
                                                 :table_id (mt/id :order_status_ts))
-                  source-query {:database (mt/id)
-                                :type     :native
-                                :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
-                                                                  (q "order_id") (q "status") (q "t"))
-                                           :template-tags {"t" {:id           "t"
-                                                                :name         "t"
-                                                                :display-name "T"
-                                                                :type         "table"
-                                                                :table-id     (mt/id :order_status_ts)
-                                                                :required     true}}}}
+                  source-query (native-query-with-table-tag
+                                (format "SELECT %s, %s FROM {{t}} AS %s"
+                                        (q "order_id") (q "status") (q "t"))
+                                "t" "T" (mt/id :order_status_ts))
                   payload      {:name               "Temporal Merge"
                                 :source_database_id (mt/id)
-                                :source             {:type                        "query"
+                                :source             {:type                        :query
                                                      :query                       source-query
                                                      :source-incremental-strategy {:type "checkpoint"
                                                                                    :checkpoint-filter-field-id ts-field-id}}
@@ -255,19 +257,13 @@
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   ts-field-id  (t2/select-one-pk :model/Field :name "changed_at"
                                                  :table_id (mt/id :order_status_lb))
-                  source-query {:database (mt/id)
-                                :type     :native
-                                :native   {:query         (format "SELECT %s, %s FROM {{t}} AS %s"
-                                                                  (q "order_id") (q "status") (q "t"))
-                                           :template-tags {"t" {:id           "t"
-                                                                :name         "t"
-                                                                :display-name "T"
-                                                                :type         "table"
-                                                                :table-id     (mt/id :order_status_lb)
-                                                                :required     true}}}}
+                  source-query (native-query-with-table-tag
+                                (format "SELECT %s, %s FROM {{t}} AS %s"
+                                        (q "order_id") (q "status") (q "t"))
+                                "t" "T" (mt/id :order_status_lb))
                   payload      {:name               "Lookback Merge"
                                 :source_database_id (mt/id)
-                                :source             {:type                        "query"
+                                :source             {:type                        :query
                                                      :query                       source-query
                                                      :source-incremental-strategy {:type "checkpoint"
                                                                                    :checkpoint-filter-field-id ts-field-id
@@ -369,10 +365,10 @@
                                            :effective_type    :type/Instant})
                   payload     {:name               "Unix Timestamp Lookback Merge"
                                :source_database_id (mt/id)
-                               :source             {:type  "query"
-                                                    :query {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :order_status_unix)}}
+                               :source             {:type  :query
+                                                    :query (lib/query (mt/metadata-provider)
+                                                                      (lib.metadata/table (mt/metadata-provider)
+                                                                                          (mt/id :order_status_unix)))
                                                     :source-incremental-strategy {:type "checkpoint"
                                                                                   :checkpoint-filter-field-id ts-field-id
                                                                                   :lookback {:value 1 :unit "day"}}}
@@ -434,19 +430,13 @@
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   seq-field-id (t2/select-one-pk :model/Field :name "change_seq"
                                                  :table_id (mt/id :order_region_status))
-                  source-query {:database (mt/id)
-                                :type     :native
-                                :native   {:query         (format "SELECT %s, %s, %s FROM {{t}} AS %s"
-                                                                  (q "order_id") (q "region") (q "status") (q "t"))
-                                           :template-tags {"t" {:id           "t"
-                                                                :name         "t"
-                                                                :display-name "T"
-                                                                :type         "table"
-                                                                :table-id     (mt/id :order_region_status)
-                                                                :required     true}}}}
+                  source-query (native-query-with-table-tag
+                                (format "SELECT %s, %s, %s FROM {{t}} AS %s"
+                                        (q "order_id") (q "region") (q "status") (q "t"))
+                                "t" "T" (mt/id :order_region_status))
                   payload      {:name               "Composite Merge"
                                 :source_database_id (mt/id)
-                                :source             {:type                        "query"
+                                :source             {:type                        :query
                                                      :query                       source-query
                                                      :source-incremental-strategy {:type "checkpoint"
                                                                                    :checkpoint-filter-field-id seq-field-id}}

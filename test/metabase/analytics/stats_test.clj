@@ -703,9 +703,10 @@
               (#'stats/transform-metrics))))
     (testing "with transforms and recent runs"
       (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
-                                                          :table "test_table"}
+                                                          :type     "table"
+                                                          :name     "test_table"}
                                                  :name "Test SQL transform"
-                                                 :source {:type "query"
+                                                 :source {:type :query
                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))
                                             :transform_id (:id transform)}]
@@ -713,9 +714,10 @@
                 (#'stats/transform-metrics)))))
     (testing "with old transform runs"
       (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
-                                                          :table "test_table"}
+                                                          :type     "table"
+                                                          :name     "test_table"}
                                                  :name "Test SQL transform"
-                                                 :source {:type "query"
+                                                 :source {:type :query
                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
                                             :transform_id (:id transform)}]

@@ -267,7 +267,7 @@
                           :transform-type :table
                           :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
                           :query          (transforms-base.u/compile-source
-                                           {:source {:type "query" :query (venues-source-query)} :target target} nil)
+                                           {:source {:type :query :query (venues-source-query)} :target target} nil)
                           :output-schema  (:schema target)
                           :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
             (driver/run-transform! driver/*driver* details {})
@@ -287,7 +287,7 @@
         (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema
                                                         :name "ctas_rows_affected_probe"
                                                         :database (mt/id)}]
-          (let [transform {:source {:type "query" :query (venues-source-query)}
+          (let [transform {:source {:type :query :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
                            :database       (mt/db)
@@ -309,7 +309,7 @@
       (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
             written (venues-row-count)]
         (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "insert_rows_affected_probe" :database (mt/id)}]
-          (let [transform {:source {:type "query" :query (venues-source-query)}
+          (let [transform {:source {:type :query :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
                            :database       (mt/db)

@@ -76,6 +76,18 @@
       (transforms.execute/execute! transform run-opts))
     (transforms.execute/execute! transform run-opts)))
 
+(defn- native-query-with-table-tag
+  "Create a native query with a `source_table` table tag."
+  [sql table-id]
+  (lib/with-template-tags
+    (lib/native-query (mt/metadata-provider) sql)
+    {"source_table" {:id           "source_table"
+                     :name         "source_table"
+                     :display-name "Source Table"
+                     :type         :table
+                     :table-id     table-id
+                     :required     true}}))
+
 (defn- make-incremental-source-query-with-table-tag
   "Create a native query with a table tag for testing subquery expansion."
   [checkpoint-config]
@@ -87,25 +99,21 @@
                       (quoted "name") (quoted "category") (quoted "price") (quoted "created_at")
                       timestamp-sql (quoted "load_timestamp") (quoted "source_table")
                       (quoted field-name))]
-    {:database (mt/id)
-     :type :native
-     :native {:query query
-              :template-tags {"source_table" {:id "source_table"
-                                              :name "source_table"
-                                              :display-name "Source Table"
-                                              :type "table"
-                                              :table-id table-id
-                                              :required true}}}}))
+    (native-query-with-table-tag query table-id)))
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms. "
 
   [checkpoint-config]
-  (let [{:keys [field-name]} checkpoint-config]
-    (mt/mbql-query transforms_products
-      {:expressions {"load_timestamp" [:now]}
-       :fields [$name $category $price $created_at [:expression "load_timestamp"]]
-       :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
+  (let [{:keys [field-name]} checkpoint-config
+        mp    (mt/metadata-provider)
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                  (lib/expression "load_timestamp" (lib/now)))
+        col   #(lib.metadata/field mp (mt/id :transforms_products %))]
+    (-> query
+        (lib/with-fields [(col :name) (col :category) (col :price) (col :created_at)
+                          (lib/expression-ref query "load_timestamp")])
+        (lib/order-by (col (keyword field-name))))))
 
 (def incremental-python-body
   (str "import pandas as pd\n"
@@ -127,15 +135,15 @@
      :source_database_id (mt/id)
      :source (case transform-type
                ;; Native queries now use table tags with checkpoint-filter-field-id
-               :native {:type "query"
+               :native {:type :query
                         :query (make-incremental-source-query-with-table-tag checkpoint-config)
                         :source-incremental-strategy {:type "checkpoint"
                                                       :checkpoint-filter-field-id (checkpoint-filter-field)}}
-               :mbql {:type "query"
+               :mbql {:type :query
                       :query (make-incremental-mbql-query checkpoint-config)
                       :source-incremental-strategy {:type "checkpoint"
                                                     :checkpoint-filter-field-id (checkpoint-filter-field)}}
-               :python {:type "python"
+               :python {:type :python
                         :source-tables [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
                         :body incremental-python-body
                         :source-incremental-strategy {:type "checkpoint"
@@ -156,11 +164,10 @@
 (defn- get-distinct-timestamp-count
   "Get the count of distinct load_timestamp values in a table."
   [{table-name :name, :keys [schema database]}]
-  (let [native-query {:database database
-                      :type     :native
-                      :native   {:query (format "SELECT COUNT(DISTINCT %s) FROM %s"
-                                                (sql.u/quote-name driver/*driver* :field "load_timestamp")
-                                                (sql.u/quote-name driver/*driver* :table schema table-name))}}
+  (let [native-query (lib/native-query (lib-be/application-database-metadata-provider database)
+                                       (format "SELECT COUNT(DISTINCT %s) FROM %s"
+                                               (sql.u/quote-name driver/*driver* :field "load_timestamp")
+                                               (sql.u/quote-name driver/*driver* :table schema table-name)))
         result       (qp/process-query native-query)]
     (some-> result :data :rows first first bigint)))
 
@@ -385,7 +392,7 @@
                       (testing "Switch to non-incremental via PUT API"
                         (let [non-incremental-payload (-> initial-payload
                                                           (update :source dissoc :source-incremental-strategy)
-                                                          (update :target dissoc :source-incremental-strategy)
+                                                          (update :target dissoc :target-incremental-strategy)
                                                           (update :target assoc :type "table"))
                               updated                 (mt/user-http-request :crowberto :put 200 (format "transform/%d" (:id transform))
                                                                             non-incremental-payload)]
@@ -420,7 +427,7 @@
                       incremental-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)
                       initial-payload (-> incremental-payload
                                           (update :source dissoc :source-incremental-strategy)
-                                          (update :target dissoc :source-incremental-strategy)
+                                          (update :target dissoc :target-incremental-strategy)
                                           (update :target assoc :type "table"))]
                   (mt/with-temp [:model/Transform transform initial-payload]
                     (testing "Initial non-incremental run creates table"
@@ -480,16 +487,8 @@
                   table-id (mt/id :transforms_products)
                   schema (t2/select-one-fn :schema :model/Table table-id)
                   transform-payload {:name "Invalid Checkpoint Type Transform"
-                                     :source {:type "query"
-                                              :query {:database (mt/id)
-                                                      :type :native
-                                                      :native {:query "SELECT * FROM {{source_table}} AS s"
-                                                               :template-tags {"source_table" {:id "source_table"
-                                                                                               :name "source_table"
-                                                                                               :display-name "Source Table"
-                                                                                               :type "table"
-                                                                                               :table-id table-id
-                                                                                               :required true}}}}
+                                     :source {:type :query
+                                              :query (native-query-with-table-tag "SELECT * FROM {{source_table}} AS s" table-id)
                                               :source-incremental-strategy {:type "checkpoint"
                                                                             :checkpoint-filter-field-id name-field-id}}
                                      :target {:type "table-incremental"
@@ -515,16 +514,8 @@
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 ;; Query that returns no rows but has the checkpoint column
-                source  {:type                        "query"
-                         :query                       {:database db-id
-                                                       :type     :native
-                                                       :native   {:query "SELECT * FROM {{source_table}} AS s WHERE 1 = 2"
-                                                                  :template-tags {"source_table" {:id "source_table"
-                                                                                                  :name "source_table"
-                                                                                                  :display-name "Source Table"
-                                                                                                  :type "table"
-                                                                                                  :table-id table-id
-                                                                                                  :required true}}}}
+                source  {:type                        :query
+                         :query                       (native-query-with-table-tag "SELECT * FROM {{source_table}} AS s WHERE 1 = 2" table-id)
                          :source-incremental-strategy {:type "checkpoint"
                                                        :checkpoint-filter-field-id checkpoint-field-id}}
                 target  {:type                        "table-incremental"
@@ -552,16 +543,8 @@
             (let [db-id   (mt/id)
                   table-id (mt/id :transforms_products)
                   invalid-field-id 999999
-                  source  {:type                        "query"
-                           :query                       {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "SELECT id FROM {{source_table}}"
-                                                                    :template-tags {"source_table" {:id "source_table"
-                                                                                                    :name "source_table"
-                                                                                                    :display-name "Source Table"
-                                                                                                    :type "table"
-                                                                                                    :table-id table-id
-                                                                                                    :required true}}}}
+                  source  {:type                        :query
+                           :query                       (native-query-with-table-tag "SELECT id FROM {{source_table}}" table-id)
                            :source-incremental-strategy {:type "checkpoint"
                                                          :checkpoint-filter-field-id invalid-field-id}}
                   target  {:type                        "table-incremental"
@@ -585,16 +568,8 @@
             (let [db-id   (mt/id)
                   table-id (mt/id :transforms_products)
                   field-id (mt/id :transforms_products :id)
-                  source  {:type                        "query"
-                           :query                       {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "SELECT id FROM {{source_table}} as s"
-                                                                    :template-tags {"source_table" {:id "source_table"
-                                                                                                    :name "source_table"
-                                                                                                    :display-name "Source Table"
-                                                                                                    :type "table"
-                                                                                                    :table-id table-id
-                                                                                                    :required true}}}}
+                  source  {:type                        :query
+                           :query                       (native-query-with-table-tag "SELECT id FROM {{source_table}} as s" table-id)
                            :source-incremental-strategy {:type "checkpoint"
                                                          :checkpoint-filter-field-id field-id}}
                   target  {:type                        "table-incremental"
@@ -625,16 +600,8 @@
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 make-source (fn [query-sql]
-                              {:type "query"
-                               :query {:database db-id
-                                       :type :native
-                                       :native {:query query-sql
-                                                :template-tags {"source_table" {:id "source_table"
-                                                                                :name "source_table"
-                                                                                :display-name "Source Table"
-                                                                                :type "table"
-                                                                                :table-id table-id
-                                                                                :required true}}}}
+                              {:type :query
+                               :query (native-query-with-table-tag query-sql table-id)
                                :source-incremental-strategy {:type "checkpoint"
                                                              :checkpoint-filter-field-id checkpoint-field-id}})
                 source  (make-source "SELECT id FROM {{source_table}} AS s")
@@ -677,7 +644,7 @@
                       {:keys [field-name expected-initial-checkpoint]} checkpoint-config
                       checkpoint-filter-field-id (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products))
                       transform-payload {:name "Native With Table Tag"
-                                         :source {:type "query"
+                                         :source {:type :query
                                                   :query (make-incremental-source-query-with-table-tag checkpoint-config)
                                                   :source-incremental-strategy {:type "checkpoint"
                                                                                 :checkpoint-filter-field-id checkpoint-filter-field-id}}

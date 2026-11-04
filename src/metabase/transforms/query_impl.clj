@@ -6,19 +6,23 @@
    [metabase.request.core :as request]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- run-mbql-transform!
-  ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target owner_user_id creator_id] :as transform}
-    {:keys [run-method on-start user-id parent-run]}]
+(mu/defn- run-mbql-transform! :- :nil
+  ([transform :- ::transforms-base.schema/transform]
+   (run-mbql-transform! transform nil))
+  ([{:keys [id source target owner_user_id creator_id] :as transform} :- ::transforms-base.schema/transform
+    {:keys [run-method on-start user-id parent-run]} :- [:maybe ::transforms.schema/execute-options]]
    (try
      (let [db          (transforms.db/database (get-in source [:query :database]))
            driver      (:engine db)
@@ -67,7 +71,8 @@
                             (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                           result))))]
                ;; Post-processing: sync, transform_id, events
-               (transforms-base.u/complete-execution! transform {}))))))
+               (transforms-base.u/complete-execution! transform {})))))
+       nil)
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)

@@ -539,7 +539,7 @@
   ;; Note that these refer to the table names, not the search-model names.
   {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
    "model_index"        #{"model_index_value"}
-   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment" "transform"}
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}

@@ -1,13 +1,11 @@
 (ns ^:mb/driver-tests metabase.transforms-rest.api.transform-test
   "Tests for /api/transform endpoints."
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.transforms-rest.api.transform-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -58,6 +56,11 @@
               (map :id))
         (search.tu/search-results search-term)))
 
+(defn- table-query
+  [table-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp table-id))))
+
 (defn- make-query
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
@@ -92,7 +95,7 @@
                     schema       (get-test-schema)
                     response     (mt/user-http-request :lucky :post 200 "transform"
                                                        {:name   "Gadget Products"
-                                                        :source {:type  "query"
+                                                        :source {:type  :query
                                                                  :query query}
                                                         :target {:type   "table"
                                                                  :schema schema
@@ -124,7 +127,7 @@
                     schema    (get-test-schema)
                     created   (mt/user-http-request :crowberto :post 200 "transform"
                                                     {:name   "Update Schema Products"
-                                                     :source {:type  "query"
+                                                     :source {:type  :query
                                                               :query query}
                                                      :target {:type   "table"
                                                               :schema schema
@@ -153,7 +156,7 @@
                 (let [query   (make-query "Gadget")
                       request (fn [schema]
                                 {:name   "No Schema Products"
-                                 :source {:type  "query"
+                                 :source {:type  :query
                                           :query query}
                                  :target {:type   "table"
                                           :schema schema
@@ -178,7 +181,7 @@
                       schema       (get-test-schema)
                       response     (mt/user-http-request :lucky :post 200 "transform"
                                                          {:name   "Gadget Products"
-                                                          :source {:type  "query"
+                                                          :source {:type  :query
                                                                    :query query}
                                                           :target {:type   "table"
                                                                    :schema schema
@@ -202,7 +205,7 @@
                       schema       (get-test-schema)
                       response     (mt/user-http-request :lucky :post 400 "transform"
                                                          {:name   "Gadget Products"
-                                                          :source {:type  "query"
+                                                          :source {:type  :query
                                                                    :query query}
                                                           :target {:type   "table"
                                                                    :schema schema
@@ -224,7 +227,7 @@
                       schema       (get-test-schema)
                       response     (mt/user-http-request :lucky :post 400 "transform"
                                                          {:name   "Gadget Products"
-                                                          :source {:type  "query"
+                                                          :source {:type  :query
                                                                    :query query}
                                                           :target {:type   "table"
                                                                    :schema schema
@@ -245,7 +248,7 @@
                   rasta-id (mt/user->id :rasta)
                   response (mt/user-http-request :crowberto :post 200 "transform"
                                                  {:name "Transform with explicit owner"
-                                                  :source {:type "query"
+                                                  :source {:type :query
                                                            :query query}
                                                   :target {:type "table"
                                                            :schema schema
@@ -268,7 +271,7 @@
                   schema (get-test-schema)
                   response (mt/user-http-request :crowberto :post 200 "transform"
                                                  {:name "Transform with external owner"
-                                                  :source {:type "query"
+                                                  :source {:type :query
                                                            :query query}
                                                   :target {:type "table"
                                                            :schema schema
@@ -290,7 +293,7 @@
                 schema (get-test-schema)
                 created (mt/user-http-request :crowberto :post 200 "transform"
                                               {:name "Transform for owner update"
-                                               :source {:type "query"
+                                               :source {:type :query
                                                         :query query}
                                                :target {:type "table"
                                                         :schema schema
@@ -333,7 +336,7 @@
                 schema (get-test-schema)
                 created (mt/user-http-request :crowberto :post 200 "transform"
                                               {:name "Transform for owner update"
-                                               :source {:type "query"
+                                               :source {:type :query
                                                         :query query}
                                                :target {:type "table"
                                                         :schema schema
@@ -343,7 +346,7 @@
             (testing "Update query to a query with an optional param"
               (mt/user-http-request :crowberto :put 200
                                     (format "transform/%s" transform-id)
-                                    {:source {:type "query"
+                                    {:source {:type :query
                                               :query new-query}}))))))))
 
 (deftest update-transform-query-with-required-param-test
@@ -356,7 +359,7 @@
                   schema       (get-test-schema)
                   created      (mt/user-http-request :crowberto :post 200 "transform"
                                                      {:name "Transform for owner update"
-                                                      :source {:type "query"
+                                                      :source {:type :query
                                                                :query query}
                                                       :target {:type "table"
                                                                :schema schema
@@ -369,7 +372,7 @@
                                      {"id" (assoc tag :required true)})
                   response     (mt/user-http-request :crowberto :put 400
                                                      (format "transform/%s" transform-id)
-                                                     {:source {:type "query"
+                                                     {:source {:type :query
                                                                :query new-query}})]
               (is (= "You'll need to pick a value for 'ID' before this query can run."
                      (:message response))))))))))
@@ -384,7 +387,7 @@
                   schema       (get-test-schema)
                   created      (mt/user-http-request :crowberto :post 200 "transform"
                                                      {:name "Transform for owner update"
-                                                      :source {:type "query"
+                                                      :source {:type :query
                                                                :query query}
                                                       :target {:type "table"
                                                                :schema schema
@@ -393,7 +396,7 @@
                   new-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
                   response     (mt/user-http-request :crowberto :put 400
                                                      (format "transform/%s" transform-id)
-                                                     {:source {:type "query"
+                                                     {:source {:type :query
                                                                :query new-query}})]
               (is (= "Cannot run the query: missing required parameters: #{\"id\"}"
                      (:message response))))))))))
@@ -407,11 +410,11 @@
             (with-transform-db-perms!
               (testing "MBQL query transforms are detected as :mbql"
                 (with-transform-cleanup! [table-name "mbql_transform"]
-                  (let [mbql-query (mt/mbql-query transforms_products)
+                  (let [mbql-query (table-query (mt/id :transforms_products))
                         schema (get-test-schema)
                         response (mt/user-http-request :lucky :post 200 "transform"
                                                        {:name   "MBQL Transform"
-                                                        :source {:type  "query"
+                                                        :source {:type  :query
                                                                  :query mbql-query}
                                                         :target {:type   "table"
                                                                  :schema schema
@@ -422,7 +425,7 @@
                   (let [schema (get-test-schema)
                         response (mt/user-http-request :lucky :post 200 "transform"
                                                        {:name   "Native Transform"
-                                                        :source {:type  "query"
+                                                        :source {:type  :query
                                                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                         :target {:type   "table"
                                                                  :schema schema
@@ -438,11 +441,11 @@
             (with-transform-db-perms!
               (with-transform-cleanup! [table-name "type_update_transform"]
                 (let [native-query (lib/native-query (mt/metadata-provider) "SELECT 1")
-                      mbql-query (mt/mbql-query transforms_products)
+                      mbql-query (table-query (mt/id :transforms_products))
                       schema (get-test-schema)
                       created (mt/user-http-request :lucky :post 200 "transform"
                                                     {:name   "Native Transform"
-                                                     :source {:type  "query"
+                                                     :source {:type  :query
                                                               :query native-query}
                                                      :target {:type   "table"
                                                               :schema schema
@@ -451,7 +454,7 @@
                   (testing "Type automatically changes to mbql when updating to an MBQL query"
                     (let [updated (mt/user-http-request :lucky :put 200
                                                         (format "transform/%s" (:id created))
-                                                        {:source {:type  "query"
+                                                        {:source {:type  :query
                                                                   :query mbql-query}})]
                       (is (= "mbql" (:source_type updated))))))))))))))
 
@@ -468,7 +471,7 @@
                         schema (get-test-schema)
                         response (mt/user-http-request :lucky :post 200 "transform"
                                                        {:name   "Test Transform"
-                                                        :source {:type  "query"
+                                                        :source {:type  :query
                                                                  :query query}
                                                         :target {:type   "table"
                                                                  :schema schema
@@ -487,7 +490,7 @@
                   (let [query  (make-query "Gadget")
                         schema (get-test-schema)
                         transform-payload {:name   "Original Transform"
-                                           :source {:type  "query"
+                                           :source {:type  :query
                                                     :query query}
                                            :target {:type   "table"
                                                     :schema schema
@@ -510,7 +513,7 @@
                   (let [query  (make-query "Gadget")
                         schema (get-test-schema)
                         transform-payload {:name   "Test Run Transform"
-                                           :source {:type  "query"
+                                           :source {:type  :query
                                                     :query query}
                                            :target {:type   "table"
                                                     :schema schema
@@ -532,7 +535,7 @@
                 (let [table-name (str "disabled_transform_" (u/generate-nano-id))
                       response   (mt/user-http-request :crowberto :post 402 "transform"
                                                        {:name   "Disabled Transform"
-                                                        :source {:type  "query"
+                                                        :source {:type  :query
                                                                  :query (make-query "Gadget")}
                                                         :target {:type   "table"
                                                                  :schema (get-test-schema)
@@ -554,7 +557,7 @@
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (with-transform-cleanup! [table-name "test_read_run"]
               (mt/with-temp [:model/Transform transform {:name   "Test Read Run Transform"
-                                                         :source {:type  "query"
+                                                         :source {:type  :query
                                                                   :query (make-query "Gadget")}
                                                          :target {:type   "table"
                                                                   :schema (get-test-schema)
@@ -580,7 +583,7 @@
               (with-transform-cleanup! [table-name "gadget_products"]
                 (let [body         {:name        "Gadget Products"
                                     :description "Desc"
-                                    :source      {:type  "query"
+                                    :source      {:type  :query
                                                   :query (make-query "Gadget")}
                                     :target      {:type   "table"
                                                   :schema (get-test-schema)
@@ -661,7 +664,7 @@
               (with-transform-db-perms!
                 (with-transform-cleanup! [table-name "reqidx_products"]
                   (let [body     {:name   "Reqidx Products"
-                                  :source {:type "query" :query (make-query "Gadget")}
+                                  :source {:type :query :query (make-query "Gadget")}
                                   :target {:type "table" :schema (get-test-schema) :name table-name}}
                         created  (mt/user-http-request :lucky :post 200 "transform" body)
                         get-resp (mt/user-http-request :lucky :get 200 (format "transform/%s" (:id created)))
@@ -685,7 +688,7 @@
           (with-transform-cleanup! [table-name "test_readable"]
             (let [body {:name        "Test Transform"
                         :description "Test"
-                        :source      {:type  "query"
+                        :source      {:type  :query
                                       :query (make-query "Gadget")}
                         :target      {:type   "table"
                                       :schema (get-test-schema)
@@ -711,7 +714,7 @@
                               "User with transforms permission should be able to read the source database"))))))))))))))
 
 (defn- ->transform [transform-name query]
-  {:source {:type "query",
+  {:source {:type :query,
             :query query}
    :name transform-name
    :target {:schema "public"
@@ -724,16 +727,14 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Table {table :id} {:schema "public", :name "orders_2"}
                        :model/Field _           {:table_id table, :name "foo"}
-                       :model/Transform parent  (-> (->transform "transform1" (mt/mbql-query orders))
+                       :model/Transform parent  (-> (->transform "transform1" (table-query (mt/id :orders)))
                                                     (assoc :target_table_id table))
-                       :model/Transform child   (-> (->transform "transform2" (mt/mbql-query nil {:source-table table}))
+                       :model/Transform child   (-> (->transform "transform2" (table-query table))
                                                     (assoc-in [:target :name] "orders_3"))]
           (let [deps-resp (mt/user-http-request :lucky :get 200 (format "transform/%s/dependencies" (:id child)))]
             (is (=? [{:name      "transform1"
                       :source    {:type "query"
-                                  :query {:database (mt/id)
-                                          :lib/type "mbql/query"
-                                          :stages   [{:source-table (mt/id :orders)}]}}
+                                  :query (mt/obj->json->obj (table-query (mt/id :orders)))}
                       :id        (:id parent)
                       :entity_id (:entity_id parent)
                       :target    {:schema "public", :name "orders_2", :type "table"}}]
@@ -751,7 +752,7 @@
               (let [query2       (make-query "None")
                     resp         (mt/user-http-request :lucky :post 200 "transform"
                                                        {:name   "Gadget Products"
-                                                        :source {:type  "query"
+                                                        :source {:type  :query
                                                                  :query (make-query "Gadget")}
                                                         :target {:type   "table"
                                                                  :schema (get-test-schema)
@@ -782,7 +783,7 @@
                                       table2-name "doohickey_products"]
               (let [query2   (make-query "Doohickey")
                     original {:name   "Gadget Products"
-                              :source {:type  "query"
+                              :source {:type  :query
                                        :query (make-query "Gadget")}
                               :target {:type   "table"
                                        :schema (get-test-schema)
@@ -811,7 +812,7 @@
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [resp (mt/user-http-request :lucky :post 200 "transform"
                                                {:name   "Gadget Products"
-                                                :source {:type  "query"
+                                                :source {:type  :query
                                                          :query (make-query "Gadget")}
                                                 :target {:type   "table"
                                                          :schema (get-test-schema)
@@ -828,7 +829,7 @@
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [resp (mt/user-http-request :lucky :post 200 "transform"
                                                {:name   "Gadget Products"
-                                                :source {:type  "query"
+                                                :source {:type  :query
                                                          :query (make-query "Gadget")}
                                                 :target {:type   "table"
                                                          :schema (get-test-schema)
@@ -908,7 +909,7 @@
                                                                            :name   "doohickey_products"}]
                   (let [query2             (make-query "Doohickey")
                         original           {:name   "Gadget Products"
-                                            :source {:type  "query"
+                                            :source {:type  :query
                                                      :query (make-query "Gadget")}
                                             :target target1}
                         {transform-id :id} (mt/user-http-request :lucky :post 200 "transform"
@@ -1133,35 +1134,23 @@
   (mt/with-premium-features #{}
     (testing "GET /api/transform/run - filter by multiple tags (union)"
       (mt/with-temp [:model/Transform transform1 {:name   "Transform with tag1"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 1"
-                                                                              :template-tags {}}}}
+                                                  :source {:type  :query
+                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                   :target {:type "table"
                                                            :name (str "test_table_1_" (u/generate-nano-id))}}
                      :model/Transform transform2 {:name   "Transform with both tags"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 2"
-                                                                              :template-tags {}}}}
+                                                  :source {:type  :query
+                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 2")}
                                                   :target {:type "table"
                                                            :name (str "test_table_2_" (u/generate-nano-id))}}
                      :model/Transform transform3 {:name   "Transform with tag2"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 3"
-                                                                              :template-tags {}}}}
+                                                  :source {:type  :query
+                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 3")}
                                                   :target {:type "table"
                                                            :name (str "test_table_3_" (u/generate-nano-id))}}
                      :model/Transform transform4 {:name   "Untagged Transform"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 4"
-                                                                              :template-tags {}}}}
+                                                  :source {:type  :query
+                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 4")}
                                                   :target {:type "table"
                                                            :name (str "test_table_4_" (u/generate-nano-id))}}
                      :model/TransformTag tag1 {}
@@ -1187,19 +1176,13 @@
   (mt/with-premium-features #{}
     (testing "GET /api/transform/run - combine transform ID and status filters"
       (mt/with-temp [:model/Transform transform1 {:name   "Transform 1"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 1"
-                                                                              :template-tags {}}}}
+                                                  :source {:type  :query
+                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                   :target {:type "table"
                                                            :name (str "test_table_1_" (u/generate-nano-id))}}
                      :model/Transform transform2 {:name   "Transform 2"
-                                                  :source {:type  "query"
-                                                           :query {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query         "SELECT 2"
-                                                                              :template-tags {}}}}
+                                                  :source {:type  :query
+                                                           :query (lib/native-query (mt/metadata-provider) "SELECT 2")}
                                                   :target {:type "table"
                                                            :name (str "test_table_2_" (u/generate-nano-id))}}
                      :model/TransformRun _run1 {:transform_id (:id transform1) :status "succeeded"}
@@ -1290,7 +1273,7 @@
                                              transform-id))
                 gadget-req {:name   "Gadget Products"
                             :description "The gadget products"
-                            :source {:type  "query"
+                            :source {:type  :query
                                      :query (make-query "Gadget")}
                             :target {:type   "table"
                                      :schema (get-test-schema)
@@ -1298,7 +1281,7 @@
                 transform-id (test-transform-revisions :post "transform" gadget-req 1)
                 widget-req {:name   "Widget Products"
                             :description "The widget products"
-                            :source {:type  "query"
+                            :source {:type  :query
                                      :query (make-query "Widget")}
                             :tag_ids [4]
                             :target {:type   "table"
@@ -1315,10 +1298,8 @@
           (mt/user-http-request :rasta :get 403 (str "transform/" (:id transform)))
           (mt/user-http-request :rasta :post 403 "transform"
                                 {:name   "Test"
-                                 :source {:type  "query"
-                                          :query {:database (mt/id)
-                                                  :type     "native"
-                                                  :native   {:query "SELECT 1"}}}
+                                 :source {:type  :query
+                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                  :target {:type "table" :name (mt/random-name)}})
           (mt/user-http-request :rasta :put 403 (str "transform/" (:id transform))
                                 {:name "Updated"})
@@ -1344,7 +1325,7 @@
                   ;; Create transform owned by rasta, but run by crowberto
                   transform (mt/user-http-request :crowberto :post 200 "transform"
                                                   {:name "Attribution Test"
-                                                   :source {:type "query"
+                                                   :source {:type :query
                                                             :query (make-query "Gadget")}
                                                    :target {:type "table"
                                                             :schema (get-test-schema)
@@ -1454,10 +1435,8 @@
         (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-temp [:model/Transform transform {:name "Test Transform"
-                                                       :source {:type "query"
-                                                                :query {:database (mt/id)
-                                                                        :type "native"
-                                                                        :native {:query "SELECT 1"}}}
+                                                       :source {:type :query
+                                                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                        :target {:type "table"
                                                                 :name (mt/random-name)}}
                            :model/TransformTag tag1 {:name "update-tag-1"}
@@ -1483,10 +1462,8 @@
         (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-temp [:model/Transform transform {:name "Transform With Tags"
-                                                       :source {:type "query"
-                                                                :query {:database (mt/id)
-                                                                        :type "native"
-                                                                        :native {:query "SELECT 1"}}}
+                                                       :source {:type :query
+                                                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                        :target {:type "table"
                                                                 :name "tagged_table"}}
                            :model/TransformTag tag1 {:name "get-tag-1"}
@@ -1498,10 +1475,8 @@
                   (is (= [(:id tag1) (:id tag2)] (sort (:tag_ids fetched))))))
               (testing "Transform without tags returns empty array"
                 (mt/with-temp [:model/Transform transform2 {:name "Transform Without Tags"
-                                                            :source {:type "query"
-                                                                     :query {:database (mt/id)
-                                                                             :type "native"
-                                                                             :native {:query "SELECT 1"}}}
+                                                            :source {:type :query
+                                                                     :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                             :target {:type "table"
                                                                      :name "untagged_table"}}]
                   (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform2)))]
@@ -1513,17 +1488,13 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (mt/with-temp [:model/Transform transform1 {:name "Transform 1"
-                                                      :source {:type "query"
-                                                               :query {:database (mt/id)
-                                                                       :type "native"
-                                                                       :native {:query "SELECT 1"}}}
+                                                      :source {:type :query
+                                                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                       :target {:type "table"
                                                                :name "list_table_1"}}
                          :model/Transform transform2 {:name "Transform 2"
-                                                      :source {:type "query"
-                                                               :query {:database (mt/id)
-                                                                       :type "native"
-                                                                       :native {:query "SELECT 2"}}}
+                                                      :source {:type :query
+                                                               :query (lib/native-query (mt/metadata-provider) "SELECT 2")}
                                                       :target {:type "table"
                                                                :name "list_table_2"}}
                          :model/TransformTag tag1 {:name "list-tag-1"}
@@ -1545,10 +1516,8 @@
         (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-temp [:model/Transform transform {:name   "Transform for Delete Test"
-                                                       :source {:type  "query"
-                                                                :query {:database (mt/id)
-                                                                        :type     "native"
-                                                                        :native   {:query "SELECT 1"}}}
+                                                       :source {:type  :query
+                                                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                        :target {:type "table"
                                                                 :name "delete_test_table"}}
                            :model/TransformTag tag2 {:name "tag-to-keep"}]
@@ -1695,7 +1664,7 @@
             (testing "Rejects unsupported checkpoint column type (text)"
               (let [response (mt/user-http-request :crowberto :post 400 "transform"
                                                    {:name "Invalid Incremental Transform"
-                                                    :source {:type "query"
+                                                    :source {:type :query
                                                              :query (lib/native-query (mt/metadata-provider)
                                                                                       "SELECT id, name, category, price FROM transforms_products")
                                                              :source-incremental-strategy {:type "checkpoint"
@@ -1718,7 +1687,7 @@
               (let [;; Create a non-incremental transform first
                     created (mt/user-http-request :crowberto :post 200 "transform"
                                                   {:name "Test Transform"
-                                                   :source {:type "query"
+                                                   :source {:type :query
                                                             :query (lib/native-query (mt/metadata-provider)
                                                                                      "SELECT id, name, category FROM transforms_products")}
                                                    :target {:type "table"
@@ -1727,7 +1696,7 @@
                 (testing "Rejects update to unsupported checkpoint column type (text)"
                   (let [response (mt/user-http-request :crowberto :put 400
                                                        (format "transform/%d" (:id created))
-                                                       {:source {:type "query"
+                                                       {:source {:type :query
                                                                  :query (lib/native-query (mt/metadata-provider)
                                                                                           "SELECT id, name, category FROM transforms_products")
                                                                  :source-incremental-strategy {:type "checkpoint"
@@ -1754,7 +1723,7 @@
               (mt/with-temp [:model/TransformTag {tag-id :id} {:name "stale-checkpoint-tag"}
                              :model/Transform {transform-id :id}
                              {:name   "Stale Checkpoint Transform"
-                              :source {:type  "query"
+                              :source {:type  :query
                                        :query (lib/native-query (mt/metadata-provider)
                                                                 "SELECT id, name, category FROM transforms_products")
                                        :source-incremental-strategy {:type "checkpoint"
@@ -1771,17 +1740,15 @@
                     (is (= [] (:tag_ids updated)))))))))))))
 
 (defn- native-query-with-table-tag
-  "Build a native query map with a `source_table` table template tag referring to `table-id`."
+  "Build a native query with a `source_table` table template tag referring to `table-id`."
   [sql table-id]
-  {:database (mt/id)
-   :type     :native
-   :native   {:query         sql
-              :template-tags {"source_table" {:id           "source_table"
-                                              :name         "source_table"
-                                              :display-name "Source Table"
-                                              :type         "table"
-                                              :table-id     table-id
-                                              :required     true}}}})
+  (lib/with-template-tags (lib/native-query (mt/metadata-provider) sql)
+    {"source_table" {:id           "source_table"
+                     :name         "source_table"
+                     :display-name "Source Table"
+                     :type         :table
+                     :table-id     table-id
+                     :required     true}}))
 
 (deftest incremental-table-tag-validated-on-create-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -1793,7 +1760,7 @@
             (testing "with a checkpoint field selected"
               (let [response (mt/user-http-request :crowberto :post 400 "transform"
                                                    {:name   "No Table Tag"
-                                                    :source {:type  "query"
+                                                    :source {:type  :query
                                                              :query (lib/native-query (mt/metadata-provider)
                                                                                       "SELECT id, name FROM transforms_products")
                                                              :source-incremental-strategy {:type "checkpoint"
@@ -1807,7 +1774,7 @@
             (testing "even without a checkpoint field selected"
               (let [response (mt/user-http-request :crowberto :post 400 "transform"
                                                    {:name   "No Table Tag No Checkpoint"
-                                                    :source {:type  "query"
+                                                    :source {:type  :query
                                                              :query (lib/native-query (mt/metadata-provider)
                                                                                       "SELECT id, name FROM transforms_products")}
                                                     :target {:type "table-incremental"
@@ -1828,7 +1795,7 @@
               (with-transform-cleanup! [table-name "remove_table_tag_test"]
                 (mt/with-temp [:model/Transform {transform-id :id}
                                {:name   "Has Table Tag"
-                                :source {:type  "query"
+                                :source {:type  :query
                                          :query (native-query-with-table-tag
                                                  "SELECT id, name FROM {{source_table}}"
                                                  (mt/id :transforms_products))
@@ -1840,7 +1807,7 @@
                                          :target-incremental-strategy {:type "append"}}}]
                   (let [response (mt/user-http-request :crowberto :put 400
                                                        (format "transform/%d" transform-id)
-                                                       {:source {:type  "query"
+                                                       {:source {:type  :query
                                                                  :query (lib/native-query (mt/metadata-provider)
                                                                                           "SELECT id, name FROM transforms_products")
                                                                  :source-incremental-strategy {:type "checkpoint"
@@ -1851,13 +1818,13 @@
               (with-transform-cleanup! [table-name "switch_no_tag_test"]
                 (mt/with-temp [:model/Transform {transform-id :id}
                                {:name   "Plain Transform"
-                                :source {:type  "query"
+                                :source {:type  :query
                                          :query (lib/native-query (mt/metadata-provider)
                                                                   "SELECT id, name FROM transforms_products")}
                                 :target {:type "table" :schema schema :name table-name}}]
                   (let [response (mt/user-http-request :crowberto :put 400
                                                        (format "transform/%d" transform-id)
-                                                       {:source {:type  "query"
+                                                       {:source {:type  :query
                                                                  :query (lib/native-query (mt/metadata-provider)
                                                                                           "SELECT id, name FROM transforms_products")
                                                                  :source-incremental-strategy {:type "checkpoint"
@@ -1882,7 +1849,7 @@
                 num-field-id  (mt/id :transforms_products :price)
                 payload       (fn [table-name checkpoint-field-id lookback target-strategy]
                                 {:name   "Lookback Transform"
-                                 :source {:type  "query"
+                                 :source {:type  :query
                                           :query query
                                           :source-incremental-strategy {:type "checkpoint"
                                                                         :checkpoint-filter-field-id checkpoint-field-id
@@ -1940,7 +1907,7 @@
             (with-transform-cleanup! [table-name "lookback_update"]
               (mt/with-temp [:model/Transform {transform-id :id}
                              {:name   "Append Incremental"
-                              :source {:type  "query"
+                              :source {:type  :query
                                        :query query
                                        :source-incremental-strategy {:type "checkpoint"
                                                                      :checkpoint-filter-field-id ts-field-id}}
@@ -1951,7 +1918,7 @@
                 (testing "adding a lookback to an existing incremental transform is accepted"
                   (let [updated (mt/user-http-request :crowberto :put 200
                                                       (format "transform/%d" transform-id)
-                                                      {:source {:type  "query"
+                                                      {:source {:type  :query
                                                                 :query query
                                                                 :source-incremental-strategy {:type "checkpoint"
                                                                                               :checkpoint-filter-field-id ts-field-id
@@ -1961,7 +1928,7 @@
                 (testing "switching the checkpoint to a numeric column while a lookback is set is rejected"
                   (let [response (mt/user-http-request :crowberto :put 400
                                                        (format "transform/%d" transform-id)
-                                                       {:source {:type  "query"
+                                                       {:source {:type  :query
                                                                  :query query
                                                                  :source-incremental-strategy {:type "checkpoint"
                                                                                                :checkpoint-filter-field-id num-field-id
@@ -1971,7 +1938,7 @@
                 (testing "adding a lookback together with a switch to the merge strategy is accepted"
                   (let [updated (mt/user-http-request :crowberto :put 200
                                                       (format "transform/%d" transform-id)
-                                                      {:source {:type  "query"
+                                                      {:source {:type  :query
                                                                 :query query
                                                                 :source-incremental-strategy {:type "checkpoint"
                                                                                               :checkpoint-filter-field-id ts-field-id
@@ -1998,9 +1965,9 @@
           (let [search-term (str "transform-search-" (u/generate-nano-id))
                 query-name  (str search-term "-query")
                 python-name (str search-term "-python")
-                query-source {:type  "query"
+                query-source {:type  :query
                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-                python-source {:type            "python"
+                python-source {:type            :python
                                :body            "print('hello world')"
                                :source-tables   []
                                :source-database (mt/id)}]
@@ -2028,7 +1995,7 @@
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
                 query-name  (str search-term "-query")
-                query-source {:type  "query"
+                query-source {:type  :query
                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
             (mt/with-temp [:model/Transform {transform-id :id} {:name   query-name
                                                                 :source query-source
@@ -2050,10 +2017,10 @@
           (let [search-term (str "transform-search-" (u/generate-nano-id))
                 native-name (str search-term "-native")
                 mbql-name   (str search-term "-mbql")
-                native-source {:type  "query"
+                native-source {:type  :query
                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-                mbql-source {:type  "query"
-                             :query (mt/mbql-query transforms_products)}]
+                mbql-source {:type  :query
+                             :query (table-query (mt/id :transforms_products))}]
             (mt/with-temp [:model/Transform {native-id :id} {:name   native-name
                                                              :source native-source
                                                              :target {:type   "table"
@@ -2138,7 +2105,7 @@
                                              :required true :default ["Gadget"]}})
                       {id :id}     (mt/user-http-request :lucky :post 200 "transform"
                                                          {:name   "Field Filter Transform"
-                                                          :source {:type "query" :query query}
+                                                          :source {:type :query :query query}
                                                           :target {:type   "table"
                                                                    :schema (get-test-schema)
                                                                    :name   table-name}})]
@@ -2160,7 +2127,7 @@
                                                 :table-id source-table-id}})
                       {id :id}        (mt/user-http-request :lucky :post 200 "transform"
                                                             {:name   "Table Tag Transform"
-                                                             :source {:type "query" :query query}
+                                                             :source {:type :query :query query}
                                                              :target {:type   "table"
                                                                       :schema (get-test-schema)
                                                                       :name   table-name}})]
@@ -2182,7 +2149,7 @@
                 (testing "POST /api/transform"
                   (mt/user-http-request :lucky :post 403 "transform"
                                         {:name   "Colliding Transform"
-                                         :source {:type "query" :query (make-query "Gadget")}
+                                         :source {:type :query :query (make-query "Gadget")}
                                          :target {:type   "table"
                                                   :schema schema
                                                   :name   existing-table-name}}))
@@ -2190,7 +2157,7 @@
                   (with-transform-cleanup! [table-name "collision_source"]
                     (let [created (mt/user-http-request :lucky :post 200 "transform"
                                                         {:name   "Non-colliding Transform"
-                                                         :source {:type "query" :query (make-query "Gadget")}
+                                                         :source {:type :query :query (make-query "Gadget")}
                                                          :target {:type   "table"
                                                                   :schema schema
                                                                   :name   table-name}})]
@@ -2207,7 +2174,7 @@
           (with-transform-cleanup! [table-name "gadget_products_recreate"]
             (let [target     {:type "table" :schema (get-test-schema) :name table-name}
                   definition {:name   "Recreate Target Transform"
-                              :source {:type "query" :query (make-query "Gadget")}
+                              :source {:type :query :query (make-query "Gadget")}
                               :target target}
                   {id :id}   (mt/user-http-request :crowberto :post 200 "transform" definition)]
               (test-run! id)
@@ -2216,18 +2183,6 @@
               (is (false? (transforms-base.u/target-table-exists? definition)))
               (test-run! id)
               (is (true? (transforms-base.u/target-table-exists? definition))))))))))
-
-(deftest get-transform-with-deleted-database-test
-  (testing "GET /api/transform/:id degrades gracefully when its source database has been deleted"
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/Database db {}]
-        (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:id db))
-              query (lib/native-query mp "select 1")]
-          (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
-                                                     :target {:type "table" :name (mt/random-name)}}]
-            (t2/delete! :model/Database (:id db))
-            (is (=? {:id (:id transform)}
-                    (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform)))))))))))
 
 (deftest cancel-transform-run-endpoint-test
   (testing "POST /api/transform/:id/cancel"
@@ -2239,7 +2194,7 @@
                                                "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, 5) a")
                   {id :id}   (mt/user-http-request :crowberto :post 200 "transform"
                                                    {:name   "Slow Transform"
-                                                    :source {:type "query" :query query}
+                                                    :source {:type :query :query query}
                                                     :target {:type   "table"
                                                              :schema (get-test-schema)
                                                              :name   table-name}})]

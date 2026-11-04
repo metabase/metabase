@@ -19,7 +19,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Gadget Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/native-query (mt/metadata-provider) gadget-sql)}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
           (is (str/includes? output "name=\"Gadget Products\""))
@@ -31,7 +31,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Notebook Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/query (mt/metadata-provider)
                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
@@ -48,8 +48,9 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Gadget Metrics"
-                      :source {:type            "python"
+                      :source {:type            :python
                                :source-database (mt/id)
+                               :source-tables   []
                                :body            "import pandas as pd"}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
           (is (str/includes? output "<source type=\"python\">"))
@@ -69,7 +70,7 @@
                                                     (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
                          :model/Transform {transform-id :id}
                          {:name   "Private source Card"
-                          :source {:type  "query"
+                          :source {:type  :query
                                    :query (lib/query (mt/metadata-provider)
                                                      (lib.metadata/card (mt/metadata-provider) card-id))}}]
             (mt/with-current-user (mt/user->id :rasta)

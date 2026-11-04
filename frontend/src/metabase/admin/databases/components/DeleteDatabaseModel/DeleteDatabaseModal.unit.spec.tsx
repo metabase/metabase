@@ -6,12 +6,12 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
 import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 
-const getUsageInfo = (hasContent: boolean) => ({
+const getUsageInfo = (hasContent: boolean): DatabaseUsageInfo => ({
   question: hasContent ? 10 : 0,
   dataset: hasContent ? 20 : 0,
   metric: hasContent ? 30 : 0,
@@ -22,20 +22,24 @@ const getUsageInfo = (hasContent: boolean) => ({
 // Unjustified type cast. FIXME
 const database = { name: "database name", id: 1 } as Database;
 
+type SetupOpts = {
+  onDelete?: DeleteDatabaseModalProps["onDelete"];
+  hasContent?: boolean;
+  usageInfo?: DatabaseUsageInfo;
+};
+
 const setup = async ({
   onDelete = jest.fn(),
   hasContent = true,
-}: {
-  onDelete?: DeleteDatabaseModalProps["onDelete"];
-  hasContent?: boolean;
-} = {}) => {
-  fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
+  usageInfo = getUsageInfo(hasContent),
+}: SetupOpts = {}) => {
+  fetchMock.get("path:/api/database/1/usage_info", usageInfo);
   renderWithProviders(
     <DeleteDatabaseModal
       opened
       title={"Delete the destination database?"}
       defaultDatabaseRemovalMessage={
-        "Users routed to this database will lose access to every question, model, metric, and segment if you continue. Transforms that use this database won’t be deleted, but they will stop working."
+        "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
       }
       onClose={jest.fn()}
       onDelete={onDelete}
@@ -58,9 +62,7 @@ describe("DeleteDatabaseModal", () => {
   it("should allow deleting database without content after confirming its name", async () => {
     const { onDelete } = await setup({ hasContent: false });
 
-    const deleteButton = screen.getByRole("button", {
-      name: "Delete this DB connection",
-    });
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
 
     expect(
       screen.queryByText("Delete 10 saved questions"),
@@ -84,7 +86,7 @@ describe("DeleteDatabaseModal", () => {
     const { onDelete } = await setup({ hasContent: true });
 
     const deleteButton = screen.getByRole("button", {
-      name: "Delete this DB connection",
+      name: "Delete this content and the DB connection",
     });
 
     expect(deleteButton).toBeDisabled();
@@ -93,7 +95,7 @@ describe("DeleteDatabaseModal", () => {
     await userEvent.click(screen.getByText("Delete 20 models"));
     await userEvent.click(screen.getByText("Delete 30 metrics"));
     await userEvent.click(screen.getByText("Delete 40 segments"));
-    await userEvent.click(screen.getByText("50 transforms will stop working"));
+    await userEvent.click(screen.getByText("Delete 50 transforms"));
 
     expect(deleteButton).toBeDisabled();
 
@@ -109,6 +111,34 @@ describe("DeleteDatabaseModal", () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
+  it("should require confirming transform removal when only transforms use the database", async () => {
+    const { onDelete } = await setup({
+      usageInfo: {
+        question: 0,
+        dataset: 0,
+        metric: 0,
+        segment: 0,
+        transform: 3,
+      },
+    });
+
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete this content and the DB connection",
+    });
+    expect(deleteButton).toBeDisabled();
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Delete 3 transforms" }),
+    );
+    await userEvent.type(
+      screen.getByTestId("database-name-confirmation-input"),
+      "database name",
+    );
+    await userEvent.click(deleteButton);
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
   it("shows an error if removal failed", async () => {
     await setup({
       hasContent: false,
@@ -117,9 +147,7 @@ describe("DeleteDatabaseModal", () => {
       },
     });
 
-    const deleteButton = screen.getByRole("button", {
-      name: "Delete this DB connection",
-    });
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
     await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),
       "database name",

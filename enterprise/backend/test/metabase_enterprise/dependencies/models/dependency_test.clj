@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -202,7 +203,7 @@
         (mt/with-premium-features #{}
           (mt/with-temp [:model/Transform transform]
             (mt/with-premium-features #{:dependencies}
-              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
+              (t2/update! :model/Transform (:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}))
             (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
       (testing "snippets create"
         (mt/with-premium-features #{:dependencies}

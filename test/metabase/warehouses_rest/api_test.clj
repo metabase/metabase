@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -280,18 +281,14 @@
      :model/Segment  _                {:table_id table-id-2}
      :model/Transform _                {:name   "Source DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
                                                  :name "source_db_transform_target"}}
      :model/Transform _                {:name   "Target DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"

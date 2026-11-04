@@ -10,6 +10,8 @@
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -82,9 +84,9 @@
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Transform {transform-id :id} {:name "Test Transform"
-                                                            :source {:type "query"
-                                                                     :query (mt/mbql-query nil
-                                                                              {:source-table (str "card__" card-id)})}
+                                                            :source {:type  :query
+                                                                     :query (lib/query (mt/metadata-provider)
+                                                                                       (lib.metadata/card (mt/metadata-provider) card-id))}
                                                             :target {:type "table" :name (mt/random-name)}}]
           ;; Mark both as stale
           (mark-stale! :card card-id)

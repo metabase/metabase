@@ -410,7 +410,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/native-query (mt/metadata-provider)
                                                         "SELECT * FROM products WHERE category = 'Gadget'")}}]
         (testing "fetches transform info"
@@ -553,7 +553,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Permission test transform"
-                        :source {:type  "query"
+                        :source {:type  :query
                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
           (with-redefs [mi/can-read? (constantly false)]
             (doseq [uri [(str "metabase://transform/" transform-id)
@@ -767,7 +767,7 @@
                        :model/Transform {tx-other-db :id}
                        {:name               "Other-DB Transform"
                         :source_database_id db2
-                        :source             {:type "query"
+                        :source             {:type :query
                                              :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
           (testing "/derived for a table in db1 must exclude transforms whose source is in db2"
             (let [{:keys [output]} (read-resource/read-resource
