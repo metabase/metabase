@@ -199,7 +199,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
 
     cy.log("Goal-based alerts are offered for a dynamic goal");
-    // without a channel, the alert menu opens the channel setup modal instead
     H.mockSlackConfigured();
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Create an alert").click();
@@ -259,7 +258,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     pickGoalSource(METRIC_SOURCE.name);
     cy.findByTestId("scalar-value").realHover();
     H.tooltip().should("contain.text", "≥ 18,760");
-    // the hover color would hide the range color
     H.queryBuilderHeader().realHover();
     // an unresolved minimum would leave the open-ended range without bounds
     cy.get<string>("@rangeColor").then((rangeColor) => {
@@ -325,7 +323,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
             query: ORDERS_COUNT_BY_MONTH_QUERY,
             display: "line",
             visualization_settings: {
-              // visible data points leave the goal marker as the only hover target
               "line.marker_enabled": true,
               "graph.metrics": ["count"],
               "graph.dimensions": ["CREATED_AT"],
@@ -396,7 +393,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.saveDashboard();
 
     cy.log("Saved dashcard and visualizer goals are resolved after a reload");
-    // a separate alias leaves out the requests made before the reload
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "reloadedDashcardQuery",
     );
@@ -480,9 +476,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
           });
 
           cy.log("Document");
-          cy.get("@documentId").then((documentId) => {
-            cy.visit(`/document/${documentId}`);
-          });
+          H.visitDocument("@documentId");
           H.documentContent().within(() => {
             H.goalLine().should("exist");
           });
