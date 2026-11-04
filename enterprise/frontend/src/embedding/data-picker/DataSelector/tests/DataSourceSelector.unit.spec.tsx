@@ -1121,16 +1121,47 @@ describe("DataSourceSelector", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should return to the bucket step, not a one-database list, when going back from the tables", async () => {
+    it("should show the database the tables belong to, and go back to the data types, not a one-database list, from the tables of the only database", async () => {
       setup(setupOpts);
 
       await userEvent.click(await screen.findByText("Raw Data"));
       expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
       await userEvent.click(screen.getByLabelText("chevronleft icon"));
 
       expect(await screen.findByText("Models")).toBeInTheDocument();
       expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should show the database the schemas belong to, and go back to the data types, from the schemas of the only database", async () => {
+      const twoSchemaDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Two Schema Database",
+        tables: [
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            schema: "accounting",
+            display_name: "Ledger",
+          }),
+          createMockTable({
+            id: getNextId(OTHER_DB_TABLE_ID),
+            db_id: OTHER_DB_ID,
+            schema: "finance",
+            display_name: "Budget",
+          }),
+        ],
+      });
+      setup({ ...setupOpts, databases: [twoSchemaDatabase] });
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Two Schema Database")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
     });
   });
 

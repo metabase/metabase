@@ -52,7 +52,6 @@ describe("EmbeddingDataPicker", () => {
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
 
       await userEvent.click(rawDataOption);
-      await userEvent.click(screen.getByText("Sample Database"));
       expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(screen.getByText("People")).toBeInTheDocument();
       expect(screen.getByText("Products")).toBeInTheDocument();
