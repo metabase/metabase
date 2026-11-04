@@ -53,7 +53,7 @@
 (def ^:private EntityType
   "Schema for a valid table entity type, as either a keyword or a string."
   (mu/with-api-error-message
-   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? types/entity-hierarchy (keyword %) :entity/*)]
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (mr/def ::data-authority-write

@@ -423,7 +423,8 @@
        [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
-                                               {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                                               {:error/fn    (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))
+                                                :json-schema {:type "array" :items {:type "integer" :minimum 1}}}
                                                (fn [ids]
                                                  (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))

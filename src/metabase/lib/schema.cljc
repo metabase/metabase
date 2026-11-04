@@ -33,6 +33,7 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
@@ -434,7 +435,8 @@
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
-           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+           :json-schema   {}}
    [:mbql.stage/native [:fn {:error/message "Initial native stage"} map?]]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
@@ -442,10 +444,9 @@
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
-           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
-   [:mbql.stage/native [:fn
-                        {:error/message "Native stages are only allowed as the first stage of a query or join."}
-                        (constantly false)]]
+           :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+           :json-schema   {}}
+   [:mbql.stage/native (mu/never {:error/message "Native stages are only allowed as the first stage of a query or join."})]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
                         (complement (some-fn :source-table :source-card))]]])

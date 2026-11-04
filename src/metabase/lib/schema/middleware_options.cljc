@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.middleware-options
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::middleware-options
@@ -113,4 +114,4 @@
       [:show-column-totals {:optional true} [:maybe :boolean]]
       [:column-sort-order  {:optional true} [:maybe [:multi {:dispatch map?}
                                                      [true  [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]
-                                                     [false [:fn {:error/message "map"} map?]]]]]]]]])
+                                                     [false (mu/never {:error/message "map"})]]]]]]]])
