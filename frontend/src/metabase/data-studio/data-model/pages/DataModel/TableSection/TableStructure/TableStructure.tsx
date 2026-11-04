@@ -25,8 +25,8 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Badge,
   Button,
-  Code,
   Group,
+  Pill,
   Select,
   Stack,
   Switch,
@@ -275,7 +275,9 @@ function GrainFields({
             })}
             aria-label={t`Open ${field.display_name}`}
           >
-            <Code className={S.grainChip}>{field.name}</Code>
+            <Pill size="md" className={S.grainPill}>
+              {field.display_name}
+            </Pill>
           </Link>
         );
       })}
