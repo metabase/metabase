@@ -1376,37 +1376,72 @@
     (seqable? entity) (mbql-deps-vector allow-int-ids? entity)
     :else             (mbql-deps-vector allow-int-ids? [entity])))
 
+;;; ## Walking in bulk
+
+(defn- export-one
+  "`x` exported by `walk`, a visitor walk (see [[resolve/export-in-bulk]])."
+  [walk x]
+  (first (resolve/export-in-bulk (export-resolver) walk [x])))
+
+(defn- import-one
+  "`x` imported by `walk`, a visitor walk (see [[resolve/import-in-bulk]])."
+  [walk x]
+  (first (resolve/import-in-bulk (import-resolver) walk [x])))
+
+(defn- visit-some
+  "What `visit` returns for `ref`, or nil when the input of `ref` is nil."
+  [visit ref]
+  (when (some? (peek ref))
+    (visit ref)))
+
 ;;; ## Dashboard/Question Parameters
 
-(defn- export-parameter-mapping [mapping]
-  (export-mbql mapping))
+(defn walk-export-parameter-mappings
+  "The :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, with its ids replaced by what
+  `visit` returns for their references, sorted by :parameter_id for stable serialization output."
+  [visit mappings]
+  (->> mappings
+       (sort-by :parameter_id)
+       (mapv #(walk-export-mbql visit %))))
 
 (defn export-parameter-mappings
   "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, converts
   it to a portable form with the field IDs replaced with `[db schema table field]` references.
   Mappings are sorted by :parameter_id for stable serialization output."
   [mappings]
-  (->> mappings
-       (sort-by :parameter_id)
-       (mapv export-parameter-mapping)))
+  (export-one walk-export-parameter-mappings mappings))
+
+(defn walk-import-parameter-mappings
+  "The exported :parameter_mappings field with its portable references replaced by what `visit` returns for them."
+  [visit mappings]
+  (mapv #(-> (walk-import-mbql visit %)
+             (m/update-existing :card_id (fn [eid] (visit-some visit [:fk :model/Card eid]))))
+        mappings))
 
 (defn import-parameter-mappings
   "Given the :parameter_mappings field as exported by serialization convert its field references
   (`[db schema table field]`) back into raw IDs."
   [mappings]
-  (->> mappings
-       (map import-mbql)
-       (map #(m/update-existing % :card_id *import-fk* 'Card))))
+  (import-one walk-import-parameter-mappings mappings))
 
-(defn- export-parameter
-  "Convert a single parameter to portable form. A values source pointing at a Card that no longer exists has no
-  portable id, so the source is dropped and the parameter falls back to its connected fields — the same shape the app
-  produces when the source Card is archived."
-  [parameter]
+(defn- walk-export-parameter
+  "A single parameter with its ids replaced by what `visit` returns for their references. A values source pointing at
+  a Card that no longer exists has no portable id, so the source is dropped and the parameter falls back to its
+  connected fields — the same shape the app produces when the source Card is archived."
+  [visit parameter]
   (if (get-in parameter [:values_source_config :card_id])
-    (or (fk-elide (export-mbql parameter))
-        (export-mbql (dissoc parameter :values_source_type :values_source_config)))
-    (export-mbql parameter)))
+    (or (fk-elide (walk-export-mbql visit parameter))
+        (walk-export-mbql visit (dissoc parameter :values_source_type :values_source_config)))
+    (walk-export-mbql visit parameter)))
+
+(defn walk-export-parameters
+  "The :parameters field of a `Card` or `Dashboard` with its ids replaced by what `visit` returns for their
+  references, sorted by `:id` (a nil `:id` first) with a `:position` added to preserve display order."
+  [visit parameters]
+  (->> parameters
+       (map-indexed (fn [i p] (assoc p :position i)))
+       (sort-by :id)
+       (mapv #(walk-export-parameter visit %))))
 
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
@@ -1416,23 +1451,26 @@
   [parameters :- [:maybe [:sequential
                           [:merge :metabase.parameters.schema/parameter-with-optional-type
                            [:map [:id {:optional true} [:maybe :metabase.lib.schema.parameter/id]]]]]]]
-  (->> parameters
-       (map-indexed (fn [i p] (assoc p :position i)))
-       (sort-by :id)
-       (mapv export-parameter)))
+  (export-one walk-export-parameters parameters))
+
+(defn walk-import-parameters
+  "The exported :parameters field with its portable references replaced by what `visit` returns for them, sorted by
+  `:position` when every parameter has one."
+  [visit parameters]
+  (let [params (mapv #(-> (walk-import-mbql visit %)
+                          (m/update-existing-in [:values_source_config :card_id]
+                                                (fn [eid] (visit-some visit [:fk :model/Card eid]))))
+                     parameters)]
+    (if (every? :position params)
+      (sort-by :position params)
+      params)))
 
 (defn import-parameters
   "Given the :parameter field as exported by serialization convert its field references
   (`[db schema table field]`) back into raw IDs. If every parameter has `:position`, sorts by it
   to restore display order; otherwise preserves the existing order."
   [parameters]
-  (let [params (for [param parameters]
-                 (-> param
-                     import-mbql
-                     (m/update-existing-in [:values_source_config :card_id] *import-fk* 'Card)))]
-    (if (every? :position params)
-      (sort-by :position params)
-      params)))
+  (import-one walk-import-parameters parameters))
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
@@ -1461,74 +1499,72 @@
    "question"   :model/Card
    "table"      :model/Table})
 
-(defn- export-viz-link-card
-  [settings]
+(defn- walk-export-viz-link-card
+  [visit settings]
   (m/update-existing-in
    settings
    [:link :entity]
    (fn [{:keys [id model] :as entity}]
      (merge entity
             {:id (case model
-                   "table"    (*export-table-fk* id)
-                   "database" (*export-database-fk* id)
+                   "table"    (visit-some visit [:table id])
+                   "database" (visit-some visit [:fk-keyed :model/Database :name id])
                    (if-let [model (link-card-model->toucan-model model)]
-                     (*export-fk* id model)
+                     (visit-some visit [:fk model id])
                      id))}))))
 
 (defn- json-export-mbql
-  "Converts IDs to fully qualified names inside a JSON string.
-  Returns a new JSON string with the IDs converted inside."
-  [json-str]
-  (-> json-str
-      json/decode+kw
-      export-mbql
-      json/encode))
+  "Converts IDs to fully qualified names inside a JSON string, with what `visit` returns for their references."
+  [visit json-str]
+  (->> json-str
+       json/decode+kw
+       (walk-export-mbql visit)
+       json/encode))
 
 (defn- json-import-mbql
-  "Converts fully qualified names to IDs in MBQL embedded inside a JSON string.
-  Returns a new JSON string with the IDs converted inside."
-  [json-str]
-  (-> json-str
-      json/decode+kw
-      import-mbql
-      json/encode))
+  "Converts fully qualified names to IDs in MBQL embedded inside a JSON string, with what `visit` returns for them."
+  [visit json-str]
+  (->> json-str
+       json/decode+kw
+       (walk-import-mbql visit)
+       json/encode))
 
-(defn- export-viz-click-behavior-link
-  [{:keys [linkType type] :as click-behavior}]
+(defn- walk-export-viz-click-behavior-link
+  [visit {:keys [linkType type] :as click-behavior}]
   (fk-elide
    (cond-> click-behavior
      (= type "link") (-> (u/update-some :targetId
                                         (fn [id]
                                           (if-let [model (link-card-model->toucan-model linkType)]
-                                            (*export-fk* id model)
+                                            (visit [:fk model id])
                                             id)))
-                         (u/update-some :tabId *export-fk* :model/DashboardTab)))))
+                         (u/update-some :tabId #(visit [:fk :model/DashboardTab %]))))))
 
-(defn- import-viz-click-behavior-link
-  [{:keys [linkType type] :as click-behavior}]
+(defn- walk-import-viz-click-behavior-link
+  [visit {:keys [linkType type] :as click-behavior}]
   (cond-> click-behavior
     (= type "link") (-> (u/update-some :targetId (fn [eid]
                                                    (when-let [model (link-card-model->toucan-model linkType)]
-                                                     (*import-fk* eid model))))
-                        (u/update-some :tabId *import-fk* :model/DashboardTab))))
+                                                     (visit [:fk model eid]))))
+                        (u/update-some :tabId #(visit [:fk :model/DashboardTab %])))))
 
-(defn- export-viz-click-behavior-mapping [mapping]
+(defn- walk-export-viz-click-behavior-mapping [visit mapping]
   (-> mapping
-      (m/update-existing    :id                  json-export-mbql)
-      (m/update-existing-in [:target :id]        json-export-mbql)
-      (m/update-existing-in [:target :dimension] export-mbql)))
+      (m/update-existing    :id                  #(json-export-mbql visit %))
+      (m/update-existing-in [:target :id]        #(json-export-mbql visit %))
+      (m/update-existing-in [:target :dimension] #(walk-export-mbql visit %))))
 
-(defn- import-viz-click-behavior-mapping [mapping]
+(defn- walk-import-viz-click-behavior-mapping [visit mapping]
   (-> mapping
-      (m/update-existing    :id                  json-import-mbql)
-      (m/update-existing-in [:target :id]        json-import-mbql)
-      (m/update-existing-in [:target :dimension] import-mbql)))
+      (m/update-existing    :id                  #(json-import-mbql visit %))
+      (m/update-existing-in [:target :id]        #(json-import-mbql visit %))
+      (m/update-existing-in [:target :dimension] #(walk-import-mbql visit %))))
 
-(defn- export-viz-click-behavior-mappings
+(defn- walk-export-viz-click-behavior-mappings
   "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
   been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
-  ported by [[export-viz-click-behavior-mapping]]."
-  [mappings]
+  ported by [[walk-export-viz-click-behavior-mapping]]."
+  [visit mappings]
   (into {}
         (comp (map (fn [[k v]]
                      ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed
@@ -1537,67 +1573,67 @@
                      [(u/qualified-name k) v]))
               (map (fn [[k mapping]]
                      (if (mb.viz/dimension-param-mapping? mapping)
-                       [(json-export-mbql k)
-                        (export-viz-click-behavior-mapping mapping)]
+                       [(json-export-mbql visit k)
+                        (walk-export-viz-click-behavior-mapping visit mapping)]
                        [k mapping]))))
         mappings))
 
-(defn- import-viz-click-behavior-mappings
+(defn- walk-import-viz-click-behavior-mappings
   "The exported form of `:parameterMapping` on a `:click_behavior` viz settings is a map of JSON strings which contain
   fully qualified names. These must be parsed, imported, JSONified and then turned back into keywords, since that's the
   form used internally."
-  [mappings]
+  [visit mappings]
   (into {} (for [[json-key mapping] mappings]
              (if (mb.viz/dimension-param-mapping? mapping)
-               [(json-import-mbql json-key)
-                (import-viz-click-behavior-mapping mapping)]
+               [(json-import-mbql visit json-key)
+                (walk-import-viz-click-behavior-mapping visit mapping)]
                [json-key mapping]))))
 
-(defn- export-viz-click-behavior [settings]
+(defn- walk-export-viz-click-behavior [visit settings]
   (some-> settings
-          (u/update-some :click_behavior export-viz-click-behavior-link)
-          (m/update-existing-in [:click_behavior :parameterMapping] export-viz-click-behavior-mappings)))
+          (u/update-some :click_behavior #(walk-export-viz-click-behavior-link visit %))
+          (m/update-existing-in [:click_behavior :parameterMapping] #(walk-export-viz-click-behavior-mappings visit %))))
 
-(defn- import-viz-click-behavior [settings]
+(defn- walk-import-viz-click-behavior [visit settings]
   (some-> settings
-          (m/update-existing    :click_behavior import-viz-click-behavior-link)
-          (m/update-existing-in [:click_behavior :parameterMapping] import-viz-click-behavior-mappings)))
+          (m/update-existing    :click_behavior #(walk-import-viz-click-behavior-link visit %))
+          (m/update-existing-in [:click_behavior :parameterMapping] #(walk-import-viz-click-behavior-mappings visit %))))
 
-(defn- export-pivot-table [settings]
+(defn- walk-export-pivot-table [visit settings]
   (some-> settings
-          (m/update-existing-in [:pivot_table.column_split :rows] export-mbql)
-          (m/update-existing-in [:pivot_table.column_split :columns] export-mbql)))
+          (m/update-existing-in [:pivot_table.column_split :rows] #(walk-export-mbql visit %))
+          (m/update-existing-in [:pivot_table.column_split :columns] #(walk-export-mbql visit %))))
 
-(defn- import-pivot-table [settings]
+(defn- walk-import-pivot-table [visit settings]
   (some-> settings
-          (m/update-existing-in [:pivot_table.column_split :rows] import-mbql)
-          (m/update-existing-in [:pivot_table.column_split :columns] import-mbql)))
+          (m/update-existing-in [:pivot_table.column_split :rows] #(walk-import-mbql visit %))
+          (m/update-existing-in [:pivot_table.column_split :columns] #(walk-import-mbql visit %))))
 
-(defn- export-column-settings
+(defn- walk-export-column-settings
   "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
   This function parses those keys, converts the IDs to portable values, and serializes them back to JSON."
-  [settings]
+  [visit settings]
   (when settings
     (-> settings
-        (update-keys #(-> % json/decode export-mbql json/encode))
-        (update-vals export-viz-click-behavior))))
+        (update-keys #(->> % json/decode (walk-export-mbql visit) json/encode))
+        (update-vals #(walk-export-viz-click-behavior visit %)))))
 
-(defn- export-card-dimension-ref
-  [s]
+(defn- walk-export-card-dimension-ref
+  [visit s]
   (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:(\d+)_name$" s))]
-    (str "$_card:" (*export-fk* (parse-long card-id) :model/Card) "_name")
+    (str "$_card:" (visit [:fk :model/Card (parse-long card-id)]) "_name")
     s))
 
-(defn- export-visualizer-source-id
-  [source-id]
+(defn- walk-export-visualizer-source-id
+  [visit source-id]
   (when (string? source-id)
     (if-let [card-id (second (re-matches #"^card:(\d+)$" source-id))]
-      (str "card:" (*export-fk* (parse-long card-id) :model/Card))
+      (str "card:" (visit [:fk :model/Card (parse-long card-id)]))
       source-id)))
 
-(defn export-visualizer-settings
-  "Update embedded card ids to entity ids in visualizer dashcard settings"
-  [settings]
+(defn walk-export-visualizer-settings
+  "Visualizer dashcard `settings` with their embedded card ids replaced by what `visit` returns for their references."
+  [visit settings]
   (m/update-existing-in
    settings
    [:visualization :columnValuesMapping]
@@ -1607,14 +1643,19 @@
              (let [updated-cols (cond
                                   ;; e.g. [{:sourceId "card:119"} ...]
                                   (and (coll? cols) (map? (first cols)))
-                                  (mapv #(update % :sourceId export-visualizer-source-id) cols)
+                                  (mapv #(update % :sourceId (partial walk-export-visualizer-source-id visit)) cols)
 
                                   ;; e.g. ["$_card:119_name"] for funnel dimensions
                                   (and (coll? cols) (string? (first cols)))
-                                  (mapv export-card-dimension-ref cols)
+                                  (mapv #(walk-export-card-dimension-ref visit %) cols)
 
                                   :else cols)]
                [k updated-cols]))))))
+
+(defn export-visualizer-settings
+  "Update embedded card ids to entity ids in visualizer dashcard settings"
+  [settings]
+  (export-one walk-export-visualizer-settings settings))
 
 (defn- timeline-setting-ids
   "The ids stored under a `:timeline.*` visualization setting. Settings saved before these keys were validated can
@@ -1622,81 +1663,86 @@
   [ids]
   (when (sequential? ids) ids))
 
-(defn- export-fks [ids model]
-  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) (timeline-setting-ids ids)))
+(defn- walk-export-timeline-fks [visit ids model]
+  (u/keepv #(when (pos-int? %) (fk-elide (visit [:fk model %]))) (timeline-setting-ids ids)))
 
-(defn- export-timeline-events [settings]
+(defn- walk-export-timeline-events [visit settings]
   (-> settings
-      (m/update-existing :timeline.selected_timeline_ids export-fks :model/Timeline)
-      (m/update-existing :timeline.excluded_timeline_event_ids export-fks :model/TimelineEvent)))
+      (m/update-existing :timeline.selected_timeline_ids #(walk-export-timeline-fks visit % :model/Timeline))
+      (m/update-existing :timeline.excluded_timeline_event_ids #(walk-export-timeline-fks visit % :model/TimelineEvent))))
+
+(defn walk-export-visualization-settings
+  "The `:visualization_settings` map with its ids replaced by what `visit` returns for their references."
+  [visit settings]
+  (when settings
+    (as-> settings $
+      (walk-export-mbql visit $)
+      (walk-export-viz-link-card visit $)
+      (walk-export-viz-click-behavior visit $)
+      (walk-export-visualizer-settings visit $)
+      (walk-export-pivot-table visit $)
+      (walk-export-timeline-events visit $)
+      (m/update-existing $ :column_settings #(walk-export-column-settings visit %)))))
 
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
-  (when settings
-    (-> settings
-        export-mbql
-        export-viz-link-card
-        export-viz-click-behavior
-        export-visualizer-settings
-        export-pivot-table
-        export-timeline-events
-        (m/update-existing :column_settings export-column-settings))))
+  (export-one walk-export-visualization-settings settings))
 
-(defn- import-viz-link-card
-  [settings]
+(defn- walk-import-viz-link-card
+  [visit settings]
   (m/update-existing-in
    settings
    [:link :entity]
    (fn [{:keys [id model] :as entity}]
      (merge entity
             {:id (case model
-                   "table"    (*import-table-fk* id)
-                   "database" (*import-database-fk* id)
+                   "table"    (visit-some visit [:table id])
+                   "database" (visit-some visit [:database id])
                    (if-let [model (link-card-model->toucan-model model)]
-                     (*import-fk* id model)
+                     (visit-some visit [:fk model id])
                      id))}))))
 
-(defn- import-visualizations [entity]
+(defn- walk-import-visualizations [visit entity]
   (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
-    [:field (import-visualizations opts) (*import-field-fk* fully-qualified-name)]
+    [:field (walk-import-visualizations visit opts) (visit [:field fully-qualified-name])]
 
     ;; legacy (MBQL 4) field refs
     [#{:field "field"} (fully-qualified-name :guard vector?) opts]
-    [:field (*import-field-fk* fully-qualified-name) (import-visualizations opts)]
+    [:field (visit [:field fully-qualified-name]) (walk-import-visualizations visit opts)]
 
     ;; super-legacy (MBQL 3) field refs... not even sure these can still show up
     [#{:field-id "field-id"} (fully-qualified-name :guard vector?) opts]
-    [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations opts)]
+    [:field-id (visit [:field fully-qualified-name]) (walk-import-visualizations visit opts)]
 
     [#{:field-id "field-id"} (fully-qualified-name :guard vector?)]
-    [:field-id (*import-field-fk* fully-qualified-name)]))
+    [:field-id (visit [:field fully-qualified-name])]))
 
-(defn- import-column-settings [settings]
+(defn- walk-import-column-settings [visit settings]
   (when settings
     (-> settings
-        (update-keys #(-> % name json/decode import-visualizations json/encode))
-        (update-vals import-viz-click-behavior))))
+        (update-keys #(->> % name json/decode (walk-import-visualizations visit) json/encode))
+        (update-vals #(walk-import-viz-click-behavior visit %)))))
 
-(defn- import-card-dimension-ref
-  [s]
+(defn- walk-import-card-dimension-ref
+  [visit s]
   (or (when-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
-        (when-let [resolved (*import-fk* card-id :model/Card)]
+        (when-let [resolved (visit [:fk :model/Card card-id])]
           (str "$_card:" resolved "_name")))
       s))
 
-(defn- import-visualizer-source-id
-  [source-id]
+(defn- walk-import-visualizer-source-id
+  [visit source-id]
   (when (string? source-id)
     (or (when-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
-          (when-let [card-id (*import-fk* card-entity-id :model/Card)]
+          (when-let [card-id (visit [:fk :model/Card card-entity-id])]
             (str "card:" card-id)))
         source-id)))
 
-(defn import-visualizer-settings
-  "Update embedded entity ids to card ids in visualizer dashcard settings"
-  [settings]
+(defn walk-import-visualizer-settings
+  "Exported visualizer dashcard `settings` with their embedded entity ids replaced by what `visit` returns for them."
+  [visit settings]
   (m/update-existing-in
    settings
    [:visualization :columnValuesMapping]
@@ -1705,13 +1751,18 @@
      (cond
        ;; e.g. [{:sourceId "card:..."} ...]
        (and (coll? cols) (map? (first cols)))
-       (mapv #(update % :sourceId import-visualizer-source-id) cols)
+       (mapv #(update % :sourceId (partial walk-import-visualizer-source-id visit)) cols)
 
        ;; e.g. ["$_card:<id>_name"] for funnel dimensions
        (and (coll? cols) (string? (first cols)))
-       (mapv import-card-dimension-ref cols)
+       (mapv #(walk-import-card-dimension-ref visit %) cols)
 
        :else cols))))
+
+(defn import-visualizer-settings
+  "Update embedded entity ids to card ids in visualizer dashcard settings"
+  [settings]
+  (import-one walk-import-visualizer-settings settings))
 
 (defn import-visualizer-settings-lenient
   "Like [[import-visualizer-settings]], but resolves card references leniently: a dangling reference is
@@ -1724,35 +1775,41 @@
 (defn- timeline-event-ref? [event-ref]
   (and (vector? event-ref) (= 2 (count event-ref)) (every? entity-id? event-ref)))
 
-(defn- import-fks [refs ref? model]
-  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) (timeline-setting-ids refs)))
+(defn- walk-import-timeline-fks [visit refs ref? model]
+  (u/keepv #(when (ref? %) (fk-elide (visit [:fk model %]))) (timeline-setting-ids refs)))
 
-(defn- import-timeline-events [settings]
+(defn- walk-import-timeline-events [visit settings]
   (-> settings
       ;; Keep explicit empty selections: removing the key would restore collection defaults.
-      (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
-      (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
+      (m/update-existing :timeline.selected_timeline_ids #(walk-import-timeline-fks visit % entity-id? :model/Timeline))
+      (m/update-existing :timeline.excluded_timeline_event_ids
+                         #(walk-import-timeline-fks visit % timeline-event-ref? :model/TimelineEvent))))
 
-(defn- import-viz-column-settings
+(defn- walk-import-viz-column-settings
   "Import `:column_settings`, dropping the `nil` that older exports wrote for settings without any."
-  [settings]
+  [visit settings]
   (if (some? (:column_settings settings))
-    (update settings :column_settings import-column-settings)
+    (update settings :column_settings #(walk-import-column-settings visit %))
     (dissoc settings :column_settings)))
+
+(defn walk-import-visualization-settings
+  "The exported `:visualization_settings` map with its portable references replaced by what `visit` returns for them."
+  [visit settings]
+  (when settings
+    (as-> settings $
+      (walk-import-visualizations visit $)
+      (walk-import-viz-link-card visit $)
+      (walk-import-viz-click-behavior visit $)
+      (walk-import-visualizer-settings visit $)
+      (walk-import-pivot-table visit $)
+      (walk-import-timeline-events visit $)
+      (walk-import-viz-column-settings visit $))))
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
   [settings]
-  (when settings
-    (-> settings
-        import-visualizations
-        import-viz-link-card
-        import-viz-click-behavior
-        import-visualizer-settings
-        import-pivot-table
-        import-timeline-events
-        import-viz-column-settings)))
+  (import-one walk-import-visualization-settings settings))
 
 (defn- viz-link-card-deps
   [allow-int-ids? settings]

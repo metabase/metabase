@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.test-util :as serdes.tu]))
 
 (defn- fake-uuid
@@ -455,3 +456,27 @@
     (is (= ["db" nil "orders" "customer" "tier"]
            (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
                                           {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))
+
+(deftest ^:parallel walk-visualization-settings-in-bulk-test
+  (testing "exporting many visualization settings at once resolves each kind of reference with one resolver call"
+    (let [calls    (atom [])
+          resolver (reify resolve/SerdesExportResolver
+                     (export-fks [_ model ids]
+                       (swap! calls conj [:fks model])
+                       (into {} (map (fn [id] [id (str (name model) "_" id)])) ids))
+                     (export-fks-keyed [_ _ _ _]
+                       (throw (ex-info "unexpected keyed lookup" {})))
+                     (export-tables [_ _]
+                       (throw (ex-info "unexpected table lookup" {})))
+                     (export-fields [_ ids]
+                       (swap! calls conj [:fields])
+                       (into {} (map (fn [id] [id ["DB" "S" "T" (str "F" id)]])) ids)))
+          settings (for [i (range 1 4)]
+                     {:column_settings {(str "[\"ref\",[\"field\"," i ",null]]")
+                                        {:click_behavior {:type "link" :linkType "question" :targetId i}}}})
+          exported (resolve/export-in-bulk resolver serdes/walk-export-visualization-settings settings)]
+      (is (= {[:fields] 1 [:fks :model/Card] 1}
+             (frequencies @calls)))
+      (is (= [{:column_settings {"[\"ref\",[\"field\",[\"DB\",\"S\",\"T\",\"F3\"],null]]"
+                                 {:click_behavior {:type "link" :linkType "question" :targetId "Card_3"}}}}]
+             (take-last 1 exported))))))
