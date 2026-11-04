@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.core
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
@@ -257,15 +258,16 @@
       (or (not-empty (:user-message terminal))
           (tru "Something went wrong.")))))
 
-(defn- step-limit-message
-  "The reply for a turn that reached its step limit, or nil when `profile` lets the model answer in text.
+(def ^:private step-limit-instruction
+  "What the last call of a turn that reached its step limit asks of the model."
+  (str "You have reached the step limit for this request and can't call tools any more. Reply to the user now: say "
+       "what you couldn't do and why, from what you found in this turn. Don't name tools."))
 
-  A profile that requires a tool call on every step leaves the model no way to reply, so the turn would end with none.
-  In the other profiles the web chat and Slack show a notice about the step limit instead."
-  [profile]
-  (when (:required-tool-call? profile)
-    (tru "{0} reached its step limit before it could finish. Try a more specific request."
-         (metabot.settings/metabot-name))))
+(defn- step-limit-message
+  "The reply for a turn that reached its step limit when its last call gives none."
+  []
+  (tru "{0} reached its step limit before it could finish. Try a more specific request."
+       (metabot.settings/metabot-name)))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -323,11 +325,12 @@
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
-  Passes the AISDK `input-parts` to the adapter, which converts them to its native wire format."
-  [memory profile tools system-msg iteration tracking-opts link-registry-atom input-parts]
+  Passes the AISDK `input-parts` to the adapter, which converts them to its native wire format. `tool-choice` is nil,
+  or a `:tool_choice` value that [[metabase.metabot.self.core/LLMRequestOpts]] allows."
+  [memory profile tools system-msg iteration tracking-opts link-registry-atom input-parts tool-choice]
   (let [model        (:model profile)
         llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+                       tool-choice (assoc :tool-choice tool-choice))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
@@ -343,6 +346,21 @@
                                          (get-in memory [:state :charts] {})
                                          link-registry-atom)
               (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
+
+(defn- record-response!
+  "Record the `parts` that the LLM call of `iteration` returned, on the eval trace and in the debug log."
+  [iteration parts]
+  (when (ait/capture-active?)
+    (ait/record! {:ai/output-text (collect-text-from-parts parts)
+                  :ai/tool-io     (summarize-tool-ios parts)
+                  ;; preserve data parts (e.g. generated_entity) emitted this iteration
+                  :ai/data-parts  (filterv #(= :data (:type %)) parts)}))
+  (when *debug-log*
+    (debug-log! {:iteration iteration
+                 :phase     :response
+                 :text      (collect-text-from-parts parts)
+                 :tools     (summarize-tool-ios parts)
+                 :all-parts parts})))
 
 ;;; Memory management
 
@@ -641,11 +659,11 @@
   "The loop state for a turn that ends after this iteration for `reason`.
 
   A `message` goes to the user as assistant text before the final state, and the status is `:reduced` instead when the
-  consumer stops on it. Tool results are not rendered in the conversation, so a turn that ends on a terminal error or
+  consumer has stopped. Tool results are not rendered in the conversation, so a turn that ends on a terminal error or
   at the step limit would otherwise show no reply."
   [{:keys [agent rf iteration] :as loop-state} result reason message]
   (let [result (cond-> result
-                 message (rf {:type :text, :id (str (random-uuid)), :text message}))]
+                 (and message (not (reduced? result))) (rf {:type :text, :id (str (random-uuid)), :text message}))]
     (if (reduced? result)
       (assoc loop-state :status :reduced :finish-reason :reduced :result @result)
       (do (if (= reason :length)
@@ -684,6 +702,53 @@
                                (get model)))
              part)))))
 
+(defn- step-limit-reply-parts
+  "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.
+
+  The call asks the model to tell the user what it couldn't do and why. It is not made when the request this turn
+  serves was canceled, and its parts are nil when it throws. The tools stay declared, since a changed tool set
+  invalidates the prompt cache and the thinking that Claude replays, but the `none` tool choice lets the model call
+  none of them."
+  [{:keys [agent iteration usage-atom]} sent-parts]
+  (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
+        memory @memory-atom]
+    (when-not (some-> (:request-canceled-chan memory) a/poll!)
+      (let [iteration          (inc iteration)
+            link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+            input-parts        (conj (turn-input-parts sent-parts context memory tools @link-registry-atom)
+                                     {:role :user :content step-limit-instruction})]
+        (try
+          (u/prog1 (ait/with-llm-call {:ai/iteration iteration
+                                       :ai/model     (:model profile)}
+                     (let [parts (into [] (accumulate-usage-xf usage-atom (:model profile))
+                                       (call-llm memory profile tools system-msg iteration
+                                                 (assoc tracking-opts :iteration iteration)
+                                                 link-registry-atom input-parts "none"))]
+                       (record-response! iteration parts)
+                       parts))
+            (swap! memory-atom memory/set-link-registry @link-registry-atom))
+          (catch Exception e
+            (log/warn e "The last call of a turn at its step limit failed")
+            nil))))))
+
+(defn- text-reply?
+  "Whether `parts`, from the last call of a turn at its step limit, hold a reply: text, and no tool call, error or
+  truncation."
+  [parts]
+  (and (not (str/blank? (collect-text-from-parts parts)))
+       (not (has-tool-calls? parts))
+       (not (truncated? parts))
+       (not (errored? parts))))
+
+(defn- result-after-parts
+  "`result` after reducing `parts` into it with `rf`, still wrapped in `reduced` when the consumer stops."
+  [rf result parts]
+  (reduce (fn [acc part]
+            (let [acc (rf acc part)]
+              (cond-> acc (reduced? acc) reduced)))
+          result
+          parts))
+
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
@@ -710,24 +775,14 @@
           result'            (ait/with-llm-call {:ai/iteration iteration
                                                  :ai/model     (:model profile)}
                                (let [llm-call       (call-llm memory profile tools system-msg iteration
-                                                              tracking-opts link-registry-atom input-parts)
+                                                              tracking-opts link-registry-atom input-parts
+                                                              (when (:required-tool-call? profile) "required"))
                                      reduced-result (reduce (xf rf) result llm-call)]
-                                 (when (ait/capture-active?)
-                                   (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
-                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)
-                                                 ;; preserve data parts (e.g. generated_entity) emitted this iteration
-                                                 :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
+                                 (record-response! iteration @parts-atom)
                                  reduced-result))
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom memory/set-link-registry @link-registry-atom)
-      ;; Capture response for debug log
-      (when *debug-log*
-        (debug-log! {:iteration iteration
-                     :phase     :response
-                     :text      (collect-text-from-parts parts)
-                     :tools     (summarize-tool-ios parts)
-                     :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
         ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
@@ -759,9 +814,16 @@
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-                (ended-loop-state loop-state result' reason
-                                  (when (= reason :max-iterations)
-                                    (step-limit-message profile)))))))))))
+                ;; A model that must call a tool can't reply; elsewhere the web chat and Slack show a notice
+                (if (and (= reason :max-iterations) (:required-tool-call? profile))
+                  (let [reply-parts (step-limit-reply-parts loop-state input-parts)
+                        reply?      (text-reply? reply-parts)]
+                    (ended-loop-state loop-state
+                                      (result-after-parts rf result' (cond->> reply-parts
+                                                                       (not reply?) (filter #(= :usage (:type %)))))
+                                      reason
+                                      (when-not reply? (step-limit-message))))
+                  (ended-loop-state loop-state result' reason nil))))))))))
 
 ;;; Public API
 
