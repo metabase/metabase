@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.v2.json-schema-test
+(ns metabase-enterprise.serialization.v2.schema-test
   (:require
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
