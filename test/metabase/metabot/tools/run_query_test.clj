@@ -1239,6 +1239,69 @@
                    :finish    :stop}
                   (run-turn! profile rejected-sql))))))))
 
+(defn- run-viewing-turn!
+  "Run a Chat turn as the current user in `conversation-id`, with `item` on screen and `state` from the turns before.
+   The model's first response holds the tool calls that `first-calls` returns for the query ID that the request shows,
+   and its second answers in text. Return the result of the call with the ID `run`, and the turn's final state."
+  [conversation-id item state first-calls]
+  (let [llm-calls (atom 0)
+        parts     (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                              (fn [request]
+                                                (mut/mock-llm-response
+                                                 (if (= 1 (swap! llm-calls inc))
+                                                   (first-calls
+                                                    (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request))))
+                                                   [{:type :text, :text "Done."}])))]
+                    (into [] (agent/run-agent-loop
+                              {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                               :messages        [{:role :user, :content "Fix this query"}]
+                               :profile-id      :internal
+                               :conversation-id conversation-id
+                               :state           state
+                               :context         {:capabilities    ["permission:write_sql_queries"]
+                                                 :user_is_viewing [item]}})))]
+    {:run   (some #(when (and (= :tool-output (:type %)) (= "run" (:id %))) (:result %)) parts)
+     :state (some #(when (= "state" (:data-type %)) (:data %)) parts)}))
+
+(deftest run-query-runs-the-edited-sql-test
+  (let [broken      (lib/prepare-for-serialization
+                     (lib/native-query (mt/metadata-provider) "SELECT COUNT(*) AS N FROM VENUE"))
+        edited-rows ["| N |" "| --- |" "| 100 |"]
+        run-call    (fn [query-id]
+                      {:type :tool-input, :id "run", :function "run_query", :arguments {:query_id query-id}})]
+    (mt/with-temp [:model/Card                {card-id :id}         {:dataset_query broken}
+                   :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+      (mt/with-temporary-setting-values [llm-providers                    llm.tu/default-connections
+                                         llm-metabot-provider             "openrouter/anthropic/claude-haiku-4-5"
+                                         metabot-query-execution-enabled? true
+                                         metabot-sql-execution-enabled?   true]
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+          (mt/with-current-user (mt/user->id :rasta)
+            (doseq [[on-screen item]      {"a saved SQL question" {:type "question", :id card-id, :query broken}
+                                           "an ad hoc SQL query"  {:type "adhoc", :query broken}}
+                    [tool-name edit-args] {"edit_sql_query"    {:edits [{:old_string "FROM VENUE"
+                                                                         :new_string "FROM VENUES"}]}
+                                           "replace_sql_query" {:new_query "SELECT COUNT(*) AS N FROM VENUES"}}]
+              (testing (str on-screen " fixed with " tool-name)
+                (let [edited-id  (atom nil)
+                      edit-turn  (run-viewing-turn! conversation-id item {}
+                                                    (fn [shown-id]
+                                                      (reset! edited-id shown-id)
+                                                      [{:type      :tool-input
+                                                        :id        "edit"
+                                                        :function  tool-name
+                                                        :arguments (merge {:query_id  shown-id
+                                                                           :checklist "Checked"
+                                                                           :title     "Venues"}
+                                                                          edit-args)}
+                                                       (run-call shown-id)]))
+                      later-turn (run-viewing-turn! conversation-id item (:state edit-turn)
+                                                    (fn [_] [(run-call @edited-id)]))]
+                  (testing "a run in the same model response as the edit runs the edited SQL"
+                    (is (= edited-rows (data-lines (:output (:run edit-turn)))) (:output (:run edit-turn))))
+                  (testing "a run in a later turn runs the edited SQL, while the screen still shows the SQL from before"
+                    (is (= edited-rows (data-lines (:output (:run later-turn)))) (:output (:run later-turn)))))))))))))
+
 (defn- test-database-error-after-first-row! [sql first-row error-text]
   (let [query    (lib/native-query (mt/metadata-provider) sql)
         rows     (atom [])

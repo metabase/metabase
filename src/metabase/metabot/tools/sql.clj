@@ -2,6 +2,7 @@
   "SQL tool wrappers."
   (:require
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -163,11 +164,13 @@
 
 (defn- sql-edit-result
   [operation-result title instruction-fn ctx & {:keys [edit?]}]
-  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action!
-                                                            operation-result {:edit? edit?})
+  (let [{:keys [query-id query query-content] :as action-result} (sql.common/validated-sql-action!
+                                                                  operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]
+    ;; Stored now rather than with the rest of the model response, so the calls after this one read the edited query
+    (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
     {:output (format-query-output structured instr)
      :structured-output structured
      :data-parts [(if buffer-id
@@ -182,6 +185,7 @@
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
+     :metabot/runs-alone? true
      :args edit-sql-schema})
   (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
     (sql-edit-result (do-with-notebook-fallback
@@ -215,6 +219,7 @@
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
+     :metabot/runs-alone? true
      :args replace-sql-schema})
   (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
     (sql-edit-result (do-with-notebook-fallback
