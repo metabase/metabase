@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -68,7 +69,8 @@
 (defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
   (let [dirname  (or dirname
                      (format "%s-%s"
-                             (u/slugify (appearance/site-name))
+                             ;; + 17 for the timestamp + 7 for `.tar.gz` = 255, the file-name limit of most filesystems
+                             (u/slugify (appearance/site-name) {:max-length 231})
                              (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
         path     (io/file parent-dir dirname)
         dst      (io/file (str (.getPath path) ".tar.gz"))
@@ -182,8 +184,12 @@
     :as                       _query-params}
    :- [:map
        [:dirname           {:optional true} [:maybe
-                                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
-                                             string?]]
+                                             {:description (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")}
+                                             (mu/with-api-error-message
+                                              ;; `%`: the default name is a slug, which percent-encodes non-ASCII
+                                              [:re #"^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"]
+                                              (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")
+                                              (deferred-tru "1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"))]]
        [:collection        {:optional true} [:maybe
                                              {:description "collections' db ids/entity-ids to serialize"}
                                              (ms/QueryVectorOf
