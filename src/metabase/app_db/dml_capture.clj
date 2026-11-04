@@ -89,17 +89,22 @@
 (defn- restatable-as-select?
   "Whether a DELETE's resolved query can be rebuilt as the SELECT a pre-image snapshot needs."
   [query]
-  (not (or
-        ;; A SQL-args vector can be a perfectly valid DELETE input, but it cannot safely be repurposed as a
-        ;; modelless SELECT.
-        ;; In particular, executing it here would run the DELETE before the actual statement.
-        (sequential? query)
-        ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
-        ;; duplicate target rows).
-        ;; Capture is deliberately best-effort, so leave those statements uncaptured.
-        (and (map? query) (contains? query :using))
-        ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second time.
-        (and (map? query) (some #(contains? query %) [:with :with-recursive])))))
+  (and
+   ;; Only a HoneySQL map can be restated.
+   ;; A SQL-args vector or a raw SQL string is a valid DELETE input, but toucan2 would execute it as written, running
+   ;; the DELETE before the actual statement.
+   (map? query)
+   (not (or
+         ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
+         ;; duplicate target rows).
+         ;; Capture is deliberately best-effort, so leave those statements uncaptured.
+         (contains? query :using)
+         ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second
+         ;; time.
+         (contains? query :with)
+         (contains? query :with-recursive)
+         ;; Without an ORDER BY, a limited DELETE removes arbitrary rows, which a separate SELECT need not pick.
+         (contains? query :limit)))))
 
 ;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
 ;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
@@ -108,18 +113,15 @@
   Toucan 2 lets a caller pass one to `delete!`, and a SELECT built from it would keep the `:delete` and
   `:delete-from` keys and compile to nonsense."
   [query]
-  (if (map? query)
-    (cond-> (dissoc query :delete)
-      (contains? query :delete-from) (-> (dissoc :delete-from)
-                                         (assoc :from [(:delete-from query)])))
-    query))
+  (cond-> (dissoc query :delete)
+    (contains? query :delete-from) (-> (dissoc :delete-from)
+                                       (assoc :from [(:delete-from query)]))))
 
 (defn- with-row-cap
-  "The built `query` with a LIMIT of at most `n`, or `query` itself when it is not a HoneySQL map."
+  "The built `query` with a LIMIT of `n`, or `query` itself when it is not a HoneySQL map."
   [query n]
-  (if (map? query)
-    (update query :limit #(if (number? %) (min % n) n))
-    query))
+  (cond-> query
+    (map? query) (assoc :limit n)))
 
 ;; Executed modelless because `after-select` methods and type transforms often dereference columns a narrow
 ;; snapshot doesn't fetch.
@@ -145,11 +147,13 @@
                             nil))]
       ;; The LIMIT stops the database sending rows past the ceiling; JDBC drivers such as PostgreSQL's otherwise
       ;; buffer the whole result set before the reduction sees a row.
-      (let [rows (into [] (comp (take (inc max-pre-image-rows)) (map t2.realize/realize))
-                       (t2.execute/reducible-query sql-args))]
+      (let [rows (transduce (comp (take (inc max-pre-image-rows)) (map t2.realize/realize))
+                            conj []
+                            (t2.execute/reducible-query sql-args))]
         (cond
           ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
-          ;; compiled query instead of running it.
+          ;; compiled query instead of running it, without calling the reducing function, so `transduce` above
+          ;; returns that query as is.
           ;; Only rows are rows: anything else means no statement ran, so there is nothing to capture.
           (not (every? map? rows))
           nil
