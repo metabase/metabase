@@ -10,10 +10,25 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as u.str]))
 
-(defn- literal?
-  "Whether `x` is a constant a where-clause compares, rather than a column reference."
+(defn- as-boolean
+  "`x` as a boolean when SQL would compare it as one: a boolean, or a 0 or 1, which is how a MySQL app database
+  can represent a boolean column.
+  Nil otherwise."
   [x]
-  (or (string? x) (boolean? x) (number? x)))
+  (cond
+    (boolean? x)                 x
+    (and (integer? x) (<= 0 x 1)) (= 1 x)))
+
+;; Other numbers are never folded: Clojure equality tells 1M from 1, where SQL does not.
+(defn- comparable-literals
+  "`a` and `b` as a pair Clojure equality compares as SQL would, or nil when they are not constants of one kind."
+  [a b]
+  (cond
+    (and (string? a) (string? b))
+    [a b]
+
+    (and (or (boolean? a) (boolean? b)) (some? (as-boolean a)) (some? (as-boolean b)))
+    [(as-boolean a) (as-boolean b)]))
 
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
@@ -21,9 +36,9 @@
   (when (vector? where)
     (case (first where)
       :=   (let [[a b] (rest where)]
-             (and (literal? a) (literal? b) (not= a b)))
+             (when-let [[x y] (comparable-literals a b)] (not= x y)))
       :!=  (let [[a b] (rest where)]
-             (and (literal? a) (literal? b) (= a b)))
+             (when-let [[x y] (comparable-literals a b)] (= x y)))
       :and (boolean (some impossible-condition? (rest where)))
       :or  (every? impossible-condition? (rest where))
       false)))
