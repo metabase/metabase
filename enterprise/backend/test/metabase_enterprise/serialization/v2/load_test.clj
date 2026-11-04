@@ -3397,6 +3397,23 @@
                 (is (= (format "/%d/" (:id lib-dest)) (:location metrics-dest)))
                 (is (= (format "/%d/%d/" (:id lib-dest) (:id data-dest)) (:location sub-dest)))))))))))
 
+(deftest library-import-across-locales-test
+  (mt/with-premium-features #{:library}
+    (doseq [[export-locale import-locale] [["en" "fr"] ["fr" "en"]]]
+      (testing (format "Library exported under %s loads under %s" export-locale import-locale)
+        (let [serialized (atom nil)]
+          (ts/with-dbs [source-db dest-db]
+            (ts/with-db source-db
+              (collection/create-library-collection!)
+              (mt/with-user-locale export-locale
+                (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+            (ts/with-db dest-db
+              (collection/create-library-collection!)
+              (mt/with-user-locale import-locale
+                (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized)))
+              (is (= "Library"
+                     (t2/select-one-fn :name :collection :entity_id collection/library-entity-id))))))))))
+
 (deftest library-import-preserves-existing-permissions-test
   (testing "Importing library subcollections does not overwrite existing permissions on destination"
     (let [serialized (atom nil)
