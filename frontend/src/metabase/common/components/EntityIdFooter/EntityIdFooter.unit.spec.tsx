@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import * as iframeUtils from "metabase/utils/iframe";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { EntityIdFooter, type EntityIdFooterItem } from "./EntityIdFooter";
@@ -55,6 +56,16 @@ describe("EntityIdFooter", () => {
     setup({ hasSerialization: false });
 
     expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
+  });
+
+  it("renders nothing inside an iframe", () => {
+    const isWithinIframe = jest
+      .spyOn(iframeUtils, "isWithinIframe")
+      .mockReturnValue(true);
+    setup();
+
+    expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
+    isWithinIframe.mockRestore();
   });
 
   it("starts collapsed and expands on click", async () => {

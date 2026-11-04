@@ -29,7 +29,6 @@ import {
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Stack, Text } from "metabase/ui";
-import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   Dashboard,
   ModerationReview,
@@ -127,11 +126,7 @@ export function DashboardInfoSidebarInner({
           actions={
             <InsightsAction dashboard={dashboard} entityType="dashboard" />
           }
-          footer={
-            isWithinIframe() ? undefined : (
-              <EntityIdFooter items={getEntityIdItems(dashboard)} />
-            )
-          }
+          footer={<EntityIdFooter items={getEntityIdItems(dashboard)} />}
         >
           <Stack gap="xxl">
             <SidebarSection title={t`Description`} gap={0}>

@@ -18,6 +18,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import S from "./EntityIdFooter.module.css";
 
@@ -34,7 +35,7 @@ export function EntityIdFooter({ items }: EntityIdFooterProps) {
   const hasSerialization = useHasTokenFeature("serialization");
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!hasSerialization) {
+  if (!hasSerialization || isWithinIframe()) {
     return null;
   }
 
