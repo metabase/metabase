@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: ir3rm3
+      author: johnswanson
+      comment: Add stored_result.resolved_source_ids
+      changes:
+        - addColumn:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: resolved_source_ids
+                  type: ${text.type}
+                  remarks: >-
+                    JSON source ids resolved from dataset_query, with its digest. NULL means resolve live.
+                  constraints:
+                    nullable: true

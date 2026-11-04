@@ -58,16 +58,10 @@ jobs:
           command: download
           command_args: |
             --config ${{ env.METABASE_I18N_CHECKOUT }}/locales/crowdin.yml
-            -e=el
             -e=et
-            -e=es-MX
-            -e=gu-IN
             -e=hr
             -e=lt
-            -e=km
             -e=pt-PT
-            -e=th
-            -e=uz
 
       - name: Prepare translation resources
         env:

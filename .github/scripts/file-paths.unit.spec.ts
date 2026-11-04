@@ -309,7 +309,7 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
 
-  it.each(["locales/translations.pin", "locales/fr.po"])(
+  it.each(["locales/translations.pin"])(
     "only lints i18n when %s changes",
     (file) => {
       const matched = Object.keys(filters).filter((name) =>

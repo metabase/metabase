@@ -15,7 +15,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema]
@@ -148,11 +147,7 @@
 
 (mi/define-batched-hydration-method with-table
   :table
-  "Hydrate the Table of each of `instances` from its `table_id`.
-
-  Batched rather than automagic because automagic hydration selects the model's own row, which shows what sync wrote:
-  `mi/can-read?`/`can-query?` read `is_published` and `collection_id` off the hydrated Table to decide access through
-  a published collection, and those are user values."
+  "Hydrate the Table of each of `instances` from its `table_id`, with one query for all of them."
   [instances]
   (let [table-ids (into #{} (keep :table_id) instances)
         id->table (when (seq table-ids)
@@ -642,7 +637,6 @@
 
 (search.spec/define-spec "table"
   {:model        :model/Table
-   :source       #(warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived        false
@@ -652,8 +646,7 @@
                   :database-id     :db_id
                   :view-count      true
                   :created-at      true
-                  :updated-at      [:case [:> :settings.updated_at :this.updated_at] :settings.updated_at
-                                    :else :this.updated_at]
+                  :updated-at      true
                   :is-published        :is_published
                   :collection-type     :collection.type
                   :collection-location :collection.location
@@ -682,5 +675,4 @@
                   [:= :db.router_database_id nil]
                   [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
