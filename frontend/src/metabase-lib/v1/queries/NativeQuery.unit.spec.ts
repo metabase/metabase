@@ -416,7 +416,7 @@ describe("NativeQuery", () => {
         ]);
       });
 
-      it("should replace the inner tags of a snippet when its content changes", () => {
+      it("should take the inner tags of an updated snippet from the metadata", () => {
         const oldSnippet = createMockNativeQuerySnippet({
           name: "filter-snippet",
           content: "category = {{filter}}",

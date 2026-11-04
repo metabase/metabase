@@ -223,7 +223,12 @@ describe("scenarios > native > snippets", () => {
       name: "orders-card",
       content: `{{#${ORDERS_QUESTION_ID}}}`,
     });
+    H.createSnippet({ name: "id-filter", content: "id = {{product_id}}" });
     H.createSnippet({ name: "field-filter", content: "{{filter}}" });
+    H.createSnippet({
+      name: "editable-filter",
+      content: "category = {{filter}}",
+    });
 
     H.startNewNativeQuestion();
 
@@ -245,12 +250,26 @@ describe("scenarios > native > snippets", () => {
       .findByText("18,760")
       .should("be.visible");
 
+    cy.log("A snippet variable changed to a number");
+    H.NativeEditor.clear();
+    H.NativeEditor.type("select id from products where {{snippet: id-filter}}");
+    // The variables sidebar opens by itself when a new variable tag appears.
+    cy.findByTestId("variable-type-select")
+      .should("have.value", "Text")
+      .click();
+    H.popover().findByText("Number").click();
+    cy.findByTestId("variable-type-select").should("have.value", "Number");
+    cy.findByTestId("native-query-top-bar")
+      .findByPlaceholderText("Product ID")
+      .type("10");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(1);
+
     cy.log("A snippet variable changed to a field filter");
     H.NativeEditor.clear();
     H.NativeEditor.type(
       "select id from products where {{snippet: field-filter}}",
     );
-    // The variables sidebar opens by itself when a new variable tag appears.
     cy.findByTestId("variable-type-select").click();
     H.popover().findByText("Field Filter").click();
     H.popover().findByText("Products").click();
@@ -262,5 +281,40 @@ describe("scenarios > native > snippets", () => {
     });
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(53);
+
+    cy.log("An edit of a snippet replaces its variables in the query");
+    H.NativeEditor.clear();
+    H.NativeEditor.type(
+      "select id from products where {{snippet: editable-filter}}",
+    );
+    cy.findByTestId("native-query-top-bar")
+      .findByPlaceholderText("Filter")
+      .should("be.visible");
+    cy.findByTestId("native-query-top-bar").icon("snippet").click();
+    H.rightSidebar()
+      .findByText("editable-filter")
+      .parent()
+      .parent()
+      .parent()
+      .within(() => {
+        cy.icon("chevrondown").click({ force: true });
+        cy.button(/Edit/).click();
+      });
+    H.modal().within(() => {
+      cy.findByLabelText("Enter some SQL here so you can reuse it later")
+        .clear()
+        .type("ean = {{ean}} or vendor = {{vendor}}", {
+          parseSpecialCharSequences: false,
+        });
+      cy.button("Save").click();
+    });
+    H.modal().should("not.exist");
+    cy.findByTestId("native-query-top-bar").within(() => {
+      cy.findByPlaceholderText("Filter").should("not.exist");
+      cy.findByPlaceholderText("Ean").type("1018947080336");
+      cy.findByPlaceholderText("Vendor").type("Balistreri-Ankunding");
+    });
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(2);
   });
 });
