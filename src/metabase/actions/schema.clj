@@ -2,10 +2,12 @@
   (:require
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -99,15 +101,9 @@
   [[:kind     {:optional true} [:maybe ::implicit-action.kind]]
    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]])
 
-(mr/def ::implicit-action
-  (into [:map {:closed true}] implicit-action-entries))
-
 (def ^:private query-action-entries
   [[:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
-
-(mr/def ::query-action
-  (into [:map {:closed true}] query-action-entries))
 
 (mr/def ::action.parameter
   "One entry of an Action's `:parameters`. An implicit action's are computed from the model's Fields rather than
@@ -123,15 +119,13 @@
 (mr/def ::action.parameters
   [:sequential [:ref ::action.parameter]])
 
-(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
-                         request?    :- :boolean]
+(mu/defn- action-columns [schema-type :- [:enum :select :update :insert]
+                          request?    :- :boolean]
   ;; `required-for-insert` = you have to specify this when you insert a row
   ;;
   ;; `not-null-in-app-db` = this is `NOT NULL` in the app DB, and will always come back when you `SELECT` something,
   ;; but its value is populated automatically on `INSERT` or `UPDATE`.
-  (let [query-entries       (cond->> query-action-entries
-                              request? (remove (comp #{:database_id} first)))
-        required-for-insert (case schema-type
+  (let [required-for-insert (case schema-type
                               (:select :update) {:optional true}
                               :insert           {})
         common              (into
@@ -164,8 +158,18 @@
                                  [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
                                  [:entity_id          {:optional true} [:maybe :string]]
                                  [:legacy_query       {:optional true} [:maybe :string]]])])]
+    (into [:map {:closed true}] common)))
+
+(mr/def ::action.columns
+  "The columns of an Action selected from the app DB that every type of Action has."
+  (action-columns :select false))
+
+(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]
+                         request?    :- :boolean]
+  (let [query-entries (cond->> query-action-entries
+                        request? (remove (comp #{:database_id} first)))]
     [:merge
-     (into [:map {:closed true}] common)
+     (action-columns schema-type request?)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
               :dispatch         (comp #{:implicit :query} keyword :type)}
       [:implicit (into [:map {:closed true}] implicit-action-entries)]
@@ -201,12 +205,12 @@
   "Schema for the REST API body that updates an Action, without the columns the server populates."
   (action-schema :update true))
 
-(mr/def ::implicit-action.row
+(mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
    [:kind      [:or :keyword :string]]
-   [:table_id  [:maybe ::lib.schema.id/table]]])
+   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
@@ -219,7 +223,7 @@
   "The `:dataset_query` column of a QueryAction, decoded."
   ::lib-be.schema/maybe-legacy-or-empty-query)
 
-(mr/def ::query-action.row
+(mr/def ::query-action
   "A QueryAction as selected from the app DB: every column of `:query_action`."
   [:map {:closed true}
    [:action_id     ::lib.schema.id/action]
@@ -253,3 +257,32 @@
    [:invocation-id    {:optional true} [:maybe :string]]
    [:invocation-stack {:optional true} [:maybe [:sequential [:tuple qualified-keyword? :string]]]]
    [:effects          {:optional true} [:maybe [:sequential [:tuple qualified-keyword? ::execution.row-diff]]]]])
+
+(mr/def ::external-action
+  "An Action as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema/external-registry}
+   [:merge
+    [:select-keys ::action.columns [:archived :archived_directly :description :entity_id :name :public_uuid
+                                    :creator_id :made_public_by_id :collection_id :model_id :parameters
+                                    :parameter_mappings :visualization_settings]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:type        {:optional true} [:enum "implicit" "query"]]
+     [:query       {:optional true} [:maybe [:sequential [:ref ::external-query-action]]]]
+     [:implicit    {:optional true} [:maybe [:sequential [:ref ::external-implicit-action]]]]]]])
+
+(mr/def ::external-query-action
+  "A QueryAction as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema/external-registry}
+   [:merge
+    [:select-keys ::query-action [:database_id :dataset_query]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-implicit-action
+  "An ImplicitAction as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema/external-registry}
+   [:merge
+    [:select-keys ::implicit-action [:kind :table_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

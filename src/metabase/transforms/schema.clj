@@ -2,8 +2,10 @@
   (:require
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -18,10 +20,14 @@
    [:value pos-int?]
    [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
+(mr/def ::field-id
+  "The id of a Field a transform's incremental strategy reads; serialization exports a dangling one as is."
+  ::lib.schema.id/field)
+
 (mr/def ::checkpoint-strategy
   [:map {:closed true}
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:checkpoint-filter-field-id {:optional true} ::field-id]
    [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
@@ -40,7 +46,7 @@
 (mr/def ::python-source
   "The `:source` of a Python transform: its script and the tables it reads."
   [:map {:closed true}
-   [:source-database {:optional true} [:maybe :int]]
+   [:source-database {:optional true} [:maybe ::lib.schema.id/database]]
    ;; NB: if source is checkpoint, only one table allowed
    [:source-tables   {:decode/normalize #(cond-> % (map? %) (-> (update-keys name) transforms-base.u/source-tables-map->vec))}
     [:sequential ::transforms-base.u/source-table-entry]]
@@ -63,7 +69,7 @@
   degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`)."
   [:map {:closed true}
    [:name {:optional true} ms/NonBlankString]
-   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+   [:field-id {:optional true} [:maybe ::field-id]]])
 
 (mr/def ::merge-config
   [:map {:closed true}
@@ -78,14 +84,14 @@
 
 (mr/def ::table-target
   [:map {:closed true}
-   [:database {:optional true} [:maybe :int]]
+   [:database {:optional true} [:maybe ::lib.schema.id/database]]
    [:type [:= "table"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]])
 
 (mr/def ::table-incremental-target
   [:map {:closed true}
-   [:database {:optional true} [:maybe :int]]
+   [:database {:optional true} [:maybe ::lib.schema.id/database]]
    [:type [:= "table-incremental"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]
@@ -163,7 +169,7 @@
     [:can_read              {:optional true} :boolean]
     [:can_write             {:optional true} :boolean]
     [:can_execute           {:optional true} :boolean]
-    [:tag_ids               {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+    [:tag_ids               {:optional true} [:maybe [:sequential ::lib.schema.id/transform-tag]]]
     [:source_readable       {:optional true} :boolean]
     [:requestable_indexes   {:optional true} [:maybe ::requestable-indexes]]]])
 
@@ -280,7 +286,7 @@
   "What an update (or insert) of a TransformJobTransformTag accepts: every column of `:transform_job_transform_tag` except `id`, all optional."
   [:map {:closed true}
    [:job_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:tag_id    {:optional true} [:maybe ms/PositiveInt]]
+   [:tag_id    {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id {:optional true} [:maybe :string]]
    [:position  {:optional true} [:maybe :int]]])
 
@@ -351,7 +357,7 @@
   "What an update (or insert) of a TransformTransformTag accepts: every column of `:transform_transform_tag` except `id`, all optional."
   [:map {:closed true}
    [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:tag_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:tag_id       {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id    {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]])
 
@@ -409,3 +415,51 @@
    [:end_time        {:optional true} [:maybe ms/TemporalInstant]]
    [:message         [:maybe :string]]
    [:user_id         [:maybe ::lib.schema.id/user]]])
+
+(def ^:private external-registry
+  "[[lib.schema/external-registry]], plus the dangling Field ids serialization exports as is."
+  (assoc lib.schema/external-registry ::field-id [:or ::lib.schema.id/field pos-int?]))
+
+(mr/def ::external-transform
+  "A Transform as serialization writes it, with portable references in place of ids."
+  [:schema {:registry external-registry}
+   [:merge
+    [:select-keys ::transform [:name :description :entity_id :owner_email :creator_id :owner_user_id :collection_id
+                               :source_database_id :source :target]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:tags {:optional true} [:maybe [:sequential [:ref ::external-transform-transform-tag]]]]
+     [:indexes {:optional true} [:maybe [:sequential [:ref ::indexes.schema/external-table-index]]]]]]])
+
+(mr/def ::external-transform-transform-tag
+  "A TransformTransformTag as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::transform-transform-tag [:entity_id :position :tag_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-transform-job
+  "A TransformJob as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::transform-job [:entity_id :built_in_type :schedule :ui_display_type :name :description]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:job_tags {:optional true} [:maybe [:sequential [:ref ::external-transform-job-transform-tag]]]]]]])
+
+(mr/def ::external-transform-job-transform-tag
+  "A TransformJobTransformTag as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::transform-job-transform-tag [:entity_id :position :tag_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-transform-tag
+  "A TransformTag as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::transform-tag [:entity_id :built_in_type :name]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
