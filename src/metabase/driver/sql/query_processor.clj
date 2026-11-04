@@ -2338,9 +2338,16 @@
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
+(defn- stage-raw-sql
+  "The raw SQL that `stage->honeysql` compiles for `stage`, if any."
+  [stage]
+  (let [sql (or (:persisted-info/native stage)
+                (when (lib/native-stage? stage) (:native stage)))]
+    (when (string? sql) sql)))
+
 (defn- native-sql-max-cte-number
   [stage]
-  (when-let [sql (and (lib/native-stage? stage) (string? (:native stage)) (:native stage))]
+  (when-let [sql (stage-raw-sql stage)]
     (some->> (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)
              (map (comp parse-long second))
              (apply max))))
@@ -2373,11 +2380,9 @@
   (first (assign-cte-names* stages (first-cte-number stages))))
 
 (defn- native-stage-has-cte?
-  "Whether `stage` is native SQL that contains `WITH`. A false positive only makes the query use subselects."
+  "Whether the raw SQL of `stage` contains `WITH`. A false positive only makes the query use subselects."
   [stage]
-  (and (lib/native-stage? stage)
-       (string? (:native stage))
-       (boolean (re-find #"(?i)\bwith\b" (:native stage)))))
+  (boolean (some->> (stage-raw-sql stage) (re-find #"(?i)\bwith\b"))))
 
 (defn- use-stage-ctes?
   [driver stages query]
