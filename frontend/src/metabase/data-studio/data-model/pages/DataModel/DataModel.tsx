@@ -43,7 +43,10 @@ import {
   TableDetailsSkeleton,
 } from "./DetailPanel";
 import { FieldDetailsPanel } from "./FieldDetailsPanel";
-import { HistoryEntityPanel } from "./HistoryEntityPanel";
+import {
+  HistoryDrawerPanels,
+  useHistoryDrawerPanels,
+} from "./HistoryCheckPanel";
 import { PropertyDetailsPanel } from "./PropertyDetailsPanel";
 import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
@@ -57,10 +60,7 @@ import {
   REVEAL_WIDTH_DURATION_MS,
   REVEAL_WIDTH_TRANSITION,
 } from "./constants";
-import {
-  HistoryEntitySelectionProvider,
-  useHistoryEntitySelection,
-} from "./contexts/HistoryEntitySelectionContext";
+import { HistoryEntitySelectionProvider } from "./contexts/HistoryEntitySelectionContext";
 import {
   PropertySelectionProvider,
   usePropertySelection,
@@ -91,8 +91,6 @@ function DataModelContent() {
     hasSelectedMoreThanOneTable,
     resetSelection,
   } = useSelection();
-  const { selectedEntityKey, setSelectedEntityKey } =
-    useHistoryEntitySelection();
   const parsedParams = parseRouteParams(params);
   const {
     databaseId,
@@ -128,6 +126,7 @@ function DataModelContent() {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const { selectedPropertyName, setSelectedPropertyName } =
     usePropertySelection(table?.id);
+  const historyPanels = useHistoryDrawerPanels(table?.id);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
@@ -231,11 +230,8 @@ function DataModelContent() {
     activeTab === "properties" &&
     table != null &&
     selectedPropertyName != null;
-  const showHistoryEntity =
-    showTableDetailsSection &&
-    activeTab === "versions" &&
-    table != null &&
-    selectedEntityKey != null;
+  const showHistoryPanels =
+    showTableDetailsSection && activeTab === "versions" && table != null;
 
   const isDrawerOpen =
     openContainer != null ||
@@ -276,8 +272,8 @@ function DataModelContent() {
   closeActivePanelRef.current = () => {
     if (showPropertyDetails) {
       setSelectedPropertyName(null);
-    } else if (showHistoryEntity) {
-      setSelectedEntityKey(null);
+    } else if (showHistoryPanels && historyPanels.closeInnermost()) {
+      return;
     } else if (showFieldPreview) {
       closePreview();
     } else if (showFieldDetails) {
@@ -435,15 +431,14 @@ function DataModelContent() {
         />
       )}
 
-      {showHistoryEntity && (
-        <HistoryEntityPanel
-          key={`${table.id}:${selectedEntityKey}`}
-          ref={scrollToPanel}
+      {showHistoryPanels && (
+        <HistoryDrawerPanels
           table={table}
-          entityKey={selectedEntityKey}
-          defaultWidth={panelWidths.field}
-          onWidthChange={handlePanelWidthChange("field")}
-          onClose={() => setSelectedEntityKey(null)}
+          panels={historyPanels}
+          panelWidth={panelWidths.field}
+          previewWidth={panelWidths.preview}
+          scrollToPanel={scrollToPanel}
+          onPanelWidthChange={handlePanelWidthChange("field")}
         />
       )}
 

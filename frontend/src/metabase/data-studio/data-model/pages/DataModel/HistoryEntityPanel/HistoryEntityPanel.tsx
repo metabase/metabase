@@ -81,7 +81,7 @@ export function HistoryEntityPanel({
     >
       <DetailPanelHeader
         icon="history"
-        label={t`A ${noun.one} in ${table.display_name}`}
+        label={t`${noun.one} in ${table.display_name}`}
         title={entity?.label ?? entityKey}
         isLoading={profile == null}
         onClose={onClose}

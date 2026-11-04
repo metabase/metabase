@@ -9,6 +9,7 @@ import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/rou
 import { Outlet, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -33,6 +34,8 @@ import {
   seedPrototypeStorage,
   setupMockApi,
 } from "./mock-api.setup.spec";
+
+registerVisualizations();
 
 export default {
   title: "Prototypes/History tables",

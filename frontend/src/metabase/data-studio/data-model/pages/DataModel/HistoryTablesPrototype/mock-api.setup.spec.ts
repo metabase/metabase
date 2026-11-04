@@ -56,9 +56,18 @@ export function setupMockApi({
   fetchMock.post("path:/api/frontend-errors", 200);
   fetchMock.post("path:/api/dataset", async ({ options }) => {
     const body: unknown = JSON.parse(String(options.body ?? "{}"));
-    const query = isObject(body) ? body.query : null;
-    return getDataset(query) ?? { status: 404 };
+    return getDataset(getSourceQuery(body)) ?? { status: 404 };
   });
+}
+
+function getSourceQuery(body: unknown) {
+  if (!isObject(body)) {
+    return null;
+  }
+  if (isObject(body.query)) {
+    return body.query;
+  }
+  return Array.isArray(body.stages) ? body.stages[0] : null;
 }
 
 export function catchUnmatchedRequests() {
