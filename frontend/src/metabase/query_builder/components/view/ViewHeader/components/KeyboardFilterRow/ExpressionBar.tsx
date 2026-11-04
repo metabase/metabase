@@ -211,7 +211,7 @@ export function ExpressionBar({
   variant = "header",
   placeholder = getFilterPlaceholder(),
 }: ExpressionBarProps) {
-  const query = useStableQuery(queryProp);
+  const query = useStableQuery(queryProp, stageIndex);
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
     [query, stageIndex],
@@ -2066,10 +2066,19 @@ function StageSeparatorMark() {
  * The same query object for as long as the query itself stays the same: the
  * notebook hands out a new object on every render, which would reset the
  * draft each time anything else on the page changes.
+ *
+ * A query with the same MBQL can have more metadata: a new question first
+ * knows only the target IDs of its foreign keys, and gets the other columns
+ * of those tables later. The number of filterable columns shows that change.
  */
-function useStableQuery(query: Lib.Query) {
+function useStableQuery(query: Lib.Query, stageIndex: number) {
   const [stableQuery, setStableQuery] = useState(query);
-  if (stableQuery !== query && !areQueriesEqual(stableQuery, query)) {
+  if (
+    stableQuery !== query &&
+    (!areQueriesEqual(stableQuery, query) ||
+      Lib.filterableColumns(stableQuery, stageIndex).length !==
+        Lib.filterableColumns(query, stageIndex).length)
+  ) {
     setStableQuery(query);
     return query;
   }
