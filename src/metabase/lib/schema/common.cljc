@@ -458,11 +458,17 @@
    [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
 
 #?(:clj
+   (def ^:private string-encoded-classes
+     "Classes, with their subclasses, whose instances JSON encodes as strings."
+     [java.time.temporal.Temporal java.util.regex.Pattern]))
+
+#?(:clj
    (defn- instance-of-class* [& classes]
      [:fn (cond-> {:error/message (str "instance of "
                                        (str/join " or "
                                                  (map #(.getName ^Class %) classes)))}
-            (every? #(isa? % java.time.temporal.Temporal) classes) (assoc :json-schema {:type "string"}))
+            (every? (fn [klass] (some #(isa? klass %) string-encoded-classes)) classes)
+            (assoc :json-schema {:type "string"}))
       (fn [x]
         (some (fn [klass]
                 (instance? klass x))
