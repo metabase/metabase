@@ -457,17 +457,28 @@
   [v :- [:maybe [:or ms/PositiveInt [:cat :string [:maybe :string] :string [:+ :string]]]]]
   (if (pos-int? v) v (some-> v serdes/*import-field-fk*)))
 
-(mu/defn- export-checkpoint-field-fk :- [:or ::lib.schema.id/field [:cat :string [:maybe :string] :string [:+ :string]]]
-  "Portable ref for the checkpoint field. A dangling id (field since deleted) is exported as-is:
-  the importer passes numbers through, so one stale config can't fail the whole import."
-  [field-id :- ::lib.schema.id/field]
-  (if (transforms.db/field-exists? field-id)
-    (serdes/*export-field-fk* field-id)
-    field-id))
+(defn- export-checkpoint-field
+  "`strategy` with its checkpoint field as a portable ref, or without it when the field no longer exists, since a
+  local id names nothing on another instance."
+  [strategy]
+  (let [field-id (:checkpoint-filter-field-id strategy)]
+    (cond
+      (nil? field-id)                        strategy
+      (transforms.db/field-exists? field-id) (update strategy :checkpoint-filter-field-id serdes/*export-field-fk*)
+      :else                                  (dissoc strategy :checkpoint-filter-field-id))))
+
+(defn- drop-merge-key-field-ids
+  "`target` without the `:field-id`s of its merge unique key. The merge reads only the column names, and
+  [[resolve-merge-key-field-ids]] fills the ids from the target table once it syncs, so a portable id would only make
+  the import stub out a table the transform has yet to create."
+  [target]
+  (m/update-existing-in target [:target-incremental-strategy :unique-key]
+                        (fn [unique-key] (mapv #(dissoc % :field-id) unique-key))))
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy      [:name :description :entity_id :owner_email]
+  {:schema    ::transforms.schema/external-transform
+   :copy      [:name :description :entity_id :owner_email]
    :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -484,8 +495,7 @@
                                                                     (mapv #(-> %
                                                                                (m/update-existing :table_id serdes/*export-table-fk*)
                                                                                (m/update-existing :database_id serdes/*export-database-fk*))))))
-                                          (m/update-existing-in [:source-incremental-strategy :checkpoint-filter-field-id]
-                                                                export-checkpoint-field-fk)))
+                                          (m/update-existing :source-incremental-strategy export-checkpoint-field)))
                                     :import
                                     (fn [source]
                                       (lib/normalize
@@ -503,8 +513,8 @@
                                                                     (mapv import-entry entries)))))
                                            (m/update-existing-in [:source-incremental-strategy :checkpoint-filter-field-id]
                                                                  import-maybe-int-field-fk))))}
-               :target             {:export #(serdes/export-mbql (dissoc % :table_id))
-                                    :import serdes/import-mbql}
+               :target             {:export #(serdes/export-mbql (drop-merge-key-field-ids (dissoc % :table_id)))
+                                    :import #(serdes/import-mbql (drop-merge-key-field-ids %))}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :entity_id)} opts))
                :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
