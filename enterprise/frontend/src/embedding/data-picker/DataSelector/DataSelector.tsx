@@ -647,19 +647,23 @@ export class UnconnectedDataSelector extends Component<
     } else if (this.isJoinStep()) {
       const querySourceType = this.props.querySourceType;
       if (querySourceType === "model" && this.props.canSelectModel) {
+        // A join on a model, with models allowed
         await this.switchToStep(MODEL_STEP, {}, false);
       } else if (
         querySourceType === "question" &&
         this.props.canSelectQuestion
       ) {
+        // A join on a saved question, with saved questions allowed
         await this.switchToStep(SAVED_QUESTION_STEP, {}, false);
       } else if (this.props.canSelectTable) {
         // query source is a table, or a card of a type left out
         await this.switchToStep(SCHEMA_STEP);
       } else {
+        // A join with tables and the source's type left out: the allowed buckets
         await this.switchToStep(DATA_BUCKET_STEP);
       }
     } else {
+      // A fresh pick
       await this.switchToStep(this.getFreshPickStep());
     }
   }
@@ -936,8 +940,9 @@ export class UnconnectedDataSelector extends Component<
     }
   };
 
-  // Pick the only database where `skipSteps` doesn't: when one is already set
-  // (at a join, or reopened on a table), and for a reopened saved card, going
+  // The one place that picks the only database: from `skipSteps` going forward
+  // with none set, and on the paths `skipSteps` doesn't reach: a join or a
+  // reopened table, where one is already set, and a reopened saved card going
   // back or opening on the databases, which switch steps without skipping
   selectOnlyDatabase = async (): Promise<void> => {
     const databases = this.getDatabases();
