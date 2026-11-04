@@ -118,6 +118,34 @@
                                                     :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))))
         (is (empty? (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))
 
+(deftest add-card-with-restricted-goal-to-shared-dashboard-test
+  (testing "adding a card to a shared dashboard needs read access to the sources of its goals, as in the REST writer"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Card goal-source {:collection_id (:id restricted)}
+                     :model/Card card {:display                :gauge
+                                       :visualization_settings {:gauge.segments [{:min   {:type   "card"
+                                                                                          :id     (:id goal-source)
+                                                                                          :column "count"}
+                                                                                  :max   100
+                                                                                  :color "red"}]}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (doseq [[sharing dashboard-props] [["public"   {:public_uuid (str (random-uuid))}]
+                                           ["embedded" {:enable_embedding true}]]]
+          (testing sharing
+            (mt/with-temp [:model/Dashboard dashboard dashboard-props]
+              (letfn [(add-card! [user]
+                        (call-tool! user v2.tu/all-scopes "dashboard_write"
+                                    (wire {:method "update" :id (:id dashboard)
+                                           :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))]
+                (is (re-find #"You don't have permissions to do that"
+                             (tool-error (add-card! :rasta))))
+                (is (empty? (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))
+                (testing "a user who can read the goal source can add it"
+                  (tool-result (add-card! :crowberto))
+                  (is (= [(:id card)]
+                         (map :card_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))))))))
+
 (deftest move-card-between-tabs-on-shared-dashboard-test
   (testing "deleting a tab and re-adding its card on another tab in one update exposes nothing new, as in REST"
     (mt/with-temporary-setting-values [enable-public-sharing true]
