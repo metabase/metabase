@@ -812,7 +812,7 @@
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
-      (let [get-profile profiles/get-profile
+      (let [get-profile (mt/original-fn #'profiles/get-profile)
             call-count  (atom 0)
             tool-call   (fn [n]
                           [{:type      :tool-input
