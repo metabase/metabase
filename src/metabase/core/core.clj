@@ -17,6 +17,7 @@
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
+   [metabase.global-system.system :as global-system]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
@@ -115,6 +116,11 @@
   (tracing/shutdown!)
   (analytics.core/shutdown!)
   (notification/shutdown!)
+  ;; whatever else the global system started, such as warehouse connection pools, last started first
+  (try
+    (global-system/halt!)
+    (catch Throwable e
+      (log/warn e "Some components failed to stop")))
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
