@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 
 import {
@@ -43,6 +44,29 @@ describe("metabot > message", () => {
     ).toBeInTheDocument();
     expect(await input()).toHaveTextContent("");
     expect(await input()).toHaveFocus();
+  });
+
+  it("should track each sent chat message", async () => {
+    const trackEvent = jest.mocked(Analytics.trackSimpleEvent);
+    trackEvent.mockClear();
+    setup();
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+    expect(
+      await screen.findByText("You, but don't tell anyone."),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(trackEvent).toHaveBeenCalledWith({
+        event: "metabot_request_sent",
+      });
+    });
+    expect(
+      trackEvent.mock.calls.filter(
+        ([event]) => event.event === "metabot_request_sent",
+      ),
+    ).toHaveLength(1);
   });
 
   it("should be able to send a message via send button", async () => {
