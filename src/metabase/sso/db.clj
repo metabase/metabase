@@ -2,6 +2,7 @@
   "Application database queries for the SSO module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [java-time.api :as t]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -42,7 +43,7 @@
               :user_id      user-id
               :provider     "password"
               :last_used_at [:not= nil]
-              {:where [:or [:= :expires_at nil] [:> :expires_at :%now]]}))
+              {:where [:or [:= :expires_at nil] [:> :expires_at [:auto/param (t/offset-date-time)]]]}))
 
 (mu/defn slack-connect-identity
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."

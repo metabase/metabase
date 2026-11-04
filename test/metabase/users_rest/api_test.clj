@@ -2243,6 +2243,12 @@
                                           :credentials  {:plaintext_password "somePassword12!!"}
                                           :last_used_at (t/offset-date-time)
                                           :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
+                   :model/User {expiring-user-id :id} {}
+                   :model/AuthIdentity _ {:user_id      expiring-user-id
+                                          :provider     "password"
+                                          :credentials  {:plaintext_password "somePassword12!!"}
+                                          :last_used_at (t/offset-date-time)
+                                          :expires_at   (t/plus (t/offset-date-time) (t/hours 1))}
                    :model/User {used-user-id :id} {}
                    :model/AuthIdentity _ {:user_id      used-user-id
                                           :provider     "password"
@@ -2253,12 +2259,14 @@
                                           :provider    "password"
                                           :credentials {:plaintext_password "somePassword12!!"}}]
       (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
+      (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expiring-user-id))))
       (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
       (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
       (let [id->has-password (into {}
                                    (map (juxt :id :has_password))
                                    (:data (mt/user-http-request :crowberto :get 200 "user")))]
         (is (false? (id->has-password expired-user-id)))
+        (is (true? (id->has-password expiring-user-id)))
         (is (true? (id->has-password used-user-id)))
         (is (false? (id->has-password unused-user-id))))
       (testing "GET /api/user/current reports it to user themself"

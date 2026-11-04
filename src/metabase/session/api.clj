@@ -335,7 +335,7 @@
                 is-active?   :is_active :as user}
                (session.db/user-by-email email)]
       (cond
-        ;; SSO users without a used password should use their SSO provider, not password reset.
+        ;; SSO-only users (see `sso/sso-only-user?`) should use their SSO provider, not password reset.
         (sso/sso-only-user? user-id email sso-source)
         (messages/send-password-reset-email! email (or sso-source :ldap) nil is-active?)
 
@@ -421,11 +421,10 @@
         ;; /auth/login to use their SSO provider.
         _            (when-not (or (:success? grant-result) (session.settings/enable-password-login))
                        (throw (ex-info (tru "Password login is disabled for this instance.") {:status-code 400})))
-        sso-source   (when-not (:success? grant-result)
-                       (some->> (auth-identity/authenticate :provider/emailed-secret-password-reset credentials)
-                                :user-id
-                                session.db/user-sso-source))
-        skip-session (boolean (and sso-source (sso/sso-source-enabled? sso-source)))
+        skip-session (boolean (when-not (:success? grant-result)
+                                (some-> (auth-identity/parse-token-user-id (:token credentials))
+                                        session.db/user-sso-source
+                                        sso/sso-source-enabled?)))
         auth-result  (if (:success? grant-result)
                        grant-result
                        (auth-identity/with-fallback auth-identity/login!
@@ -442,8 +441,8 @@
       ;; The password change succeeded, but an MFA is required. Either the user is already enrolled with MFA or they
       ;; are unenrolled but `mfa-required?`. Issue no session, or anyone who can trigger a password reset can bypass
       ;; MFA! The user logs in normally with their new password, either providing their second factor or configuring
-      ;; MFA since it's required. The same goes for a user whose SSO provider is enabled, so that login still applies
-      ;; it (LDAP checks the directory before the local password).
+      ;; MFA since it's required. Likewise, a user whose SSO provider is enabled logs in normally afterwards, so that
+      ;; login applies that provider's checks (for example, LDAP checks a directory user against the directory).
       (or (session.settings/mfa-required?)
           (:mfa/pending? auth-result)
           skip-session)
