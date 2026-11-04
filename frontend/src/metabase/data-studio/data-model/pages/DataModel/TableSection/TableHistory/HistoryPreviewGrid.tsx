@@ -41,7 +41,7 @@ export function HistoryPreviewGrid<TRow>({
   });
 
   return (
-    <Box h="100%" miw={0}>
+    <Box h="100%" miw={0} style={{ contain: "paint" }}>
       <DataGrid
         {...gridProps}
         onBodyCellClick={
