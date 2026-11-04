@@ -239,6 +239,8 @@ mage_tests:
   - *project_ratchet_checks
   - *project_migration_checks
   - "mage/**"
+  - "mise.toml"
+  - "bin/merge-kondo-ratchets"
 
 sources: &sources
   - *shared_sources
