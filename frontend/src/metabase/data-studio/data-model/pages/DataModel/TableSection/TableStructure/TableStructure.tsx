@@ -664,8 +664,8 @@ function PropertyRegistrySummary({
   ).length;
 
   return (
-    <Stack gap="xs" py="xs">
-      <Group gap="sm">
+    <Stack gap="xs">
+      <Group gap="sm" align="baseline">
         <Text c="text-primary" fw="bold">
           {ngettext(
             msgid`${properties.length} property`,

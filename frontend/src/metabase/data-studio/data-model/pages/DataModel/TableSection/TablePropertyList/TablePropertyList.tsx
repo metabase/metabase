@@ -93,7 +93,7 @@ export function TablePropertyList({ table }: { table: Table }) {
   const { getTableStructure } = useTableStructures();
   const state = usePropertyRegistry(table, getTableStructure(table).eav);
   const { selectedPropertyName, setSelectedPropertyName } =
-    usePropertySelection();
+    usePropertySelection(table.id);
   const [filters, setFilters] = useState<PropertyFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState("");
   const [isFilterOpen, { toggle: toggleFilter, close: closeFilter }] =

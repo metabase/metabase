@@ -7,6 +7,8 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { dayjs } from "metabase/dayjs";
 import {
   type PropertySignal,
@@ -85,11 +87,21 @@ export function PropertyDetailsPanel({
         isLoading={state.status === "loading"}
         onClose={onClose}
       />
-      {property ? (
-        <PropertyDetails table={table} property={property} />
-      ) : (
-        <FieldDetailsSkeleton />
-      )}
+      {match(state)
+        .with({ status: "loading" }, () => <FieldDetailsSkeleton />)
+        .with({ status: "error" }, ({ error }) => (
+          <LoadingAndErrorWrapper loading={false} error={error} />
+        ))
+        .otherwise(() =>
+          property ? (
+            <PropertyDetails table={table} property={property} />
+          ) : (
+            <EmptyState
+              message={t`This table has no property called ${propertyName}.`}
+              spacing="sm"
+            />
+          ),
+        )}
     </DetailPanel>
   );
 }
