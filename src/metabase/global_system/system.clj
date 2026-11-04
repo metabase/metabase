@@ -108,6 +108,15 @@
   (print-method handle *out*))
 
 (defn mutable-component-handle
-  "Make a handle for the component stored under `k` in the global system."
-  [k]
-  (ComponentHandle. k))
+  "Make a handle for the component stored under `k` in the global system.
+   With `init-root`, a function of no arguments, also install its result as the root if the component has none, so
+   reloading the namespace that makes the handle leaves an installed root alone."
+  ([k]
+   (ComponentHandle. k))
+  ([k init-root]
+   (let [handle (ComponentHandle. k)
+         lock   (root-lock k)]
+     (locking lock
+       (when-not (mc/root-entry handle)
+         (mc/alter-root handle (init-root))))
+     handle)))
