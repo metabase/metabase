@@ -66,6 +66,26 @@ describe("AdminDatabaseTableEditingSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("should render disabled toggle when database routing is the reason", () => {
+    setup({
+      driverSetting: {
+        enabled: false,
+        reasons: [
+          {
+            key: "setting/database-routing",
+            message: "Table editing is not supported with database routing.",
+          },
+        ],
+      },
+      engine: "postgres",
+    });
+
+    expect(
+      screen.getByTestId("database-table-editing-section"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("switch")).toBeDisabled();
+  });
+
   it("should hide section for other disabled reasons", () => {
     setup({
       driverSetting: {
