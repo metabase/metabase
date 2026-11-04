@@ -109,6 +109,14 @@ const config = {
               "<rootDir>/frontend/test/harness-compat/fixtures/**/*.fixture.js",
             ],
           },
+          {
+            ...nodeProject,
+            displayName: "harness-compat-dom",
+            testEnvironment: baseConfig.testEnvironment,
+            testMatch: [
+              "<rootDir>/frontend/test/harness-compat/dom-fixtures/**/*.fixture.js",
+            ],
+          },
         ]
       : []),
   ],

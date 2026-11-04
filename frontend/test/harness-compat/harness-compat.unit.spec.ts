@@ -1,7 +1,7 @@
-// Runs the specs in fixtures/ under jest's own runner and under the node:test
-// runner in frontend/test/harness, and checks that both report the same
-// results. Each fixture is a case where the two runners once differed, and
-// most of them fail on purpose.
+// Runs the specs in fixtures/ and dom-fixtures/ under jest's own runner and
+// under the node:test runner in frontend/test/harness, and checks that both
+// report the same results. Each fixture is a case where the two runners once
+// differed, and most of them fail on purpose.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -109,21 +109,25 @@ describe("the node:test runner", () => {
 
 // jest's own runner keeps up to 20 fast files in its own process, where an
 // unhandled rejection ends the whole run. Without a cache it has no timings,
-// so it uses its workers.
+// so it uses its workers. The node:test runner gets one worker for each
+// project, so that a file that changes shared state runs before the file that
+// checks it. jest runs the larger file first.
 function runJest(runner: Runner, args: string[]): JestJson {
   const outputFile = path.join(
     os.tmpdir(),
     `harness-compat-${process.pid}-${runner}-${Date.now()}.json`,
   );
   const runnerArgs =
-    runner === "jest" ? ["--no-cache"] : [`--runner=${RUNNER}`];
+    runner === "jest"
+      ? ["--no-cache", "--maxWorkers=2"]
+      : [`--runner=${RUNNER}`, "--maxWorkers=1"];
   const { error } = spawnSync(
     process.execPath,
     [
       JEST,
       "--selectProjects",
       "harness-compat",
-      "--maxWorkers=2",
+      "harness-compat-dom",
       ...runnerArgs,
       ...args,
       "--json",
