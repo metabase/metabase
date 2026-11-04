@@ -3315,6 +3315,37 @@
               (is (= #{card-id copy-id}
                      (set (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))))
 
+(deftest copy-card-onto-shared-dashboard-goal-permissions-test
+  (testing "copying a dashboard question autoplaces the copy on the source's shared dashboard, so it needs goal read access"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (do-with-restricted-goal-viz-settings!
+       (fn [viz-settings]
+         (doseq [[sharing dashboard-props] (shared-dashboard-props)]
+           (testing sharing
+             (mt/with-temp [:model/Dashboard {dash-id :id} dashboard-props
+                            :model/Card {card-id :id :as source-card} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                                       :display                :gauge
+                                                                       :dashboard_id           dash-id
+                                                                       :visualization_settings viz-settings}]
+               (mt/with-model-cleanup [:model/Card]
+                 (testing "POST /api/card/:id/copy"
+                   (is (= "You don't have permissions to do that."
+                          (mt/user-http-request :rasta :post 403 (format "card/%d/copy" card-id))))
+                   (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id))))
+                 (testing "POST /api/card with source_card_id"
+                   (is (= "You don't have permissions to do that."
+                          (mt/user-http-request :rasta :post 403 "card"
+                                                (assoc (card-with-name-and-query)
+                                                       :display                "gauge"
+                                                       :source_card_id         card-id
+                                                       :dashboard_id           dash-id
+                                                       :visualization_settings (:visualization_settings source-card)))))
+                   (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id))))
+                 (testing "a user who can read the goal source can copy it"
+                   (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (format "card/%d/copy" card-id)))]
+                     (is (= [copy-id]
+                            (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"
