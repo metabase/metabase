@@ -17,6 +17,14 @@ const getLatestCheck = (cached: HealthCheck | undefined, fresh: HealthCheck) =>
     ? cached
     : fresh;
 
+const mergeChecks = (cached: HealthCheck[], fresh: HealthCheck[]) =>
+  fresh.map((check) =>
+    getLatestCheck(
+      cached.find(({ id }) => id === check.id),
+      check,
+    ),
+  );
+
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({
@@ -85,10 +93,11 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
               "listHealthChecks",
               undefined,
               (draft) => {
-                draft.checks = draft.checks.map((check) =>
-                  check.id === checkId
-                    ? getLatestCheck(check, recheckedCheck)
-                    : check,
+                draft.checks = mergeChecks(
+                  draft.checks,
+                  draft.checks.map((check) =>
+                    check.id === checkId ? recheckedCheck : check,
+                  ),
                 );
               },
             ),
@@ -107,12 +116,7 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
               "listHealthChecks",
               undefined,
               (draft) => {
-                draft.checks = checks.map((check) =>
-                  getLatestCheck(
-                    draft.checks.find(({ id }) => id === check.id),
-                    check,
-                  ),
-                );
+                draft.checks = mergeChecks(draft.checks, checks);
               },
             ),
           ),
