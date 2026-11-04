@@ -149,27 +149,26 @@
           handler       (metabase.server.core/make-handler server-routes #'metabase.mcp.http-handler/options)]
         (metabase.server.core/start-web-server! handler))"
   [handler :- ::api.macros/handler]
-  (let [started? (volatile! false)]
-    (system/ensure-started!
-     server-component
-     (fn []
-       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background.
-       ;; Don't JOIN yet -- we're doing other init in the background; we can join later
-       (let [config     (jetty-config)
-             new-server (create-server handler config)]
-         (log-config config)
-         (try
-           (.start new-server)
-           (catch Throwable e
-             ;; not yet the instance, so nothing else would stop what part of it started
-             (.stop new-server)
-             (throw e)))
-         (vreset! started? true)
-         new-server))
-     (fn [^Server server]
-       (log/info "Shutting Down Embedded Jetty Webserver")
-       (.stop server)))
-    (when @started?
+  (let [[_server started?]
+        (system/start!
+         server-component
+         (fn []
+           ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the
+           ;; background. Don't JOIN yet -- we're doing other init in the background; we can join later
+           (let [config     (jetty-config)
+                 new-server (create-server handler config)]
+             (log-config config)
+             (try
+               (.start new-server)
+               (catch Throwable e
+                 ;; not yet the instance, so nothing else would stop what part of it started
+                 (.stop new-server)
+                 (throw e)))
+             new-server))
+         (fn [^Server server]
+           (log/info "Shutting Down Embedded Jetty Webserver")
+           (.stop server)))]
+    (when started?
       :started)))
 
 (defn stop-web-server!
