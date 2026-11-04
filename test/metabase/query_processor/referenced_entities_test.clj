@@ -867,20 +867,23 @@
                                                             :model    "root"
                                                             :strategy "ttl"
                                                             :config   {:multiplier 99999 :min_duration_ms 0}}
-                         :model/Card        {goal-id :id}  {:dataset_query (mt/native-query {:query "SELECT 1 AS \"count\""})}
+                         ;; a different value on every run, from the same query and so the same cache key
+                         :model/Card        {goal-id :id}  {:dataset_query (mt/native-query {:query "SELECT RAND() AS \"count\""})}
                          :model/Card        {chart-id :id} (chart-card :scalar {:scalar.segments [{:min   (goal-ref goal-id)
                                                                                                    :max   nil
                                                                                                    :color "red"}]})]
             (letfn [(run-chart []
                       (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id)
-                                            {:ignore_cache false}))]
-              (run-chart)
-              (t2/update! :model/Card :id goal-id {:dataset_query (mt/native-query {:query "SELECT 2 AS \"count\""})})
-              (let [response (run-chart)]
+                                            {:ignore_cache false}))
+                    (goal-rows [response]
+                      (get-in response [:data :referenced_entities :card goal-id :data :rows]))]
+              (let [first-response (run-chart)
+                    response       (run-chart)]
                 (testing "the main result came from the cache"
                   (is (some? (:cached response))))
                 (testing "the goal didn't"
-                  (is (= [[2]] (get-in response [:data :referenced_entities :card goal-id :data :rows]))))))))
+                  (is (some? (goal-rows response)))
+                  (is (not= (goal-rows first-response) (goal-rows response))))))))
         (finally
           (when existing-config
             (t2/insert! :model/CacheConfig existing-config)))))))
