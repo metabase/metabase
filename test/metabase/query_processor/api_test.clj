@@ -591,12 +591,22 @@
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
-                           "FROM \"PUBLIC\".\"VENUES\" "
-                           "LIMIT 1048575")
+                           "FROM \"PUBLIC\".\"VENUES\"")
               :params nil}
              (mt/user-http-request :crowberto :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
+
+(deftest ^:parallel compile-ignores-caller-supplied-limit-options-test
+  (testing "POST /api/dataset/native"
+    (testing "\nthe request cannot steer the limit the endpoint compiles with"
+      (doseq [[k v] [[:middleware {:disable-max-results? false}]
+                     [:constraints {:max-results 7, :max-results-bare-rows 7}]]]
+        (let [query  (-> (mt/mbql-query venues {:fields [$id $name]})
+                         (assoc :pretty false, k v))
+              result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+          (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
+              (str "Expected " k " to be ignored, got: " (:query result))))))))
 
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
@@ -607,9 +617,7 @@
                          "FROM"
                          "  \"PUBLIC\".\"CHECKINS\""
                          "WHERE"
-                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"
-                         "LIMIT"
-                         "  1048575"]
+                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"]
                 :params nil}
                (-> (mt/user-http-request :crowberto :post 200 "dataset/native"
                                          (assoc (mt/mbql-query checkins
@@ -642,9 +650,7 @@
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
                              "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
                              "FROM\n"
-                             "  \"PUBLIC\".\"VENUES\"\n"
-                             "LIMIT\n"
-                             "  1048575")
+                             "  \"PUBLIC\".\"VENUES\"")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (assoc
@@ -659,9 +665,7 @@
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
                              "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
                              "FROM\n"
-                             "  \"PUBLIC\".\"VENUES\"\n"
-                             "LIMIT\n"
-                             "  1048575")
+                             "  \"PUBLIC\".\"VENUES\"")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))

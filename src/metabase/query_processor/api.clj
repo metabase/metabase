@@ -217,7 +217,9 @@
                                            [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
-    (let [query (lib-be/normalize-query (dissoc query :pretty))]
+    (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
+                    (dissoc :constraints :middleware)
+                    lib/disable-default-limit)]
       (qp.perms/check-current-user-has-adhoc-native-query-perms query)
       (qp.setup/with-qp-setup [query query]
         (binding [driver/*compile-with-inline-parameters* true]
