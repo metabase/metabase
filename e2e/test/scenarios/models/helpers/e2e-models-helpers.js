@@ -41,10 +41,6 @@ export function saveQuestionBasedOnModel({ name }) {
   cy.wait("@createCard");
 }
 
-export function selectDimensionOptionFromSidebar(name) {
-  cy.get("[data-testid=dimension-list-item]").contains(name).click();
-}
-
 export function openDetailsSidebar() {
   cy.findByTestId("saved-question-header-title").click();
 }

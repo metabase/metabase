@@ -694,14 +694,7 @@ describe("issue 24922", () => {
       cy.wait("@dataset");
       cy.findByTestId("scalar-value").invoke("text").should("eq", "55");
 
-      cy.findByTestId("sidebar-right")
-        .should("be.visible")
-        .within(() => {
-          cy.findByTestId("aggregation-item").should(
-            "contain",
-            "Sum of Numeric",
-          );
-        });
+      H.summaryWellItem("values", "Sum of Numeric").should("be.visible");
     });
   });
 });

@@ -165,20 +165,13 @@ describe("scenarios > question > null", () => {
       H.openOrdersTable();
 
       H.summarize();
-      H.rightSidebar().within(() => {
-        // remove pre-selected "Count"
-        cy.icon("close").click();
-      });
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add a function or metric").click();
-      // dropdown immediately opens with the new set of metrics to choose from
-      H.popover().within(() => {
-        cy.findByText("Cumulative sum of ...").click();
-        cy.findByText("Discount").click();
-      });
+      // remove pre-selected "Count"
+      H.removeSummaryItem("Count");
+      H.addSummaryValue("Discount");
+      H.openSummaryValueMenu("Sum of Discount");
+      cy.findByRole("menuitem", { name: "Cumulative sum of ..." }).click();
       // Group by
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Created At").click();
+      H.clickSummaryField("Created At", { section: "Orders" });
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Cumulative sum of Discount by Created At: Month");
 

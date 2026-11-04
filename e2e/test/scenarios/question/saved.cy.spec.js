@@ -71,10 +71,8 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Quantity is equal to 100").should("not.exist");
 
     H.summarize();
-    H.rightSidebar().within(() => {
-      cy.findByText("Quantity").click();
-      cy.button("Done").click();
-    });
+
+    H.clickSummaryField("Quantity", { section: "Orders" });
 
     H.appBar().within(() => {
       cy.findByText("Started from").should("be.visible");

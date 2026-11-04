@@ -462,11 +462,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.summarize();
 
-      cy.findByTestId("add-aggregation-button").click();
-
-      H.popover().within(() => {
-        cy.findByText("Median of ...").should("be.visible");
-      });
+      H.openSummaryValueMenu("Median of Price");
+      cy.findByRole("menuitem", { name: /^Median of/ }).should("be.visible");
     });
 
     it("should support custom columns", () => {

@@ -322,11 +322,11 @@ describe("Dashboard > Dashboard Questions", () => {
       H.queryBuilderHeader()
         .button(/Summarize/)
         .click();
-      H.rightSidebar().findByText("Count").click();
-      H.popover()
-        .findByText(/Average of/)
-        .click();
-      H.popover().findByText("Total").click();
+      H.removeSummaryItem("Count");
+      H.addSummaryValue("Total");
+      H.openSummaryValueMenu("Sum of Total");
+      cy.findByRole("menuitem", { name: "Average of ..." }).click();
+      H.summaryWellItem("values", "Average of Total").should("be.visible");
       H.saveSavedQuestion();
 
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
