@@ -7,6 +7,7 @@
   `:kind`."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -130,3 +131,11 @@
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-table-index
+  "A TableIndex as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table-index [:index_name :structured]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

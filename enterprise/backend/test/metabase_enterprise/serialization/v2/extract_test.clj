@@ -2547,6 +2547,13 @@
           (testing "database is not exported (no-data-model: true)"
             (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))
 
+(defn- filter-definition
+  "A Segment definition filtering the Table `table-id` in the Database `db-id` on its Field `field-id`."
+  [db-id table-id field-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/> (lib.metadata/field mp field-id) 100)))))
+
 (deftest collection-export-includes-fields-and-segments-test
   (testing "Exporting a collection with published tables includes their Fields and Segments"
     (mt/with-empty-h2-app-db!
@@ -2564,7 +2571,7 @@
                                                                  :base_type :type/Text}
                          :model/Segment    {segment-id :id}     {:name       "Test Segment"
                                                                  :table_id   table-id
-                                                                 :definition {}}
+                                                                 :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"
                                                                  :db_id         db-id
@@ -2748,7 +2755,7 @@
        :model/Channel {http-id :id}  {:name "HTTP Channel"
                                       :type :channel/http
                                       :details {:url "https://example.com/webhook"
-                                                :method "POST"
+                                                :method "post"
                                                 :auth-method "none"}
                                       :description "An HTTP channel"}]
       (testing "email channel extraction"
@@ -2768,7 +2775,7 @@
                    :type :channel/http
                    :description "An HTTP channel"
                    :details {:url "https://example.com/webhook"
-                             :method "POST"
+                             :method "post"
                              :auth-method "none"}}
                   ser))))
       (testing "channel storage-path uses top-level channels directory"
