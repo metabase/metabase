@@ -74,7 +74,7 @@
           (is (= (set
                   (concat
                    user/admin-or-self-visible-columns
-                   [:common_name :group_ids :personal_collection_id :tenant_collection_id]))
+                   [:common_name :group_ids :personal_collection_id :tenant_collection_id :has_password]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails
           (is (= #{"crowberto@metabase.com"
@@ -2196,6 +2196,38 @@
                               (format "user/%d/password-reset-url" user-id)))
       (mt/user-http-request :crowberto :post 200
                             (format "user/%d/password-reset-url" user-id)))))
+
+(deftest sso-user-with-password-can-be-given-password-test
+  (testing "PUT /api/user/:id/password and POST /api/user/:id/password-reset-url as an admin work for a user whose
+           SSO provider is enabled when they have a password"
+    (mt/with-temp [:model/User {user-id :id} {:sso_source "google"}
+                   :model/AuthIdentity _ {:user_id     user-id
+                                          :provider    "password"
+                                          :credentials {:plaintext_password "oldPassword12!!"}}]
+      (mt/with-premium-features #{}
+        (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                           google-auth-enabled   true]
+          (is (contains? (mt/user-http-request :crowberto :post 200 (format "user/%d/password-reset-url" user-id))
+                         :password_reset_url))
+          (mt/user-http-request :crowberto :put 204 (format "user/%d/password" user-id)
+                                {:password "newPassword12!!"}))))))
+
+(deftest has-password-test
+  (testing "GET /api/user, GET /api/user/:id and GET /api/user/current report whether the user has a password"
+    (mt/with-temp [:model/User {sso-user-id :id} {:sso_source "jwt"}
+                   :model/User {password-user-id :id} {}
+                   :model/AuthIdentity _ {:user_id     password-user-id
+                                          :provider    "password"
+                                          :credentials {:plaintext_password "somePassword12!!"}}]
+      (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" sso-user-id))))
+      (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" password-user-id))))
+      (is (=? {:has_password false} (mt/user-http-request sso-user-id :get 200 "user/current")))
+      (is (=? {:has_password true} (mt/user-http-request password-user-id :get 200 "user/current")))
+      (let [id->has-password (into {}
+                                   (map (juxt :id :has_password))
+                                   (:data (mt/user-http-request :crowberto :get 200 "user")))]
+        (is (false? (id->has-password sso-user-id)))
+        (is (true? (id->has-password password-user-id)))))))
 
 (deftest password-reset-url-nonexistent-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"

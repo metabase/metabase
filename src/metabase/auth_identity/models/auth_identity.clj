@@ -90,6 +90,15 @@
              (update :credentials hash-password-credentials))
     (provider/validate (provider/provider-string->keyword provider) <>)))
 
+(mi/define-batched-hydration-method add-has-password
+  :has_password
+  "Adds `has_password`, whether each of `users` has a `password` AuthIdentity, to a collection of `users`."
+  [users]
+  (when (seq users)
+    (let [user-ids (auth-identity.db/user-ids-with-auth-identity (set (map u/the-id users)) "password")]
+      (for [user users]
+        (assoc user :has_password (contains? user-ids (u/the-id user)))))))
+
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
   authoritative credential store. This is the only supported way to set a user's password; the User model itself no

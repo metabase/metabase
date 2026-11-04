@@ -3,10 +3,13 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.sso.db :as sso.db]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- excluded-group-ids
   []
@@ -62,3 +65,11 @@
                                 (set/difference excluded))
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
      (sync-group-memberships*! user-or-id to-remove to-add))))
+
+(mu/defn sso-only-user? :- :boolean
+  "Whether the User with `user-id` and `sso-source` signs in through an enabled SSO provider and has no password."
+  [user-id    :- ::lib.schema.id/user
+   sso-source :- [:maybe [:or :keyword :string]]]
+  (boolean (and (some? sso-source)
+                (sso.settings/sso-source-enabled? sso-source)
+                (not (sso.db/auth-identity-exists? user-id "password")))))

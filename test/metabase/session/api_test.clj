@@ -439,6 +439,28 @@
                      (:email sso-user)
                      (re-pattern "single sign-on")))))))))))
 
+(deftest forgot-password-sso-user-with-password-test
+  (testing "POST /api/session/forgot_password - SSO users with a password can reset it when their provider is enabled"
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+      (mt/with-temp [:model/User sso-user {:first_name "sso"
+                                           :last_name  "user"
+                                           :email      "sso-password-user@example.com"
+                                           :sso_source :google}
+                     :model/AuthIdentity _ {:user_id     (:id sso-user)
+                                            :provider    "password"
+                                            :credentials {:plaintext_password "somePassword12!!"}}]
+        (mt/with-temporary-setting-values [site-url              "http://test.example.com"
+                                           google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                           google-auth-enabled   true]
+          (mt/with-fake-inbox
+            (mt/user-http-request sso-user :post 204 "session/forgot_password"
+                                  {:email (:email sso-user)})
+            (is (mt/received-email-body?
+                 (:email sso-user)
+                 (re-pattern "Click the button below to reset the password")))))))))
+
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl

@@ -46,6 +46,13 @@
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
+(mu/defn user-ids-with-auth-identity :- [:set ::lib.schema.id/user]
+  "The ids among `user-ids` of the Users that have an AuthIdentity at `provider`."
+  [user-ids :- [:set ::lib.schema.id/user]
+   provider :- :string]
+  (set (when (seq user-ids)
+         (t2/select-fn-set :user_id :model/AuthIdentity :user_id [:in [:auto/param user-ids]] :provider [:auto/param provider]))))
+
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
   [row :- AuthIdentityRow]

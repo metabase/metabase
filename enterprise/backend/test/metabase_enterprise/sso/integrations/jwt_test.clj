@@ -12,6 +12,7 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -641,6 +642,24 @@
             (testing "login attributes remain unchanged from initial login"
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
+
+(deftest password-user-keeps-password-reset-after-jwt-login-test
+  (testing "user with password can still get reset link after logging in with JWT"
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/User user {:email "password-then-jwt@metabase.com"}]
+        (auth-identity/set-password! (:id user) "somePassword12!!")
+        (is (sso.test-setup/successful-login?
+             (client/client-real-response :get 302 "/auth/sso"
+                                          {:request-options {:redirect-strategy :none}}
+                                          :return_to default-redirect-uri
+                                          :jwt (jwt/sign {:email      (:email user)
+                                                          :first_name "Password"
+                                                          :last_name  "User"}
+                                                         default-jwt-secret))))
+        (is (= :jwt (t2/select-one-fn :sso_source :model/User :id (:id user))))
+        (binding [client/*url-prefix* "/api"]
+          (is (contains? (mt/user-http-request :crowberto :post 200 (format "user/%d/password-reset-url" (:id user)))
+                         :password_reset_url)))))))
 
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"

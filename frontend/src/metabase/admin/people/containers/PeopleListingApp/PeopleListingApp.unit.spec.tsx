@@ -208,6 +208,18 @@ describe("user menu", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should offer to reset password of SSO user who has password", async () => {
+    setup({
+      users: [{ ...ssoUser, has_password: true }],
+      settings: { "saml-enabled": true },
+    });
+    await openUserMenu();
+
+    expect(
+      screen.getByRole("menuitem", { name: "Reset password" }),
+    ).toBeInTheDocument();
+  });
+
   it("should offer to reset the password of an SSO user once their provider is disabled", async () => {
     setup({ users: [ssoUser], settings: { "saml-enabled": false } });
     await openUserMenu();

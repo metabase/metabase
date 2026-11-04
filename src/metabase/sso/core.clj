@@ -13,6 +13,7 @@
 
 (p/import-vars
  [metabase.sso.common
+  sso-only-user?
   sync-group-memberships!]
  [metabase.sso.ldap
   find-user

@@ -16,4 +16,6 @@ PLUGIN_AUTH_PROVIDERS.providers.push((providers) => {
     : providers;
 });
 
-PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");
+PLUGIN_IS_PASSWORD_USER.push(
+  (user) => user.has_password === true || user.sso_source !== "google",
+);
