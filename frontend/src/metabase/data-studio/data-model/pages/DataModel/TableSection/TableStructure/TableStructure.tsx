@@ -574,10 +574,10 @@ function EavBindingSection({
           }
         />
         <DetailsRow
-          label={t`Property`}
+          label={t`Property field`}
           value={
             <FieldSelect
-              label={t`Property`}
+              label={t`Property field`}
               fields={fields}
               value={binding.propertyFieldId}
               disabled={disabled}
@@ -586,10 +586,10 @@ function EavBindingSection({
           }
         />
         <DetailsRow
-          label={t`Value`}
+          label={t`Value field`}
           value={
             <FieldSelect
-              label={t`Value`}
+              label={t`Value field`}
               fields={fields}
               value={binding.valueFieldId}
               disabled={disabled}

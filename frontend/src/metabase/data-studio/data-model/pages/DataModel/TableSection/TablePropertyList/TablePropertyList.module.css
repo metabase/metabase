@@ -1,5 +1,8 @@
+/* Matches the outlined field cards in the drawer's Fields tab */
 .card {
   border-radius: var(--mantine-radius-lg);
+  box-shadow: none !important;
+  overflow: visible; /* so that the focus outline of the inner button is not cut off */
 
   &:hover {
     &:not(.active) {
@@ -18,8 +21,13 @@
 
 .button {
   border-radius: inherit;
+}
 
-  svg {
-    color: var(--mb-color-core-brand);
-  }
+.icon {
+  color: var(--mb-color-core-brand);
+}
+
+.skeletonCard {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-lg);
 }

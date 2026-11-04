@@ -48,7 +48,8 @@ export const PROPERTY_SEMANTIC_TYPES = [
 
 export type PropertySemanticType = (typeof PROPERTY_SEMANTIC_TYPES)[number];
 
-export type PropertyValueCount = { value: string; count: number };
+/** A property value and how many distinct entities have it */
+export type PropertyValueCount = { value: string; entityCount: number };
 
 export type PropertySignal =
   | { type: "new" }
@@ -215,7 +216,7 @@ export function getPropertyValuesQuery(
     type: "query",
     query: {
       "source-table": table.id,
-      aggregation: [["count"]],
+      aggregation: [["distinct", fieldRef(eav.entityKeyFieldId)]],
       breakout: [fieldRef(eav.propertyFieldId), fieldRef(eav.valueFieldId)],
       "order-by": [["desc", ["aggregation", 0]]],
       limit: TOP_VALUES_LIMIT,
@@ -258,7 +259,7 @@ function readObservedProperties(
       lastSeen: hasDates ? toDate(row[5]) : null,
       topValues: (valuesByProperty[name] ?? []).map((valueRow) => ({
         value: toText(valueRow[1]),
-        count: toNumber(valueRow[2]),
+        entityCount: toNumber(valueRow[2]),
       })),
     };
   });
@@ -275,10 +276,10 @@ export function conformsToType(value: string, type: PropertyType): boolean {
 }
 
 function getConformingShare(values: PropertyValueCount[], type: PropertyType) {
-  const total = values.reduce((sum, { count }) => sum + count, 0);
+  const total = values.reduce((sum, { entityCount }) => sum + entityCount, 0);
   const conforming = values
     .filter(({ value }) => conformsToType(value, type))
-    .reduce((sum, { count }) => sum + count, 0);
+    .reduce((sum, { entityCount }) => sum + entityCount, 0);
   return total > 0 ? conforming / total : 0;
 }
 export function inferPropertyType(values: PropertyValueCount[]): PropertyType {
@@ -380,7 +381,7 @@ function getSignals(
     signals.push({
       type: "type-drift",
       nonConformingCount: nonConforming.reduce(
-        (sum, { count }) => sum + count,
+        (sum, { entityCount }) => sum + entityCount,
         0,
       ),
       examples: nonConforming.map(({ value }) => value),
