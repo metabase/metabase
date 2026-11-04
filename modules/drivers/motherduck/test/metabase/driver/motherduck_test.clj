@@ -62,17 +62,21 @@
     (testing "a nested field reference compiles to json_extract_string with an inlined JSON Pointer"
       (are [field expected] (= [expected]
                                (sql.qp/format-honeysql :motherduck (sql.qp/json-query :motherduck identifier field)))
-        {:nfc-path [:bleh :meh] :database-type "text"}
+        {:nfc-path      [:bleh :meh]
+         :database-type "text"}
         "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/meh') AS text)"
 
         ;; Avoid DuckDB's default DECIMAL(18,3) scale for JSON numbers.
-        {:nfc-path [:bleh :meh] :database-type "decimal"}
+        {:nfc-path      [:bleh :meh]
+         :database-type "decimal"}
         "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/meh') AS double)"
 
-        {:nfc-path [:bleh "boop" :foobar 1234] :database-type "boolean"}
+        {:nfc-path      [:bleh "boop" :foobar 1234]
+         :database-type "boolean"}
         "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/boop/foobar/1234') AS boolean)"
 
-        {:nfc-path [:bleh "meh"] :database-type "timestamp"}
+        {:nfc-path      [:bleh "meh"]
+         :database-type "timestamp"}
         "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/meh') AS timestamp)"))
     (testing "keys from the warehouse's JSON are escaped for JSON Pointer, and quotes are doubled for SQL"
       (are [k pointer] (= [(format "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '%s') AS text)" pointer)]
@@ -129,15 +133,23 @@
                          first
                          (zipmap units))))]
       ;; 349 days, 10:31:45 apart: 3.67 quarters, 49.86 weeks, 8386.53 hours, 503191.75 minutes.
-      (is (= {:quarter 3, :week 49, :hour 8386, :minute 503191}
+      (is (= {:quarter 3
+              :week    49
+              :hour    8386
+              :minute  503191}
              (diffs "2020-01-01T00:00:00" "2020-12-15T10:31:45")))
       (testing "negative differences truncate toward zero"
-        (is (= {:quarter -3, :week -49, :hour -8386, :minute -503191}
+        (is (= {:quarter -3
+                :week    -49
+                :hour    -8386
+                :minute  -503191}
                (diffs "2020-12-15T10:31:45" "2020-01-01T00:00:00")))))))
 
 (defn- read-unparseable
-  "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects. Like
-  pgjdbc on the endpoint's text, the stand-in can't read the value as an object, so the reader falls back to the string."
+  "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.
+
+  Like pgjdbc on the endpoint's text, the stand-in can't read the value as an object, so the reader falls back to the
+  string."
   [jdbc-type type-name s]
   (let [rs     (reify ResultSet
                  (^String getString [_ ^int _i] s)
@@ -146,9 +158,9 @@
                  (^Object getObject [_ ^int _i ^Class _class]
                    (throw (SQLException. (str "Bad value: " s)))))
         rsmeta (reify ResultSetMetaData
-                 (getColumnType [_ _i] jdbc-type)
+                 (getColumnType     [_ _i] jdbc-type)
                  (getColumnTypeName [_ _i] type-name)
-                 (getColumnLabel [_ _i] "t"))]
+                 (getColumnLabel    [_ _i] "t"))]
     ((sql-jdbc.execute/read-column-thunk :motherduck rs rsmeta (int 1)))))
 
 (defn- read-timetz [s]
@@ -171,19 +183,21 @@
 ;; `float-special-values-test` in `postgres-test` reads the endpoint's infinities live; these are the other branches.
 (deftest ^:parallel read-endpoint-infinities-test
   (testing "REAL infinities read as Floats, like Postgres"
-    (is (= [Float "Infinity"] ((juxt class str) (read-unparseable Types/REAL "float4" "+Inf"))))
-    (is (= [Float "-Infinity"] ((juxt class str) (read-unparseable Types/REAL "float4" "-Inf")))))
+    (is (= [Float "Infinity"]
+           ((juxt class str) (read-unparseable Types/REAL "float4" "+Inf"))))
+    (is (= [Float "-Infinity"]
+           ((juxt class str) (read-unparseable Types/REAL "float4" "-Inf")))))
   (testing "a one-dimensional float array, with NULLs, reads as a vector of the element type"
     (is (= [Double/POSITIVE_INFINITY nil 1.5 Double/NEGATIVE_INFINITY]
            (read-unparseable Types/ARRAY "_float8" "{+Inf,NULL,1.5,-Inf}")))
     (is (= [Float Float]
            (map class (read-unparseable Types/ARRAY "_float4" "{+Inf,2.5}")))))
   (testing "anything else rethrows pgjdbc's error rather than guessing"
-    (doseq [[jdbc-type type-name s] [[Types/DOUBLE "float8" "Inf"]
-                                     [Types/REAL "float4" "+Infinity"]
-                                     [Types/ARRAY "_float8" "{{+Inf,1},{2,3}}"]
-                                     [Types/ARRAY "_float8" "{+Inf,abc}"]
-                                     [Types/ARRAY "_int4" "{1,2}"]]]
+    (doseq [[jdbc-type type-name s] [[Types/DOUBLE "float8"  "Inf"]
+                                     [Types/REAL   "float4"  "+Infinity"]
+                                     [Types/ARRAY  "_float8" "{{+Inf,1},{2,3}}"]
+                                     [Types/ARRAY  "_float8" "{+Inf,abc}"]
+                                     [Types/ARRAY  "_int4"   "{1,2}"]]]
       (is (thrown-with-msg? SQLException #"Bad value"
                             (read-unparseable jdbc-type type-name s))
           s))))
@@ -264,9 +278,11 @@
       (testing "no user name is needed"
         (is (true? (driver/can-connect? :motherduck (dissoc details :user)))))
       (testing "a bad token"
-        (is (= :password-incorrect (error (assoc details :password "not-a-token")))))
+        (is (= :password-incorrect
+               (error (assoc details :password "not-a-token")))))
       (testing "a database that doesn't exist"
-        (is (= :database-name-incorrect (error (assoc details :dbname "no_such_database_que_1021"))))))))
+        (is (= :database-name-incorrect
+               (error (assoc details :dbname "no_such_database_que_1021"))))))))
 
 (deftest live-connection-test
   (mt/test-driver :motherduck
@@ -317,8 +333,10 @@
                      (repeatedly 5 pooled-current-database))))
             (testing "MBQL queries still find their tables"
               (is (= [[100]]
-                     (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                    (lib/aggregate (lib/count))))))))))
+                     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                         (lib/aggregate (lib/count))
+                         qp/process-query
+                         mt/rows))))))
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
 
@@ -362,17 +380,20 @@
               "CREATE TABLE duckdb_types (id INTEGER, m mood, ts TIMESTAMP_NS);"
               (str "INSERT INTO duckdb_types VALUES (1, 'happy', '2024-03-05 12:34:56.123456789'),"
                    " (2, 'sad', '1999-12-31 23:59:59'), (3, NULL, NULL);")])
-      (mt/with-temp [:model/Database database {:engine :motherduck, :details details}]
+      (mt/with-temp [:model/Database database {:engine  :motherduck
+                                               :details details}]
         (mt/with-db database
           (sync/sync-database! (:id database))
           (testing "ENUM syncs as text and TIMESTAMP_NS as a timestamp"
-            (is (= {"id" :type/Integer, "m" :type/Text, "ts" :type/DateTime}
+            (is (= {"id" :type/Integer
+                    "m"  :type/Text
+                    "ts" :type/DateTime}
                    (t2/select-fn->fn :name :base_type :model/Field :table_id (mt/id :duckdb_types)))))
           (let [mp    (mt/metadata-provider)
                 query (lib/query mp (lib.metadata/table mp (mt/id :duckdb_types)))
                 m     (lib.metadata/field mp (mt/id :duckdb_types :m))
                 ts    (lib.metadata/field mp (mt/id :duckdb_types :ts))
-                run   #(mt/rows (qp/process-query %))]
+                run   (comp mt/rows qp/process-query)]
             (testing "values read as strings and timestamps, keeping nanoseconds"
               (is (= [[1 "happy" "2024-03-05T12:34:56.123456789Z"]
                       [2 "sad" "1999-12-31T23:59:59Z"]
@@ -380,16 +401,23 @@
                      (run (lib/order-by query (lib.metadata/field mp (mt/id :duckdb_types :id)))))))
             (testing "filters compare enums with text and TIMESTAMP_NS with timestamps"
               (is (= [[1]]
-                     (run (-> query (lib/filter (lib/= m "happy")) (lib/aggregate (lib/count))))))
+                     (-> query
+                         (lib/filter (lib/= m "happy"))
+                         (lib/aggregate (lib/count))
+                         run)))
               (is (= [[1]]
-                     (run (-> query (lib/filter (lib/> ts "2000-01-01")) (lib/aggregate (lib/count)))))))
+                     (-> query
+                         (lib/filter (lib/> ts "2000-01-01"))
+                         (lib/aggregate (lib/count))
+                         run))))
             (testing "TIMESTAMP_NS buckets by month"
               (is (= [["1999-12-01T00:00:00Z" 1]
                       ["2024-03-01T00:00:00Z" 1]
                       [nil 1]]
-                     (run (-> query
-                              (lib/aggregate (lib/count))
-                              (lib/breakout (lib/with-temporal-bucket ts :month)))))))))))))
+                     (-> query
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket ts :month))
+                         run))))))))))
 
 (defn- execute-statements! [& statements]
   (with-pooled-connection
@@ -443,8 +471,9 @@
                (into {}
                      (comp (filter (comp #{"no_rows" "three_rows" "three_rows_view"} :name))
                            (map (juxt :name :estimated_row_count)))
-                     (:tables (driver/describe-database :motherduck
-                                                        (lib.metadata/database (mt/metadata-provider)))))))))))
+                     (->> (lib.metadata/database (mt/metadata-provider))
+                          (driver/describe-database :motherduck)
+                          :tables))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                MotherDuck copies of Postgres-only tests                                        |
@@ -472,8 +501,11 @@
       (testing "validate-native-query-fields"
         (is (= #{}
                (driver/validate-native-query-fields :motherduck (query "SELECT \"%2$s\" FROM \"%1$s\""))))
-        (is (=? [{:type :missing-column, :name "xix"}]
-                (vec (driver/validate-native-query-fields :motherduck (query "SELECT \"%2$s\", xix FROM \"%1$s\"")))))))))
+        (is (=? [{:type :missing-column
+                  :name "xix"}]
+                (->> (query "SELECT \"%2$s\", xix FROM \"%1$s\"")
+                     (driver/validate-native-query-fields :motherduck)
+                     vec)))))))
 
 ;; MotherDuck inherits this behaviour from `:postgres`, but these tests need different SQL, setup or expectations
 ;; here, so they're copies of tests in `metabase.driver.postgres-test` rather than shared with it.
@@ -492,7 +524,8 @@
       (let [details (mt/dbdef->connection-details :motherduck :db {:database-name "dropped_views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :motherduck details)]
         (tx/drop-if-exists-and-create-db! :motherduck "dropped_views_test")
-        (mt/with-temp [:model/Database database {:engine :motherduck, :details details}]
+        (mt/with-temp [:model/Database database {:engine  :motherduck
+                                                 :details details}]
           (let [sync! #(sync/sync-database! (:id database))]
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                          "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Parroty');"
@@ -503,9 +536,11 @@
             (exec! spec ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
             (sync!)
             ;; there should be only one Table for the view
-            (is (= [{:name "angry_birds", :active true}]
-                   (map (partial into {})
-                        (t2/select [:model/Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+            (is (= [{:name   "angry_birds"
+                     :active true}]
+                   (t2/select-fn-vec #(select-keys % [:name :active]) [:model/Table :name :active]
+                                     :db_id (u/the-id database)
+                                     :name  "angry_birds")))))))))
 
 (defn- describe-trivial-json-table!
   "Create `schema`.`table` with a JSON column in a new database, sync it, and describe its nested JSON fields."
@@ -526,12 +561,12 @@
          {:schema schema :name table :id (mt/id table)})))))
 
 (def ^:private trivial-json-nested-fields
-  #{{:name              "trivial_json → a",
-     :database-type     "decimal",
-     :base-type         :type/Integer,
-     :database-position 0,
-     :json-unfolding    false,
-     :visibility-type   :normal,
+  #{{:name              "trivial_json → a"
+     :database-type     "decimal"
+     :base-type         :type/Integer
+     :database-position 0
+     :json-unfolding    false
+     :visibility-type   :normal
      :nfc-path          [:trivial_json "a"]}})
 
 (deftest describe-nested-field-columns-identifier-test
@@ -570,7 +605,10 @@
                     (lib.metadata/database (mt/metadata-provider))
                     [(format "SELECT range AS i FROM range(1, %d)" Integer/MAX_VALUE)])]
         (testing "only the first rows are pulled, not all ~2 billion"
-          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+          (is (= [1 2 3]
+                 (into [] (comp (take 3)
+                                (map :i))
+                       result))))))))
 
 ;;; JSON unfolding: MotherDuck extracts with `json_extract_string` and an inlined JSON Pointer, where Postgres uses
 ;;; `#>>` with the path keys as parameters.
@@ -590,14 +628,12 @@
                                                       :table-id      1
                                                       :nfc-path      ["jsons" "values" "qty"]
                                                       :database-type "integer"})]})
-        (let [field-clause [:field
-                            {:lib/uuid (str (random-uuid))
-                             :binning
-                             {:strategy  :num-bins
-                              :num-bins  100
-                              :min-value 0.75
-                              :max-value 54.0
-                              :bin-width 0.75}}
+        (let [field-clause [:field {:lib/uuid (str (random-uuid))
+                                    :binning  {:strategy  :num-bins
+                                               :num-bins  100
+                                               :min-value 0.75
+                                               :max-value 54.0
+                                               :bin-width 0.75}}
                             1]]
           (is (= ["((FLOOR(((CAST(JSON_EXTRACT_STRING(complicated_identifiers.jsons, '/values/qty') AS integer) - 0.75) / 0.75)) * 0.75) + 0.75)"]
                  (sql/format-expr (sql.qp/->honeysql :motherduck field-clause) {:nested true}))))))))

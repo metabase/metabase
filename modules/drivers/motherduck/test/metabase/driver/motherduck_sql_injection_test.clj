@@ -2,8 +2,8 @@
   "Adversarial tests for SQL injection through the MotherDuck driver (QUE-978).
 
   Every value, identifier and alias below aims at one of the escapes Metabase relies on: doubled `'` in strings, doubled
-  `\"` in identifiers, and backslashes left literal (the endpoint has `standard_conforming_strings` on). Several also try
-  to stack a `DROP TABLE canary`. Each test checks its results, then that the canary is still there."
+  `\"` in identifiers, and backslashes left literal (the endpoint has `standard_conforming_strings` on). Several also
+  try to stack a `DROP TABLE canary`. Each test checks its results, then that the canary is still there."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -54,8 +54,10 @@
 (defn- canary-intact? []
   (let [mp (mt/metadata-provider)]
     (= [["still here"]]
-       (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :canary)))
-                                      (lib/with-fields [(lib.metadata/field mp (mt/id :canary :note))])))))))
+       (-> (lib/query mp (lib.metadata/table mp (mt/id :canary)))
+           (lib/with-fields [(lib.metadata/field mp (mt/id :canary :note))])
+           qp/process-query
+           mt/rows))))
 
 (defn- rows-both-ways
   "Run `query` with parameters bound, and again as the SQL Metabase generates with them inlined. Return both row sets."
@@ -73,14 +75,20 @@
                       (lib/with-fields [val]))]
         (doseq [v hostile-strings]
           (testing (format "a filter value of %s matches only that row" (pr-str v))
-            (is (= {:params [[v]] :inline [[v]]}
+            (is (= {:params [[v]]
+                    :inline [[v]]}
                    (rows-both-ways (lib/filter query (lib/= val v))))))
           (testing (format "a contains filter on %s treats every character literally" (pr-str v))
-            (let [expected (->> hostile-strings (filter #(str/includes? % v)) sort (mapv vector))]
-              (is (= {:params expected :inline expected}
-                     (rows-both-ways (-> query
-                                         (lib/filter (lib/contains val v))
-                                         (lib/order-by val)))))))))
+            (let [expected (->> hostile-strings
+                                (filter #(str/includes? % v))
+                                sort
+                                (mapv vector))]
+              (is (= {:params expected
+                      :inline expected}
+                     (-> query
+                         (lib/filter (lib/contains val v))
+                         (lib/order-by val)
+                         rows-both-ways)))))))
       (is (canary-intact?)))))
 
 (deftest hostile-identifiers-test
@@ -90,17 +98,22 @@
             table (lib.metadata/table mp (mt/id hostile-name))
             field (lib.metadata/field mp (mt/id hostile-name hostile-name))]
         (testing "sync finds the table and column under their exact names"
-          (is (= [hostile-name hostile-name] [(:name table) (:name field)])))
+          (is (= [hostile-name hostile-name]
+                 [(:name table) (:name field)])))
         (testing "queries on them select, filter and aggregate correctly"
-          (is (= {:params [["row 2"]] :inline [["row 2"]]}
-                 (rows-both-ways (-> (lib/query mp table)
-                                     (lib/with-fields [field])
-                                     (lib/filter (lib/= field "row 2"))))))
-          (is (= {:params [["row 1" 1] ["row 2" 1]] :inline [["row 1" 1] ["row 2" 1]]}
-                 (rows-both-ways (-> (lib/query mp table)
-                                     (lib/aggregate (lib/count))
-                                     (lib/breakout field)
-                                     (lib/order-by field)))))))
+          (is (= {:params [["row 2"]]
+                  :inline [["row 2"]]}
+                 (-> (lib/query mp table)
+                     (lib/with-fields [field])
+                     (lib/filter (lib/= field "row 2"))
+                     rows-both-ways)))
+          (is (= {:params [["row 1" 1] ["row 2" 1]]
+                  :inline [["row 1" 1] ["row 2" 1]]}
+                 (-> (lib/query mp table)
+                     (lib/aggregate (lib/count))
+                     (lib/breakout field)
+                     (lib/order-by field)
+                     rows-both-ways)))))
       (is (canary-intact?)))))
 
 (deftest hostile-aliases-test
@@ -115,10 +128,12 @@
         (doseq [alias-name (cons hostile-name hostile-strings)]
           (testing (format "a custom column named %s" (pr-str alias-name))
             (let [query (as-> (lib/query mp values) q
-                          (lib/expression q alias-name (lib/concat (lib.metadata/field mp (mt/id :hostile_values :val)) "!"))
+                          (lib/expression q alias-name (lib/concat (lib.metadata/field mp (mt/id :hostile_values :val))
+                                                                   "!"))
                           (lib/with-fields q [(lib/expression-ref q alias-name)])
                           (lib/filter q (lib/= values-id 9)))]
-              (is (= {:params [["100%!"]] :inline [["100%!"]]}
+              (is (= {:params [["100%!"]]
+                      :inline [["100%!"]]}
                      (rows-both-ways query)))))
           (testing (format "a join aliased %s" (pr-str alias-name))
             (let [query (-> (lib/query mp values)
@@ -127,7 +142,8 @@
                                           (lib/with-join-fields [(lib/with-join-alias note alias-name)])))
                             (lib/with-fields [values-id])
                             (lib/filter (lib/= values-id 1)))]
-              (is (= {:params [[1 "still here"]] :inline [[1 "still here"]]}
+              (is (= {:params [[1 "still here"]]
+                      :inline [[1 "still here"]]}
                      (rows-both-ways query)))))))
       (is (canary-intact?)))))
 
@@ -141,13 +157,16 @@
 (defn- json-key-value
   "Read key `k` from [[json-doc]] with the driver's nested-field SQL, as sync-discovered nested fields would."
   [k]
-  (let [extract (sql.qp/json-query :motherduck
-                                   (h2x/identifier :field "t" "doc")
-                                   {:nfc-path ["doc" k], :database-type "text"})
+  (let [extract        (sql.qp/json-query :motherduck
+                                          (h2x/identifier :field "t" "doc")
+                                          {:nfc-path ["doc" k], :database-type "text"})
         [sql & params] (sql.qp/format-honeysql :motherduck
                                                {:select [[extract :v]]
                                                 :from   [[{:select [[(h2x/cast "json" [:inline json-doc]) :doc]]} :t]]})]
-    (ffirst (mt/rows (qp/process-query (mt/native-query {:query sql, :params params}))))))
+    (-> (mt/native-query {:query sql, :params params})
+        qp/process-query
+        mt/rows
+        ffirst)))
 
 (deftest json-key-test
   (mt/test-driver :motherduck
@@ -173,15 +192,18 @@
    (fn [^Connection conn]
      (doseq [^String sql statements]
        (with-open [stmt (.createStatement conn)]
-         ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
+         ;; TODO: The endpoint returns result sets for DDL, which executeUpdate rejects. See QUE-1012.
+         ;; (bshepherdson 2026-11-04)
          (.execute stmt sql))))))
 
 (defn- table-exists? [db-id schema table]
   (sql-jdbc.execute/do-with-connection-with-options
    :motherduck db-id nil
    (fn [^Connection conn]
-     (with-open [stmt (.prepareStatement conn (str "SELECT count(*) FROM duckdb_tables() WHERE database_name = current_database()"
-                                                   " AND schema_name = CAST(? AS VARCHAR) AND table_name = CAST(? AS VARCHAR)"))]
+     (with-open [stmt (.prepareStatement conn (str "SELECT count(*) FROM duckdb_tables()"
+                                                   " WHERE database_name = current_database()"
+                                                   " AND schema_name = CAST(? AS VARCHAR)"
+                                                   " AND table_name = CAST(? AS VARCHAR)"))]
        (.setString stmt 1 schema)
        (.setString stmt 2 table)
        (with-open [rs (.executeQuery stmt)]
@@ -201,7 +223,7 @@
                           "CREATE TABLE IF NOT EXISTS \"sqli_dash\".\"t\" (x INTEGER)")
             (driver/drop-table! :motherduck db-id :sqli-dash/t)
             (is (false? (table-exists? db-id "sqli-dash" "t")))
-            (is (true? (table-exists? db-id "sqli_dash" "t")))
+            (is (true?  (table-exists? db-id "sqli_dash" "t")))
             (finally
               (execute-ddl! db-id
                             "DROP SCHEMA IF EXISTS \"sqli-dash\" CASCADE"
