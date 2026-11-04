@@ -31,6 +31,10 @@ function mapRedshiftValues(parsedValues: RegexFields) {
     ],
   ]);
 
+  if(parsedValues.protocol == "redshift:iam") {
+    fieldsMap.set("details.auth-mode", "iam");
+  }
+
   if (fieldsMap.get("details.additional-options")) {
     fieldsMap.set("details.advanced-options", true);
   }
@@ -341,6 +345,7 @@ export function mapDatabaseValues(
       mapAthenaValues(parsedValues),
     )
     .with(["redshift", "redshift"], () => mapRedshiftValues(parsedValues))
+    .with(["redshift:iam", "redshift"], () => mapRedshiftValues(parsedValues))
     .with(["bigquery", "bigquery-cloud-sdk"], () =>
       mapBigQueryValues(parsedValues),
     )
