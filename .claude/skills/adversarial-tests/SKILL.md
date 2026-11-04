@@ -27,7 +27,7 @@ You need `gh` logged in, `bb`, `jq`, `bun` and an installed `node_modules` in yo
 
 A run takes 10 to 25 minutes of wall clock, going by the file timestamps of the first four runs: 11 and 15 minutes for the two frontend PRs, 22 and 25 for the two backend PRs. Those times were measured before the current sequence, when the installs ran before anything else, the diff-informed generator made one or more calibration runs on the parent, and triage ran the parent twice. A backend run under the current sequence took 16 minutes, with three `./bin/test-agent` calls totalling 4 minutes, against 22 and 25 minutes with five or six calls before. A couple of minutes go on setting up two worktrees and most of the rest on writing tests. The test runs themselves take seconds each under Jest and 1.5 to 2.5 minutes each under `./bin/test-agent`, which starts a JVM and loads every namespace every time. Triage makes two or three of those: `head-1`, `head-2` when anything failed there, and `parent-1`, plus one more for each round of harness repairs. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
 
-The skill has run on four PRs so far, one in each mode: a frontend PR by number, a backend PR by number, an enterprise backend PR as the current branch and a frontend PR as the current branch.
+The skill has run on five PRs so far, covering every mode: a frontend PR by number, a backend PR by number, an enterprise backend PR as the current branch, a frontend PR as the current branch, and a backend PR as the current branch under the current sequence.
 
 ## Where things go
 
