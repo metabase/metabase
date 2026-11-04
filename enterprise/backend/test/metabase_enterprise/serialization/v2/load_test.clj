@@ -2874,7 +2874,7 @@
                        (get-in transform [:source :source-incremental-strategy :lookback])))))))))))
 
 (deftest transform-dangling-checkpoint-field-export-test
-  (testing "a checkpoint field id whose field no longer exists exports as-is and doesn't fail the import (GDGT-2906)"
+  (testing "a checkpoint field id whose field no longer exists is dropped from the export and doesn't fail the import (GDGT-2906)"
     (mt/with-premium-features #{:transforms-basic}
       (let [serialized (atom nil)]
         (ts/with-dbs [source-db dest-db]
@@ -2894,17 +2894,56 @@
                                              :name "target_table"
                                              :target-incremental-strategy {:type "append"}})]
               (reset! serialized (into [] (serdes.extract/extract {})))))
-          (testing "the dangling id is exported as a raw number, not a broken field ref"
+          (testing "the dangling id is dropped rather than exported as a local number or a broken field ref"
             (let [transform (first (filter #(= "Transform" (-> % :serdes/meta last :model)) @serialized))]
+              (is (= {:type "checkpoint"}
+                     (get-in transform [:source :source-incremental-strategy])))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (testing "a local id an older export carried is imported as is"
+              (serdes.load/load-metabase!
+               (ts/ingestion-in-memory
+                (mapv #(cond-> %
+                         (= "Transform" (-> % :serdes/meta last :model))
+                         (assoc-in [:source :source-incremental-strategy :checkpoint-filter-field-id] 999999999))
+                      @serialized)))
               (is (= 999999999
-                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])))))
+                     (get-in (t2/select-one :model/Transform :name "Stale Checkpoint Transform")
+                             [:source :source-incremental-strategy :checkpoint-filter-field-id]))))))))))
+
+(deftest transform-checkpoint-field-stub-test
+  (testing "a checkpoint field missing from the archive and the instance is stubbed, so the transform imports"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  field (ts/create! :model/Field :name "updated_at" :table_id (:id table)
+                                    :base_type :type/DateTime)]
+              (ts/create! :model/Transform
+                          :name "Checkpoint Transform"
+                          :source {:type :query
+                                   :query (mbql5-query (:id db) (:id table))
+                                   :source-incremental-strategy {:type                       "checkpoint"
+                                                                 :checkpoint-filter-field-id (:id field)}}
+                          :target {:database (:id db)
+                                   :type "table-incremental"
+                                   :schema "public"
+                                   :name "target_table"
+                                   :target-incremental-strategy {:type "append"}})
+              (reset! serialized (->> (serdes.extract/extract {})
+                                      (remove #(some #{{:model "Field" :id "updated_at"}} (:serdes/meta %)))
+                                      vec))))
           (ts/with-db dest-db
             (t2/delete! :model/TransformTag)
             (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
-            (is (= 999999999
-                   (get-in (t2/select-one :model/Transform :name "Stale Checkpoint Transform")
-                           [:source :source-incremental-strategy :checkpoint-filter-field-id]))
-                "the stale numeric id survives the import unchanged")))))))
+            (let [field (t2/select-one :model/Field :name "updated_at")]
+              (is (some? field))
+              (is (= (:id field)
+                     (get-in (t2/select-one :model/Transform :name "Checkpoint Transform")
+                             [:source :source-incremental-strategy :checkpoint-filter-field-id]))))))))))
 
 (defn- extract-merge-transform!
   "Creates a merge-strategy Transform keyed on `target_table.id` in the current app DB and returns its extraction."

@@ -19,14 +19,10 @@
    [:value pos-int?]
    [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
-(mr/def ::field-id
-  "The id of a Field a transform's incremental strategy reads; serialization exports a dangling one as is."
-  ::lib.schema.id/field)
-
 (mr/def ::checkpoint-strategy
   [:map {:closed true}
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id {:optional true} ::field-id]
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
    [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
@@ -68,7 +64,7 @@
   degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`)."
   [:map {:closed true}
    [:name {:optional true} ms/NonBlankString]
-   [:field-id {:optional true} [:maybe ::field-id]]])
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::merge-config
   [:map {:closed true}
@@ -415,13 +411,9 @@
    [:message         [:maybe :string]]
    [:user_id         [:maybe ::lib.schema.id/user]]])
 
-(def ^:private external-registry
-  "[[lib-be.schema/external-registry]], plus the dangling Field ids serialization exports as is."
-  (assoc lib-be.schema/external-registry ::field-id [:or ::lib.schema.id/field pos-int?]))
-
 (mr/def ::external-transform
   "A Transform as serialization writes it, with portable references in place of ids."
-  [:schema {:registry external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::transform [:name :description :entity_id :owner_email :creator_id :owner_user_id :collection_id
                                :source_database_id :source :target]]
