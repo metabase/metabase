@@ -129,6 +129,12 @@
                               {:host "tcps://evil.example.com", :sid "ORCL"}]
                              ["a host carrying descriptor syntax"
                               {:host "h)(PORT=1521))(ADDRESS=(HOST=evil", :sid "ORCL", :ssl true}]
+                             ["a host list with a URL in it"
+                              {:host "h1,config-https://evil.example.com/c", :sid "ORCL"}]
+                             ["a host list with descriptor syntax in it"
+                              {:host "h1,h2)(PORT=1521))(ADDRESS=(HOST=evil", :sid "ORCL", :ssl true}]
+                             ["a host list with an empty entry"
+                              {:host "h1,,h2", :sid "ORCL"}]
                              ["a SID that closes the CONNECT_DATA clause and adds an address"
                               {:host "h", :sid "x))(ADDRESS=(PROTOCOL=tcp)(HOST=evil)(PORT=80)", :ssl true}]
                              ["a service name that closes the CONNECT_DATA clause and adds an address"
@@ -164,6 +170,8 @@
                              ["an IPv4 literal" {:host "10.0.0.4", :sid "ORCL"}]
                              ["an IPv6 literal" {:host "[2001:db8::1]", :sid "ORCL"}]
                              ["an underscore in the hostname" {:host "my_db.internal", :sid "ORCL"}]
+                             ["a comma-separated list of hosts"
+                              {:host "db1.example.com, 10.0.0.4,[2001:db8::1]", :service-name "svc"}]
                              ["a missing host"  {:sid "ORCL"}]
                              ["a blank host"    {:host "", :sid "ORCL"}]
                              ["a qualified service name"
@@ -190,6 +198,18 @@
                (:subname (sql-jdbc.conn/connection-details->spec
                           :oracle
                           {:host "h", :port "1521", :sid "ORCL", :ssl true}))))))
+    (testing "a list of hosts"
+      (testing "keeps the hosts in order, without the spaces around the commas"
+        (is (= "@db1,db2:1521/svc"
+               (:subname (sql-jdbc.conn/connection-details->spec
+                          :oracle
+                          {:host "db1 , db2", :port 1521, :service-name "svc"})))))
+      (testing "gives one SSL address for each host, in order"
+        (is (= (str "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=db1)(PORT=2484))"
+                    "(ADDRESS=(PROTOCOL=tcps)(HOST=db2)(PORT=2484))(CONNECT_DATA=(SERVICE_NAME=svc)))")
+               (:subname (sql-jdbc.conn/connection-details->spec
+                          :oracle
+                          {:host "db1,db2", :port 2484, :service-name "svc", :ssl true}))))))
     (testing "a blank detail names nowhere, so the defaults apply rather than an empty string reaching the descriptor"
       (is (= "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))"
              (mu/disable-enforcement
@@ -377,6 +397,15 @@
                  (or (when (instance? java.net.ConnectException e)
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
+
+(deftest host-list-failover-test
+  (mt/test-driver :oracle
+    (testing "a host list connects through the next host when the first host does not resolve"
+      (let [details (update (:details (mt/db)) :host #(str "db-down.invalid," %))]
+        (is (driver/can-connect? :oracle details))
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:details details}
+          (is (= [[1M]]
+                 (mt/rows (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1 FROM dual"))))))))))
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
