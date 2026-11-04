@@ -10,15 +10,20 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as u.str]))
 
+(defn- literal?
+  "Whether `x` is a constant a where-clause compares, rather than a column reference."
+  [x]
+  (or (string? x) (boolean? x) (number? x)))
+
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
   [where]
   (when (vector? where)
     (case (first where)
       :=   (let [[a b] (rest where)]
-             (and (string? a) (string? b) (not= a b)))
+             (and (literal? a) (literal? b) (not= a b)))
       :!=  (let [[a b] (rest where)]
-             (and (string? a) (string? b) (= a b)))
+             (and (literal? a) (literal? b) (= a b)))
       :and (boolean (some impossible-condition? (rest where)))
       :or  (every? impossible-condition? (rest where))
       false)))
