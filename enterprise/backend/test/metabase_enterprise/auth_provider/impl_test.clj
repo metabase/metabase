@@ -1,19 +1,27 @@
 (ns metabase-enterprise.auth-provider.impl-test
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.driver.util :as driver.u]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.json :as json])
   (:import
-   [java.util Properties]))
+   (java.net InetAddress)
+   (java.util Properties)
+   (org.apache.http.conn DnsResolver)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest ^:parallel ensure-azure-managed-identity-password-test
   (mt/with-premium-features #{:database-auth-providers}
@@ -72,6 +80,41 @@
                 "password" "new access token"
                 "password-expiry-timestamp" expiry}
                props))))))
+
+(deftest cloud-auth-provider-network-policy-test
+  (mt/with-premium-features #{:database-auth-providers}
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
+                                http/get (fn [_url _opts] (throw (AssertionError. "Unexpected request")))]
+      (doseq [[provider details] [[:http {:http-auth-url "http://127.0.0.1"}]
+                                  [:oauth {:oauth-token-url "http://10.0.0.1/token"}]
+                                  [:azure-managed-identity {:azure-managed-identity-client-id "client"}]]]
+        (is (thrown? clojure.lang.ExceptionInfo (auth-provider/fetch-auth provider nil details)))))))
+
+(deftest cloud-auth-provider-request-options-test
+  (mt/with-premium-features #{:database-auth-providers}
+    (mt/with-dynamic-fn-redefs
+      [premium-features/is-hosted? (constantly true)
+       http/get (fn [_url opts]
+                  (is (= {"Authorization" "Bearer test"} (:headers opts)))
+                  (is (= :none (:redirect-strategy opts)))
+                  (is (thrown? clojure.lang.ExceptionInfo
+                               (.resolve ^org.apache.http.conn.DnsResolver (:dns-resolver opts) "localhost")))
+                  {:body {:password "response"}})]
+      (is (= {:password "response"}
+             (auth-provider/fetch-auth :http nil {:http-auth-url "https://8.8.8.8"
+                                                  :http-auth-headers "{\"Authorization\":\"Bearer test\"}"}))))))
+
+(deftest cloud-auth-provider-dns-rebinding-test
+  (mt/with-premium-features #{:database-auth-providers}
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (binding [u.http/*system-dns-resolver*
+                (reify DnsResolver
+                  (resolve [_ _host]
+                    (into-array InetAddress [(InetAddress/getByName "127.0.0.1")])))]
+        (let [error (try
+                      (auth-provider/fetch-auth :http nil {:http-auth-url "http://rebinding.invalid"})
+                      (catch Exception e e))]
+          (is (:ssrf (u/all-ex-data error)) "the resolver rejects the address actually used to connect"))))))
 
 (deftest http-provider-tests
   (mt/with-premium-features #{:database-auth-providers}

@@ -33,21 +33,20 @@
   - allow-private (external + private networks but NOT loopback or link-local)
   - external-only (only globally routable public addresses)
   - allow-all (no restrictions).
-  Defaults to external-only on Metabase Cloud and allow-private when self-hosted."
+  Always external-only on Metabase Cloud; defaults to allow-private when self-hosted."
   :type       :keyword
   :visibility :internal
   :export?    false
   :setter     :none
   :doc        (str "Allowed network for the map tile server.")
   :getter     (fn []
-                (let [[env-var-name raw-value] (setting/env-var-source :map-tile-server-allowed-networks)]
-                  (or (u.http/env-network-policy env-var-name raw-value)
-                      (if (premium-features/is-hosted?)
-                        :external-only
+                (if (premium-features/is-hosted?)
+                  :external-only
+                  (let [[env-var-name raw-value] (setting/env-var-source :map-tile-server-allowed-networks)]
+                    (or (u.http/env-network-policy env-var-name raw-value)
                         :allow-private)))))
 
-;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
-;; surfacing at the first map.
+;; On self-hosted instances, an unknown policy stops boot rather than surfacing at the first map.
 (defmethod startup/def-startup-validation! ::map-tile-server-allowed-networks [_]
   (map-tile-server-allowed-networks))
 

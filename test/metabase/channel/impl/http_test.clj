@@ -10,6 +10,7 @@
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.premium-features.core :as premium-features]
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
@@ -381,6 +382,24 @@
               (str strategy " controls whether the policy DNS resolver is present"))
           (is (not= ::caller-supplied (:dns-resolver req))
               "the rendered request cannot override the policy DNS resolver"))))))
+
+(deftest cloud-webhook-network-policy-test
+  (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
+      (with-captured-http-requests [requests]
+        (doseq [host ["127.0.0.1" "169.254.169.254" "10.0.0.1" "0.0.0.0" "[::1]"]]
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (channel/send! {:type :channel/http
+                                       :details {:url (str "http://" host) :auth-method "none"}}
+                                      {}))))
+        (is (empty? @requests))
+        (channel/send! {:type :channel/http
+                        :details {:url "https://8.8.8.8" :auth-method "none"}}
+                       {:redirect-strategy :graceful :dns-resolver ::caller-supplied})
+        (let [req (first @requests)]
+          (is (= :none (:redirect-strategy req)))
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (.resolve ^org.apache.http.conn.DnsResolver (:dns-resolver req) "localhost"))))))))
 
 (deftest alert-http-channel-e2e-test
   (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]

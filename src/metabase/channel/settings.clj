@@ -328,7 +328,8 @@
        "Options:\n"
        "- external-only (default - only external hosts)\n"
        "- allow-private (external + private networks but NOT localhost)\n"
-       "- allow-all (no restrictions including localhost).\n")
+       "- allow-all (no restrictions including localhost).\n"
+       "Metabase Cloud always uses external-only.")
   :type       :keyword
   :visibility :internal
   :default    :external-only
@@ -338,12 +339,13 @@
   :doc        (str "Set this when a notification webhook must reach a host on your private network "
                    "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
   :getter     (fn []
-                (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
-                  (or (u.http/env-network-policy env-var-name raw-value)
-                      :external-only))))
+                (if (premium-features/is-hosted?)
+                  :external-only
+                  (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
+                    (or (u.http/env-network-policy env-var-name raw-value)
+                        :external-only)))))
 
-;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
-;; surfacing at the first webhook.
+;; On self-hosted instances, an unknown policy stops boot rather than surfacing at the first webhook.
 (defmethod startup/def-startup-validation! ::http-channel-allowed-networks [_]
   (http-channel-allowed-networks))
 

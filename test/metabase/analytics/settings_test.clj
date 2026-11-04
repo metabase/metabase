@@ -4,6 +4,7 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
@@ -89,6 +90,32 @@
             (is (= "https://env-collector.example.com/api/send"
                    (analytics.settings/metaplow-url)))
             (is (true? (analytics.settings/metaplow-tracking-enabled)))))))))
+
+(deftest cloud-collector-urls-test
+  (with-redefs [config/is-prod? true]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
+                                premium-features/airgap-enabled (constantly false)]
+      (mt/with-temp-env-var-value! [mb-snowplow-url nil
+                                    mb-metaplow-url nil]
+        (mt/with-temporary-raw-setting-values [snowplow-url "http://127.0.0.1"
+                                               metaplow-url "http://169.254.169.254/api/send"]
+          (is (= (setting/default-value :snowplow-url) (analytics.settings/snowplow-url)))
+          (is (= "https://product-analytics-ingestion.metabase.com/api/send"
+                 (analytics.settings/metaplow-url)))
+          (testing "deployment-controlled collectors are still honored"
+            (mt/with-temp-env-var-value! [mb-snowplow-url "http://ops-collector.internal"
+                                          mb-metaplow-url "http://ops-collector.internal/api/send"]
+              (is (= "http://ops-collector.internal" (analytics.settings/snowplow-url)))
+              (is (= "http://ops-collector.internal/api/send" (analytics.settings/metaplow-url))))))))))
+
+(deftest self-hosted-collector-urls-test
+  (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-temp-env-var-value! [mb-snowplow-url nil
+                                  mb-metaplow-url nil]
+      (mt/with-temporary-setting-values [snowplow-url "http://127.0.0.1"
+                                         metaplow-url "http://127.0.0.1/api/send"]
+        (is (= "http://127.0.0.1" (analytics.settings/snowplow-url)))
+        (is (= "http://127.0.0.1/api/send" (analytics.settings/metaplow-url)))))))
 
 (deftest metaplow-tracking-enabled-test
   (testing "Metabase Track is on when anonymous tracking is on and a collector URL resolves"

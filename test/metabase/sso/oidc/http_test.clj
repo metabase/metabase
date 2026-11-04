@@ -2,8 +2,11 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [metabase.premium-features.core :as premium-features]
    [metabase.sso.oidc.http :as oidc.http]
    [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest oidc-get-ssrf-protection-test
   (testing "oidc-get blocks internal hosts when oidc-allowed-networks is :external-only"
@@ -63,3 +66,25 @@
                                              (is (false? (:throw-exceptions opts)))
                                              {:status 200 :body {}})]
         (oidc.http/oidc-get "https://example.com/path" {:accept :json})))))
+
+(deftest cloud-network-policy-test
+  (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
+                              http/get (fn [_url _opts] (throw (AssertionError. "Unexpected request")))
+                              http/post (fn [_url _opts] (throw (AssertionError. "Unexpected request")))]
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "allow-all"]
+      (doseq [url ["http://127.0.0.1/token" "http://169.254.169.254/token" "http://10.0.0.1/token"]]
+        (is (thrown? clojure.lang.ExceptionInfo (oidc.http/oidc-get url)))
+        (is (thrown? clojure.lang.ExceptionInfo (oidc.http/oidc-post url)))))))
+
+(deftest cloud-request-options-test
+  (mt/with-dynamic-fn-redefs
+    [premium-features/is-hosted? (constantly true)
+     http/get (fn [_url opts]
+                (is (= :none (:redirect-strategy opts)))
+                (is (thrown? clojure.lang.ExceptionInfo
+                             (.resolve ^org.apache.http.conn.DnsResolver (:dns-resolver opts) "localhost")))
+                {:status 200})]
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "allow-all"]
+      (is (= 200 (:status (oidc.http/oidc-get "https://8.8.8.8/discovery"
+                                              {:redirect-strategy :graceful
+                                               :dns-resolver ::caller-supplied})))))))

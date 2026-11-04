@@ -92,12 +92,13 @@
                    "its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses "
                    "at connection time for direct requests.")
   :getter     (fn []
-                (let [[env-var-name raw-value] (setting/env-var-source :llm-allowed-networks)]
-                  (or (u.http/env-network-policy env-var-name raw-value)
-                      :external-only))))
+                (if (premium-features/is-hosted?)
+                  :external-only
+                  (let [[env-var-name raw-value] (setting/env-var-source :llm-allowed-networks)]
+                    (or (u.http/env-network-policy env-var-name raw-value)
+                        :external-only)))))
 
-;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
-;; surfacing at the first LLM request.
+;; On self-hosted instances, an unknown policy stops boot rather than surfacing at the first LLM request.
 (defmethod startup/def-startup-validation! ::llm-allowed-networks [_]
   (llm-allowed-networks))
 
@@ -191,6 +192,10 @@
    (when-let [problem (llm-url-syntax-problem url)]
      (throw (url-not-allowed-ex problem (u.http/->hostname url))))
    (let [policy (network-policy floor)]
+     ;; Apache's connection operator skips the DNS resolver for IP literals.
+     (when (and (premium-features/is-hosted?) (u.http/ip-literal? (u.http/->hostname url)))
+       (when-let [problem (llm-url-problem policy url)]
+         (throw (url-not-allowed-ex problem (u.http/->hostname url)))))
      (if (u.http/jvm-proxied-url? url)
        ;; An operator who configured a JVM proxy put it between Metabase and everything, deliberately, so it is
        ;; trusted rather than judged by the policy -- which is also what makes a private egress proxy usable under

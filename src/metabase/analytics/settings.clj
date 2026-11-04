@@ -54,12 +54,19 @@
              (not (premium-features/airgap-enabled)))
     "https://product-analytics-ingestion.metabase.com/api/send"))
 
+(defn- collector-url
+  [setting-name]
+  ;; Cloud collectors belong to the deployment, including when a previous admin value is still stored.
+  (if (premium-features/is-hosted?)
+    (or (setting/env-var-value setting-name) (setting/default-value setting-name))
+    (setting/get-value-of-type :string setting-name)))
+
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
   :encryption :when-encryption-key-set
   ;; resolved per read rather than as `:default`, which is fixed at load time, before the token is known
   :getter     (fn []
-                (or (setting/get-value-of-type :string :metaplow-url)
+                (or (collector-url :metaplow-url)
                     (default-metaplow-url)))
   :visibility :public
   :audit      :never
@@ -82,6 +89,7 @@
                 "https://sp.metabase.com"
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
                 "http://localhost:9090")
+  :getter     #(collector-url :snowplow-url)
   :visibility :public
   :audit      :never
   :doc        false)

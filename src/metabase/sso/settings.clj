@@ -268,21 +268,24 @@
                   (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
 
 (defsetting oidc-allowed-networks
-  "What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'."
+  "Networks allowed for OIDC requests: external-only on Cloud; allow-all (default), allow-private or external-only
+  when self-hosted."
   :type :keyword
   :visibility :internal
   :default :allow-all
   :export? false
   :setter :none
   :doc (str "Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to "
-            "allow-all. Other values: external-only and allow-private")
+            "allow-all when self-hosted. Other values: external-only and allow-private. "
+            "Cloud always uses external-only.")
   :getter (fn []
-            (let [[env-var-name raw-value] (setting/env-var-source :oidc-allowed-networks)]
-              (or (u.http/env-network-policy env-var-name raw-value)
-                  :allow-all))))
+            (if (premium-features/is-hosted?)
+              :external-only
+              (let [[env-var-name raw-value] (setting/env-var-source :oidc-allowed-networks)]
+                (or (u.http/env-network-policy env-var-name raw-value)
+                    :allow-all)))))
 
-;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
-;; surfacing at the first login.
+;; On self-hosted instances, an unknown policy stops boot rather than surfacing at the first login.
 (defmethod startup/def-startup-validation! ::oidc-allowed-networks [_]
   (oidc-allowed-networks))
 
