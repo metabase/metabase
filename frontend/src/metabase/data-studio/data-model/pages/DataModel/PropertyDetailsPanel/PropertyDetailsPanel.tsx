@@ -7,6 +7,8 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   MISMATCH_HANDLINGS,
   type MismatchHandling,
@@ -91,16 +93,32 @@ export function PropertyDetailsPanel({
         isLoading={state.status === "loading"}
         onClose={onClose}
       />
-      {property && state.status === "loaded" ? (
-        <PropertyDetails
-          table={table}
-          property={property}
-          registry={state.registry}
-          resolved={resolved}
-        />
-      ) : (
-        <FieldDetailsSkeleton />
-      )}
+      {match(state)
+        .with({ status: "loading" }, () => <FieldDetailsSkeleton />)
+        .with({ status: "error" }, ({ error }) => (
+          <LoadingAndErrorWrapper loading={false} error={error} />
+        ))
+        .with({ status: "loaded" }, ({ registry }) =>
+          property ? (
+            <PropertyDetails
+              table={table}
+              property={property}
+              registry={registry}
+              resolved={resolved}
+            />
+          ) : (
+            <EmptyState
+              message={t`This table has no property called ${propertyName}.`}
+              spacing="sm"
+            />
+          ),
+        )
+        .otherwise(() => (
+          <EmptyState
+            message={t`This table has no property called ${propertyName}.`}
+            spacing="sm"
+          />
+        ))}
     </DetailPanel>
   );
 }
@@ -546,7 +564,9 @@ function MismatchAlert({
 }) {
   const typeLabel = getPropertyTypeLabel(property.inferredType);
   const share =
-    property.rowCount > 0 ? signal.nonConformingCount / property.rowCount : 0;
+    property.entityCount > 0
+      ? signal.nonConformingCount / property.entityCount
+      : 0;
   const isKeptAsText = property.onMismatch === "text";
   return (
     <Alert
@@ -557,9 +577,10 @@ function MismatchAlert({
     >
       <Stack gap="sm">
         <Group gap="xs">
-          {signal.exampleCounts.slice(0, 4).map(({ value, count }) => (
+          {signal.exampleCounts.slice(0, 4).map(({ value, entityCount }) => (
             <Code key={value}>
-              {value === "" ? t`(empty)` : value} · {count.toLocaleString()}
+              {value === "" ? t`(empty)` : value} ·{" "}
+              {entityCount.toLocaleString()}
             </Code>
           ))}
         </Group>
@@ -626,7 +647,6 @@ function MergedAlert({
 
 function TopValues({ property }: { property: RegistryProperty }) {
   const shownValues = property.topValues.slice(0, MAX_SHOWN_VALUES);
-  const maxCount = Math.max(0, ...shownValues.map(({ count }) => count));
   const driftSignal = property.signals.find(
     (signal) => signal.type === "type-drift",
   );
@@ -640,27 +660,32 @@ function TopValues({ property }: { property: RegistryProperty }) {
         {t`Most common values`}
       </Text>
       <DetailsTable>
-        {shownValues.map(({ value, count }) => (
-          <DetailsRow
-            key={value}
-            label={value === "" ? t`(empty)` : value}
-            value={
-              <Group gap="sm" wrap="nowrap" justify="space-between">
-                <Progress
-                  flex={1}
-                  size="sm"
-                  color={
-                    badValues.has(value) ? "feedback-warning" : "core-brand"
-                  }
-                  value={maxCount > 0 ? (count / maxCount) * 100 : 0}
-                />
-                <Text c="text-secondary" miw={48} ta="right">
-                  {count.toLocaleString()}
-                </Text>
-              </Group>
-            }
-          />
-        ))}
+        {shownValues.map(({ value, entityCount }) => {
+          // Share of the entities that have this property, not of all entities
+          const share =
+            property.entityCount > 0 ? entityCount / property.entityCount : 0;
+          return (
+            <DetailsRow
+              key={value}
+              label={value === "" ? t`(empty)` : value}
+              value={
+                <Group gap="sm" wrap="nowrap" justify="space-between">
+                  <Progress
+                    flex={1}
+                    size="sm"
+                    color={
+                      badValues.has(value) ? "feedback-warning" : "core-brand"
+                    }
+                    value={share * 100}
+                  />
+                  <Text c="text-secondary" ta="right" flex="0 0 auto">
+                    {`${formatShare(share)} · ${entityCount.toLocaleString()}`}
+                  </Text>
+                </Group>
+              }
+            />
+          );
+        })}
       </DetailsTable>
     </Stack>
   );

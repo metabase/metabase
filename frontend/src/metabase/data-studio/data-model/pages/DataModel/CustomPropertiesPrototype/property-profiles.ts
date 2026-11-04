@@ -372,9 +372,9 @@ export function getPropertySummaryDataset() {
 
 export function getPropertyValuesDataset() {
   return dataset(
-    ["custom_field_id", "value", "count"],
+    ["custom_field_id", "value", "entities"],
     PROPERTY_PROFILES.flatMap((profile) =>
-      profile.values.map(([value, count]) => [profile.id, value, count]),
+      profile.values.map(([value, entities]) => [profile.id, value, entities]),
     ).sort((a, b) => Number(b[2]) - Number(a[2])),
   );
 }

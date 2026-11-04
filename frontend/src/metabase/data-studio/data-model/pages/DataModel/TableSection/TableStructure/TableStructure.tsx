@@ -1,3 +1,5 @@
+import cx from "classnames";
+import { type ReactNode, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -23,6 +25,7 @@ import {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Badge,
+  Box,
   Button,
   Group,
   Pill,
@@ -30,6 +33,8 @@ import {
   Stack,
   Switch,
   Text,
+  Transition,
+  type TransitionProps,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -69,92 +74,110 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
     role,
     dataLayer: getTableDataLayer(table.db_id, table.schema, table.id).layer,
   });
+  const structureSectionRef = useRef<HTMLDivElement>(null);
+
+  // Leaves room below the Structure heading for the section that just appeared
+  const scrollStructureToTop = () => {
+    requestAnimationFrame(() => {
+      structureSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
 
   return (
     <>
-      <SidebarSection title={t`Structure`}>
-        <DetailsTable>
-          <DetailsRow
-            label={t`Role`}
-            value={
-              <RoleInput
-                structure={structure}
-                disabled={readOnly}
-                onChange={(role) => setTableRole(table, role)}
-              />
-            }
-          />
-          <DetailsRow
-            label={t`Each row is`}
-            value={
-              <DetailsEditableText
-                initialValue={structure.grainDescription}
-                placeholder={
-                  role ? getTableRoleRowDescription(role) : t`Describe one row`
-                }
-                isMultiline
-                isOptional
-                isDisabled={readOnly}
-                onChange={(value) => setGrainDescription(table, value.trim())}
-                data-testid="table-grain-description-input"
-              />
-            }
-          />
-          <DetailsRow
-            label={t`Grain`}
-            value={
-              <GrainFields table={table} grainFields={structure.grainFields} />
-            }
-          />
-          <DetailsRow
-            label={t`Row identity`}
-            value={getRowIdentityLabel(structure.rowIdentity)}
-          />
-          <DetailsRow
-            label={t`Main date`}
-            value={
-              <MainDateInput
-                fields={fields}
-                structure={structure}
-                disabled={readOnly}
-                onChange={(fieldId) => setMainDate(table, fieldId)}
-              />
-            }
-          />
-          <DetailsRow
-            label={t`Visibility`}
-            value={
-              hiddenReason ? (
-                <Text>{t`Hidden: ${hiddenReason}`}</Text>
-              ) : (
-                <Text>{t`Shown to people who can see its data layer`}</Text>
-              )
-            }
-          />
-          {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
+      <Box ref={structureSectionRef} className={S.structureSection}>
+        <SidebarSection title={t`Structure`}>
+          <DetailsTable>
             <DetailsRow
-              label={t`Period`}
+              label={t`Role`}
               value={
-                <Select
-                  aria-label={t`Period`}
-                  data={getPeriodGranularityOptions()}
-                  value={structure.periodGranularity}
-                  allowDeselect={false}
+                <RoleInput
+                  structure={structure}
                   disabled={readOnly}
-                  onChange={(value) => {
-                    const option = getPeriodGranularityOptions().find(
-                      (option) => option.value === value,
-                    );
-                    if (option) {
-                      setPeriodGranularity(table, option.value);
-                    }
-                  }}
+                  onChange={(role) => setTableRole(table, role)}
                 />
               }
             />
-          )}
-        </DetailsTable>
-      </SidebarSection>
+            <DetailsRow
+              label={t`Each row is`}
+              value={
+                <DetailsEditableText
+                  initialValue={structure.grainDescription}
+                  placeholder={
+                    role
+                      ? getTableRoleRowDescription(role)
+                      : t`Describe one row`
+                  }
+                  isMultiline
+                  isOptional
+                  isDisabled={readOnly}
+                  onChange={(value) => setGrainDescription(table, value.trim())}
+                  data-testid="table-grain-description-input"
+                />
+              }
+            />
+            <DetailsRow
+              label={t`Grain`}
+              value={
+                <GrainFields
+                  table={table}
+                  grainFields={structure.grainFields}
+                />
+              }
+            />
+            <DetailsRow
+              label={t`Row identity`}
+              value={getRowIdentityLabel(structure.rowIdentity)}
+            />
+            <DetailsRow
+              label={t`Main date`}
+              value={
+                <MainDateInput
+                  fields={fields}
+                  structure={structure}
+                  disabled={readOnly}
+                  onChange={(fieldId) => setMainDate(table, fieldId)}
+                />
+              }
+            />
+            <DetailsRow
+              label={t`Visibility`}
+              value={
+                hiddenReason ? (
+                  <Text>{t`Hidden: ${hiddenReason}`}</Text>
+                ) : (
+                  <Text>{t`Shown to people who can see its data layer`}</Text>
+                )
+              }
+            />
+            {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
+              <DetailsRow
+                label={t`Period`}
+                value={
+                  <Select
+                    aria-label={t`Period`}
+                    data={getPeriodGranularityOptions()}
+                    value={structure.periodGranularity}
+                    allowDeselect={false}
+                    disabled={readOnly}
+                    onChange={(value) => {
+                      const option = getPeriodGranularityOptions().find(
+                        (option) => option.value === value,
+                      );
+                      if (option) {
+                        setPeriodGranularity(table, option.value);
+                      }
+                    }}
+                  />
+                }
+              />
+            )}
+          </DetailsTable>
+        </SidebarSection>
+      </Box>
 
       {role && isRoleA(role, "role/HistoryDimension") && (
         <HistoryBindingSection
@@ -165,16 +188,73 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
         />
       )}
 
-      {role && isRoleA(role, "role/CustomPropertyTable") && (
+      <RevealTransition
+        key={table.id}
+        mounted={role != null && isRoleA(role, "role/CustomPropertyTable")}
+        onReveal={scrollStructureToTop}
+      >
         <CustomPropertiesSection
           table={table}
           disabled={readOnly}
           onChange={(eav) => setEavBinding(table, eav)}
         />
-      )}
+      </RevealTransition>
 
       <EntityCustomPropertiesSection table={table} />
     </>
+  );
+}
+
+const REVEAL_TRANSITION = {
+  in: { opacity: 1, transform: "translateY(0)" },
+  out: { opacity: 0, transform: "translateY(-0.5rem)" },
+  transitionProperty: "opacity, transform",
+} satisfies TransitionProps["transition"];
+
+const REVEAL_DURATION_MS = 250;
+
+/**
+ * Fades and slides its content in, then briefly highlights it, when `mounted`
+ * turns true. Content that's mounted from the start appears without animating
+ * and doesn't call `onReveal`.
+ */
+function RevealTransition({
+  mounted,
+  onReveal,
+  children,
+}: {
+  mounted: boolean;
+  onReveal?: () => void;
+  children: ReactNode;
+}) {
+  const [isHighlighted, setIsHighlighted] = useState(false);
+
+  return (
+    <Transition
+      mounted={mounted}
+      transition={REVEAL_TRANSITION}
+      duration={REVEAL_DURATION_MS}
+      timingFunction="ease-out"
+      onEnter={() => {
+        setIsHighlighted(true);
+        onReveal?.();
+      }}
+      onExited={() => setIsHighlighted(false)}
+    >
+      {(style) => (
+        <Box
+          style={style}
+          className={cx(S.reveal, { [S.highlighted]: isHighlighted })}
+          onAnimationEnd={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsHighlighted(false);
+            }
+          }}
+        >
+          {children}
+        </Box>
+      )}
+    </Transition>
   );
 }
 

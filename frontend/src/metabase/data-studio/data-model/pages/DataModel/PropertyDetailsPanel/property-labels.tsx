@@ -62,13 +62,6 @@ export function getPropertyIcon(
 
 export const formatShare = (share: number) => `${Math.round(share * 100)}%`;
 
-export function getPropertyTypeDescription(property: RegistryProperty) {
-  const typeLabel = getPropertyTypeLabel(property.type);
-  return property.semanticType
-    ? `${typeLabel} · ${getPropertySemanticTypeLabel(property.semanticType)}`
-    : typeLabel;
-}
-
 export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
   return match(signal)
     .with({ type: "undefined" }, () => (

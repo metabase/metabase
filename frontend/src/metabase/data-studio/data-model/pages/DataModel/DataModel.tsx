@@ -84,8 +84,6 @@ function DataModelContent() {
     hasSelectedMoreThanOneTable,
     resetSelection,
   } = useSelection();
-  const { selectedPropertyName, setSelectedPropertyName } =
-    usePropertySelection();
   const parsedParams = parseRouteParams(params);
   const {
     databaseId,
@@ -119,6 +117,8 @@ function DataModelContent() {
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const isLoadingTable = isFetchingTable && table == null;
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const { selectedPropertyName, setSelectedPropertyName } =
+    usePropertySelection(table?.id);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =

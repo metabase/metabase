@@ -1,13 +1,17 @@
 import { type ReactNode, createContext, useContext, useState } from "react";
 
-type PropertySelection = {
-  selectedPropertyName: string | null;
-  setSelectedPropertyName: (propertyName: string | null) => void;
+import type { TableId } from "metabase-types/api";
+
+type SelectedProperty = { tableId: TableId; propertyName: string };
+
+type PropertySelectionState = {
+  selectedProperty: SelectedProperty | null;
+  setSelectedProperty: (selectedProperty: SelectedProperty | null) => void;
 };
 
-const PropertySelectionContext = createContext<PropertySelection>({
-  selectedPropertyName: null,
-  setSelectedPropertyName: () => undefined,
+const PropertySelectionContext = createContext<PropertySelectionState>({
+  selectedProperty: null,
+  setSelectedProperty: () => undefined,
 });
 
 export function PropertySelectionProvider({
@@ -15,18 +19,35 @@ export function PropertySelectionProvider({
 }: {
   children: ReactNode;
 }) {
-  const [selectedPropertyName, setSelectedPropertyName] = useState<
-    string | null
-  >(null);
+  const [selectedProperty, setSelectedProperty] =
+    useState<SelectedProperty | null>(null);
   return (
     <PropertySelectionContext.Provider
-      value={{ selectedPropertyName, setSelectedPropertyName }}
+      value={{ selectedProperty, setSelectedProperty }}
     >
       {children}
     </PropertySelectionContext.Provider>
   );
 }
 
-export function usePropertySelection() {
-  return useContext(PropertySelectionContext);
+/**
+ * The property selected in `tableId`'s Properties tab. A selection made on
+ * another table reads as none, so switching tables doesn't carry it over.
+ */
+export function usePropertySelection(tableId: TableId | undefined) {
+  const { selectedProperty, setSelectedProperty } = useContext(
+    PropertySelectionContext,
+  );
+  return {
+    selectedPropertyName:
+      tableId != null && selectedProperty?.tableId === tableId
+        ? selectedProperty.propertyName
+        : null,
+    setSelectedPropertyName: (propertyName: string | null) =>
+      setSelectedProperty(
+        tableId != null && propertyName != null
+          ? { tableId, propertyName }
+          : null,
+      ),
+  };
 }
