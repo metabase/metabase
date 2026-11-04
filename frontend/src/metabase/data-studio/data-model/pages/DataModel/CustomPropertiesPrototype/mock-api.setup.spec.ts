@@ -16,11 +16,18 @@ import type {
   GetFieldValuesResponse,
 } from "metabase-types/api";
 import {
+  createMockNativeCard,
+  createMockNativeDatasetQuery,
   createMockSettings,
   createMockTokenFeatures,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import { isObject } from "metabase-types/guards";
+
+import {
+  SUGGESTED_TRANSFORM_CARD_ID,
+  readSuggestedTransform,
+} from "../TableSection/CustomProperties/suggested-transform";
 
 type SetupMockApiOpts = {
   database: Database;
@@ -51,10 +58,26 @@ export function setupMockApi({
   setupFieldsValuesEndpoints(fieldValues);
   const settings = createMockSettings({
     "token-features": createMockTokenFeatures(),
+    "transforms-enabled": true,
+    "transforms-setup-complete": true,
   });
   window.MetabaseBootstrap = settings;
   setupPropertiesEndpoints(settings);
   fetchMock.post("path:/api/frontend-errors", 200);
+  fetchMock.get(`path:/api/card/${SUGGESTED_TRANSFORM_CARD_ID}`, () => {
+    const suggestion = readSuggestedTransform();
+    return suggestion == null
+      ? { status: 404 }
+      : createMockNativeCard({
+          id: SUGGESTED_TRANSFORM_CARD_ID,
+          name: suggestion.name,
+          database_id: suggestion.databaseId,
+          dataset_query: createMockNativeDatasetQuery({
+            database: suggestion.databaseId,
+            native: { query: suggestion.sql, "template-tags": {} },
+          }),
+        });
+  });
   fetchMock.post("path:/api/dataset", async ({ options }) => {
     const body: unknown = JSON.parse(String(options.body ?? "{}"));
     const query = isObject(body) ? body.query : null;

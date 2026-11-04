@@ -434,12 +434,12 @@ function PropertyTypeInput({
           .with(
             "definition",
             () =>
-              t`From ${typeColumn ?? t`the definitions`}: ${declaredType ?? ""}. Values are stored as text and cast when queried.`,
+              t`From ${typeColumn ?? t`the definitions`}: ${declaredType ?? ""}. Values are stored as text.`,
           )
           .with("values", () =>
             declaredType == null && property.definition != null
               ? t`Its definition has no type, so it's inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}.`
-              : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text and cast when queried.`,
+              : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text.`,
           )
           .with(
             "admin",
@@ -543,7 +543,7 @@ function SignalAlert({
       >
         <Stack gap="sm">
           <Text>
-            {t`Most of its values match ${propertyLabel}'s in other casing, and they're on different ${noun.plural}. Merging shows both as one ${propertyLabel} column. You can undo it.`}
+            {t`Most of its values match ${propertyLabel}'s in other casing, and they're on different ${noun.plural}. Merging treats them as one ${propertyLabel} property in checks and the suggested transform. You can undo it.`}
           </Text>
           <Group gap="sm">
             <Button

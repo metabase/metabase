@@ -44,25 +44,21 @@ export function GeneratedChecksSummary({
 
   return (
     <Stack gap="xs" py="xs" data-testid="generated-checks-summary">
-      <Group gap="xs" wrap="nowrap">
-        <Icon
-          name={failingCount > 0 ? "warning" : "check"}
-          c={failingCount > 0 ? "feedback-warning" : "feedback-positive"}
-        />
-        <Text>
-          {ngettext(
-            msgid`${checks.length} check from this table's metadata`,
-            `${checks.length} checks from this table's metadata`,
-            checks.length,
-          )}
-          {failingCount > 0 && (
-            <Text span c="text-secondary">
-              {" · "}
-              {t`${failingCount} failing`}
-            </Text>
-          )}
-        </Text>
-      </Group>
+      <Text>
+        {ngettext(
+          msgid`${checks.length} check from this table's metadata`,
+          `${checks.length} checks from this table's metadata`,
+          checks.length,
+        )}
+        {" · "}
+        {failingCount > 0 ? (
+          <Text span fw="bold" c="feedback-warning">
+            {t`${failingCount} failing`}
+          </Text>
+        ) : (
+          <Text span c="text-secondary">{t`all passing`}</Text>
+        )}
+      </Text>
       <Button
         size="compact-sm"
         variant="subtle"

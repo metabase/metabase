@@ -62,7 +62,7 @@ export function CustomPropertiesSection({
   return (
     <SidebarSection title={getCustomPropertiesTitle(resolved.entityTable)}>
       <Text size="sm" c="text-secondary">
-        {t`Each row is one custom property value of a ${noun.singular}, read as a column of ${noun.plural}.`}
+        {t`Each row is one custom property value of a ${noun.singular}.`}
       </Text>
       <RecognitionPreview table={table} resolved={resolved} />
       <DetailsTable>

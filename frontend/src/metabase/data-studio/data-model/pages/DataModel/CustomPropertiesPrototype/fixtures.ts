@@ -356,6 +356,7 @@ export function createWarehouse(): Database {
     id: WAREHOUSE_ID,
     name: "Warehouse",
     engine: "postgres",
+    transforms_permissions: "write",
     tables,
   });
 }
