@@ -14,12 +14,10 @@
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.driver.sql.query-processor.format :as sql.qp.format]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -2132,8 +2130,6 @@
     honeysql-form
     (query->keys-in-application-order inner-query))))
 
-(declare apply-clauses)
-
 (defn needs-cte-for-duplicate-cols?
   "Determines if the source query has ambiguous columns names"
   [source-metadata]
@@ -2145,64 +2141,6 @@
          (every? string? desired-aliases)
          (> (count source-aliases) 1)
          (not (apply distinct? source-aliases)))))
-
-(defn- resolve-persisted-source-sql
-  "If `source-query` came from a card with a valid persisted cache, independently look up the cache from the metadata
-  provider and return the native SQL. Returns nil if no cache exists, or if persisted cache use has been disabled for
-  this query (e.g. due to sandboxing or connection impersonation — see
-  [[metabase.query-processor.middleware.persistence/substitute-persisted-query]])."
-  [source-query]
-  (when-not (:qp/skip-persisted-cache source-query)
-    (when-let [card-id (:qp/stage-is-from-source-card source-query)]
-      (let [mp   (driver-api/metadata-provider)
-            card (lib.metadata.protocols/card mp card-id)]
-        (when-let [persisted-info (:lib/persisted-info card)]
-          (when (qp.persisted/can-substitute? card persisted-info)
-            (qp.persisted/persisted-info-native-query
-             (:id (lib.metadata.protocols/database mp))
-             persisted-info)))))))
-
-(defn- apply-source-query
-  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
-  column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
-  are aliased as `__mb_source`."
-  [driver honeysql-form {{:keys [native params] :as source-query} :source-query
-                         source-metadata :source-metadata}]
-  (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
-        persisted-sql (resolve-persisted-source-sql source-query)
-        source-clause (cond
-                        persisted-sql
-                        (sql-source-query persisted-sql nil)
-
-                        native
-                        (sql-source-query native params)
-
-                        :else
-                        (apply-clauses driver {} source-query))
-        desired-aliases (mapv :lib/desired-column-alias source-metadata)]
-    (merge
-     honeysql-form
-     (if (needs-cte-for-duplicate-cols? source-metadata)
-       ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
-       ;; This is ok since we control the alias.
-       {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
-                source-clause]]
-        :from [[table-alias]]}
-       {:from [[source-clause [table-alias]]]}))))
-
-(defn- apply-clauses
-  "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way
-  because it is aliased."
-  [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*inner-query* inner-query]
-    (if source-query
-      (apply-top-level-clauses
-       driver
-       (apply-source-query driver honeysql-form inner-query)
-       inner-query
-       ;; don't try to do anything with the source query recursively.
-       (remove (partial = :source-query)))
-      (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (defmulti apply-cte-hoist?
   "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
@@ -2268,16 +2206,30 @@
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
 
+(defn- stage-column-list
+  "The column list of the `WITH` that wraps `stage`, renaming its columns by position to the desired aliases of its
+  `:lib/stage-metadata`, or nil if the stage needs none.
+
+  Only a native stage needs one: its SQL can return duplicate column names, and its stage metadata is the only
+  description of its columns. An MBQL stage already selects its columns under unique aliases, and saved metadata need
+  not match what it selects, so applying those names by position would put them on the wrong columns. (A persisted
+  model's stage is MBQL but compiles to its cache table, which was created with the stage's own aliases.)"
+  [stage]
+  (let [columns-metadata (get-in stage [:lib/stage-metadata :columns])]
+    (when (and (= (:lib/type stage) :mbql.stage/native)
+               (needs-cte-for-duplicate-cols? columns-metadata))
+      {:columns (mapv desired-col-alias-ident columns-metadata)})))
+
 (defn- stage-source-form
   [driver hsql stage]
-  (let [table-alias      (->honeysql driver (h2x/identifier :table-alias source-query-alias))
-        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
+  (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        column-list (stage-column-list stage)]
     (cond
       (nil? hsql)
       {}
 
-      (needs-cte-for-duplicate-cols? columns-metadata)
-      {:with [[[source-query-alias {:columns (mapv desired-col-alias-ident columns-metadata)}]
+      column-list
+      {:with [[[source-query-alias column-list]
                hsql]]
        :from [[table-alias]]}
 
@@ -2332,10 +2284,10 @@
   "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
   Applies the fix for duplicate column names similar to `stage-source-form`."
   [level stage-idx hsql stage]
-  (let [cte-name         (stage-cte-name level stage-idx)
-        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
-    (if (needs-cte-for-duplicate-cols? columns-metadata)
-      [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
+  (let [cte-name    (stage-cte-name level stage-idx)
+        column-list (stage-column-list stage)]
+    (if column-list
+      [[cte-name column-list] hsql]
       [cte-name hsql])))
 
 (defn- stages->honeysql-ctes

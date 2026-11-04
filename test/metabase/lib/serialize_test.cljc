@@ -193,7 +193,6 @@
   {:qp/stage-is-from-source-card      1
    :qp/stage-had-source-card          1
    :qp/added-implicit-fields?         true
-   :qp/skip-persisted-cache           true
    :qp.pivot/forced-shape             :union-all
    :persisted-info/native             "SELECT * FROM cache_1"
    :source-query/model?               true
