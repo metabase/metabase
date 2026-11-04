@@ -643,7 +643,7 @@
     ;; admins can't give a password to a user who signs in only through an enabled SSO provider; that would let them
     ;; log in as that user while bypassing the provider.
     (when api/*is-superuser?*
-      (api/check-404 (not (sso/sso-only-user? id (:sso_source user)))))
+      (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user)))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -687,7 +687,7 @@
   (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
-    (api/check-404 (not (sso/sso-only-user? id (:sso_source user))))
+    (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated

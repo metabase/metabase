@@ -6,6 +6,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.sso.db :as sso.db]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.default-implementation :as ldap.impl]
+   [metabase.sso.ldap.settings :as ldap.settings]
    [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -66,10 +69,20 @@
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
      (sync-group-memberships*! user-or-id to-remove to-add))))
 
+(mu/defn ldap-directory-user :- [:maybe ldap.impl/UserInfo]
+  "The directory entry of `username` when LDAP is enabled and its directory finds `username`, or nil, also when the
+  lookup fails."
+  [username :- :string]
+  (when (ldap.settings/ldap-enabled)
+    (u/ignore-exceptions (ldap/find-user username))))
+
 (mu/defn sso-only-user? :- :boolean
-  "Whether the User with `user-id` and `sso-source` signs in through an enabled SSO provider and has no used password."
+  "Whether the User with `user-id`, `email` and `sso-source` signs in only through SSO: their LDAP directory finds them,
+  or their SSO provider is enabled and they have no used password."
   [user-id    :- ::lib.schema.id/user
+   email      :- :string
    sso-source :- [:maybe [:or :keyword :string]]]
-  (boolean (and (some? sso-source)
-                (sso.settings/sso-source-enabled? sso-source)
-                (not (sso.db/used-password-exists? user-id)))))
+  (boolean (or (ldap-directory-user email)
+               (and (some? sso-source)
+                    (sso.settings/sso-source-enabled? sso-source)
+                    (not (sso.db/used-password-exists? user-id))))))

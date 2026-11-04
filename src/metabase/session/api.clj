@@ -83,7 +83,7 @@
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
-  (when-let [{:keys [dn]} (and (sso/ldap-enabled) (u/ignore-exceptions (sso/find-user username)))]
+  (when-let [{:keys [dn]} (sso/ldap-directory-user username)]
     (call-with-failure-throttling
      [[(login-throttlers :ldap-account) (u/lower-case-en dn)]]
      (fn []
@@ -336,8 +336,8 @@
                (session.db/user-by-email email)]
       (cond
         ;; SSO users without a used password should use their SSO provider, not password reset.
-        (sso/sso-only-user? user-id sso-source)
-        (messages/send-password-reset-email! email sso-source nil is-active?)
+        (sso/sso-only-user? user-id email sso-source)
+        (messages/send-password-reset-email! email (or sso-source :ldap) nil is-active?)
 
         ;; Support-access users get a refreshed token bound to the grant.
         ;; If the grant has expired, refresh-support-access-token! returns nil and we silently

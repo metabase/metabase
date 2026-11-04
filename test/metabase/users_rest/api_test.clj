@@ -14,6 +14,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
    [metabase.session.models.session :as session]
+   [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -2217,6 +2218,22 @@
               (mt/user-http-request :crowberto :put (if (= 200 expected-status) 204 404)
                                     (format "user/%d/password" user-id)
                                     {:password "newPassword12!!"}))))))))
+
+(deftest ldap-user-password-reset-url-test
+  (testing "admin can create reset link for LDAP user with used password only when directory lacks them"
+    (ldap.test/with-ldap-server!
+      (doseq [[email expected-status] [["sally.brown@metabase.com" 404]
+                                       ["removed-ldap-user@metabase.com" 200]]]
+        (testing email
+          (mt/with-temp [:model/User {user-id :id} {:email email :sso_source "ldap"}
+                         :model/AuthIdentity _ {:user_id      user-id
+                                                :provider     "password"
+                                                :credentials  {:plaintext_password "somePassword12!!"}
+                                                :last_used_at (t/offset-date-time)}]
+            (mt/user-http-request :crowberto :post expected-status (format "user/%d/password-reset-url" user-id))
+            (mt/user-http-request :crowberto :put (if (= 200 expected-status) 204 404)
+                                  (format "user/%d/password" user-id)
+                                  {:password "newPassword12!!"})))))))
 
 (deftest has-password-test
   (testing "GET /api/user and GET /api/user/:id report to admins whether user has used password"
