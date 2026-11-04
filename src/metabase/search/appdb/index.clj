@@ -39,11 +39,7 @@
 ;; The active and pending index tables. Writers hold its slot lock, since they read the database between the read and
 ;; the write.
 (def ^:private indexes-component
-  (system/mutable-component-handle ::indexes))
-
-;; Reloading this namespace leaves the tracked tables alone.
-(when-not (mc/root-entry indexes-component)
-  (mc/alter-root indexes-component {:active nil, :pending nil}))
+  (system/mutable-component-handle ::indexes (constantly {:active nil, :pending nil})))
 
 (defn indexes-handle
   "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the tracked index tables."
@@ -194,7 +190,8 @@
       (or (pending-table)
           (let [table-name (gen-table-name)]
             (create-table! table-name)
-            (mc/swap! indexes-component assoc :pending table-name) table-name))
+            (mc/swap! indexes-component assoc :pending table-name)
+            table-name))
       ;; The database is the source of truth
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (or pending
@@ -234,14 +231,15 @@
       (boolean
        (when-let [pending (:pending @indexes-component)]
          (analyze-table! pending)
-         (mc/reset! indexes-component {:pending nil, :active pending}) true))
+         (mc/reset! indexes-component {:pending nil, :active pending})
+         true))
       ;; Ensure the metadata is updated and pruned.
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
           (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
-            (mc/reset! indexes-component {:pending nil :active active})
+            (mc/reset! indexes-component {:pending nil, :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
         (delete-obsolete-tables!)
