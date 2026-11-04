@@ -165,7 +165,8 @@
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (mu/with-api-error-message
-   [:fn (fn [x]
+   [:fn {:json-schema {:type "string"}}
+    (fn [x]
           ((every-pred
             string?
             (complement #(boolean (re-find #"^\s+" %)))

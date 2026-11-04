@@ -17,7 +17,7 @@
    [toucan2.core :as t2]))
 
 (mr/def ::string-or-18n-string
-  [:or :string [:fn {:error/message "localized string"} i18n/localized-string?]])
+  [:or :string [:fn {:error/message "localized string", :json-schema {:type "string"}} i18n/localized-string?]])
 
 (mr/def ::related-keys
   "What [[metabase.xrays.related]] and the candidate-table ranking pin on an entity they return."

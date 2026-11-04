@@ -37,7 +37,8 @@
       (lib/aggregate (lib/count))
       ;; lib generates "internal MBQL"; can't have integer :table/:database
       (assoc-in [:stages 0 :source-table] ["hello" "schema" "tbl"])
-      (assoc :database "my-db")))
+      (assoc :database "my-db")
+      (dissoc :lib/metadata)))
 
 (deftest ^:parallel fix-json-schema-test
   (let [schema-map (js/make-schema)

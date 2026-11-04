@@ -27,13 +27,56 @@
   [:map {:closed true}
    [:definitions-path {:optional true} :string]])
 
-(defn- collapse-branches
-  "Drop the empty branches malli emits for `:fn` schemas, and unwrap a branching node that has one branch left."
+(def ^:private annotation-keys
+  "The keys of a JSON Schema node that describe it without constraining what it accepts."
+  [:description :title :default :examples])
+
+(defn- empty-schema?
+  "Whether the JSON Schema `node` accepts anything."
+  [node]
+  (and (map? node) (empty? (apply dissoc node annotation-keys))))
+
+(defn- never-schema?
+  "Whether the JSON Schema `node` accepts nothing."
+  [node]
+  (and (map? node) (= {:not {}} (apply dissoc node annotation-keys))))
+
+(defn- declared?
+  "Whether the JSON Schema `node` comes from a schema that spells its JSON Schema itself, or from `:any`."
+  [node]
+  (::declared (meta node)))
+
+(defn- unwrap-branch
+  "Merge the one branch left of the branching node `schema` into it, keeping whether either was declared."
   [schema k]
-  (let [schema (update schema k (partial remove mp/empty?))]
-    (case (count (k schema))
-      1 (merge (dissoc schema k) (first (k schema)))
-      0 (dissoc schema k)
+  (let [branch (first (k schema))]
+    (with-meta (merge (dissoc schema k) branch)
+               (merge (meta schema) (select-keys (meta branch) [::declared])))))
+
+(defn- collapse-branches
+  "Drop the conjuncts that accept anything and the alternatives that accept nothing, and unwrap a branching node that
+  has one branch left."
+  [schema k]
+  (let [schema (cond-> schema
+                 (= k :allOf)
+                 (update k (partial remove empty-schema?))
+
+                 (and (= k :anyOf) (mp/some (complement never-schema?) (k schema)))
+                 (update k (partial remove never-schema?)))]
+    (cond
+      (mp/some #(and (empty-schema? %) (declared? %)) (k schema))
+      (vary-meta (dissoc schema k) assoc ::declared true)
+
+      (and (seq (k schema)) (mp/every? empty-schema? (k schema)))
+      (dissoc schema k)
+
+      (= 1 (count (k schema)))
+      (unwrap-branch schema k)
+
+      (empty? (k schema))
+      (dissoc schema k)
+
+      :else
       schema)))
 
 (defn- stringify [required]
@@ -86,6 +129,36 @@
            (map? (:not node))                  (update :not walk)
            (map? (:if node))                   (update :if walk)
            (map? (:then node))                 (update :then walk))))))
+
+(defn- subschemas
+  "The subschemas of the JSON Schema `node`."
+  [node]
+  (concat (vals (:properties node))
+          (vals (:definitions node))
+          (let [items (:items node)]
+            (cond (map? items) [items] (sequential? items) items))
+          (:prefixItems node)
+          (filter map? [(:additionalProperties node) (:not node) (:if node) (:then node)])
+          (:anyOf node)
+          (:allOf node)
+          (:oneOf node)))
+
+(defn- undeclared-empty-schemas
+  "The malli forms of the subschemas of `node` that accept anything without saying so with `:json-schema`."
+  [node]
+  (cond
+    (not (map? node))    nil
+    (declared? node)     nil
+    (empty-schema? node) [(::form (meta node))]
+    :else                (mapcat undeclared-empty-schemas (subschemas node))))
+
+(defn- check-empty-schemas!
+  [json-schema]
+  (when-let [forms (seq (distinct (undeclared-empty-schemas json-schema)))]
+    (throw (ex-info (str "These schemas compile to a JSON Schema that accepts anything; give each a :json-schema property: "
+                         (pr-str forms))
+                    {:forms forms})))
+  json-schema)
 
 (defn- update-schema-fields [definitions-path node]
   (if (map? node)
@@ -145,24 +218,43 @@
   (#'mjs/-json-schema-walker schema path children options))
 
 (defn- registered-schema
-  "Refer to a schema registered by keyword, which malli splices into a sequence schema when it is one itself."
+  "Refer to a registered schema, splicing it into a sequence schema when it is one, as malli does, and inlining it when
+  it accepts anything without saying so, so that an `:and` drops it as it drops an inline `:fn`."
   [schema path children options]
   (let [json-schema (malli-walker schema path children options)
-        definition  (some->> (:$ref json-schema) (ref-definition (::mjs/definitions-path options)))]
-    (if-let [segs (some-> (get @(::mjs/definitions options) definition) meta ::segments)]
-      (with-meta json-schema {::segments segs})
+        definitions (::mjs/definitions options)
+        path        (::mjs/definitions-path options)
+        name        (some->> (:$ref json-schema) (ref-definition path))
+        definition  (some->> (get @definitions name) (postwalk-schemas (partial update-schema-fields path)))]
+    (cond
+      (and (empty-schema? definition) (not (declared? definition)))
+      (do (swap! definitions dissoc name)
+          definition)
+
+      (::segments (meta definition))
+      (with-meta json-schema {::segments (::segments (meta definition))})
+
+      :else
       json-schema)))
+
+(defn- default-schema
+  "Compile `schema` as malli does, declared when it accepts anything because a child it wraps says so."
+  [schema path children items options]
+  (let [json-schema (malli-walker schema path children options)]
+    (cond-> json-schema
+      (and (empty-schema? json-schema) (mp/some declared? items)) (vary-meta assoc ::declared true))))
 
 (defn- walker
   "Like malli's own JSON Schema walker, but compile its sequence schemas, which malli leaves empty."
   [schema path children options]
   (let [properties (mc/properties schema)
         items      (map entry-schema children)]
-    (if (:json-schema properties)
-      (malli-walker schema path children options)
-      (into (case (mc/type schema)
+    (vary-meta
+     (if (or (:json-schema properties) (= :any (mc/type schema)))
+       (vary-meta (malli-walker schema path children options) assoc ::declared true)
+       (into (case (#(if (= 'some? %) :some %) (mc/type schema))
               ::mc/val     (first items)
-              ::mc/schema  (registered-schema schema path children options)
+              (::mc/schema :ref) (registered-schema schema path children options)
               (:cat :catn) (sequence-schema (into [] (mapcat segments) items))
               (:alt :altn) (sequence-schema [{:item (when-not (mp/some (comp ::segments meta) items)
                                                       {:anyOf (vec items)})
@@ -172,8 +264,14 @@
               :*           (repeat-schema (first items) 0 nil)
               :+           (repeat-schema (first items) 1 nil)
               :repeat      (repeat-schema (first items) (:min properties 0) (:max properties))
-              (malli-walker schema path children options))
-            (mjs/select properties)))))
+              :some        {:not {:type "null"}}
+              :time/local-date          {:type "string" :format "date"}
+              :time/offset-date-time    {:type "string" :format "date-time"}
+              (:time/local-time :time/offset-time :time/local-date-time :time/zoned-date-time :time/instant)
+              {:type "string"}
+              (default-schema schema path children items options))
+            (mjs/select properties)))
+     #(merge {::form (mc/form schema)} %))))
 
 (defn- walk [schema options]
   (mc/walk schema walker options))
@@ -192,7 +290,7 @@
                       ::mjs/transform         walk}
          json-schema (cond-> (walk schema options)
                        (seq @definitions) (assoc :definitions (mp/update-keys @definitions definition-name)))]
-     (postwalk-schemas (partial update-schema-fields definitions-path) json-schema))))
+     (check-empty-schemas! (postwalk-schemas (partial update-schema-fields definitions-path) json-schema)))))
 
 (defn- branch-tag
   "The constant first item of the array schema `branch` resolves to through `definitions`, if there is one."

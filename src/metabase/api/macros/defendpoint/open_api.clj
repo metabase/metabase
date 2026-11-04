@@ -58,6 +58,7 @@
                      (m/update-existing :oneOf #(mapv fix-nested %))
                      (m/update-existing :anyOf #(mapv fix-nested %))
                      (m/update-existing :allOf #(mapv fix-nested %))
+                     (m/update-existing :not fix-nested)
                      (m/update-existing :additionalProperties (fn [additional-properties]
                                                                 (cond-> additional-properties
                                                                   (map? additional-properties) fix-nested))))]
@@ -130,7 +131,8 @@
       (map? (:additionalProperties schema)) (update :additionalProperties normalize-raw-json-schema)
       (:oneOf schema)                 (update :oneOf (partial mapv normalize-raw-json-schema))
       (:anyOf schema)                 (update :anyOf (partial mapv normalize-raw-json-schema))
-      (:allOf schema)                 (update :allOf (partial mapv normalize-raw-json-schema)))))
+      (:allOf schema)                 (update :allOf (partial mapv normalize-raw-json-schema))
+      (:not schema)                   (update :not normalize-raw-json-schema))))
 
 (defn- mjs-collect-definitions
   "We transform json-schema in a few different places, but we need to collect all definitions in a single one."

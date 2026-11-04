@@ -1,6 +1,7 @@
 (ns metabase.util.malli.json-schema-test
   (:require
    [clojure.test :refer :all]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.json-schema :as mu.json-schema]
    [metabase.util.malli.registry :as mr]))
 
@@ -63,3 +64,28 @@
                       {:if {:prefixItems [{:const "a"}]} :then {:type "array" :prefixItems [{:const "a"} {:type "integer"}] :items false :minItems 2}}
                       {:if {:prefixItems [{:const "b"}]} :then {:type "array" :prefixItems [{:const "b"} {:type "string"}] :items false :minItems 2}}]}
              schema)))))
+
+(deftest ^:parallel empty-schema-test
+  (testing "schemas that compile to a JSON Schema accepting anything must say so"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"accepts anything"
+                          (mu.json-schema/transform [:fn odd?])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"accepts anything"
+                          (mu.json-schema/transform [:or :int [:fn odd?]])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"accepts anything"
+                          (mu.json-schema/transform [:map [:n [:fn odd?]]]))))
+  (testing "a :json-schema property says what the schema accepts"
+    (is (= {:type "integer"} (mu.json-schema/transform [:fn {:json-schema {:type "integer"}} odd?]))))
+  (testing "refinements of a schema with a shape only narrow it"
+    (is (= {:type "integer"} (mu.json-schema/transform [:and :int [:fn odd?]]))))
+  (testing ":any accepts anything on purpose"
+    (is (= {} (mu.json-schema/transform :any)))
+    (is (= {:type "array" :items {}} (mu.json-schema/transform [:sequential :any]))))
+  (testing ":some accepts anything but null"
+    (is (= {:not {:type "null"}} (mu.json-schema/transform :some)))))
+
+(deftest ^:parallel never-test
+  (testing "never accepts nothing"
+    (is (= {:type "object" :properties {"n" {:not {}}} :required ["n"]}
+           (mu.json-schema/transform [:map [:n (mu/never)]]))))
+  (testing "alternatives that accept nothing are dropped"
+    (is (= {:type "integer"} (mu.json-schema/transform [:or :int (mu/never)])))))
