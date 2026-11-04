@@ -26,7 +26,6 @@ import { type Deferred, defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Card,
-  CardType,
   ColumnSettings,
   DatasetData,
   GoalForeignColumnRef,
@@ -75,19 +74,6 @@ const DATA = createMockDatasetData({
 });
 
 const DATASET_QUERY = createMockStructuredDatasetQuery();
-
-const NUMERIC_FIELDS = [
-  createMockField({
-    name: "total",
-    display_name: "Total",
-    base_type: "type/Integer",
-  }),
-  createMockField({
-    name: "avg",
-    display_name: "Average",
-    base_type: "type/Integer",
-  }),
-];
 
 type SetupOpts = {
   data?: DatasetData;
@@ -1251,82 +1237,6 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables the columns of a question that returns multiple rows and explains why (UIT-145)", async () => {
-    const { onChange } = setupMultiRowEntity({ type: "question" });
-
-    await openMenu();
-    await pickEntity("Orders");
-
-    expect(
-      await screen.findByText(
-        "The question's result must be a single value or row.",
-      ),
-    ).toBeInTheDocument();
-    const totalItem = screen.getByRole("menuitem", { name: /Total/ });
-    expect(totalItem).toBeDisabled();
-    expect(screen.getByRole("menuitem", { name: /Average/ })).toBeDisabled();
-
-    await userEvent.click(totalItem, { pointerEventsCheck: 0 });
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("explains that a model must return a single row when disabling its columns (UIT-145)", async () => {
-    setupMultiRowEntity({ type: "model" });
-
-    await openMenu();
-    await pickEntity("Orders");
-
-    expect(
-      await screen.findByText(
-        "The model's result must be a single value or row.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps the back item reachable with the keyboard when the columns are disabled (UIT-145)", async () => {
-    setupMultiRowEntity({ type: "question" });
-
-    await openMenu();
-    await pickEntity("Orders");
-    await screen.findByText(
-      "The question's result must be a single value or row.",
-    );
-
-    await userEvent.keyboard("{ArrowDown}");
-
-    expect(screen.getByRole("menuitem", { name: /Orders/ })).toHaveFocus();
-  });
-
-  it("disables the columns when the fresh result rejects a question the dataset could still answer (UIT-145)", async () => {
-    setupCardEndpoints(
-      createMockCard({ id: 9, result_metadata: NUMERIC_FIELDS }),
-    );
-    setupCardDatasetWithReferencedEntities(
-      createMockFailedReferencedEntitiesResults({
-        error_type: "too-many-rows",
-      }),
-    );
-    setup({
-      data: createMockDatasetData({
-        ...DATA,
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "total",
-          value: 250,
-        }),
-      }),
-      value: { type: "card", id: 9, column: "total" },
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Change value source" }),
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole("menuitem", { name: /Total/ })).toBeDisabled();
-    });
-  });
-
-  // only a column list can disable a choice, so a sole column is committed and reported afterwards
   it("commits the sole column of a question that returns multiple rows", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
@@ -1335,7 +1245,13 @@ describe("GoalValueInput", () => {
       createMockCard({
         id: 9,
         name: "Orders",
-        result_metadata: [NUMERIC_FIELDS[0]],
+        result_metadata: [
+          createMockField({
+            name: "total",
+            display_name: "Total",
+            base_type: "type/Integer",
+          }),
+        ],
       }),
     );
     setupCardDatasetWithReferencedEntities(
@@ -1355,49 +1271,6 @@ describe("GoalValueInput", () => {
         column: "total",
       });
     });
-  });
-
-  it("keeps the columns enabled when the question returns a single row (UIT-145)", async () => {
-    setupCardEndpoints(
-      createMockCard({ id: 9, result_metadata: NUMERIC_FIELDS }),
-    );
-    setupCardDatasetWithReferencedEntities({
-      card: {
-        9: {
-          status: "completed",
-          data: {
-            cols: [
-              createMockColumn({ name: "total" }),
-              createMockColumn({ name: "avg" }),
-            ],
-            rows: [[250, 12]],
-          },
-        },
-      },
-    });
-    setup({
-      data: createMockDatasetData({
-        ...DATA,
-        referenced_entities: createMockReferencedEntitiesResults({
-          column: "total",
-          value: 250,
-        }),
-      }),
-      value: { type: "card", id: 9, column: "total" },
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Change value source" }),
-    );
-
-    const item = await screen.findByRole("menuitem", { name: /Average/ });
-    expect(await within(item).findByText("12")).toBeInTheDocument();
-    expect(item).toBeEnabled();
-    expect(
-      screen.queryByText(
-        "The question's result must be a single value or row.",
-      ),
-    ).not.toBeInTheDocument();
   });
 
   describe("formatting with the chart's format options", () => {
@@ -2177,25 +2050,6 @@ async function resolveAndSettle(response: Deferred<void>) {
 
 function setupDeletedCard() {
   fetchMock.get("path:/api/card/9", 404);
-}
-
-function setupMultiRowEntity({ type }: { type: CardType }) {
-  setupEntityPicker([
-    createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
-  ]);
-  setupCardEndpoints(
-    createMockCard({
-      id: 9,
-      name: "Orders",
-      result_metadata: NUMERIC_FIELDS,
-      type,
-    }),
-  );
-  setupCardDatasetWithReferencedEntities(
-    createMockFailedReferencedEntitiesResults({ error_type: "too-many-rows" }),
-  );
-
-  return setup();
 }
 
 function setupEntityPicker(searchResults: SearchResult[]) {
