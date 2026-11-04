@@ -72,6 +72,9 @@
          ;; one over the limit, so an entity returning too much can be rejected instead of silently truncated. a
          ;; query with its own `:limit` under this still comes back short, which is how you ask for "the first N".
          :constraints {:max-results (inc max-rows), :max-results-bare-rows (inc max-rows)}
+         ;; otherwise a card source's id makes this run overwrite that card's result_metadata, and a metric's
+         ;; stripped breakouts would erase its dimension columns
+         :middleware {:skip-results-metadata? true}
          ;; no :executed-by; it'd require a :query-hash for the query remark
          :info (cond-> {:context :question}
                  ;; :card-id ends up in the warehouse query remark, so a measure must not borrow the key
