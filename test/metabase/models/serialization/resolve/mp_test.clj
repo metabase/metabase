@@ -444,14 +444,15 @@
 (deftest ^:parallel export-mbql-with-mp-resolver-round-trip-shape-test
   (testing "final numeric MBQL 5 exports back to portable DB/table/field/card references"
     (let [r        (resolve.mp/export-resolver mp-with-cards cards-content-store)
-          exported (resolve/export-mbql
-                    r
-                    {:lib/type :mbql/query
-                     :database 1
-                     :stages   [{:lib/type     :mbql.stage/mbql
-                                 :source-table 10
-                                 :fields       [[:field {} 101]]
-                                 :aggregation  [[:metric {} 501]]}]})]
+          exported (first
+                    (resolve/export-mbql
+                     r
+                     [{:lib/type :mbql/query
+                       :database 1
+                       :stages   [{:lib/type     :mbql.stage/mbql
+                                   :source-table 10
+                                   :fields       [[:field {} 101]]
+                                   :aggregation  [[:metric {} 501]]}]}]))]
       (is (= "Sample" (:database exported)))
       (is (= ["Sample" "PUBLIC" "ORDERS"]
              (get-in exported [:stages 0 :source-table])))
@@ -464,7 +465,7 @@
   (testing "source-card map keys export through the Card entity_id path"
     (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
       (is (= {:source-card card-entity-id}
-             (resolve/export-mbql r {:source-card 500}))))))
+             (first (resolve/export-mbql r [{:source-card 500}])))))))
 
 (deftest ^:parallel export-import-mbql-table-template-tag-test
   (let [query    (-> (lib/native-query mp-simple "SELECT * FROM {{orders}}")
@@ -473,13 +474,13 @@
                                                         :display-name "Orders"
                                                         :type         :table
                                                         :table-id     10}}))
-        exported (resolve/export-mbql (resolve.mp/export-resolver mp-simple) query)]
+        exported (first (resolve/export-mbql (resolve.mp/export-resolver mp-simple) [query]))]
     (testing "table template tag exports its table as portable path"
       (is (= ["Sample" "PUBLIC" "ORDERS"]
              (get-in exported [:stages 0 :template-tags 0 :table-id]))))
     (testing "portable table path imports back to numeric table id"
       (is (= 10
-             (get-in (resolve/import-mbql (resolve.mp/import-resolver mp-simple) exported)
+             (get-in (first (resolve/import-mbql (resolve.mp/import-resolver mp-simple) [exported]))
                      [:stages 0 :template-tags 0 :table-id]))))))
 
 ;;; ============================================================
@@ -876,5 +877,5 @@
                                 "measure" [:measure {} 4242]}]
           (testing (str "a numeric " label " ref is resolved (and so permission-checked)")
             (is (thrown? clojure.lang.ExceptionInfo
-                         (resolve/import-mbql ir {:stages [{:aggregation [clause]}]}))
+                         (resolve/import-mbql ir [{:stages [{:aggregation [clause]}]}]))
                 (str "a numeric " label " ref must not pass through unresolved"))))))))

@@ -68,7 +68,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.path]
@@ -1072,147 +1071,81 @@
 
 ;;; ## MBQL Fields
 
-(mr/def ::mbql-node
-  "Any node reached while walking an MBQL form being exported or imported, which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
-
-(def ^:private MBQLNode
-  [:ref ::mbql-node])
-
-(mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
-  "Is given form an MBQL entity reference?"
-  [form :- MBQLNode]
-  (when (and (vector? form)
-             (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
-    (keyword (first form))))
-
-(mr/def ::mbql-3-field-id-ref
-  "Ultra-legacy MBQL 3 `:field-id` ref; which (allegedly) can show up in viz settings; this schema is only here so we
-  can use Lib normalization in [[normalize-mbql-ref]]."
-  [:tuple
-   [:= {:decode/normalize lib.schema.common/normalize-keyword} :field-id]
-   pos-int?])
-
-(defn- normalize-mbql-ref [mbql]
-  (let [tag    (mbql-ref? mbql)
-        schema (case tag
-                 :field-id  ::mbql-3-field-id-ref
-                 :field     ::resolve/field-ref
-                 :dimension ::lib.schema.parameter/dimension
-                 :metric    :mbql.clause/metric
-                 :segment   :mbql.clause/segment
-                 :measure   :mbql.clause/measure
-                 #_else     nil)]
-    (cond->> mbql
-      schema (lib/normalize schema mbql))))
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
+(defn- mbql-query?
+  "Whether `x` is an MBQL 5 query."
+  [x]
+  (and (map? x) (= :mbql/query (:lib/type x))))
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
-  [x :- MBQLNode]
+  [x :- [:ref ::resolve/mbql-node]]
   (set
    (match/match-many x
      [:aggregation #'map? (uuid :guard string?)]
      uuid)))
 
-(declare export-mbql)
+(defn- strip-lib-uuids
+  "`x` without the `:lib/uuid`s of its maps, except the `required` ones that `:aggregation` refs point at."
+  [required x]
+  (cond
+    (map? x)        (reduce-kv (fn [m k v]
+                                 (if (and (= k :lib/uuid) (not (contains? required v)))
+                                   (dissoc m k)
+                                   (assoc m k (strip-lib-uuids required v))))
+                               x
+                               x)
+    (vector? x)     (mapv #(strip-lib-uuids required %) x)
+    (sequential? x) (doall (map #(strip-lib-uuids required %) x))
+    :else           x))
 
-(defn- export-mbql-map [m]
-  (reduce-kv
-   (fn [m k v]
-     (case k
-       :lib/metadata                 (dissoc m k)
-       :database                     (update m k *export-database-fk*)
-       (:card_id :card-id)           (update m k *export-fk* :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
-       (:source_table :source-table) (cond-> m
-                                       (pos-int? v)
-                                       (update k *export-table-fk*))
-       :table-id                     (cond-> m
-                                       (pos-int? v)
-                                       (update k *export-table-fk*))
-       (:source_card :source-card)   (cond-> m
-                                       (pos-int? v)
-                                       (update k *export-fk* :model/Card))
-       :source-field                 (cond-> m
-                                       (pos-int? v)
-                                       (update k *export-field-fk*))
-       ::mb.viz/param-mapping-source (update m k *export-field-fk*)
-       :segment                      (update m k *export-fk* :model/Segment)
-       :snippet-id                   (update m k *export-fk* :model/NativeQuerySnippet)
-       :lib/uuid                     (cond-> m
-                                       (not (contains? *required-lib-uuids-for-export* v))
-                                       (dissoc :lib/uuid))
-       #_else                        (update m k export-mbql)))
-   m
-   m))
+(defn- update-queries
+  "`x` with `f` applied to each MBQL 5 query in it, outermost first, skipping `:lib/metadata`."
+  [f x]
+  (let [x (cond-> x (mbql-query? x) f)]
+    (cond
+      (map? x)        (reduce-kv (fn [m k v]
+                                   (cond-> m
+                                     (not= k :lib/metadata) (assoc k (update-queries f v))))
+                                 x
+                                 x)
+      (vector? x)     (mapv #(update-queries f %) x)
+      (sequential? x) (doall (map #(update-queries f %) x))
+      :else           x)))
 
-(defn- export-mbql-ref
-  [mbql]
-  (match/replace (normalize-mbql-ref mbql)
-    ;; `pos-int?` guard is here to make the operation idempotent
-    [:field (opts :guard map?) (id :guard pos-int?)]
-    [:field (export-mbql-map opts) (*export-field-fk* id)]
-
-    ;; Field refs whose id is not a raw numeric field id — e.g. a source-card column name string
-    ;; or an already-exported FK vector — still need their opts walked so :lib/uuid is stripped.
-    [:field (opts :guard map?) id]
-    [:field (export-mbql-map opts) id]
-
-    ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
-    [:field (id :guard pos-int?) (opts :guard (or (map? opts) (nil? opts)))]
-    [:field (*export-field-fk* id) (export-mbql-map opts)]
-
-    ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [(tag :guard #{:field :field-id}) (id :guard pos-int?)]
-    [tag (*export-field-fk* id)]
-
-    [:dimension (dim :guard vector?)]
-    [:dimension (export-mbql-ref dim)]
-
-    [:metric opts (id :guard pos-int?)]
-    [:metric (export-mbql-map opts) (*export-fk* id 'Card)]
-
-    [:metric opts id]
-    [:metric (export-mbql-map opts) id]
-
-    [:segment opts (id :guard pos-int?)]
-    [:segment (export-mbql-map opts) (*export-fk* id 'Segment)]
-
-    [:segment opts id]
-    [:segment (export-mbql-map opts) id]
-
-    [:measure opts (id :guard pos-int?)]
-    [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]
-
-    [:measure opts id]
-    [:measure (export-mbql-map opts) id]))
+(defn- card-entity-id-or-nil
+  "The entity id of the Card with `card-id`, or nil when it no longer exists."
+  [card-id]
+  (fk-elide (*export-fk* card-id :model/Card)))
 
 (defn card-template-tag-export-rename
   "Exported name for a card template tag whose `#<id>-slug` name embeds a local card id: the id is swapped for the
-  `entity_id` of the tag's card, the slug is kept verbatim. Nil when the name doesn't embed an id."
-  [{tag-type :type, :keys [card-id], tag-name :name}]
-  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
-    (when-let [[_ _embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
-      (when-let [card-entity-id (fk-elide (*export-fk* card-id :model/Card))]
-        (str "#" card-entity-id suffix)))))
+  `entity_id` of the tag's card, which `card-entity-id` returns, the slug is kept verbatim. Nil when the name doesn't
+  embed an id."
+  ([tag]
+   (card-template-tag-export-rename card-entity-id-or-nil tag))
+  ([card-entity-id {tag-type :type, :keys [card-id], tag-name :name}]
+   (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+     (when-let [[_ _embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+       (when-let [card-eid (card-entity-id card-id)]
+         (str "#" card-eid suffix))))))
 
 (defn card-template-tag-rename
-  "New name for a card template tag whose name embeds the `entity_id` of its (already remapped) `:card-id`, a
-  different local id, or another `entity_id`: the embedded value is swapped for the id, the slug is kept verbatim. Nil
-  when they already agree or the name doesn't embed an id."
-  [{tag-type :type, :keys [card-id], tag-name :name}]
-  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
-    (let [entity-id-prefix (some->> (fk-elide (*export-fk* card-id :model/Card)) (str "#"))
-          entity-id-suffix (when (and entity-id-prefix (str/starts-with? tag-name entity-id-prefix))
-                             (subs tag-name (count entity-id-prefix)))]
-      (if (and entity-id-suffix (or (= "" entity-id-suffix) (str/starts-with? entity-id-suffix "-")))
-        (str "#" card-id entity-id-suffix)
-        (if-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
-          (when (not= (parse-long embedded-id) card-id)
-            (str "#" card-id suffix))
-          (when-let [[_ suffix] (re-matches #"#[A-Za-z0-9_-]{21}(-.*)?" tag-name)]
-            (str "#" card-id suffix)))))))
+  "New name for a card template tag whose name embeds the `entity_id` of its (already remapped) `:card-id`, which
+  `card-entity-id` returns, a different local id, or another `entity_id`: the embedded value is swapped for the id,
+  the slug is kept verbatim. Nil when they already agree or the name doesn't embed an id."
+  ([tag]
+   (card-template-tag-rename card-entity-id-or-nil tag))
+  ([card-entity-id {tag-type :type, :keys [card-id], tag-name :name}]
+   (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+     (let [entity-id-prefix (some->> (card-entity-id card-id) (str "#"))
+           entity-id-suffix (when (and entity-id-prefix (str/starts-with? tag-name entity-id-prefix))
+                              (subs tag-name (count entity-id-prefix)))]
+       (if (and entity-id-suffix (or (= "" entity-id-suffix) (str/starts-with? entity-id-suffix "-")))
+         (str "#" card-id entity-id-suffix)
+         (if-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+           (when (not= (parse-long embedded-id) card-id)
+             (str "#" card-id suffix))
+           (when-let [[_ suffix] (re-matches #"#[A-Za-z0-9_-]{21}(-.*)?" tag-name)]
+             (str "#" card-id suffix))))))))
 
 (defn card-template-tag-renames
   "The `{old-name new-name}` map of the `tags` that `rename`, a fn of one tag, gives a new name."
@@ -1227,97 +1160,28 @@
   [query rename]
   (lib/replace-template-tag-names query (card-template-tag-renames rename (lib/all-template-tags query))))
 
+(defn walk-export-mbql
+  "`x`, any form that may hold MBQL, prepared for serialization with its ids replaced by what `visit` returns for their
+  references (see [[resolve/walk-export-mbql]]), and only the `:lib/uuid`s that `:aggregation` refs point at kept."
+  [visit x]
+  (let [card-entity-id #(fk-elide (visit [:fk :model/Card %]))
+        x              (update-queries #(-> %
+                                            (rename-card-template-tags (partial card-template-tag-export-rename card-entity-id))
+                                            lib/prepare-for-serialization)
+                                       x)]
+    (strip-lib-uuids (collect-required-lib-uuids x) (resolve/walk-export-mbql visit x))))
+
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [x]
-  (let [x (cond-> x
-            (and (map? x) (= :mbql/query (:lib/type x)))
-            (-> (rename-card-template-tags card-template-tag-export-rename) lib/prepare-for-serialization))]
-    ;; if required UUIDs are already calculated don't recalculate when we recurse.
-    (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
-      (cond
-        (mbql-ref? x)   (export-mbql-ref x)
-        (sequential? x) (mapv export-mbql x)
-        (map? x)        (export-mbql-map x)
-        :else           x))))
+  (first (resolve/export-in-bulk (export-resolver) walk-export-mbql [x])))
 
 (defn- portable-id?
   "True if the provided string is an Entity ID."
   [s]
   (and (string? s)
        (entity-id? s)))
-
-(declare import-mbql*)
-
-(defn- import-mbql-map [m]
-  (reduce-kv
-   (fn [m k v]
-     (case k
-       :database                     (cond-> m
-                                       (string? v)
-                                       (update k (if (= v "database/__virtual")
-                                                   (constantly lib.schema.id/saved-questions-virtual-database-id)
-                                                   *import-database-fk*)))
-       (:source-table :source_table) (cond-> m
-                                       (vector? v)      (update k *import-table-fk*)
-                                       (portable-id? v) (assoc :source-table (str "card__" (*import-fk* v 'Card))))
-       :source-field                 (cond-> m
-                                       (vector? v)
-                                       (update k *import-field-fk*))
-       :source-card                  (cond-> m
-                                       (portable-id? v)
-                                       (update k *import-fk* 'Card))
-       :card-id                      (cond-> m
-                                       (portable-id? v)
-                                       (update k *import-fk* 'Card))
-       :snippet-id                   (cond-> m
-                                       (portable-id? v)
-                                       (update k *import-fk* 'NativeQuerySnippet))
-       :table-id                     (cond-> m
-                                       (vector? v)
-                                       (update k *import-table-fk*))
-       #_else                        (update m k import-mbql*)))
-   m
-   m))
-
-(defn- import-mbql-update-refs
-  [entity]
-  (match/replace entity
-    [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
-    [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
-
-    ;; legacy field refs, still used in parameters and result metadata `field_ref`
-    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (or (map? opts) (nil? opts)))]
-    [:field (*import-field-fk* fully-qualified-name) (some-> opts import-mbql-update-refs)]
-
-    ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [#{:field :field-id "field" "field-id"} (id :guard vector?)]
-    [:field (*import-field-fk* id) nil]
-
-    [#{:metric "metric"} opts (entity-id :guard portable-id?)]
-    [:metric (import-mbql-map opts) (*import-fk* entity-id 'Card)]
-
-    [#{:segment "segment"} opts (entity-id :guard portable-id?)]
-    [:segment (import-mbql-map opts) (*import-fk* entity-id 'Segment)]
-
-    [#{:measure "measure"} opts (entity-id :guard portable-id?)]
-    [:measure (import-mbql-map opts) (*import-fk* entity-id 'Measure)]
-
-    ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
-    [#{:metric "metric"} (entity-id :guard portable-id?)]
-    [:metric (*import-fk* entity-id 'Card)]
-
-    [#{:segment "segment"} (entity-id :guard portable-id?)]
-    [:segment (*import-fk* entity-id 'Segment)]
-
-    [#{:measure "measure"} (entity-id :guard portable-id?)]
-    [:measure (*import-fk* entity-id 'Measure)]))
-
-(defn- import-mbql-update-maps [x]
-  (match/replace x
-    (m :guard map?)
-    (import-mbql-map m)))
 
 ;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -1350,27 +1214,21 @@
   [x]
   (when x
     (try
-      (if (mbql-ref? x)
-        (normalize-mbql-ref x)
+      (if (resolve/mbql-clause-tag x)
+        (resolve/normalize-mbql-ref x)
         (lib/normalize x))
       (catch Throwable e
         (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
         ;; many structures will fail normalization, but that is expected
         x))))
 
-(defn- import-mbql*
-  [x]
-  (-> x
-      import-mbql-update-refs
-      import-mbql-update-maps))
-
 (defn- repair-card-template-tag-names
   "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced card's `entity_id`,
-  or in older exports its source id, which [[import-mbql-map]] doesn't remap. Swap it for the local id of the remapped
-  `:card-id`, leaving the slug as it was exported."
-  [x]
+  which `card-entity-id` returns, or in older exports its source id, which the import walk doesn't remap. Swap it for
+  the local id of the remapped `:card-id`, leaving the slug as it was exported."
+  [card-entity-id x]
   (cond-> x
-    (= (:lib/type x) :mbql/query) (rename-card-template-tags card-template-tag-rename)))
+    (mbql-query? x) (rename-card-template-tags (partial card-template-tag-rename card-entity-id))))
 
 (defn- legacy-mbql-query->mbql5
   "Converts an imported legacy MBQL query to MBQL 5, returning `x` unchanged if it isn't one or conversion fails.
@@ -1388,18 +1246,32 @@
         x))
     x))
 
+(defn walk-import-mbql
+  "`x`, an MBQL expression (or any structure that may contain portable references), with its portable references
+  replaced by what `visit` returns for them (see [[resolve/walk-import-mbql]]), normalized, and with legacy MBQL
+  queries converted to MBQL 5; throws if an MBQL 5 query doesn't match the schema."
+  [visit x]
+  (if (resolve/collecting? visit)
+    (resolve/walk-import-mbql visit x)
+    (let [card-eids (volatile! {})
+          visit'    (fn [ref]
+                      (let [v (visit ref)]
+                        (when (and (= [:fk :model/Card] (pop ref)) (some? v))
+                          (vswap! card-eids assoc v (peek ref)))
+                        v))]
+      (some->> (resolve/walk-import-mbql visit' x)
+               normalize-imported
+               (#(cond-> % (not *skip-schema-validation?*) validate-imported-query!))
+               (repair-card-template-tag-names #(get @card-eids %))
+               legacy-mbql-query->mbql5))))
+
 (defn import-mbql
   "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
   IDs embedded, convert the IDs back to raw numeric IDs. Legacy MBQL queries are converted to MBQL 5.
 
   Throws if an MBQL 5 expression doesn't match the schema."
   [x]
-  (some-> x
-          import-mbql*
-          normalize-imported
-          (cond-> (not *skip-schema-validation?*) validate-imported-query!)
-          repair-card-template-tag-names
-          legacy-mbql-query->mbql5))
+  (first (resolve/import-in-bulk (import-resolver) walk-import-mbql [x])))
 
 (declare ^:private mbql-deps-map)
 

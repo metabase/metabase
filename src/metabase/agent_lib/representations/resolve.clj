@@ -272,7 +272,7 @@
   ([metadata-provider parsed-repr content-store]
    (let [kw-form  (keywordize-query parsed-repr)
          resolver (resolve.mp/import-resolver metadata-provider content-store)
-         resolved (resolve/import-mbql resolver kw-form)
+         resolved (first (resolve/import-mbql resolver [kw-form]))
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
          (annotate-field-types metadata-provider)
@@ -329,9 +329,9 @@
    (export-query metadata-provider pmbql-query resolve.mp/unchecked-app-db-content-store))
   ([metadata-provider pmbql-query content-store]
    (let [resolver (resolve.mp/export-resolver metadata-provider content-store)]
-     (->> pmbql-query
-          (resolve/export-mbql resolver)
-          portable-repr-form))))
+     (-> (resolve/export-mbql resolver [pmbql-query])
+         first
+         portable-repr-form))))
 
 (defn try-export-query
   "Best-effort wrapper around [[export-query]] that returns `nil` instead of throwing when the

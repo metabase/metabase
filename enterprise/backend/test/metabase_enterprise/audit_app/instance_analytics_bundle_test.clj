@@ -3,7 +3,8 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.test-util :as serdes.tu]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,10 +29,10 @@
                 "bundled query this version cannot represent is a boot crash, not a stale-content bug.")
     ;; FK resolution is stubbed out: the bundle's portable refs point at the audit DB, which doesn't exist here, and
     ;; what's under test is the query shape rather than the resolution.
-    (binding [serdes/*import-database-fk* (constantly 1)
-              serdes/*import-table-fk*    (constantly 1)
-              serdes/*import-field-fk*    (constantly 1)
-              serdes/*import-fk*          (fn [& _] 1)]
+    (serdes.tu/with-stub-resolvers {:import {:database (constantly 1)
+                                             :table    (constantly 1)
+                                             :field    (constantly 1)
+                                             :fk       (fn [& _] 1)}}
       (let [ingestion (bundle-ingestion)
             queries   (bundled-queries ingestion)
             failures  (for [[entity-id query] queries

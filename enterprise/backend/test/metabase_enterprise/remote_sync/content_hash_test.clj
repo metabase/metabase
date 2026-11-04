@@ -131,7 +131,7 @@
                    :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db)
                                        :is_published true :collection_id (:id coll)}
                    :model/Segment seg {:name "S" :table_id (:id table)
-                                       :definition {:source-table (:id table) :filter [:> [:field 1 nil] 0]}}]
+                                       :definition {:source-table (:id table) :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
       (is (= "synced" (noop-update-status! "Segment" (:id seg) :event/segment-update seg))))))
 
 (deftest measure-noop-update-stays-synced-test

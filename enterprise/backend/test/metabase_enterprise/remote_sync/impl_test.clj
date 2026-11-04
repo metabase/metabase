@@ -852,7 +852,7 @@
                          {:name "Test Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field (mt/id :venues :id) nil] 0]}
                           :entity_id "test-segment-xxxxxxxx"}]
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
@@ -884,7 +884,7 @@
                          {:name "Test Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field (mt/id :venues :id) nil] 0]}
                           :entity_id "test-segment-xxxxxxxx"}]
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
@@ -955,14 +955,14 @@
                          {:name "Active Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field (mt/id :venues :id) nil] 0]}
                           :entity_id "active-segment-xxxxxx"
                           :archived false}
                          :model/Segment {_archived-seg-id :id}
                          {:name "Archived Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 2 nil] 0]}
+                                       :filter [:> [:field (mt/id :venues :name) nil] 0]}
                           :entity_id "archived-segment-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
@@ -991,7 +991,7 @@
                          {:name "Archived Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field (mt/id :venues :id) nil] 0]}
                           :entity_id "archived-seg-xxxxxxxx"
                           :archived true}]
             (t2/insert! :model/RemoteSyncObject

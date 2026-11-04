@@ -6,12 +6,12 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s] ;; legacy usages -- do not use in new code
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,8 +42,54 @@
   (reset-cache! [this] "Drop every memoized lookup."))
 
 ;;; ============================================================
-;;; Single-reference lookups
+;;; References
 ;;; ============================================================
+
+(defn- grouped-refs
+  "The `[kind inputs]` pairs of `refs`, a kind being a reference without its input, in order of first appearance."
+  [refs]
+  (let [refs   (distinct refs)
+        groups (group-by pop refs)]
+    (for [kind (distinct (map pop refs))]
+      [kind (mapv peek (get groups kind))])))
+
+(defn- resolve-refs
+  "The map from each of `refs` to what `resolve-kind`, a fn of a kind and its inputs, finds for it."
+  [resolve-kind refs]
+  (into {}
+        (mapcat (fn [[kind inputs]]
+                  (let [found (resolve-kind kind inputs)]
+                    (for [input inputs
+                          :when (contains? found input)]
+                      [(conj kind input) (get found input)]))))
+        (grouped-refs refs)))
+
+(defn export-refs
+  "The map from each of the export `refs` (`[:fk model id]`, `[:fk-keyed model field id]`, `[:table id]` or
+  `[:field id]`) to what `resolver` resolves it to, leaving out the refs with no target."
+  [resolver refs]
+  (resolve-refs (fn [[k model field] inputs]
+                  (case k
+                    :fk       (export-fks resolver model inputs)
+                    :fk-keyed (export-fks-keyed resolver model field inputs)
+                    :table    (export-tables resolver inputs)
+                    :field    (export-fields resolver inputs)))
+                refs))
+
+(defn import-refs
+  "The map from each of the import `refs` (`[:fk model eid]`, `[:fk-keyed model field value]`, `[:user email]`,
+  `[:database db-name]`, `[:table path]` or `[:field path]`) to what `resolver` resolves it to, leaving out the refs
+  with no target."
+  [resolver refs]
+  (resolve-refs (fn [[k model field] inputs]
+                  (case k
+                    :fk       (import-fks resolver model inputs)
+                    :fk-keyed (import-fks-keyed resolver model field inputs)
+                    :user     (import-users resolver inputs)
+                    :database (import-databases resolver inputs)
+                    :table    (import-tables resolver inputs)
+                    :field    (import-fields resolver inputs)))
+                refs))
 
 (defn- export-target-not-found [model id]
   (ex-info "FK target not found" {:model                               model
@@ -51,24 +97,79 @@
                                   :skip                                true
                                   :metabase.models.serialization/type :target-not-found}))
 
-(defn- resolved-or-throw
-  "The value `resolved` maps `k` to, throwing the ex-info `not-found` returns when `resolved` has no entry for `k`."
-  [resolved k not-found]
-  (if (contains? resolved k)
-    (get resolved k)
-    (throw (not-found))))
+(defn export-ref-value
+  "The value `resolved`, from [[export-refs]], holds for `ref`: nil for a missing keyed lookup, and a
+  `:target-not-found` error for any other missing target."
+  [resolved [k model :as ref]]
+  (if (contains? resolved ref)
+    (get resolved ref)
+    (case k
+      :fk-keyed nil
+      :fk       (throw (export-target-not-found model (peek ref)))
+      :table    (throw (export-target-not-found :model/Table (peek ref)))
+      :field    (throw (export-target-not-found :model/Field (peek ref))))))
+
+(defn import-ref-value
+  "The value `resolved`, from [[import-refs]], holds for `ref`: a `:target-not-found` error for a missing FK target, and
+  nil for any other missing one."
+  [resolved [k model :as ref]]
+  (cond
+    (contains? resolved ref) (get resolved ref)
+    (= k :fk)                (let [eid (peek ref)]
+                               (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
+                                               {:entity_id                           (if (vector? eid) (last eid) eid)
+                                                :model                               (name model)
+                                                :metabase.models.serialization/type :target-not-found})))
+    :else                    nil))
+
+(defn- walk-in-bulk
+  "Rewrites each of `xs` with `walk`, a fn of a visitor and a form that replaces every reference in the form with what
+  the visitor returns for it: a first walk collects the references, `resolve` resolves them all at once, and a second
+  walk turns each resolution into a value with `ref-value`."
+  [walk resolve ref-value xs]
+  (let [refs     (volatile! [])
+        collect  (with-meta (fn [ref] (vswap! refs conj ref) (peek ref)) {::collecting true})
+        _        (run! #(walk collect %) xs)
+        resolved (resolve @refs)]
+    (mapv #(walk (partial ref-value resolved) %) xs)))
+
+(defn collecting?
+  "Whether `visit` is the visitor of the first walk of [[walk-in-bulk]], which only collects references and returns
+  each input unresolved, so a walk can skip the steps that need resolved values."
+  [visit]
+  (boolean (::collecting (meta visit))))
+
+(defn export-in-bulk
+  "Rewrites each of `xs` with `walk` (see [[walk-in-bulk]]), resolving the export references with `resolver`."
+  [resolver walk xs]
+  (walk-in-bulk walk #(export-refs resolver %) export-ref-value xs))
+
+(defn import-in-bulk
+  "Rewrites each of `xs` with `walk` (see [[walk-in-bulk]]), resolving the import references with `resolver`."
+  [resolver walk xs]
+  (walk-in-bulk walk #(import-refs resolver %) import-ref-value xs))
+
+;;; ============================================================
+;;; Single-reference lookups
+;;; ============================================================
+
+(defn- export-one [resolver ref]
+  (when (some? (peek ref))
+    (export-ref-value (export-refs resolver [ref]) ref)))
+
+(defn- import-one [resolver ref]
+  (when (some? (peek ref))
+    (import-ref-value (import-refs resolver [ref]) ref)))
 
 (defn export-fk
   "The portable id of the `model` row with `id`, throwing a `:target-not-found` error when there is no such row."
   [resolver id model]
-  (when (some? id)
-    (resolved-or-throw (export-fks resolver model [id]) id #(export-target-not-found model id))))
+  (export-one resolver [:fk model id]))
 
 (defn export-fk-keyed
   "The `field` value of the `model` row with `id`, or nil."
   [resolver id model field]
-  (when (some? id)
-    (get (export-fks-keyed resolver model field [id]) id)))
+  (export-one resolver [:fk-keyed model field id]))
 
 (defn export-user
   "The email of the User with `id`, or nil."
@@ -79,58 +180,45 @@
   "The `[db-name schema table-name]` reference of the Table with `table-id`, throwing a `:target-not-found` error
   when there is no such Table."
   [resolver table-id]
-  (when (some? table-id)
-    (resolved-or-throw (export-tables resolver [table-id]) table-id #(export-target-not-found :model/Table table-id))))
+  (export-one resolver [:table table-id]))
 
 (defn export-field-fk
   "The `[db-name schema table-name & field-names]` reference of the Field with `field-id`, throwing a
   `:target-not-found` error when there is no such Field."
   [resolver field-id]
-  (when (some? field-id)
-    (resolved-or-throw (export-fields resolver [field-id]) field-id #(export-target-not-found :model/Field field-id))))
+  (export-one resolver [:field field-id]))
 
 (defn import-fk
   "The primary key of the `model` row with portable id `eid`, throwing a `:target-not-found` error when there is no
   such row."
   [resolver eid model]
-  (when (some? eid)
-    (resolved-or-throw (import-fks resolver model [eid])
-                       eid
-                       #(ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
-                                 {:entity_id                           (if (vector? eid) (last eid) eid)
-                                  :model                               (name model)
-                                  :metabase.models.serialization/type :target-not-found}))))
+  (import-one resolver [:fk model eid]))
 
 (defn import-fk-keyed
   "The primary key of the `model` row whose `field` is `portable`, or nil."
   [resolver portable model field]
-  (when (some? portable)
-    (get (import-fks-keyed resolver model field [portable]) portable)))
+  (import-one resolver [:fk-keyed model field portable]))
 
 (defn import-user
   "The id of the User with `email`, created as an inactive User when missing."
   [resolver email]
-  (when (some? email)
-    (get (import-users resolver [email]) email)))
+  (import-one resolver [:user email]))
 
 (defn import-database-fk
   "The id of the Database named `db-name`, created as a stub when missing."
   [resolver db-name]
-  (when (some? db-name)
-    (get (import-databases resolver [db-name]) db-name)))
+  (import-one resolver [:database db-name]))
 
 (defn import-table-fk
   "The id of the Table at `[db-name schema table-name]` `path`, created as an inactive Table when missing."
   [resolver path]
-  (when (some? path)
-    (get (import-tables resolver [path]) path)))
+  (import-one resolver [:table path]))
 
 (defn import-field-fk
   "The id of the Field at `[db-name schema table-name & field-names]` `path`, created as an inactive Field when
   missing."
   [resolver path]
-  (when (some? path)
-    (get (import-fields resolver [path]) path)))
+  (import-one resolver [:field path]))
 
 ;;; ============================================================
 ;;; Dynamic vars — bound to resolver instances
@@ -213,118 +301,18 @@
     (lib/primary-source-table-id serialized-query)))
 
 ;;; ============================================================
-;;; import-mbql — depends only on protocols, match, lib.schema.id
+;;; MBQL walkers
 ;;; ============================================================
 
-(defn- mbql-fully-qualified-names->ids*
-  [resolver entity]
-  (match/replace entity
-    [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
-    [:field (mbql-fully-qualified-names->ids* resolver opts)
-     (import-field-fk resolver fully-qualified-name)]
-
-    ;; legacy field refs, still used in parameters and result metadata `field_ref`
-    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (or (map? opts) (nil? opts)))]
-    [:field (import-field-fk resolver fully-qualified-name) (some->> opts (mbql-fully-qualified-names->ids* resolver))]
-
-    ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [#{:field :field-id "field" "field-id"} (id :guard vector?)]
-    [:field (import-field-fk resolver id) nil]
-
-    ;; source-field is also used within parameter mapping dimensions
-    ;; example relevant clause - [:field 2 {:source-field 1}]
-    {:source-field (fully-qualified-name :guard vector?)}
-    (assoc &match :source-field (import-field-fk resolver fully-qualified-name))
-
-    {:database (fully-qualified-name :guard string?)}
-    (-> &match
-        (assoc :database (if (= fully-qualified-name "database/__virtual")
-                           lib.schema.id/saved-questions-virtual-database-id
-                           (import-database-fk resolver fully-qualified-name)))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    {:card-id (entity-id :guard content-ref?)}
-    (-> &match
-        (assoc :card-id (import-fk resolver entity-id 'Card))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    [#{:metric "metric"} opts (entity-id :guard content-ref?)]
-    [:metric (mbql-fully-qualified-names->ids* resolver opts)
-     (import-fk resolver entity-id 'Card)]
-
-    [#{:segment "segment"} opts (entity-id :guard content-ref?)]
-    [:segment (mbql-fully-qualified-names->ids* resolver opts)
-     (import-fk resolver entity-id 'Segment)]
-
-    [#{:measure "measure"} opts (entity-id :guard content-ref?)]
-    [:measure (mbql-fully-qualified-names->ids* resolver opts)
-     (import-fk resolver entity-id 'Measure)]
-
-    ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
-    [#{:metric "metric"} (entity-id :guard content-ref?)]
-    [:metric (import-fk resolver entity-id 'Card)]
-
-    [#{:segment "segment"} (entity-id :guard content-ref?)]
-    [:segment (import-fk resolver entity-id 'Segment)]
-
-    [#{:measure "measure"} (entity-id :guard content-ref?)]
-    [:measure (import-fk resolver entity-id 'Measure)]
-
-    {:source-table #'vector?}
-    (-> &match
-        (update :source-table (partial import-table-fk resolver))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    {:source_table #'vector?}
-    (-> &match
-        (update :source_table (partial import-table-fk resolver))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    {:table-id #'vector?}
-    (-> &match
-        (update :table-id (partial import-table-fk resolver))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    ;; support legacy MBQL 4 for the Audit v2 queries
-    {:source-table (id :guard portable-id?)}
-    (-> &match
-        (assoc :source-table (str "card__" (import-fk resolver id 'Card)))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
-
-    {:source-card (id :guard content-ref?)}
-    ;; Recur on the rest of the map, not on `&match`: `import-fk` of a numeric id returns a
-    ;; numeric id, which still satisfies `content-ref?`, so recurring on the whole match would
-    ;; re-enter this branch on its own output forever. The `:source-table` branch escapes only
-    ;; because it rewrites the value to "card__N" and no longer matches.
-    (assoc (mbql-fully-qualified-names->ids* resolver (dissoc &match :source-card))
-           :source-card (import-fk resolver id 'Card))
-
-    ;; Portable only, deliberately. The numeric dialect does not cover snippets: no resolver
-    ;; implements `NativeQuerySnippet`, so a numeric one would fall through `import-fk`'s model
-    ;; tests to `not-implemented!` and surface as a bare 501 with no `:agent-error?` — never
-    ;; reaching the read-checked store. Widening this needs a store-backed snippet branch first.
-    {:snippet-id (id :guard portable-id?)}
-    (-> &match
-        (assoc :snippet-id (import-fk resolver id 'NativeQuerySnippet))
-        (->> (mbql-fully-qualified-names->ids* resolver)))))
-
-(defn import-mbql
-  "Given an MBQL expression with portable IDs, convert back to numeric IDs.
-  Uses `*import-resolver*` if bound, otherwise requires a resolver argument."
-  ([exported]
-   (import-mbql *import-resolver* exported))
-  ([resolver exported]
-   (mbql-fully-qualified-names->ids* resolver exported)))
-
 (mr/def ::mbql-node
-  "Any node reached while walking an MBQL form being imported, which may or may not be an MBQL clause."
+  "Any node reached while walking an MBQL form, which may or may not be an MBQL clause."
   [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
 
-(mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
-  "Is given form an MBQL entity reference?"
+(mu/defn mbql-clause-tag :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
+  "The tag of `form` when it is an MBQL entity reference clause, else nil."
   [form :- [:ref ::mbql-node]]
   (when (and (vector? form)
-             (#{:field :dimension :metric :segment :measure} (keyword (first form))))
+             (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
 
 (mr/def ::field-ref
@@ -336,82 +324,163 @@
    [true  :mbql.clause/field]
    [false ::mbql.s/field]])
 
-(defn- normalize [mbql]
-  (let [tag    (mbql-clause-tag mbql)
-        schema (case tag
+(mr/def ::mbql-3-field-id-ref
+  "Ultra-legacy MBQL 3 `:field-id` ref, which (allegedly) can show up in viz settings."
+  [:tuple
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :field-id]
+   pos-int?])
+
+(defn normalize-mbql-ref
+  "`mbql`, an MBQL entity reference clause, normalized by the schema of its tag."
+  [mbql]
+  (let [schema (case (mbql-clause-tag mbql)
+                 :field-id  ::mbql-3-field-id-ref
                  :field     ::field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
                  :measure   :mbql.clause/measure
-                 #_else     nil)]
+                 nil)]
     (cond->> mbql
       schema (lib/normalize schema mbql))))
 
-(defn- mbql-id->fully-qualified-name
-  [resolver mbql]
-  (match/replace (normalize mbql)
-    ;; `pos-int?` guard is here to make the operation idempotent
-    [:field (opts :guard map?) (id :guard pos-int?)]
-    [:field (mbql-id->fully-qualified-name resolver opts) (export-field-fk resolver id)]
+(def ^:private ref-tag->model
+  {:metric :model/Card, :segment :model/Segment, :measure :model/Measure})
 
-    ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
-    [:field (id :guard pos-int?) (opts :guard (or (map? opts) (nil? opts)))]
-    [:field (export-field-fk resolver id) (mbql-id->fully-qualified-name resolver opts)]
+(declare walk-export-mbql)
 
-    ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [(tag :guard #{:field :field-id}) (id :guard pos-int?)]
-    [tag (export-field-fk resolver id)]
+(defn- export-mbql-map [visit m]
+  (reduce-kv
+   (fn [m k v]
+     (case k
+       :lib/metadata
+       (dissoc m k)
 
-    {:source-table (id :guard pos-int?)}
-    (assoc &match :source-table (export-table-fk resolver id))
+       :database
+       (assoc m k (cond
+                    (= v lib.schema.id/saved-questions-virtual-database-id) "database/__virtual"
+                    (pos-int? v)                                            (visit [:fk-keyed :model/Database :name v])
+                    :else                                                   v))
 
-    ;; source-field is also used within parameter mapping dimensions
-    ;; example relevant clause - [:field 2 {:source-field 1}]
-    {:source-field (id :guard pos-int?)}
-    (assoc &match :source-field (export-field-fk resolver id))
+       (:card_id :card-id :source_card :source-card)
+       (cond-> m (pos-int? v) (assoc k (visit [:fk :model/Card v])))
 
-    [:dimension (dim :guard vector?)]
-    [:dimension (mbql-id->fully-qualified-name resolver dim)]
+       (:source_table :source-table :table-id)
+       (cond-> m (pos-int? v) (assoc k (visit [:table v])))
 
-    [:metric opts (id :guard pos-int?)]
-    [:metric (mbql-id->fully-qualified-name resolver opts) (export-fk resolver id 'Card)]
+       (:source-field ::mb.viz/param-mapping-source)
+       (cond-> m (pos-int? v) (assoc k (visit [:field v])))
 
-    [:segment opts (id :guard pos-int?)]
-    [:segment (mbql-id->fully-qualified-name resolver opts) (export-fk resolver id 'Segment)]
+       :segment
+       (cond-> m (pos-int? v) (assoc k (visit [:fk :model/Segment v])))
 
-    [:measure opts (id :guard pos-int?)]
-    [:measure (mbql-id->fully-qualified-name resolver opts) (export-fk resolver id 'Measure)]))
+       :snippet-id
+       (cond-> m (pos-int? v) (assoc k (visit [:fk :model/NativeQuerySnippet v])))
+
+       (assoc m k (walk-export-mbql visit v))))
+   m
+   m))
+
+(defn- export-mbql-clause [visit [tag a b :as clause]]
+  (let [walk #(walk-export-mbql visit %)]
+    (case tag
+      (:field :field-id)
+      (cond
+        (and (= 2 (count clause)) (pos-int? a))     [tag (visit [:field a])]
+        (and (map? a) (pos-int? b))                 [tag (walk a) (visit [:field b])]
+        (and (pos-int? a) (or (map? b) (nil? b)))   [tag (visit [:field a]) (walk b)]
+        :else                                       (mapv walk clause))
+
+      (:metric :segment :measure)
+      (if (and (= 3 (count clause)) (pos-int? b))
+        [tag (walk a) (visit [:fk (ref-tag->model tag) b])]
+        (mapv walk clause))
+
+      (mapv walk clause))))
+
+(defn walk-export-mbql
+  "`x`, any form that may hold MBQL, with the Database, Table, Field and content ids in it replaced by what `visit`
+  returns for their references (see [[export-refs]])."
+  [visit x]
+  (cond
+    (mbql-clause-tag x) (export-mbql-clause visit (normalize-mbql-ref x))
+    (sequential? x)     (mapv #(walk-export-mbql visit %) x)
+    (map? x)            (export-mbql-map visit x)
+    :else               x))
 
 (defn export-mbql
-  "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
-  inside it into portable references."
-  ([entity] (export-mbql *export-resolver* entity))
-  ([resolver entity]
-   (match/replace entity
-     #'mbql-clause-tag
-     (mbql-id->fully-qualified-name resolver &match)
+  "Each of `xs`, forms that may hold MBQL, with its database ids turned into portable references by `resolver`."
+  [resolver xs]
+  (export-in-bulk resolver walk-export-mbql xs))
 
-     #'sequential?
-     (mapv (partial export-mbql resolver) &match)
+(declare walk-import-mbql)
 
-     #'map?
-     (reduce-kv
-      (fn [entity k _v]
-        (let [f (case k
-                  :database                     (fn [db-id]
-                                                  (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
-                                                    "database/__virtual"
-                                                    (export-fk-keyed resolver db-id :model/Database :name)))
-                  (:card_id :card-id)           #(export-fk resolver % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
-                  (:source_table :source-table) #(export-table-fk resolver %)
-                  :table-id                     #(cond->> % (pos-int? %) (export-table-fk resolver))
-                  (:source_card :source-card)   #(export-fk resolver % :model/Card)
-                  ::mb.viz/param-mapping-source #(export-field-fk resolver %)
-                  :segment                      #(export-fk resolver % :model/Segment)
-                  :snippet-id                   #(export-fk resolver % :model/NativeQuerySnippet)
-                  :lib/metadata                 (constantly nil)
-                  #_else                        (partial export-mbql resolver))]
-          (update entity k f)))
-      &match
-      &match))))
+(defn- import-mbql-map [visit m]
+  (reduce-kv
+   (fn [m k v]
+     (case k
+       :database
+       (cond-> m
+         (string? v) (assoc k (if (= v "database/__virtual")
+                                lib.schema.id/saved-questions-virtual-database-id
+                                (visit [:database v]))))
+
+       (:source-table :source_table)
+       (cond
+         (vector? v)      (assoc m k (visit [:table v]))
+         (portable-id? v) (assoc m k (str "card__" (visit [:fk :model/Card v])))
+         :else            m)
+
+       (:table-id)
+       (cond-> m (vector? v) (assoc k (visit [:table v])))
+
+       :source-field
+       (cond-> m (vector? v) (assoc k (visit [:field v])))
+
+       (:source-card :card-id)
+       (cond-> m (content-ref? v) (assoc k (visit [:fk :model/Card v])))
+
+       :snippet-id
+       (cond-> m (portable-id? v) (assoc k (visit [:fk :model/NativeQuerySnippet v])))
+
+       (assoc m k (walk-import-mbql visit v))))
+   m
+   m))
+
+(defn- import-mbql-clause [visit [tag a b :as clause]]
+  (let [walk #(walk-import-mbql visit %)
+        kw   (keyword tag)]
+    (case kw
+      (:field :field-id)
+      (cond
+        (and (= 2 (count clause)) (vector? a))                       [:field (visit [:field a]) nil]
+        (and (= :field kw) (map? a) (vector? b))                     [:field (walk a) (visit [:field b])]
+        (and (= :field kw) (vector? a) (or (map? b) (nil? b)))       [:field (visit [:field a]) (some->> b walk)]
+        :else                                                        (mapv walk clause))
+
+      (:metric :segment :measure)
+      (cond
+        (and (= 3 (count clause)) (content-ref? b)) [kw (walk a) (visit [:fk (ref-tag->model kw) b])]
+        (and (= 2 (count clause)) (content-ref? a)) [kw (visit [:fk (ref-tag->model kw) a])]
+        :else                                       (mapv walk clause))
+
+      (mapv walk clause))))
+
+(defn walk-import-mbql
+  "`x`, any form that may hold MBQL with portable references, with those references replaced by what `visit` returns
+  for them (see [[import-refs]])."
+  [visit x]
+  (cond
+    (and (vector? x) (some-> (first x) keyword #{:field :field-id :metric :segment :measure}))
+    (import-mbql-clause visit x)
+
+    (map? x)        (import-mbql-map visit x)
+    (vector? x)     (mapv #(walk-import-mbql visit %) x)
+    (sequential? x) (doall (map #(walk-import-mbql visit %) x))
+    :else           x))
+
+(defn import-mbql
+  "Each of `xs`, forms that may hold MBQL with portable references, with those references turned into database ids
+  by `resolver`."
+  [resolver xs]
+  (import-in-bulk resolver walk-import-mbql xs))

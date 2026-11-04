@@ -18,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.test-util :as serdes.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
@@ -2179,10 +2180,8 @@
   (testing "visualizer settings transform entity IDs <-> card IDs"
     (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
           card-id 621]
-      (mt/with-dynamic-fn-redefs [serdes/*import-fk* (fn [_entity-id _model]
-                                                       card-id)
-                                  serdes/*export-fk* (fn [_card-id _model]
-                                                       card-entity-id)]
+      (serdes.tu/with-stub-resolvers {:export {:fk (fn [_card-id _model] card-entity-id)}
+                                      :import {:fk (fn [_entity-id _model] card-id)}}
         (testing "transforms sourceId in column mappings"
           (let [input {:visualization
                        {:columnValuesMapping
@@ -2678,9 +2677,9 @@
     (is (= [1 2 0] (map :position result)))))
 
 (deftest ^:parallel export-parameter-mappings-sorts-by-parameter-id-test
-  (let [mappings [{:parameter_id "z-param" :target [:dimension [:field 1 nil]]}
-                  {:parameter_id "a-param" :target [:dimension [:field 2 nil]]}
-                  {:parameter_id "m-param" :target [:dimension [:field 3 nil]]}]
+  (let [mappings [{:parameter_id "z-param" :target [:dimension [:field (mt/id :venues :id) nil]]}
+                  {:parameter_id "a-param" :target [:dimension [:field (mt/id :venues :name) nil]]}
+                  {:parameter_id "m-param" :target [:dimension [:field (mt/id :venues :price) nil]]}]
         result (serdes/export-parameter-mappings mappings)]
     (is (= ["a-param" "m-param" "z-param"]
            (map :parameter_id result)))))
@@ -2692,7 +2691,7 @@
   (is (= [] (serdes/export-parameter-mappings nil))))
 
 (deftest ^:parallel export-parameter-mappings-single-element-test
-  (let [mappings [{:parameter_id "only" :target [:dimension [:field 1 nil]]}]
+  (let [mappings [{:parameter_id "only" :target [:dimension [:field (mt/id :venues :id) nil]]}]
         result (serdes/export-parameter-mappings mappings)]
     (is (= ["only"] (map :parameter_id result)))))
 

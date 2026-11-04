@@ -1246,7 +1246,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
-                                                          :filter [:> [:field 1 nil] 0]}}]
+                                                          :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
         (t2/delete! :model/RemoteSyncObject)
         (events/publish-event! :event/segment-create
                                {:object segment :user-id (mt/user->id :rasta)})
@@ -1267,7 +1267,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
-                                                          :filter [:> [:field 1 nil] 0]}}]
+                                                          :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
         (t2/delete! :model/RemoteSyncObject)
         (events/publish-event! :event/segment-update
                                {:object segment :user-id (mt/user->id :rasta)})
@@ -1288,7 +1288,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
-                                                          :filter [:> [:field 1 nil] 0]}}]
+                                                          :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
         (track-as-synced! "Segment" segment)
         (events/publish-event! :event/segment-update
                                {:object (assoc segment :archived true)
@@ -1310,7 +1310,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
-                                                          :filter [:> [:field 1 nil] 0]}}]
+                                                          :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
         (track-as-synced! "Segment" segment)
         (events/publish-event! :event/segment-delete
                                {:object segment :user-id (mt/user->id :rasta)})
@@ -1330,7 +1330,7 @@
                    :model/Segment segment {:name "Test Segment"
                                            :table_id (:id table)
                                            :definition {:source-table (:id table)
-                                                        :filter [:> [:field 1 nil] 0]}}]
+                                                        :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/segment-create
                              {:object segment :user-id (mt/user->id :rasta)})
@@ -1346,7 +1346,7 @@
                    :model/Segment segment {:name "Test Segment"
                                            :table_id (:id table)
                                            :definition {:source-table (:id table)
-                                                        :filter [:> [:field 1 nil] 0]}}]
+                                                        :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/segment-create
                              {:object segment :user-id (mt/user->id :rasta)})
@@ -1363,7 +1363,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :table_id (:id table)
                                              :definition {:source-table (:id table)
-                                                          :filter [:> [:field 1 nil] 0]}}]
+                                                          :filter [:> [:field (mt/id :venues :id) nil] 0]}}]
         (t2/delete! :model/RemoteSyncObject)
         ;; First create a synced entry
         (t2/insert! :model/RemoteSyncObject {:model_type "Segment"

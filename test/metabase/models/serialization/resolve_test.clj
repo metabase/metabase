@@ -12,6 +12,6 @@
                                        (when (= k ::lib.normalize/coercer)
                                          (swap! misses inc)))]
         (dotimes [_ 3]
-          (#'resolve/normalize [:field 1 nil])
-          (#'resolve/normalize [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
+          (resolve/normalize-mbql-ref [:field 1 nil])
+          (resolve/normalize-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
       (is (<= @misses 1)))))

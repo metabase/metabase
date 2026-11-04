@@ -743,7 +743,7 @@
   [metadata-provider field-ref]
   (if serdes.resolve/*numeric-ids-allowed?*
     field-ref
-    (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
+    (first (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) [field-ref]))))
 
 (defn- foreign-key-target-table-id
   [metadata-provider field]

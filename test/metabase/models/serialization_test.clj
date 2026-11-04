@@ -2,10 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
    [metabase.models.serialization :as serdes]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.models.serialization.test-util :as serdes.tu]))
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -23,39 +22,41 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :schema"
                             (serdes/validate-external! "Model" {} {:name "x"}))))))
 
+(defn- export-with-field-stub
+  "`x` exported by [[serdes/walk-export-mbql]] with every Field id replaced by `::field-id`."
+  [x]
+  (serdes/walk-export-mbql (fn [[k :as ref]] (if (= k :field) ::field-id (peek ref))) x))
+
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
-  (binding [serdes/*export-field-fk* (constantly ::field-id)]
-    (is (= [:field {} :metabase.models.serialization-test/field-id]
-           (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
-    (binding [serdes/*required-lib-uuids-for-export* #{(fake-uuid 1)}]
-      (is (= [:field {:lib/uuid (fake-uuid 1)} :metabase.models.serialization-test/field-id]
-             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
-      (is (= [:field {} :metabase.models.serialization-test/field-id]
-             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 2)} 1]))))))
+  (is (= [:field {} ::field-id]
+         (export-with-field-stub [:field {:lib/uuid (fake-uuid 1)} 1])))
+  (testing "uuids that aggregation refs point at are kept"
+    (is (= [[:field {:lib/uuid (fake-uuid 1)} ::field-id]
+            [:field {} ::field-id]
+            [:aggregation {} (fake-uuid 1)]]
+           (export-with-field-stub [[:field {:lib/uuid (fake-uuid 1)} 1]
+                                    [:field {:lib/uuid (fake-uuid 2)} 1]
+                                    [:aggregation {} (fake-uuid 1)]])))))
 
 (deftest ^:parallel drop-mbql-5-uuids-from-string-id-refs-test
   (testing "field refs with string column names (e.g. source-card joins) should still have lib/uuid stripped"
     (is (= [:field {} "name"]
-           (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)} "name"])))
+           (export-with-field-stub [:field {:lib/uuid (fake-uuid 1)} "name"])))
     (testing "and other opts are preserved"
       (is (= [:field {:base-type :type/Integer} "count"]
-             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)
-                                                :base-type :type/Integer} "count"])))))
+             (export-with-field-stub [:field {:lib/uuid (fake-uuid 1) :base-type :type/Integer} "count"])))))
   (testing "metric/segment/measure refs with non-integer ids (e.g. after re-export) still strip lib/uuid"
     (is (= [:metric {} "already-exported-eid"]
-           (#'serdes/export-mbql-ref [:metric {:lib/uuid (fake-uuid 1)}
-                                      "already-exported-eid"])))
+           (export-with-field-stub [:metric {:lib/uuid (fake-uuid 1)} "already-exported-eid"])))
     (is (= [:segment {} "already-exported-eid"]
-           (#'serdes/export-mbql-ref [:segment {:lib/uuid (fake-uuid 1)}
-                                      "already-exported-eid"])))
+           (export-with-field-stub [:segment {:lib/uuid (fake-uuid 1)} "already-exported-eid"])))
     (is (= [:measure {} "already-exported-eid"]
-           (#'serdes/export-mbql-ref [:measure {:lib/uuid (fake-uuid 1)}
-                                      "already-exported-eid"]))))
+           (export-with-field-stub [:measure {:lib/uuid (fake-uuid 1)} "already-exported-eid"]))))
   (testing "required lib/uuids are preserved even for string-id refs"
-    (binding [serdes/*required-lib-uuids-for-export* #{(fake-uuid 1)}]
-      (is (= [:field {:lib/uuid (fake-uuid 1)} "name"]
-             (#'serdes/export-mbql-ref [:field {:lib/uuid (fake-uuid 1)}
-                                        "name"]))))))
+    (is (= [[:field {:lib/uuid (fake-uuid 1)} "name"]
+            [:aggregation {} (fake-uuid 1)]]
+           (export-with-field-stub [[:field {:lib/uuid (fake-uuid 1)} "name"]
+                                    [:aggregation {} (fake-uuid 1)]])))))
 
 (defn- transient-lib-markers
   "All `:lib`/`:lib.convert` namespaced keys anywhere in `query`, except the structural `:lib/type`."
@@ -82,9 +83,9 @@
       (testing "sanity check: a query freshly converted from legacy carries the transient markers"
         (is (contains? (transient-lib-markers from-legacy) :lib.convert/converted?))
         (is (contains? (transient-lib-markers from-legacy) :lib/transformation-added-base-type)))
-      (binding [serdes/*export-database-fk* (constantly "DATABASE")
-                serdes/*export-table-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE"])
-                serdes/*export-field-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
+      (serdes.tu/with-stub-resolvers {:export {:database (constantly "DATABASE")
+                                               :table    (constantly ["DATABASE" "SCHEMA" "TABLE"])
+                                               :field    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])}}
         (testing "the markers are stripped on export"
           (is (not (contains? (transient-lib-markers (serdes/export-mbql from-legacy)) :lib.convert/converted?)))
           (is (not (contains? (transient-lib-markers (serdes/export-mbql from-legacy))
@@ -101,9 +102,9 @@
                   (as-> $query (lib/order-by $query (first (lib/aggregations-metadata $query)))))]
     (is (= #{(fake-uuid 0)}
            (#'serdes/collect-required-lib-uuids query)))
-    (binding [serdes/*export-database-fk* (constantly "DATABASE")
-              serdes/*export-table-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE"])
-              serdes/*export-field-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
+    (serdes.tu/with-stub-resolvers {:export {:database (constantly "DATABASE")
+                                             :table    (constantly ["DATABASE" "SCHEMA" "TABLE"])
+                                             :field    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])}}
       (is (= {:lib/type :mbql/query
               :database "DATABASE"
               :stages   [{:lib/type     :mbql.stage/mbql
@@ -143,9 +144,9 @@
                                                           :effective-type  "type/Integer"
                                                           :lib/source-name "count"}
                                             (fake-uuid 0)]]]}]}]
-    (binding [serdes/*import-database-fk* (constantly 1)
-              serdes/*import-table-fk*    (constantly 2)
-              serdes/*import-field-fk*    (constantly 3)]
+    (serdes.tu/with-stub-resolvers {:import {:database (constantly 1)
+                                             :table    (constantly 2)
+                                             :field    (constantly 3)}}
       (is (=? {:lib/type :mbql/query
                :database 1
                :stages   [{:lib/type     :mbql.stage/mbql
@@ -169,9 +170,9 @@
               (serdes/import-mbql query))))))
 
 (deftest ^:parallel import-mbql-legacy-query-test
-  (binding [serdes/*import-database-fk* (constantly 1)
-            serdes/*import-table-fk*    (constantly 2)
-            serdes/*import-field-fk*    (constantly 3)]
+  (serdes.tu/with-stub-resolvers {:import {:database (constantly 1)
+                                           :table    (constantly 2)
+                                           :field    (constantly 3)}}
     (testing "a legacy MBQL query is converted to MBQL 5, keeping integer literals in comparisons and aggregations as literals"
       (is (=? {:lib/type :mbql/query
                :database 1
@@ -201,7 +202,7 @@
               (serdes/import-mbql {:database "DB", :type "native", :native {:query "SELECT 1"}}))))))
 
 (deftest ^:parallel hydrate-mbql-5-uuids-on-import-test-2
-  (binding [serdes/*import-field-fk* (constantly 3)]
+  (serdes.tu/with-stub-resolvers {:import {:field (constantly 3)}}
     (are [x expected] (=? expected
                           (serdes/import-mbql x))
       ["field" {} ["DB" "SCHEMA" "TABLE" "FIELD"]]
@@ -212,7 +213,7 @@
 
 (deftest ^:parallel export-mbql-3-field-id-ref-in-viz-settings-test
   (testing "Allegedly viz settings can still contain MBQL 3 `:field-id` refs, make sure we export them properly"
-    (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])]
+    (serdes.tu/with-stub-resolvers {:export {:field (constantly ["A" "B" "C" "D"])}}
       (are [clause expected] (= expected
                                 (#'serdes/export-mbql clause))
 
@@ -228,21 +229,10 @@
         ["fk->" ["field-id" 1] ["field-id" 2]]
         ["fk->" [:field-id ["A" "B" "C" "D"]] [:field-id ["A" "B" "C" "D"]]]))))
 
-(deftest ^:parallel normalize-field-ref-reuses-cached-coercer-test
-  (testing "normalizing :field refs hits the registry coercer cache after the first call"
-    (let [misses (atom 0)]
-      (binding [mr/*cache-miss-hook* (fn [k _schema _value]
-                                       (when (= k ::lib.normalize/coercer)
-                                         (swap! misses inc)))]
-        (dotimes [_ 3]
-          (#'serdes/normalize-mbql-ref [:field 1 nil])
-          (#'serdes/normalize-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
-      (is (<= @misses 1)))))
-
 (deftest ^:parallel export-visualization-settings-test
-  (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])
-            serdes/*export-fk*       (fn [id model]
-                                       (format "%s___%d" (name model) id))]
+  (serdes.tu/with-stub-resolvers {:export {:field (constantly ["A" "B" "C" "D"])
+                                           :fk    (fn [id model]
+                                       (format "%s___%d" (name model) id))}}
     (is (= {:column_settings
             {"[\"ref\",[\"field\",[\"A\",\"B\",\"C\",\"D\"],null]]"
              {:column_title "Locus"
@@ -287,7 +277,7 @@
   (testing "values that are not numeric IDs are dropped on export instead of failing it"
     (let [settings {:timeline.selected_timeline_ids       [1 "abc" nil]
                     :timeline.excluded_timeline_event_ids [2 -1 "xyz"]}]
-      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+      (serdes.tu/with-stub-resolvers {:export {:fk (fn [id model] (format "%s___%d" (name model) id))}}
         (is (= {:timeline.selected_timeline_ids       ["Timeline___1"]
                 :timeline.excluded_timeline_event_ids ["TimelineEvent___2"]}
                (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
@@ -299,7 +289,7 @@
   (testing "a setting holding a scalar instead of a list counts as no ids rather than failing export or deps"
     (let [settings {:timeline.selected_timeline_ids       7
                     :timeline.excluded_timeline_event_ids true}]
-      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+      (serdes.tu/with-stub-resolvers {:export {:fk (fn [id model] (format "%s___%d" (name model) id))}}
         (is (= {:timeline.selected_timeline_ids       []
                 :timeline.excluded_timeline_event_ids []}
                (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
@@ -320,7 +310,7 @@
                                                       [(eid \c) (eid \d)]]}))))))
 
 (deftest ^:parallel import-viz-settings-test
-  (binding [serdes/*import-field-fk* (constantly 3)]
+  (serdes.tu/with-stub-resolvers {:import {:field (constantly 3)}}
     (is (= {:column_settings
             {"[\"ref\",[\"field\",3,null]]"
              {:click_behavior
@@ -351,7 +341,7 @@
                                   :display-name "Table"
                                   :type         :table
                                   :table-id     42}}
-          exported      (binding [serdes/*export-table-fk* (constantly ["DB" "SCHEMA" "TABLE"])]
+          exported      (serdes.tu/with-stub-resolvers {:export {:table (constantly ["DB" "SCHEMA" "TABLE"])}}
                           (serdes/export-mbql template-tags))]
       (is (= {"table" {:id           "abc"
                        :name         "table"
@@ -360,8 +350,8 @@
                        :table-id     ["DB" "SCHEMA" "TABLE"]}}
              exported))
       (is (= 42
-             (binding [serdes/*import-table-fk* (constantly 42)]
-               (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
+             (serdes.tu/with-stub-resolvers {:import {:table (constantly 42)}}
+               (get-in (serdes/import-mbql exported) ["table" :table-id])))))))
 
 (deftest ^:parallel template-tag-table-id-deps-test
   (testing "template tag :table-id is not a dependency — the referenced Database and Table are synthesized on import if
@@ -399,9 +389,9 @@
                 "raw")))))))
 
 (deftest ^:parallel export-parameters-test
-  (binding [serdes/*export-fk*       (fn [id model]
+  (serdes.tu/with-stub-resolvers {:export {:fk    (fn [id model]
                                        (format "%s___%d" (name model) id))
-            serdes/*export-field-fk* (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
+                                           :field (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])}}
     (is (= [{:id                   "abc"
              :name                 "CATEGORY"
              :position             0
