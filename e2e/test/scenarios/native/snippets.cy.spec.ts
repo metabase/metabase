@@ -198,6 +198,16 @@ describe("scenarios > native > snippets", () => {
       cy.findByText("my special snippets").click();
       cy.findAllByText("snippet 1").should("have.length", 1);
     });
+
+    cy.log("A user without collection access sees the snippet folders");
+    cy.signIn("nocollection");
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+    H.rightSidebar().within(() => {
+      cy.findByText("my favorite snippets").click();
+      cy.findByText("my special snippets").click();
+      cy.findByText("snippet 1").should("be.visible");
+    });
   });
 
   it("should run queries with tags from snippets", () => {
