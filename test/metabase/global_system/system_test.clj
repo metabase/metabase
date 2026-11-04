@@ -755,6 +755,8 @@
         (finally
           (cleanup! [handle]))))))
 
+;;; ------------------------------------------- Derived components --------------------------------------------
+
 (deftest ^:synchronized derived-component-test
   (mc/alter-root db-handle :root-db)
   (let [makes   (atom 0)
