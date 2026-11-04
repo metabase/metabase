@@ -813,19 +813,24 @@
            qp.preprocess/preprocess
            qp.perms/check-query-permissions*))))
 
+(defn- options->cache-extra
+  "Caller-side material that must participate in a `FieldValues` cache key but isn't part of the constraints map.
+  Returns nil when none are set."
+  [{:keys [via-path fk-pairs]}]
+  (cond-> nil
+    (seq via-path) (assoc :via-path via-path)
+    (seq fk-pairs) (assoc :fk-pairs fk-pairs)))
+
 (mu/defn- cached-field-values
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   {:keys [limit via-path fk-pairs], :as _options} :- [:maybe ::options]]
+   {:keys [limit], :as options} :- [:maybe ::options]]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
           (params.field-values/get-or-create-field-values-for-current-user! (parameters.db/field field-id))
-          (let [extra (cond-> nil
-                        (seq via-path) (assoc :via-path via-path)
-                        (seq fk-pairs) (assoc :fk-pairs fk-pairs))]
-            (params.field-values/get-or-create-linked-filter-field-values!
-             (parameters.db/field field-id) constraints extra)))]
+          (params.field-values/get-or-create-linked-filter-field-values!
+           (parameters.db/field field-id) constraints (options->cache-extra options)))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
@@ -1033,22 +1038,22 @@
       {:values          []
        :has_more_values false}))
 
-(defn- search-cached-field-values? [field-id constraints]
+(defn- search-cached-field-values? [field-id constraints extra]
   (let [field (parameters.db/field field-id)]
     (and (use-cached-field-values? field-id)
          (isa? (:base_type field) :type/Text)
          ;; if we are doing a search, make sure we only use field values when we're certain the fieldvalues we stored
-         ;; are all the possible values. otherwise, we should search directly from DB
-         (let [hash-input (params.field-values/hash-input-for-field-values field constraints)
+         ;; are all the possible values. otherwise, we should search directly from DB. The hash must match what
+         ;; `cached-field-values-search` will look up, so the same `extra` (via-path/fk-pairs) participates.
+         (let [hash-input (params.field-values/hash-input-for-field-values field constraints extra)
                hash-key   (str (hash hash-input))]
            (if (not= hash-input {:field-id field-id})
              (parameters.db/advanced-field-values-exist? field-id hash-key)
              (parameters.db/full-field-values-exist? field-id))))))
 
 (defn- cached-field-values-search
-  [field-id query constraints {:keys [limit via-path fk-pairs]}]
-  (let [{:keys [values has_more_values]} (cached-field-values field-id constraints
-                                                              {:via-path via-path :fk-pairs fk-pairs})
+  [field-id query constraints {:keys [limit], :as options}]
+  (let [{:keys [values has_more_values]} (cached-field-values field-id constraints options)
         query                            (u/lower-case-en query)]
     {:values (cond->> (filter (fn [s]
                                 (when s
@@ -1084,7 +1089,8 @@
       (some? @v->human-readable)
       (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query-string options)
 
-      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
+      (and (search-cached-field-values? field-id constraints (options->cache-extra options))
+           (nil? @the-remapped-field-id))
       (do
         (check-field-value-query-permissions field-id constraints (dissoc options :via-path :fk-pairs))
         (cached-field-values-search field-id query-string constraints options))
