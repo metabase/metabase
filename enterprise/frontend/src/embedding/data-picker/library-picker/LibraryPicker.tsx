@@ -5,6 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { Box, Icon } from "metabase/ui";
 import type {
   Collection,
+  CollectionId,
   DatabaseId,
   LibraryCollection,
   TableId,
@@ -26,6 +27,8 @@ interface LibraryPickerProps {
   canSelectMetric: boolean;
   databaseId?: DatabaseId | null;
   tableId?: TableId;
+  /** Opens the folder holding this collection, and lists it. */
+  collectionId?: CollectionId | null;
   onSelect: (tableId: TableId) => void;
   /** Without it, there's no link back to the bucket step. */
   onBack?: () => void;
@@ -41,14 +44,17 @@ export function LibraryPicker({
   canSelectMetric,
   databaseId,
   tableId,
+  collectionId,
   onSelect,
   onBack,
 }: LibraryPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery(
     COLLECTION_TREE_REQUEST,
   );
-  const [selectedFolderId, setSelectedFolderId] =
-    useState<DataTypeInfoItem["id"]>();
+  // `null` once the user went back from the folder opened for `collectionId`
+  const [selectedFolderId, setSelectedFolderId] = useState<
+    DataTypeInfoItem["id"] | null
+  >();
 
   if (!collections) {
     return null;
@@ -61,7 +67,12 @@ export function LibraryPicker({
   const selectedFolder =
     folders.length === 1
       ? folders[0]
-      : folders.find((folder) => folder.infoItem.id === selectedFolderId);
+      : folders.find((folder) =>
+          selectedFolderId === undefined
+            ? collectionId != null &&
+              findCollectionById(folder.collections, collectionId)
+            : folder.infoItem.id === selectedFolderId,
+        );
 
   if (selectedFolder) {
     return (
@@ -69,11 +80,10 @@ export function LibraryPicker({
         type={selectedFolder.type}
         libraryFolders={selectedFolder.collections}
         tableId={tableId}
+        collectionId={collectionId}
         databaseId={databaseId}
         onSelect={onSelect}
-        onBack={
-          folders.length === 1 ? onBack : () => setSelectedFolderId(undefined)
-        }
+        onBack={folders.length === 1 ? onBack : () => setSelectedFolderId(null)}
       />
     );
   }

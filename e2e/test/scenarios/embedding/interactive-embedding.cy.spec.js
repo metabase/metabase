@@ -1270,6 +1270,46 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
+      it("should reopen a table published in a Library subfolder in the Library", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          H.createCollection({
+            name: "Finance",
+            parent_id: dataCollection.id,
+          }).then(({ body: subfolder }) => {
+            H.publishTables({
+              table_ids: [PRODUCTS_ID],
+              collection_id: subfolder.id,
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          cy.findByText("Finance").click();
+          cy.findByText("Products").click();
+        });
+        cy.wait("@getTableMetadata");
+        clickOnDataSource("Products");
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("not.exist");
+          cy.findByTestId("saved-entity-collection-tree")
+            .findByText("Finance")
+            .should("be.visible");
+          cy.findByLabelText("Products").should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
+        });
+      });
+
       it("should not offer a Library whose only content is archived", () => {
         cy.signInAsAdmin();
         H.unpublishTables({ table_ids: [ORDERS_ID] });
@@ -1360,6 +1400,18 @@ describe("scenarios > embedding > full app", () => {
         cy.wait("@getTableMetadata");
 
         H.getNotebookStep("data").findByText("Orders").should("be.visible");
+
+        clickOnDataSource("Orders");
+        H.popover().within(() => {
+          cy.findByTestId("saved-entity-collection-tree")
+            .findByText("Client B")
+            .should("be.visible");
+          cy.findByLabelText("Orders").should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
+        });
       });
     });
   });
