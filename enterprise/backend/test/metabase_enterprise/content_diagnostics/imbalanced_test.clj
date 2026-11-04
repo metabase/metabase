@@ -99,7 +99,9 @@
               (testing "3 empty tabs → crowded (tabs) AND empty, independently"
                 (let [fs (by-entity [:dashboard tabs-empty])]
                   (is (= #{:crowded :empty} (set (keys fs))))
-                  (is (= "tabs" (get-in fs [:crowded :details :unit]))))))))))))
+                  (is (= "tabs" (get-in fs [:crowded :details :unit])))
+                  (is (= 0 (:content_count (:empty fs))))
+                  (is (= "dashcards" (get-in fs [:empty :details :unit]))))))))))))
 
 ;;; -------------------------------------------------- API -------------------------------------------------
 

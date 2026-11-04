@@ -152,7 +152,14 @@
                 (is (some? model-finding))
                 (is (= :card (:entity_type question-finding)))
                 (is (= [model] (get-in question-finding [:details :duplicate_entity_ids])))
-                (is (= [question] (get-in model-finding [:details :duplicate_entity_ids])))))))))))
+                (is (= [question] (get-in model-finding [:details :duplicate_entity_ids]))))
+              (testing "GET /duplicated tells the sub-kinds apart: the question's peer is served as a model"
+                (let [resp (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
+                                                 :query prefix)
+                      f    (first (filter #(= question (:entity_id %)) (:data resp)))]
+                  (is (= "question" (:card_type f)))
+                  (is (= [{:id model :card_type "model"}]
+                         (map #(select-keys % [:id :card_type]) (get-in f [:details :duplicate_entities])))))))))))))
 
 (deftest duplicated-checker-excludes-archived-test
   (testing "archived cards/dashboards/documents neither get findings nor count as peers"

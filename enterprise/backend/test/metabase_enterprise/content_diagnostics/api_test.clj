@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api :as cd.api]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -171,6 +172,32 @@
         (testing "a column no endpoint serves is still rejected"
           (mt/user-http-request :rasta :put 400 "user-key-value/namespace/content_diagnostics/key/stale"
                                 {:value {:sort_column "not-a-sortable-column"}}))))))
+
+(deftest remembered-filters-round-trip-test
+  (testing "the content_diagnostics user-key-value namespace persists the last-used filters per tab"
+    ;; a fresh user has no remembered filters, so the test can't collide with (or leak into) shared rows
+    (let [password "p@ssw0rd-cd-roundtrip"]
+      (mt/with-temp [:model/User {user-id :id email :email} {}]
+        (auth-identity/set-password! user-id password)
+        (try
+          (let [creds {:username email :password password}
+                url   "user-key-value/namespace/content_diagnostics/key/stale"
+                value {:entity_types ["question" "model" "metric" "document" "transform" "collection"]
+                       :include_personal_collections false
+                       :sort_column  "name"
+                       :sort_direction "desc"}]
+            (mt/client creds :put 200 url {:value value})
+            (is (= value (mt/client creds :get 200 url)))
+            (testing "a later write replaces the remembered filters"
+              (mt/client creds :put 200 url {:value {:entity_types ["dashboard"]}})
+              (is (= {:entity_types ["dashboard"]} (mt/client creds :get 200 url))))
+            (testing "tabs are remembered independently"
+              (is (nil? (mt/client creds :get 204 "user-key-value/namespace/content_diagnostics/key/slow"))))
+            (testing "an unknown entity type is rejected"
+              (mt/client creds :put 400 url {:value {:entity_types ["bogus"]}})))
+          (finally
+            ;; user_key_value has an FK to the user, which with-temp deletes next
+            (t2/delete! :model/UserKeyValue :user_id user-id)))))))
 
 (defn- default-list-counts
   [user]
