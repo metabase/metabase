@@ -183,10 +183,18 @@
           reducible-query t2.execute/reducible-query]
       (with-redefs [dml-capture/max-pre-image-rows 2
                     t2.execute/reducible-query      (fn [sql-args]
-                                                      (swap! queries conj (first sql-args))
+                                                      (swap! queries conj sql-args)
                                                       (reducible-query sql-args))]
         (is (= 1 (t2/delete! ::bird :group_id 64))))
-      (is (=? [#"(?is).*\bLIMIT\b.*"] @queries)))))
+      (is (=? [[#"(?is).*\bLIMIT 3\b.*"]] @queries)))))
+
+(deftest query-inspection-runs-nothing-test
+  (testing "compiling a captured delete returns the DELETE without running the snapshot or delivering an event"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 65 0 "a"))]
+      (is (=? [(re-pattern (str "(?is)\\s*DELETE\\b.*\\b" id))] (t2/compile (t2/delete! ::bird :id id))))
+      (is (empty? (events)))
+      (is (true? (t2/exists? ::bird :id id))))))
 
 (deftest pre-image-build-failure-skips-capture-test
   (testing "a snapshot query that fails to build skips capture, and the delete still runs"
@@ -252,22 +260,25 @@
     (is (= 2 (t2/delete! ::bird [(str "DELETE FROM " table-name " WHERE group_id = ?") 111])))
     (is (empty? (events)))
     (is (= 0 (t2/count ::bird :group_id 111))))
-  (testing "DELETE ... USING maps are rejected before the capture pipeline can compile them"
+  (testing "a raw SQL string delete runs once, and reports the rows it deleted"
+    (reset-capture!)
+    (t2/insert! ::bird [(bird 113 0 "a") (bird 113 0 "b")])
+    (is (= 2 (t2/delete! ::bird "DELETE FROM dml_capture_test_bird WHERE group_id = 113")))
+    (is (empty? (events))))
+  (testing "query shapes a separate SELECT cannot restate are rejected before the capture pipeline builds them"
     (let [build-calls (atom 0)]
       (with-redefs [t2.pipeline/build (fn [& _] (swap! build-calls inc))]
-        (is (nil? (#'dml-capture/pre-image-rows
-                   :toucan.query-type/select.instances ::bird [:id] {}
-                   {:delete-from (keyword table-name)
-                    :using       [:other_table]
-                    :where       [:= :group_id 112]})))
-        (is (zero? @build-calls)))))
-  (testing "deletes carrying a CTE are rejected too, since the snapshot would run the CTE a second time"
-    (let [build-calls (atom 0)]
-      (with-redefs [t2.pipeline/build (fn [& _] (swap! build-calls inc))]
-        (is (nil? (#'dml-capture/pre-image-rows
-                   :toucan.query-type/select.instances ::bird [:id] {}
-                   {:with  [[:doomed {:select [:id], :from [(keyword table-name)]}]]
-                    :where [:in :id {:select [:id], :from [:doomed]}]})))
+        (are [query] (nil? (#'dml-capture/pre-image-rows
+                            :toucan.query-type/select.instances ::bird [:id] {} query))
+          ;; DELETE ... USING
+          {:delete-from (keyword table-name), :using [:other_table], :where [:= :group_id 112]}
+          ;; a CTE, which the snapshot would run a second time
+          {:with  [[:doomed {:select [:id], :from [(keyword table-name)]}]]
+           :where [:in :id {:select [:id], :from [:doomed]}]}
+          ;; a LIMIT, which picks arbitrary rows without an ORDER BY
+          {:where [:= :group_id 112], :limit 1}
+          ;; a raw SQL string
+          (str "DELETE FROM " table-name " WHERE group_id = 112"))
         (is (zero? @build-calls))))))
 
 (deftest uncaptured-ops-fire-nothing-test
