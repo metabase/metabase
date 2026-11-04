@@ -2067,6 +2067,25 @@
                   (is (= [(get-in (first turn-events) [:data "request_id"])]
                          (distinct (map #(get-in % [:data "request_id"]) tool-events)))
                       "the turn's tool events carry the same request id"))))))))
+    (testing "a throw in a trailing part, after the loop, reports the turn once, as error"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response [{:type :start :id "msg-1"}
+                                                                                        {:type :text :text "Done"}]))]
+        (mt/with-log-level [metabase.metabot.agent.core :fatal]
+          (snowplow-test/with-fake-snowplow-collector
+            (mt/as-admin
+              (reduce (fn [_ part]
+                        (when (= :finish (:type part))
+                          (throw (ex-info "finish part rejected" {}))))
+                      nil
+                      (run-agent-loop {:messages      [{:role :user :content "test"}]
+                                       :state         {}
+                                       :context       {}
+                                       :profile-id    :internal
+                                       :tracking-opts {:session-id "00000000-0000-0000-0000-000000000005"}})))
+            (is (= [{"finish_reason" "error"}]
+                   (->> (snowplow-test/pop-event-data-and-user-id!)
+                        (filter #(= "agent_turn_finished" (get-in % [:data "event"])))
+                        (map #(get-in % [:data "event_details"])))))))))
     (testing "a turn that dies on an exception finishes with reason error, before its first step"
       (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
         (mt/with-log-level [metabase.metabot.agent.core :fatal]

@@ -1005,7 +1005,6 @@
                                      (drop-while #(= :continue (:status %)))
                                      first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
-                            (report-turn-finished! @turn-tracking finish-reason iteration (u/since-ms start-ms))
                             ;; Materialized turn-level outputs for evals: token usage, why the loop
                             ;; stopped, and the final agent state (link registry / generated entities).
                             (when (ait/capture-active?)
@@ -1023,13 +1022,17 @@
                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
                             ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if @consumer-stopped?
-                              (unreduced result)
-                              (-> result
-                                  (cond->
-                                   (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
-                                   (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
-                                  (rf {:type :finish :finish-reason finish-reason})))))]
+                            (let [result' (if @consumer-stopped?
+                                            (unreduced result)
+                                            (-> result
+                                                (cond->
+                                                 (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                                 (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
+                                                (rf {:type :finish :finish-reason finish-reason})))]
+                              ;; Report last, after the trailing parts: a throw anywhere above reaches only
+                              ;; the catch below, so a turn is reported once, never as both stop and error.
+                              (report-turn-finished! @turn-tracking finish-reason iteration (u/since-ms start-ms))
+                              result')))]
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
