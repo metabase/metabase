@@ -67,11 +67,9 @@
      (sync-group-memberships*! user-or-id to-remove to-add))))
 
 (mu/defn sso-only-user? :- :boolean
-  "Whether the User with `user-id` and `sso-source` signs in through an enabled SSO provider that is LDAP or has no used
-  password."
+  "Whether the User with `user-id` and `sso-source` signs in through an enabled SSO provider and has no used password."
   [user-id    :- ::lib.schema.id/user
    sso-source :- [:maybe [:or :keyword :string]]]
   (boolean (and (some? sso-source)
                 (sso.settings/sso-source-enabled? sso-source)
-                (or (= :ldap (keyword sso-source))
-                    (not (sso.db/used-password-exists? user-id))))))
+                (not (sso.db/used-password-exists? user-id)))))

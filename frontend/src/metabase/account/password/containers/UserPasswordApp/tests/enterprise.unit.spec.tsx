@@ -46,15 +46,14 @@ describe("UserPasswordApp (EE)", () => {
     expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
   });
 
-  it("should hide password form for LDAP user who has password", async () => {
+  it("should show password form for LDAP user who has password", async () => {
     setup({
       user: createMockUser({ sso_source: "ldap", has_password: true }),
     });
 
     expect(
-      await screen.findByText("Two-factor authentication"),
+      await screen.findByLabelText("Current password"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
   });
 
   it("should keep the MFA settings after an LDAP user disconnects Slack", async () => {

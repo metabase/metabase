@@ -466,22 +466,6 @@
                 (mt/client :post 204 "session/forgot_password" {:email (:email sso-user)})
                 (is (mt/received-email-body? (:email sso-user) (re-pattern expected-body)))))))))))
 
-(deftest forgot-password-ldap-user-with-used-password-test
-  (testing "POST /api/session/forgot_password - LDAP user with used password gets no reset link while LDAP is enabled"
-    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
-                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
-                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
-                                metabase.sso.settings/sso-source-enabled? (fn [src] (= :ldap (keyword src)))]
-      (mt/with-temp [:model/User ldap-user {:email "ldap-password-user@example.com" :sso_source :ldap}
-                     :model/AuthIdentity _ {:user_id      (:id ldap-user)
-                                            :provider     "password"
-                                            :credentials  {:plaintext_password "somePassword12!!"}
-                                            :last_used_at (t/offset-date-time)}]
-        (mt/with-temporary-setting-values [site-url "http://test.example.com"]
-          (mt/with-fake-inbox
-            (mt/client :post 204 "session/forgot_password" {:email (:email ldap-user)})
-            (is (mt/received-email-body? (:email ldap-user) #"single sign-on"))))))))
-
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
@@ -753,6 +737,37 @@
                   "the user's existing sessions are not revoked")
               (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
                   "the reset token is not consumed"))))))))
+
+(deftest reset-password-gives-no-session-to-sso-user-test
+  (testing "POST /api/session/reset_password gives no session to user whose SSO provider is enabled"
+    (mt/with-temp [:model/User user {:sso_source :google}]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled   true]
+        (let [token (auth-identity/create-password-reset! (:id user))]
+          (is (= {:success true}
+                 (mt/client :post 200 "session/reset_password" {:token token :password "newPassUP12!!"})))
+          (is (not (t2/exists? :model/Session :user_id (:id user))))
+          (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")))
+          (is (nil? (t2/select-one-fn :last_used_at :model/AuthIdentity :user_id (:id user) :provider "password"))))))))
+
+(deftest reset-password-keeps-ldap-check-for-directory-user-test
+  (testing "LDAP directory user with used local password cannot log in with password set by reset"
+    (ldap.test/with-ldap-server!
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (mt/with-temp [:model/User user {:email "sally.brown@metabase.com" :sso_source :ldap}]
+          (auth-identity/set-password! (:id user) "oldLocalUP12!!")
+          (auth-identity/create-session-with-auth-tracking!
+           user
+           {:device_id "ldap-reset-device" :embedded false :token_exchange false
+            :device_description "Test" :ip_address "127.0.0.1"}
+           :provider/password)
+          (let [token (auth-identity/create-password-reset! (:id user))]
+            (is (= {:success true}
+                   (mt/client :post 200 "session/reset_password" {:token token :password "newLocalUP12!!"})))
+            (is (= {:errors {:password "did not match stored password"}}
+                   (mt/client :post 401 "session" {:username (:email user) :password "newLocalUP12!!"})))
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" {:username (:email user) :password "1234"})))))))))
 
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"

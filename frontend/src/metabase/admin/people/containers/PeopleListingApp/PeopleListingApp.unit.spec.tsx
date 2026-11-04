@@ -220,18 +220,6 @@ describe("user menu", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not offer to reset password of LDAP user who has password while LDAP is enabled", async () => {
-    setup({
-      users: [{ ...ssoUser, sso_source: "ldap", has_password: true }],
-      settings: { "ldap-enabled": true },
-    });
-    await openUserMenu();
-
-    expect(
-      screen.queryByRole("menuitem", { name: "Reset password" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("should offer to reset the password of an SSO user once their provider is disabled", async () => {
     setup({ users: [ssoUser], settings: { "saml-enabled": false } });
     await openUserMenu();
