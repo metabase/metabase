@@ -4444,8 +4444,9 @@
    :model-imports #{:model/User}}
 
   enterprise/serialization
-  {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api
+  {:team       "Data Apps"
+   :codeowners true
+   :api #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.dump
