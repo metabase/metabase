@@ -3111,7 +3111,7 @@
   transforms.feature-gating
   {:team "Graphy"
    :api  #{metabase.transforms.feature-gating}
-   :uses #{api premium-features}}
+   :uses #{api premium-features util}}
 
   transforms.indexes
   {:team "Gadget"
@@ -3349,6 +3349,7 @@
                     :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
+                    :model/Transform
                     :model/User}}
 
   warehouses.rest
@@ -3952,7 +3953,6 @@
                     :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/DataApp
-                    :model/Database
                     :model/Dimension
                     :model/Document
                     :model/Field
@@ -4581,16 +4581,21 @@
            driver
            events
            lib
+           lib.be
            lib.schema
            models
+           permissions
            premium-features
+           query-permissions
            query-processor
+           remote-sync
            request
            revisions
            run-tracking
            sql-tools
            sql-tools.parsing
            task
+           transforms
            transforms.base
            util}
    :model-exports #{:model/TransformTest}
