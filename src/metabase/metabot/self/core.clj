@@ -84,7 +84,8 @@
    [:title-fn {:optional true} [:maybe [:fn fn?]]]
    [:system-instructions {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
-   [:scope {:optional true} [:maybe :string]]])
+   [:scope {:optional true} [:maybe :string]]
+   [:runs-alone? {:optional true} [:maybe :boolean]]])
 
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
@@ -1107,6 +1108,8 @@
   - Passes chunks through unchanged as they arrive
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
+  - A call to a tool whose entry sets `:runs-alone?` starts once the calls before it have finished, and the calls
+    after it start once it has finished
   - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
   - At completion, waits for all tools and appends results
 
@@ -1114,7 +1117,9 @@
   [tools]
   (fn [rf]
     (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
-          errored? (volatile! false)]
+          errored? (volatile! false)
+          started  (volatile! []) ;; the tasks of the calls so far, in the order their input completed
+          alone    (volatile! nil)] ;; the last of those tasks that runs alone
       (fn
         ([result]
          (let [{tasks  true
@@ -1140,7 +1145,14 @@
 
                :tool-input-available
                (when-let [{:keys [chunks]} (get @active toolCallId)]
-                 (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
+                 (let [runs-alone? (:runs-alone? (get tools toolName))
+                       after       (if runs-alone? @started (some-> @alone list))
+                       ;; The pool starts tasks in the order they arrive, so every task waited on here has a thread
+                       task        (submit-virtual (bound-fn* #(do (run! deref after)
+                                                                   (run-tool toolCallId toolName tools chunks))))]
+                   (vswap! started conj task)
+                   (when runs-alone?
+                     (vreset! alone task))
                    (vswap! active assoc toolCallId {:task task})))
 
                :error

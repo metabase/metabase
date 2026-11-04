@@ -751,6 +751,27 @@
         (testing "and a warning names the call that never ran"
           (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
 
+(deftest ^:parallel tool-executor-xf-runs-alone-test
+  (testing "a call that runs alone starts after the calls before it in the response, and the calls after it wait for it"
+    (let [events (atom [])
+          calls  ["before" "alone" "after"]
+          tools  (into {} (for [tool-name calls]
+                            [tool-name {:tool-name   tool-name
+                                        :doc         "Records when it starts and ends."
+                                        :schema      [:=> [:cat [:map {:closed true}]] :any]
+                                        :runs-alone? (= "alone" tool-name)
+                                        :fn          (fn [_]
+                                                       (swap! events conj [:start tool-name])
+                                                       (Thread/sleep 20)
+                                                       (swap! events conj [:end tool-name])
+                                                       {:output "ok"})}]))]
+      (run! identity (eduction (self.core/tool-executor-xf tools)
+                               (test-util/parts->aisdk-chunks (for [tool-name calls]
+                                                                {:type :tool-input :id tool-name :function tool-name
+                                                                 :arguments {}}))))
+      (is (= [[:start "before"] [:end "before"] [:start "alone"] [:end "alone"] [:start "after"] [:end "after"]]
+             @events)))))
+
 ;;; tool argument validation tests
 
 (defn- validation-error
