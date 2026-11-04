@@ -92,7 +92,7 @@
                                   (table 2 "default" ["total"])
                                   (table 3 "2024Sales" ["total"])
                                   (table 4 "schema" ["total"])
-                                  (table 5 "заказы" ["total"])
+                                  (table 5 "注文" ["total"])
                                   (table 6 "orders(old)" ["total"])
                                   (table 9 "orders[old]" ["total"])]
                         :metrics [(metric 7 "orders" (table 1 "orders" ["total"]))
@@ -101,7 +101,7 @@
                                       ["default"     "tableDefault_2"]
                                       ["2024Sales"   "table2024Sales_3"]
                                       ["schema"      "tableSchema_4"]
-                                      ["заказы"      "table_5"]
+                                      ["注文"          "table_5"]
                                       ["orders(old)" "tableOrdersold_6"]
                                       ["orders[old]" "tableOrdersold_9"]]]
       (testing (str "table " entity-key)
