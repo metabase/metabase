@@ -44,8 +44,24 @@ export const setupCollectionPermissionsGraphEndpoint = (
   });
 };
 
+/**
+ * `GET /api/permissions/membership`. Pass a function to let a test change what
+ * a refetch returns.
+ */
 export const setupPermissionMembershipEndpoint = (
-  memberships: ListUserMembershipsResponse,
+  memberships:
+    | ListUserMembershipsResponse
+    | (() => ListUserMembershipsResponse),
 ) => {
-  fetchMock.get("path:/api/permissions/membership", memberships);
+  fetchMock.get("path:/api/permissions/membership", () =>
+    typeof memberships === "function" ? memberships() : memberships,
+  );
+};
+
+const MEMBERSHIP_ID_PATH = /\/api\/permissions\/membership\/\d+/;
+
+export const setupMembershipMutationEndpoints = () => {
+  fetchMock.post("path:/api/permissions/membership", 204);
+  fetchMock.put(MEMBERSHIP_ID_PATH, 204);
+  fetchMock.delete(MEMBERSHIP_ID_PATH, 204);
 };

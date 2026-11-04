@@ -1315,6 +1315,16 @@
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name nil})))))))))
 
+(deftest ^:parallel update-user-blank-name-test
+  (testing "PUT /api/user/:id"
+    (testing "a blank first or last name is rejected"
+      (is (=? {:errors {:first_name "nullable value must be a non-blank string."}}
+              (mt/user-http-request :crowberto :put 400 (str "user/" (mt/user->id :rasta))
+                                    {:first_name " "})))
+      (is (=? {:errors {:last_name "nullable value must be a non-blank string."}}
+              (mt/user-http-request :crowberto :put 400 (str "user/" (mt/user->id :rasta))
+                                    {:last_name " "}))))))
+
 (deftest update-sso-user-test
   (testing "PUT /api/user/:id"
     (testing "Test that we do not update a user's first and last names if they are an SSO user."

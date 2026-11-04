@@ -201,3 +201,50 @@ async function assertNavLink(linkText: string, linkHref: string) {
   // Unjustified type cast. FIXME
   return link as HTMLElement;
 }
+
+const setupAtRoute = (initialRoute: string) => {
+  renderWithProviders(
+    <Route path="/admin/people" element={<AdminPeopleApp />}>
+      <Route index element={<>people</>} />
+      <Route path="groups">
+        <Route index element={<>groups</>} />
+        <Route path=":groupId" element={<>group</>} />
+      </Route>
+    </Route>,
+    {
+      initialRoute,
+      withRouter: true,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures(),
+        }),
+      }),
+    },
+  );
+};
+
+const getNavItem = (name: string) =>
+  screen.getByRole("link", { name: new RegExp(name) });
+
+describe("AdminPeopleApp sidebar highlighting", () => {
+  it("should mark People active on the people page", async () => {
+    setupAtRoute("/admin/people");
+
+    expect(getNavItem("People")).toHaveAttribute("data-active", "true");
+    expect(getNavItem("Groups")).not.toHaveAttribute("data-active");
+  });
+
+  it("should mark Groups active on the groups page", async () => {
+    setupAtRoute("/admin/people/groups");
+
+    expect(getNavItem("Groups")).toHaveAttribute("data-active", "true");
+    expect(getNavItem("People")).not.toHaveAttribute("data-active");
+  });
+
+  it("should keep Groups active on a single group's page", async () => {
+    setupAtRoute("/admin/people/groups/5");
+
+    expect(getNavItem("Groups")).toHaveAttribute("data-active", "true");
+  });
+});
