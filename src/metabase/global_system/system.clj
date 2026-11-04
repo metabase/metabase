@@ -9,7 +9,10 @@
 
    A component can also be started on first use with [[ensure-started!]], which records how to stop it.
    A halt with [[halt!]] stops every started component, each before the components it uses, and otherwise last
-   started first."
+   started first.
+
+   A derived component, made with [[derived-component-handle]], is read-only: its value is made from other components'
+   current values, so it follows their bindings without one of its own."
   (:require
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc]
