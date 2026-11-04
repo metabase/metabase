@@ -637,9 +637,17 @@
         sync-state-acc (reduce-columns-by-table
                         metadata catalog glue-schema table-pattern
                         (fn [sync-state-acc table-name columns]
-                          (if (contains? tables table-name)
+                          (cond
+                            (contains? @done table-name)
+                            (do (log/warnf "`.getColumns` returned table %s.%s out of order, skipping the rest of it"
+                                           glue-schema table-name)
+                                sync-state-acc)
+
+                            (contains? tables table-name)
                             (send-table sync-state-acc table-name
                                         #(columns->fields database driver glue-schema table-name columns))
+
+                            :else
                             sync-state-acc))
                         init-sync-state)]
     (if (reduced? sync-state-acc)

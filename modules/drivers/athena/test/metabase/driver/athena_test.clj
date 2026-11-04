@@ -620,6 +620,18 @@
       (is (= [(field "t2" "id" "int" :type/Integer 0)]
              result)))))
 
+(deftest ^:parallel describe-fields-out-of-order-columns-test
+  (testing "if `getColumns` returns the columns of a table in two parts, only the first part is sent"
+    (let [[result calls] (describe-fields-with-fake-athena
+                          {:rows        [(column-row "t1" "a" "int")
+                                         (column-row "t2" "a" "int")
+                                         (column-row "t1" "b" "int")]
+                           :sync-tables ["t1" "t2"]})]
+      (is (= [(field "t1" "a" "int" :type/Integer 0)
+              (field "t2" "a" "int" :type/Integer 0)]
+             result))
+      (is (= [] (:table-calls calls))))))
+
 (deftest ^:parallel describe-fields-dbname-test
   (testing "when `dbname` is set, reads that database, and the fields have no schema"
     (let [[result calls] (describe-fields-with-fake-athena
@@ -686,6 +698,30 @@
                        (driver/describe-fields :athena db
                                                :schema-names [(:schema table)]
                                                :table-names  [(:name table)])))))))))
+
+(deftest get-columns-ordered-by-table-test
+  (mt/test-driver :athena
+    (testing "one `getColumns` call for a schema returns the columns of each table together"
+      (let [db (driver.u/ensure-lib-database (mt/db))]
+        (doseq [schema (distinct (map :schema (t2/select :model/Table :db_id (mt/id), :active true)))]
+          (testing schema
+            (let [table-names (sql-jdbc.execute/do-with-connection-with-options
+                               :athena db nil
+                               (fn [^Connection conn]
+                                 (let [metadata (.getMetaData conn)]
+                                   (with-open [^ResultSet rs (.getColumns metadata
+                                                                          (.getCatalog conn)
+                                                                          (#'athena/escape-metadata-pattern
+                                                                           metadata
+                                                                           (or schema (:dbname (:details db))))
+                                                                          "%"
+                                                                          nil)]
+                                     (loop [table-names []]
+                                       (if (.next rs)
+                                         (recur (conj table-names (.getString rs "TABLE_NAME")))
+                                         table-names))))))]
+              (is (seq table-names))
+              (is (= (distinct table-names) (dedupe table-names))))))))))
 
 (deftest describe-fields-paths-match-test
   (mt/test-driver :athena
