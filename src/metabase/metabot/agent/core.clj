@@ -980,9 +980,9 @@
                           :msg-count  (count (:messages opts))}
           (analytics/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms      (u/start-timer)
-                ;; the agent's tracking opts and the step in progress, kept outside the loop state so a turn
-                ;; that dies on an exception still reports its finish and the step it died on
-                turn-tracking (atom nil)
+                ;; built before the agent, and the step in progress kept outside the loop state, so a turn that
+                ;; dies on an exception still reports its finish and the step it died on
+                turn-tracking (turn-tracking-opts profile-id (:tracking-opts opts))
                 turn-step     (atom nil)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
@@ -1006,8 +1006,7 @@
                                               :ai/messages   (:messages opts)
                                               :ai/context    (:context opts)
                                               :ai/state      (:state opts)}
-                          (let [tracking   (reset! turn-tracking (turn-tracking-opts profile-id (:tracking-opts opts)))
-                                agent      (init-agent (assoc opts :tracking-opts tracking))
+                          (let [agent      (init-agent (assoc opts :tracking-opts turn-tracking))
                                 usage-atom (atom {})
                                 {:keys [result iteration finish-reason consumer-stopped?]}
                                 (->> (initial-loop-state agent rf init usage-atom)
@@ -1043,12 +1042,12 @@
                                                 (rf {:type :finish :finish-reason finish-reason})))]
                               ;; Report last, after the trailing parts: a throw anywhere above reaches only
                               ;; the catch below, so a turn is reported once, never as both stop and error.
-                              (report-turn-finished! @turn-tracking finish-reason iteration (u/since-ms start-ms))
+                              (report-turn-finished! turn-tracking finish-reason iteration (u/since-ms start-ms))
                               result')))]
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
-                  (report-turn-finished! @turn-tracking :error @turn-step (u/since-ms start-ms))
+                  (report-turn-finished! turn-tracking :error @turn-step (u/since-ms start-ms))
                   (let [{:keys [api-error status provider]} (ex-data e)
                         msg (ex-message e)]
                     (cond
