@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.analytics.core :as analytics.core]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -869,29 +868,19 @@
    :length         "error"})
 
 (defn- report-turn-finished!
-  "Fires one agent_turn_finished :snowplow/ai_service_event per turn, with the request id of the turn's
-  agent_used_tool events, so the fleet view can join a turn to its tool calls. Fires only when :source and
-  :request-id are present in tracking-opts, like the tool event. `result` is success or error by
-  [[finish-reason->result]]. The details carry the finish reason and the number of steps (LLM calls) the turn
-  took, which on an exception is the step it died on; `steps` is absent when the turn died before the loop
-  started."
-  [{:keys [request-id session-id source profile-id]} finish-reason steps duration-ms]
-  (when (and (some? source)
-             (some? request-id))
-    (analytics.core/track-event! :snowplow/ai_service_event
-                                 (cond-> {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
-                                          :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
-                                          :source                        source
-                                          :event                         "agent_turn_finished"
-                                          :user-id                       api/*current-user-id*
-                                          :session-id                    session-id
-                                          :profile                       (some-> profile-id name)
-                                          :duration-ms                   (long duration-ms)
-                                          :event-details                 (cond-> {"finish_reason" (name finish-reason)}
-                                                                           (some? steps) (assoc "steps" steps))}
-                                   ;; a reason outside the map leaves `result` unset rather than failing the event
-                                   (contains? finish-reason->result finish-reason)
-                                   (assoc :result (finish-reason->result finish-reason))))))
+  "Fires one agent_turn_finished :snowplow/ai_service_event per turn through [[self/track-ai-service-event!]], so
+  it shares the envelope and the request id of the turn's agent_used_tool events and the fleet view can join a
+  turn to its tool calls. `result` is success or error by [[finish-reason->result]]. The details carry the finish
+  reason and the number of steps (LLM calls) the turn took, which on an exception is the step it died on; `steps`
+  is absent when the turn died before the loop started."
+  [tracking-opts finish-reason steps duration-ms]
+  (self/track-ai-service-event! tracking-opts "agent_turn_finished"
+                                (cond-> {:duration-ms   (long duration-ms)
+                                         :event-details (cond-> {"finish_reason" (name finish-reason)}
+                                                          (some? steps) (assoc "steps" steps))}
+                                  ;; a reason outside the map leaves `result` unset rather than failing the event
+                                  (contains? finish-reason->result finish-reason)
+                                  (assoc :result (finish-reason->result finish-reason)))))
 
 ;;; Public API
 
