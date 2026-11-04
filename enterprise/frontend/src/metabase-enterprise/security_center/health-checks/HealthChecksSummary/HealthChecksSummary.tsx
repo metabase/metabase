@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, msgid, t } from "ttag";
 
 import ShieldImage from "assets/img/shield-96x96.svg";
 import { Card, Group, Icon, Stack, Text } from "metabase/ui";
@@ -27,12 +27,20 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
   }
 
   const { icon, iconColor } = getStatusInfo(isFailing ? "fail" : "unknown");
+  const totalCount = checks.length;
+  const summary = c(
+    "{0} is the number of passing checks, {1} is the total number of checks",
+  ).ngettext(
+    msgid`${passedCount} of ${totalCount} check passes`,
+    `${passedCount} of ${totalCount} checks pass`,
+    totalCount,
+  );
 
   return (
     <Card p="lg" withBorder>
       <Group gap="sm">
         <Icon name={icon} c={iconColor} />
-        <Text fw="bold">{t`${passedCount} of ${checks.length} checks pass`}</Text>
+        <Text fw="bold">{summary}</Text>
       </Group>
     </Card>
   );

@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
@@ -47,7 +47,8 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
             )}
           </Group>
           <Text size="sm" c="text-secondary">
-            {t`Checked ${getRelativeTime(check.checked_at)}`}
+            {c("{0} is a relative time like 5 minutes ago")
+              .t`Checked ${getRelativeTime(check.checked_at)}`}
           </Text>
         </Group>
 
