@@ -2,7 +2,11 @@
 // shared, so its properties as they are once the setup files have run are the
 // baseline, and whatever a file changed or added is undone between files.
 import { currentWindow } from "./dom.ts";
-import { globalsAddedByPackages } from "./package-loading.ts";
+import {
+  BUILT_IN_OBJECTS,
+  builtInKeysOfPackages,
+  globalsAddedByPackages,
+} from "./package-loading.ts";
 import {
   type Descriptors,
   ownDescriptors,
@@ -35,7 +39,12 @@ export function recordRealmBaseline(): void {
 
 export function restoreRealm(): void {
   for (const [target, descriptors] of realmBaseline) {
-    restoreDescriptors(target, descriptors, { removeAdded: true });
+    const keysOfPackages = builtInKeysOfPackages.get(target);
+    restoreDescriptors(
+      target,
+      keysOfPackages ? withoutKeys(descriptors, keysOfPackages) : descriptors,
+      { removeAdded: true, keepAdded: keysOfPackages },
+    );
   }
   restoreDescriptors(globalThis, globalBaseline, {
     removeAdded: true,
@@ -83,5 +92,28 @@ function realmObjects(): object[] {
     // console.warn would otherwise hand its recorded calls to the next file's
     // spyOn, which returns a mock it finds already in place.
     console,
+    ...BUILT_IN_OBJECTS,
+    // jest gives each file its own expect, so a matcher that a spec adds with
+    // expect.extend ends with the file.
+    ...expectMatchers(),
   ];
+}
+
+function expectMatchers(): object[] {
+  const state: unknown = Reflect.get(
+    globalThis,
+    Symbol.for("$$jest-matchers-object"),
+  );
+  const matchers =
+    typeof state === "object" && state !== null
+      ? Reflect.get(state, "matchers")
+      : undefined;
+  return typeof matchers === "object" && matchers !== null ? [matchers] : [];
+}
+
+function withoutKeys(
+  descriptors: Descriptors,
+  keys: Set<PropertyKey>,
+): Descriptors {
+  return new Map([...descriptors].filter(([key]) => !keys.has(key)));
 }
