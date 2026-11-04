@@ -627,7 +627,13 @@ describe("View Header | Not saved native question", () => {
 
   it("does not let the question be saved before a database is selected (metabase#18148)", async () => {
     const { onOpenModal } = setup({
-      card: getEmptyNativeQuestionCard({ database: null }),
+      card: createAdHocNativeCard({
+        dataset_query: {
+          type: "native",
+          database: null,
+          native: { query: "select foo" },
+        },
+      }),
       isDirty: true,
     });
 

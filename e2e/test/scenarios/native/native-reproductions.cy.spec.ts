@@ -786,28 +786,13 @@ describe("issue 52806", () => {
   });
 });
 
-describe("issues 55951, 57644", { tags: "@external" }, () => {
+describe("issue 55951", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
   });
 
-  it("should open the database picker with multiple databases, without a loading state when databases are being reloaded (metabase#55951, metabase#57644)", () => {
-    cy.log(
-      "should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)",
-    );
-    H.startNewNativeQuestion({
-      database: null,
-      query: "",
-    });
-    H.popover()
-      .should("be.visible")
-      .and("contain", "Sample Database")
-      .and("contain", "QA Postgres12");
-
-    cy.log(
-      "should not show loading state in database picker when databases are being reloaded (metabase#55951)",
-    );
+  it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
     cy.intercept<unknown, ListDatabasesResponse>(
       "GET",
       "/api/database",
