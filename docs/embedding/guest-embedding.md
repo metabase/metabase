@@ -8,6 +8,8 @@ redirect_from:
 
 # Guest embeds
 
+Guest embeds are available on every Metabase plan. On the Open Source and Starter plans, guest embeds show a ["Powered by Metabase" banner](#removing-the-powered-by-metabase-banner). Guest viewers don't sign in to Metabase, so they don't count as users, and you aren't billed for them. To show each customer only its own data, sign the customer's ID into the embed's token as a [locked parameter](#locked-parameters).
+
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
 > Looking for static embedding? It's [deprecated in favor of guest embeds](./introduction.md#static-embedding-is-deprecated).
@@ -135,7 +137,7 @@ Locked parameters are how you restrict data in a guest embed. Your server puts t
 
 ## Refreshing or initializing the JWT from your server
 
-JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed. That resets any selections the viewer made in Metabase's widgets. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed. That resets any selections the viewer made in Metabase's widgets. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand. Token refresh is available on every plan.
 
 The endpoint can serve two flows:
 
@@ -334,7 +336,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a [translation dictionary](./translations.md).
+The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus and buttons) automatically. To also translate content like dashboard titles and filter labels, upload a [translation dictionary](./translations.md). Translation dictionaries are available on Pro and Enterprise plans.
 
 ## How guest embedding works
 
