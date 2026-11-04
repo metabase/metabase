@@ -158,7 +158,12 @@
        (let [config     (jetty-config)
              new-server (create-server handler config)]
          (log-config config)
-         (.start new-server)
+         (try
+           (.start new-server)
+           (catch Throwable e
+             ;; not yet the instance, so nothing else would stop what part of it started
+             (.stop new-server)
+             (throw e)))
          (vreset! started? true)
          new-server))
      (fn [^Server server]
