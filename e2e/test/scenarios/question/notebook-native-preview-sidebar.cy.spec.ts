@@ -32,7 +32,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   });
 
   it("smoke test: should show the preview sidebar, update it, and close it", () => {
-    const defaultRowLimit = 1048575;
     const queryLimit = 2;
 
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
@@ -62,7 +61,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.NativeEditor.get()
       .should("be.visible")
       .and("contain", "SELECT")
-      .and("contain", defaultRowLimit)
+      .and("not.contain", "LIMIT")
       .and("not.contain", queryLimit);
 
     cy.log("It should be possible to close the sidebar");

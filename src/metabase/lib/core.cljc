@@ -347,6 +347,7 @@
   available-metrics]
  [lib.limit
   current-limit
+  disable-default-limit
   limit
   max-rows-limit]
  [metabase.lib.metadata
