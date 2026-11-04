@@ -20,13 +20,13 @@ export const ChartSettingNumberInput = ({
   max = Infinity,
 }: ChartSettingNumberInputProps) => {
   const handleChange = (newValue: number | string) => {
-    onChange(Number(newValue));
+    onChange(newValue === "" ? undefined : Number(newValue));
   };
 
   return (
     <NumberInput
       id={id}
-      value={value}
+      value={value ?? ""}
       onChange={handleChange}
       placeholder={placeholder}
       min={min}

@@ -264,35 +264,15 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   number_style: {
     get title() {
-      return t`Style`;
+      return t`Format`;
     },
-    widget: "select",
+    widget: "segmentedControl",
     getProps: () => ({
       options: [
-        {
-          get name() {
-            return t`Normal`;
-          },
-          value: "decimal",
-        },
-        {
-          get name() {
-            return t`Percent`;
-          },
-          value: "percent",
-        },
-        {
-          get name() {
-            return t`Scientific`;
-          },
-          value: "scientific",
-        },
-        {
-          get name() {
-            return t`Currency`;
-          },
-          value: "currency",
-        },
+        { name: "1.23", value: "decimal" },
+        { name: "123%", value: "percent" },
+        { name: "$1.23", value: "currency" },
+        { name: "1.23e+0", value: "scientific" },
       ],
     }),
     getDefault: getDefaultNumberStyle,
@@ -376,13 +356,11 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Number of decimal places`;
     },
-    widget: "number",
+    widget: "numberInput",
     getProps: () => ({
       placeholder: "1",
-      options: {
-        isNonNegative: true,
-        isInteger: true,
-      },
+      min: 0,
+      max: 20,
     }),
   },
   scale: {
@@ -472,6 +450,31 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+const LEADING_COLUMN_SETTING_KEYS = [
+  "column_title",
+  "click_behavior",
+  "show_mini_bar",
+  "text_align",
+  "number_style",
+  "currency",
+];
+// "Display as" and the link fields that depend on it go last
+const TRAILING_COLUMN_SETTING_KEYS = ["view_as", "link_text", "link_url"];
+
+function orderColumnSettingDefinitions(
+  settingDefs: VisualizationSettingsDefinitions,
+): VisualizationSettingsDefinitions {
+  return {
+    ..._.pick(settingDefs, ...LEADING_COLUMN_SETTING_KEYS),
+    ..._.omit(
+      settingDefs,
+      ...LEADING_COLUMN_SETTING_KEYS,
+      ...TRAILING_COLUMN_SETTING_KEYS,
+    ),
+    ..._.pick(settingDefs, ...TRAILING_COLUMN_SETTING_KEYS),
+  };
+}
+
 export function getSettingDefinitionsForColumn(
   series: Series,
   column: FormattableColumn,
@@ -486,23 +489,23 @@ export function getSettingDefinitionsForColumn(
       : visualization?.columnSettings || {};
 
   if (isDate(column) || (column.unit && column.unit !== "default")) {
-    return {
+    return orderColumnSettingDefinitions({
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
-    };
+    });
   }
   if (isNumber(column) && !isCoordinate(column)) {
-    return {
+    return orderColumnSettingDefinitions({
       ...extraColumnSettings,
       ...NUMBER_COLUMN_SETTINGS,
       ...COMMON_COLUMN_SETTINGS,
-    };
+    });
   }
-  return {
+  return orderColumnSettingDefinitions({
     ...extraColumnSettings,
     ...COMMON_COLUMN_SETTINGS,
-  };
+  });
 }
 
 export function isPivoted(
