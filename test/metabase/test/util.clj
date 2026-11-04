@@ -875,10 +875,10 @@
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
         (mc/binding (task.impl/scheduler-handle) temp-scheduler
                     (fn []
+                      ;; keep the scheduler up during the thunk: some custom migrations shut the scheduler down when
+                      ;; they finish, but the test still needs it
                       (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
-                                                              ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                                                              ;; after it's done, but we need the scheduler for testing
-                                                              qs/shutdown (constantly nil)]
+                                                              qs/shutdown   (constantly nil)]
                         (thunk))))
         (finally
           (qs/shutdown temp-scheduler))))))

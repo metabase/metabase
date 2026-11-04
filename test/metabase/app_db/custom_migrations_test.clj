@@ -1807,8 +1807,8 @@
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
-      ;; `with-send-pulse-setup!` binds an in-memory scheduler, but the InitSendPulseTriggers job runs on a Quartz thread,
-      ;; which does not inherit bindings, so install that scheduler as the root too
+      ;; `with-send-pulse-setup!` binds an in-memory scheduler, but the InitSendPulseTriggers job runs on a Quartz
+      ;; thread, which does not inherit bindings, so install that scheduler as the root too
       (global-system.tu/with-root (task.impl/scheduler-handle) (task.impl/scheduler)
         (let [user-id  (:id (new-instance-with-default :core_user))
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
