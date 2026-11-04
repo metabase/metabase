@@ -1,11 +1,15 @@
 const { H } = cy;
 
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type { GetFieldValuesResponse } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
+import { enterParameterizedQuery } from "./helpers/e2e-sql-filter-helpers";
+
 const { ORDERS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 describe("scenarios > native > filters > remapping", () => {
   beforeEach(() => {
@@ -28,6 +32,225 @@ describe("scenarios > native > filters > remapping", () => {
         params: {},
       });
       testWidgetsRemapping();
+    });
+  });
+});
+
+describe("issue 9357", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "should reorder template tags by drag and drop, but not from popovers (metabase#9357, metabase#40232)",
+    { viewportWidth: 800, viewportHeight: 600 },
+    () => {
+      H.startNewNativeQuestion();
+      enterParameterizedQuery(
+        "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      );
+
+      // Drag the firstparameter below the nextparameter
+      H.filterWidget().findAllByRole("listitem").first().as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
+        vertical: 50,
+        useMouseEvents: true,
+      });
+
+      // Ensure they're in the right order
+      cy.findAllByText("Variable name").parent().as("variableField");
+
+      cy.get("@variableField").first().findByText("nextparameter");
+
+      cy.get("@variableField").eq(1).findByText("firstparameter");
+
+      cy.log(
+        "dragging from inside a filter popover does not reorder the filters (metabase#40232)",
+      );
+      cy.findAllByRole("radio", { name: "Search box" }).first().click();
+      H.filterWidget().first().should("contain.text", "Nextparameter").click();
+
+      H.popover().findByText("Add filter").as("popoverElement");
+      H.moveDnDKitElementByAlias("@popoverElement", {
+        horizontal: 300,
+      });
+
+      H.filterWidget()
+        .should("have.length", 3)
+        .first()
+        .should("contain.text", "Nextparameter");
+    },
+  );
+});
+
+describe("issue 12581", () => {
+  const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
+
+  const questionDetails: NativeQuestionDetails = {
+    name: "12581",
+    native: {
+      query: ORIGINAL_QUERY,
+      "template-tags": {
+        filter: {
+          id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
+          name: "filter",
+          "display-name": "Filter",
+          type: "dimension",
+          dimension: ["field", ORDERS.CREATED_AT, null],
+          "widget-type": "date/month-year",
+          default: null,
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("should correctly display a revision state after a restore (metabase#12581)", () => {
+    // Start with the original version of the question made with API
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("not.exist");
+
+    H.NativeEditor.clear().type("SELECT 1");
+
+    H.queryBuilderHeader().button("Save").click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save").click();
+    });
+
+    cy.reload();
+    cy.wait("@cardQuery");
+
+    cy.findByTestId("revision-history-button").click();
+    H.sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      // Make sure sidebar opened and the history loaded
+      cy.findByText(/You created this/i);
+
+      cy.findByTestId("question-revert-button").click(); // Revert to the first revision
+    });
+
+    // Reverting reloads the question, which re-runs its query and resets the
+    // info sidesheet to the Overview tab. Wait for that reload to settle before
+    // re-reading the History tab, otherwise the tab switch races the reset.
+    cy.wait("@cardQuery");
+
+    H.sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/You reverted to an earlier version/i);
+    });
+
+    cy.findByLabelText("Close").click();
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+
+    H.NativeEditor.get().should("be.visible").and("contain", ORIGINAL_QUERY);
+
+    H.tableInteractive().findByText("37.65");
+
+    H.filterWidget().contains("Filter");
+  });
+});
+
+["nodata+nosql", "nosql"].forEach((variant) => {
+  describe(`issue 15163 (${variant})`, () => {
+    const dashboardFilter = {
+      name: "Category",
+      slug: "category",
+      id: "fd723065",
+      type: "category",
+    };
+
+    const questionDetails: NativeQuestionDetails = {
+      name: "15163",
+      native: {
+        query: 'SELECT COUNT(*) FROM "PRODUCTS" WHERE {{cat}}',
+        "template-tags": {
+          cat: {
+            id: "dd7f3e66-b659-7d1c-87b3-ab627317581c",
+            name: "cat",
+            "display-name": "Cat",
+            type: "dimension",
+            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "widget-type": "category",
+            default: null,
+          },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails: { parameters: [dashboardFilter] },
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 13,
+              size_y: 8,
+              series: [],
+              visualization_settings: {
+                "card.title": "New Title",
+              },
+              parameter_mappings: [
+                {
+                  parameter_id: dashboardFilter.id,
+                  card_id,
+                  target: ["dimension", ["template-tag", "cat"]],
+                },
+              ],
+            },
+          ],
+        });
+
+        if (variant === "nosql") {
+          cy.updatePermissionsGraph({
+            [COLLECTION_GROUP]: {
+              1: {
+                "view-data": "unrestricted",
+                "create-queries": "query-builder",
+              },
+            },
+          });
+        }
+
+        cy.signIn("nodata");
+
+        cy.visit(`/dashboard/${dashboard_id}?category=Gizmo`);
+      });
+    });
+
+    it("should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)", () => {
+      H.getDashboardCard().findByText("New Title").click();
+
+      cy.wait("@cardQuery").its("response.body.error").should("not.exist");
+
+      cy.findAllByTestId("cell-data").should("contain", "51");
+      H.assertQueryBuilderRowCount(1);
+      H.NativeEditor.get().should("not.exist");
     });
   });
 });
