@@ -57,6 +57,8 @@
   (mc/alter-root db-handle :uninit-global-db)
   (mc/reset! db-handle :ready-global-db))
 
+;;; ------------------------------------------------- Storage -------------------------------------------------
+
 (deftest ^:synchronized dynamic-binding-test
   (do-with-scheduler
    (fn []
@@ -290,6 +292,8 @@
   (testing "the write inside went to the root"
     (is (= :written-root-db @db-handle))))
 
+;;; ------------------------------------------------ Printing -------------------------------------------------
+
 (deftest handle-prints-test
   (testing "a handle prints, even when its component was never installed"
     (is (= {:pr     "#<ComponentHandle :metabase.global-system.system-test/never-installed>"
@@ -297,6 +301,8 @@
            (let [handle (system/mutable-component-handle ::never-installed)]
              {:pr     (pr-str handle)
               :pprint (pprint/write handle :stream nil)})))))
+
+;;; ---------------------------------------------- Atomic writes ----------------------------------------------
 
 (deftest ^:synchronized swap-vals-test
   (mc/alter-root other-handle 1)
@@ -330,6 +336,8 @@
           _       (deliver start true)
           winners (into [] (keep-indexed (fn [i racer] (when @racer i))) racers)]
       (is (= [@other-handle] winners)))))
+
+;;; --------------------------------------- Roots, locks and test roots ---------------------------------------
 
 (deftest ^:synchronized root-entry-test
   (let [handle (system/mutable-component-handle ::root-entry)]
@@ -385,3 +393,18 @@
          (global-system.tu/with-root handle :temp
            (is (= :temp (scheduler-runs (fn [] @handle)))))
          (is (nil? (mc/root-entry handle))))))))
+
+(deftest ^:synchronized init-root-test
+  (testing "init-root runs only when the component has no root"
+    (let [calls  (atom 0)
+          make   #(system/mutable-component-handle ::init-root (fn [] (swap! calls inc) :initial))
+          handle (make)]
+      (try
+        (is (= :initial @handle))
+        (mc/reset! handle :changed)
+        (testing "so making the handle again, as a reload does, keeps the current root"
+          (make)
+          (is (= {:calls 1, :value :changed}
+                 {:calls @calls, :value @handle})))
+        (finally
+          (mc/remove-root handle))))))
