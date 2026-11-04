@@ -108,15 +108,13 @@ SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChan
 | `navigationId`    | The ID of this visit. Each new visit gets a new ID, and going back keeps it. Use it as the key in `navigatedEntityParameters`.                                                                                         |
 | `clickParameters` | The values the click set, keyed like `parameters`, with only the filters the click set. Empty when the click sets no filter. Values are parsed the way the linked item parses them, so `"Gizmo"` comes as `["Gizmo"]`. |
 
-For linked items, `initial-state` fires after each navigation, including when people go back to an earlier visit.
-
 ### When the callback fires
 
 The [`source`](./sdk/api/ParameterChangeSource.html) field says which of these happened:
 
 | `source`        | Fires when                                                                                                                                                         |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `initial-state` | The embed finishes loading. Once per load.                                                                                                                         |
+| `initial-state` | The embed finishes loading. Once per load. On a linked dashboard or question, it fires after each navigation, including when people go back to an earlier visit.   |
 | `manual-change` | Someone applies a value with one of Metabase's filter widgets. On a dashboard with auto-apply turned off, editing a widget doesn't count; clicking **Apply** does. |
 | `auto-change`   | You pushed values and Metabase applied something different. The payload carries what was actually applied.                                                         |
 

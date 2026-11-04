@@ -193,7 +193,7 @@ To stay in sync:
 
 For a new visit, you pick the values:
 
-- **Keep what Metabase applied** with the payload's `parameters`: the click's values and the other filters' defaults, or the person's last used values if the click sets no filter. Storing these doesn't re-run any queries.
+- **Keep what Metabase applied** with the payload's `parameters`: the click's values and the other filters' defaults. On a linked dashboard, if the click sets no filter, these values are the person's last used values. Storing these values doesn't re-run queries on a linked dashboard. On a linked SQL question,  if the click doesn't set every variable, storing the values re-runs the query.
 - **Use the click's values and the defaults, but never last used values,** with `{ ...defaultParameters, ...clickParameters }`.
 - **Add your own values.** Put them before `clickParameters` to fill in the other filters, or after it to override the click.
 - **Ignore the click** by leaving out `clickParameters`.
@@ -204,7 +204,7 @@ Because you get the `navigationId` from the first callback, the linked item has 
 
 A visit that you don't store values for works as before: the linked item opens with the click's values, and your app doesn't control it.
 
-Questions built with the query builder can't be controlled: a click to one opens a pre-filtered question with no parameters, and sends no event. Neither does a SQL question without variables. A linked dashboard without filters sends events with empty `parameters`.
+Questions built with the query builder can't be controlled: a click to one opens a pre-filtered question with no parameters, and sends no event. A SQL question without variables also sends no event. A linked dashboard without filters sends events with empty `parameters`.
 
 - [Web component](#web-component-values-on-linked-content)
 - [React SDK](#react-sdk-values-on-linked-content)
