@@ -13,6 +13,7 @@
   keywords despite the fact that we're emitting them as JSON in the end so
   it doesn't really matter."
   (:require
+   [clojure.string :as str]
    [malli.json-schema :as mjs]
    [medley.core :as m]
    [metabase.lib.schema :as schema]
@@ -25,7 +26,7 @@
   ;; gets converted into an empty object in :allOf; for example ::literal/integer
   ;; in Malli is [:or :int [:fn u.number/bigint?]] which Malli compiles to
   ;; {:anyOf [{:type "integer"}]} but it should just become {:type "integer"}
-  (let [schema (update schema k (partial remove #(mp/empty? (dissoc % :description))))]
+  (let [schema (update schema k (partial remove mp/empty?))]
     (case (count (k schema))
       1 (merge (dissoc schema k) (first (k schema)))
       0 (dissoc schema k)
@@ -45,15 +46,30 @@
         (dissoc :additionalItems))
     node))
 
+(defn- ecma-pattern
+  "Replace the Java-only anchors of a regex pattern with ones JSON Schema validators accept."
+  [pattern]
+  (cond-> pattern
+    (or (string? pattern) (instance? java.util.regex.Pattern pattern))
+    (-> str (str/replace #"^\\A" "^") (str/replace #"\\z$" (constantly "$")))))
+
+(defn- any-of
+  "Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`."
+  [node]
+  (if-let [branches (:oneOf node)]
+    (-> node (dissoc :oneOf) (update :anyOf #(concat % branches)))
+    node))
+
 (defn- update-schema-fields [node]
   (if (map? node)
     (-> node
+        any-of
         prefix-items
         (m/update-existing :description #(cond-> % (record? %) str))
+        (m/update-existing :pattern ecma-pattern)
         (m/update-existing :required stringify)
         (collapse-branches :allOf)
         (collapse-branches :anyOf)
-        (collapse-branches :oneOf)
         (m/update-existing :properties #(mp/update-keys % u/qualified-name)))
     node))
 

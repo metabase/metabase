@@ -32,13 +32,15 @@
 (defn- json-error [^Validator v doc]
   (some-> (.validate v (.parse (JsonParser. (json/encode doc)))) str))
 
-(defn- check-branches [node]
+(defn- check-node [node]
   (when (map? node)
     (doseq [k [:oneOf :anyOf :allOf]
             :let [branches (k node)]
             :when branches]
       (is (< 1 (count branches)) (pr-str k branches))
-      (is (not-any? empty? branches) (pr-str k branches))))
+      (is (not-any? empty? branches) (pr-str k branches)))
+    (when-let [pattern (:pattern node)]
+      (is (not (re-find #"\\[Az]" (str pattern))) (str pattern))))
   node)
 
 (defn- baseline-docs []
@@ -54,9 +56,9 @@
     (testing "every exported model but settings has a schema"
       (is (= (set (remove #{"Setting"} serdes.models/exported-models))
              (set (keys schemas)))))
-    (testing "it should remove malli quirks"
+    (testing "it should remove malli quirks and Java-only regex anchors"
       (doseq [schema (vals schemas)]
-        (walk/postwalk check-branches (js/make-schema schema))))
+        (walk/postwalk check-node (js/make-schema schema))))
     (testing "the JSON Schema accepts every baseline file the malli schema accepts"
       (doseq [[path model-name doc] (baseline-docs)
               :let  [schema (schemas model-name)]
