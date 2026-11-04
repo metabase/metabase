@@ -334,6 +334,14 @@
     (is (not (re-find #"answer from the query on their screen"
                       (render-internal-template all-yes-perms ["construct_notebook_query"]))))))
 
+(deftest ^:parallel prompt-keeps-tools-out-of-answers-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"]]
+    (testing template
+      (is (re-find #"Don't mention your tools in your answer" (render-template template all-yes-perms))))))
+
 (deftest prompt-gates-sql-execution-guidance-test
   (let [tools ["construct_notebook_query" "create_sql_query" "run_query"]]
     (testing "with SQL execution off the model is told run_query runs notebook queries only"
