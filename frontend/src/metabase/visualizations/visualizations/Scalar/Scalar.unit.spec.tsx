@@ -550,7 +550,7 @@ describe("Scalar conditional colors", () => {
     expect(screen.getByText("12,345")).toBeInTheDocument();
   });
 
-  it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {
+  it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder (metabase#85062)", () => {
     setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS);
 
     expect(getValueColor()).toBe("green");

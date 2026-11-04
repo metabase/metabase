@@ -52,7 +52,7 @@ describe("useEntityPickerSearch", () => {
   });
 
   // questions are reachable through "Browse all"
-  it("searches measures and metrics, but not questions, when the instance has measures", async () => {
+  it("searches measures and metrics, but not questions, when the instance has measures (GDGT-3457)", async () => {
     setupSearchEndpoints([MEASURE, QUESTION]);
 
     const { result } = setup();
@@ -61,7 +61,7 @@ describe("useEntityPickerSearch", () => {
     expect(result.current.models).toEqual(["measure", "metric"]);
   });
 
-  it("searches measures and metrics, but not questions, when the instance has only metrics", async () => {
+  it("searches measures and metrics, but not questions, when the instance has only metrics (GDGT-3457)", async () => {
     setupSearchEndpoints([METRIC, QUESTION]);
 
     const { result } = setup();
@@ -70,7 +70,7 @@ describe("useEntityPickerSearch", () => {
     expect(result.current.models).toEqual(["measure", "metric"]);
   });
 
-  it("searches measures and metrics, but not questions, when the instance has both", async () => {
+  it("searches measures and metrics, but not questions, when the instance has both (GDGT-3457)", async () => {
     setupSearchEndpoints([MEASURE, METRIC, QUESTION]);
 
     const { result } = setup();
