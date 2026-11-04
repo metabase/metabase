@@ -13,7 +13,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { getNextId, waitForRequestsToSettle } from "__support__/utils";
+import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { reinitialize } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
@@ -472,7 +472,11 @@ describe("DataSourceSelector", () => {
         id: OTHER_DB_ID,
         name: "Other Database",
         tables: [
-          createMockTable({ id: OTHER_DB_TABLE_ID, db_id: OTHER_DB_ID }),
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            display_name: "Other Table",
+          }),
         ],
       });
       setup({
@@ -482,7 +486,7 @@ describe("DataSourceSelector", () => {
       });
 
       await userEvent.click(await screen.findByText("Other Database"));
-      expect(await screen.findByText("Table")).toBeInTheDocument();
+      expect(await screen.findByText("Other Table")).toBeInTheDocument();
       await userEvent.click(screen.getByLabelText("chevronleft icon"));
 
       expect(await screen.findByText("Sample Database")).toBeInTheDocument();
@@ -544,7 +548,6 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Our analytics")).toBeInTheDocument();
 
       await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
-      await waitForRequestsToSettle();
 
       expect(await screen.findByText("Sample Database")).toBeInTheDocument();
       expect(screen.getByText("Other Database")).toBeInTheDocument();
@@ -876,6 +879,7 @@ describe("DataSourceSelector", () => {
         await screen.findByText("Many tables Database"),
       ).toBeInTheDocument();
       expect(screen.getByText("Table 1")).toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
 
       // Going back skips the database list and lands on the bucket step
       await userEvent.click(screen.getByLabelText("chevronleft icon"));
