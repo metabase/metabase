@@ -91,6 +91,7 @@ export function EmbeddingDataPicker({
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
       "model",
       "table",
+      "semantic-layer",
       ...(canSelectMetric ? (["metric"] as const) : []),
     ];
     const isAllowedEntityType = (entityType: EmbeddingEntityType) =>
@@ -103,6 +104,7 @@ export function EmbeddingDataPicker({
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
+        isJoinStep={isJoinStep}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}
         triggerElement={
@@ -147,6 +149,7 @@ export function EmbeddingDataPicker({
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
       canSelectMetric={entityTypes.includes("metric")}
+      canSelectSemanticLayer={entityTypes.includes("semantic-layer")}
       popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget

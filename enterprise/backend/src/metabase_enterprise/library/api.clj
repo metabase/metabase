@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library.api
   (:require
    [metabase-enterprise.library.db :as library.db]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -45,6 +46,7 @@
 
 (api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:data nil?]]]
   "Get the Library. If no library exists, it doesn't fail but returns an empty response"
+  {:scope api-scope/data-app}
   [_route
    _query
    _body]
