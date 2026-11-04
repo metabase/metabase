@@ -1044,8 +1044,10 @@
          (isa? (:base_type field) :type/Text)
          ;; if we are doing a search, make sure we only use field values when we're certain the fieldvalues we stored
          ;; are all the possible values. otherwise, we should search directly from DB. The hash must match what
-         ;; `cached-field-values-search` will look up, so the same `extra` (via-path/fk-pairs) participates.
-         (let [hash-input (params.field-values/hash-input-for-field-values field constraints extra)
+         ;; `cached-field-values-search` will look up: with no constraints it reads the full FieldValues (extra is
+         ;; moot), and only with constraints does `:extra` key the advanced entry.
+         (let [hash-input (params.field-values/hash-input-for-field-values field constraints
+                                                                           (when (seq constraints) extra))
                hash-key   (str (hash hash-input))]
            (if (not= hash-input {:field-id field-id})
              (parameters.db/advanced-field-values-exist? field-id hash-key)
