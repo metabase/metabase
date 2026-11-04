@@ -465,3 +465,20 @@
     (is (= ["db" nil "orders" "customer" "tier"]
            (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
                                           {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))
+
+(deftest ^:parallel document-link-card-test
+  (let [viz {:virtual_card {:display "link"}
+             :link         {:entity {:id 2 :model "document" :name "My document"}}}]
+    (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))
+              serdes/*import-fk* (fn [eid model] (format "%s___%s" (name model) eid))]
+      (testing "export converts the linked document's id to a portable reference"
+        (is (= "Document___2"
+               (get-in (serdes/export-visualization-settings viz) [:link :entity :id]))))
+      (testing "dependencies are computed for the linked document"
+        (is (= #{[{:model "Document" :id 2}]}
+               (serdes/visualization-settings-deps true viz))))
+      (testing "import resolves the portable reference"
+        (is (= "Document___abc"
+               (get-in (serdes/import-visualization-settings
+                        (assoc-in viz [:link :entity :id] "abc"))
+                       [:link :entity :id])))))))
