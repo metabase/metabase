@@ -71,9 +71,7 @@ describe("DataSelectorDatabasePicker", () => {
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
     // focus the "‹ Raw Data" back link
     await userEvent.tab();
-    expect(
-      screen.getByRole("button", { name: "chevronleft icon Raw Data" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Raw Data" })).toHaveFocus();
     await userEvent.keyboard("{Enter}");
 
     expect(onBack).toHaveBeenCalledTimes(1);
@@ -89,9 +87,7 @@ describe("DataSelectorDatabasePicker", () => {
 
     // focus the "‹ Raw Data" back link
     await userEvent.tab();
-    expect(
-      screen.getByRole("button", { name: "chevronleft icon Raw Data" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Raw Data" })).toHaveFocus();
     await userEvent.keyboard(" ");
 
     expect(onBack).toHaveBeenCalledTimes(1);

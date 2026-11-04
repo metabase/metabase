@@ -54,7 +54,7 @@ export const DataSelectorSchemaPicker = ({
             }
           }}
         >
-          {onBack && <Icon name="chevronleft" size={18} />}
+          {onBack && <Icon name="chevronleft" size={18} aria-hidden />}
           <Box component="span" ml="sm">
             {selectedDatabase && tc(selectedDatabase.name)}
           </Box>
