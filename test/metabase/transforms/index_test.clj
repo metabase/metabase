@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.indexes.reconcile :as reconcile]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -28,10 +29,16 @@
    :query (query-test-util/make-query
            {:source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))})})
 
+(defn- native-source
+  "A SQL transform source that selects a constant."
+  []
+  {:type  :query
+   :query (lib/native-query (mt/metadata-provider) "SELECT 1")})
+
 (defn- python-source
   "A Python transform source that returns `transforms_products` unchanged (built via `create-table!`)."
   []
-  {:type            "python"
+  {:type            :python
    :source-database (mt/id)
    :source-tables   [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
    :body            "def transform(transforms_products):\n    return transforms_products"})
@@ -238,7 +245,7 @@
 (deftest ^:synchronized apply-index-outcomes!-writes-each-bucket-test
   (testing "each classified outcome is written back: status, error message, last_executed_at, and row removal"
     (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
-                                               :source             {:type "query"}
+                                               :source             (native-source)
                                                :source_database_id (mt/id)
                                                :target             {:database (mt/id) :type "table"
                                                                     :schema "public" :name "t"}}
@@ -281,7 +288,7 @@
 
 (deftest ^:synchronized ddl-failure-marks-row-failed-test
   (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
-                                             :source {:type "query"}
+                                             :source (native-source)
                                              :source_database_id (mt/id)
                                              :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
                  :model/TableIndex {idx-id :id} {:transform_id tid :index_name "boom_idx"
@@ -305,7 +312,7 @@
 (deftest ^:synchronized unreadable-warehouse-marks-running-indexes-failed-test
   (testing "a failed warehouse read fails the requests this run started, carrying the driver's own reason"
     (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
-                                               :source {:type "query"}
+                                               :source (native-source)
                                                :source_database_id (mt/id)
                                                :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
                    :model/TableIndex {running-id :id} {:transform_id tid :index_name "running_idx"
@@ -318,7 +325,7 @@
       (with-redefs [driver/fetch-table-indexes (fn [& _] (throw (ex-info access-denied-message {})))]
         (transforms-base.u/verify-managed-indexes!
          {:id     tid
-          :source {:type "query"}
+          :source (native-source)
           :target {:database (mt/id) :type "table" :schema "public" :name "t"}}))
       (testing "the running request is failed, with the driver message trimmed of its version tail"
         (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))

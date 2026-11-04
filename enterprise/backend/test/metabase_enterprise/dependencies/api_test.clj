@@ -259,7 +259,7 @@
                                                          :definition (-> (lib/query mp products)
                                                                          (lib/aggregate (lib/sum price)))}
                            :model/Transform _ {:name   "Transform on products"
-                                               :source {:type "query" :query (lib/query mp products)}
+                                               :source {:type :query :query (lib/query mp products)}
                                                :target {:type "table" :name (mt/random-name)}}]
               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
               (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
@@ -461,8 +461,9 @@
                        :model/Transform {transform-id :id} {:name "Transform - inactivetabletest"
                                                             :source {:type :query
                                                                      :query (lib/query mp products)}
-                                                            :target {:schema "PUBLIC"
-                                                                     :name "inactive_transform_table"}}]
+                                                            :target {:type   "table"
+                                                                     :schema "PUBLIC"
+                                                                     :name   "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
           (t2/update! :model/Transform transform-id {:target_table_id table-id})
           (events/publish-event! :event/transform-run-complete
@@ -1144,13 +1145,15 @@
                        :model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
                                                                      :source {:type :query
                                                                               :query (lib/query mp products)}
-                                                                     :target {:schema "PUBLIC"
-                                                                              :name "unreferenced_transform_table"}}
+                                                                     :target {:type   "table"
+                                                                              :schema "PUBLIC"
+                                                                              :name   "unreferenced_transform_table"}}
                        :model/Transform {referenced-transform-id :id} {:name "Referenced Transform - unreftest"
                                                                        :source {:type :query
                                                                                 :query (lib/query mp products)}
-                                                                       :target {:schema "PUBLIC"
-                                                                                :name "referenced_transform_table"}}]
+                                                                       :target {:type   "table"
+                                                                                :schema "PUBLIC"
+                                                                                :name   "referenced_transform_table"}}]
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
@@ -2723,13 +2726,13 @@
                                                                :owner_user_id (mt/user->id :crowberto)
                                                                :source        {:type  :query
                                                                                :query (lib/query mp products)}
-                                                               :target        {:schema "PUBLIC"
+                                                               :target        {:type "table" :schema "PUBLIC"
                                                                                :name   "user_owned_transform_table"}}
                          :model/Transform {transform2-id :id} {:name        "Email Owned Transform - ownertest"
                                                                :owner_email "external@example.com"
                                                                :source      {:type  :query
                                                                              :query (lib/query mp products)}
-                                                               :target      {:schema "PUBLIC"
+                                                               :target      {:type "table" :schema "PUBLIC"
                                                                              :name   "email_owned_transform_table"}}]
             (deps.test/synchronously-run-backfill!)
             (let [response (mt/user-http-request :crowberto :get 200

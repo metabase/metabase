@@ -29,21 +29,6 @@
   [toucan-instance]
   (some-> toucan-instance :definition lib/database-id))
 
-(defmulti ^:private pre-analysis-errors
-  "Return a (possibly empty) sequence of errors detected without running the full analyzer. When
-  non-empty, the entity is recorded broken with these errors and the regular analysis is skipped.
-  Use this for structural failures e.g. an orphan Transform whose source database has been deleted."
-  {:arglists '([toucan-instance])}
-  t2/model)
-
-(defmethod pre-analysis-errors :default [_] nil)
-
-(defmethod pre-analysis-errors :model/Transform
-  [{db-id :source_database_id id :id}]
-  (when (nil? db-id)
-    [(-> (lib/validation-exception-error "Source database for this transform has been deleted.")
-         (assoc :source-entity-type :transform :source-entity-id id))]))
-
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
 
@@ -55,22 +40,17 @@
   (let [model       (t2/model toucan-instance)
         entity-type (deps.dependency-types/model->dependency-type model)
         instance-id (:id toucan-instance)]
-    (if-let [errors (seq (pre-analysis-errors toucan-instance))]
-      (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (if-let [db-id (instance-db-id toucan-instance)]
-        (let [mp (lib-be/application-database-metadata-provider db-id)
-              results (try (deps.analysis/check-entity mp entity-type instance-id)
-                           (catch Exception e
-                             (log/errorf "Error analyzing entity: %s" (ex-message e))
-                             [(lib/validation-exception-error (.getMessage e))]))
-              success (empty? results)]
-          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
-        ;; No resolvable database, and no pre-analysis error explaining it: record a terminal error so
-        ;; the entity gets a finding (clearing its stale flag) instead of no-oping forever and being
-        ;; re-selected on every run. It re-checks normally if its database later becomes resolvable.
-        (deps.analysis-finding/upsert-analysis!
-         entity-type instance-id false
-         [(lib/validation-exception-error "Could not resolve a database for this entity.")])))))
+    (if-let [db-id (instance-db-id toucan-instance)]
+      (let [mp (lib-be/application-database-metadata-provider db-id)
+            results (try (deps.analysis/check-entity mp entity-type instance-id)
+                         (catch Exception e
+                           (log/errorf "Error analyzing entity: %s" (ex-message e))
+                           [(lib/validation-exception-error (.getMessage e))]))
+            success (empty? results)]
+        (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
+      (deps.analysis-finding/upsert-analysis!
+       entity-type instance-id false
+       [(lib/validation-exception-error "Could not resolve a database for this entity.")]))))
 
 (defn analyze-instances!
   "Given a series of toucan entities, upsert analyses for all of them and catch errors."

@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
@@ -183,8 +184,8 @@
                           transform-id (t2/insert-returning-pk! :model/Transform
                                                                 {:name          "Transform In Folder"
                                                                  :collection_id (:id folder)
-                                                                 :source        {:type  "query"
-                                                                                 :query (mt/native-query {:query "SELECT 1"})}
+                                                                 :source        {:type  :query
+                                                                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                                  :target        {:type "table" :schema "PUBLIC" :name "ghy_4399"}})
                           transform    (t2/select-one :model/Transform :id transform-id)
                           _            (events/publish-event! :event/transform-create

@@ -608,11 +608,6 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
 
-(mu/defn transform-ids-of-source-database
-  "The IDs of the Transforms reading from the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Transform :source_database_id db-id))
-
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (mu/defn dependencies-from

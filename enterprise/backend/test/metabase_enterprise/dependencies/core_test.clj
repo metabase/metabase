@@ -52,8 +52,10 @@
         tf1-query     (lib/query mp card1)
         transform1    {:id     30
                        :name   "MBQL Transform"
-                       :source {:query tf1-query}
-                       :target {:schema "Transformed"
+                       :source {:type  :query
+                                :query tf1-query}
+                       :target {:type   :table
+                                :schema "Transformed"
                                 :name   "output_tf30"}}
         tf1-output    (-> (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
                           (assoc :id           1234567
@@ -83,8 +85,10 @@
         tf2-query     (lib/native-query mp "SELECT * FROM {{#7}}")
         transform2    {:id      31
                        :name    "SQL transform"
-                       :source {:query (lib/->legacy-MBQL tf2-query)}
-                       :target {:schema "Transformed"
+                       :source {:type  :query
+                                :query tf2-query}
+                       :target {:type   :table
+                                :schema "Transformed"
                                 :name   "output_tf31"}}
         tf2-output    (-> (lib.metadata/table (mt/metadata-provider) (mt/id :orders))
                           (assoc :id           1234568

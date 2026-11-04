@@ -2,13 +2,12 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -316,17 +315,3 @@
   (when (premium-features/has-feature? :dependencies)
     (when (deps.findings/mark-transitive-dependents-stale! {:table [(:table_id object)]})
       (task.entity-check/trigger-entity-check-job!))))
-
-;; ### Database Deletion (orphans transforms)
-;; Transforms whose `source_database_id` matches the database being deleted survive the delete
-;; but their existing `analysis_finding` rows still say "OK". Mark them stale here so the entity-check
-;; job re-runs and surfaces them on `/monitor/dependency-diagnostics/broken`.
-(defenterprise mark-transforms-stale-on-database-delete!
-  "Enterprise implementation: mark all transforms whose source database is being deleted as stale
-   for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."
-  :feature :dependencies
-  [db-id]
-  (when-let [transform-ids (not-empty (dependencies.db/transform-ids-of-source-database db-id))]
-    (deps.analysis-finding/mark-stale! :transform transform-ids)
-    (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
-    (task.entity-check/trigger-entity-check-job!)))

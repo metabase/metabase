@@ -3165,6 +3165,7 @@
    :model-imports #{:model/Card
                     :model/Field
                     :model/Table
+                    :model/Transform
                     :model/User}}
 
   warehouses.rest

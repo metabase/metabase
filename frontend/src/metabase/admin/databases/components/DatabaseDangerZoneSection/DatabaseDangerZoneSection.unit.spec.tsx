@@ -143,9 +143,7 @@ describe("DatabaseDangerZoneSection", () => {
         database.name,
       );
       await userEvent.click(
-        within(modal).getByRole("button", {
-          name: "Delete this DB connection",
-        }),
+        within(modal).getByRole("button", { name: "Delete" }),
       );
       await waitFor(() => {
         expect(getDiscardFieldValuesConfirmModal()).not.toBeInTheDocument();

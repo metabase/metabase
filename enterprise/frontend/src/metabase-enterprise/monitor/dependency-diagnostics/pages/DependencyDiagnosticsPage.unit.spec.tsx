@@ -169,7 +169,7 @@ describe("DependencyDiagnosticsPage", () => {
       const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        urlParams: { groupTypes: ["table", "question", "transform"] },
+        urlParams: { groupTypes: ["table", "question"] },
       });
 
       await waitForListToLoad();

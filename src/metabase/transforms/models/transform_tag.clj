@@ -6,8 +6,10 @@
    [metabase.models.serialization :as serdes]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
-   [metabase.transforms.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -48,17 +50,19 @@
             {}
             (transforms.db/active-job-schedules-for-transforms transform-ids))))
 
-(defn tag-name-exists?
+(mu/defn tag-name-exists? :- :boolean
   "Check if a tag with the given name already exists"
-  [tag-name]
+  [tag-name :- :string]
   (transforms.db/tag-name-exists? tag-name))
 
-(defn tag-name-exists-excluding?
+(mu/defn tag-name-exists-excluding? :- :boolean
   "Check if a tag with the given name exists, excluding the specified ID"
-  [tag-name tag-id]
+  [tag-name :- :string
+   tag-id   :- ms/PositiveInt]
   (transforms.db/tag-name-exists-excluding? tag-name tag-id))
 
-(defn- translate-name [tag]
+(mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
+  [tag :- [:or ::transforms.schema/transform-tag ::transforms.schema/transform-tag.update]]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")
                 "daily"   (i18n/deferred-trs "daily")
                 "weekly"  (i18n/deferred-trs "weekly")
