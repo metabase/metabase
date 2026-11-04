@@ -152,7 +152,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 
     cy.get("@modelId").then((modelId) => {
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
-        ({ body: { id: actionId } }) => {
+        ({ id: actionId }) => {
           cy.wrap(actionId).as("actionId");
 
           H.createDashboard(DASHBOARD_DETAILS).then(

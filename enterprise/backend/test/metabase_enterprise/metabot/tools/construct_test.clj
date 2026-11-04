@@ -28,7 +28,7 @@
       (mapv #(lib.metadata/field mp (mt/id table %)) fields))))
 
 (defn- source-field-query [key-table key-column target-table]
-  (let [db (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db (t2/select-one-fn :name :model/Database :id (mt/id))
         field #(vector db "PUBLIC" %1 %2)]
     {:lib/type "mbql/query"
      :stages [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "CHECKINS"]
@@ -87,7 +87,7 @@
     (perms/set-table-permission! &group (mt/id :venues) :perms/create-queries :query-builder)
     (mt/with-temp-vals-in-db :model/Database (mt/id) {:name "Native sandbox"}
       (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :checkins) :group_id (u/the-id &group))
-            card-before (t2/select-one :model/Card card-id)
+            card-before (t2/select-one :model/Card :id card-id)
             snapshot #(hash-map :executions (t2/count :model/QueryExecution) :cache (t2/count :model/QueryCache))
             before (snapshot)
             build! #(construct/execute-representations-query (source-field-query "CHECKINS" "VENUE_ID" "VENUES"))
@@ -99,14 +99,14 @@
             control (binding [qp.pipeline/*execute* observe-execute]
                       (mt/with-dynamic-fn-redefs [construct/assert-source-fields-reach-their-tables! identity]
                         (build!)))
-            card-after-control (t2/select-one :model/Card card-id)
+            card-after-control (t2/select-one :model/Card :id card-id)
             actual (binding [qp.pipeline/*execute* observe-execute] (build!))]
         (is (nil? (:result_metadata card-before)))
         (is (= card-before card-after-control))
         (is (map? (get-in actual [:structured-output :query])))
         (is (empty? @warehouse) "Construction must not execute warehouse SQL")
         (is (not-any? :admin @warehouse) "Construction must not execute SQL as admin")
-        (is (= card-before (t2/select-one :model/Card card-id)) "Construction must not write Card metadata")
+        (is (= card-before (t2/select-one :model/Card :id card-id)) "Construction must not write Card metadata")
         (is (= before (snapshot)))
         (let [control-result (qp/process-query (get-in control [:structured-output :query]))
               actual-result (qp/process-query (get-in actual [:structured-output :query]))]
@@ -130,7 +130,7 @@
                                               (lib/query mp (lib.metadata/table mp (mt/id :venues))))
                                      :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                     :attributes attributes}
-    (t2/update! :model/Database (mt/id) {:name "Metabot sandbox"})
+    (t2/update! :model/Database :id (mt/id) {:name "Metabot sandbox"})
     (let [query (count-query "VENUES")]
       (doseq [tool [construct/construct-notebook-query-tool
                     slackbot-query/slackbot-construct-notebook-query-tool]]
@@ -144,7 +144,7 @@
 
 (deftest construct-tools-preprocess-sandboxed-queries-test
   (met/with-gtaps! {:gtaps {:orders {:query (orders-sandbox-query)}}}
-    (t2/update! :model/Database (mt/id) {:name "Metabot sandbox"})
+    (t2/update! :model/Database :id (mt/id) {:name "Metabot sandbox"})
     (let [compilations (atom 0)
           executions   (atom 0)
           query        (count-query "ORDERS")]
@@ -174,7 +174,7 @@
     (met/with-gtaps! {:gtaps {:venues {:query (lib/native-query
                                                (mt/metadata-provider)
                                                "SELECT ID, NAME, CATEGORY_ID, PRICE FROM VENUES WHERE PRICE = 1")}}}
-      (t2/update! :model/Database (mt/id) {:name "Metabot sandbox"})
+      (t2/update! :model/Database :id (mt/id) {:name "Metabot sandbox"})
       (let [card-id    (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues))
             executions (atom 0)
             execute    qp.pipeline/*execute*

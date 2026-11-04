@@ -16,6 +16,8 @@
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (defn- create-test-tables!

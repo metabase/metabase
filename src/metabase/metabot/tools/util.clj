@@ -9,15 +9,18 @@
    [metabase.lib.util :as lib.util]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
-  "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code and :terminal-error? from ex-data."
+  "Return an output for legacy agent errors, rethrowing declared tool errors and other exceptions.
+
+  Preserve `:status-code` and `:terminal-error?` from legacy errors."
   [e]
   (let [{:keys [agent-error? status-code terminal-error?]} (ex-data e)]
-    (if agent-error?
+    (if (and agent-error? (not (contains? (ex-data e) tools.error/error-key)))
       (cond-> {:output (ex-message e)}
         status-code     (assoc :status-code status-code)
         terminal-error? (assoc :terminal-error? true))
@@ -80,12 +83,33 @@
     (when-let [tgt (lib.metadata/field query tgt-id)]
       (column-portable-fk query tgt))))
 
+(defn- column-alias
+  [column]
+  (or (:lib/desired-column-alias column)
+      (:lib/source-column-alias column)))
+
 (defn column-field-id
   "Return the physical field ID or column alias used as a column's `field_id`."
   [column]
   (or (:id column)
-      (:lib/desired-column-alias column)
-      (:lib/source-column-alias column)))
+      (column-alias column)))
+
+(defn column-field-ids
+  "Return the `field_id` of each column of `columns`, in order. The ids are unique in the list when the columns have
+  aliases.
+
+  Two columns can come from one physical field, for example a breakout of `CREATED_AT` by month and by year. The
+  first of these columns keeps the field ID. Each later one gets its column alias, as a virtual column does."
+  [columns]
+  (first
+   (reduce (fn [[ids seen] column]
+             (let [id (column-field-id column)
+                   id (if (seen id)
+                        (or (column-alias column) id)
+                        id)]
+               [(conj ids id) (conj seen id)]))
+           [[] #{}]
+           columns)))
 
 (defn ->result-column
   "Return tool result column for `column` of `query`.
@@ -95,46 +119,63 @@
   Also includes a `:portable_fk` key with the portable foreign-key path
   `[db-name, schema, table-name, field-name …]` when the column maps to a real database field.
   The representations-format notebook query tool expects fields to be referenced by this path
-  rather than by numeric id."
-  [query column]
-  (let [base-type         (some-> (:base-type column) u/qualified-name)
-        effective-type    (some-> (:effective-type column) u/qualified-name)
-        semantic-type     (some-> (:semantic-type column) u/qualified-name)
-        coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
-        field-id          (column-field-id column)
-        portable-fk       (try (column-portable-fk query column)
-                               (catch Exception _ nil))
-        fk-target-fk      (try (fk-target-portable-fk query column)
-                               (catch Exception _ nil))]
-    (-> {:field_id field-id
-         :name (or (:lib/desired-column-alias column)
-                   (:lib/source-column-alias column))
-         :display_name (lib/display-name query column)
-         :type (convert-field-type column)}
-        (m/assoc-some :description (:description column)
-                      :base_type base-type
-                      :effective_type (when (not= effective-type base-type) effective-type)
-                      :semantic_type semantic-type
-                      :database_type (:database-type column)
-                      :coercion_strategy coercion-strategy
-                      :field_values (:field-values column)
-                      :portable_fk portable-fk
-                      :fk_target_portable_fk fk-target-fk
-                      :table_reference (table-reference query column)))))
+  rather than by numeric id.
+
+  The 3-arity uses `field-id` as the `field_id`, see [[->result-columns]]. When `field-id` is the alias of a later
+  column of one physical field, the column gets no `:portable_fk`: the path names the field, and on a card stage the
+  field resolves to the first column."
+  ([query column]
+   (->result-column query column (column-field-id column)))
+  ([query column field-id]
+   (let [base-type         (some-> (:base-type column) u/qualified-name)
+         effective-type    (some-> (:effective-type column) u/qualified-name)
+         semantic-type     (some-> (:semantic-type column) u/qualified-name)
+         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
+         portable-fk       (when (= field-id (column-field-id column))
+                             (try (column-portable-fk query column)
+                                  (catch Exception _ nil)))
+         fk-target-fk      (try (fk-target-portable-fk query column)
+                                (catch Exception _ nil))]
+     (-> {:field_id field-id
+          :name (column-alias column)
+          :display_name (lib/display-name query column)
+          :type (convert-field-type column)}
+         (m/assoc-some :description (:description column)
+                       :base_type base-type
+                       :effective_type (when (not= effective-type base-type) effective-type)
+                       :semantic_type semantic-type
+                       :database_type (:database-type column)
+                       :coercion_strategy coercion-strategy
+                       :field_values (:field-values column)
+                       :portable_fk portable-fk
+                       :fk_target_portable_fk fk-target-fk
+                       :table_reference (table-reference query column))))))
+
+(defn ->result-columns
+  "Return tool result columns for `columns` of `query`, with a unique `field_id` for each column. See
+  [[column-field-ids]]."
+  [query columns]
+  (mapv #(->result-column query %1 %2) columns (column-field-ids columns)))
 
 (defn find-column-by-field-id
   "Find a column by its emitted field ID, returning nil if no column matches.
 
-  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns."
+  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns and for later columns of
+  one physical field. Matches the ids of [[column-field-ids]]."
   [field-id columns]
   (when (some? field-id)
     (let [numeric-id (cond
                        (int? field-id) field-id
-                       (string? field-id) (parse-long field-id))]
-      (or (m/find-first #(= (column-field-id %) field-id) columns)
+                       (string? field-id) (parse-long field-id))
+          id-columns (map vector (column-field-ids columns) columns)
+          find-by-id (fn [id]
+                       (some (fn [[column-id column]]
+                               (when (= column-id id) column))
+                             id-columns))]
+      (or (find-by-id field-id)
           (when numeric-id
             (m/find-first #(= (:id %) numeric-id) columns))
-          (m/find-first #(= (column-field-id %) (str field-id)) columns)))))
+          (find-by-id (str field-id))))))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
@@ -172,11 +213,30 @@
   {:payload [:map {:closed true}
              [:id :int]
              [:expected-type [:enum :model :question :metric]]
-             [:actual-type [:enum :model :metric :question]]]}
-  [{:keys [id expected-type actual-type]}]
-  {:message (str (if (= expected-type :metric) "Card " "ID ")
-                 id " is a " (name actual-type) ", not a " (name expected-type) ".")
-   :recovery [{:text (str "Retry using a " (name expected-type) " ID.") :uses #{}}]})
+             [:actual-type [:enum :model :metric :question]]
+             [:card-uri {:optional true} :string]]}
+  [{:keys [id expected-type actual-type card-uri]}]
+  {:message (str "Card " id " is a " (name actual-type) ", not a " (name expected-type) ".")
+   :recovery (if card-uri
+               [{:text (str "Read `" card-uri "` instead.") :uses #{}}]
+               [{:text (str "Retry using a " (name expected-type) " ID.") :uses #{}}
+                {:text (str "Read `metabase://" (name actual-type) "/" id "` instead.")
+                 :uses #{"read_resource"}}
+                {:text (str "Set `data_source` to \"" (name actual-type) "\" in `get_field_values` for this card.")
+                 :uses #{"get_field_values"}}
+                {:text (str "Pass this ID as `source."
+                            (case actual-type :model "model_id" :metric "metric_id" :question "report_id")
+                            "` to `create_autogenerated_dashboard`.")
+                 :uses #{"create_autogenerated_dashboard"}}])})
+
+(defn check-card-type
+  "Return `card` if it has `expected-type`, or throw a recoverable error with its actual type.
+
+  The caller must check read access first."
+  [card expected-type]
+  (when-not (= expected-type (:type card))
+    (wrong-source-type! {:id (:id card) :expected-type expected-type :actual-type (:type card)}))
+  card)
 
 (defn get-card
   "Retrieve a readable card by ID, optionally requiring a particular card type."
@@ -184,10 +244,8 @@
    (-> (metabot.db/card id)
        api/read-check))
   ([id expected-type]
-   (let [card (get-card id)]
-     (when-not (= expected-type (:type card))
-       (wrong-source-type! {:id id :expected-type expected-type :actual-type (:type card)}))
-     card)))
+   (cond-> (get-card id)
+     expected-type (check-card-type expected-type))))
 
 (defn get-card-by-entity-id
   "Retrieve a readable card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
@@ -217,6 +275,45 @@
   (when-let [card (get-card card-id expected-type)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (card-query-metadata card (lib.metadata/card mp card-id))))))
+
+(defn card-results-query
+  "Return a query over the result columns of the card with ID `card-id`, whatever its type: what the card exposes,
+  rather than what its definition reads. [[card-query]] widens this to the definition for questions. With
+  `expected-type`, the card must be of that type, as for [[card-query]]."
+  ([card-id]
+   (card-results-query card-id nil))
+  ([card-id expected-type]
+   (when-let [card (if expected-type (get-card card-id expected-type) (get-card card-id))]
+     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+       (lib/query mp (lib.metadata/card mp card-id))))))
+
+(defn card-definition-table-ids
+  "The ids of the Tables the definition of the card with ID `card-id` reads, plus the Tables one FK hop away from
+  them, following source Cards to their own definitions (ten levels at most), or nil when the card is missing or
+  its query can't be built. A native definition names no Tables and contributes none: its result metadata can map
+  a column to any Field, so it is not trusted to say which Tables it exposes."
+  [card-id]
+  (when-let [card (get-card card-id)]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+      (try
+        (loop [todo #{card-id} seen #{} tables #{} depth 0]
+          (if (or (empty? todo) (= depth 10))
+            tables
+            (let [queries (into []
+                                (comp (keep (fn [{:keys [dataset-query]}] (some->> dataset-query (lib/query mp))))
+                                      (remove lib/any-native-stage?))
+                                (lib.metadata/bulk-metadata mp :metadata/card todo))
+                  refs    (if (seq queries)
+                            (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})
+                            {})
+                  seen    (into seen todo)]
+              (recur (into #{} (remove seen) (:card refs))
+                     seen
+                     (into tables (:table refs))
+                     (inc depth)))))
+        (catch Exception e
+          (log/debug e "Can't walk the card's definition; treating its tables as unknown")
+          nil)))))
 
 (defn metric-query
   "Return a query based on the metric with ID `metric-id`.

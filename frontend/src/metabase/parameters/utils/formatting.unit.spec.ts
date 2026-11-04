@@ -121,6 +121,18 @@ describe("metabase/parameters/utils/formatting", () => {
         fields: [numberField],
       },
       {
+        type: "number/=",
+        value: "9223372036854775807",
+        expected: "9,223,372,036,854,775,807",
+        fields: [numberField],
+      },
+      {
+        type: "number/=",
+        value: "-9223372036854775809",
+        expected: "-9,223,372,036,854,775,809",
+        fields: [numberField],
+      },
+      {
         type: "number/>=",
         value: 1.111111111111,
         expected: "1.111111111111",

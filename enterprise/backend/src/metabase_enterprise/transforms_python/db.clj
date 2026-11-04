@@ -6,23 +6,22 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids]))
 
 (mu/defn table-database-id
-  "The Database ID of the raw table row with `table-id`."
+  "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id))
 
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database database-id))
+  (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
 (mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
@@ -33,7 +32,7 @@
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
-  (t2/select-one :model/PythonLibrary library-id))
+  (t2/select-one :model/PythonLibrary :id [:auto/param library-id]))
 
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."
@@ -68,5 +67,4 @@
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
              :parent_id nil
              :nfc_path nil
-             {:from     [(warehouse-schema-overlay/field-query)]
-              :order-by [[:database_position :asc]]}))
+             {:order-by [[:database_position :asc]]}))

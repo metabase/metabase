@@ -90,13 +90,13 @@
        :recovery []}
 
       :sql-query
-      {:sentence " A saved question or model has no query ID."
+      {:sentence " The ID of a saved question or model is not a query ID."
        :recovery [{:uses #{"create_sql_query" "run_query"}
                    :text (str "To run one, write SQL that reads it with `create_sql_query`, then run that query"
                               " with `run_query`.")}]}
 
       :no-values
-      {:sentence " A saved question or model has no query ID, and no SQL can run here."
+      {:sentence " The ID of a saved question or model is not a query ID, and no SQL can run here."
        :recovery [{:uses #{} :text "Tell the user you can't read its results."}]})))
 
 (defrecoverable unknown-query-id!
@@ -160,3 +160,17 @@
                  :text "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns."}
                 {:uses #{"create_chart"}
                  :text "To chart a query from this conversation, call `create_chart` with its query ID."}]}))
+
+(defrecoverable not-curated!
+  "The entity exists and the user can read it, but this Metabot only uses curated content and the entity isn't
+  curated. Raised by `read_resource`, `list_available_fields`, `get_field_values`, `run_query`, and the tools that
+  take an entity id, so one sentence covers every direct read."
+  {:payload [:map {:closed true}
+             ;; a URI or a short description such as "table 12": the entity is named by the handle the agent used,
+             ;; never by its own name
+             [:label :string]]}
+  [{:keys [label]}]
+  {:message  (str "`" label "` is not available: this Metabot only uses curated content (verified, official, or "
+                  "Library content).")
+   :recovery [{:uses #{"search"}
+               :text "Call `search` to find curated tables, models, or metrics and use one of those instead."}]})

@@ -53,7 +53,7 @@
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
   [id     :- ms/PositiveInt
    entity :- RevisionedRow]
-  (t2/update! (:model entity) id (:row entity)))
+  (t2/update! (:model entity) :id id (:row entity)))
 
 (mu/defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."

@@ -680,9 +680,9 @@
       ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [& args]
+      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [query-executions]
                                                                                 (swap! save-execution-metadata-count inc)
-                                                                                (apply save-execution-metadata-original args)
+                                                                                (save-execution-metadata-original query-executions)
                                                                                 (deliver called-promise true))
                     query/save-queries-and-update-average-execution-times! (fn [entries]
                                                                              (swap! update-avg-execution-count + (count entries))

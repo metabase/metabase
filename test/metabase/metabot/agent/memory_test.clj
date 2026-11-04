@@ -2,8 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.query-repair-test :as query-repair-test]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.malli.registry :as mr]))
@@ -19,8 +22,26 @@
       (is (= [] (:steps-taken mem)))))
   (testing "defaults the working state when nil"
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
-      (is (= {:queries {} :charts {} :todos [] :link-registry {}}
+      (is (= {:queries {} :charts {} :link-registry {}}
              (memory/get-state mem))))))
+
+(deftest ^:parallel initialize-repairs-stripped-queries-test
+  (testing "a structured query without its :lib/* keys is read as valid MBQL 5, wherever state holds it (BOT-2410)"
+    ;; Conversation state persisted before the viewing context kept the `:lib/*` keys holds such queries. Every tool
+    ;; reads them through this normalization, and `metabot_message` normalizes its `:state` the same way on read.
+    (let [stripped (query-repair-test/stripped-aggregated-query (lib/count))
+          mem      (memory/initialize [] {:queries {"q1" stripped}
+                                          :charts  {"c1" {:chart_id "c1", :query_id "q1", :queries [stripped]}}})
+          valid?   (fn [query]
+                     (and (= :mbql/query (:lib/type query))
+                          (mr/validate :metabase.lib.schema/query query)))]
+      (is (valid? (memory/find-query mem "q1")))
+      (is (valid? (-> (memory/find-chart mem "c1") :queries first)))))
+  (testing "a query the repair cannot make valid stays as it was"
+    (let [stripped (query-repair-test/stripped-aggregated-query
+                    (lib/count) (lib/sum (meta/field-metadata :venues :price)))
+          mem      (memory/initialize [] {:queries {"q1" stripped}})]
+      (is (= stripped (memory/find-query mem "q1"))))))
 
 (deftest ^:parallel initialize-normalizes-state-registry-keys-test
   (let [query          {:database 1 :nested/value "preserved"}
@@ -83,12 +104,12 @@
     (let [mem  (memory/initialize [] {:queries {"q1" {:id "q1"}}})
           mem' (-> mem
                    (memory/set-query "q2" {:id "q2"})
-                   (memory/set-todos [{:id "b"}]))]
+                   (memory/set-chart "c1" {:id "c1"}))]
       (testing "working state carries the seeded baseline plus this turn's writes"
-        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
                (memory/get-state mem'))))
       (testing "turn delta carries only this turn's writes — not the seeded baseline"
-        (is (= {:queries {"q2" {:id "q2"}} :todos [{:id "b"}]}
+        (is (= {:queries {"q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
                (memory/turn-state mem'))))))
   (testing "turn-state is nil until this turn writes something"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
@@ -102,6 +123,11 @@
       (is (mr/validate ::metabot.schema/state persisted))
       (is (= #{"seeded-q"}
              (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
+
+(deftest ^:parallel persisted-todo-lists-validate-test
+  (testing "state persisted while Metabot had todo tools still validates, since the agent entry point checks it"
+    (is (mr/validate ::metabot.schema/state
+                     {:todos [{:id "1" :content "Find the orders table" :status "pending" :priority "high"}]}))))
 
 (deftest ^:parallel client-ids-persist-once-stored-test
   (let [query   {:database 1}
@@ -141,10 +167,10 @@
              (memory/turn-state mem'))))))
 
 (deftest ^:parallel merge-states-test
-  (testing "map entries merge; scalar/vector entries take the later value"
-    (is (= {:queries {:q1 1 :q2 2} :todos [{:id "b"}]}
-           (memory/merge-states {:queries {:q1 1} :todos [{:id "a"}]}
-                                {:queries {:q2 2} :todos [{:id "b"}]})))))
+  (testing "map entries merge; other entries take the later value"
+    (is (= {:queries {:q1 1 :q2 2} :client-ids #{"b"}}
+           (memory/merge-states {:queries {:q1 1} :client-ids #{"a"}}
+                                {:queries {:q2 2} :client-ids #{"b"}})))))
 
 (deftest ^:parallel get-steps-test
   (testing "retrieves all steps"

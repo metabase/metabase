@@ -133,6 +133,11 @@ jobs:
           triggered by: @${{ github.event.sender.login }}
           EOF
 
+      # JSON.stringify puts every array item on its own line, which is not the
+      # format that oxfmt uses
+      - name: Format package.template.json like the rest of the repo
+        run: release/node_modules/.bin/oxfmt "$package_template"
+
       - name: Commit version bump
         env:
           BUMP_BRANCH: sdk-version-bump-${{ steps.metadata.outputs.new_version }}
