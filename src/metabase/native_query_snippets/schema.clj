@@ -37,7 +37,7 @@
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}
    [:merge
-    [:select-keys ::native-query-snippet [:archived :description :entity_id :name :collection_id :creator_id :content
-                                          :template_tags]]
+    [:select-keys ::native-query-snippet [:archived :description :entity_id :name :collection_id :creator_id :content]]
     [:map {:closed true}
-     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+     [:serdes/meta    {:optional true} ::models.schema/external-meta]
+     [:template_tags {:optional true} [:maybe [:map-of :string :map]]]]]])

@@ -106,6 +106,9 @@
   (testing "the v65 view changesets that 1.64.2.1 ran, and 64 ships again, report 64"
     (is (= 64 (first (#'versions/extract-numbers "v65.2026-10-07T12:00:00"))))
     (is (= 64 (first (#'versions/extract-numbers "v65.2026-10-07T12:00:01")))))
+  (testing "the v65 changesets that drop HTTP actions, which 64 ships too, report 64"
+    (is (= 64 (first (#'versions/extract-numbers "v65.2026-10-03T00:00:00"))))
+    (is (= 64 (first (#'versions/extract-numbers "v65.2026-10-03T00:00:01")))))
   (is (= 60 (first (#'versions/extract-numbers "v60.ghdf99efd")))))
 
 ;;; ------------------------------------------------- recording runs ----------------------------------------------

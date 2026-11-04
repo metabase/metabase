@@ -17,8 +17,18 @@
 
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
+(def ^:private transform-flag
+  "Transform for a `_set` flag, which the serialization query computes with `COALESCE` and so gets back as a number
+  from MySQL and MariaDB, which have no boolean type of their own."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (t2/deftransforms :model/TableUserSettings
-  {:entity_type     mi/transform-keyword
+  {:description_set     transform-flag
+   :visibility_type_set transform-flag
+   :data_layer_set      transform-flag
+   :data_source_set     transform-flag
+   :entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
    :data_layer      (mi/transform-validator-with-fixes
