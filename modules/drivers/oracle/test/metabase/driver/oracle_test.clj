@@ -397,6 +397,15 @@
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
 
+(deftest host-list-failover-test
+  (mt/test-driver :oracle
+    (testing "a host list connects through the next host when the first host does not resolve"
+      (let [details (update (:details (mt/db)) :host #(str "db-down.invalid," %))]
+        (is (driver/can-connect? :oracle details))
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:details details}
+          (is (= [[1M]]
+                 (mt/rows (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1 FROM dual"))))))))))
+
 (deftest timezone-id-test
   (mt/test-driver :oracle
     (is (= (t/zone-id "Z")

@@ -123,8 +123,7 @@
 ;;; value first. An allowlist rather than a denylist of the dangerous forms: the punctuation that gives the descriptor
 ;;; its structure -- `:` `/` `(` `)` `=` `?` `&` `@` `,` -- has no place in a hostname, a port, a SID, or a service
 ;;; name, and leaving any of it through is what makes `config-https://attacker/x` or `x))(ADDRESS=(HOST=attacker)` a
-;;; connection Metabase would open. The one exception is a `,` between hosts: the host may be a list of hosts, but each
-;;; host in that list must be a plain hostname or IP literal.
+;;; connection Metabase would open.
 
 (def ^:private host-pattern
   "A hostname or IPv4 literal, or an IPv6 literal in the brackets Oracle needs to tell it from the port separator."
@@ -132,7 +131,7 @@
 
 (def ^:private detail-patterns
   "What each detail interpolated into the connect descriptor is allowed to look like, keyed by detail."
-  {;; one host, or a comma-separated list of hosts that the driver tries in order (client-side failover)
+  {;; one host, or a comma-separated list of hosts that the driver tries in order
    :host         (re-pattern (str host-pattern "(?:\\s*,\\s*" host-pattern ")*"))
    ;; bounded rather than `\d+` so that the `parse-long` in [[validated-details]] is total -- no TCP port needs more
    :port         #"\d{1,5}"
