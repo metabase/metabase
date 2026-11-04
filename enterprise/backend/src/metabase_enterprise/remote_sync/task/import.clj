@@ -25,9 +25,21 @@
           source (source/source-from-settings branch)
           snapshot (source.p/snapshot source)
           snapshot-version (source.p/version snapshot)
-          last-version (remote-sync.task/last-version)]
-      (if (= last-version snapshot-version)
+          last-version (remote-sync.task/last-version)
+          newest-task (remote-sync.task/most-recent-task)]
+      (cond
+        (= last-version snapshot-version)
         (log/infof "Skipping auto-import: source version %s matches last imported version" snapshot-version)
+
+        ;; A conflict is not a sync base, so without this an unresolved conflict would be retried, and recorded as a
+        ;; new conflict task, on every tick until the remote moves or someone resolves it.
+        (and (remote-sync.task/conflict? newest-task)
+             (= (:version newest-task) snapshot-version))
+        (log/infof (str "Skipping auto-import: the last task conflicted at source version %s; "
+                        "waiting for a new commit or a manual import")
+                   snapshot-version)
+
+        :else
         (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]
           (if existing?
             (log/info "Remote sync already in progress, not auto-importing")
@@ -42,7 +54,10 @@
                                                    (impl/publish-sync-event! :event/remote-sync-import task-id
                                                                              {:branch branch :auto true} nil)))))))))))
 
-(task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
+(task/defjob AutoImport
+  "Auto-imports any remote collections."
+  {:saved-class "metabase_enterprise.remote_sync.task.import.AutoImport"}
+  [_]
   (auto-import!))
 
 (def ^:private auto-import-job-key "metabase.task.remote-sync.auto-import.job")

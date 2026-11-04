@@ -190,15 +190,11 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
+## Data actions
 
-Choose whether to enable features related to [Metabase models](../../data-modeling/models/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
+Turn on **Data actions** to let people run actions on this database: both [actions on models](../../data-modeling/models/actions/introduction.md) and [data actions](../../data-modeling/data-actions.md). Actions can read, write, and delete data, so your database user needs write permissions.
 
-### Model actions
-
-Turn this setting on to allow [actions](../../data-modeling/models/actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
-
-### Model persistence
+## Model persistence
 
 We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/models/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
 

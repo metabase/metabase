@@ -18,15 +18,9 @@ import {
   TOKEN_KEY,
   TRANSFORMS_KEY,
 } from "../constants";
-import type {
-  RemoteSyncSettingsFormState,
-  RemoteSyncSettingsVariant,
-} from "../types";
+import type { RemoteSyncSettingsFormState } from "../types";
 
-export const useRemoteSyncInitialValues = (
-  variant: RemoteSyncSettingsVariant,
-) => {
-  const isModalVariant = variant === "settings-modal";
+export const useRemoteSyncInitialValues = () => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
@@ -37,11 +31,7 @@ export const useRemoteSyncInitialValues = (
     { skip: !isRemoteSyncEnabled },
   );
 
-  // The modal always fetches so its toggles can default to checked.
-  const { data: libraryCollectionData } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip: !isRemoteSyncEnabled && !isModalVariant },
-  );
+  const { data: libraryCollectionData } = useGetLibraryCollectionQuery();
 
   // Library collection endpoint returns { data: null } when not found
   const libraryCollection: LibraryCollection | undefined =
@@ -62,10 +52,9 @@ export const useRemoteSyncInitialValues = (
       settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
 
     const collectionSyncMap: Record<number, boolean> = {};
-    const shouldDefaultToChecked = isModalVariant && !isRemoteSyncEnabled;
 
     if (libraryCollection) {
-      collectionSyncMap[libraryCollection.id] = shouldDefaultToChecked
+      collectionSyncMap[libraryCollection.id] = !isRemoteSyncEnabled
         ? true
         : (libraryCollection.is_remote_synced ?? false);
     }
@@ -85,10 +74,10 @@ export const useRemoteSyncInitialValues = (
       [TOKEN_KEY]: tokenValue,
       [COLLECTIONS_KEY]: collectionSyncMap,
       [TRANSFORMS_KEY]:
-        shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
+        !isRemoteSyncEnabled && PLUGIN_TRANSFORMS.isEnabled
           ? true
           : values[TRANSFORMS_KEY],
-      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
+      [SYNC_LIBRARY_PENDING_KEY]: !isRemoteSyncEnabled && !libraryCollection,
     };
   }, [
     settingValues,
@@ -96,7 +85,6 @@ export const useRemoteSyncInitialValues = (
     libraryCollection,
     topLevelCollectionsData,
     tenantCollectionsData,
-    isModalVariant,
     isRemoteSyncEnabled,
   ]);
 

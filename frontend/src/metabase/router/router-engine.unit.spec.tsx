@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
@@ -79,7 +79,9 @@ describe("v7 engine (facade over real react-router v7)", () => {
   it("resolves a relative navigate() from the root", async () => {
     setup("/things/42");
 
-    navigate({ pathname: "other" });
+    act(() => {
+      navigate({ pathname: "other" });
+    });
 
     expect(await screen.findByTestId("other")).toBeInTheDocument();
   });

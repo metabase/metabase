@@ -49,7 +49,6 @@ jobs:
             -e=lt
             -e=km
             -e=pt-PT
-            -e=ro
             -e=th
             -e=uz
 

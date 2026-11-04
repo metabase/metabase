@@ -1,9 +1,12 @@
 import {
   canAccessAiAuditing,
   canAccessAlertsManagement,
+  canAccessApiKeyUsage,
+  canAccessContentDiagnostics,
+  canAccessDependencyDiagnostics,
   canAccessMonitor,
-  canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
 import {
   MetabaseIsSetup,
@@ -17,8 +20,13 @@ const UserCanAccessMonitor = createRedirectGuard(
   "/unauthorized",
 );
 
-const UserCanAccessMonitorDiagnostics = createRedirectGuard(
-  (state) => canAccessMonitorDiagnostics(state),
+const UserCanAccessDependencyDiagnostics = createRedirectGuard(
+  (state) => canAccessDependencyDiagnostics(state),
+  "/unauthorized",
+);
+
+const UserCanAccessContentDiagnostics = createRedirectGuard(
+  (state) => canAccessContentDiagnostics(state),
   "/unauthorized",
 );
 
@@ -32,8 +40,18 @@ const UserCanAccessAlertsManagement = createRedirectGuard(
   "/unauthorized",
 );
 
+const UserCanAccessSessionManagement = createRedirectGuard(
+  (state) => canAccessSessionManagement(state),
+  "/unauthorized",
+);
+
 const UserCanAccessAiAuditing = createRedirectGuard(
   (state) => canAccessAiAuditing(state),
+  "/unauthorized",
+);
+
+const UserCanAccessApiKeyUsage = createRedirectGuard(
+  (state) => canAccessApiKeyUsage(state),
   "/unauthorized",
 );
 
@@ -47,10 +65,16 @@ export const CanAccessMonitor = () => (
   </MetabaseIsSetup>
 );
 
-export const CanAccessMonitorDiagnostics = () => (
-  <UserCanAccessMonitorDiagnostics>
+export const CanAccessDependencyDiagnostics = () => (
+  <UserCanAccessDependencyDiagnostics>
     <Outlet />
-  </UserCanAccessMonitorDiagnostics>
+  </UserCanAccessDependencyDiagnostics>
+);
+
+export const CanAccessContentDiagnostics = () => (
+  <UserCanAccessContentDiagnostics>
+    <Outlet />
+  </UserCanAccessContentDiagnostics>
 );
 
 export const CanAccessMonitoringTools = () => (
@@ -65,8 +89,20 @@ export const CanAccessAlertsManagement = () => (
   </UserCanAccessAlertsManagement>
 );
 
+export const CanAccessSessionManagement = () => (
+  <UserCanAccessSessionManagement>
+    <Outlet />
+  </UserCanAccessSessionManagement>
+);
+
 export const CanAccessAiAuditing = () => (
   <UserCanAccessAiAuditing>
     <Outlet />
   </UserCanAccessAiAuditing>
+);
+
+export const CanAccessApiKeyUsage = () => (
+  <UserCanAccessApiKeyUsage>
+    <Outlet />
+  </UserCanAccessApiKeyUsage>
 );

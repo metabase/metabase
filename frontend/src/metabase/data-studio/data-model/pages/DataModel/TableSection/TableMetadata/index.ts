@@ -1,0 +1,1 @@
+export { TableMetadata } from "./TableMetadata";

@@ -45,13 +45,13 @@
    :snowplow/metabot          "1-0-1"
    :snowplow/search           "1-0-1"
    :snowplow/model            "1-0-0"
-   :snowplow/timeline         "1-0-0"
+   :snowplow/timeline         "1-0-1"
    :snowplow/task             "1-0-0"
    :snowplow/upsell           "1-0-0"
    :snowplow/action           "1-0-0"
    :snowplow/embed_share      "1-0-2"
    :snowplow/llm_usage        "1-0-0"
-   :snowplow/token_usage      "1-0-5"
+   :snowplow/token_usage      "1-0-6"
    :snowplow/serialization    "1-0-1"
    :snowplow/simple_event     "1-0-0"
    :snowplow/cleanup          "1-0-0"
@@ -146,6 +146,8 @@
   [:map {:closed true}
    [:request-id                    {:optional true} [:maybe :string]]
    [:model-id                      {:optional true} [:maybe :string]]
+   [:provider                      {:optional true} [:maybe :string]]
+   [:model-name                    {:optional true} [:maybe :string]]
    [:total-tokens                  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:prompt-tokens                 {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:completion-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
@@ -215,8 +217,10 @@
    [:result                        {:optional true} :string]
    [:event-details                 {:optional true}
     [:map {:closed true}
-     ["tool_name" {:optional true} [:maybe :string]]
-     ["step"      {:optional true} :int]]]])
+     ["tool_name"   {:optional true} [:maybe :string]]
+     ["step"        {:optional true} :int]
+     ["error_class" {:optional true} :string]
+     ["error_code"  {:optional true} :string]]]])
 
 (def SnowplowEventData
   "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`
@@ -245,19 +249,35 @@
   []
   (TrackerConfiguration. "sp" "metabase"))
 
+(def ^:private http-timeout-ms
+  "Connect, socket, and connection-request timeout for the emitter's HTTP client, in milliseconds."
+  5000)
+
+(defn- request-config
+  ^RequestConfig []
+  (-> (RequestConfig/custom)
+      ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+      ;; header in request response (PR #24579)
+      (.setCookieSpec CookieSpecs/STANDARD)
+      ;; All three default to no timeout, so without these a collector that accepts packets but never
+      ;; responds wedges an emitter thread for the life of the process.
+      (.setConnectTimeout http-timeout-ms)
+      (.setSocketTimeout http-timeout-ms)
+      (.setConnectionRequestTimeout http-timeout-ms)
+      (.build)))
+
+(defn- http-client-adapter
+  "The HTTP transport the Snowplow emitter's threads use, pointed at `url`."
+  ^ApacheHttpClientAdapter [url]
+  (let [client (-> (HttpClients/custom)
+                   (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                   (.setDefaultRequestConfig (request-config))
+                   (.build))]
+    (ApacheHttpClientAdapter. url client)))
+
 (defn- network-config
   []
-  (let [request-config (-> (RequestConfig/custom)
-                           ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
-                           ;; header in request response (PR #24579)
-                           (.setCookieSpec CookieSpecs/STANDARD)
-                           (.build))
-        client (-> (HttpClients/custom)
-                   (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                   (.setDefaultRequestConfig request-config)
-                   (.build))
-        http-client-adapter (ApacheHttpClientAdapter. (analytics.settings/snowplow-url) client)]
-    (NetworkConfiguration. http-client-adapter)))
+  (NetworkConfiguration. (http-client-adapter (analytics.settings/snowplow-url))))
 
 (defn- emitter-config
   []

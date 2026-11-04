@@ -67,10 +67,6 @@ export const QuestionActions = ({
     [isShowingQuestionInfoSidebar, isBookmarked],
   );
 
-  const infoButtonColor = isShowingQuestionInfoSidebar
-    ? "core-brand"
-    : undefined;
-
   const hasCollectionPermissions = question.canWrite();
   const uploadTableId = question._card.based_on_upload;
   const canAppend = hasCollectionPermissions && !!uploadTableId;
@@ -148,7 +144,6 @@ export const QuestionActions = ({
           className={ViewTitleHeaderS.ViewHeaderIconButton}
           icon="info"
           onClick={onInfoClick}
-          color={infoButtonColor}
           data-testid="qb-header-info-button"
           tooltipLabel={t`More info`}
           aria-label={t`More info`}
@@ -167,7 +162,6 @@ export const QuestionActions = ({
                 <ToolbarButton
                   className={ViewTitleHeaderS.ViewHeaderIconButton}
                   icon="upload"
-                  color={infoButtonColor}
                   data-testid="qb-header-append-button"
                   tooltipLabel={t`Upload data to this model`}
                   aria-label={t`Upload data to this model`}

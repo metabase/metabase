@@ -19,7 +19,7 @@
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
-   [metabase.transforms.models.transform-tag :as transform-tag]
+   [metabase.transforms.models.transform-schedule :as transform-schedule]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
@@ -181,7 +181,8 @@
         (run-transform! ctx started-run-id transform)
         {::status :succeeded ::transform transform}
         (catch Throwable t
-          (log/errorf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
+          ;; WARN: a failure while executing was already logged at ERROR by the transform's executor
+          (log/warnf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
           {::status    :failed
            ::transform transform
            ::message   (or (ex-message t) (str t))
@@ -417,7 +418,7 @@
   (let [tagged    (job-transform-ids job-id)
         plan      (:order (get-plan tagged))
         dep-ids   (into #{} (comp (map :id) (remove tagged)) plan)
-        scheduled (set (keys (transform-tag/schedules-for-transforms dep-ids)))]
+        scheduled (set (keys (transform-schedule/schedules-for-transforms dep-ids)))]
     (map (fn [{:keys [id] :as transform}]
            (cond-> transform
              (contains? dep-ids id) (assoc :dependency true
@@ -476,6 +477,8 @@
                        (log/errorf "Error when failing %s %s: %s" label (pr-str run-id) (ex-message e)))))
       result)
     (catch Throwable t
+      ;; a transform's own failure is returned in `result`, not thrown, so this is the coordinator failing
+      (log/errorf "%s %s failed: %s" label (pr-str run-id) (ex-message t))
       (try
         (coordinated-run/fail-started-run! model run-id {:message (ex-message t)})
         (catch Exception e

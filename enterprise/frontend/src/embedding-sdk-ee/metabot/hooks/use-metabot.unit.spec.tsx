@@ -563,6 +563,12 @@ describe("useMetabot", () => {
         continuable: true,
       },
       {
+        finishReason: "tool-calls",
+        messageMetadata: fullContextWindow,
+        reason: "step-limit",
+        continuable: false,
+      },
+      {
         finishReason: "length",
         messageMetadata: fullContextWindow,
         reason: "context-window-full",

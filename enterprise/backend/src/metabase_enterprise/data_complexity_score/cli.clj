@@ -40,7 +40,7 @@
    ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
-   [metabase.embeddings.startup :as embeddings.startup]
+   [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)

@@ -33,12 +33,8 @@
       {{{bootstrapJSON}}}
     </script>
 
-    <script type="application/json" id="_metabaseUserLocalization">
-      {{{userLocalizationJSON}}}
-    </script>
-
-    <script type="application/json" id="_metabaseSiteLocalization">
-      {{{siteLocalizationJSON}}}
+    <script type="application/json" id="_metabaseLocales">
+      {"user": "{{{userLocale}}}", "site": "{{{siteLocale}}}"}
     </script>
 
     <script type="application/json" id="_metabaseUserColorScheme">
@@ -50,6 +46,12 @@
          The browser blanks the attribute after parsing, so the value stays out of the DOM. -->
     <script type="text/javascript" nonce="{{{nonce}}}">{{{bootstrapJS}}}</script>
     <script type="text/javascript">{{{assetOnErrorJS}}}</script>
+
+    <!-- The catalogue chunks this request needs. They install themselves, so the
+         app's `import()` of them resolves without a request. Below
+         index_bootstrap.js, which repairs <base href> when the Site URL setting
+         is wrong, and these resolve against it. -->
+    {{{localeScripts}}}
   </head>
 
   <body dir="ltr" class="mb-wrapper">

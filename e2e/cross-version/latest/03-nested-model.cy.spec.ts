@@ -65,10 +65,7 @@ describe("Cross-version questions - nested model", () => {
 
       X.visitRootCollectionAndWait();
 
-      H.getPinnedSection()
-        .findByRole("link")
-        .should("contain", Q3_NAME)
-        .click();
+      cy.findAllByRole("link").filter(`:contains(${Q3_NAME})`).first().click();
 
       cy.findByTestId("question-row-count").should(
         "have.text",

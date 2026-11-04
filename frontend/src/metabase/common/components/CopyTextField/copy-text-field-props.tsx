@@ -60,6 +60,7 @@ export function getCopyButtonSectionProps({
           <Tooltip label={t`Copied!`} opened={copied}>
             <ActionIcon
               variant="subtle"
+              size="sm"
               aria-label={t`Copy`}
               data-testid="copy-button"
               onClick={() => {

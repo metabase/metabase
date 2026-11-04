@@ -16,6 +16,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log])
   (:import
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.time OffsetDateTime)
    (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
 
@@ -150,9 +151,11 @@
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
       (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
 
-(task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
-                org.quartz.DisallowConcurrentExecution true}
-  CancelOldTransformRuns [ctx]
+(task/defjob CancelOldTransformRuns
+  "Cancel items that haven't been canceled in two minutes"
+  {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
+   :concurrent? false}
+  [ctx]
   (cancel-old-transform-runs! ctx))
 
 (defn- start-job! []
@@ -183,6 +186,12 @@
                         :label   "transform run"
                         :reap-fn #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
 
+(defn- app-db-checkout-timeout?
+  "Is `e`, or anything in its cause chain, a c3p0 pool-checkout timeout? Then the app DB pool is exhausted, and this
+  poller is only the messenger."
+  [^Throwable e]
+  (boolean (some #(instance? TimeoutException %) (u/full-exception-chain e))))
+
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")
   ;; does not use the Quartz scheduler
@@ -199,4 +208,6 @@
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))
                                  (wr.cancelation/reducible-canceled-local-runs))
                            (catch Throwable t
-                             (log/errorf "Error while canceling a transform run: %s" (ex-message t)))) 0 20 TimeUnit/SECONDS))
+                             (if (app-db-checkout-timeout? t)
+                               (log/warnf "Could not check for transform runs to cancel: %s" (ex-message t))
+                               (log/errorf "Error while canceling a transform run: %s" (ex-message t))))) 0 20 TimeUnit/SECONDS))

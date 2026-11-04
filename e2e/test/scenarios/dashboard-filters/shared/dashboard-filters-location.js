@@ -8,16 +8,18 @@ export const DASHBOARD_LOCATION_FILTERS = {
     representativeResult: "148.23",
   },
   Contains: {
-    value: "Abb",
+    value: "bbev",
     representativeResult: "1510",
   },
   "Does not contain": {
-    value: "Wood",
-    representativeResult: "148.23",
+    value: "d",
+    representativeResult: "47.68",
+    negativeAssertion: "148.23",
   },
   "Starts with": {
-    value: "Abb",
-    representativeResult: "1510",
+    value: "Lake",
+    representativeResult: "122.37",
+    negativeAssertion: "67.83",
   },
   "Ends with": {
     value: "y",

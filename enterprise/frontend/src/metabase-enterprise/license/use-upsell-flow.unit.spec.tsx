@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   findRequests,
   setupTokenActivationEndpoint,
@@ -6,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -107,7 +109,9 @@ describe("useUpsellFlow", () => {
         },
       });
 
-      screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Trigger Upsell Flow" }),
+      );
 
       const encodedUrl = `return_url=${encodeURIComponent(window.location.href)}`;
       const userDetailsPart =
@@ -126,22 +130,26 @@ describe("useUpsellFlow", () => {
         location: "branding-upsell-admin-screen",
       });
 
-      screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Trigger Upsell Flow" }),
+      );
 
       jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
 
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          origin: "https://test-store.metabase.com",
-          data: {
-            type: "license-token-created",
-            source: "metabase-store",
-            payload: {
-              licenseToken: "token-abc-123",
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            origin: "https://test-store.metabase.com",
+            data: {
+              type: "license-token-created",
+              source: "metabase-store",
+              payload: {
+                licenseToken: "token-abc-123",
+              },
             },
-          },
-        }),
-      );
+          }),
+        );
+      });
 
       await waitFor(async () => {
         const requests = await findRequests("PUT");
@@ -176,20 +184,24 @@ describe("useUpsellFlow", () => {
     it("should display error and send message to store when token is invalid", async () => {
       const { mockPostMessage } = setupContainer({ tokenActivation: false });
 
-      screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          source: window,
-          origin: "https://test-store.metabase.com",
-          data: {
-            type: "license-token-created",
-            source: "metabase-store",
-            payload: {
-              licenseToken: "token-abc-123",
-            },
-          },
-        }),
+      await userEvent.click(
+        screen.getByRole("button", { name: "Trigger Upsell Flow" }),
       );
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            source: window,
+            origin: "https://test-store.metabase.com",
+            data: {
+              type: "license-token-created",
+              source: "metabase-store",
+              payload: {
+                licenseToken: "token-abc-123",
+              },
+            },
+          }),
+        );
+      });
 
       await waitFor(() => {
         expect(mockPostMessage).toHaveBeenCalledWith(

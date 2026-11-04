@@ -317,7 +317,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task)
+        (t2/update! :model/RemoteSyncTask :id (:id task)
                     {:last_progress_report_at old-time})
         (let [stale-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
           (is (true? (rst/timed-out? stale-task))))
@@ -338,7 +338,7 @@
   (testing "timed-out? returns false for completed task even with old last_progress_report_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
-      (t2/update! :model/RemoteSyncTask (:id task)
+      (t2/update! :model/RemoteSyncTask :id (:id task)
                   {:last_progress_report_at old-time})
       (rst/complete-sync-task! (:id task))
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -348,7 +348,7 @@
   (testing "timed-out? returns false for failed task even with old last_progress_report_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
-      (t2/update! :model/RemoteSyncTask (:id task)
+      (t2/update! :model/RemoteSyncTask :id (:id task)
                   {:last_progress_report_at old-time})
       (rst/fail-sync-task! (:id task) "Task failed")
       (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -359,7 +359,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           boundary-time (t/minus (t/offset-date-time) (t/minutes 4))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task)
+        (t2/update! :model/RemoteSyncTask :id (:id task)
                     {:last_progress_report_at boundary-time})
         (let [boundary-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
           (is (false? (rst/timed-out? boundary-task))))
@@ -371,8 +371,8 @@
     (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time
-                                                      :last_heartbeat_at       (t/offset-date-time)})
+        (t2/update! :model/RemoteSyncTask :id (:id task) {:last_progress_report_at old-time
+                                                          :last_heartbeat_at       (t/offset-date-time)})
         (is (false? (rst/timed-out? (t2/select-one :model/RemoteSyncTask :id (:id task)))))
         (finally
           (rst/complete-sync-task! (:id task))))))
@@ -380,8 +380,8 @@
     (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at (t/offset-date-time)
-                                                      :last_heartbeat_at       old-time})
+        (t2/update! :model/RemoteSyncTask :id (:id task) {:last_progress_report_at (t/offset-date-time)
+                                                          :last_heartbeat_at       old-time})
         (is (true? (rst/timed-out? (t2/select-one :model/RemoteSyncTask :id (:id task)))))
         (finally
           (rst/complete-sync-task! (:id task))))))
@@ -389,8 +389,8 @@
     (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time
-                                                      :last_heartbeat_at       nil})
+        (t2/update! :model/RemoteSyncTask :id (:id task) {:last_progress_report_at old-time
+                                                          :last_heartbeat_at       nil})
         (is (true? (rst/timed-out? (t2/select-one :model/RemoteSyncTask :id (:id task)))))
         (finally
           (rst/complete-sync-task! (:id task)))))))
@@ -400,8 +400,8 @@
     (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time
-                                                      :last_heartbeat_at       (t/offset-date-time)})
+        (t2/update! :model/RemoteSyncTask :id (:id task) {:last_progress_report_at old-time
+                                                          :last_heartbeat_at       (t/offset-date-time)})
         (is (= (:id task) (:id (rst/current-task))))
         (finally
           (rst/complete-sync-task! (:id task))))))
@@ -409,8 +409,8 @@
     (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at (t/offset-date-time)
-                                                      :last_heartbeat_at       old-time})
+        (t2/update! :model/RemoteSyncTask :id (:id task) {:last_progress_report_at (t/offset-date-time)
+                                                          :last_heartbeat_at       old-time})
         (is (nil? (rst/current-task)))
         (finally
           (rst/complete-sync-task! (:id task)))))))
@@ -434,7 +434,7 @@
     (let [task     (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task) {:last_progress_report_at old-time})
+        (t2/update! :model/RemoteSyncTask :id (:id task) {:last_progress_report_at old-time})
         (let [before (t2/select-one :model/RemoteSyncTask :id (:id task))]
           (is (nil? (:last_heartbeat_at before)))
           (is (= 1 (remote-sync.db/touch-task! (:id task))))
@@ -521,7 +521,7 @@
       (testing "Ignores a conflict task even though it records the version it conflicted against"
         (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/set-version! (:id conflict-task) "version 1.5")
-          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"])
+          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"] nil)
           (is (= "version 1" (rst/last-version)))))
       (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
@@ -672,35 +672,35 @@
 
 (deftest make-progress-reporter-throttles-and-forces-test
   (testing "intra-phase writes are throttled; :force? bypasses the throttle; boundaries always land"
-    (let [now    (atom 0)
-          writes (atom [])
-          report (rst/make-progress-reporter 1 {:throttle-ms 10000
-                                                :now-fn      (fn [] @now)
-                                                :write-fn    (fn [f] (swap! writes conj f))})]
-      (report 0.33 {:force? true})          ; boundary — always writes
-      (report 0.40)                          ; 0ms since last throttled anchor set by forced write -> throttled out
-      (reset! now 5000)  (report 0.50)       ; 5s < 10s -> throttled out
-      (reset! now 10000) (report 0.60)       ; 10s -> writes
-      (report 0.66 {:force? true})           ; boundary -> writes
+    (let [now     (atom 0)
+          writes  (atom [])
+          report! (rst/make-progress-reporter 1 {:throttle-ms 10000
+                                                 :now-fn      (fn [] @now)
+                                                 :write-fn    (fn [f] (swap! writes conj f))})]
+      (report! 0.33 {:force? true})          ; boundary — always writes
+      (report! 0.40)                         ; 0ms since last throttled anchor set by forced write -> throttled out
+      (reset! now 5000)  (report! 0.50)      ; 5s < 10s -> throttled out
+      (reset! now 10000) (report! 0.60)      ; 10s -> writes
+      (report! 0.66 {:force? true})          ; boundary -> writes
       (is (= [0.33 0.60 0.66] @writes)))))
 
 (deftest make-progress-reporter-is-monotonic-test
   (testing "the reporter never writes a fraction lower than the last written"
-    (let [now    (atom 0)
-          writes (atom [])
-          report (rst/make-progress-reporter 1 {:throttle-ms 0
-                                                :now-fn      (fn [] @now)
-                                                :write-fn    (fn [f] (swap! writes conj f))})]
-      (report 0.5)
-      (report 0.4)   ; lower -> dropped
-      (report 0.6)
+    (let [now     (atom 0)
+          writes  (atom [])
+          report! (rst/make-progress-reporter 1 {:throttle-ms 0
+                                                 :now-fn      (fn [] @now)
+                                                 :write-fn    (fn [f] (swap! writes conj f))})]
+      (report! 0.5)
+      (report! 0.4)  ; lower -> dropped
+      (report! 0.6)
       (is (= [0.5 0.6] @writes)))))
 
 (deftest make-progress-reporter-clamps-test
   (testing "fractions are clamped into [0.0, 1.0]"
-    (let [writes (atom [])
-          report (rst/make-progress-reporter 1 {:throttle-ms 0
-                                                :now-fn      (constantly 0)
-                                                :write-fn    (fn [f] (swap! writes conj f))})]
-      (report 1.5)
+    (let [writes  (atom [])
+          report! (rst/make-progress-reporter 1 {:throttle-ms 0
+                                                 :now-fn      (constantly 0)
+                                                 :write-fn    (fn [f] (swap! writes conj f))})]
+      (report! 1.5)
       (is (= [1.0] @writes)))))

@@ -5,7 +5,7 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   background-image: url("./metabot-ask-background.svg");
   background-position: right bottom;
   background-repeat: no-repeat;
@@ -64,19 +64,6 @@
   align-items: flex-end;
 }
 
-.sendButton {
-  color: var(--mb-color-background_page-primary);
-  border-radius: var(--mantine-radius-xs);
-
-  &:disabled,
-  &:disabled:hover {
-    background-color: var(--mb-color-core-brand);
-    color: var(--mb-color-text-primary-inverse);
-    border-color: var(--mb-color-core-brand);
-    opacity: 0.35;
-  }
-}
-
 .promptSuggestionsContainer {
   display: flex;
   flex-direction: column;
@@ -84,7 +71,7 @@
   gap: 0;
   width: 100%;
   min-height: 10.75rem;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border-radius: var(--mantine-radius-sm);
   box-shadow: var(--mantine-shadow-xs);
 }

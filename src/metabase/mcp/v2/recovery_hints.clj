@@ -9,6 +9,7 @@
    error key with no entry here yields no sentence, which is the intended failure mode: a
    missing hint reads as terse, a wrong one sends the agent at a tool it does not have."
   (:require
+   [clojure.string :as str]
    [metabase.mcp.v2.message :as message]))
 
 (set! *warn-on-reflection* true)
@@ -20,9 +21,10 @@
   (let [id (or (parse-long (str entity-id)) entity-id)]
     (case entity-type
       "metric"
-      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, put its base table's "
-                         "numeric id into `source-table:` (find it via \"search\" or \"browse_data\") and "
-                         "reference the metric by its numeric id: `aggregation: [[metric, {}, %s]]`.")]
+      (message/msg [(str "Metrics are aggregations, not sources. To use metric %s, build the stage on its required "
+                         "source: its base table's numeric ID in `source-table:`, or its saved question or model's "
+                         "numeric ID in `source-card:` (find it via \"search\" or \"browse_data\"). "
+                         "Then reference the metric by its numeric ID: `aggregation: [[metric, {}, %s]]`.")]
                    id id)
 
       ("question" "model" "card")
@@ -36,10 +38,32 @@
 
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
+(defn- usable-sources-hint
+  "Return the usable source IDs from an `:incompatible-metric` error as MCP guidance."
+  [usable-sources]
+  (when (seq usable-sources)
+    (apply message/msg
+           [(str "Use numeric IDs here: " (str/join "; " (repeat (count usable-sources) "%s")) ".")]
+           (for [[metric-id {:keys [source-table source-card]}] (sort-by key usable-sources)]
+             (if source-table
+               (message/msg ["metric %s needs `\"source-table\": %s`"] metric-id source-table)
+               (message/msg ["metric %s needs `\"source-card\": %s`"] metric-id source-card))))))
+
+(defn- card-fields-hint
+  "Return MCP guidance for listing the source card's columns, or nil when the error names no card."
+  [source-card source-card-type]
+  (when (and source-card source-card-type)
+    (message/msg [(str "Call \"get_content\" with items [{\"type\": %s, \"id\": %s}] and include [\"fields\"] to "
+                       "list the columns it returns.")]
+                 source-card-type source-card)))
+
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id]}]
+  [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
   (case error
+    :incompatible-metric
+    (usable-sources-hint usable-sources)
+
     :uri-in-source-table
     (uri-hint entity-type entity-id)
 
@@ -54,13 +78,22 @@
     (message/msg [(str "Call \"browse_data\" with action \"list_tables\" for the database, "
                        "then retry with the numeric table id — it is never ambiguous.")])
 
-    (:unknown-field :unknown-field-id)
+    (:unknown-field :unknown-field-id :ambiguous-field)
     (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for "
                        "the table to list its columns with their numeric ids.")])
 
     :ambiguous-fk
-    (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
-                       "source table to list the available foreign-key columns.")])
+    (if-let [card-fields (card-fields-hint source-card source-card-type)]
+      ;; A card returns a joined foreign key under its join alias (`O2__USER_ID`), which the table's fields don't show.
+      (message/msg [(str "%s Put the foreign-key column's `id` in `source-field` and its `lib/desired-column-alias` "
+                         "(its `name` when it has none) in `source-field-name`.")]
+                   card-fields)
+      (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the "
+                         "source table to list the available foreign-key columns.")]))
+
+    ;; Raised only on a `source-card:` stage, where the way out is a column the card returns.
+    (:column-not-returned :unexportable-fk)
+    (card-fields-hint source-card source-card-type)
 
     :no-fk-path
     (message/msg [(str "If a metric relates to that table, call \"browse_data\" with action \"get_fields\" for the "
@@ -77,11 +110,19 @@
     (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the table that "
                        "owns the segment and use the numeric id from its segments list.")])
 
-    :unknown-database
+    (:cross-database-card :cross-database-measure :cross-database-segment)
+    (message/msg [(str "A query can only reference saved questions, models, metrics, measures and segments "
+                       "from its own database. Use one from that database, or change the source to a table "
+                       "in the referenced item's database.")])
+
+    (:unknown-database :ambiguous-database-name)
     (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "
                        "action \"list_tables\"), which needs no database name at all.")])
 
     :missing-source-in-first-stage
     (message/msg ["`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."])
+
+    :query-preprocessing-failed
+    (message/msg ["Fix that part of the query and retry."])
 
     nil))

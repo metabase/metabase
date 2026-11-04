@@ -12,6 +12,7 @@ import { browseDatabase } from "./browse";
 import { card } from "./cards";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
+import { dataApp } from "./data-apps";
 import {
   dataStudioGlossary,
   dataStudioPublishedTableMeasure,
@@ -35,6 +36,7 @@ export type UrlableModel = {
   collection_id?: CollectionId | null;
   model_id?: CardId | null;
   table_id?: TableId;
+  data_app_slug?: string | null;
 };
 
 const NOT_FOUND_URL = "/404";
@@ -101,6 +103,13 @@ export function modelToUrl(item: UrlableModel): string {
       return exploration(item.id);
     case "glossary":
       return dataStudioGlossary();
+    case "dataapp":
+      return dataApp(item.name);
+    case "data-app":
+      if (item.data_app_slug !== null && item.data_app_slug !== undefined) {
+        return dataApp(item.data_app_slug);
+      }
+      return NOT_FOUND_URL;
     default:
       return NOT_FOUND_URL;
   }

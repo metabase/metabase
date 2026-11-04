@@ -3,6 +3,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.db :as driver.db]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -20,7 +21,7 @@
   []
   (doseq [{driver :engine, id :id, :as database} (driver.db/databases)]
     (try
-      (driver/notify-database-updated driver database)
+      (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
       (catch Throwable e
         (log/errorf "Failed to notify %s Database %s updated: %s" driver id (ex-message e))))))
 

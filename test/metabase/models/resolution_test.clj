@@ -5,6 +5,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel table-name-resolution-test
@@ -53,14 +54,14 @@
                 "deftransforms / define-before-insert side effects), so short-circuiting on it let concurrent "
                 "first-access on another thread use the model before its transforms were registered.")
     (let [required (atom [])]
-      (with-redefs [classloader/require (fn [& args] (swap! required into args))]
+      (mt/with-dynamic-fn-redefs [classloader/require (fn [& args] (swap! required into args))]
         (t2/resolve-model :model/QueryExecution))
       (is (contains? (set @required) 'metabase.queries.models.query-execution)))))
 
 (deftest resolve-model-ignores-unknown-model-keywords-test
   (testing "resolve-model does not attempt to require a namespace for a `model`-namespaced keyword that is not a known model"
     (let [required (atom [])]
-      (with-redefs [classloader/require (fn [& args] (swap! required into args))]
+      (mt/with-dynamic-fn-redefs [classloader/require (fn [& args] (swap! required into args))]
         (t2/resolve-model :model/DefinitelyNotARealModel))
       (is (empty? @required)
           "should not call classloader/require (which would blow up on a nil namespace) for unknown models"))))

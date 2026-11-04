@@ -5,11 +5,4 @@ table_id:
 - PUBLIC
 - subscriptions
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: subscriptions
-  model: Table
-- id: id
-  model: Field
+- model: Field

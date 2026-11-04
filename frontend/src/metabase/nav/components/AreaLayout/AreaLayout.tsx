@@ -9,6 +9,7 @@ import { AreaNavbarHeader } from "./AreaNavbarHeader";
 
 type AreaLayoutProps = {
   logo: ReactNode;
+  title?: ReactNode;
   testId: string;
   isLoading: boolean;
   isNavbarOpened: boolean;
@@ -24,6 +25,7 @@ type AreaLayoutProps = {
  */
 export function AreaLayout({
   logo,
+  title,
   testId,
   isLoading,
   isNavbarOpened,
@@ -62,6 +64,7 @@ export function AreaLayout({
         <Stack gap="lg" flex={1} mih={0} className={S.upperGroup}>
           <AreaNavbarHeader
             logo={logo}
+            title={title}
             headerControls={headerControls}
             isNavbarOpened={isNavbarOpened}
             onNavbarToggle={onNavbarToggle}

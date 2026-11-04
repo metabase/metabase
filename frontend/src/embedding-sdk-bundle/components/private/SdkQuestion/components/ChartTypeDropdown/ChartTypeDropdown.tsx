@@ -161,7 +161,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
             />
           ))}
           <Text
-            c="text-disabled"
+            c="text-secondary"
             size="sm"
             py="xxs"
             px="sm"

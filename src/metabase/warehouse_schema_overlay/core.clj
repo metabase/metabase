@@ -145,6 +145,18 @@
         [:case [:= [:coalesce settings-column table-column] true] true :else false]
         [:coalesce settings-column table-column]))))
 
+(mu/defn table-user-visibility-type
+  "Honey SQL expression for the `visibility_type` users see for the Table aliased `table-alias`: the user value
+  when set, else the Table's. Reads only `table-alias`'s `id`, so it can filter a query over raw `metabase_table`."
+  [table-alias :- :keyword]
+  ;; A scalar subquery, not a join, so the caller's rows keep `metabase_table`'s shape. It re-reads the Table so the
+  ;; LEFT JOIN always yields one row: a user-set NULL must not fall back to the Table's value.
+  ^:allow-subquery
+  {:select    [[(table-user-settings-column :visibility_type :vt_t :vt_u)]]
+   :from      [[(t2/table-name :model/Table) :vt_t]]
+   :left-join (table-user-settings-join :vt_t :vt_u)
+   :where     [:= :vt_t.id (u/qualified-key table-alias :id)]})
+
 (mu/defn table-query :- [:tuple :any :keyword]
   "The source a query over Tables reads from: `metabase_table` merged with the user values, with the options of
   [[field-query]]."

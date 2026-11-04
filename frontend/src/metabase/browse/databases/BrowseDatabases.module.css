@@ -14,3 +14,14 @@
     color: var(--mb-color-text-primary-inverse);
   }
 }
+
+/* Hidden with opacity rather than visibility so it stays reachable by keyboard */
+.quickLinksTrigger {
+  opacity: 0;
+}
+
+.databaseCard:hover .quickLinksTrigger,
+.databaseCard:focus-within .quickLinksTrigger,
+.quickLinksTrigger[data-expanded] {
+  opacity: 1;
+}

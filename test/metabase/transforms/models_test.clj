@@ -183,8 +183,8 @@
                                                          :schema nil
                                                          :name "test_table_null_schema"
                                                          :db_id db-id}}]
-      (t2/update! :model/Transform (:id transform1) {:target_table_id table-with-schema-id})
-      (t2/update! :model/Transform (:id transform2) {:target_table_id table-null-schema-id})
+      (t2/update! :model/Transform :id (:id transform1) {:target_table_id table-with-schema-id})
+      (t2/update! :model/Transform :id (:id transform2) {:target_table_id table-null-schema-id})
       (let [transform1 (t2/select-one :model/Transform :id (:id transform1))
             transform2 (t2/select-one :model/Transform :id (:id transform2))]
         (testing "Hydrates table with non-NULL schema"
@@ -329,10 +329,10 @@
                                :db_id db-id}
                       :last_checkpoint_value "42"}]
         (testing "checkpoint is present before update"
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "42" (:last_checkpoint_value t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:source {:type "query"
                                 :query {:database db-id
                                         :type "native"
@@ -340,13 +340,13 @@
                                                  :template-tags {}}}
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:last_checkpoint_value "99"})
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:source {:type "query"
                                 :query {:database db-id
                                         :type "native"
@@ -354,7 +354,7 @@
                                                  :template-tags {}}}
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
 (deftest lookback-round-trips-with-keyword-keys-test
@@ -375,24 +375,8 @@
                                :name "test_lookback"
                                :db_id db-id}}]
         (is (= {:value 4 :unit "day"}
-               (get-in (t2/select-one :model/Transform transform-id)
+               (get-in (t2/select-one :model/Transform :id transform-id)
                        [:source :source-incremental-strategy :lookback])))))))
-
-(deftest schedules-for-transforms-test
-  (testing "returns the schedules of the active jobs that run a transform via shared tags"
-    (mt/with-temp [:model/TransformTag          tag      {}
-                   :model/TransformJob          active   {:schedule "0 0 * * * ? *" :active true}
-                   :model/TransformJob          inactive {:schedule "0 0 0 * * ? *" :active false}
-                   :model/TransformJobTransformTag _      {:job_id (:id active) :tag_id (:id tag) :position 0}
-                   :model/TransformJobTransformTag _      {:job_id (:id inactive) :tag_id (:id tag) :position 1}
-                   :model/Transform             t        {}
-                   :model/TransformTransformTag _         {:transform_id (:id t) :tag_id (:id tag) :position 0}
-                   :model/Transform             untagged {}]
-      (is (= {(:id t) #{"0 0 * * * ? *"}}
-             (transform-tag/schedules-for-transforms #{(:id t)}))
-          "only the active job's schedule is included")
-      (is (= {} (transform-tag/schedules-for-transforms #{(:id untagged)}))
-          "a transform with no scheduling job is absent"))))
 
 (deftest start-run-stores-job-run-id-test
   (testing "start-run! stores job_run_id when provided in properties"

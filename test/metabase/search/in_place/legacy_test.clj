@@ -8,3 +8,9 @@
             reaches search results on the no-index fallback path (BOT-1570)"
     (is (some #{[:table.data_authority :data_authority]}
               (#'legacy/select-clause-for-model "table")))))
+
+(deftest card-projection-includes-database-id-test
+  (testing "the in-place card projection (shared by questions, models and metrics) selects database_id, so the
+            join data picker can tell which database a card belongs to (#82060)"
+    (is (some #{[:card.database_id :database_id]}
+              (#'legacy/select-clause-for-model "card")))))

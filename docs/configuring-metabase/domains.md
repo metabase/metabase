@@ -9,7 +9,7 @@ _Admin > Settings > Domains_
 
 By default, Metabase only lets dashboards embed iframes from a short list of popular sites, and lets images load from anywhere. Admins can allow iframes from more sites, or lock images down to trustworthy domains.
 
-> To change the web address people use to reach your Metabase, see [Changing your domain name](../cloud/custom-domain.md). On self-hosted Metabases, set the [Site URL](./settings.md#site-url).
+> To change the web address people use to reach your Metabase, see [Changing your domain name](https://www.metabase.com/docs/latest/cloud/custom-domain). On self-hosted Metabases, set the [Site URL](./settings.md#site-url).
 
 ## Allow iframes from a site in dashboards
 

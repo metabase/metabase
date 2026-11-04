@@ -958,6 +958,14 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
+(defn ^:export aggregation-column
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named as its result column is
+  before the stage deduplicates its column names.
+
+  > **Code health:** Healthy"
+  [a-query stage-number aggregation-clause]
+  (lib.core/aggregation-column a-query stage-number aggregation-clause))
+
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -2811,3 +2819,8 @@
   (-> js-native-query-spec
       (js->clj :keywordize-keys true)
       (->> (lib.query.test-spec/test-native-query metadata-providerable))))
+
+(defn ^:export unique-expression-name
+  "Generates an expression name that's unique in the query."
+  [the-query stage-number suggested-name]
+  (lib.expression/unique-expression-name the-query stage-number suggested-name))

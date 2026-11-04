@@ -110,7 +110,7 @@
                                 (throw (ex-info (str "invalid before_date: '"
                                                      before_date
                                                      "' expected format: 'yyyy-MM-dd'")
-                                                {:status 400}))))
+                                                {:status-code 400}))))
                          (t/minus (t/local-date) (t/months 6)))
         collection     (if (= id :root)
                          collection/root-collection

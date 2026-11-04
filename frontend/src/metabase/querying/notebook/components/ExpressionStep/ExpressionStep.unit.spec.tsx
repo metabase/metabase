@@ -168,7 +168,7 @@ describe("Notebook Editor > Expression Step", () => {
     const expressions = Lib.expressions(recentQuery, 0);
     expect(expressions).toHaveLength(1);
     expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
-      "Total",
+      "Total (1)",
     );
   });
 });

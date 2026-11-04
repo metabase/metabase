@@ -31,8 +31,11 @@
 
   `:thinking-only?` marks a model that rejects `thinking {:type \"disabled\"}` — see
   [[thinking-only-model?]]."
-  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576 :thinking-only? true}
-   "glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
+  {"glm-5.3"       {:display-name "GLM-5.3"       :context-window 1048576 :thinking-only? true}
+   ;; https://docs.z.ai/guides/vlm/glm-5.3-flash. Probed 2026-10-06: Z.AI rejects the disable with error 1210.
+   ;; Probed 2026-10-07: a title-shaped forced call spent 19 completion tokens at "low" and 109 at "max".
+   "glm-5.3-flash" {:display-name "GLM-5.3-Flash" :context-window 1048576 :thinking-only? true}
+   "glm-5.2"       {:display-name "GLM-5.2"       :context-window 1048576}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
@@ -91,9 +94,10 @@
   adding Z.AI's `thinking` directive: enabled only where a whitelisted model's reasoning renders, disabled
   otherwise. A [[thinking-only-model?]] rejects the directive and gets `reasoning_effort` instead — \"max\"
   where reasoning renders, \"low\" otherwise — plus a `max_tokens` floor on forced tool calls (see
-  [[forced-tool-call-token-floor]]). Z.AI documents only `tool_choice \"auto\"`, but `\"required\"` — which the
-  structured-output path relies on — is accepted and honored in practice, with thinking on."
-  [{:keys [model reasoning? schema tool_choice] :as opts
+  [[forced-tool-call-token-floor]]). A caller that passes no cap of its own gets [[core/chat-max-output-tokens]]. Z.AI
+  documents only `tool_choice \"auto\"`, but `\"required\"` — which the structured-output path relies on — is
+  accepted and honored in practice, with thinking on."
+  [{:keys [model reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; Thinking is on by default server-side, at reasoning_effort "max"
   ;; (https://docs.z.ai/api-reference/llm/chat-completion), so "enabled" only makes the default
@@ -109,12 +113,13 @@
   (let [thinking-only? (thinking-only-model? model)
         forced?        (or (some? schema) (= "required" (some-> tool_choice name)))
         thinking?      (and (reasoning-model? model) reasoning? (not schema))
-        body           (chat-completions/request-body (assoc opts :model model))]
+        max-tokens     (or max-tokens core/chat-max-output-tokens)
+        body           (chat-completions/request-body (assoc opts :model model :max-tokens max-tokens))]
     (cond-> body
       thinking-only?
       (assoc :reasoning_effort (if thinking? "max" "low"))
 
-      (and thinking-only? forced? (:max_tokens body))
+      (and thinking-only? forced?)
       (update :max_tokens max forced-tool-call-token-floor)
 
       (not thinking-only?)
@@ -134,10 +139,15 @@
 
 (def ^:private stop-reasons
   "Z.AI signals a filtered response with `sensitive` rather than OpenAI's `content_filter`, and reports an upstream
-  failure as a finish reason instead of an error event."
+  failure as a finish reason instead of an error event.
+
+  Z.AI also lists `model_context_window_exceeded` with no description
+  (https://docs.z.ai/api-reference/llm/chat-completion). It maps to `length`, as Anthropic's reason of the same name
+  does in `metabase.metabot.self.claude`, so a stop at the context window reads as an incomplete turn."
   (assoc chat-completions/stop-reasons
-         "sensitive"     "content-filter"
-         "network_error" "error"))
+         "sensitive"                     "content-filter"
+         "network_error"                 "error"
+         "model_context_window_exceeded" "length"))
 
 (defn zai->aisdk-chunks-xf
   "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
@@ -152,4 +162,4 @@
   "Call the Z.AI Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply zai-raw args)]
-    (eduction (zai->aisdk-chunks-xf) raw)))
+    (eduction (zai->aisdk-chunks-xf) (chat-completions/usage-once raw))))

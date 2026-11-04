@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as transforms.jobs]
-   [metabase.transforms.schedule])
+   [metabase.transforms.schedule :as transforms.schedule]
+   [toucan2.core :as t2])
   (:import
    (metabase.transforms.schedule RunTransforms)
    (org.quartz JobDataMap)))
@@ -47,3 +49,21 @@
             (is (= [job-id {:run-method :cron}]
                    @run-args)
                 "Should pass the job id and cron run method")))))))
+
+(deftest init-deletes-triggers-of-inactive-jobs-test
+  (testing "init! deletes the trigger of a job made inactive by a plain table update, accepts an inactive job with no trigger, and keeps active triggers"
+    (mt/with-temp-scheduler!
+      (mt/with-temp [:model/TransformJob {active-id :id :as active-job}     {:active true :schedule "0 0 * * * ?"}
+                     :model/TransformJob {inactive-id :id :as inactive-job} {:active true :schedule "0 0 * * * ?"}
+                     :model/TransformJob {untriggered-id :id}               {:active false :schedule "0 0 * * * ?"}]
+        (try
+          (run! transforms.schedule/initialize-job! [active-job inactive-job])
+          (is (some? (transforms.schedule/existing-trigger inactive-id)))
+          (is (nil? (transforms.schedule/existing-trigger untriggered-id)))
+          (t2/update! :transform_job {:id inactive-id} {:active false})
+          (task/init! ::transforms.schedule/RunTransform)
+          (is (nil? (transforms.schedule/existing-trigger inactive-id)))
+          (is (nil? (transforms.schedule/existing-trigger untriggered-id)))
+          (is (some? (transforms.schedule/existing-trigger active-id)))
+          (finally
+            (run! transforms.schedule/delete-job! [active-id inactive-id])))))))

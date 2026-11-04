@@ -327,12 +327,10 @@ describe("suggestFields", () => {
                   operator: "=",
                   left: {
                     type: "column",
-                    sourceName: "ORDERS",
                     name: "PRODUCT_ID",
                   },
                   right: {
                     type: "column",
-                    sourceName: "REVIEWS",
                     name: "PRODUCT_ID",
                   },
                 },
@@ -399,7 +397,6 @@ describe("suggestFields", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "TOTAL",
             },
           ],
@@ -446,6 +443,44 @@ describe("suggestFields", () => {
         },
       ],
     });
+  });
+
+  it("should suggest aggregated columns of the previous stage in filter mode (metabase#14776)", async () => {
+    const summarizedQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
+        },
+      ],
+    });
+    const query = Lib.appendStage(summarizedQuery);
+    const stageIndex = 1;
+
+    const source = suggestFields({
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "filter",
+      }),
+    });
+
+    const labelsFor = async (doc: string) =>
+      (await complete(source, doc))?.options.map(
+        (option) => option.displayLabel,
+      );
+
+    expect(await labelsFor("[su|")).toContain("Sum of Total");
+    expect(await labelsFor("[sum|")).toContain("Sum of Total");
   });
 
   it.each(["expression", "filter"] as const)(

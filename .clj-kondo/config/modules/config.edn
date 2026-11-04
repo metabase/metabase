@@ -112,6 +112,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            users
@@ -139,8 +140,10 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            events
            lib.schema
+           models
            permissions
            public-sharing
            util}
@@ -178,10 +181,12 @@
    :module-exports #{analytics.interface
                      analytics.internal-stats}
    :api  #{metabase.analytics.api
+           metabase.analytics.api.metaplow-proxy
            metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
+           metabase.analytics.sdk
            metabase.analytics.settings}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -293,19 +298,21 @@
                     :model/User}}
 
   api-keys
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
-           metabase.api-keys.schema}
+           metabase.api-keys.schema
+           metabase.api-keys.usage}
    :uses #{api
            app-db
            events
            lib.schema
            models
            permissions
+           premium-features
            users
            util}
-   :model-exports #{:model/ApiKey}
+   :model-exports #{:model/ApiKey :model/ApiKeyUsageLog}
    :model-imports #{:model/User}}
 
   api-routes
@@ -315,7 +322,7 @@
    :uses :any}
 
   api-scope
-  {:team "Metabot"
+  {:team "Security Engineering"
    :api  #{metabase.api-scope.core
            metabase.api-scope.data-app
            metabase.api-scope.init}
@@ -326,6 +333,7 @@
    :ns-prefix "metabase.eid-translation"
    :api #{metabase.eid-translation.api metabase.eid-translation.core metabase.eid-translation.init}
    :uses #{api
+           api-scope
            batch-processing
            settings
            util}
@@ -361,6 +369,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
+           funnysql
            task.secure-delegate
            util
            util.classloader
@@ -433,6 +442,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Document
+                    :model/Exploration
                     :model/Table}}
 
   auth-provider
@@ -597,7 +607,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
@@ -661,6 +670,7 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            documents
            events
            lib.schema
@@ -728,6 +738,7 @@
    :uses #{api
            api-routes
            app-db
+           mcp
            metabot
            metabot.llm
            models
@@ -791,6 +802,7 @@
            settings
            staleness
            sync
+           timeline
            util
            util.config}
    :model-exports #{:model/Dashboard
@@ -815,7 +827,6 @@
    :uses #{actions
            analytics
            api
-           api-scope
            api.eid-translation
            app-db
            channel
@@ -854,6 +865,18 @@
                     :model/Query
                     :model/User}}
 
+  data-apps
+  {:team "Embedding"
+   :api #{metabase.data-apps.core metabase.data-apps.schema}
+   :uses #{actions
+           analytics
+           api
+           api-scope
+           lib.be
+           lib.schema
+           premium-features
+           util}}
+
   data-studio
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
@@ -876,6 +899,11 @@
   database-routing
   {:team "UX West"
    :api  #{metabase.database-routing.core}
+   :uses #{lib.schema premium-features}}
+
+  dependencies
+  {:team "Graphy"
+   :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
   documents
@@ -903,6 +931,8 @@
            query-permissions
            query-processor
            search
+           settings
+           staleness
            util
            warehouse-schema-overlay}
    :model-exports #{:model/Document}
@@ -941,6 +971,7 @@
            appearance
            audit-app
            auth-provider
+           database-routing
            events
            lib
            lib.be
@@ -966,19 +997,44 @@
   {:team "Embedding"
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
+           metabase.embedding.sdk-react-18
            metabase.embedding.settings
            metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
+           app-db
+           batch-processing
            models
            premium-features
            server
            settings
            util}
    :model-imports #{:model/Card :model/Dashboard}
-   :model-exports #{:model/EmbeddingTheme}}
+   :model-exports #{:model/EmbeddingSdkReact18Host :model/EmbeddingTheme}}
 
+  embedding-hub
+  {:team "Embedding"
+   :api  #{metabase.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           metabot
+           permissions
+           premium-features
+           util.config
+           warehouse-schema-overlay}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/EmbeddingTheme
+                    :model/Sandbox
+                    :model/Table
+                    :model/Tenant}}
 
   embedding.rest
   {:team "Embedding"
@@ -1001,7 +1057,11 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/EmbeddingSdkReact18Host
+                    :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1028,6 +1088,7 @@
            analytics.interface
            api
            app-db
+           audit-app.view-log
            collections
            comments
            documents
@@ -1089,6 +1150,11 @@
            api
            request
            util}}
+
+  funnysql
+  {:team "Querying Platform"
+   :api  #{metabase.funnysql.core}
+   :uses #{util}}
 
   geojson
   {:team "UX West"
@@ -1331,8 +1397,9 @@
            metabase.mcp.http-handler
            metabase.mcp.init
            metabase.mcp.usage
-           metabase.mcp.v2.api}
-   :model-exports #{:model/McpSessionLog :model/McpToolCallLog}
+           metabase.mcp.v2.api
+           metabase.mcp.v2.registry}
+   :model-exports #{:model/McpGroupPermission :model/McpSessionLog :model/McpToolCallLog}
    :uses #{activity-feed
            ai-tracing
            api
@@ -1367,16 +1434,16 @@
            server
            session
            settings
+           sso.auth-identity
            system
            task
-           transforms
            users
            util
            util.config
            warehouse-schema-overlay
-           warehouses
            warehouses.schema}
-   :model-imports #{:model/Card
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -1388,12 +1455,10 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
-                    :model/Transform
-                    :model/TransformTag
                     :model/User}}
 
   mcp.oauth-server
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.oauth-server"
    :api #{metabase.oauth-server.api
           metabase.oauth-server.api.admin
@@ -1405,10 +1470,13 @@
            events
            lib.schema
            mcp
+           metabot.agent-api
            models
+           premium-features
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing
@@ -1419,6 +1487,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
+           collections
            events
            lib
            lib.be
@@ -1435,7 +1504,10 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Measure}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   metabot
   {:team    "Metabot"
@@ -1453,8 +1525,8 @@
               metabase.metabot.settings
               metabase.metabot.tools
               metabase.metabot.tools.construct
-              metabase.metabot.tools.entity-details
-              metabase.metabot.tools.search}
+              metabase.metabot.tools.search
+              metabase.metabot.usage-controls}
    :module-exports #{metabot.agent-api
                      metabot.llm
                      metabot.slackbot}
@@ -1468,8 +1540,10 @@
               audit-app
               channel
               collections
+              data-apps
               documents
               driver
+              embedding
               events
               explorations
               interestingness
@@ -1506,7 +1580,8 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses}
+              warehouses
+              xrays}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -1540,6 +1615,7 @@
               metabase.agent-api.schema
               metabase.agent-api.settings}
    :uses    #{ai-tracing
+              analytics.interface
               api
               channel
               collections
@@ -1656,7 +1732,7 @@
    :model-imports #{:model/Card :model/Field :model/Measure}}
 
   mfa
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.mfa.init metabase.mfa.settings}
    :uses #{premium-features
            settings
@@ -1701,6 +1777,7 @@
            metabase.models.visualization-settings}
    :uses #{api
            app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
@@ -1769,7 +1846,6 @@
   {:team "Graphy"
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
-           api-scope
            collections
            events
            lib
@@ -1893,7 +1969,7 @@
            util}}
 
   permissions
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
@@ -1932,7 +2008,7 @@
                     :model/User}}
 
   permissions.rest
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.permissions-rest"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
@@ -1966,9 +2042,8 @@
    :uses #{analytics.interface
            analytics.internal-stats
            app-db
-           events
+           dependencies
            settings
-           startup
            task
            tracing
            util
@@ -1987,10 +2062,8 @@
 
   product-feedback
   {:team "UX West"
-   :api  #{metabase.product-feedback.api
-           metabase.product-feedback.init}
+   :api  #{metabase.product-feedback.init}
    :uses #{analytics
-           api
            app-db
            channel
            premium-features
@@ -2043,7 +2116,9 @@
                     :model/Card
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/Document}}
+                    :model/Document
+                    :model/Timeline
+                    :model/TimelineEvent}}
 
   pulse
   {:team "Gadget"
@@ -2154,6 +2229,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Timeline
                     :model/User}}
 
   queries.rest
@@ -2164,7 +2240,7 @@
            api-scope
            api.eid-translation
            collections
-           embedding
+           data-apps
            events
            lib
            lib.be
@@ -2193,7 +2269,7 @@
                     :model/Table}}
 
   query-permissions
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.query-permissions.core}
    :uses #{api
            lib
@@ -2233,10 +2309,12 @@
               metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
+              metabase.query-processor.pivot.common
               metabase.query-processor.preprocess
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -2256,6 +2334,7 @@
            batch-processing
            cache
            dashboards
+           data-apps
            database-routing
            driver
            events
@@ -2464,6 +2543,7 @@
            appearance
            audit-app
            collections
+           data-apps
            events
            health-inspector
            lib
@@ -2486,20 +2566,19 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Database
                     :model/Table
                     :model/User}}
 
   search.embeddings
   {:team "Metabot"
-   :ns-prefix "metabase.embeddings"
-   :api  #{metabase.embeddings.provider metabase.embeddings.startup}
+   :api  #{metabase.search.embeddings.provider metabase.search.embeddings.startup}
    :uses #{plugins util}}
 
   search.entity-retrieval
   {:team "Metabot"
-   :ns-prefix "metabase.entity-retrieval"
-   :api #{metabase.entity-retrieval.core metabase.entity-retrieval.mirror}
+   :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror}
    :uses #{premium-features util}
    :model-imports #{:model/OsiAiContext}}
 
@@ -2513,6 +2592,7 @@
    :module-exports #{segments.rest}
    :api  #{metabase.segments.schema}
    :uses #{api
+           collections
            lib
            lib.be
            lib.schema
@@ -2526,7 +2606,10 @@
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Segment}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
 
   segments.rest
   {:team "Graphy"
@@ -2558,6 +2641,7 @@
            app-db
            appearance
            core.initialization-status
+           data-apps
            driver
            embedding
            lib.be
@@ -2578,7 +2662,7 @@
    :model-imports #{:model/Session}}
 
   session
-  {:team "UX West"
+  {:team "Security Engineering"
    :module-exports #{session.login-history}
    :api  #{metabase.session.api
            metabase.session.core
@@ -2606,7 +2690,7 @@
    :model-imports #{:model/AuthIdentity :model/User}}
 
   session.login-history
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.login-history"
    :api #{metabase.login-history.api metabase.login-history.core metabase.login-history.init}
    :uses #{analytics
@@ -2615,6 +2699,7 @@
            channel
            lib.schema
            request
+           session
            settings
            util}
    :model-exports #{:model/LoginHistory}}
@@ -2694,7 +2779,7 @@
    :uses #{analytics.interface util}}
 
   sso
-  {:team "UX West"
+  {:team "Security Engineering"
    :module-exports #{sso.auth-identity
                      sso.auth-wrapper}
    :api     #{metabase.sso.api
@@ -2716,7 +2801,7 @@
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.auth-identity"
    :api #{metabase.auth-identity.core
           metabase.auth-identity.db
@@ -2731,13 +2816,14 @@
            request
            request.schema
            session.login-history
+           settings
            users
            util}
    :model-exports #{:model/AuthIdentity}
    :model-imports #{:model/Session :model/User}}
 
   sso.auth-wrapper
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.sso.auth-wrapper}
    :uses #{api
            sso
@@ -2758,7 +2844,7 @@
   {:team "Cloud"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
-   :uses #{settings util util.config}}
+   :uses #{settings util.config}}
 
   sync
   {:team "Graphy"
@@ -2775,10 +2861,10 @@
            app-db
            audit-app
            database-routing
+           dependencies
            driver
            events
            interestingness
-           lib.be
            lib.metadata
            lib.schema
            models
@@ -2859,6 +2945,7 @@
            metabase.testing-api.init}
    :uses #{analytics
            api
+           api-keys
            app-db
            lib
            lib.be
@@ -2876,11 +2963,14 @@
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
+                    :model/Document
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
+                    :model/Transform
+                    :model/TransformRun
                     :model/User}}
 
   tiles
@@ -2903,11 +2993,9 @@
 
   timeline
   {:team "UX West"
-   :api  #{metabase.timeline.api
-           metabase.timeline.core}
+   :api  #{metabase.timeline.api metabase.timeline.core metabase.timeline.schema}
    :uses #{analytics
            api
-           api-scope
            collections
            events
            lib.schema
@@ -2960,6 +3048,7 @@
            run-tracking
            search
            settings
+           staleness
            task
            task.history
            tracing
@@ -3000,7 +3089,9 @@
                     :model/TableIndex
                     :model/Transform
                     :model/TransformRun}
-   :uses #{database-routing
+   :uses #{app-db
+           database-routing
+           dependencies
            driver
            events
            lib
@@ -3035,6 +3126,7 @@
    :ns-prefix "metabase.indexes-rest"
    :api #{metabase.indexes-rest.api}
    :uses #{api
+           driver
            lib.schema
            transforms.base
            transforms.indexes
@@ -3067,38 +3159,6 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
-
-  typed-schemas
-  {:team "Embedding"
-   :api #{metabase.typed-schemas.core}
-   :uses #{actions
-           collections
-           lib
-           lib.be
-           lib.schema
-           lib.types
-           metabot
-           metrics
-           models
-           permissions
-           queries
-           system
-           util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Action
-                    :model/Card
-                    :model/Collection
-                    :model/Database
-                    :model/Field
-                    :model/Measure
-                    :model/QueryAction
-                    :model/Table}}
-
-  typed-schemas.rest
-  {:team "Embedding"
-   :ns-prefix "metabase.typed-schemas-rest"
-   :api #{metabase.typed-schemas-rest.api}
-   :uses #{api typed-schemas util}}
 
   upload
   {:team "Graphy"
@@ -3154,6 +3214,7 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
+           data-apps
            lib.schema
            util
            util.config}}
@@ -3170,7 +3231,6 @@
    :uses #{analytics
            api
            batch-processing
-           channel
            events
            lib.schema
            models
@@ -3193,7 +3253,7 @@
                     :model/Tenant}}
 
   users.rest
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.users-rest"
    :api  #{metabase.users-rest.api}
    :uses #{api
@@ -3290,6 +3350,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Field
+                    :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
                     :model/User}}
@@ -3303,6 +3364,7 @@
            api-scope
            app-db
            collections
+           data-apps
            database-routing
            driver
            events
@@ -3352,6 +3414,7 @@
            app-db
            audit-app
            collections
+           database-routing
            driver
            lib
            lib.be
@@ -3361,6 +3424,7 @@
            parameters.schema
            permissions
            premium-features
+           queries
            query-processor
            remote-sync
            search
@@ -3375,9 +3439,11 @@
                     :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Database
+                    :model/ImplicitAction
                     :model/Measure
                     :model/Segment
                     :model/Transform
@@ -3392,6 +3458,7 @@
            api-scope
            app-db
            collections
+           data-apps
            database-routing
            driver
            events
@@ -3541,6 +3608,19 @@
            premium-features
            util}}
 
+  enterprise/api-keys
+  {:team "Security Engineering"
+   :api  #{metabase-enterprise.api-keys.init}
+   :uses #{analytics
+           api-keys
+           metabot
+           premium-features
+           request
+           startup
+           task
+           util}
+   :model-imports #{:model/ApiKeyUsageLog}}
+
   enterprise/api-routes
   {:team "UX West"
    :api  #{metabase-enterprise.api-routes.routes}
@@ -3689,6 +3769,35 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/content-diagnostics
+  {:team "Gadget"
+   :api  #{metabase-enterprise.content-diagnostics.api
+           metabase-enterprise.content-diagnostics.init}
+   :uses #{analytics.interface
+           api
+           app-db
+           collections
+           documents
+           events
+           lib.schema
+           models
+           permissions
+           premium-features
+           queries
+           request
+           settings
+           task
+           task.history
+           tracing
+           util
+           enterprise/staleness}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/TaskHistory
+                    :model/Transform
+                    :model/User}}
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.routes}
@@ -3736,28 +3845,40 @@
   enterprise/data-apps
   {:team "Embedding"
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
-   :uses #{api
+   :uses #{actions
+           api
            api-scope
+           audit-app
            collections
+           data-apps
            events
            lib
            lib.be
            lib.schema
+           lib.types
+           metabot
+           metrics
            models
            permissions
            premium-features
-           request
+           queries
+           search
            settings
+           system
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Card
+           util.graph
+           warehouse-schema-overlay
+           enterprise/dependencies
+           enterprise/serialization}
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/DataPermissions
                     :model/Database
-                    :model/Permissions
-                    :model/PermissionsGroup
-                    :model/Table
-                    :model/User}
+                    :model/Field
+                    :model/Measure
+                    :model/Segment
+                    :model/Table}
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
@@ -3783,12 +3904,12 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           database-routing
            driver
            events
            lib.metadata
            lib.schema
            models
+           permissions
            premium-features
            query-processor
            settings
@@ -3802,18 +3923,21 @@
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
-   :uses #{api
+   :uses #{actions
+           api
            app-db
+           batch-processing
            collections
+           data-apps
            database-routing
            documents
            driver
-           events
            lib
            lib.be
            lib.metadata
            lib.metric
            lib.schema
+           lib.types
            measures
            models
            native-query-snippets
@@ -3833,16 +3957,28 @@
            util.graph
            warehouse-schema-overlay
            enterprise/permissions.sandbox}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/DataApp
+                    :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/QueryAction
                     :model/Sandbox
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform}}
 
   enterprise/dependencies.replacement
@@ -3895,26 +4031,8 @@
   enterprise/embedding
   {:team "Embedding"
    :ns-prefix "metabase-enterprise.embedding-hub"
-   :api #{metabase-enterprise.embedding-hub.api}
-   :uses #{api
-           appearance
-           audit-app
-           embedding
-           lib.schema
-           permissions
-           premium-features
-           util
-           warehouse-schema-overlay
-           enterprise/sso}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/ConnectionImpersonation
-                    :model/Dashboard
-                    :model/Database
-                    :model/DatabaseRouter
-                    :model/Sandbox
-                    :model/Table
-                    :model/Tenant}}
+   :api #{}
+   :uses #{premium-features enterprise/sso}}
 
   enterprise/library
   {:team "UX West"
@@ -3925,20 +4043,32 @@
            premium-features
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Card :model/Collection :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline}}
 
   enterprise/mcp
   {:team    "Metabot"
-   :api     #{metabase-enterprise.mcp.init}
+   :api     #{metabase-enterprise.mcp.api.permissions metabase-enterprise.mcp.init}
    :uses    #{analytics
+              api
+              app-db
               lib.schema
               mcp
               metabot
+              models
+              permissions
               premium-features
               task
               util}
-   :model-imports #{:model/McpSessionLog
-                    :model/McpToolCallLog}}
+   :model-imports #{:model/McpGroupPermission
+                    :model/McpSessionLog
+                    :model/McpToolCallLog
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
@@ -3959,9 +4089,7 @@
    :module-exports #{enterprise/metabot.agent-api
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
-   :api            #{metabase-enterprise.metabot.api
-                     metabase-enterprise.metabot.api.routes
-                     metabase-enterprise.metabot.init}
+   :api            #{metabase-enterprise.metabot.api metabase-enterprise.metabot.api.routes metabase-enterprise.metabot.init}
    :uses           #{api
                      lib.schema
                      metabot
@@ -4037,7 +4165,7 @@
                     :model/Table}}
 
   enterprise/mfa
-  {:team "UX West"
+  {:team "Security Engineering"
    :api #{metabase-enterprise.mfa.core metabase-enterprise.mfa.init metabase-enterprise.mfa.routes}
    :uses #{api
            appearance
@@ -4067,7 +4195,7 @@
    :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/permissions
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.advanced-permissions"
    :module-exports #{enterprise/permissions.debug
                      enterprise/permissions.impersonation
@@ -4095,7 +4223,7 @@
                     :model/Table}}
 
   enterprise/permissions.debug
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
@@ -4109,33 +4237,39 @@
    :model-imports #{:model/Card :model/User}}
 
   enterprise/permissions.impersonation
-  {:team "Graphy"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.impersonation"
-   :api #{metabase-enterprise.impersonation.api}
+   :api #{metabase-enterprise.impersonation.api metabase-enterprise.impersonation.init}
    :uses #{api
+           app-db
            audit-app
            driver
+           lib
            lib.metadata
            lib.schema
            models
            premium-features
            query-processor
+           settings
+           task
            util
+           util.config
            warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
+   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/permissions.sandbox
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.sandbox"
    :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
-   :uses #{api
+   :uses #{analytics
+           api
            api-scope
            app-db
            audit-app
+           data-apps
            driver
-           events
            lib
            lib.be
            lib.legacy-mbql
@@ -4230,8 +4364,7 @@
 
   enterprise/search.embeddings
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.embeddings"
-   :api #{metabase-enterprise.embeddings.client}
+   :api #{metabase-enterprise.search.embeddings.client}
    :uses #{enterprise/search.semantic}}
 
   enterprise/search.embeddings.embedder
@@ -4242,8 +4375,7 @@
 
   enterprise/search.entity-retrieval
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.entity-retrieval"
-   :api #{metabase-enterprise.entity-retrieval.init}
+   :api #{metabase-enterprise.search.entity-retrieval.init}
    :uses #{analytics.interface
            app-db
            collections
@@ -4264,14 +4396,13 @@
 
   enterprise/search.semantic
   {:team "Metabot"
-   :ns-prefix "metabase-enterprise.semantic-search"
-   :api #{metabase-enterprise.semantic-search.api
-          metabase-enterprise.semantic-search.core
-          metabase-enterprise.semantic-search.db.datasource
-          metabase-enterprise.semantic-search.embedding
-          metabase-enterprise.semantic-search.embedding-health
-          metabase-enterprise.semantic-search.init
-          metabase-enterprise.semantic-search.util}
+   :api #{metabase-enterprise.search.semantic.api
+          metabase-enterprise.search.semantic.core
+          metabase-enterprise.search.semantic.db.datasource
+          metabase-enterprise.search.semantic.embedding
+          metabase-enterprise.search.semantic.embedding-health
+          metabase-enterprise.search.semantic.init
+          metabase-enterprise.search.semantic.util}
    :uses #{activity-feed
            analytics
            analytics.interface
@@ -4336,7 +4467,6 @@
            app-db
            appearance
            collections
-           events
            lib
            lib.schema
            logger
@@ -4350,8 +4480,20 @@
            util}
    :model-imports :bypass}
 
+  enterprise/session-management
+  {:team "Security Engineering"
+   :api  #{metabase-enterprise.session-management.api}
+   :uses #{api
+           events
+           lib.schema
+           request
+           session
+           users
+           util}
+   :model-imports #{:model/User}}
+
   enterprise/sso
-  {:team "UX West"
+  {:team "Security Engineering"
    :module-exports #{enterprise/sso.auth-identity
                      enterprise/sso.scim}
    :api  #{metabase-enterprise.sso.api.routes
@@ -4371,10 +4513,10 @@
            task
            util
            enterprise/sso.scim}
-   :model-imports #{:model/PermissionsGroup :model/Session}}
+   :model-imports #{:model/PermissionsGroup}}
 
   enterprise/sso.auth-identity
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.auth-identity"
    :uses #{premium-features}}
 
@@ -4401,8 +4543,7 @@
   enterprise/staleness
   {:team "UX West"
    :ns-prefix "metabase-enterprise.stale"
-   :api  #{metabase-enterprise.stale.api
-           metabase-enterprise.stale.init}
+   :api  #{metabase-enterprise.stale.api metabase-enterprise.stale.impl metabase-enterprise.stale.init}
    :uses #{analytics
            api
            collections
@@ -4416,7 +4557,7 @@
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/support-access-grants
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
@@ -4425,6 +4566,7 @@
            lib.schema
            models
            request
+           session
            settings
            sso.auth-identity
            system
@@ -4462,14 +4604,15 @@
            lib.schema
            models
            premium-features
+           query-processor
+           request
            revisions
            run-tracking
            sql-tools
            sql-tools.parsing
            task
            transforms.base
-           util
-           warehouses}
+           util}
    :model-exports #{:model/TransformTest}
    :model-imports #{:model/Collection
                     :model/Database

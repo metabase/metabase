@@ -38,7 +38,7 @@ export function OidcAuthCard() {
       } catch (error) {
         sendToast({
           message: getErrorMessage(error, t`Failed to update OIDC provider`),
-          icon: "warning",
+          variant: "negative",
         });
       }
     },
@@ -53,7 +53,7 @@ export function OidcAuthCard() {
     } catch (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to deactivate OIDC provider`),
-        icon: "warning",
+        variant: "negative",
       });
     }
   }, [providers, deleteProvider, sendToast]);

@@ -12,6 +12,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import { Outlet } from "metabase/router";
 import type {
   Card,
   Database,
@@ -54,7 +55,7 @@ async function setup({
   );
   setupModelActionsEndpoints(actions, model.id);
 
-  renderWithProviders(getModelRoutes(), {
+  renderWithProviders(getModelRoutes(Outlet), {
     withRouter: true,
     initialRoute,
   });

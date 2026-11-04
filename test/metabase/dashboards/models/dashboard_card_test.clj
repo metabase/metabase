@@ -250,8 +250,8 @@
                                                      :size_x 3
                                                      :size_y 4
                                                      :series []}])
-            ;; this is usually 10, but it can be 11 sometimes in CI for some reason
-            (is (contains? #{10 11} (call-count)))))))))
+            ;; this is usually 13, but it can be 14 sometimes in CI for some reason
+            (is (contains? #{13 14} (call-count)))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
@@ -371,7 +371,7 @@
                                                  :visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
-               (t2/update! :model/DashboardCard (:id dc)
+               (t2/update! :model/DashboardCard :id (:id dc)
                            {:visualization_settings
                             {:link {:entity {:id {:raw "x"} :model "card"}}}})))))
       (testing "a legitimate integer id still works"
@@ -406,7 +406,7 @@
                                                  :visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
-               (t2/update! :model/DashboardCard (:id dc)
+               (t2/update! :model/DashboardCard :id (:id dc)
                            {:visualization_settings
                             {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}})))))
       (testing "a legitimate integer target id still works"

@@ -65,6 +65,7 @@ export function MetricPageShell({
               dispatch(
                 addUndo({
                   message: t`There was an error permanently deleting this item.`,
+                  variant: "negative",
                 }),
               );
             }

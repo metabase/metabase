@@ -13,7 +13,7 @@ The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` logs in to a
 
 - Node.js 20.6 or later, to install the CLI from npm.
 - A Metabase instance on version 58 or later. Some command groups need a newer Metabase (for example, browser login needs version 63). The CLI tells you when that's the case.
-- A Pro or Enterprise plan for some command groups. For example, `git-sync` needs the premium [Remote sync](./remote-sync.md) feature.
+- A Pro or Enterprise plan for some command groups. For example, `git-sync` needs the premium [Remote sync](../data-modeling/semantic-layer/remote-sync.md) feature.
 
 ## Install the CLI
 
@@ -118,6 +118,6 @@ Pair the CLI with version control to build content with an agent in a developmen
 - [@metabase/cli on npm](https://www.npmjs.com/package/@metabase/cli)
 - [Agent-driven development](../ai/agent-driven-development.md)
 - [Agent skills](https://github.com/metabase/agent-skills)
-- [Remote sync](./remote-sync.md)
+- [Remote sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Serialization](./serialization.md)
 - [Metabase JAR commands](./commands.md)

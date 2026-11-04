@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type JSX, useCallback, useState } from "react";
 
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";

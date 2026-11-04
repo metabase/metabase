@@ -6,7 +6,6 @@ import type {
   Field,
   NativeQuerySnippet,
   ParameterValuesMap,
-  TimelineEventId,
 } from "metabase-types/api";
 
 export type QueryModalType =
@@ -73,7 +72,6 @@ export interface QueryBuilderUIControls {
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
-  modalContext: TimelineEventId | null;
   modalSnippet?:
     | NativeQuerySnippet
     | Partial<Omit<NativeQuerySnippet, "id">>
@@ -127,6 +125,4 @@ export interface QueryBuilderState {
     cardId?: number;
     serializedCard: string;
   } | null;
-
-  visibleTimelineEventIds: TimelineEventId[];
 }

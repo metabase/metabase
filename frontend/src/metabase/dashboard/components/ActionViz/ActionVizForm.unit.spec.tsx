@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { ActionFormProps } from "./ActionVizForm";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 
 const idParameter = createMockActionParameter({ id: "id" });
 

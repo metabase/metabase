@@ -55,13 +55,13 @@
   "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- AuthIdentityRow]
-  (t2/update! :model/AuthIdentity id changes))
+  (t2/update! :model/AuthIdentity :id [:auto/param id] changes))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
   matching AuthIdentity), which updates nothing."
   [id :- [:maybe ms/PositiveInt]]
-  (t2/update! :model/AuthIdentity id {:last_used_at :%now}))
+  (t2/update! :model/AuthIdentity :id [:auto/param id] {:last_used_at :%now}))
 
 (mu/defn delete-auth-identities!
   "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
@@ -69,17 +69,23 @@
    provider :- :string]
   (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
-(mu/defn delete-sessions-for-user!
-  "Delete every Session of the User with `user-id`, returning the number deleted. Duplicates
-  `metabase.session.db/delete-sessions-for-user!`; can't delegate to it because the `session` module already depends
-  on `auth-identity`, so the reverse dependency would be a module cycle."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id (long user-id)))
+(mu/defn end-sessions-for-user!
+  "Record that every Session of the User with `user-id` ended because their password changed, clearing each key so
+  none can authenticate again; `ended-by` is who changed it. Returns the number ended."
+  [user-id  :- ::lib.schema.id/user
+   ended-by :- [:maybe ::lib.schema.id/user]]
+  ;; the same write `metabase.session.db/end-sessions!` makes, repeated here rather than delegated: the `session`
+  ;; module already depends on `auth-identity`, so the reverse dependency would be a module cycle
+  (t2/update! :model/Session :user_id (long user-id) :ended_at nil
+              {:ended_at         :%now
+               :end_reason       "password-change"
+               :ended_by_user_id ended-by
+               :key_hashed       nil}))
 
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."
@@ -87,20 +93,23 @@
   (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
 
 (mu/defn user-login-columns
-  "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
+  "Return login details for the user with `user-id`, or nil.
+
+  The details include the user's ID, active flag, last login, tenant ID, and type."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id (long user-id)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :id (long user-id)))
 
 (mu/defn user-login-columns-by-email
-  "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
-  nil."
+  "Return login details for the user whose email matches `email`, or nil.
+
+  The match is case-insensitive. The details include the user's ID, active flag, last login, tenant ID, and type."
   [email :- :string]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :%lower.email (u/lower-case-en email)))
 
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login] user-id))
+  (t2/select-one [:model/User :id :is_active :last_login] :id [:auto/param user-id]))
 
 (mu/defn user-active?
   "Whether the User with `user-id` is active."
@@ -111,7 +120,7 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn insert-user-returning-login-columns!
   "Insert the User `row` and return its id, last login, active flag, and tenant id."

@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -112,6 +112,8 @@ describe("SegmentItem", () => {
     expect(screen.queryByText("Retire Segment")).not.toBeInTheDocument();
     expect(screen.queryByText("Edit Segment")).not.toBeInTheDocument();
 
-    resolveTable();
+    await act(async () => {
+      resolveTable();
+    });
   });
 });

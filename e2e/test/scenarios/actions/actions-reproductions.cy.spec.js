@@ -152,7 +152,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 
     cy.get("@modelId").then((modelId) => {
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
-        ({ body: { id: actionId } }) => {
+        ({ id: actionId }) => {
           cy.wrap(actionId).as("actionId");
 
           H.createDashboard(DASHBOARD_DETAILS).then(
@@ -552,5 +552,6 @@ function assertActionButtonFitsDashcard() {
         .getBoundingClientRect();
       expect(button.bottom).to.be.at.most(dashcard.bottom + 0.5);
       expect(button.top).to.be.at.least(dashcard.top - 0.5);
+      expect(button.height).to.be.closeTo(dashcard.height, 1);
     });
 }

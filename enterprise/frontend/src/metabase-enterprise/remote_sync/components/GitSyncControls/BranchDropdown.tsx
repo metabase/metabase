@@ -93,7 +93,7 @@ export const BranchDropdown = ({
     } catch {
       sendToast({
         message: t`Failed to create branch`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   };
@@ -133,7 +133,7 @@ export const BranchDropdown = ({
           <>
             {filteredBranches.length === 0 && !showCreateOption ? (
               <Box p="lg">
-                <Text size="sm" c="text-disabled" ta="center">
+                <Text size="sm" c="text-secondary" ta="center">
                   {searchValue
                     ? t`No branches found`
                     : t`No branches available`}

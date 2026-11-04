@@ -1,22 +1,18 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const multiSeriesQuestionWithGoal = {
   name: "multi",
   query: {
-    "source-table": PEOPLE_ID,
-    aggregation: [["count"]],
+    "source-table": ORDERS_ID,
+    aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
     breakout: [
-      ["field", PEOPLE.SOURCE, null],
       [
         "field",
-        PEOPLE.CREATED_AT,
+        ORDERS.CREATED_AT,
         {
           "temporal-unit": "month",
         },
@@ -24,20 +20,15 @@ const multiSeriesQuestionWithGoal = {
     ],
   },
   display: "line",
+  visualization_settings: {
+    "graph.show_goal": true,
+    "graph.goal_value": 7000,
+    "graph.dimensions": ["CREATED_AT"],
+    "graph.metrics": ["count", "sum"],
+  },
 };
 
 const timeSeriesQuestionId = ORDERS_BY_YEAR_QUESTION_ID;
-
-const rawTestCases = [
-  {
-    questionType: "raw data question",
-    questionId: ORDERS_QUESTION_ID,
-  },
-  {
-    questionType: "timeseries question without a goal",
-    questionId: timeSeriesQuestionId,
-  },
-];
 
 describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -51,28 +42,26 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
   });
 
   describe("rows based alerts", () => {
-    rawTestCases.forEach(({ questionType, questionId }) => {
-      it(`should be supported for ${questionType}`, () => {
-        H.visitQuestion(questionId);
+    it("should be supported for timeseries question without a goal", () => {
+      H.visitQuestion(timeSeriesQuestionId);
 
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
-        cy.wait("@channel");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+      cy.wait("@channel");
 
-        H.selectScheduleTime();
-        H.modal().within(() => {
-          cy.findByText("New alert").should("be.visible");
+      H.selectScheduleTime();
+      H.modal().within(() => {
+        cy.findByText("New alert").should("be.visible");
 
-          cy.findByTestId("alert-goal-select")
-            .should("not.be.enabled")
-            .should("have.text", "When this question has results");
+        cy.findByTestId("alert-goal-select")
+          .should("not.be.enabled")
+          .should("have.text", "When this question has results");
 
-          cy.findByText("Done").click();
-        });
+        cy.findByText("Done").click();
+      });
 
-        cy.wait("@updateAlert").then(({ response: { body } }) => {
-          expect(body.payload?.send_condition).to.equal("has_result");
-        });
+      cy.wait("@updateAlert").then(({ response: { body } }) => {
+        expect(body.payload?.send_condition).to.equal("has_result");
       });
     });
   });
@@ -90,7 +79,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
       cy.log("Set the goal on timeseries question");
       H.visitQuestion(timeSeriesQuestionId);
-      cy.findByTestId("chart-container").should("contain", "Goal");
+      H.goalLineMarker().should("be.visible");
 
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
@@ -120,6 +109,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
     it("should not be possible to create goal based alert for a multi-series question", () => {
       H.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
+      H.goalLineMarker().should("be.visible");
 
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();

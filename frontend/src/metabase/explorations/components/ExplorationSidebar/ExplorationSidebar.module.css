@@ -1,17 +1,5 @@
-.filterButton.filterButton {
+.filterButton {
   flex: none;
-  border: 1px solid var(--mb-color-border-neutral);
-  background-color: var(--mb-color-background-primary);
-}
-
-.filterButton.filterButton:hover {
-  background-color: var(--mb-color-background-hover);
-}
-
-.filterButtonActive.filterButtonActive,
-.filterButtonActive.filterButtonActive:hover {
-  border-color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand);
 }
 
 .tree {

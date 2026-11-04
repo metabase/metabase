@@ -34,7 +34,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
     navigateToNewCardInsideQB,
     result,
     rawSeries,
-    timelineEvents,
+    timelineEventsVisibility,
     selectedTimelineEventIds,
     onNavigateBack,
     className,
@@ -104,7 +104,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       queryBuilderMode={queryBuilderMode}
       showTitle={false}
       canToggleSeriesVisibility
-      timelineEvents={timelineEvents}
+      timelineEventsVisibility={timelineEventsVisibility}
       selectedTimelineEventIds={selectedTimelineEventIds}
       getExtraDataForClick={getExtraDataForClick}
       onZoomRow={onZoomRow}

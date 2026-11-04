@@ -442,7 +442,7 @@
               ;; if harbormaster somehow sends lock state for such a customer, or the setting gets tampered.
               ;; (Note: pure OSS doesn't reach this branch because check-feature-enabled! 402s earlier on
               ;; missing premium features.)
-              (with-redefs [premium-features/transform-metered-as (constantly nil)]
+              (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (constantly nil)]
                 (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
                                                                   :transform-advanced-runs true}]
                   (mt/user-http-request :crowberto :post 202

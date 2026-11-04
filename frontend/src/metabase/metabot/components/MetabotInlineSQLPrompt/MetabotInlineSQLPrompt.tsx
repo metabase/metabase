@@ -8,6 +8,7 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { MetabotSendButton } from "metabase/metabot/components/MetabotSendButton";
+import { MetabotWorkingIndicator } from "metabase/metabot/components/MetabotWorkingIndicator";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import type { MetabotAgentTurnDisplayError } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -142,17 +143,34 @@ export const MetabotInlineSQLPrompt = ({
             />
           </Tooltip>
         )}
-        <Box
-          data-testid="metabot-inline-sql-error"
-          pr="0.125rem"
-          ta="right"
-          flex={1}
-          miw={0}
-          fz="sm"
-          c={error?.type === "aborted" ? "text-secondary" : "feedback-negative"}
-        >
-          {isLocked ? <MetabotManagedProviderLimitHoverCard /> : error?.message}
-        </Box>
+        {isLoading ? (
+          <MetabotWorkingIndicator
+            pr="0.125rem"
+            ta="right"
+            flex={1}
+            fz="sm"
+            ff="var(--mb-default-font-family)"
+          />
+        ) : (
+          <Box
+            data-testid="metabot-inline-sql-error"
+            pr="0.125rem"
+            ta="right"
+            flex={1}
+            miw={0}
+            fz="sm"
+            ff="var(--mb-default-font-family)"
+            c={
+              error?.type === "aborted" ? "text-secondary" : "feedback-negative"
+            }
+          >
+            {isLocked ? (
+              <MetabotManagedProviderLimitHoverCard />
+            ) : (
+              error?.message
+            )}
+          </Box>
+        )}
         <Button
           className={S.cancelButton}
           data-testid="metabot-inline-sql-cancel"

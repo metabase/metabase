@@ -191,6 +191,23 @@ describe("JobListPage", () => {
     expect(visited.some((path) => path.includes("/jobs/1"))).toBe(false);
   });
 
+  it("does not open the job when clicking inside its delete modal", async () => {
+    const { router } = await setup({
+      jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
+      isAdmin: true,
+    });
+
+    const row = await findRow(1);
+    await userEvent.click(within(row).getByLabelText("ellipsis icon"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Delete/ }),
+    );
+    await userEvent.click(await screen.findByText("Delete this job?"));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(Urls.transformJobList());
+  });
+
   it("hides the row action menu for non-admin users", async () => {
     await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],

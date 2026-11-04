@@ -1,5 +1,7 @@
 import type { CommentId, DocumentId } from "metabase-types/api";
 
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
+
 export const documentContent = () => cy.findByTestId("document-content");
 
 export const documentSaveButton = () =>
@@ -96,6 +98,7 @@ function visitDocumentCommentById(
 
   const hash = commentId == null ? "" : `#comment-${commentId}`;
   cy.visit(`/document/${documentId}/comments/${nodeId}${hash}`);
+  closeNavigationSidebar();
 
   cy.wait(`@${alias}`);
 }
@@ -105,6 +108,7 @@ const visitDocumentById = (id: DocumentId) => {
   cy.intercept("GET", `/api/document/${id}`).as(alias);
 
   cy.visit(`/document/${id}`);
+  closeNavigationSidebar();
 
   cy.wait(`@${alias}`);
 };

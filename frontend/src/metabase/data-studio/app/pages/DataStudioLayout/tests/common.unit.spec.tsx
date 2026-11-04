@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 
 import { setup } from "./setup";
@@ -25,6 +25,30 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByText("Connected data")).toBeInTheDocument();
+    });
+
+    it("should render the library tabs", async () => {
+      setup({ remoteSyncBranch: "main" });
+
+      const nav = await screen.findByTestId("data-studio-nav");
+      for (const label of [
+        "Semantic layer",
+        "Dashboards",
+        "SQL snippets",
+        "Data actions",
+        "Glossary",
+      ]) {
+        expect(within(nav).getByText(label)).toBeInTheDocument();
+      }
+      expect(
+        within(nav).getByRole("link", { name: /Dashboards/ }),
+      ).toHaveAttribute("href", "/data-studio/dashboards");
+      expect(
+        within(nav).getByRole("link", { name: /SQL snippets/ }),
+      ).toHaveAttribute("href", "/data-studio/snippets");
+      expect(
+        within(nav).getByRole("link", { name: /Data actions/ }),
+      ).toHaveAttribute("href", "/data-studio/actions");
     });
 
     it("should render content area", async () => {
@@ -125,6 +149,27 @@ describe("DataStudioLayout", () => {
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
       expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("data apps tab", () => {
+    it("shows Data apps as an upsell for admins", async () => {
+      setup();
+
+      const dataAppsTab = await screen.findByRole("link", {
+        name: "Data apps",
+      });
+      expect(dataAppsTab).toHaveAttribute("href", Urls.dataStudioDataApps());
+      expect(within(dataAppsTab).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+
+    it("hides Data apps from non-admins", async () => {
+      setup({ isAdmin: false });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Data apps" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

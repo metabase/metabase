@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
+import { Stack, Title } from "metabase/ui";
 import type {
   ActionFormSettings,
   WritebackImplicitQueryAction,
@@ -13,11 +14,6 @@ import type { ActionContextType } from "../ActionContext";
 import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps } from "../types";
 
-import {
-  EditorBodyRoot,
-  EditorTitle,
-} from "./ImplicitActionContextProvider.styled";
-
 export type ImplicitActionContextProviderProps = Omit<
   ActionContextProviderProps,
   "initialAction"
@@ -27,14 +23,14 @@ export type ImplicitActionContextProviderProps = Omit<
 
 function EditorBody() {
   return (
-    <EditorBodyRoot>
+    <Stack justify="center" align="center" gap="lg" w="100%" h="100%">
       <ImplicitActionIcon size={64} />
-      <EditorTitle>{t`Auto tracking schema`}</EditorTitle>
-    </EditorBodyRoot>
+      <Title order={3} size="h4">{t`Auto tracking schema`}</Title>
+    </Stack>
   );
 }
 
-function ImplicitActionContextProvider({
+export function ImplicitActionContextProvider({
   initialAction,
   children,
 }: ImplicitActionContextProviderProps) {
@@ -78,6 +74,3 @@ function ImplicitActionContextProvider({
     <ActionContext.Provider value={value}>{children}</ActionContext.Provider>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ImplicitActionContextProvider;

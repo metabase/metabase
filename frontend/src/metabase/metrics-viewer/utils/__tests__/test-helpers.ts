@@ -161,7 +161,6 @@ export const TOTAL_MEASURE = createMockMeasure({
                   {
                     type: "column",
                     name: "TOTAL",
-                    sourceName: "ORDERS",
                   },
                 ],
               },

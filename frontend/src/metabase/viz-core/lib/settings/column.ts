@@ -28,7 +28,6 @@ import {
 } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isCoordinate,
-  isCurrency,
   isDate,
   isDateWithoutTime,
   isNumber,
@@ -297,9 +296,6 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       ],
     }),
     getDefault: getDefaultNumberStyle,
-    // hide this for currency
-    getHidden: (column, settings) =>
-      isCurrency(column) && settings.number_style === "currency",
     readDependencies: ["currency"],
   },
   currency: {
@@ -562,7 +558,7 @@ export function tableColumnSettings({
       getSection: () => t`Columns`,
       // title: t`Columns`,
       widget: "tableColumns",
-      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"] ?? false,
       getValue: ([{ data }], vizSettings) => {
         const { cols } = data;
         const settings = vizSettings["table.columns"] ?? [];

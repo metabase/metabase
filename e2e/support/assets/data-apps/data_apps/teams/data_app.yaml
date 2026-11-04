@@ -1,0 +1,10 @@
+allowed_hosts: []
+collection: teamsAppCollection001
+description: The teams of the scoreboard, and a form to add one.
+entity_id: teamsDataApp000000001
+name: Teams
+path: dist/index.js
+slug: teams
+version: 1
+serdes/meta:
+- model: DataApp

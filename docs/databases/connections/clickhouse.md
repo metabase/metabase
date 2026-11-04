@@ -105,9 +105,11 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
+## Uploads
 
-There aren't (yet) any model features for ClickHouse.
+Metabase supports [CSV uploads](../uploads.md) to ClickHouse Cloud and self-hosted single-node ClickHouse deployments. Self-hosted clusters aren't supported.
+
+For self-hosted deployments, the database user must be able to read the `system.clusters` table, as well as create tables and insert data.
 
 ## Danger zone
 

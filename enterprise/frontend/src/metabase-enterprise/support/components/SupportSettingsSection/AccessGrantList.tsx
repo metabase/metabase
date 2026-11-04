@@ -82,12 +82,12 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
                           .t`${getTimeLeft(effectiveEndDate)} left`}
                       </Badge>
                       <ActionIcon
+                        variant="subtle"
                         aria-label={t`Revoke access grant`}
                         loading={isRevoking}
                         onClick={() => handleRevokeAccessGrant(grant.id)}
                         size="sm"
                         title={t`Revoke access grant`}
-                        variant="viewHeader"
                       >
                         <Icon name="close" />
                       </ActionIcon>

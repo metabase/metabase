@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
@@ -47,7 +47,7 @@ function DashCardPlaceholderInner({
   const shouldDisableItem = (item: OmniPickerItem) => {
     // don't allow adding items that are already saved in a different dashboard
     // proably only applicable to search and recents
-    if (!isInDbTree(item) && item.dashboard_id) {
+    if (isInCollectionTree(item) && item.dashboard_id) {
       if (item.dashboard_id !== dashboard.id) {
         return true;
       }

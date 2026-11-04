@@ -12,6 +12,7 @@ import {
 
 import type { LinkProps } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 
@@ -53,20 +54,24 @@ export const LegendLabel = forwardRef(
       [onClick],
     );
 
+    const labelClassName = cx(CS.textPrimary, CS.textBold, className, {
+      [S.link]: onClick,
+      [CS.cursorPointer]: onClick,
+      [CS.textBrandHover]: onClick,
+    });
+
     if (!href || !onClick) {
       return (
         <div
           ref={ref}
-          className={cx(S.text, className, {
-            [S.link]: onClick,
-          })}
+          className={labelClassName}
           onClick={onClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
           data-testid="legend-label"
-          data-is-clickable={!!onClick}
+          data-is-clickable={Boolean(onClick)}
         >
           {children}
         </div>
@@ -79,14 +84,14 @@ export const LegendLabel = forwardRef(
       return (
         <Box
           ref={ref}
-          className={cx(S.text, S.link, className)}
+          className={labelClassName}
           onClick={handleLinkClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
           data-testid="legend-label"
-          data-is-clickable={!!onClick}
+          data-is-clickable={Boolean(onClick)}
         >
           {children}
         </Box>
@@ -96,7 +101,7 @@ export const LegendLabel = forwardRef(
     return (
       <Link
         ref={ref}
-        className={cx(S.text, S.link, className)}
+        className={labelClassName}
         to={href}
         onClick={handleLinkClick}
         onFocus={onFocus}
@@ -104,7 +109,7 @@ export const LegendLabel = forwardRef(
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
         data-testid="legend-label"
-        data-is-clickable={!!onClick}
+        data-is-clickable={Boolean(onClick)}
       >
         {children}
       </Link>

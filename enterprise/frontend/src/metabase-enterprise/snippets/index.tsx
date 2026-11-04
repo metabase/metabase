@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import {
   PLUGIN_SNIPPET_FOLDERS,
@@ -13,7 +12,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CollectionRow } from "./components/CollectionRow";
 import { MoveSnippetModal } from "./components/MoveSnippetModal";
-import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
+import { SnippetCollectionHeaderMenu } from "./components/SnippetCollectionHeaderMenu";
 import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";
 
 /**
@@ -24,8 +23,6 @@ export function initializePlugin() {
     // Add new menu option
     PLUGIN_SNIPPET_FOLDERS.isEnabled = true;
     PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = SnippetCollectionPickerModal;
-    PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
-      SnippetCollectionPermissionsModal;
     PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
     PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
       icon: "folder",
@@ -55,7 +52,7 @@ export function initializePlugin() {
     PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar) => {
       const collection = snippetSidebar.props.snippetCollection;
       return (
-        <CollectionRowMenu
+        <SnippetCollectionHeaderMenu
           key="snippet-collection-row-menu"
           collection={collection}
         />

@@ -3,6 +3,7 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import type {
   Dataset,
   InternalDatasetQuery,
@@ -14,8 +15,6 @@ import type {
   ErroringQuestionsFilters,
   ErroringQuestionsSorting,
 } from "./types";
-
-export const PAGE_SIZE = 50;
 
 type UrlState = {
   page: number;

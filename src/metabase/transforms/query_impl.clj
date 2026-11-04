@@ -3,11 +3,11 @@
    [clojure.core.async :as a]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.request.core :as request]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.u]
@@ -20,7 +20,7 @@
   ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method on-start user-id parent-run]}]
    (try
-     (let [db          (transforms.db/database (get-in source [:query :database]))
+     (let [db          (driver.u/lib-database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
            run-user-id (if (and (= run-method :manual) user-id)
@@ -71,7 +71,7 @@
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
-         (log/errorf "Error executing transform: %s" (ex-message t)))
+         (log/errorf "Error executing transform %d: %s" id (ex-message t)))
        (throw t)))))
 
 (defmethod transforms.i/execute! :query [transform opts]

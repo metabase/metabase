@@ -84,9 +84,10 @@
       ;; POST /api/action/:id/execute (write-back for `useAction`) is tagged too, but needs an
       ;; action fixture — actions.cy.spec.ts is its functional guard under enforcement.
       ;;
-      ;; 204 (not scope_not_permitted) proves the marked request reached the handler; the key is unset.
-      (is (nil? (mt/user-http-request :crowberto :get 204
-                                      "user-key-value/namespace/data-app-test/key/format" as-data-app))))
+      (is (not= "scope_not_permitted"
+                (:error (mt/user-http-request :crowberto :get
+                                              "user-key-value/namespace/last_download_format/key/download_format_preference"
+                                              as-data-app)))))
     (testing "alerts and subscriptions are not part of the data-app surface"
       ;; Scheduled email delivered out of band is not something a data app renders, so neither
       ;; the probe the SDK buttons gate on nor the CRUD behind them is reachable. The buttons are
@@ -100,7 +101,7 @@
       ;; The delete body is irrelevant — reaching the handler at all is what the tag buys.
       (is (not= "scope_not_permitted"
                 (:error (mt/user-http-request :crowberto :delete
-                                              "user-key-value/namespace/data-app-test/key/format"
+                                              "user-key-value/namespace/last_download_format/key/download_format_preference"
                                               as-data-app)))))
     (testing "the InteractiveQuestion.Editor data-source surface is reachable when marked"
       (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))
@@ -112,16 +113,11 @@
   ;; The SDK's "Detail" visualization renders `ObjectDetailPanel`, which lists a writable model's
   ;; actions, and its `ActionExecuteModal` fetches the one clicked. Both are reads, and both must
   ;; carry the tag or the menu silently disappears for an admin inside a data app.
-  ;; Built with plain `with-temp` rather than `mt/with-actions`: that helper's cleanup reindexes search, which
-  ;; drops orphan index tables, and that DDL commits the rollback-only `with-temp` transaction on H2 whenever the
-  ;; `metabase.search.*` namespaces ran earlier in the same JVM.
   (mt/with-actions-test-data-and-actions-enabled
-    (mt/with-temp [:model/Card {model-id :id} {:type          :model
-                                               :dataset_query (lib/query (mt/metadata-provider)
-                                                                         (lib.metadata/table (mt/metadata-provider)
-                                                                                             (mt/id :categories)))}
-                   :model/Action {action-id :id} {:name "Update category" :model_id model-id :type :implicit}
-                   :model/ImplicitAction _ {:action_id action-id :kind "row/update"}]
+    (mt/with-actions [_ {:type          :model
+                         :dataset_query (lib/query (mt/metadata-provider)
+                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :categories)))}
+                      {:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
       (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
         (testing "GET /api/action?model-id= -- the object-detail action menu"
           (is (=? [{:id action-id}]

@@ -5,9 +5,9 @@ import _ from "underscore";
 import {
   Button,
   type ButtonProps,
-  Flex,
   Modal,
   type ModalProps,
+  Stack,
   Text,
 } from "metabase/ui";
 
@@ -51,34 +51,32 @@ export const ConfirmModal = ({
 
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
-      <Flex direction="column" gap="xl" mt="lg">
+      <Stack gap="xl">
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
-        <Flex align="center" justify="space-between" gap="lg">
-          {errorMessage ? (
-            <Text c="feedback-negative">{errorMessage} </Text>
-          ) : (
-            <div />
-          )}
-          <Flex align="center" justify="flex-end" gap="lg">
-            {closeButtonText && (
-              <Button {...closeButtonProps} onClick={onClose}>
-                {closeButtonText}
-              </Button>
-            )}
-            <Button
-              color="negative"
-              variant="filled"
-              data-autofocus
-              {...confirmButtonProps}
-              disabled={confirmButtonProps.disabled || confirming}
-              onClick={handleConfirm}
-            >
-              {confirmButtonText}
-            </Button>
-          </Flex>
-        </Flex>
-      </Flex>
+      </Stack>
+      <Modal.Footer>
+        {errorMessage && (
+          <Text c="feedback-negative" flex={1}>
+            {errorMessage}
+          </Text>
+        )}
+        {closeButtonText && (
+          <Button {...closeButtonProps} onClick={onClose}>
+            {closeButtonText}
+          </Button>
+        )}
+        <Button
+          color="negative"
+          variant="filled"
+          data-autofocus
+          {...confirmButtonProps}
+          disabled={confirmButtonProps.disabled || confirming}
+          onClick={handleConfirm}
+        >
+          {confirmButtonText}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

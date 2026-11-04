@@ -2,8 +2,18 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
+
+const externalDatabaseId = 2;
 
 const testQuery = {
   type: "query",
@@ -21,13 +31,42 @@ describe("scenarios > visualizations > line chart", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to change y axis position (metabase#13487)", () => {
+  it("should change formatting, y-axis position, color and line settings of a series (metabase#51952, metabase#13487, metabase#53735)", () => {
     H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "line",
     });
 
     H.openVizSettingsSidebar();
+
+    cy.log("x-axis column settings (metabase#51952)");
+    cy.findByTestId("settings-CREATED_AT").click();
+    H.popover().findByText("Abbreviate days and months").click();
+    H.echartsContainer().findByText("Apr 2027");
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+
+    cy.log("series formatting settings");
+    H.openSeriesSettings("Count");
+
+    H.popover().within(() => {
+      cy.findByText("Formatting").click();
+
+      cy.findByText("Add a prefix").should("exist");
+      cy.findByPlaceholderText("$").type("prefix").blur();
+    });
+
+    H.echartsContainer().findByText("prefix0");
+    // The popover closes on Escape only when the key event starts inside it
+    H.popover().findByPlaceholderText("$").focus();
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+
+    cy.log("y-axis position (metabase#13487)");
     H.openSeriesSettings("Count");
 
     H.echartsContainer()
@@ -37,25 +76,34 @@ describe("scenarios > visualizations > line chart", () => {
         cy.wrap({ x, y }).as("leftAxisLabelPosition");
       });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Right").click();
-    H.echartsContainer()
-      .findByText("Count")
-      .then((label) => {
-        const { x: xRight, y: yRight } = H.getXYTransform(label);
-        cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+    H.popover().findByText("Right").click();
+    cy.get("@leftAxisLabelPosition").then(({ x: xLeft, y: yLeft }) => {
+      H.echartsContainer()
+        .findByText("Count")
+        .should(($label) => {
+          const { x: xRight, y: yRight } = H.getXYTransform($label);
           expect(yRight).to.be.eq(yLeft);
           expect(xRight).to.be.greaterThan(xLeft);
         });
-      });
-  });
-
-  it("should display line settings only for line/area charts", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "line",
     });
 
+    cy.log("series color (metabase#53735)");
+    H.popover().within(() => {
+      cy.findByTestId("color-selector-button").button().click();
+    });
+
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .within(() => {
+        cy.findByLabelText("#EF8C8C").realClick();
+      });
+
+    cy.button("Done").click();
+
+    H.cartesianChartCircleWithColor("#EF8C8C");
+
+    cy.log("line settings show only for line and area charts");
     H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
@@ -75,30 +123,11 @@ describe("scenarios > visualizations > line chart", () => {
 
       // For bar chart
       cy.icon("bar").click();
-      cy.findByText("Line shape").should("not.be.visible");
-      cy.findByText("Line style").should("not.be.visible");
-      cy.findByText("Line size").should("not.be.visible");
-      cy.findByText("Show dots on lines").should("not.be.visible");
+      cy.findByText("Line shape").should("not.exist");
+      cy.findByText("Line style").should("not.exist");
+      cy.findByText("Line size").should("not.exist");
+      cy.findByText("Show dots on lines").should("not.exist");
     });
-  });
-
-  it("should allow changing formatting settings", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "line",
-    });
-
-    H.openVizSettingsSidebar();
-    H.openSeriesSettings("Count");
-
-    H.popover().within(() => {
-      cy.findByText("Formatting").click();
-
-      cy.findByText("Add a prefix").should("exist");
-      cy.findByPlaceholderText("$").type("prefix").blur();
-    });
-
-    H.echartsContainer().findByText("prefix0");
   });
 
   it("should reset series settings when switching to line chart", () => {
@@ -139,6 +168,8 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    H.echartsContainer().findByText("100%").should("be.visible");
+
     H.openVizTypeSidebar();
 
     cy.icon("line").click();
@@ -178,7 +209,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    H.echartsContainer().get("text").contains("39.75%");
+    H.echartsContainer().find("text").contains("39.75%");
   });
 
   it("should let unpin y-axis from zero", () => {
@@ -218,6 +249,171 @@ describe("scenarios > visualizations > line chart", () => {
     H.echartsContainer().findByText("0");
   });
 
+  describe("UXW-2696", () => {
+    const getChartPoints = () =>
+      H.echartsContainer().find("path[fill='hsla(0, 0%, 100%, 1.00)']");
+    const getNoPointsMessage = () =>
+      cy.findByRole("dialog", { name: /data points are off screen/i });
+
+    const assertNoPoints = (assertMessage = true) => {
+      getChartPoints().should("have.length", 0);
+      if (assertMessage) {
+        getNoPointsMessage().should("exist");
+      }
+    };
+
+    const assertDataVisible = () => {
+      getChartPoints().should("have.length.greaterThan", 0);
+      getNoPointsMessage().should("not.exist");
+    };
+
+    const QUESTION_NAME = "Count of orders by month";
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+
+      H.createQuestion(
+        {
+          name: QUESTION_NAME,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          display: "line",
+          visualization_settings: {
+            "graph.y_axis.min": 700,
+            "graph.y_axis.max": 1000,
+            "graph.y_axis.auto_range": false,
+          },
+        },
+        { wrapId: true },
+      );
+    });
+
+    it("should show you a popover when all data points are outside the y-axis range in the notebook editor", () => {
+      cy.get("@questionId").then((id) => H.visitQuestion(id));
+
+      assertNoPoints();
+
+      H.openVizSettingsSidebar();
+
+      H.vizSettingsSidebar().findByText("Axes").click();
+      H.vizSettingsSidebar().findByLabelText("Min").clear().type("70").blur();
+
+      assertDataVisible();
+
+      H.vizSettingsSidebar().findByLabelText("Min").clear().type("700").blur();
+
+      assertNoPoints();
+
+      cy.findByRole("switch", { name: /auto y-axis range/i }).click({
+        force: true,
+      });
+
+      assertDataVisible();
+    });
+
+    it("should be able to open the menu on pinned cards", () => {
+      H.visitCollection("root");
+      H.openCollectionItemMenu(QUESTION_NAME);
+      H.popover().findByText("Pin this").click();
+
+      // assert that the menu trigger is not covered
+      H.openPinnedItemMenu(QUESTION_NAME);
+      H.popover().should("exist");
+    });
+
+    it("should show the message in documents", () => {
+      //setup a document
+      cy.visit("/document/new");
+      H.documentContent().click();
+
+      H.addToDocument("/ord", false);
+      H.commandSuggestionItem(new RegExp(QUESTION_NAME)).click();
+
+      H.getDocumentCard(QUESTION_NAME).within(() => {
+        assertNoPoints();
+      });
+
+      H.openDocumentCardMenu(QUESTION_NAME);
+      H.popover().findByText("Edit Visualization").click();
+
+      H.getDocumentSidebar().within(() => {
+        cy.findByRole("tab", { name: /axes/i }).click({ force: true });
+        cy.findByLabelText("Auto y-axis range").should(
+          "have.attr",
+          "data-checked",
+          "false",
+        );
+
+        cy.findByLabelText("Min").clear().type("70");
+      });
+
+      H.getDocumentCard(QUESTION_NAME).within(() => {
+        assertDataVisible();
+      });
+    });
+
+    describe("dashcard", () => {
+      beforeEach(() => {
+        cy.get("@questionId").then((cardId) => {
+          H.createDashboard(
+            {
+              name: "Test Dashboard",
+            },
+            {
+              wrapId: true,
+            },
+          );
+
+          cy.get("@dashboardId").then((dashboardId) =>
+            H.addQuestionToDashboard({ dashboardId, cardId }),
+          );
+        });
+      });
+
+      it("should show you a message on a dashboard", () => {
+        cy.get("@dashboardId").then((id) => H.visitDashboard(id));
+
+        cy.findByTestId("dashcard").within(() => {
+          assertNoPoints();
+        });
+
+        H.editDashboard();
+        H.showDashcardVisualizerModalSettings(0, { isVisualizerCard: false });
+
+        H.modal().within(() => {
+          cy.findByRole("tab", { name: /axes/i }).click({ force: true });
+          cy.findByLabelText("Auto y-axis range").should(
+            "have.attr",
+            "data-checked",
+            "false",
+          );
+
+          H.echartsContainer().find("svg").should("exist");
+          assertNoPoints(false);
+          getNoPointsMessage().should("not.exist");
+
+          cy.findByLabelText("Min").clear().type("70").blur();
+
+          assertDataVisible();
+        });
+        H.saveDashcardVisualizerModal();
+
+        H.dashboardSaveButton().click();
+
+        cy.findByTestId("edit-bar").should("not.exist");
+
+        cy.findByTestId("dashcard").within(() => {
+          getChartPoints().should("have.length.greaterThan", 0);
+        });
+      });
+    });
+  });
+
   it("should display an error message when there are more series than the chart supports", () => {
     H.visitQuestionAdhoc({
       display: "line",
@@ -243,6 +439,67 @@ describe("scenarios > visualizations > line chart", () => {
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
+  });
+
+  it("should not allow adding more series when all columns are used (metabase#11249)", () => {
+    H.visitQuestionAdhoc({
+      name: "13960",
+      display: "line",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["avg"],
+      },
+    });
+
+    H.openVizSettingsSidebar();
+
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByText("Data").click();
+      cy.findByDisplayValue("Count").should("not.exist");
+
+      cy.findByText("Add another series").click();
+      cy.findByDisplayValue("Count").should("be.visible");
+      cy.findByText("Add another series").should("not.exist");
+    });
+  });
+
+  it("should render a chart with many columns without freezing (metabase#21392)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+  WITH
+     L0   AS (SELECT c FROM (SELECT 1 UNION ALL SELECT 1) AS D(c)) -- 2^1
+    ,L1   AS (SELECT 1 AS c FROM L0 AS A CROSS JOIN L0 AS B)       -- 2^2
+    ,L2   AS (SELECT 1 AS c FROM L1 AS A CROSS JOIN L1 AS B)       -- 2^4
+    ,L3   AS (SELECT 1 AS c FROM L2 AS A CROSS JOIN L0 AS B)       -- 2^5
+
+  SELECT ROWNUM() id, DATEADD('DAY', ROWNUM(), CURRENT_DATE)::DATE date,
+  RAND() c00, RAND() c01, RAND() c02, RAND() c03, RAND() c04, RAND() c05, RAND() c06, RAND() c07, RAND() c08, RAND() c09,
+  RAND() c10, RAND() c11, RAND() c12, RAND() c13, RAND() c14, RAND() c15, RAND() c16, RAND() c17, RAND() c18, RAND() c19,
+  RAND() c20, RAND() c21, RAND() c22, RAND() c23, RAND() c24, RAND() c25, RAND() c26, RAND() c27, RAND() c28, RAND() c29,
+  RAND() c30, RAND() c31
+  FROM L3
+      `,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+    H.echartsContainer().should("be.visible");
+    H.ensureEchartsContainerHasSvg();
   });
 
   it("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
@@ -288,6 +545,39 @@ describe("scenarios > visualizations > line chart", () => {
           color: "#A989C5",
           name: "Average of Quantity",
           value: "4.3",
+        },
+      ],
+    });
+  });
+
+  it("should show chart tooltip on narrow ordinal line charts (metabase#47847)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.x_axis.scale": "ordinal",
+        "graph.show_values": true,
+      },
+    });
+
+    H.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "April 27 – May 3, 2025", // expect this to break when we shift years in the Sample Database
+      blurAfter: false,
+      footer: null,
+      rows: [
+        {
+          color: "#509EE3",
+          name: "Count",
+          value: "1",
         },
       ],
     });
@@ -439,7 +729,11 @@ describe("scenarios > visualizations > line chart", () => {
         display: "line",
       });
 
-      cy.get("g.axis.yr").should("not.exist");
+      H.echartsContainer().within(() => {
+        cy.findByText(/^Created At/).should("be.visible");
+        cy.findByText("Average of Total").should("not.exist");
+        cy.findByText("Min of Total").should("not.exist");
+      });
     });
 
     it("should split the y-axis when columns are of different semantic_type", () => {
@@ -467,7 +761,7 @@ describe("scenarios > visualizations > line chart", () => {
       });
     });
 
-    it("should split the y-axis when columns are of the same semantic_type but have far values", () => {
+    it("should label each side of a split y-axis separately", () => {
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -489,51 +783,6 @@ describe("scenarios > visualizations > line chart", () => {
       H.echartsContainer().within(() => {
         cy.findByText("Sum of Total").should("be.visible");
         cy.findByText("Min of Total").should("be.visible");
-      });
-    });
-
-    it("should not split the y-axis when the setting is disabled", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["min", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
-        visualization_settings: {
-          "graph.y_axis.auto_split": false,
-        },
-      });
-
-      cy.get("g.axis.yr").should("not.exist");
-    });
-
-    it("should label each side of a split y-axis separately", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["min", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
       });
 
       H.openVizSettingsSidebar();
@@ -632,31 +881,6 @@ describe("scenarios > visualizations > line chart", () => {
         });
       });
     });
-
-    it("should allow changing a series' color - #53735", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: testQuery,
-        display: "line",
-      });
-
-      H.openVizSettingsSidebar();
-      H.openSeriesSettings("Count");
-
-      H.popover().within(() => {
-        cy.findByTestId("color-selector-button").button().click();
-      });
-
-      H.popover()
-        .should("have.length", 2)
-        .last()
-        .within(() => {
-          cy.findByLabelText("#EF8C8C").realClick();
-        });
-
-      cy.button("Done").click();
-
-      H.cartesianChartCircleWithColor("#EF8C8C");
-    });
   });
 
   describe("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
@@ -681,24 +905,22 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Category is Doohickey");
     });
 
-    it("should not drop the chart legend (metabase#4995)", () => {
+    it("should keep the chart legend and axis labels (metabase#4995, metabase#12782)", () => {
+      H.echartsContainer()
+        .find("text")
+        .contains("Created At")
+        .should("be.visible");
+      H.echartsContainer()
+        .find("text")
+        .contains("Average of Price")
+        .should("be.visible");
+
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
 
       cy.log("Ensure that legend is hidden when not dealing with multi series");
       H.openVizSettingsSidebar();
       cy.findByTestId("remove-CATEGORY").click();
       H.queryBuilderMain().should("not.contain", "Doohickey");
-    });
-
-    it("should display correct axis labels (metabase#12782)", () => {
-      H.echartsContainer()
-        .get("text")
-        .contains("Created At")
-        .should("be.visible");
-      H.echartsContainer()
-        .get("text")
-        .contains("Average of Price")
-        .should("be.visible");
     });
   });
 
@@ -721,14 +943,9 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().findByText("Quantity").should("exist");
+      H.echartsContainer().findByText("Quantity").should("be.visible");
     });
-    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-    cy.findByTestId("query-visualization-root")
-      .trigger("mousedown", 180, 200)
-      .trigger("mousemove", 180, 200)
-      .trigger("mouseup", 220, 200);
+    H.applyBrushToPoints(6, 10);
 
     cy.wait("@dataset");
 
@@ -739,7 +956,7 @@ describe("scenarios > visualizations > line chart", () => {
     const X_AXIS_VALUE = 8;
     H.echartsContainer().within(() => {
       cy.get("text").contains("Quantity").should("be.visible");
-      cy.findByText(X_AXIS_VALUE);
+      cy.findByText(X_AXIS_VALUE).should("be.visible");
     });
   });
 
@@ -771,7 +988,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("$50.0k").should("exist");
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -796,11 +1013,158 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("50.0k%").should("exist");
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
       cy.findByText("12,345.67%").should("exist");
+    });
+  });
+
+  it("should not crash when removing dimension aggregation column from the query (metabase#59671)", () => {
+    const questionDetails = {
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.removeSummaryGroupingField({
+      field: "Created At: Month",
+      stage: 0,
+      index: 0,
+    });
+    H.visualize();
+
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+    cy.icon("warning").should("not.exist");
+  });
+
+  it("should not crash when saved dimension settings refer to a non-existent column (metabase#59830)", () => {
+    const questionDetails = {
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["DOES_NOT_EXIST"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("chart-container").should("be.visible");
+  });
+
+  it("should show an empty state when no dimensions are available (metabase#54755)", () => {
+    const questionDetails = {
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": [],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+
+  it("should not crash the app when rendering a line chart with broken viz settings and table metadata (metabase#54271)", () => {
+    cy.signInAsAdmin();
+
+    cy.log("broken semantic type - the field cannot be parsed as a date");
+    cy.request("PUT", `/api/field/${REVIEWS.REVIEWER}`, {
+      semantic_type: "type/CreationDate",
+    });
+
+    cy.log("broken viz settings - dimensions cannot have a text column");
+    H.createQuestion(
+      {
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", REVIEWS.REVIEWER, null]],
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.dimensions": ["REVIEWER"],
+          "graph.metrics": [["count"]],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("no clear expectations but the app should not crash");
+    H.assertQueryBuilderRowCount(1076);
+  });
+
+  describe("issue 21452", () => {
+    beforeEach(() => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["cum-sum", ["field", ORDERS.QUANTITY, null]]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          database: 1,
+        },
+        display: "line",
+      });
+
+      H.openVizSettingsSidebar();
+    });
+
+    it("should not fire POST request after every character during display name change (metabase#21452)", () => {
+      H.openSeriesSettings("Cumulative sum of Quantity");
+      H.popover()
+        .findByDisplayValue("Cumulative sum of Quantity")
+        .clear()
+        .type("Foo");
+
+      H.popover().findByText("Display type").click();
+
+      cy.log("Dismiss the popup and close settings");
+      H.leftSidebar().button("Done").click();
+
+      // trigger("mousemove") is more reliable than realHover
+      // maybe related to https://github.com/dmtrKovalenko/cypress-real-events/issues/691
+      H.cartesianChartCircle().first().trigger("mousemove");
+
+      H.assertEChartsTooltip({
+        header: "2025",
+        rows: [
+          {
+            color: "#88BF4D",
+            name: "Foo",
+            value: "3,236",
+          },
+        ],
+      });
+
+      cy.get("@dataset.all").should("have.length", 1);
     });
   });
 
@@ -852,7 +1216,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.findByText("8").should("be.visible");
       });
 
-      H.splitPanelAxisLines().should("have.length", 2);
+      H.splitPanelSeparators().should("have.length", 1);
 
       H.cartesianChartCircleWithColor("#88BF4D");
       H.cartesianChartCircleWithColor("#A989C5");
@@ -898,13 +1262,89 @@ describe("scenarios > visualizations > line chart", () => {
       });
 
       // Brush
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 180, 200)
-        .trigger("mousemove", 180, 200)
-        .trigger("mouseup", 400, 200);
+      H.applyBrushToPoints(6, 10);
+
+      cy.wait("@dataset");
+      cy.findByTestId("qb-filters-panel").should(
+        "contain",
+        "Created At: Month is",
+      );
 
       H.chartPathWithFillColor("#EF8C8C").should("be.visible");
       H.cartesianChartCircleWithColor("#A989C5");
     });
   });
 });
+
+describe(
+  "scenarios > visualizations > line chart (Mongo)",
+  { tags: "@mongo" },
+  () => {
+    function replaceMissingValuesWith(value) {
+      cy.get('[data-field-title="Replace missing values with"]').within(() => {
+        cy.findByTestId("chart-setting-select").click();
+      });
+
+      H.popover().contains(value).click();
+      H.popover().findByDisplayValue(value);
+
+      // click outside popover
+      cy.findByTestId("chartsettings-list-container").click();
+    }
+
+    function assertOnTheYAxis() {
+      H.echartsContainer().find("text").contains("Count");
+
+      H.echartsContainer().find("text").contains("7.0k").should("be.visible");
+    }
+
+    beforeEach(() => {
+      H.restore("mongo-5");
+      cy.signInAsAdmin();
+
+      H.withDatabase(externalDatabaseId, ({ ORDERS, ORDERS_ID }) => {
+        const questionDetails = {
+          name: "16170",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          database: externalDatabaseId,
+          display: "line",
+        };
+
+        H.createQuestion(questionDetails, { visitQuestion: true });
+      });
+    });
+
+    ["Zero", "Nothing"].forEach((replacementValue) => {
+      it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
+        H.openVizSettingsSidebar();
+
+        H.openSeriesSettings("Count");
+
+        replaceMissingValuesWith(replacementValue);
+
+        assertOnTheYAxis();
+
+        H.cartesianChartCircle()
+          .should("have.length", 6)
+          .eq(-2)
+          .trigger("mousemove");
+
+        H.assertEChartsTooltip({
+          header: "2019",
+          rows: [
+            {
+              name: "Count",
+              value: "6,524",
+            },
+          ],
+        });
+      });
+    });
+  },
+);

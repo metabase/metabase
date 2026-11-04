@@ -1,8 +1,16 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 
 const breakoutBarChart = {
   display: "bar",
@@ -54,8 +62,8 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("(empty)").should("not.exist");
+      H.chartPathWithFillColor("#A989C5").should("have.length", 2);
+      H.echartsContainer().findByText("(empty)").should("not.exist");
     });
 
     it("should show an (empty) bar for null values when X axis is ordinal (metabase#12138)", () => {
@@ -69,6 +77,30 @@ describe("scenarios > visualizations > bar chart", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)");
+    });
+
+    it("should not freeze when opening a timeseries chart with sparse data and without the X-axis (metabase#18776)", () => {
+      const questionDetails = {
+        dataset_query: {
+          type: "native",
+          native: {
+            query: `
+  select 101002 as "id", 1 as "rate"
+  union all select 103017, 2
+  union all select 210002, 3`,
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["id"],
+          "graph.metrics": ["rate"],
+          "graph.x_axis.axis_enabled": false,
+        },
+      };
+
+      H.visitQuestionAdhoc(questionDetails);
+      H.chartPathWithFillColor("#509EE3").should("have.length", 3);
     });
   });
 
@@ -93,6 +125,57 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.findByText("1,800"); // correct data has this on the y-axis
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
+    });
+
+    it("should display bar chart for binned column distribution after applying filter (metabase#10493)", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+          },
+          database: SAMPLE_DB_ID,
+        },
+      });
+
+      cy.log("Click on Quantity column header and select Distribution");
+      H.tableHeaderClick("Quantity");
+      H.popover().findByText("Distribution").click();
+      cy.wait("@dataset");
+
+      cy.log("Verify bar chart is displayed with binned quantity as dimension");
+      cy.findByTestId("visualization-root").should(
+        "have.attr",
+        "data-viz-ui-name",
+        "Bar",
+      );
+      H.chartPathWithFillColor("#509EE3").should("have.length", 9);
+
+      cy.log("Apply filter: count >= 20");
+      cy.findByTestId("qb-header-action-panel").findByText("Filter").click();
+      H.popover().within(() => {
+        cy.findByText("Summaries").click();
+        cy.findByText("Count").click();
+      });
+      H.selectFilterOperator("Greater than or equal to");
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("20");
+        cy.button("Apply filter").click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log(
+        "Verify bar chart is still displayed (binned column should still be treated as dimension)",
+      );
+      H.assertQueryBuilderRowCount(5);
+      cy.findByTestId("visualization-placeholder").should("not.exist");
+      cy.findByTestId("visualization-root").should(
+        "have.attr",
+        "data-viz-ui-name",
+        "Bar",
+      );
+      H.chartPathWithFillColor("#509EE3").should("have.length", 5);
     });
   });
 
@@ -119,10 +202,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      H.echartsContainer()
-        .get("text")
-        .should("contain", "19")
-        .and("contain", "20.0M");
+      H.getValueLabels().should("contain", "19").and("contain", "20.0M");
     });
   });
 
@@ -134,7 +214,8 @@ describe("scenarios > visualizations > bar chart", () => {
       H.sidebar().findByText("Data").click();
     });
 
-    it("should allow you to show/hide and reorder columns", () => {
+    it("should allow you to show/hide and reorder columns, and handle filtered and re-added items", () => {
+      cy.log("Move Doohickey to the third position");
       H.getDraggableElements().eq(0).as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 100,
@@ -148,7 +229,8 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("contain.text", "Doohickey");
       cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
-      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
+      cy.log("Hide Gizmo");
+      H.getDraggableElements().eq(1).icon("close").click({ force: true });
 
       cy.findByTestId("query-visualization-root")
         .findByText("Gizmo")
@@ -158,6 +240,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.chartPathWithFillColor("#F9D45C").should("be.visible");
       H.chartPathWithFillColor("#88BF4D").should("be.visible");
 
+      cy.log("Add Gizmo again");
       H.leftSidebar().button("Add another series").click();
       H.popover().findByText("Gizmo").click();
 
@@ -170,22 +253,11 @@ describe("scenarios > visualizations > bar chart", () => {
       H.chartPathWithFillColor("#88BF4D").should("be.visible");
       H.chartPathWithFillColor("#A989C5").should("be.visible");
 
-      cy.findAllByTestId("legend-item").contains("Gadget").click();
-      H.popover().findByText("See these Orders").click();
-      cy.findByTestId("qb-filters-panel")
-        .findByText("Product → Category is Gadget")
-        .should("exist");
-    });
+      cy.log("Hide Gizmo again");
+      H.getDraggableElements().eq(1).should("have.text", "Gizmo");
+      H.getDraggableElements().eq(1).icon("close").click({ force: true });
 
-    it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      H.getDraggableElements().first().as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", {
-        vertical: 100,
-        useMouseEvents: true,
-      });
-
-      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
-
+      cy.log("Filter out Gadget");
       H.queryBuilderHeader()
         .button(/Filter/)
         .click();
@@ -202,6 +274,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");
 
+      cy.log("Remove the filter");
       cy.findByTestId("qb-filters-panel").icon("close").click();
 
       H.getDraggableElements().should("have.length", 3);
@@ -209,6 +282,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.getDraggableElements().eq(1).should("have.text", "Doohickey");
       H.getDraggableElements().eq(2).should("have.text", "Widget");
 
+      cy.log("Add Gizmo to the end of the list");
       H.leftSidebar().button("Add another series").click();
       H.popover().findByText("Gizmo").click();
 
@@ -217,6 +291,13 @@ describe("scenarios > visualizations > bar chart", () => {
       H.getDraggableElements().eq(1).should("have.text", "Gizmo");
       H.getDraggableElements().eq(2).should("have.text", "Doohickey");
       H.getDraggableElements().eq(3).should("have.text", "Widget");
+
+      cy.log("Drill through a legend item");
+      cy.findAllByTestId("legend-item").contains("Gadget").click();
+      H.popover().findByText("See these Orders").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Product → Category is Gadget")
+        .should("exist");
     });
   });
 
@@ -272,7 +353,11 @@ describe("scenarios > visualizations > bar chart", () => {
         display: "bar",
       });
 
-      cy.get("g.axis.yr").should("not.exist");
+      H.echartsContainer().within(() => {
+        cy.findByText("Created At: Month").should("be.visible");
+        cy.findByText("Average of Total").should("not.exist");
+        cy.findByText("Min of Total").should("not.exist");
+      });
     });
 
     it("should split the y-axis on native queries with two numeric columns", () => {
@@ -299,6 +384,51 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.get("text").contains("m1").should("exist");
         cy.get("text").contains("m2").should("exist");
       });
+    });
+
+    it("when two axis should show only one related to the hovered series (metabase#49874, metabase#48847)", () => {
+      const question = {
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.QUANTITY, null]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: 1,
+        },
+        display: "bar",
+      };
+
+      H.visitQuestionAdhoc(question);
+
+      H.echartsContainer().within(() => {
+        cy.findByText("Sum of Quantity").should("be.visible");
+        cy.findByText("Sum of Total").should("be.visible");
+      });
+
+      H.chartGridLines().should("exist");
+
+      H.chartPathWithFillColor("#88BF4D").first().realHover();
+
+      H.echartsContainer().within(() => {
+        cy.findByText("Sum of Quantity").should("be.visible");
+        cy.findByText("Sum of Total").should("not.exist");
+      });
+      H.chartGridLines().should("exist");
+
+      H.chartPathWithFillColor("#98D9D9").first().realHover();
+
+      H.echartsContainer().within(() => {
+        cy.findByText("Sum of Quantity").should("not.exist");
+        cy.findByText("Sum of Total").should("be.visible");
+      });
+      H.chartGridLines().should("exist");
     });
   });
 
@@ -327,6 +457,13 @@ describe("scenarios > visualizations > bar chart", () => {
           visualization_settings: { "stackable.stack_type": "stacked" },
         });
 
+        cy.findAllByTestId("legend-item")
+          .findByText("Doohickey")
+          .should("be.visible");
+        cy.findByTestId("development-watermark").should(
+          devMode ? "exist" : "not.exist",
+        );
+
         cy.findAllByTestId("legend-item").findByText("Doohickey").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Products").click();
@@ -334,6 +471,62 @@ describe("scenarios > visualizations > bar chart", () => {
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Category is Doohickey").should("be.visible");
       });
+    });
+
+    it("should not crash when renaming an aggregation changes sibling column deduplication (metabase#68819)", () => {
+      // Create a question with two Sum of Total aggregations
+      // These will be deduplicated as "sum" and "sum_2"
+      const questionDetails = {
+        display: "bar",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        visualization_settings: {
+          "stackable.stack_type": "stacked",
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["sum", "sum_2"],
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+
+      H.echartsContainer().should("be.visible");
+
+      H.openNotebook();
+
+      H.getNotebookStep("summarize")
+        .findByTestId("aggregate-step")
+        .findAllByTestId("notebook-cell-item")
+        .first()
+        .click();
+
+      cy.findByLabelText("Back").click();
+
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.nameInput().clear().type("Sum");
+      H.popover().button("Update").click();
+
+      H.saveSavedQuestion();
+
+      cy.button("Visualize").click();
+
+      // The bug would cause: TypeError: cannot read properties of undefined (reading 'name')
+      H.echartsContainer().should("be.visible");
+      cy.findByTestId("query-builder-main")
+        .findByText(/error/i)
+        .should("not.exist");
+
+      cy.reload();
+      H.echartsContainer().should("be.visible");
     });
   });
 
@@ -349,6 +542,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     // Ensure the gray color did not get assigned to series
+    H.chartPathWithFillColor("#88BF4D").should("be.visible");
     H.chartPathWithFillColor(grayColor).should("not.exist");
 
     H.openVizSettingsSidebar();
@@ -538,7 +732,10 @@ describe("scenarios > visualizations > bar chart", () => {
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
         // Verify this axis tick exists twice which verifies there are two y-axes
-        H.echartsContainer().findAllByText("3.0k").should("have.length", 2);
+        H.echartsContainer()
+          .findAllByText("21.0k")
+          .should("have.length", 2)
+          .and("be.visible");
       });
 
     cy.findAllByTestId("dashcard")
@@ -556,7 +753,7 @@ describe("scenarios > visualizations > bar chart", () => {
           .should("contain", "6")
           .and("contain", "13")
           .and("contain", "19");
-        cy.get(".axis.yr").should("not.exist");
+        H.echartsContainer().findAllByText("Count").should("have.length", 1);
       });
   });
 
@@ -606,7 +803,7 @@ describe("scenarios > visualizations > bar chart", () => {
         // since the first metric is scaled to be half of the second metric
         // the first bar should be half the size of the first bar
         // within a given tolerance
-        expect(heightMetricOne - heightMetricTwo / 2).to.be.lessThan(0.1);
+        expect(heightMetricOne).to.be.closeTo(heightMetricTwo / 2, 0.5);
       });
     });
 
@@ -630,7 +827,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
   });
 
-  it("should correctly show tool-tips when stacked bar charts contain a total value that is negative (#39012)", () => {
+  it("should correctly show tool-tips when stacked bar charts contain a negative total or multiple positive and negative segments (#39012, #47596)", () => {
     cy.signInAsAdmin();
 
     H.createNativeQuestion(
@@ -762,11 +959,8 @@ describe("scenarios > visualizations > bar chart", () => {
       ],
     });
     H.echartsTriggerBlur();
-  });
 
-  it("should correctly show tool-tips when stacked bar charts contain multiple positive and multiple negative segments (#47596)", () => {
-    cy.signInAsAdmin();
-
+    cy.log("multiple positive and multiple negative segments (#47596)");
     H.createNativeQuestion(
       {
         name: "47596",
@@ -834,7 +1028,7 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -848,6 +1042,9 @@ describe("scenarios > visualizations > bar chart", () => {
     // Create a bar chart showing count of orders by month for the last 12 months
     H.visitQuestionAdhoc({
       display: "bar",
+      visualization_settings: {
+        "graph.x_axis.axis_enabled": "compact",
+      },
       dataset_query: {
         type: "query",
         query: {
@@ -875,19 +1072,17 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.wait("@dataset");
     H.echartsContainer().should("be.visible");
 
-    // Get all x-axis labels
-    H.echartsContainer().within(() => {
-      // ECharts renders axis labels as text elements in SVG
-      // We should see labels for all 12 months
-      cy.get('svg text[text-anchor="middle"]')
-        .should("have.length.at.least", 12)
-        .should("be.visible");
-    });
+    H.echartsContainer()
+      .findAllByText(
+        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$/,
+      )
+      .should("have.length", 12)
+      .and("be.visible");
   });
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
     // Use a smaller viewport to ensure labels need to rotate
-    cy.viewport(940, 800);
+    cy.viewport(820, 800);
 
     const query = `
       SELECT * FROM (
@@ -949,6 +1144,354 @@ describe("scenarios > visualizations > bar chart", () => {
         .first()
         .should("have.attr", "transform")
         .and("match", /matrix/);
+    });
+  });
+
+  it("should allow selecting breakout dimension before metrics (metabase#49529)", () => {
+    const question = {
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        database: 1,
+      },
+      display: "bar",
+    };
+
+    H.visitQuestionAdhoc(question);
+
+    H.openVizSettingsSidebar();
+
+    cy.findAllByTestId("chart-setting-select").eq(0).click();
+    H.popover().findByText("ID").click();
+
+    H.leftSidebar().findByText("Add series breakout").click();
+    H.popover().findByText("Quantity").click();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Y-axis");
+      cy.findByText("Nothing to order");
+    });
+  });
+
+  it("should handle invalid x-axis scale (metabase#25156)", () => {
+    const questionDetails = {
+      name: "25156",
+      query: {
+        "source-table": REVIEWS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+          ["field", REVIEWS.RATING, null],
+        ],
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "RATING"],
+        "graph.metrics": ["count"],
+        "graph.x_axis.scale": "linear",
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.echartsContainer()
+      .should("contain", "2025")
+      .and("contain", "2026")
+      .and("contain", "2027")
+      .and("contain", "2028");
+  });
+
+  it("should reflect/apply sorting to the x-axis (metabase#27279)", () => {
+    const questionDetails = {
+      name: "27279",
+      native: {
+        query:
+          "select -3 o, 'F2021' k, 1 v\nunion all select -2, 'V2021', 2\nunion all select -1, 'S2022', 3\nunion all select 0, 'F2022', 4",
+        "template-tags": {},
+      },
+    };
+
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [
+              ["sum", ["field", "V", { "base-type": "type/Integer" }]],
+            ],
+            breakout: [
+              ["field", "K", { "base-type": "type/Text" }],
+              ["field", "O", { "base-type": "type/Integer" }],
+            ],
+            "order-by": [
+              ["asc", ["field", "O", { "base-type": "type/Integer" }]],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["K", "O"],
+          "graph.metrics": ["sum"],
+        },
+      });
+    });
+
+    const legendItems = ["-3", "-2", "-1", "0"];
+    compareValuesInOrder(cy.findAllByTestId("legend-item"), legendItems);
+
+    // ECharts pads the tick labels with spaces, so trim them before the comparison
+    H.echartsContainer()
+      .find("text")
+      .filter((_, el) =>
+        /^(F2021|V2021|S2022|F2022)$/.test(el.textContent.trim()),
+      )
+      .should(($ticks) => {
+        expect(
+          $ticks.toArray().map((el) => el.textContent.trim()),
+        ).to.deep.equal(["F2021", "V2021", "S2022", "F2022"]);
+      });
+
+    // Extra step, just to be overly cautious
+    H.chartPathWithFillColor("#98D9D9").realHover();
+
+    H.assertEChartsTooltip({
+      header: "F2021",
+      rows: [
+        {
+          color: "#98D9D9",
+          name: "-3",
+          value: "1",
+        },
+        {
+          color: "#F2A86F",
+          name: "-2",
+          value: "(empty)",
+        },
+        {
+          color: "#F9D45C",
+          name: "-1",
+          value: "(empty)",
+        },
+        {
+          color: "#509EE3",
+          name: "0",
+          value: "(empty)",
+        },
+      ],
+    });
+
+    H.chartPathWithFillColor("#509EE3").realHover();
+    H.assertEChartsTooltip({
+      header: "F2022",
+      rows: [
+        {
+          color: "#98D9D9",
+          name: "-3",
+          value: "(empty)",
+        },
+        {
+          color: "#F2A86F",
+          name: "-2",
+          value: "(empty)",
+        },
+        {
+          color: "#F9D45C",
+          name: "-1",
+          value: "(empty)",
+        },
+        {
+          color: "#509EE3",
+          name: "0",
+          value: "4",
+        },
+      ],
+    });
+  });
+
+  describe("issue 20548", () => {
+    const questionDetails = {
+      name: "20548",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      display: "bar",
+      // We are reversing the order of metrics via API
+      visualization_settings: {
+        "graph.metrics": ["count", "sum"],
+        "graph.dimensions": ["CATEGORY"],
+      },
+    };
+
+    function removeAggregationItem(item) {
+      cy.findAllByTestId("aggregation-item")
+        .contains(item)
+        .siblings(".Icon-close")
+        .click();
+
+      cy.wait("@dataset");
+    }
+
+    function addAggregationItem(item) {
+      cy.findByTestId("add-aggregation-button").click();
+      H.popover().contains(item).click();
+
+      cy.wait("@dataset");
+    }
+
+    /**
+     * @param {string} item
+     * @param {number} frequency
+     */
+    function assertOnLegendItemFrequency(item, frequency) {
+      cy.findAllByTestId("legend-item")
+        .filter(`:contains("${item}")`)
+        .should("have.length", frequency);
+    }
+
+    beforeEach(() => {
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.summarize();
+    });
+
+    it("should not display duplicate Y-axis after modifying/reordering metrics (metabase#20548)", () => {
+      removeAggregationItem("Count");
+      // Ensure bars of only one series exist
+      H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+      H.chartPathWithFillColor("#509EE3").should("not.exist");
+
+      addAggregationItem("Count");
+      // Ensure bars of two series exist
+      H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+      H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+
+      // Although the test already fails on the previous step, let's add some more assertions to prevent future regressions
+      assertOnLegendItemFrequency("Count", 1);
+      assertOnLegendItemFrequency("Sum of Price", 1);
+
+      H.openVizSettingsSidebar();
+      H.sidebar().findByDisplayValue("Count").should("be.visible");
+    });
+  });
+
+  describe("issue 63671", () => {
+    beforeEach(() => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                {
+                  "temporal-unit": "year",
+                },
+              ],
+            ],
+            filter: [
+              "between",
+              ["field", PRODUCTS.CREATED_AT, null],
+              "2028-01-01",
+              "2028-12-31",
+            ],
+          },
+          display: "bar",
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
+      cy.findByTestId("query-visualization-root").findByText("2028");
+    });
+  });
+});
+
+function compareValuesInOrder(selector, values) {
+  selector.each(($item, index) => {
+    cy.wrap($item).invoke("text").should("eq", values[index]);
+  });
+}
+
+describe("scenarios > visualizations > bar chart > issue 55853", () => {
+  const questionDetails = {
+    name: "55853",
+    database: WRITABLE_DB_ID,
+    native: {
+      query: `select 'Category A' as category, 0.0001 as value union all
+      select 'Category B' as category, 0.0002 as value union all
+      select 'Category C' as category, 0.00015 as value union all
+      select 'Category D' as category, 0.00025 as value`,
+      "template-tags": {},
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["value"],
+      column_settings: {
+        '["name","value"]': {
+          number_style: "percent",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Verify that the chart renders successfully");
+    H.echartsContainer().should("be.visible");
+    H.echartsContainer().find("text").should("contain", "%");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+
+    cy.log("Check that axis labels and title don't overlap");
+    H.echartsContainer()
+      .find("text")
+      .then(($texts) => {
+        const texts = $texts.toArray();
+        const axisTitle = texts.find(
+          (el) => el.textContent?.trim() === "value",
+        );
+        const percentLabels = texts.filter((el) =>
+          el.textContent?.includes("%"),
+        );
+
+        expect(axisTitle, "y-axis title").to.exist;
+        expect(percentLabels).to.have.length.greaterThan(0);
+
+        const titleRight = axisTitle.getBoundingClientRect().right;
+        percentLabels.forEach((el) => {
+          expect(
+            el.getBoundingClientRect().left - titleRight,
+            `Label "${el.textContent}" should not overlap with the axis title`,
+          ).to.be.greaterThan(5);
+        });
+      });
+
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.assertEChartsTooltip({
+      header: "Category A",
+      rows: [
+        {
+          name: "value",
+          value: "0.01%",
+        },
+      ],
     });
   });
 });

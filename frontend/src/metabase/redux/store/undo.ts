@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode, RefObject } from "react";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DashCardId, DashboardTabId, IconName } from "metabase-types/api";
 
+export type UndoVariant = "neutral" | "negative" | "warning";
+
 export interface Undo {
   id: string | number;
   type?: string;
@@ -13,6 +15,7 @@ export interface Undo {
   actions?: (() => void)[];
   showProgress?: boolean;
   icon?: IconName | null;
+  variant?: UndoVariant;
   toastColor?: ColorName;
   dark?: boolean;
   iconColor?: ColorName;
@@ -35,7 +38,7 @@ export interface Undo {
     label: string;
     action: () => void;
   };
-  ref?: RefObject<HTMLDivElement>;
+  ref?: RefObject<HTMLDivElement | null>;
   renderChildren?: (undo: Undo) => ReactNode;
   onDismiss?: (undoId: string | number) => void;
 }

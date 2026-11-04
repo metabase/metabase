@@ -13,6 +13,7 @@
    [metabase.server.handler :as server.handler]
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]
@@ -148,11 +149,12 @@
   (channel/can-connect? :channel/http details))
 
 (defmacro exception-data
+  "The client-facing ex-data of the exception `body` throws."
   [& body]
   `(try
      ~@body
      (catch Exception e#
-       (ex-data e#))))
+       (api-error/response-data (ex-data e#)))))
 
 (deftest can-connect-no-auth-test
   (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
@@ -395,11 +397,11 @@
             [notification {:card     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
                            :handlers [{:channel_type :channel/http
                                        :channel_id chn-id}]}]
-            (notification/send-notification! (t2/select-one :model/Notification (:id notification)) :notification/sync? true)
+            (notification/send-notification! (t2/select-one :model/Notification :id (:id notification)) :notification/sync? true)
             (is (=? {:body {:type               "alert"
                             :alert_id           (-> notification :payload :id)
                             :alert_creator_id   (mt/malli=? int?)
-                            :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                            :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id notification))
                             :data               {:type          "question"
                                                  :question_id   (-> notification :payload :card_id)
                                                  :question_name (-> notification :payload :card :name)

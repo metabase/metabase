@@ -24,10 +24,10 @@ const mockedReadManifest = jest.mocked(readManifest);
 afterEach(() => jest.resetAllMocks());
 
 describe("dataAppConfig", () => {
-  it("throws when the cwd has no data_app.yaml (run from the wrong directory)", () => {
+  it("builds the config without a data_app.yaml", () => {
     mockedReadManifest.mockReturnValue(null);
 
-    expect(() => dataAppConfig()).toThrow(/No data_app\.yaml found/);
+    expect(dataAppConfig().plugins).toBeDefined();
   });
 
   it("builds the config when a manifest is present", () => {

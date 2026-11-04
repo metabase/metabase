@@ -31,6 +31,7 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]))
@@ -38,6 +39,8 @@
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel compiled-test
   (is (= [:raw "x"]
@@ -293,10 +296,10 @@
                        [:week (-> [:dateadd
                                    (h2x/literal "day")
                                    [:inline 1]
-                                   (-> [:cast :created_at [:raw "datetime"]]
+                                   (-> [:cast :created_at [::h2x/raw-type-name "datetime"]]
                                        (h2x/with-database-type-info "datetime"))]
                                   (h2x/with-database-type-info "datetime"))]
-                       [:raw "datetime"]]
+                       [::h2x/raw-type-name "datetime"]]
                       (h2x/with-database-type-info "datetime"))]
                  (h2x/with-database-type-info "datetime"))
              (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))

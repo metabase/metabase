@@ -100,7 +100,7 @@ export interface EditorProps {
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
-  editorContainerRef?: React.RefObject<HTMLDivElement>;
+  editorContainerRef?: React.RefObject<HTMLDivElement | null>;
   hostOverride?: Partial<DocumentEditorHost>;
   placeholder?: string;
 }

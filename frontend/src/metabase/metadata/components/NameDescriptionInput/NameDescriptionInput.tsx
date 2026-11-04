@@ -38,6 +38,9 @@ export const NameDescriptionInput = ({
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
   const leftSectionWidth = Math.max(sectionWidth, 40);
+  const readOnlyStyles = readOnly
+    ? { borderColor: "var(--mb-color-border-neutral)", cursor: "default" }
+    : undefined;
 
   const handleDescriptionChange = (value: string) => {
     const newDescription = value.trim();
@@ -61,14 +64,13 @@ export const NameDescriptionInput = ({
         classNames={{
           input: S.nameInput,
           root: S.name,
-          section: S.section,
           wrapper: S.nameWrapper,
         }}
         fw="bold"
         leftSection={
           <Group
             align="center"
-            c="text-disabled"
+            c="text-secondary"
             gap={10}
             flex="1"
             fs="lg"
@@ -86,7 +88,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-disabled" component="span" size="lg">
+                <Text c="text-secondary" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>
@@ -110,11 +112,17 @@ export const NameDescriptionInput = ({
         size="lg"
         styles={{
           section: {
+            width: "auto",
             // limit the flicker when element is being measured for the first time
             visibility: sectionWidth === 0 ? "hidden" : undefined,
           },
           input: {
             paddingLeft: leftSectionWidth,
+            borderStartStartRadius: "var(--mantine-radius-sm)",
+            borderStartEndRadius: "var(--mantine-radius-sm)",
+            borderEndStartRadius: 0,
+            borderEndEndRadius: 0,
+            ...readOnlyStyles,
           },
         }}
         value={name}
@@ -131,6 +139,17 @@ export const NameDescriptionInput = ({
         maxRows={4}
         minRows={2}
         placeholder={descriptionPlaceholder}
+        pos="relative"
+        styles={{
+          input: {
+            borderStartStartRadius: 0,
+            borderStartEndRadius: 0,
+            borderEndStartRadius: "var(--mantine-radius-sm)",
+            borderEndEndRadius: "var(--mantine-radius-sm)",
+            ...readOnlyStyles,
+          },
+        }}
+        top={rem(-2)}
         value={description}
         readOnly={readOnly}
         onChange={handleDescriptionChange}

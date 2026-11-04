@@ -23,7 +23,6 @@ import {
 import { ErrorOverview } from "./ErrorOverview";
 import { createMockErroringCard } from "./mocks";
 import { type ErroringCard, SORT_COLUMNS } from "./types";
-import { PAGE_SIZE } from "./utils";
 
 const COLUMN_NAMES = ["card_id", ...SORT_COLUMNS];
 const SEARCH_PLACEHOLDER = "Search by question, error, database, or collection";
@@ -154,7 +153,7 @@ describe("ErrorOverview", () => {
       "metabase-enterprise.audit-app.pages.queries/bad-table",
     );
     expect(query.args).toEqual(["", "last_run_at", "desc"]);
-    expect(query.limit).toBe(PAGE_SIZE);
+    expect(query.limit).toBe(25);
     expect(query.offset).toBe(0);
     // the QP schema rejects an explicit null database; the key must be absent
     expect("database" in query).toBe(false);
@@ -253,7 +252,7 @@ describe("ErrorOverview", () => {
 
   it("passes filter values to the query and resets to the first page", async () => {
     const { router } = await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: 25 }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -262,7 +261,7 @@ describe("ErrorOverview", () => {
 
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE * 2);
+      expect(query.offset).toBe(50);
     });
 
     const rows = await screen.findAllByTestId("erroring-question");
@@ -563,7 +562,7 @@ describe("ErrorOverview", () => {
 
   it("paginates showing the total count and syncs the page to the URL", async () => {
     const { router } = await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: 25 }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -586,7 +585,7 @@ describe("ErrorOverview", () => {
     });
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE);
+      expect(query.offset).toBe(25);
     });
     await waitFor(() => {
       expect(router?.location.search).toBe("?page=1");
@@ -595,7 +594,7 @@ describe("ErrorOverview", () => {
 
   it("reads the initial page from the URL", async () => {
     await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: 25 }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -604,7 +603,7 @@ describe("ErrorOverview", () => {
 
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE * 2);
+      expect(query.offset).toBe(50);
     });
   });
 
@@ -618,7 +617,7 @@ describe("ErrorOverview", () => {
         deferResponse: true,
       });
 
-      expect((await getLastDatasetQuery()).offset).toBe(2 * PAGE_SIZE);
+      expect((await getLastDatasetQuery()).offset).toBe(50);
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY + 50);
       });

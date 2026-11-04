@@ -513,4 +513,17 @@ describe("urls", () => {
       });
     });
   });
+
+  describe("dashboard", () => {
+    it("opens the subscriptions sidebar or one subscription from the hash", () => {
+      const entity = { id: 1, name: "Sales" };
+
+      expect(dashboard(entity, { openSubscriptions: true })).toBe(
+        "/dashboard/1-sales#subscriptions",
+      );
+      expect(dashboard(entity, { openSubscriptions: 12 })).toBe(
+        "/dashboard/1-sales#subscriptions=12",
+      );
+    });
+  });
 });

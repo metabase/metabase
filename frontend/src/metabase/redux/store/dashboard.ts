@@ -6,11 +6,14 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardId,
+  DashboardSubscription,
   DashboardTab,
   DashboardTabId,
   ParameterId,
   ParameterValueOrArray,
   ParameterValuesMap,
+  TimelineEventId,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -20,7 +23,8 @@ export type DashboardSidebarName =
   | "editParameter"
   | "settings"
   | "sharing"
-  | "info";
+  | "info"
+  | "events";
 
 interface BaseSidebarState {
   name?: DashboardSidebarName;
@@ -48,10 +52,45 @@ export interface EditParameterSidebarState extends BaseSidebarState {
   props: EditParameterSidebarProps;
 }
 
+export type EventsSidebarProps = {
+  dashcardId?: DashCardId;
+  focusedEventIds?: TimelineEventId[];
+};
+
+export interface EventsSidebarState extends BaseSidebarState {
+  name: "events";
+  props: EventsSidebarProps;
+}
+
+type SharingSidebarProps = {
+  dashcardId?: DashCardId;
+  subscriptionId?: DashboardSubscription["id"];
+};
+
+export interface SharingSidebarState extends BaseSidebarState {
+  name: "sharing";
+  props: SharingSidebarProps;
+}
+
 export type DashboardSidebarState =
   | BaseSidebarState
   | ClickBehaviorSidebarState
-  | EditParameterSidebarState;
+  | EditParameterSidebarState
+  | EventsSidebarState
+  | SharingSidebarState;
+
+export type TimelineEventsSelection = {
+  dashcardId?: DashCardId;
+  eventIds: TimelineEventId[];
+};
+
+export interface DashboardTimelineEventsState {
+  overrides: Record<DashCardId, TimelineEventsVisibility>;
+  /** what each chart reports after size adjustments; absent until it is measured */
+  enabledByDashCard: Record<DashCardId, boolean>;
+  selection: TimelineEventsSelection | null;
+  hasTrackedEventsShown: boolean;
+}
 
 export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
@@ -125,6 +164,8 @@ export interface DashboardState {
   slowCards: Record<DashCardId, boolean>;
 
   sidebar: DashboardSidebarState;
+
+  timelineEvents: DashboardTimelineEventsState;
 
   missingActionParameters: unknown;
 

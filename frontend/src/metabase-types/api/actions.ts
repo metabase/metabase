@@ -1,41 +1,73 @@
 import type { CardId } from "./card";
+import type { CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
-import type { NativeDatasetQuery } from "./query";
+import type { NativeDatasetQuery, OpaqueDatasetQuery } from "./query";
+import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
 export type ListActionsRequest = {
   "model-id"?: CardId;
+  type?: WritebackActionType;
+  archived?: boolean;
 };
 
-export interface CreateActionRequest {
-  database_id?: DatabaseId;
-  dataset_query?: NativeDatasetQuery;
+export type ImplicitActionKind = "row/create" | "row/update" | "row/delete";
+
+interface BaseCreateActionRequest {
+  collection_id?: CollectionId | null;
   description?: string | null;
-  kind?: "row/create" | "row/update" | "row/delete";
-  model_id: CardId;
+  model_id?: CardId | null;
   name: string;
   parameter_mappings?: Record<ParameterId, ParameterTarget>;
   parameters?: WritebackParameter[];
-  type?: "query" | "implicit";
   visualization_settings?: ActionFormSettings;
 }
 
-export interface UpdateActionRequest {
+export interface CreateQueryActionRequest extends BaseCreateActionRequest {
+  type: "query";
+  dataset_query: NativeDatasetQuery | OpaqueDatasetQuery;
+}
+
+export interface CreateImplicitActionRequest extends BaseCreateActionRequest {
+  type: "implicit";
+  kind: ImplicitActionKind;
+  table_id?: TableId;
+}
+
+export type CreateActionRequest =
+  | CreateQueryActionRequest
+  | CreateImplicitActionRequest;
+
+interface BaseUpdateActionRequest {
   id: WritebackActionId;
   archived?: boolean;
-  database_id?: DatabaseId;
-  dataset_query?: NativeDatasetQuery;
+  collection_id?: CollectionId | null;
   description?: string | null;
-  kind?: "row/create" | "row/update" | "row/delete";
   model_id?: CardId;
   name?: string;
   parameter_mappings?: Record<ParameterId, ParameterTarget>;
   parameters?: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
 }
+
+export interface UpdateQueryActionRequest extends BaseUpdateActionRequest {
+  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
+  kind?: never;
+  table_id?: never;
+}
+
+export interface UpdateImplicitActionRequest extends BaseUpdateActionRequest {
+  kind?: ImplicitActionKind;
+  table_id?: TableId | null;
+  dataset_query?: never;
+}
+
+export type UpdateActionRequest =
+  | UpdateQueryActionRequest
+  | UpdateImplicitActionRequest;
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -47,7 +79,8 @@ export type WritebackActionId = number;
 
 export interface WritebackActionBase {
   id: WritebackActionId;
-  model_id: CardId;
+  model_id: CardId | null;
+  collection_id: CollectionId | null;
   name: string;
   description: string | null;
   parameters?: WritebackParameter[];
@@ -60,6 +93,7 @@ export interface WritebackActionBase {
   public_uuid: string | null;
   database_id?: DatabaseId;
   database_enabled_actions?: boolean;
+  can_write?: boolean;
   entity_id: BaseEntityId;
 }
 
@@ -75,7 +109,8 @@ export interface QueryAction {
 
 export interface ImplicitQueryAction {
   type: "implicit";
-  kind: "row/create" | "row/update" | "row/delete";
+  kind: ImplicitActionKind;
+  table_id: TableId | null;
 }
 
 export type WritebackQueryAction = WritebackActionBase & QueryAction;
@@ -185,6 +220,11 @@ export interface GetActionRequest {
 
 export interface ExecuteActionRequest {
   id: WritebackActionId | BaseEntityId;
+  parameters: ParametersForActionExecution;
+}
+
+export interface ExecuteUnsavedActionRequest {
+  action: CreateActionRequest;
   parameters: ParametersForActionExecution;
 }
 

@@ -41,7 +41,7 @@
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
 
 (defsetting locked-meters
-  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  "Locally-mirrored is-locked state per meter, refreshed on each successful token-check."
   :encryption :no
   :type       :json
   :visibility :internal
@@ -192,6 +192,10 @@
   "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
+(define-premium-feature ^{:added "0.65.0"} enable-session-management?
+  "Should we enable listing and revoking users' sessions?"
+  :session-management)
+
 (define-premium-feature can-disable-password-login?
   "Can we disable login by password?"
   :disable-password-login)
@@ -243,6 +247,10 @@
 (define-premium-feature ^{:added "0.51.0"} enable-collection-cleanup?
   "Should we enable Collection Cleanup?"
   :collection-cleanup)
+
+(define-premium-feature ^{:added "0.65.0"} enable-content-diagnostics?
+  "Should we enable Content Diagnostics?"
+  :content-diagnostics)
 
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
   "Should we enable database auth-providers?"
@@ -323,7 +331,7 @@
   :library)
 
 (defsetting security-center-disabled
-  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  "Globally disable Security Center as a customer-controlled escape hatch."
   :type             :boolean
   :feature          :admin-security-center
   :default          false
@@ -395,6 +403,7 @@
    :cloud_custom_smtp              (cloud-custom-smtp?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_diagnostics            (enable-content-diagnostics?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
@@ -429,6 +438,7 @@
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
+   :session-management             (enable-session-management?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)
    :sso_google                     (enable-sso-google?)

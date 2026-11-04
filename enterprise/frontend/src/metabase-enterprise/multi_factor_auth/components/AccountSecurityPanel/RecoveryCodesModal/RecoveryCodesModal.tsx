@@ -21,6 +21,7 @@ export function RecoveryCodesModal({
   return (
     <Modal
       title={t`Generate recovery codes`}
+      density="relaxed"
       opened={opened}
       onClose={onCancel}
     >

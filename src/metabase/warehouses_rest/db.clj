@@ -27,14 +27,13 @@
                          [:%lower.display_name :asc]]}))
 
 (mu/defn active-visible-schemas-for-databases
-  "The distinct Database id and schema of the active, visible Tables of the Databases with `database-ids`."
+  "The Database id, schema and published state of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/query {:select-distinct [:db_id :schema]
-             :from      [(warehouse-schema-overlay/table-query)]
-             :where           [:and
-                               [:in :db_id database-ids]
-                               [:= :active true]
-                               [:= :visibility_type nil]]}))
+  (t2/select [:model/Table :db_id :schema :is_published]
+             :db_id           [:in database-ids]
+             :active          true
+             :visibility_type nil
+             {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database-engines
   "The id and engine of every Database."
@@ -78,19 +77,21 @@
 
 (mu/defn databases-where
   "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
-  name then engine order. Excludes stub Databases and, unless `include-analytics?`, the audit Database. Restricted
-  to Databases routed from `router-database-id` when given, otherwise to non-routed Databases. When
-  `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit the
-  metadata of."
+  name then engine order. Excludes stub Databases unless `include-stubs?` and the audit Database unless
+  `include-analytics?`. Restricted to Databases routed from `router-database-id` when given, otherwise to non-routed
+  Databases. When `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit
+  the metadata of."
   [user-id                :- ::lib.schema.id/user
    is-superuser?          :- :boolean
    is-data-analyst?       :- :boolean
    filter-by-data-access? :- :boolean
    router-database-id     :- [:maybe ::lib.schema.id/database]
-   include-analytics?     :- :boolean]
+   include-analytics?     :- :boolean
+   include-stubs?         :- :boolean]
   (let [user-info  {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
         base-where [:and
-                    [:= :is_stub false]
+                    (when-not include-stubs?
+                      [:= :is_stub false])
                     (when-not include-analytics?
                       [:= :is_audit false])
                     (if router-database-id
@@ -249,7 +250,7 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn delete-destination-databases!
   "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."

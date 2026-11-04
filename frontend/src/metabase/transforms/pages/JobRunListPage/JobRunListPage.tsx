@@ -27,7 +27,11 @@ import {
 } from "metabase-types/api";
 
 import { JobHeader } from "../../components/JobHeader";
-import { JobMoreMenu } from "../../components/JobMoreMenu";
+import {
+  JobModal,
+  type JobModalState,
+  JobMoreMenu,
+} from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
 
 import S from "./JobRunListPage.module.css";
@@ -53,6 +57,7 @@ export function JobRunListPage() {
     TransformJobRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
+  const [jobModal, setJobModal] = useState<JobModalState>();
   const navigate = useNavigate();
 
   const { data: job } = useGetTransformJobQuery(jobId ?? skipToken);
@@ -161,7 +166,9 @@ export function JobRunListPage() {
         {job !== undefined && (
           <JobHeader
             job={job}
-            menu={!readOnly && <JobMoreMenu job={job} />}
+            menu={
+              !readOnly && <JobMoreMenu job={job} onOpenModal={setJobModal} />
+            }
             tabs={<JobTabs jobId={job.id} />}
             readOnly={readOnly}
             onNameChange={onNameChange}
@@ -247,6 +254,7 @@ export function JobRunListPage() {
           onClose={() => setSelectedRunId(undefined)}
         />
       )}
+      <JobModal modal={jobModal} onClose={() => setJobModal(undefined)} />
     </Flex>
   );
 }

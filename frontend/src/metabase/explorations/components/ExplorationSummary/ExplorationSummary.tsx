@@ -121,8 +121,8 @@ export function ExplorationSummary({
     <>
       <Box flex={1} h="100%" pb="3rem" pr="1rem">
         <Box
-          bg="background-primary"
-          bd="1px solid border"
+          bg="background_page-primary"
+          bd="1px solid border-neutral"
           bdrs="sm"
           h="100%"
           style={{ overflow: "hidden" }}
@@ -160,6 +160,7 @@ export function ExplorationSummary({
                 {documentData && (
                   <Tooltip label={t`Revision history`}>
                     <ActionIcon
+                      variant="subtle"
                       size="md"
                       aria-label={t`Revision history`}
                       onClick={handleShowHistory}

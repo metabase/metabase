@@ -19,9 +19,9 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.connection :as u.connection]
@@ -33,7 +33,8 @@
   (:import
    (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException
+             Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
@@ -197,18 +198,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datasource
-  "Fetch the connection pool `DataSource` associated with `db-or-id-or-spec`."
+  "Fetch the connection pool `DataSource` associated with the Lib metadata `db` of a Database."
   {:added "0.35.0"}
-  ^DataSource [db-or-id-or-spec]
-  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)))
+  ^DataSource [db]
+  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db)))
 
 (defn datasource-with-diagnostic-info!
-  "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
-  pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
+  "Fetch the connection pool `DataSource` associated with the Lib metadata `db` of a Database, while also recording
+  diagnostic info for the pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
   {:added "0.40.0"}
-  ^DataSource [driver db-or-id]
-  (let [ds (datasource db-or-id)]
-    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id db-or-id) ds)
+  ^DataSource [driver db]
+  (let [ds (datasource db)]
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id db) ds)
     ds))
 
 (defn set-time-zone-if-supported!
@@ -230,11 +231,6 @@
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
         (catch Throwable e
           (log/errorf "Failed to set timezone '%s' for %s database: %s" timezone-id driver (ex-message e)))))))
-
-(defenterprise set-role-if-supported!
-  "OSS no-op implementation of `set-role-if-supported!`."
-  metabase-enterprise.impersonation.driver
-  [_driver _conn _database])
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
 (defn set-best-transaction-level!
@@ -285,25 +281,25 @@
         ;; inside do-with-connection-with-options' own default impl; a raw jdbc spec has no DataSource
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/get-connection db-or-id-or-spec)))
-    ;; otherwise this is either a Database or Database ID.
-    (if-let [old-method-impl (get-method
-                              ;; honor drivers still implementing the old connection-with-timezone
-                              #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
-                              driver)]
-      ;; use the deprecated impl for `connection-with-timezone` if one exists.
-      (do
-        (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   'connection-with-timezone
-                   'do-with-connection-with-options)
-        ;; for compatibility, make sure we pass it an actual Database instance.
-        (let [database (if (integer? db-or-id-or-spec)
-                         (driver-api/with-metadata-provider db-or-id-or-spec
-                           (driver-api/database (driver-api/metadata-provider)))
-                         db-or-id-or-spec)]
+    ;; otherwise this is a Database ID, or the Lib metadata of a Database.
+    (let [db (cond
+               (integer? db-or-id-or-spec)                            (driver.u/lib-database db-or-id-or-spec)
+               (= :metadata/database (:lib/type db-or-id-or-spec)) db-or-id-or-spec
+               :else (throw (ex-info (tru "Pass a Database ID or the Lib metadata of a Database, not a Database instance.")
+                                     {:database-id (u/id db-or-id-or-spec)})))]
+      (if-let [old-method-impl (get-method
+                                ;; honor drivers still implementing the old connection-with-timezone
+                                #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
+                                driver)]
+        ;; use the deprecated impl for `connection-with-timezone` if one exists.
+        (do
+          (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
+                     'connection-with-timezone
+                     'do-with-connection-with-options)
           (reify DataSource
             (getConnection [_this]
-              (old-method-impl driver database session-timezone)))))
-      (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
+              (old-method-impl driver db session-timezone))))
+        (datasource-with-diagnostic-info! driver db)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*
@@ -352,6 +348,15 @@
              ;; if we can't read the stat for some reason, fail open rather than blocking queries
              false)))))
 
+(defn- check-checkout-error
+  "Returns `conn`, unless setting the connection impersonation role failed when it was checked out, in which case the
+  connection is closed and that error is thrown."
+  ^Connection [^Connection conn]
+  (if-let [e (sql-jdbc.conn/take-checkout-error!)]
+    (do (.close conn)
+        (throw e))
+    conn))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -374,18 +379,25 @@
                            (throw (ex-info (tru "Too many queries are running. Please try again in a moment.")
                                            {:type   driver-api/qp.error-type.connection-pool-checkout-queue-full
                                             :driver driver})))
-                         (try
-                           (.getConnection conn-data-source)
-                           (catch Throwable e
-                             (let [timed-out? (connection-checkout-timeout? e)]
-                               (throw (ex-info (if timed-out?
-                                                 (tru "Too many queries are running. Please try again in a moment.")
-                                                 (tru "Unable to connect to the database: {0}" (ex-message e)))
-                                               {:type   (if timed-out?
-                                                          driver-api/qp.error-type.connection-pool-checkout-timeout
-                                                          driver-api/qp.error-type.unable-to-acquire-connection)
-                                                :driver driver}
-                                               e)))))))]
+                         (sql-jdbc.conn/take-checkout-error!)
+                         (check-checkout-error
+                          (try
+                            (.getConnection conn-data-source)
+                            (catch Throwable e
+                              (let [timed-out? (connection-checkout-timeout? e)]
+                                (when-not timed-out?
+                                  (try
+                                    (sql-jdbc.conn/invalidate-empty-pool! conn-data-source)
+                                    (catch Exception e2
+                                      (log/warnf e2 "Error closing the connection pool for database %s" (u/id db-or-id-or-spec)))))
+                                (throw (ex-info (if timed-out?
+                                                  (tru "Too many queries are running. Please try again in a moment.")
+                                                  (tru "Unable to connect to the database: {0}" (ex-message e)))
+                                                {:type   (if timed-out?
+                                                           driver-api/qp.error-type.connection-pool-checkout-timeout
+                                                           driver-api/qp.error-type.unable-to-acquire-connection)
+                                                 :driver driver}
+                                                e))))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]
@@ -399,22 +411,12 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
-   db-or-id-or-spec                                       :- [:or
+   _db-or-id-or-spec                                      :- [:or
                                                               ::lib.schema.id/database
                                                               driver-api/schema.metadata.database
                                                               :metabase.lib.schema.common/database-details]
    ^Connection conn                                      :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
-  (when-let [db (cond
-                  ;; id?
-                  (integer? db-or-id-or-spec)
-                  (driver-api/with-metadata-provider db-or-id-or-spec
-                    (driver-api/database (driver-api/metadata-provider)))
-                  ;; db?
-                  (u/id db-or-id-or-spec)     db-or-id-or-spec
-                  ;; otherwise it's a spec and we can't get the db
-                  :else nil)]
-    (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
@@ -869,6 +871,36 @@
       (log/infof "Statement cancelation failed: %s" (ex-message e))
       false)))
 
+(defn- query-error
+  "An `:invalid-query` error for `e`, which the database raised while running `sql`."
+  [driver sql params e]
+  (ex-info (tru "Error executing query: {0}" (ex-message e))
+           (cond-> {:driver driver
+                    :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                    :params params
+                    :type   driver-api/qp.error-type.invalid-query}
+             (driver/query-canceled? driver e)
+             (assoc :query/query-canceled? true))
+           e))
+
+(defmulti impl-error-in-query?
+  "Whether a row-read `SQLException` identifies an error in the query or its data.
+  The default recognizes SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access
+  rule). Drivers can extend or narrow that evidence. Unknown failures return false. Cancellation is checked separately."
+  {:added "0.65.3" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-error-in-query? :sql-jdbc
+  [_ ^SQLException e]
+  (boolean (re-find #"^(?:21|22|23|42)" (str (.getSQLState e)))))
+
+(defn- error-in-query?
+  [driver ^SQLException e]
+  (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
+                (driver/query-canceled? driver e)))
+       (impl-error-in-query? driver e)))
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
@@ -897,14 +929,7 @@
                          ^ResultSet rs (try
                                          (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                          (catch Throwable e
-                                           (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                           (cond-> {:driver driver
-                                                                    :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                                    :params params
-                                                                    :type   driver-api/qp.error-type.invalid-query}
-                                                             (driver/query-canceled? driver e)
-                                                             (assoc :query/query-canceled? true))
-                                                           e))))]
+                                           (throw (query-error driver sql params e))))]
                (let [rsmeta           (.getMetaData rs)
                      results-metadata {:cols (column-metadata driver rsmeta)}
                      ;; whether the ResultSet ran out of rows is only observable while reducing, but it is needed after
@@ -913,7 +938,14 @@
                      next-row         (row-thunk driver rs rsmeta)
                      rows             (driver-api/reducible-rows
                                        (fn []
-                                         (let [row (next-row)]
+                                         ;; some databases report an error in the query only when they read the row
+                                         ;; that causes it
+                                         (let [row (try
+                                                     (next-row)
+                                                     (catch SQLException e
+                                                       (throw (if (error-in-query? driver e)
+                                                                (query-error driver sql params e)
+                                                                e))))]
                                            (when-not row
                                              (vreset! exhausted? true))
                                            row))
@@ -928,6 +960,8 @@
                       (finally
                         (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
                           (vreset! canceled? (cancel-statement! driver stmt)))))))
+             (catch SQLException e
+               (throw (ex-info (ex-message e) {:type driver-api/qp.error-type.qp} e)))
              ;; `with-open` has closed the ResultSet and Statement by the time this runs, which is required: on
              ;; ClickHouse and Presto their `.close` round-trips to the server and throws once the Connection is gone.
              ;; Discarding is safe here because this Connection was acquired for this query alone -- see

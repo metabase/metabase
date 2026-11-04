@@ -2,8 +2,6 @@
   "Application database queries for the parameters module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (hydration definitions still use `toucan2.core`)."
   (:require
-   [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -11,20 +9,27 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(defn- format-union
-  "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it
-  will fail on Postgres."
-  [_clause exprs]
-  (let [[sqls args] (sql/format-expr-list exprs)
-        formatted   (str/join " UNION " sqls)]
-    (into [formatted] args)))
+(defn- nested
+  "Wrap a subselect in parens so it can be used as a `:union` arm. Each arm here has its own `:limit`, which Postgres
+  rejects unless the arm is parenthesized."
+  [query]
+  ^:allow-subquery {:nest query})
 
-(sql/register-clause! ::union format-union :union)
+(def ^:private mapping-type-code->name
+  "Each `:union` arm in [[remapped-field]] tags its row with the kind of remapping it found. The tag is a small integer
+  rather than the name itself because only numbers get spliced into the SQL as literals -- a string would become a `?`
+  parameter, and H2 cannot work out the type of a parameter that sits in the same position in every arm of a `UNION`."
+  {1 "fk->field"
+   2 "fk->pk->name"
+   3 "pk->name"})
+
+(def ^:private mapping-type-name->code
+  (into {} (map (fn [[code mapping-type]] [mapping-type code])) mapping-type-code->name))
 
 (defn- implicit-pk->name-mapping-query
   [field-id mapping-type]
   ^:allow-subquery
-  {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
+  {:select    [[:dest.id :id] [(mapping-type-name->code mapping-type) :mapping_type]]
    :from      [(warehouse-schema-overlay/field-query {:alias :source})]
    :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
                (warehouse-schema-overlay/field-query {:alias :dest}) [:= :dest.table_id :table.id]]
@@ -39,32 +44,36 @@
   when `allow-implicit-uuid-remapping?` — an implicit FK->PK->Name or PK->Name mapping, or nil."
   [field-id                       :- ::lib.schema.id/field
    allow-implicit-uuid-remapping? :- :boolean]
-  (t2/query-one
-   {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-    :from   [[^:allow-subquery
-              {::union (into [;; Explicit FK Field->Field remapping
-                              ^:allow-subquery
-                              {:select [[:dimension.human_readable_field_id :id] [^:allow-raw-sql [:inline "fk->field"] :mapping_type]]
-                               :from   [[:dimension :dimension]]
-                               :where  [:and
-                                        [:= :dimension.field_id field-id]
-                                        [:not= :dimension.human_readable_field_id nil]]
-                               :limit  1}]
-                             (when allow-implicit-uuid-remapping?
-                               [;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                                (implicit-pk->name-mapping-query
-                                 ^:allow-subquery
-                                 {:select    [:fk_target_field_id]
-                                  :from      [(warehouse-schema-overlay/field-query)]
-                                  :where     [:and
-                                              [:= :id field-id]
-                                              (mdb/isa :semantic_type :type/FK)]
-                                  :limit     1}
-                                 "fk->pk->name")
-                                ;; Implicit PK Field-> [Name] Field remapping
-                                (implicit-pk->name-mapping-query field-id "pk->name")]))}
-              :mapping]]
-    :limit  1}))
+  (some-> (t2/query-one
+           {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
+            :from   [[^:allow-subquery
+                      {:union (into [;; Explicit FK Field->Field remapping
+                                     (nested
+                                      ^:allow-subquery
+                                      {:select [[:dimension.human_readable_field_id :id]
+                                                [(mapping-type-name->code "fk->field") :mapping_type]]
+                                       :from   [[:dimension :dimension]]
+                                       :where  [:and
+                                                [:= :dimension.field_id field-id]
+                                                [:not= :dimension.human_readable_field_id nil]]
+                                       :limit  1})]
+                                    (when allow-implicit-uuid-remapping?
+                                      [;; Implicit FK Field -> PK Field -> [Name] Field remapping
+                                       (nested
+                                        (implicit-pk->name-mapping-query
+                                         ^:allow-subquery
+                                         {:select [:fk_target_field_id]
+                                          :from   [(warehouse-schema-overlay/field-query)]
+                                          :where  [:and
+                                                   [:= :id field-id]
+                                                   (mdb/isa :semantic_type :type/FK)]
+                                          :limit  1}
+                                         "fk->pk->name"))
+                                       ;; Implicit PK Field-> [Name] Field remapping
+                                       (nested (implicit-pk->name-mapping-query field-id "pk->name"))]))}
+                      :mapping]]
+            :limit  1})
+          (update :mapping_type mapping-type-code->name)))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
