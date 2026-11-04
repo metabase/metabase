@@ -377,7 +377,7 @@
 
 (mr/def ::external-card
   "A Card as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::card [:archived :archived_directly :collection_position :collection_preview :description :display
                           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
