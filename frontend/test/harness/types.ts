@@ -12,6 +12,14 @@ export const RECYCLE_EXIT_CODE = 75;
 export type TestIdentity = {
   ancestors: string[];
   title: string;
+  /**
+   * The place of the test in the order in which its file reported its tests.
+   */
+  order?: number;
+  /**
+   * How long the test ran, for a test that ran.
+   */
+  durationMs?: number;
 };
 
 /**

@@ -4,6 +4,7 @@ import { format } from "node:util";
 
 import type { FileResult, SnapshotSummary, TestIdentity } from "../types.ts";
 
+import { formatValue } from "./collect.ts";
 import { projectFrames } from "./transform.ts";
 
 const OUTPUT_LIMIT_CHARACTERS = 20000;
@@ -12,6 +13,7 @@ const CONSOLE_METHODS = ["log", "info", "warn", "error", "debug"] as const;
 type TestOutput = { lines: string[]; size: number };
 
 let fileResult = createFileResult();
+let testsReported = 0;
 let testOutput: TestOutput | null = null;
 
 /**
@@ -20,6 +22,7 @@ let testOutput: TestOutput | null = null;
 export function takeFileResult(): FileResult {
   const result = fileResult;
   fileResult = createFileResult();
+  testsReported = 0;
   return result;
 }
 
@@ -51,7 +54,14 @@ export function takeTestOutput(): string {
   return output;
 }
 
+// jest lists a file's tests in the order in which they ran.
+function inOrder(identity: TestIdentity): TestIdentity {
+  identity.order ??= testsReported++;
+  return identity;
+}
+
 export function recordPassed(identity: TestIdentity): void {
+  inOrder(identity);
   fileResult.passed += 1;
   fileResult.passedTests.push(identity);
 }
@@ -77,11 +87,13 @@ export function recordSnapshots(snapshot: SnapshotSummary): void {
 }
 
 export function recordSkipped(tests: TestIdentity[]): void {
+  tests.forEach(inOrder);
   fileResult.skipped += tests.length;
   fileResult.skippedTests.push(...tests);
 }
 
 export function recordTodo(tests: TestIdentity[]): void {
+  tests.forEach(inOrder);
   fileResult.todo += tests.length;
   fileResult.todoTests.push(...tests);
 }
@@ -112,6 +124,9 @@ export function recordFailure(
   identity?: TestIdentity,
 ): void {
   const { message, stack } = describeError(error);
+  if (identity) {
+    inOrder(identity);
+  }
   fileResult.failed += 1;
   fileResult.failures.push({
     test,
@@ -149,13 +164,12 @@ export function describeError(error: unknown): {
   message: string;
   stack: string;
 } {
-  if (typeof error !== "object" || error === null) {
-    return { message: String(error), stack: "" };
+  // jest shows a thrown value that is not an error as "thrown: <value>".
+  if (typeof error !== "object" || error === null || !("message" in error)) {
+    const message = `thrown: ${formatValue(error)}`;
+    return { message, stack: `Error: ${message}` };
   }
-  const message =
-    "message" in error && error.message != null
-      ? String(error.message)
-      : String(error);
+  const message = error.message != null ? String(error.message) : "";
   const stack =
     "stack" in error && typeof error.stack === "string" ? error.stack : "";
   return { message, stack };

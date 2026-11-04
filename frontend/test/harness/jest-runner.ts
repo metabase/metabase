@@ -53,6 +53,12 @@ type AssertionResult = {
   location?: null;
 };
 
+type ReportedTest = {
+  identity: TestIdentity;
+  status: AssertionResult["status"];
+  failure?: TestFailure;
+};
+
 type SerializableError = {
   message: string;
   stack?: string;
@@ -269,14 +275,30 @@ function toTestResult(
   const failed = result.failures.flatMap((failure) =>
     failure.identity ? [{ failure, identity: failure.identity }] : [],
   );
-  const testResults = [
-    ...result.passedTests.map((identity) => assertion(identity, "passed")),
-    ...result.skippedTests.map((identity) => assertion(identity, "pending")),
-    ...result.todoTests.map((identity) => assertion(identity, "todo")),
-    ...failed.map(({ failure, identity }) =>
-      assertion(identity, "failed", failure),
+  const reported: ReportedTest[] = [
+    ...result.passedTests.map(
+      (identity): ReportedTest => ({ identity, status: "passed" }),
+    ),
+    ...result.skippedTests.map(
+      (identity): ReportedTest => ({ identity, status: "pending" }),
+    ),
+    ...result.todoTests.map(
+      (identity): ReportedTest => ({ identity, status: "todo" }),
+    ),
+    ...failed.map(
+      ({ failure, identity }): ReportedTest => ({
+        identity,
+        status: "failed",
+        failure,
+      }),
     ),
   ];
+  // jest lists a file's tests in the order in which they ran.
+  const testResults = reported
+    .sort((a, b) => orderOf(a.identity) - orderOf(b.identity))
+    .map(({ identity, status, failure }) =>
+      assertion(identity, status, failure),
+    );
   const testExecError = suiteError(result.suiteErrors);
   const options = { noStackTrace: globalConfig.noStackTrace };
   const failureMessages = [
@@ -316,6 +338,10 @@ function toTestResult(
   };
 }
 
+function orderOf(identity: TestIdentity): number {
+  return identity.order ?? Number.MAX_SAFE_INTEGER;
+}
+
 function assertion(
   identity: TestIdentity,
   status: AssertionResult["status"],
@@ -326,6 +352,7 @@ function assertion(
     title: identity.title,
     fullName: [...identity.ancestors, identity.title].join(" "),
     status,
+    duration: identity.durationMs,
     failureMessages: failure ? [stackOf(failure) || failure.message] : [],
     failureDetails: failure?.output
       ? [consoleOutputDetail(failure.output)]
