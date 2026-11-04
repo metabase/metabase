@@ -8,7 +8,7 @@ argument-hint: "[--pr <number>]"
 
 Run adversarial tests against: $ARGUMENTS
 
-This skill looks for bugs in a PR by writing tests that try to break it. Two generators write the tests. The diff-informed generator reads the diff and attacks the risks you name in step 4. The blind generator never sees the diff or any function body, only the PR's description, linked issues and the public surface of what changed, and writes tests the way a user or API consumer would. Both sets of tests then go through one runner and one triage step, which runs them on the PR head and on its merge-base with the base branch.
+This skill looks for bugs in a PR by writing tests that try to break it. Two generators write the tests. The diff-informed generator reads the diff and attacks the risks you name in step 5. The blind generator never sees the diff or any function body, only the PR's description, linked issues and the public surface of what changed, and writes tests the way a user or API consumer would. Both sets of tests then go through one runner and one triage step, which runs them on the PR head and on its merge-base with the base branch.
 
 The output is a report with two lists: findings (tests that fail on the PR head and pass on the parent commit) and candidates to keep (tests that pass on the PR head and fail on the parent commit, so they pin the PR's behaviour). Folding candidates into the PR is manual in this version.
 
@@ -17,15 +17,15 @@ The output is a report with two lists: findings (tests that fail on the PR head 
 These hold for the whole run, including any agent or `claude -p` process the run starts:
 
 - Everything stays local. No commits, pushes, PR comments, reviews, Linear posts or CI dispatches. `gh` is used only to read.
-- One test process at a time on this machine. Jest always runs with `--maxWorkers=2 --testTimeout=10000`. Backend tests run through `./bin/test-agent`, one invocation at a time, and never alongside a Jest run.
+- One test process at a time on this machine. Jest always runs with `--maxWorkers=2 --testTimeout=10000`. Backend tests run through `./bin/test-agent`, one invocation at a time, and never alongside a Jest run. The installs and ClojureScript builds from step 4 are not test processes, so they may run while tests are being written, but never alongside a Jest or test-agent run.
 - Nothing generated lands in your checkout. Tests are written into temporary worktrees, and copies are kept in the run directory as `.txt` files.
 - No generator changes an assertion or an expected value because the code disagreed with it. That would turn the test into a description of whatever the code does. Step 8 says what may be repaired.
 
 ## Before you run
 
-You need `gh` logged in, `bb`, `jq` and `bun`, which the repo's own tooling already needs, and a `claude` CLI that accepts `--restricted` and `--strict-mcp-config`. The blind generator runs as a separate `claude -p` call on Opus, so a run spends tokens beyond this session. Run `claude --help | grep -c restricted` to check the CLI; if it prints 0, step 5 describes the fallback.
+You need `gh` logged in, `bb`, `jq`, `bun` and an installed `node_modules` in your checkout, which the repo's own tooling already needs, and a `claude` CLI that accepts `--restricted` and `--strict-mcp-config`. The blind generator runs as a separate `claude -p` call on Opus, so a run spends tokens beyond this session. Run `claude --help | grep -c restricted` to check the CLI; if it prints 0, step 4 describes the fallback.
 
-A run takes 10 to 25 minutes of wall clock, going by the file timestamps of the four runs so far: 11 and 15 minutes for the two frontend PRs, 22 and 25 for the two backend PRs. A couple of minutes go on setting up two worktrees and most of the rest on writing tests. The test runs themselves take seconds each under Jest and 1.5 to 2.5 minutes each under `./bin/test-agent`, which starts a JVM and loads every namespace every time, and triage makes five or six of those. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
+A run takes 10 to 25 minutes of wall clock, going by the file timestamps of the four runs so far: 11 and 15 minutes for the two frontend PRs, 22 and 25 for the two backend PRs. Those times were measured before the current sequence, when the installs ran before anything else, the diff-informed generator made one or more calibration runs on the parent, and triage ran the parent twice. A couple of minutes go on setting up two worktrees and most of the rest on writing tests. The test runs themselves take seconds each under Jest and 1.5 to 2.5 minutes each under `./bin/test-agent`, which starts a JVM and loads every namespace every time. Triage makes two or three of those: `head-1`, `head-2` when anything failed there, and `parent-1`, plus one more for each round of harness repairs. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
 
 The skill has run on four PRs so far, one in each mode: a frontend PR by number, a backend PR by number, an enterprise backend PR as the current branch and a frontend PR as the current branch.
 
@@ -46,12 +46,13 @@ The worktrees live outside the repo because Jest's `testMatch` is `<rootDir>/**/
 ```
 local/adversarial-tests/<run-id>/
   context/pr.json, context/issues/*.md   what the author says, from gh
-  risks.md                               the ranked risk list from step 4
+  risks.md                               the ranked risk list from step 5
   blind/context.md                       the only input the blind generator sees
   blind/prompt.md, blind/SCENARIOS.md    its prompt and its scenario list
   manifest.tsv                           every generated file: generator, path, risk or scenario
   repairs.md                             every harness repair from step 8
   runs/*.json, runs/*.txt, runs/*.tsv    raw Jest results, raw test-agent output, and summaries
+  runs/setup.log                         the install and build log from step 4
   triage.tsv                             one line per test with its verdict
   tests/diff-informed/..., tests/blind/...   copies of every generated file, as .txt
   report.md
@@ -113,20 +114,15 @@ git fetch origin "$BASE"
 MERGE_BASE=$(git merge-base "origin/$BASE" "$HEAD_SHA")
 ```
 
-Then create both worktrees and prepare them:
+Then create both worktrees:
 
 ```bash
 WT="${TMPDIR:-/tmp}/metabase-adversarial-tests/<run-id>"
 git worktree add --detach --quiet "$WT/head" "$HEAD_SHA"
 git worktree add --detach --quiet "$WT/parent" "$MERGE_BASE"
-for side in head parent; do
-  (cd "$WT/$side" && HUSKY=0 bun install --frozen-lockfile && bun run build-pure:cljs)
-done
 ```
 
-The install takes a few seconds with a warm cache, and the ClojureScript build about 30 seconds. Skip the build when only backend tests will run.
-
-Each worktree gets its own install. A symlink to the main checkout's `node_modules` fails whenever the main checkout has different dependencies installed, for example when Jest cannot find `jest-circus/runner`. Use `build-pure:cljs`, not `build:cljs`, because `build:cljs` runs `bun install` without `--frozen-lockfile` first. Backend tests need no preparation.
+Do not install anything in them yet. Step 4 installs their dependencies once the blind generator is running.
 
 ### 3. Gather the author's intent
 
@@ -143,11 +139,7 @@ gh issue view <n> --repo metabase/metabase --json number,title,body \
 
 For Linear issue ids, match `\b[A-Za-z]{2,5}-[0-9]+\b` in the body, in the local branch name and in `.headRefName` from `context/pr.json` when it exists, and uppercase the result, because branch names are usually lowercase (`sec-1343-model-metadata-positional-names`). In current-branch mode the local branch can be named anything, so the id is often only in `headRefName`. Then run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. The pattern also matches ordinary words followed by a number, such as `TRIAL-79483` in the branch `adv-trial-79483`, so delete the file for any id the fetch does not find. Without the key, note in the report which ids were not read.
 
-### 4. Name the risks
-
-Read `reference/risk-identification.md` and follow it. It reads the diff between `MERGE_BASE` and `HEAD_SHA`, ranks each changed function, and names an oracle for every risk before any test is written. Write the result to `risks.md`. You do this step yourself, because every later step uses the risk list.
-
-### 5. Start the blind generator
+### 4. Start the blind generator and the installs
 
 Build its context file with the script. The script reads only `context/` and the two worktrees:
 
@@ -174,11 +166,30 @@ cp "$SANDBOX/prompt.md" "$RUN_DIR/blind/prompt.md"
 
 Blindness is enforced by what the process can reach, not by asking it to look away. `--restricted` drops Bash and every other code-running tool, ignores user and project settings, and confines the file tools to the working directory. `--strict-mcp-config` with no `--mcp-config` loads no MCP servers, so connectors such as GitHub or Linear cannot fetch the PR. `--tools "Read,Write"` leaves it nothing else. The working directory is a fresh directory outside every git checkout, so the only files it can open are `prompt.md` and `context.md`, and the only place it can write is `out/`. The context file in turn is built by a script whose extractors drop function bodies and diff hunks.
 
-The blind generator does not run anything, so you can carry on with step 6 while it works. If the `claude` CLI is not available, run the blind generator as an Agent call whose brief is the prompt file and the context file, and state in the report that blindness was by instruction only for this run.
+Then install the dependencies and build the ClojureScript in both worktrees, in one subshell that does the head and then the parent. Start it in the background as well:
+
+```bash
+(
+  for side in head parent; do
+    (cd "$WT/$side" && HUSKY=0 bun install --frozen-lockfile && bun run build-pure:cljs) || echo "setup failed in $side"
+  done
+  echo "setup done"
+) > "$RUN_DIR/runs/setup.log" 2>&1
+```
+
+The install takes a few seconds with a warm cache, and the ClojureScript build about 30 seconds. Skip the build when only backend tests will run. Step 8 waits for this subshell to finish before the first test run.
+
+Each worktree gets its own install. A symlink to the main checkout's `node_modules` fails whenever the main checkout has different dependencies installed, for example when Jest cannot find `jest-circus/runner`. Use `build-pure:cljs`, not `build:cljs`, because `build:cljs` runs `bun install` without `--frozen-lockfile` first. Backend tests need no preparation.
+
+The blind generator and the installs run no tests, so you can carry on with step 5 while they work. If the `claude` CLI is not available, run the blind generator as an Agent call whose brief is the prompt file and the context file, and state in the report that blindness was by instruction only for this run.
+
+### 5. Name the risks
+
+Read `reference/risk-identification.md` and follow it. It reads the diff between `MERGE_BASE` and `HEAD_SHA`, ranks each changed function, and names an oracle for every risk before any test is written. Write the result to `risks.md`. You do this step yourself, because every later step uses the risk list.
 
 ### 6. Write the diff-informed tests
 
-Read `reference/diff-informed-generator.md` and write the tests yourself into the head worktree, at the paths it gives. Record each file in `manifest.tsv` with the generator name `diff-informed` and the risk ids it covers. Do not run any generated test yet, apart from the parent-commit calibration that the file describes for tests whose oracle is the parent's behaviour.
+Read `reference/diff-informed-generator.md` and write the tests yourself into the head worktree, at the paths it gives. Record each file in `manifest.tsv` with the generator name `diff-informed` and the risk ids it covers. Do not run any generated test yet.
 
 ### 7. Collect the blind tests
 
@@ -188,7 +199,9 @@ If `out/` is empty, read the transcript, fix the cause (usually the prompt) and 
 
 ### 8. Run and triage
 
-Read `reference/triage.md` and follow it. It runs every generated test on the head worktree, repairs harness errors within fixed rules, reruns each failure once to drop flakes, runs the survivors on the parent worktree, and gives every test one verdict in `triage.tsv`.
+Read `reference/triage.md` and follow it. It runs every generated test on the head worktree, repairs harness errors within fixed rules, reruns each failure once to drop flakes, runs the survivors on the parent worktree once, and gives every test one verdict in `triage.tsv`.
+
+Before the first run, wait for the installs from step 4 to finish. `grep '^setup ' "$RUN_DIR/runs/setup.log"` prints `setup done` once they have, after a `setup failed in <side>` line if one of them failed, in which case read the log and fix the cause first. While it prints nothing, the installs are still running.
 
 Frontend runs go one process at a time, with `<side>` either `head` or `parent`:
 
@@ -210,7 +223,7 @@ Backend runs also go one process at a time:
   "$RUN_DIR/runs/<label>.txt" "$WT/<side>" <test file> [<test file> ...]) > "$RUN_DIR/runs/<label>.tsv"
 ```
 
-`:only` takes namespaces, or `<namespace>/<test name>` to pick single tests. The summary prints one line per selected `deftest` with status `PASSED`, `FAILED`, `ERROR` (the test threw) or `LOAD_ERROR`, and skips the Liquibase `Running Changeset:` lines that make up most of the output. Hawk loads every namespace before it runs any test, so one generated file that does not compile stops the whole run, and every test then shows `LOAD_ERROR`. The last column of a `LOAD_ERROR` line quotes the compiler error, which names the file and line. `bb` runs from `$TMPDIR` because the repo's `bb.edn` would make it resolve the project's dependencies first. In a fresh worktree one invocation took about 70 seconds.
+`:only` takes namespaces, or `<namespace>/<test name>` to pick single tests. The summary prints one line per selected `deftest` with status `PASSED`, `FAILED`, `ERROR` (the test threw) or `LOAD_ERROR`, and skips the Liquibase `Running Changeset:` lines that make up most of the output. A test that failed gets one line for each failing `is` instead, and the last column of each line holds the `testing` context printed above that failure. Hawk loads every namespace before it runs any test, so one generated file that does not compile stops the whole run, and every test then shows `LOAD_ERROR`. The fourth column of a `LOAD_ERROR` line quotes the compiler error, which names the file and line. `bb` runs from `$TMPDIR` because the repo's `bb.edn` would make it resolve the project's dependencies first. In a fresh worktree one invocation took about 70 seconds.
 
 A running REPL is attached to one checkout, so it cannot run the parent commit's code. Use `./bin/test-agent` in both worktrees, so both sides run the same way.
 

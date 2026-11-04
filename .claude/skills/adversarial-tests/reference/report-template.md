@@ -18,7 +18,9 @@ Head <short sha>, merge-base <short sha> on <base branch>. Run <run-id>.
 - Generator: <diff-informed or blind>
 - Oracle: <the oracle, with the quoted sentence for stated intent>
 - Risk or scenario: <R-id or S-number from risks.md or SCENARIOS.md>
-- Passes on the parent commit, fails on the head, twice each.
+- Fails on the head twice, and passes in the one run on the parent commit.
+
+<For a parent-behaviour finding, write instead: "The head gives <value> where the parent gives <value>. The repro expects the parent's value, corrected from the parent run without a rerun.">
 
 ```
 <the failing assertion: expected and received>
@@ -73,6 +75,7 @@ Count Jest test cases, so each `it.each` row counts once, and count backend `def
 
 - Blind generator: <"claude -p in a restricted sandbox" or "Agent call, blind by instruction only">.
 - Harness repairs: <number>, listed in `repairs.md`.
+- Parent-behaviour expected values corrected from the parent run, and not rerun: <number of tests, or "none">.
 - Not read: <Linear issues that could not be fetched, or "nothing">.
 - Uncommitted changes in the checkout, which were not tested: <"none" or the list>.
 - Commits on the branch after the PR head, which the PR description does not cover: <"none", "no PR" or the list>.

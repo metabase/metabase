@@ -39,7 +39,7 @@ Rerun every spec that has an assertion failure (label `head-2`), filtered with `
 
 ## 4. Run on the parent commit
 
-Copy every remaining generated file into the parent worktree at the same relative path, and run them all there (label `parent-1`). Rerun the parent failures once (label `parent-2`), and count a test as failing on the parent only if it fails both times.
+Copy every remaining generated file into the parent worktree at the same relative path, and run them all there once (label `parent-1`). There is no rerun on the parent, so a test's result in this run is its parent result.
 
 If the code under test does not exist on the parent (a new file, a new export, a new endpoint), the test fails there by construction. Record the failure kind, because section 6 uses it.
 
@@ -51,12 +51,19 @@ Give each test the first verdict in this table that applies:
 | --- | --- | --- | --- |
 | harness error after repairs | | `unrunnable` | Dropped |
 | failed, then passed | | `flake` | Dropped |
-| failed twice | failed twice | `pre-existing` | Fails without this PR too, so it is reported separately |
+| failed twice | failed | `pre-existing` | Fails without this PR too, so it is reported separately |
 | failed twice | passed | `finding`, after the check below | The PR broke the oracle |
-| passed | failed twice | `candidate`, after the check below | The test pins the PR's behaviour |
+| passed | failed | `candidate`, after the check below | The test pins the PR's behaviour |
 | passed | passed | `discarded` | It cannot tell the PR from its parent |
 
-Tests whose oracle is the parent's behaviour were calibrated on the parent in the generator step, so they pass there by construction. For them, a head failure is a finding, after the check in section 6, and a pass is a discard.
+Tests whose oracle is the parent's behaviour can still be `unrunnable` or a `flake`, but otherwise skip the rest of the table. Their expected values are the generator's best guess at what the parent returns, and nothing has run on the parent to check that guess, so a failure on either side may only mean the guess was wrong. Calibrate them by reading the runs you already have, not by running anything again:
+
+1. For each case, read the parent's actual value from `parent-1`: the Received or `actual:` value if the case failed there, or the written expected value if it passed.
+2. Read the head's actual value the same way, from `head-2` if the case failed `head-1`, or from `head-1` if it passed.
+3. If the two values are equal, the verdict is `discarded`, because the head does what the parent does, whether or not the guess was right. If they differ, the verdict is `finding`, after the check in section 6, including question 4 on a parent value that is plainly broken. A `deftest` with several cases is a finding when any of its cases is one.
+4. Once every verdict is in and nothing more will run, change each expected value that differs from the parent's to the parent's value, in the head worktree's file that step 9 copies to `tests/`, so that the repro in the report fails on the head. Add "expected values corrected from parent-1, not rerun" to the test's note. The parent is the oracle for these tests, so this is calibration, not fitting.
+
+This works only because each case makes one assertion, as the generator reference requires. A failing `expect` ends its Jest test case, so a second assertion in the same case would never report its value. A failing `is` does not end a `deftest`, but the backend summary tells the failures of one `deftest` apart only by the `testing` context it prints for each, so each case needs its own `testing` string around a single `is`.
 
 A `pre-existing` test whose oracle is a sentence in this PR's description needs one more look. Once it passes the check in section 6, it means the PR claims a behaviour that neither the head nor the parent has. Keep the verdict, and mark the note "the PR's claim does not hold" so the report lists it first among the pre-existing failures.
 
@@ -83,7 +90,7 @@ A candidate gets two checks:
 Write one line per generated test, with tab-separated columns:
 
 ```
-generator  file  test name  risk or scenario  oracle  head-1  head-2  parent-1  parent-2  verdict  note
+generator  file  test name  risk or scenario  oracle  head-1  head-2  parent-1  verdict  note
 ```
 
-Use `-` for runs that did not happen. The note holds the failure line for findings and pre-existing failures, the parent failure kind for candidates, and the reason for invalid tests.
+Use `-` for runs that did not happen. The note holds the failure line for findings and pre-existing failures, the parent failure kind for candidates, and the reason for invalid tests. For a parent-behaviour finding it holds the head's and the parent's values instead of the failure line.

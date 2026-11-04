@@ -18,11 +18,11 @@ A new file is easier to copy to the parent worktree and easier to delete than a 
 3. Pick inputs that the change makes interesting. For a nil-handling change that means nil, empty, missing key and a valid value side by side. For a date change it means a year boundary, a DST change, a time zone other than the report time zone and the smallest and largest units. For an async change it means the second event arriving before the first resolves, and the component unmounting in between.
 4. Assert on what the oracle says, not on what the head does:
    - Stated intent: derive the expected value from the quoted sentence in `risks.md`.
-   - Parent behaviour: the expected values are whatever the parent produces. Write a table of inputs as one test case per row and per observable, for example one `it.each` per observable, so each case makes one assertion. A failing `expect` ends its test case and hides the assertions after it, so with this layout one parent run reports the parent's value for every cell. Run these tests on the parent worktree first, read the parent's values from the Expected and Received lines that `jest-summary.mjs` prints for each failure, and correct any expected value that disagrees with the parent. The parent is the oracle here, so this is calibration, not fitting. Then leave them alone for the head run, and delete the copies from the parent worktree, because triage copies every file over again.
+   - Parent behaviour: the expected values are whatever the parent produces. Write your best guess at the parent's value for each input, from reading the parent's code, and do not run anything to check it. Write a table of inputs as one test case per row and per observable, for example one `it.each` per observable, so each case makes one assertion. A failing `expect` ends its test case and hides the assertions after it, so this layout is what lets triage read the parent's actual value for every cell from its one parent run, and compare it with the head's. A wrong guess costs nothing, because triage corrects the expected values from that run.
    - Invariant: compute the expected value from the input, for example `parse(format(x))` equals `x` for every row.
    - Differential: call both implementations on the same rows and compare the results.
 5. Reuse the harness of the neighbouring spec: its `setup` function, its mock endpoints and its fixtures. Copy what you need into the new file rather than importing from a spec.
-6. Do not run the tests against the head. The runner in step 8 does that, and seeing a failure now is the moment a generator starts to fit its assertions to the code.
+6. Do not run the tests on either commit. The runner in step 8 does that, and seeing a failure now is the moment a generator starts to fit its assertions to the code.
 
 ## Frontend conventions
 
@@ -43,6 +43,6 @@ These conventions come from the existing test namespaces:
 
 - Require `[clojure.test :refer :all]` and `[metabase.test :as mt]`. Create rows with `mt/with-temp`, call endpoints with `mt/user-http-request`, and run queries with `mt/run-mbql-query` or `qp/process-query`.
 - For property tests, use `clojure.test.check` (`defspec` from `clojure.test.check.clojure-test`, plus `clojure.test.check.generators` and `clojure.test.check.properties`) with at most 50 trials per property, to keep the run short.
-- To calibrate parent-behaviour tests, list only those tests in `:only` on the parent, as `<namespace>/<test name>`, so the stated-intent tests in the same file do not run there early. The summary quotes only the first failing `is` of each test, so read the rest from the raw `runs/<label>.txt`.
+- Lay out a parent-behaviour table the same way: one `doseq` per observable, with a `testing` string naming the row around a single `is`. A failing `is` does not end the `deftest`, and the summary prints a line for every failing `is` with the `testing` context above it, so that string is what ties each line to its row when triage reads the parent's values.
 - Use `mt/test-drivers` only for a differential across drivers, and only with drivers that run locally (`:h2`, and `:postgres` if it is already running).
 - Comments follow the house rule: a comment explains a wait, seed or mock whose shape would otherwise look wrong, and nothing else.

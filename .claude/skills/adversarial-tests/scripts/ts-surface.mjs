@@ -4,13 +4,12 @@
 //   node ts-surface.mjs surface <file> [--touched 12-30,41-41]
 //   node ts-surface.mjs harness <spec-file>
 //
-// Run it from the root of a checkout that has node_modules installed.
+// TypeScript is loaded from the checkout that holds this script, which must have node_modules installed.
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import path from "node:path";
 
-const require = createRequire(path.join(process.cwd(), "noop.js"));
+const require = createRequire(import.meta.url);
 const ts = require("typescript");
 
 const BODY = "__BODY_ELIDED__";

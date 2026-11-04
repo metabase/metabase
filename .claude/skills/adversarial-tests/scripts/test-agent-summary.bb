@@ -1,11 +1,14 @@
 #!/usr/bin/env bb
-;; Prints one tab-separated line per deftest or defspec that a ./bin/test-agent run selected:
+;; Prints one tab-separated line per deftest or defspec that a ./bin/test-agent run selected,
+;; or one per FAIL or ERROR report when the test failed:
 ;;
-;;   <status>  <test file>  <namespace>/<test name>  <expected and actual, or the exception>
+;;   <status>  <test file>  <namespace>/<test name>  <expected and actual, or the exception>  <testing context>
 ;;
 ;; Status is PASSED, FAILED (an `is` disagreed), ERROR (the test threw) or LOAD_ERROR (the run stopped before any test
 ;; ran, usually because a namespace failed to compile). Tests that the run's `:only` did not select are left out.
-;; A warning goes to stderr when the run's test count differs from the number of lines printed.
+;; The last column holds the `testing` strings and message printed above each report,
+;; which tell the cases of one test apart.
+;; A warning goes to stderr when the run's test count differs from the number of tests listed.
 ;;
 ;;   bb test-agent-summary.bb <test-agent-output> <checkout-root> <test-file> [<test-file> ...]
 ;;
@@ -46,16 +49,25 @@
       (str/trim (or (first (remove str/blank? (rest from))) ""))
       line)))
 
-(defn- first-failure-line
-  "Expected and actual values under the first FAIL header for `qualified-name`, or the exception under the first ERROR."
+(defn- failure-lines
+  "Expected and actual values under each FAIL header for `qualified-name`, or the exception under each ERROR,
+  each paired with the `testing` context and message printed between the header and the expected value."
   [lines qualified-name status]
-  (let [header (re-pattern (str "^(FAIL|ERROR) in " (java.util.regex.Pattern/quote qualified-name) " "))
-        after  (rest (drop-while #(not (re-find header %)) lines))
-        actual (labelled-line after "actual:")]
-    (if (= status "ERROR")
-      (truncate actual max-message-length)
-      (str "expected: " (truncate (labelled-line after "expected:") (quot max-message-length 2))
-           " | actual: " (truncate actual (quot max-message-length 2))))))
+  (let [header (re-pattern (str "^(FAIL|ERROR) in " (java.util.regex.Pattern/quote qualified-name) " "))]
+    (for [i    (keep-indexed #(when (re-find header %2) %1) lines)
+          :let [after   (drop (inc i) lines)
+                actual  (labelled-line after "actual:")
+                context (->> after
+                             (take-while #(not (or (re-find #"^(FAIL|ERROR) in " %)
+                                                   (str/starts-with? (str/trim %) "expected:"))))
+                             (remove str/blank?)
+                             (map str/trim)
+                             (str/join " "))]]
+      [(if (= status "ERROR")
+         (truncate actual max-message-length)
+         (str "expected: " (truncate (labelled-line after "expected:") (quot max-message-length 2))
+              " | actual: " (truncate actual (quot max-message-length 2))))
+       (truncate context max-message-length)])))
 
 (defn- load-error-line
   "The two-line report the Clojure CLI prints last, which names the file and line, or else the first line that mentions
@@ -91,15 +103,13 @@
                      :when (selected? selection ns-name test)
                      :let  [qualified-name (str ns-name "/" test)
                             status         (status-of qualified-name)]]
-                 [status
-                  file
-                  qualified-name
-                  (case status
-                    "PASSED"     ""
-                    "LOAD_ERROR" (load-error-line lines)
-                    (first-failure-line lines qualified-name status))])
+                 (case status
+                   "PASSED"     [[status file qualified-name "" ""]]
+                   "LOAD_ERROR" [[status file qualified-name (load-error-line lines) ""]]
+                   (for [[detail context] (failure-lines lines qualified-name status)]
+                     [status file qualified-name detail context])))
           ran  (some #(some-> (re-find #"^Ran (\d+) tests in [\d.]+ seconds" %) second parse-long) lines)]
-      (doseq [row rows]
+      (doseq [row (apply concat rows)]
         (println (str/join "\t" row)))
       ;; PASSED only means no FAIL or ERROR header names the test, so a selected test that never ran would print it too.
       (when (and ran (not= ran (count rows)))
