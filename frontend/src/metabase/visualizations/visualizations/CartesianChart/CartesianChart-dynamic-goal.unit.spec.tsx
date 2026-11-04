@@ -14,8 +14,10 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import type {
-  DatasetData,
+  DatasetColumn,
   RawSeries,
+  ReferencedEntitiesResults,
+  RowValues,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -74,9 +76,9 @@ const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
   display: VisualizationDisplay;
-  referencedEntities?: DatasetData["referenced_entities"];
-  cols?: DatasetData["cols"];
-  rows?: DatasetData["rows"];
+  referencedEntities?: ReferencedEntitiesResults | null;
+  cols?: DatasetColumn[];
+  rows?: RowValues[];
   settings?: VisualizationSettings;
   onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
@@ -230,7 +232,6 @@ describe("line chart with multiple series and a dynamic goal", () => {
     jest.useRealTimers();
   });
 
-  // each panel has its own y-axis, so unlike multiple y-axes the goal isn't tied to the first series
   it("draws the goal line in each split panel", async () => {
     await setup({
       display: "line",
@@ -355,7 +356,6 @@ function getTickY(label: string) {
 }
 
 function getGoalLineY() {
-  // the goal line is drawn over its halo
   const goalLine = Array.from(queryAllEChartsGoalLines()).at(-1);
   const match = goalLine?.getAttribute("d")?.match(/^M[\d.]+ ([\d.]+)L/);
 
@@ -374,9 +374,9 @@ function createSeries({
   settings,
 }: {
   display: VisualizationDisplay;
-  referenced_entities?: DatasetData["referenced_entities"];
-  cols?: DatasetData["cols"];
-  rows?: DatasetData["rows"];
+  referenced_entities?: ReferencedEntitiesResults | null;
+  cols?: DatasetColumn[];
+  rows?: RowValues[];
   settings?: VisualizationSettings;
 }): RawSeries {
   return [

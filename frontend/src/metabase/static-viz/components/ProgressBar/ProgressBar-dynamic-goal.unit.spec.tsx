@@ -2,8 +2,8 @@ import ReactDOMServer from "react-dom/server";
 
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
-  DatasetData,
   RawSeries,
+  ReferencedEntitiesResults,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -24,7 +24,7 @@ const SETTINGS: VisualizationSettings = {
 
 type SetupOpts = {
   settings?: VisualizationSettings;
-  referencedEntities?: DatasetData["referenced_entities"];
+  referencedEntities?: ReferencedEntitiesResults | null;
 };
 
 function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {

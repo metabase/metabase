@@ -51,7 +51,6 @@ describe("useEntityPickerSearch", () => {
     expect(url.searchParams.get("limit")).toBe("0");
   });
 
-  // questions are reachable through "Browse all"
   it("searches measures and metrics, but not questions, when the instance has measures (GDGT-3457)", async () => {
     setupSearchEndpoints([MEASURE, QUESTION]);
 
@@ -79,7 +78,6 @@ describe("useEntityPickerSearch", () => {
     expect(result.current.models).toEqual(["measure", "metric"]);
   });
 
-  // models can't be goal sources
   it("falls back to questions, but not models, when the instance has no measures or metrics", async () => {
     setupSearchEndpoints([QUESTION]);
 

@@ -99,7 +99,6 @@ describe("GoalEntityPickers", () => {
     ).toBeInTheDocument();
   });
 
-  // models can't be goal sources
   it("lists questions and metrics, but not models, when browsing all", async () => {
     setup();
 

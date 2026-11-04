@@ -674,12 +674,11 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-// mirrors `goal-scope` in dynamic_goals.clj
+// keep in sync with `goal-scope` in dynamic_goals.clj, which picks the goals the backend answers
 function getSavedGoalCard(
   card: Card,
   savedDashcard: DashboardCard,
 ): Pick<Card, "display" | "visualization_settings"> | null {
-  // series cards draw no goals
   if (savedDashcard.card_id != null && card.id !== savedDashcard.card_id) {
     return null;
   }

@@ -1679,7 +1679,6 @@ describe("GoalValueInput", () => {
       expect(mockWindowOpen).not.toHaveBeenCalled();
     });
 
-    // an embedding host has no Metabase app to open the source in
     it("has nothing to open when Metabase is embedded", async () => {
       jest.mocked(isEmbedding).mockReturnValue(true);
       const { mockWindowOpen } = setupCardSource();
