@@ -23,7 +23,8 @@
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
-   (java.util.concurrent Callable Executors ExecutorService)))
+   (java.util.concurrent CompletableFuture Executors ExecutorService)
+   (java.util.function BiFunction Supplier)))
 
 (set! *warn-on-reflection* true)
 
@@ -986,9 +987,14 @@
    (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
 
 (defn- submit-virtual
-  "Submit a thunk to run on a virtual thread, bounded by pool size."
-  [thunk]
-  (.submit ^ExecutorService tool-executor ^Callable thunk))
+  "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.
+  Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value."
+  [after thunk]
+  (if (seq after)
+    (.handleAsync (CompletableFuture/allOf (into-array CompletableFuture after))
+                  (reify BiFunction (apply [_ _ _] (thunk)))
+                  ^ExecutorService tool-executor)
+    (CompletableFuture/supplyAsync (reify Supplier (get [_] (thunk))) ^ExecutorService tool-executor)))
 
 (defn- collect-tool-result
   "Normalize tool result into a vector of output chunks.
@@ -1150,9 +1156,7 @@
                (when-let [{:keys [chunks]} (get @active toolCallId)]
                  (let [runs-alone? (:runs-alone? (get tools toolName))
                        after       (if runs-alone? @started (some-> @alone list))
-                       ;; The pool starts tasks in the order they arrive, so every task waited on here has a thread
-                       task        (submit-virtual (bound-fn* #(do (run! deref after)
-                                                                   (run-tool toolCallId toolName tools chunks))))]
+                       task        (submit-virtual after (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
                    (vswap! started conj task)
                    (when runs-alone?
                      (vreset! alone task))
