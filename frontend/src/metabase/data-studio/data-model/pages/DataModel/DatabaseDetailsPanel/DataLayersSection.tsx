@@ -167,7 +167,7 @@ function DataLayerRow({
   };
 
   return (
-    <Flex align="center" gap="sm" px="lg" py="sm" data-testid="data-layer-row">
+    <Flex align="center" gap="sm" p="lg" data-testid="data-layer-row">
       <TextInputBlurChange
         aria-label={t`Layer name`}
         flex={1}
