@@ -513,6 +513,33 @@
           (is (= "completed" (:status goal)))
           (is (= [[1000]] (get-in goal [:data :rows]))))))))
 
+(deftest public-endpoints-measure-goal-test
+  (testing "public card and dashcard endpoints resolve a measure goal source"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Measure       {measure-id :id}                     {:name       "Venue count"
+                                                                                :table_id   (mt/id :venues)
+                                                                                :definition (venues-count-measure)}
+                     :model/Card          {chart-id :id, card-uuid :public_uuid} {:dataset_query (count-query :checkins)
+                                                                                  :display       :scalar
+                                                                                  :public_uuid   (str (random-uuid))
+                                                                                  :visualization_settings
+                                                                                  {:scalar.segments
+                                                                                   [{:min   {:id measure-id :type "measure" :column "count"}
+                                                                                     :max   nil
+                                                                                     :color "red"}]}}
+                     :model/Dashboard     {dash-id :id, dash-uuid :public_uuid}  {:public_uuid (str (random-uuid))}
+                     :model/DashboardCard {dashcard-id :id}                    {:dashboard_id dash-id
+                                                                                :card_id      chart-id}]
+        (testing "on the public card endpoint"
+          (is (=? {:status "completed" :data {:rows [[100]]}}
+                  (ref-entity (client/client :get 202 (str "public/card/" card-uuid "/query"))
+                              :measure measure-id))))
+        (testing "on the public dashcard endpoint"
+          (is (=? {:status "completed" :data {:rows [[100]]}}
+                  (ref-entity (client/client :get 202 (format "public/dashboard/%s/dashcard/%d/card/%d"
+                                                              dash-uuid dashcard-id chart-id))
+                              :measure measure-id))))))))
+
 (deftest public-card-endpoint-scrubs-referenced-entity-errors-test
   (testing "GET /api/public/card/:uuid/query hides the raw error of a failed referenced query"
     (mt/with-temporary-setting-values [enable-public-sharing true]

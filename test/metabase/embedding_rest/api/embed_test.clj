@@ -1003,6 +1003,24 @@
                  (-> (client/client :get 202 (card-query-url card ""))
                      (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
 
+(deftest embed-card-query-measure-goal-test
+  (testing "GET /api/embed/card/:token/query resolves a measure goal source in the card's viz settings"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition (let [mp (mt/metadata-provider)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                        (lib/aggregate (lib/count))))}]
+        (with-temp-card [card {:enable_embedding       true
+                               :display                :scalar
+                               :visualization_settings
+                               {:scalar.segments [{:min   {:id measure-id :type "measure" :column "count"}
+                                                   :max   nil
+                                                   :color "red"}]}}]
+          (is (=? {:status "completed" :data {:rows [[100]]}}
+                  (-> (client/client :get 202 (card-query-url card ""))
+                      (get-in [:data :referenced_entities :measure measure-id])))))))))
+
 (deftest embed-dashcard-query-referenced-entities-test
   (testing "GET /api/embed/dashboard/:token/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
     (with-embedding-enabled-and-new-secret-key!
