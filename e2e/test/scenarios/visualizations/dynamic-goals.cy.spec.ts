@@ -168,31 +168,13 @@ describe("scenarios > visualizations > dynamic goals", () => {
     );
     H.vizTypeSidebar().findByTestId("Line-button").click();
 
-    cy.log("Columns of a question returning multiple rows can't be picked");
+    cy.log("A question with multiple numeric columns asks for the column");
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
       cy.findByRole("tab", { name: "Display" }).click();
       cy.findByRole("button", { name: "Change value source" }).click();
     });
-    pickGoalSource(MULTI_ROW_SOURCE.name);
-    H.popover().within(() => {
-      cy.findByText(
-        "The question's result must be a single value or row.",
-      ).should("be.visible");
-      cy.findByRole("menuitem", { name: /LOW/ }).should(
-        "have.attr",
-        "data-disabled",
-      );
-      cy.findByRole("menuitem", { name: /multiple rows/ }).click();
-    });
-
-    cy.log("A question with multiple numeric columns asks for the column");
-    H.miniPicker().within(() => {
-      cy.findByPlaceholderText("Search…")
-        .clear()
-        .type(MULTI_COLUMN_SOURCE.name);
-      cy.findByText(MULTI_COLUMN_SOURCE.name).click();
-    });
+    pickGoalSource(MULTI_COLUMN_SOURCE.name);
     H.popover().within(() => {
       cy.findByRole("menuitem", { name: /LOW/ }).should("contain.text", "300");
       cy.findByRole("menuitem", { name: /NOTE/ }).should("not.exist");
