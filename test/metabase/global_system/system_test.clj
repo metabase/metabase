@@ -328,7 +328,7 @@
     (let [start   (promise)
           racers  (mapv (fn [i] (future @start (mc/compare-and-set! other-handle nil i))) (range 16))
           _       (deliver start true)
-          winners (keep-indexed (fn [i racer] (when @racer i)) racers)]
+          winners (into [] (keep-indexed (fn [i racer] (when @racer i))) racers)]
       (is (= [@other-handle] winners)))))
 
 (deftest ^:synchronized root-entry-test
