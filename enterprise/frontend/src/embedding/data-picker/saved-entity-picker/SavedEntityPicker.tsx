@@ -37,8 +37,8 @@ import { findCollectionById } from "./utils";
 
 interface SavedEntityPickerProps {
   type: SavedEntityType;
-  /** Lists only this Library folder and its subcollections. */
-  libraryFolder?: Collection;
+  /** Lists only these Library collections and their subcollections. */
+  libraryFolders?: Collection[];
   collectionId?: CollectionId | null;
   selectedSource?: DataSource;
   databaseId?: DatabaseId | null;
@@ -101,7 +101,7 @@ function InnerSavedEntityPicker({
   databaseId,
   onSelect,
   onBack,
-  libraryFolder,
+  libraryFolders,
   collections,
   rootCollection,
   currentUser,
@@ -109,8 +109,8 @@ function InnerSavedEntityPicker({
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const modelFilter = (model: string) => CARD_INFO[type].model === model;
 
-    if (libraryFolder) {
-      return buildCollectionTree([libraryFolder], { modelFilter });
+    if (libraryFolders) {
+      return buildCollectionTree(libraryFolders, { modelFilter });
     }
 
     const preparedCollections: Collection[] = [];
@@ -146,7 +146,7 @@ function InnerSavedEntityPicker({
         buildCollectionTree(preparedCollections, { modelFilter }),
       ),
     ];
-  }, [collections, rootCollection, currentUser, type, libraryFolder]);
+  }, [collections, rootCollection, currentUser, type, libraryFolders]);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     CollectionId | undefined
