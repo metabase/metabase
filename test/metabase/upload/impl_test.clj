@@ -2560,7 +2560,7 @@
               (is (= (header-with-auto-pk ["A"])
                      (column-display-names-for-table table))))
             (testing "But we can configure it"
-              (field-user-settings/upsert-user-settings
+              (field-user-settings/upsert-field-user-settings!
                {:id (t2/select-one-pk :model/Field :name "a" :table_id (:id table))}
                {:display_name bespoke-name})
               (is (= (header-with-auto-pk [bespoke-name])

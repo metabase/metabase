@@ -68,6 +68,7 @@
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -454,12 +455,13 @@
 (defn- present-database
   "Trim a database row to a token-frugal item map for list responses."
   [{:keys [id name engine description]}]
-  {:type        "database"
-   :id          id
-   :name        name
-   :engine      (some-> engine clojure.core/name)
-   :description description
-   :uri         (llm-shape/metabase-uri :database id)})
+  (cond-> {:type        "database"
+           :id          id
+           :name        name
+           :engine      (some-> engine clojure.core/name)
+           :description description
+           :uri         (llm-shape/metabase-uri :database id)}
+    (= audit/audit-db-id id) (assoc :sql_unavailable true)))
 
 (defn- present-collection
   "Trim a collection row to an item map. `path-name` may be supplied if the caller pre-computed it."

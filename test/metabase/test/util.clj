@@ -400,7 +400,7 @@
    (fn [_]
      {:entity_id (u/generate-nano-id)
       :name (str "Test Transform " (u/generate-nano-id))
-      :source {:type  "query"
+      :source {:type  :query
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
