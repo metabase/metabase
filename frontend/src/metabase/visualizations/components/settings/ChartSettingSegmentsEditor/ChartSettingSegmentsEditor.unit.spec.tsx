@@ -472,6 +472,38 @@ describe("ChartSettingSegmentsEditor", () => {
     ]);
   });
 
+  it("adds a range from 0 to 1 in the next color after a range with a dynamic max", async () => {
+    const palette = getColorPalette();
+    const dynamicMaxSegment = createMockSegment({
+      max: { type: "card", id: CARD_ID, column: "total" },
+      color: palette[0],
+    });
+    const { onChange } = setup({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+        rows: [[10]],
+        referenced_entities: {
+          card: {
+            [CARD_ID]: createMockReferencedEntityResult({
+              column: "total",
+              value: 250,
+            }),
+          },
+        },
+      }),
+      value: [dynamicMaxSegment],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Add a range/ }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith([
+      dynamicMaxSegment,
+      { min: 0, max: 1, color: palette[1], label: "" },
+    ]);
+  });
+
   it("Should handle floating point values", async () => {
     const { onChange } = setup();
 
