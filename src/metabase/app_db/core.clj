@@ -185,7 +185,8 @@
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] of the application DB this thread sees.
   That is the bound one inside [[with-application-db]], otherwise the root.
-  This flushes every cache keyed on it, including [[memoize-for-application-db]] caches such as the Settings cache.
+  This flushes every cache keyed on it, such as [[memoize-for-application-db]] caches, and every cache made per app-DB
+  value, such as the Settings cache, since the bumped DB is a new value.
   For testing only."
   []
   (assert (or (not config/is-prod?)

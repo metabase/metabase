@@ -378,27 +378,27 @@
   and the oldest goes once there are more."
   8)
 
-(defn- derived-lookup
-  "The value in `entries` made for dependency values identical, one by one, to `deps`, or `::none`."
+(defn- derived-entry
+  "The `[deps value]` entry in `entries` made for dependency values identical, one by one, to `deps`, or nil.
+  Returns the entry rather than the value, so a value of nil or false is still found."
   [entries deps]
-  (or (some (fn [[entry-deps value]]
-              (when (every? true? (map identical? entry-deps deps))
-                value))
-            entries)
-      ::none))
+  (some (fn [[entry-deps :as entry]]
+          (when (every? true? (map identical? entry-deps deps))
+            entry))
+        entries))
 
 (deftype DerivedHandle [k dep-handles make entries]
   IDeref
   (deref [_]
     (let [deps  (mapv deref dep-handles)
-          found (derived-lookup @entries deps)]
-      (if (not= ::none found)
-        found
-        (derived-lookup (swap! entries (fn [es]
-                                         (if (not= ::none (derived-lookup es deps))
-                                           es
-                                           (into [[deps (apply make deps)]] (take (dec max-derived-values)) es))))
-                        deps)))))
+          found (derived-entry @entries deps)]
+      (second
+       (or found
+           (derived-entry (swap! entries (fn [es]
+                                           (if (derived-entry es deps)
+                                             es
+                                             (into [[deps (apply make deps)]] (take (dec max-derived-values)) es))))
+                          deps))))))
 
 (defmethod print-method DerivedHandle
   [^DerivedHandle handle ^Writer w]

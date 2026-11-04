@@ -791,3 +791,11 @@
             _       (deliver go true)
             results (mapv deref racers)]
         (is (= 1 (count (into #{} (map System/identityHashCode) results))))))))
+
+(deftest ^:synchronized derived-nil-value-test
+  (testing "a derived value of nil is remembered like any other, so it is made once"
+    (mc/alter-root db-handle :root-db)
+    (let [makes   (atom 0)
+          derived (system/derived-component-handle ::derived-nil [db-handle] (fn [_] (swap! makes inc) nil))]
+      (is (= {:values [nil nil nil], :makes 1}
+             {:values [@derived @derived @derived], :makes @makes})))))
