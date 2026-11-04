@@ -584,18 +584,22 @@
               query
               (map-indexed vector table-id-groups)))))
 
-(mu/defn- orient-via-path :- [:sequential ::join-info]
+(mu/defn- orient-via-path :- [:maybe [:sequential ::join-info]]
   "Reverse `via-path` if `source-table-id` is at the path's far end (last-RHS) instead of the near end (first-LHS).
   Each edge is also flipped `lhs`/`rhs` so the oriented path threads `source-table-id` through every hop in order.
-  Paths already oriented from `source-table-id`, paths whose terminals don't involve `source-table-id`, and nil/empty
-  inputs are returned as-is (coerced to a vector)."
+  Returns the path as a vector when it starts at `source-table-id` (already oriented or reversed),  and `nil` when
+  the path neither starts nor ends at `source-table-id`."
   [source-table-id :- ::lib.schema.id/table
    via-path        :- [:maybe [:sequential ::join-info]]]
-  (if (and (seq via-path)
-           (not= source-table-id (get-in (first via-path) [:lhs :table]))
-           (= source-table-id (get-in (last via-path) [:rhs :table])))
-    (mapv (fn [{:keys [lhs rhs]}] {:lhs rhs :rhs lhs}) (reverse via-path))
-    (vec via-path)))
+  (cond
+    (empty? via-path)
+    nil
+
+    (= source-table-id (get-in (first via-path) [:lhs :table]))
+    (vec via-path)
+
+    (= source-table-id (get-in (last via-path) [:rhs :table]))
+    (mapv (fn [{:keys [lhs rhs]}] {:lhs rhs :rhs lhs}) (reverse via-path))))
 
 (mu/defn- constraint-joins :- [:map {:closed true}
                                [:joins           [:maybe [:sequential ::join-info]]]
@@ -616,10 +620,11 @@
    extra-via-path        :- [:maybe [:sequential ::join-info]]
    fk-pairs              :- [:maybe [:set ::fk-pair]]]
   (let [orient               #(orient-via-path source-table-id %)
-        pinned-edges         (into (orient extra-via-path)
-                                   (mapcat #(orient (:via-path %)))
+        oriented-constraint  #(-> % :via-path orient)
+        pinned-edges         (into (vec (orient extra-via-path))
+                                   (mapcat oriented-constraint)
                                    constraints)
-        unpinned-constraints (remove :via-path constraints)
+        unpinned-constraints (remove oriented-constraint constraints)
         constraint-field-ids (into #{} (map :field-id) unpinned-constraints)
         paths                (one-to-many-paths metadata-providerable database-id source-table-id constraint-field-ids)
         direct-field-ids     (into field-ids
@@ -787,6 +792,18 @@
    field-id
    (field-values/field-should-have-field-values? field-id)))
 
+(defn- field-fk-via-path
+  "Return a single-hop `::join-info` edge from `field-id` to its FK target, suitable to pin as `:via-path` on the
+  remapping sub-query. Returns nil when the field isn't an FK."
+  [field-id]
+  (when-let [fk-target-id (parameters.db/field-fk-target-field-id field-id)]
+    (let [mp     (lib-be/application-database-metadata-provider (field/field-id->database-id field-id))
+          field  (lib.metadata/field mp field-id)
+          target (lib.metadata/field mp fk-target-id)]
+      (when (and (:table-id field) (:table-id target))
+        [{:lhs {:table (:table-id field)  :field field-id}
+          :rhs {:table (:table-id target) :field fk-target-id}}]))))
+
 (defn- check-field-value-query-permissions
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
@@ -799,12 +816,16 @@
 (mu/defn- cached-field-values
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   {:keys [limit], :as _options} :- [:maybe ::options]]
+   {:keys [limit via-path fk-pairs], :as _options} :- [:maybe ::options]]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
           (params.field-values/get-or-create-field-values-for-current-user! (parameters.db/field field-id))
-          (params.field-values/get-or-create-linked-filter-field-values! (parameters.db/field field-id) constraints))]
+          (let [extra (cond-> nil
+                        (seq via-path) (assoc :via-path via-path)
+                        (seq fk-pairs) (assoc :fk-pairs fk-pairs))]
+            (params.field-values/get-or-create-linked-filter-field-values!
+             (parameters.db/field field-id) constraints extra)))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
@@ -867,12 +888,7 @@
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
 
-      ;; Cached field-values are keyed by (field-id, constraints) only — they can't distinguish between pinned paths.
-      ;; Skip the cache only when a path/pair preference *could matter*, i.e. there are constraints that drive joins.
-      ;; With no constraints the query would be a plain SELECT with no joins, so the cache is still correct.
-      (and (use-cached-field-values? field-id) (nil? @remapping)
-           (or (empty? constraints)
-               (and (empty? (:via-path options)) (empty? (:fk-pairs options)))))
+      (and (use-cached-field-values? field-id) (nil? @remapping))
       (do
         ;; The permission check uses the cache's actual read path, which never touches via-path/fk-pairs joins.
         ;; Requiring perms on those joined tables would wrongly block sandboxed users whose sandbox covers only
@@ -883,7 +899,14 @@
       ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
       ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
       (some? @remapping)
-      (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
+      (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping
+            ;; Pin the FK being remapped so parallel FKs on the card's joins don't hijack the sub-query —
+            ;; e.g. remapping receiver_id to users.name must follow receiver_id even when the card itself
+            ;; joins users via sender_id.
+            remap-via-path (field-fk-via-path field-id)
+            options'       (-> options
+                               (dissoc :fk-pairs)
+                               (cond-> (seq remap-via-path) (assoc :via-path remap-via-path)))]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
                                         relax-fk-requirement?)
                                (parameters.db/field-fk-target-field-id field-id))]
@@ -891,8 +914,8 @@
                                    (map #(cond-> %
                                            (= (:field-id %) field-id) (assoc :field-id pk-field-id))
                                         constraints)
-                                   (assoc options :original-field-id pk-field-id))
-          (unremapped-chain-filter the-remapped-field-id constraints (assoc options :original-field-id field-id))))
+                                   (assoc options' :original-field-id pk-field-id))
+          (unremapped-chain-filter the-remapped-field-id constraints (assoc options' :original-field-id field-id))))
 
       :else
       (unremapped-chain-filter field-id constraints options))))
@@ -1023,8 +1046,9 @@
              (parameters.db/full-field-values-exist? field-id))))))
 
 (defn- cached-field-values-search
-  [field-id query constraints {:keys [limit]}]
-  (let [{:keys [values has_more_values]} (cached-field-values field-id constraints nil)
+  [field-id query constraints {:keys [limit via-path fk-pairs]}]
+  (let [{:keys [values has_more_values]} (cached-field-values field-id constraints
+                                                              {:via-path via-path :fk-pairs fk-pairs})
         query                            (u/lower-case-en query)]
     {:values (cond->> (filter (fn [s]
                                 (when s
@@ -1060,9 +1084,7 @@
       (some? @v->human-readable)
       (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query-string options)
 
-      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id)
-           (or (empty? constraints)
-               (and (empty? (:via-path options)) (empty? (:fk-pairs options)))))
+      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
       (do
         (check-field-value-query-permissions field-id constraints (dissoc options :via-path :fk-pairs))
         (cached-field-values-search field-id query-string constraints options))

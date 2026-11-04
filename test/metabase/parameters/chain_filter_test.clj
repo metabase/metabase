@@ -81,10 +81,10 @@
       (is (= [{:lhs {:table 3 :field 30} :rhs {:table 2 :field 21}}
               {:lhs {:table 2 :field 20} :rhs {:table 1 :field 10}}]
              (#'chain-filter/orient-via-path 3 [a->b b->c]))))
-    (testing "empty path is unchanged"
-      (is (= [] (#'chain-filter/orient-via-path 1 []))))
-    (testing "neither terminal matches source: leave untouched"
-      (is (= [a->b b->c] (#'chain-filter/orient-via-path 99 [a->b b->c]))))))
+    (testing "empty path yields nil (same sentinel as 'can't orient')"
+      (is (nil? (#'chain-filter/orient-via-path 1 []))))
+    (testing "neither terminal matches source: nil, so the caller falls back to graph search"
+      (is (nil? (#'chain-filter/orient-via-path 99 [a->b b->c]))))))
 
 (deftest ^:parallel special-form-filter-clause-test
   (testing "Can handle multi-arg string filters when chaining (#57287)"

@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as nb]
+   [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -467,6 +468,143 @@
                                        (:values (parameters.dashboard/chain-filter
                                                  dashboard "text" {"owner" rasta-id})))]
                     (is (= expected actual))))))))))))
+
+(deftest ^:parallel chain-filter-cross-card-linked-filter-test
+  (testing "linked filter across cards: constraint's via-path must not dangle from the target card's source table"
+    (mt/dataset test-data
+      (let [mp             (mt/metadata-provider)
+            orders         (lib.metadata/table mp (mt/id :orders))
+            products-table (lib.metadata/table mp (mt/id :products))
+            people-name    (mt/id :people :name)
+            products-cat   (mt/id :products :category)
+            orders-query   (nb/add-join (lib/query mp orders) "People" "User ID" "ID")
+            join-alias     (lib/current-join-alias (first (lib/joins orders-query 0)))
+            products-query (lib/query mp products-table)]
+        (mt/with-temp [:model/Card         {orders-card-id :id}   {:dataset_query orders-query}
+                       :model/Card         {products-card-id :id} {:dataset_query products-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id "user" :name "User" :slug "user"
+                                      :type "string/=" :sectionId "string"}
+                                     {:id "cat" :name "Category" :slug "cat"
+                                      :type "string/=" :sectionId "string"
+                                      :filteringParameters ["user"]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id
+                        :card_id      orders-card-id
+                        :parameter_mappings
+                        [{:card_id      orders-card-id
+                          :parameter_id "user"
+                          :target       ["dimension" ["field" people-name {:join-alias join-alias}]]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id
+                        :card_id      products-card-id
+                        :parameter_mappings
+                        [{:card_id      products-card-id
+                          :parameter_id "cat"
+                          :target       ["dimension" ["field" products-cat nil]]}]}]
+          (binding [api/*current-user-id*         (mt/user->id :rasta)
+                    qp.perms/*param-values-query* true]
+            (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                  response  (parameters.dashboard/chain-filter dashboard "cat" {"user" "Hudson Borer"})]
+              (is (seq (:values response))))))))))
+
+(deftest ^:synchronized param->fields-dedupes-entries-test
+  (testing "param->fields returns one entry per distinct (field-id, via-path, fk-pairs) (#85225)"
+    (mt/dataset test-data
+      (let [mp             (mt/metadata-provider)
+            products-table (lib.metadata/table mp (mt/id :products))
+            products-cat   (mt/id :products :category)
+            products-query (lib/query mp products-table)]
+        (mt/with-temp [:model/Card         {card-a :id} {:dataset_query products-query}
+                       :model/Card         {card-b :id} {:dataset_query products-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id "cat" :name "Category" :slug "cat"
+                                      :type "string/=" :sectionId "string"}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id :card_id card-a
+                        :parameter_mappings
+                        [{:card_id card-a :parameter_id "cat"
+                          :target  ["dimension" ["field" products-cat nil]]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id :card_id card-b
+                        :parameter_mappings
+                        [{:card_id card-b :parameter_id "cat"
+                          :target  ["dimension" ["field" products-cat nil]]}]}]
+          (let [dashboard (-> (t2/select-one :model/Dashboard :id dash-id)
+                              (t2/hydrate :resolved-params))
+                param     (get-in dashboard [:resolved-params "cat"])]
+            (is (= [{:field-id products-cat
+                     :op       :=
+                     :options  nil
+                     :via-path nil
+                     :fk-pairs nil}]
+                   (#'parameters.dashboard/param->fields param)))))))))
+
+(deftest ^:synchronized chain-filter-linked-filter-cache-reuse-test
+  (testing "repeated loads of a linked-filter dropdown hit the cache after the first warehouse query (#85225)"
+    (mt/dataset test-data
+      (let [mp            (mt/metadata-provider)
+            orders        (lib.metadata/table mp (mt/id :orders))
+            orders-qty    (mt/id :orders :quantity)
+            products-cat  (mt/id :products :category)
+            card-query    (nb/add-join (lib/query mp orders) "Products" "Product ID" "ID")
+            join-alias    (lib/current-join-alias (first (lib/joins card-query 0)))]
+        (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id "cat" :name "Category" :slug "cat"
+                                      :type "string/=" :sectionId "string"}
+                                     {:id "qty" :name "Quantity" :slug "qty"
+                                      :type "number/=" :sectionId "number"
+                                      :filteringParameters ["cat"]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id
+                        :card_id      card-id
+                        :parameter_mappings
+                        [{:card_id card-id :parameter_id "cat"
+                          :target  ["dimension" ["field" products-cat {:join-alias join-alias}]]}
+                         {:card_id card-id :parameter_id "qty"
+                          :target  ["dimension" ["field" orders-qty nil]]}]}]
+          (binding [api/*current-user-id*         (mt/user->id :rasta)
+                    qp.perms/*param-values-query* true]
+            (let [dashboard  (t2/select-one :model/Dashboard :id dash-id)
+                  orig       (mt/original-fn #'chain-filter/unremapped-chain-filter)
+                  call-count (atom 0)]
+              (mt/with-dynamic-fn-redefs [chain-filter/unremapped-chain-filter
+                                          (fn [& args]
+                                            (swap! call-count inc)
+                                            (apply orig args))]
+                (dotimes [_ 3]
+                  (parameters.dashboard/chain-filter dashboard "qty" {"cat" "Gizmo"}))
+                (is (= 1 @call-count))))))))))
+
+(deftest ^:synchronized chain-filter-remapping-ignores-unrelated-join-test
+  (testing "FK remapping on a receiver follows the receiver FK, not the card's sender join (#85225)"
+    (mt/dataset avian-singles
+      (let [mp          (mt/metadata-provider)
+            messages    (lib.metadata/table mp (mt/id :messages))
+            receiver-id (mt/id :messages :receiver_id)
+            name-id     (mt/id :users :name)
+            card-query  (nb/add-join (lib/query mp messages) "Users" "Sender ID" "ID")
+            expected    (into #{} (mt/rows (mt/process-query
+                                            (mt/mbql-query messages
+                                              {:breakout [[:field receiver-id nil]
+                                                          [:field name-id {:source-field receiver-id}]]}))))]
+        (mt/with-column-remappings [messages.receiver_id users.name]
+          (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                         :model/Dashboard    {dash-id :id}
+                         {:parameters [{:id "receiver" :name "Receiver" :slug "receiver"
+                                        :type "id" :sectionId "id"}]}
+                         :model/DashboardCard {}
+                         {:dashboard_id dash-id
+                          :card_id      card-id
+                          :parameter_mappings
+                          [{:card_id card-id :parameter_id "receiver"
+                            :target  ["dimension" ["field" receiver-id nil]]}]}]
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                    actual   (into #{} (:values (parameters.dashboard/chain-filter dashboard "receiver" {})))]
+                (is (= expected actual))))))))))
 
 (deftest ^:parallel target->via-path-condition-shapes-test
   (testing "target->via-path matches by alias, so condition operand order doesn't matter"

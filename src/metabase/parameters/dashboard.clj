@@ -139,25 +139,27 @@
    & {:keys [op-override]} :- [:maybe [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]]
   (let [op      (or op-override (params/param-type->op (:type param)))
         options (or (:options param) (params/param-type->default-options (:type param)))]
-    (for [mapping (:mappings param)
-          ;; Resolve the field-id one mapping at a time so each entry keeps its own `:via-path`.
-          :let [field-id (first (params/dashboard-param->field-ids (assoc param :mappings #{mapping})))]
-          :when field-id
-          :let [target   (:target mapping)
-                card     (:card (:dashcard mapping))
-                opts     (lib/parameter-target-field-options target)
-                query    (card->query card)
-                via-path (when (and query (or (:join-alias opts) (:source-field opts)))
-                           (target->via-path query target))
-                ;; With no via-path to pin, fall back to the FK pairs the expanded card actually joins through —
-                ;; the deduper will prefer any parallel edge whose endpoints match a pair.
-                fk-pairs (when (and query (empty? via-path))
-                           (not-empty (query->fk-pairs query)))]]
-      {:field-id field-id
-       :op       op
-       :options  options
-       :via-path via-path
-       :fk-pairs fk-pairs})))
+    (into []
+          (distinct)
+          (for [mapping (:mappings param)
+                ;; Resolve the field-id one mapping at a time so each entry keeps its own `:via-path`.
+                :let [field-id (first (params/dashboard-param->field-ids (assoc param :mappings #{mapping})))]
+                :when field-id
+                :let [target   (:target mapping)
+                      card     (:card (:dashcard mapping))
+                      opts     (lib/parameter-target-field-options target)
+                      query    (card->query card)
+                      via-path (when (and query (or (:join-alias opts) (:source-field opts)))
+                                 (target->via-path query target))
+                      ;; With no via-path to pin, fall back to the FK pairs the expanded card actually joins through —
+                      ;; the deduper will prefer any parallel edge whose endpoints match a pair.
+                      fk-pairs (when (and query (empty? via-path))
+                                 (not-empty (query->fk-pairs query)))]]
+            {:field-id field-id
+             :op       op
+             :options  options
+             :via-path via-path
+             :fk-pairs fk-pairs}))))
 
 (defn- entry->constraint
   "Project a `param->fields` entry down to the `::chain-filter/constraint` shape."
