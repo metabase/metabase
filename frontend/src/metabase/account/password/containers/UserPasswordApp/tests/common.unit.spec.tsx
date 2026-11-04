@@ -145,6 +145,30 @@ describe("UserPasswordApp (OSS)", () => {
     expect(screen.getByLabelText("Confirm your password")).toBeInTheDocument();
   });
 
+  it.each(["google", "jwt", "saml", "ldap"] as const)(
+    "should show password form for %s user who has password",
+    (ssoSource) => {
+      setup({
+        user: createMockUser({ sso_source: ssoSource, has_password: true }),
+      });
+
+      expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+    },
+  );
+
+  it.each(["google", "jwt", "saml", "ldap"] as const)(
+    "should hide password form for %s user without password",
+    (ssoSource) => {
+      setup({
+        user: createMockUser({ sso_source: ssoSource, has_password: false }),
+      });
+
+      expect(
+        screen.queryByLabelText("Current password"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("should not show two-factor authentication settings, even when the instance has it on", async () => {
     setup({ mfaStatus: createMockMfaStatus({ mfa_enabled: true }) });
 

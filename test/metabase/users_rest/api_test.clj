@@ -2220,7 +2220,12 @@
 
 (deftest has-password-test
   (testing "GET /api/user and GET /api/user/:id report to admins whether user has used password"
-    (mt/with-temp [:model/User {sso-user-id :id} {:sso_source "jwt"}
+    (mt/with-temp [:model/User {expired-user-id :id} {}
+                   :model/AuthIdentity _ {:user_id      expired-user-id
+                                          :provider     "password"
+                                          :credentials  {:plaintext_password "somePassword12!!"}
+                                          :last_used_at (t/offset-date-time)
+                                          :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
                    :model/User {used-user-id :id} {}
                    :model/AuthIdentity _ {:user_id      used-user-id
                                           :provider     "password"
@@ -2230,17 +2235,17 @@
                    :model/AuthIdentity _ {:user_id     unused-user-id
                                           :provider    "password"
                                           :credentials {:plaintext_password "somePassword12!!"}}]
-      (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" sso-user-id))))
+      (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
       (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
       (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
       (let [id->has-password (into {}
                                    (map (juxt :id :has_password))
                                    (:data (mt/user-http-request :crowberto :get 200 "user")))]
-        (is (false? (id->has-password sso-user-id)))
+        (is (false? (id->has-password expired-user-id)))
         (is (true? (id->has-password used-user-id)))
         (is (false? (id->has-password unused-user-id))))
       (testing "GET /api/user/current reports it to user themself"
-        (is (=? {:has_password false} (mt/user-http-request sso-user-id :get 200 "user/current")))
+        (is (=? {:has_password false} (mt/user-http-request unused-user-id :get 200 "user/current")))
         (is (=? {:has_password true} (mt/user-http-request used-user-id :get 200 "user/current")))))))
 
 (deftest has-password-hidden-from-group-managers-test

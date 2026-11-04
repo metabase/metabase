@@ -335,7 +335,7 @@
                 is-active?   :is_active :as user}
                (session.db/user-by-email email)]
       (cond
-        ;; SSO users without a password should use their SSO provider, not password reset.
+        ;; SSO users without a used password should use their SSO provider, not password reset.
         (sso/sso-only-user? user-id sso-source)
         (messages/send-password-reset-email! email sso-source nil is-active?)
 

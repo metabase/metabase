@@ -50,7 +50,7 @@
   "The ids among `user-ids` of the Users whose `password` AuthIdentity has been used to log in and has not expired."
   [user-ids :- [:set ::lib.schema.id/user]]
   (set (when (seq user-ids)
-         (t2/select-fn-set :user_id :model/AuthIdentity
+         (t2/select-fn-set :user_id [:model/AuthIdentity :user_id]
                            :user_id      [:in [:auto/param user-ids]]
                            :provider     "password"
                            :last_used_at [:not= nil]
