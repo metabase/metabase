@@ -146,6 +146,7 @@
              {:error/message (str "instance of " (.getCanonicalName klass))}
              (partial instance? klass)])]
     [:or
+     {:json-schema {:type "string"}}
      (instance-of UserLocalizedString)
      (instance-of SiteLocalizedString)]))
 

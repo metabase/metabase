@@ -1433,7 +1433,7 @@
      [:sequential [:map
                    [:key :keyword]
                    [:type [:enum :error :warning]]
-                   [:message [:or :string [:fn i18n/localized-string?]]]]]]]])
+                   [:message [:or :string [:fn {:json-schema {:type "string"}} i18n/localized-string?]]]]]]]])
 
 (api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
   "Get all database-local settings and their availability for the given database."

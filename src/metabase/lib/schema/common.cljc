@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [mapv update-keys every-key? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [mapv update-keys every-key? #?@(:clj [some every?])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -150,7 +150,8 @@
 
 (mr/def ::positive-number
   [:fn
-   {:error/message "positive number"}
+   {:error/message "positive number"
+    :json-schema   {:type "number" :exclusiveMinimum 0}}
    (every-pred number? pos?)])
 
 (mr/def ::visualization-settings
@@ -178,7 +179,7 @@
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
-  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal"}
+  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal", :json-schema {:type "string"}}
                                                        #(instance? java.time.temporal.Temporal %)])]])
 
 (mr/def ::uuid
@@ -457,10 +458,17 @@
    [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
 
 #?(:clj
+   (def ^:private string-encoded-classes
+     "Classes, with their subclasses, whose instances JSON encodes as strings."
+     [java.time.temporal.Temporal java.util.regex.Pattern]))
+
+#?(:clj
    (defn- instance-of-class* [& classes]
-     [:fn {:error/message (str "instance of "
-                               (str/join " or "
-                                         (map #(.getName ^Class %) classes)))}
+     [:fn (cond-> {:error/message (str "instance of "
+                                       (str/join " or "
+                                                 (map #(.getName ^Class %) classes)))}
+            (every? (fn [klass] (some #(isa? klass %) string-encoded-classes)) classes)
+            (assoc :json-schema {:type "string"}))
       (fn [x]
         (some (fn [klass]
                 (instance? klass x))
