@@ -33,9 +33,11 @@
 ;; is gone.
 (derive :hook/search-index dml-capture/hook)
 
+;; Tests that run against an old schema disable updates, and the snapshot select could read columns it lacks.
 (defmethod dml-capture/capture-fields :hook/search-index
   [model op]
   (when (and (= op :delete)
+             (not search.ingestion/*disable-updates*)
              (search/supports-index?))
     (search.spec/hook-where-fields model)))
 

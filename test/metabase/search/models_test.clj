@@ -9,7 +9,12 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
+;; database.
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; Search handoff is deliberately after commit. `with-temp` normally wraps its body in a rollback-only
 ;; transaction, so these integration tests need real commits; `with-temp` still performs explicit cleanup.
@@ -39,6 +44,11 @@
 (deftest capture-fields-disabled-without-engine-test
   (testing "capture-fields is skipped entirely (no pre-select) when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+      (is (nil? (dml-capture/capture-fields :model/Card :delete))))))
+
+(deftest capture-fields-disabled-with-updates-test
+  (testing "capture is skipped while search updates are disabled, as for tests against an old schema"
+    (binding [search.ingestion/*disable-updates* true]
       (is (nil? (dml-capture/capture-fields :model/Card :delete))))))
 
 (deftest only-delete-capture-is-enabled-test
@@ -99,3 +109,16 @@
                          (throw (ex-info "boom" {})))))
           (is (empty? @calls))
           (is (t2/exists? :model/Card :id id)))))))
+
+(deftest superseded-review-delete-keeps-the-card-test
+  (testing "deleting a review that is no longer the most recent leaves the card it reviewed in the index"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {card-id :id} {:name "Reviewed Card"}
+                     :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         false}]
+        (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id))))
+        (t2/delete! :model/ModerationReview :id mr-id)
+        (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id))))))))
