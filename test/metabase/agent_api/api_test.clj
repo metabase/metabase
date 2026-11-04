@@ -1702,6 +1702,33 @@
                                 {:dashcards [{:action "add" :card_id card-id}]})
           (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
 
+(deftest update-dashboard-dashcards-add-restricted-goal-card-test
+  (testing "Adding a card to a shared dashboard needs read access to the sources of its goals"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Card {goal-id :id} {:collection_id (:id restricted)
+                                                :dataset_query (orders-count-query)}
+                     :model/Card {card-id :id} {:name          "Orders gauge"
+                                                :dataset_query (orders-count-query)
+                                                :display       :gauge
+                                                :visualization_settings
+                                                {:gauge.segments [{:min   {:type "card" :id goal-id :column "count"}
+                                                                   :max   100
+                                                                   :color "red"}]}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (doseq [[sharing dashboard-props] [["public"   {:public_uuid (str (random-uuid))}]
+                                           ["embedded" {:enable_embedding true}]]]
+          (testing sharing
+            (mt/with-temp [:model/Dashboard {dash-id :id} dashboard-props]
+              (is (re-find #"You don't have permissions to do that\."
+                           (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                                 {:dashcards [{:action "add" :card_id card-id}]})))
+              (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+              (testing "a user who can read the goal source can add it"
+                (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
+                                      {:dashcards [{:action "add" :card_id card-id}]})
+                (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))))
+
 (deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
