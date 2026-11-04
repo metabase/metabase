@@ -12,18 +12,15 @@ import type {
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
-const getLatestCheck = (cached: HealthCheck | undefined, fresh: HealthCheck) =>
-  cached && Date.parse(cached.checked_at) > Date.parse(fresh.checked_at)
-    ? cached
-    : fresh;
-
 const mergeChecks = (cached: HealthCheck[], fresh: HealthCheck[]) =>
-  fresh.map((check) =>
-    getLatestCheck(
-      cached.find(({ id }) => id === check.id),
-      check,
-    ),
-  );
+  fresh.map((check) => {
+    const cachedCheck = cached.find(({ id }) => id === check.id);
+    const isCachedNewer =
+      cachedCheck &&
+      Date.parse(cachedCheck.checked_at) > Date.parse(check.checked_at);
+
+    return isCachedNewer ? cachedCheck : check;
+  });
 
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
