@@ -194,12 +194,9 @@
   of the earlier major that ran them is not taken for one of the later major:
 
   * the v56 changesets checked into the v55 branch to resolve inadvertently backported migrations in 55;
-  * the v65 view changesets that 1.64.2.1 ran and 64 ships again (#84415);
-  * the v65 changesets that drop HTTP actions, which 64 ships too."
+  * the v65 view changesets that 1.64.2.1 ran and 64 ships again (#84415)."
   {"v56.2025-06-05T16:48:48" 55
    "v56.2025-05-19T16:48:48" 55
-   "v65.2026-10-03T00:00:00" 64
-   "v65.2026-10-03T00:00:01" 64
    "v65.2026-10-07T12:00:00" 64
    "v65.2026-10-07T12:00:01" 64})
 
