@@ -206,16 +206,23 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
+(defn- system-collection-name
+  "The translated name of a system-defined collection, or nil for a collection whose name is its own."
+  [collection]
+  (cond
+    (is-trash? collection) (tru "Trash")
+    (is-library? collection) (tru "Library")
+    (is-library-data-collection? collection) (tru "Data")
+    (is-library-metrics-collection? collection) (tru "Metrics")))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
-  (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))
-    (is-library? collection) (assoc :name (tru "Library"))
-    (is-library-data-collection? collection) (assoc :name (tru "Data"))
-    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
+  (if-let [localized-name (system-collection-name collection)]
+    (assoc collection :name localized-name)
+    collection))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -2031,6 +2038,11 @@
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
                :personal_owner_id (serdes/fk :model/User)}})
+
+(defmethod serdes/load-update! "Collection" [model-name ingested local]
+  (serdes/default-load-update! model-name
+                               (cond-> ingested (system-collection-name local) (dissoc :name))
+                               local))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
