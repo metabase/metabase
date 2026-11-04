@@ -48,6 +48,9 @@ void runFilesFromPool();
 
 // The order matters: each step depends on the ones before it.
 function installEnvironment(): void {
+  // jest's environments allow deeper stacks than Node, so a failure shows the
+  // spec's frames below those of React.
+  Error.stackTraceLimit = 100;
   startFileLog();
   prepareMocks();
   registerModuleHooks();
