@@ -17,7 +17,7 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
-import { Modal, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
@@ -289,29 +289,9 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="md"
-          withCloseButton={false}
-          padding={0}
-        >
-          <NewDatasetModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <NewDatasetModal onClose={onCloseModal} />;
     case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <ImpossibleToCreateModelModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <ImpossibleToCreateModelModal onClose={onCloseModal} />;
     case MODAL_TYPES.PREVIEW_QUERY:
       return <PreviewQueryModal onClose={onCloseModal} />;
     case MODAL_TYPES.QUESTION_EMBED:

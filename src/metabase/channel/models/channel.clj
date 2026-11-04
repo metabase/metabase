@@ -109,7 +109,8 @@
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy           [:name :description :type :details :active]
+  {:schema    ::channel.schema/external-channel
+   :copy           [:name :description :type :details :active]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;

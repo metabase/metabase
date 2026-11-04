@@ -6,7 +6,6 @@ import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 
 import { RunSection } from "./RunSection";
@@ -39,7 +38,6 @@ export const TransformRunPage = () => {
   return (
     <PageContainer data-testid="transforms-run-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformDisconnectedDatabaseBanner transform={transform} />
       <RunSection
         transform={transform}
         readOnly={readOnly}

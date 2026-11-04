@@ -31,7 +31,6 @@
    [metabase.metabot.tools.static-viz :as tools.static-viz]
    [metabase.metabot.tools.subscriptions :as tools.subscriptions]
    [metabase.metabot.tools.timelines :as tools.timelines]
-   [metabase.metabot.tools.todo :as tools.todo]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -81,9 +80,6 @@
  [tools.snippets
   list-snippets-tool
   get-snippet-details-tool]
- [tools.todo
-  todo-write-tool
-  todo-read-tool]
  [tools.timelines
   list-timelines-tool
   get-timeline-details-tool]

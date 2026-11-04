@@ -49,7 +49,7 @@
      (map (partial pulse-card dashboard-id) dashcards)
      [(make-slack-channel schedule channel)]
      (-> dashboard
-         (select-keys [:collection_id :collection_position :name :parameters])
+         (select-keys [:name :parameters])
          (assoc :dashboard_id  dashboard-id
                 :creator_id    api/*current-user-id*
                 :skip_if_empty false)))))
@@ -105,13 +105,14 @@
 (defrecord CreateDashboardSubscriptionTool []
   tools/Tool
   (declaration [_]
-    {:name        "create_dashboard_subscription"
-     :description tool-description
-     :scope       scope/agent-dashboard-subscribe
-     :args        [:map {:closed true}
-                   [:dashboard_id :int]
-                   [:slack_channel [:string {:min 1}]]
-                   [:schedule tools.create-alert/schedule-schema]]})
+    {:name            "create_dashboard_subscription"
+     :description     tool-description
+     :scope           scope/agent-dashboard-subscribe
+     :args            [:map {:closed true}
+                       [:dashboard_id :int]
+                       [:slack_channel [:string {:min 1}]]
+                       [:schedule tools.create-alert/schedule-schema]]
+     :metabot/writes? true})
 
   (handle [_ {:keys [dashboard_id slack_channel schedule]} _ctx]
     (tools.create-alert/check-slack-configured!)

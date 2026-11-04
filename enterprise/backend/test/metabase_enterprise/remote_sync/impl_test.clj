@@ -14,6 +14,9 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.remote-sync.test-util :as remote-sync.tu]
@@ -34,6 +37,13 @@
   remote-sync.tu/allow-remote-synced-collections (fn [f]
                                                    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
                                                      (test-helpers/clean-remote-sync-state f))))
+
+(defn- count-definition
+  "A Measure definition counting the rows of the Table `table-id` in the Database `db-id`."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 ;; import! tests
 
@@ -1171,11 +1181,13 @@
                          :model/Measure {_active-measure-id :id}
                          {:name "Active Measure"
                           :table_id table-id
+                          :definition (count-definition db-id table-id)
                           :entity_id "active-measure-xxxxxx"
                           :archived false}
                          :model/Measure {_archived-measure-id :id}
                          {:name "Archived Measure"
                           :table_id table-id
+                          :definition (count-definition db-id table-id)
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
