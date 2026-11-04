@@ -24,6 +24,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
@@ -812,7 +813,7 @@
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
-      (let [get-profile profiles/get-profile
+      (let [get-profile (mt/original-fn #'profiles/get-profile)
             call-count  (atom 0)
             tool-call   (fn [n]
                           [{:type      :tool-input
@@ -841,6 +842,118 @@
           (let [finish (run-loop [tool-call (constantly [{:type :text :text "Done"}])])]
             (is (= 2 @call-count))
             (is (= {:type :finish :finish-reason :stop} finish))))))))
+
+(def ^:private step-limit-text
+  "Metabot reached its step limit before it could finish. Try a more specific request.")
+
+(def ^:private read-calls
+  "The name and arguments of a tool call that reads, for each profile that the step-limit tests run."
+  {:document-generate-content ["list_available_fields" {:table_ids [] :model_ids [] :metric_ids []}]
+   :sql                       ["list_snippets" {}]
+   :internal                  ["search" {}]
+   :slackbot                  ["search" {}]})
+
+(defn- step-limit-turn!
+  "Run a turn of `profile-id` whose model reads until a step limit of 2, each call reporting 100 prompt and 20
+  completion tokens, and answers any later call with the stream `(last-response)` returns, which may throw. Return
+  the requests that the model got and the turn's parts."
+  [profile-id last-response & {:keys [request-canceled-chan]}]
+  (let [get-profile          (mt/original-fn #'profiles/get-profile)
+        [function arguments] (read-calls profile-id)
+        requests             (atom [])]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
+                                  metabot-search/search (constantly [])
+                                  openrouter/openrouter (fn [request]
+                                                          (let [n (count (swap! requests conj request))]
+                                                            (if (<= n 2)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        (str "t" n)
+                                                                 :function  function
+                                                                 :arguments arguments}
+                                                                {:type  :usage
+                                                                 :usage {:promptTokens 100 :completionTokens 20}}])
+                                                              (last-response))))]
+        {:parts    (into [] (run-agent-loop
+                             (cond-> {:messages   [{:role :user :content "Chart revenue by month"}]
+                                      :profile-id profile-id
+                                      :context    (if (= :slackbot profile-id) {:slack_channel_id "D0123"} {})}
+                               request-canceled-chan (assoc :request-canceled-chan request-canceled-chan))))
+         :requests @requests}))))
+
+(deftest step-limit-reply-test
+  (mt/as-admin
+    (testing "in a profile that requires a tool call, a turn at the step limit ends with the reply of one last call
+             that can call no tool"
+      (doseq [profile-id [:document-generate-content :sql]]
+        (testing profile-id
+          (let [reply "The customer table has no link to orders, so I couldn't chart revenue by customer segment."
+                {:keys [parts requests]} (step-limit-turn! profile-id
+                                                           #(mut/mock-llm-response [{:type :text :text reply}]))
+                last-request             (last requests)]
+            (is (= 3 (count requests)))
+            (is (=? {:tool_choice "none" :tools seq} last-request))
+            (is (=? {:role :user :content #(str/includes? % "step limit")} (last (:input last-request))))
+            (is (= reply (str/join (keep #(when (= :text (:type %)) (:text %)) parts))))
+            (is (=? [{:type :text}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (take-last 3 parts)))))))
+    (testing "the web chat and Slack profiles end at the step limit with no other call"
+      (doseq [profile-id [:internal :slackbot]]
+        (testing profile-id
+          (let [{:keys [parts requests]} (step-limit-turn! profile-id
+                                                           #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))]
+            (is (= 2 (count requests)))
+            (is (=? [{:type :tool-output}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (take-last 3 parts)))))))))
+
+(deftest step-limit-reply-fallback-test
+  (mt/as-admin
+    (testing "a last call that fails, throws or answers with no text leaves the fixed reply"
+      (doseq [[ending last-response] [["fails" #(mut/mock-llm-response [{:type :error :errorText "Overloaded"}])]
+                                      ["throws" #(throw (ex-info "The provider closed the stream" {}))]
+                                      ["answers with no text" #(mut/mock-llm-response [])]]]
+        (testing ending
+          (let [{:keys [parts requests]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                                           (step-limit-turn! :document-generate-content last-response))]
+            (is (= 3 (count requests)))
+            (is (=? [{:type :text :text step-limit-text}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (take-last 3 parts)))
+            (is (not-any? #(= :error (:type %)) parts)
+                "the last call's failure is not the turn's")))))
+    (testing "a canceled request makes no last call"
+      (let [canceled (a/promise-chan)]
+        (a/>!! canceled true)
+        (let [{:keys [parts requests]} (step-limit-turn! :document-generate-content
+                                                         #(mut/mock-llm-response [{:type :text :text "Unexpected"}])
+                                                         :request-canceled-chan canceled)]
+          (is (= 2 (count requests)))
+          (is (=? {:type :text :text step-limit-text}
+                  (last (filter #(= :text (:type %)) parts)))))))))
+
+(deftest step-limit-reply-usage-test
+  (testing "the usage that the last call reports before its stream breaks counts toward the turn's saved usage"
+    (mt/as-admin
+      (let [broken-stream   #(eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                       (chat-completions/usage-once
+                                        (reify clojure.lang.IReduceInit
+                                          (reduce [_ rf init]
+                                            (rf init {:usage {:prompt_tokens 700 :completion_tokens 30}})
+                                            (throw (java.io.IOException. "Connection reset after the usage chunk"))))))
+            {:keys [parts]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                              (step-limit-turn! :document-generate-content broken-stream))]
+        (is (=? {:type :text :text step-limit-text}
+                (last (filter #(= :text (:type %)) parts))))
+        (is (= {test-provider {:prompt 900 :completion 70}}
+               (metabot.persistence/extract-usage parts)))
+        (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
