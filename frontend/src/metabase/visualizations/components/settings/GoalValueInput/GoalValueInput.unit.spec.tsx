@@ -765,6 +765,50 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a source in the trash like any other source", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Low and high",
+        archived: true,
+        result_metadata: [
+          createMockField({
+            name: "LOW",
+            display_name: "Minimum",
+            base_type: "type/Integer",
+          }),
+          createMockField({
+            name: "HIGH",
+            display_name: "Maximum",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities(
+      createMultiColumnSourceResults([[300, 600]]),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMultiColumnSourceResults([[300, 600]]),
+      }),
+      value: { type: "card", id: 9, column: "HIGH" },
+    });
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("600")).toBeInTheDocument();
+
+    await userEvent.click(pill);
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Low and high/ }),
+    ).toBeInTheDocument();
+    const lowItem = await screen.findByRole("menuitem", { name: /Minimum/ });
+    expect(await within(lowItem).findByText("300")).toBeInTheDocument();
+    expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+  });
+
   it("exposes the menu relationship on the pill for a11y", () => {
     setup({ value: "sum" });
 
