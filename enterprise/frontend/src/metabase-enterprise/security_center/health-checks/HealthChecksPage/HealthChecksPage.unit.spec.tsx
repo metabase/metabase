@@ -376,6 +376,7 @@ describe("HealthChecksPage", () => {
     { checkId: "sso-login", href: "/admin/settings/authentication" },
     { checkId: "scim-provisioning", href: "/admin/settings/authentication" },
     { checkId: "mfa-required", href: "/admin/settings/authentication" },
+    { checkId: "supported-version", href: "/admin/settings/updates" },
   ])("links $checkId to its settings", async ({ checkId, href }) => {
     await setup({ checks: [{ ...FAILING_CHECK, id: checkId }] });
 

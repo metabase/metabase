@@ -99,4 +99,5 @@ export const getHealthCheckSettingsUrl = (checkId: HealthCheckId) =>
     .with("sso-login", "scim-provisioning", "mfa-required", () =>
       Urls.authenticationSettings(),
     )
+    .with("supported-version", () => Urls.updatesSettings())
     .otherwise(() => null);

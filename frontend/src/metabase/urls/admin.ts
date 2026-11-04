@@ -154,6 +154,8 @@ export function generalSettings() {
 
 export const authenticationSettings = () => "/admin/settings/authentication";
 
+export const updatesSettings = () => "/admin/settings/updates";
+
 export function domainsSettings() {
   return "/admin/settings/domains";
 }
