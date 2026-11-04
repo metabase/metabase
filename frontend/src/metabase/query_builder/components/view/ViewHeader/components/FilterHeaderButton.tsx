@@ -28,7 +28,11 @@ export function FilterHeaderButton({
   const query = question.query();
   const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
   const hasFilters = items.length > 0;
-  const label = isExpanded ? t`Hide filters` : t`Show filters`;
+  const label = !hasFilters
+    ? t`Add a filter`
+    : isExpanded
+      ? t`Hide filters`
+      : t`Show filters`;
 
   useRegisterShortcut([
     {
@@ -60,7 +64,9 @@ export function FilterHeaderButton({
             </Badge>
           )
         }
-        onClick={isExpanded ? onCollapse : onExpand}
+        // With no filters there is nothing to show: the click opens the bar
+        // with its caret, as the shortcut does.
+        onClick={!hasFilters ? onAddFilter : isExpanded ? onCollapse : onExpand}
         aria-expanded={isExpanded}
         data-testid="question-filter-header"
       >
