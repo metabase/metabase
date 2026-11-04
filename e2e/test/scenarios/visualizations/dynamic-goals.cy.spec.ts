@@ -678,10 +678,12 @@ describe("scenarios > visualizations > dynamic goals", () => {
         "contain.text",
         "The question's result must be a single value or row.",
       )
-      .and("contain.text", "This value isn't a number")
       .and("contain.text", "This column no longer exists")
       .and("contain.text", "This source no longer exists")
       .and("contain.text", "You don't have permissions to do that.");
+    H.vizSettingsSidebar()
+      .findAllByText("This value isn't a number")
+      .should("have.length", 2);
 
     cy.log("Line: the chart renders without the goal line, with a warning");
     cy.get<CardId>("@lineId").then((id) => H.visitQuestion(id));
