@@ -21,6 +21,7 @@ export interface TablePickerTreeNode extends TreeNodeData {
   tableId?: TableId;
   table?: Table;
   isDisabled?: boolean;
+  isNested?: boolean;
   children?: TablePickerTreeNode[];
 }
 

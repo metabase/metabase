@@ -7,8 +7,8 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   type RegistryProperty,
+  useEavBinding,
   usePropertyRegistry,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
 import {
   Badge,
@@ -34,6 +34,9 @@ import type { Table } from "metabase-types/api";
 import {
   PropertySignalBadge,
   formatShare,
+  getEntityNoun,
+  getMissingBindingMessage,
+  getOpenSignals,
   getPropertyIcon,
   needsAttention,
 } from "../../PropertyDetailsPanel/property-labels";
@@ -90,8 +93,8 @@ function PropertyListSkeleton() {
 }
 
 export function TablePropertyList({ table }: { table: Table }) {
-  const { getTableStructure } = useTableStructures();
-  const state = usePropertyRegistry(table, getTableStructure(table).eav);
+  const state = usePropertyRegistry(table);
+  const noun = getEntityNoun(useEavBinding(table).entityTable);
   const { selectedPropertyName, setSelectedPropertyName } =
     usePropertySelection(table.id);
   const [filters, setFilters] = useState<PropertyFilters>(EMPTY_FILTERS);
@@ -100,12 +103,7 @@ export function TablePropertyList({ table }: { table: Table }) {
     useDisclosure();
 
   if (state.status === "unbound") {
-    return (
-      <EmptyState
-        message={t`Pick the entity, property and value columns in Details to see this table's properties.`}
-        spacing="sm"
-      />
-    );
+    return <EmptyState message={getMissingBindingMessage()} spacing="sm" />;
   }
   if (state.status === "loading") {
     return <PropertyListSkeleton />;
@@ -126,13 +124,15 @@ export function TablePropertyList({ table }: { table: Table }) {
   return (
     <Stack gap="lg">
       <Text size="sm" c="text-secondary">
-        {t`Profiled from ${state.registry.rowCount.toLocaleString()} rows covering ${state.registry.entityCount.toLocaleString()} entities.`}
+        {state.registry.hasDefinitions
+          ? t`Labels and types come from the definitions table. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`
+          : t`There's no definitions table, so labels and types are inferred from ${state.registry.rowCount.toLocaleString()} values. Coverage is the share of all ${state.registry.entityCount.toLocaleString()} ${noun.plural} with a value.`}
       </Text>
       <Group gap="sm" wrap="nowrap">
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
-          placeholder={t`Search properties`}
+          placeholder={t`Search custom properties`}
           value={search}
           onChange={(event) => setSearch(event.currentTarget.value)}
         />
@@ -186,11 +186,16 @@ export function TablePropertyList({ table }: { table: Table }) {
         <Stack gap={rem(12)} role="list">
           {visibleProperties.map((property) => (
             <PropertyItem
-              key={property.name}
+              key={property.key}
               property={property}
+              mergedIntoLabel={
+                properties.find(({ name }) => name === property.mergedInto)
+                  ?.displayName
+              }
               totalEntityCount={state.registry.entityCount}
-              active={property.name === selectedPropertyName}
-              onSelect={() => setSelectedPropertyName(property.name)}
+              entityPlural={noun.plural}
+              active={property.key === selectedPropertyName}
+              onSelect={() => setSelectedPropertyName(property.key)}
             />
           ))}
         </Stack>
@@ -256,12 +261,16 @@ function PropertyFilterPopover({
 
 function PropertyItem({
   property,
+  mergedIntoLabel,
   totalEntityCount,
+  entityPlural,
   active,
   onSelect,
 }: {
   property: RegistryProperty;
+  mergedIntoLabel: string | undefined;
   totalEntityCount: number;
+  entityPlural: string;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -300,16 +309,22 @@ function PropertyItem({
             {property.displayName}
           </Text>
           <Group gap="xs" wrap="nowrap" flex="0 0 auto" ml="sm">
-            {property.isHidden ? (
-              <Text size="sm" c="text-secondary-opaque">{t`Hidden`}</Text>
-            ) : (
-              property.signals.map((signal) => (
-                <PropertySignalBadge key={signal.type} signal={signal} />
-              ))
+            {property.mergedInto != null && (
+              <Text size="sm" c="text-secondary-opaque">
+                {t`Merged into ${mergedIntoLabel ?? property.mergedInto}`}
+              </Text>
             )}
+            {property.isHidden && property.mergedInto == null && (
+              <Text size="sm" c="text-secondary-opaque">{t`Hidden`}</Text>
+            )}
+            {!property.isHidden &&
+              property.mergedInto == null &&
+              getOpenSignals(property).map((signal) => (
+                <PropertySignalBadge key={signal.type} signal={signal} />
+              ))}
           </Group>
           <Tooltip
-            label={t`Coverage: ${formatShare(property.coverage)} of the entities in this table have this property (${property.entityCount.toLocaleString()} of ${totalEntityCount.toLocaleString()}).`}
+            label={t`Coverage: ${formatShare(property.coverage)} of all ${entityPlural} have this property (${property.entityCount.toLocaleString()} of ${totalEntityCount.toLocaleString()}).`}
             multiline
             w={rem(240)}
           >

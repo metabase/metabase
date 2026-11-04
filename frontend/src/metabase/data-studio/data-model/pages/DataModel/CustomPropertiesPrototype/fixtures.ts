@@ -17,13 +17,24 @@ export const CUSTOMERS_ID = 71;
 export const CUSTOMER_PROPERTIES_ID = 72;
 export const ORDERS_ID = 73;
 export const CUSTOMER_PROPERTY_COLUMNS_ID = 74;
+export const CUSTOM_FIELD_ID = 75;
+export const DEALS_ID = 76;
+export const DEAL_PROPERTY_ID = 77;
 
 export const CUSTOMERS_ID_FIELD_ID = 7101;
 export const CUSTOMERS_PROPERTIES_LINK_FIELD_ID = 7106;
 export const PROPERTY_CUSTOMER_ID_FIELD_ID = 7201;
-export const PROPERTY_NAME_FIELD_ID = 7202;
+export const PROPERTY_FIELD_ID_FIELD_ID = 7202;
 export const PROPERTY_VALUE_FIELD_ID = 7203;
-export const PROPERTY_UPDATED_AT_FIELD_ID = 7204;
+export const CUSTOM_FIELD_ID_FIELD_ID = 7501;
+export const CUSTOM_FIELD_NAME_FIELD_ID = 7502;
+export const CUSTOM_FIELD_TITLE_FIELD_ID = 7503;
+export const CUSTOM_FIELD_TYPE_FIELD_ID = 7504;
+export const DEAL_AMOUNT_FIELD_ID = 7603;
+export const DEAL_SEATS_REQUESTED_FIELD_ID = 7609;
+export const DEAL_PROPERTY_NAME_FIELD_ID = 7701;
+export const DEAL_PROPERTY_LABEL_FIELD_ID = 7702;
+export const DEAL_PROPERTY_TYPE_FIELD_ID = 7703;
 export const PIVOT_CUSTOMER_ID_FIELD_ID = 7401;
 export const PIVOT_PLAN_FIELD_ID = 7402;
 export const PIVOT_SEATS_FIELD_ID = 7403;
@@ -102,7 +113,7 @@ const customersFields = (withPropertiesLink: boolean) =>
       : []),
   ]);
 
-const customerPropertiesFields = createFields(CUSTOMER_PROPERTIES_ID, [
+const customFieldValueFields = createFields(CUSTOMER_PROPERTIES_ID, [
   {
     id: PROPERTY_CUSTOMER_ID_FIELD_ID,
     name: "customer_id",
@@ -114,26 +125,151 @@ const customerPropertiesFields = createFields(CUSTOMER_PROPERTIES_ID, [
     fk_target_field_id: CUSTOMERS_ID_FIELD_ID,
   },
   {
-    id: PROPERTY_NAME_FIELD_ID,
-    name: "property_name",
-    display_name: "Property name",
-    semantic_type: "type/Category",
-    has_field_values: "list",
+    id: PROPERTY_FIELD_ID_FIELD_ID,
+    name: "custom_field_id",
+    display_name: "Custom field ID",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    database_type: "int4",
+    semantic_type: "type/FK",
+    fk_target_field_id: CUSTOM_FIELD_ID_FIELD_ID,
   },
   {
     id: PROPERTY_VALUE_FIELD_ID,
-    name: "property_value",
-    display_name: "Property value",
+    name: "value",
+    display_name: "Value",
     has_field_values: "search",
   },
+]);
+
+const customFieldFields = createFields(CUSTOM_FIELD_ID, [
   {
-    id: PROPERTY_UPDATED_AT_FIELD_ID,
-    name: "updated_at",
-    display_name: "Updated at",
+    id: CUSTOM_FIELD_ID_FIELD_ID,
+    name: "id",
+    display_name: "ID",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    database_type: "int4",
+    semantic_type: "type/PK",
+  },
+  {
+    id: CUSTOM_FIELD_NAME_FIELD_ID,
+    name: "name",
+    display_name: "Name",
+  },
+  {
+    id: CUSTOM_FIELD_TITLE_FIELD_ID,
+    name: "title",
+    display_name: "Title",
+    semantic_type: "type/Title",
+  },
+  {
+    id: CUSTOM_FIELD_TYPE_FIELD_ID,
+    name: "field_type",
+    display_name: "Field type",
+    semantic_type: "type/Category",
+    has_field_values: "list",
+  },
+]);
+
+const dealsFields = createFields(DEALS_ID, [
+  {
+    id: 7601,
+    name: "id",
+    display_name: "ID",
+    base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
+    database_type: "int8",
+    semantic_type: "type/PK",
+  },
+  {
+    id: 7602,
+    name: "property_dealname",
+    display_name: "Deal name",
+    semantic_type: "type/Name",
+  },
+  {
+    id: DEAL_AMOUNT_FIELD_ID,
+    name: "property_amount",
+    display_name: "Amount",
+    base_type: "type/Decimal",
+    effective_type: "type/Decimal",
+    database_type: "numeric",
+    semantic_type: "type/Currency",
+  },
+  {
+    id: 7604,
+    name: "property_createdate",
+    display_name: "Create date",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     database_type: "timestamp",
-    semantic_type: "type/UpdatedTimestamp",
+    semantic_type: "type/CreationTimestamp",
+  },
+  {
+    id: 7605,
+    name: "property_dealstage",
+    display_name: "Deal stage",
+    semantic_type: "type/Category",
+  },
+  {
+    id: 7606,
+    name: "property_lead_src_c",
+    display_name: "Lead source",
+    semantic_type: "type/Category",
+  },
+  {
+    id: 7607,
+    name: "property_partner_referral",
+    display_name: "Partner referral",
+    base_type: "type/Boolean",
+    effective_type: "type/Boolean",
+    database_type: "bool",
+  },
+  {
+    id: 7608,
+    name: "property_implementation_start",
+    display_name: "Implementation start",
+    base_type: "type/Date",
+    effective_type: "type/Date",
+    database_type: "date",
+  },
+  {
+    id: DEAL_SEATS_REQUESTED_FIELD_ID,
+    name: "property_seats_requested",
+    display_name: "Requested seats",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    database_type: "int4",
+    semantic_type: "type/Quantity",
+  },
+  {
+    id: 7610,
+    name: "property_hs_legacy_score",
+    display_name: "Property hs legacy score",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    database_type: "int4",
+    semantic_type: "type/Score",
+  },
+]);
+
+const dealPropertyFields = createFields(DEAL_PROPERTY_ID, [
+  {
+    id: DEAL_PROPERTY_NAME_FIELD_ID,
+    name: "name",
+    display_name: "Name",
+  },
+  {
+    id: DEAL_PROPERTY_LABEL_FIELD_ID,
+    name: "label",
+    display_name: "Label",
+  },
+  {
+    id: DEAL_PROPERTY_TYPE_FIELD_ID,
+    name: "type",
+    display_name: "Type",
+    semantic_type: "type/Category",
   },
 ]);
 
@@ -276,17 +412,47 @@ export function createWarehouse({
       display_name: "Customers",
       entity_type: "entity/UserTable",
       fields: customersFields(withPropertyColumns),
-      estimated_row_count: 2320,
+      estimated_row_count: 2480,
     }),
     createMockTable({
       id: CUSTOMER_PROPERTIES_ID,
       db_id: WAREHOUSE_ID,
       schema: "public",
-      name: "customer_properties",
-      display_name: "Customer properties",
+      name: "custom_field_value",
+      display_name: "Custom field values",
       entity_type: "entity/GenericTable",
-      fields: customerPropertiesFields,
-      estimated_row_count: 48210,
+      fields: customFieldValueFields,
+      estimated_row_count: 18464,
+    }),
+    createMockTable({
+      id: CUSTOM_FIELD_ID,
+      db_id: WAREHOUSE_ID,
+      schema: "public",
+      name: "custom_field",
+      display_name: "Custom fields",
+      entity_type: "entity/GenericTable",
+      fields: customFieldFields,
+      estimated_row_count: 14,
+    }),
+    createMockTable({
+      id: DEALS_ID,
+      db_id: WAREHOUSE_ID,
+      schema: "public",
+      name: "deals",
+      display_name: "Deals",
+      entity_type: "entity/GenericTable",
+      fields: dealsFields,
+      estimated_row_count: 5130,
+    }),
+    createMockTable({
+      id: DEAL_PROPERTY_ID,
+      db_id: WAREHOUSE_ID,
+      schema: "public",
+      name: "deal_property",
+      display_name: "Deal properties",
+      entity_type: "entity/GenericTable",
+      fields: dealPropertyFields,
+      estimated_row_count: 9,
     }),
     createMockTable({
       id: ORDERS_ID,
@@ -328,22 +494,14 @@ export const WAREHOUSE_FIELD_VALUES: GetFieldValuesResponse[] = [
     values: values("Canada", "Germany", "Japan", "United Kingdom", "USA"),
   }),
   createMockFieldValues({
-    field_id: PROPERTY_NAME_FIELD_ID,
+    field_id: CUSTOM_FIELD_TYPE_FIELD_ID,
     values: values(
-      "churn_risk",
-      "csm_email",
-      "hubspot_lifecycle_stage",
-      "industry",
-      "is_beta_tester",
-      "legacy_billing_id",
-      "mrr_usd",
-      "nps_score",
-      "plan",
-      "Plan Tier",
-      "region",
-      "seats",
-      "signup_source",
-      "trial_ends_on",
+      "checkbox",
+      "currency",
+      "date",
+      "dropdown",
+      "number",
+      "text",
     ),
   }),
   createMockFieldValues({
@@ -375,16 +533,12 @@ export const CURATED_REGISTRY = {
       synonyms: ["licenses", "users"],
     },
     mrr_usd: {
-      displayName: "MRR",
       description: "Monthly recurring revenue in US dollars",
       synonyms: ["revenue"],
     },
     csm_email: {
-      displayName: "CSM",
       description: "Customer success manager who owns the account",
     },
-    nps_score: { displayName: "NPS" },
-    hubspot_lifecycle_stage: { displayName: "Lifecycle stage" },
   },
 };
 
@@ -398,18 +552,18 @@ FROM
   LEFT JOIN (
     SELECT
       "customer_id",
-      MAX(CASE WHEN "property_name" = 'plan' THEN "property_value" END) AS "plan",
-      MAX(CASE WHEN "property_name" = 'region' THEN "property_value" END) AS "region",
+      MAX(CASE WHEN "custom_field_id" = 1 THEN "value" END) AS "plan",
+      MAX(CASE WHEN "custom_field_id" = 2 THEN "value" END) AS "region",
       MAX(
         CASE
-          WHEN "property_name" = 'seats'
-          AND "property_value" ~ '^[0-9]+$' THEN CAST("property_value" AS INTEGER)
+          WHEN "custom_field_id" = 5
+          AND "value" ~ '^[0-9]+$' THEN CAST("value" AS INTEGER)
         END
       ) AS "seats"
     FROM
-      "public"."customer_properties"
+      "public"."custom_field_value"
     WHERE
-      "property_name" IN ('plan', 'region', 'seats')
+      "custom_field_id" IN (1, 2, 5)
     GROUP BY
       "customer_id"
   ) AS "custom_properties" ON "public"."customers"."id" = "custom_properties"."customer_id"

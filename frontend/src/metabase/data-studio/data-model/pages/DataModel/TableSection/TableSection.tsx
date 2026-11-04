@@ -57,10 +57,6 @@ const TableSectionBase = ({
     isRoleA(structure.role, "role/CustomPropertyTable");
   const isHistoryTable =
     structure.role != null && isRoleA(structure.role, "role/HistoryDimension");
-  // Ad-hoc query results are dropped as soon as nothing reads them, so the
-  // Properties tab would re-profile on every visit. Reading the registry here,
-  // where it outlives tab switches, keeps it loaded while the table is open.
-  usePropertyRegistry(table, isCustomPropertyTable ? structure.eav : null);
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -93,13 +89,14 @@ const TableSectionBase = ({
   );
   return (
     <Stack data-testid="table-section" gap="lg">
+      {isCustomPropertyTable && <KeepPropertyRegistryLoaded table={table} />}
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="xl">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             {isCustomPropertyTable && (
-              <Tabs.Tab value="properties">{t`Properties`}</Tabs.Tab>
+              <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
             )}
             {isHistoryTable && (
               <Tabs.Tab value="versions">{t`Versions`}</Tabs.Tab>
@@ -219,5 +216,13 @@ const TableSectionBase = ({
     </Stack>
   );
 };
+
+// Ad-hoc query results are dropped as soon as nothing reads them, so the
+// Properties tab would re-profile on every visit. Reading the registry here,
+// where it outlives tab switches, keeps it loaded while the table is open.
+function KeepPropertyRegistryLoaded({ table }: { table: Table }) {
+  usePropertyRegistry(table);
+  return null;
+}
 
 export const TableSection = memo(TableSectionBase);

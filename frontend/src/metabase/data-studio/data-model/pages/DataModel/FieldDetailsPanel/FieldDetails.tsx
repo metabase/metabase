@@ -27,6 +27,7 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
+import { CustomFieldSection } from "./CustomFieldSection";
 import {
   FieldCorrectionInput,
   FieldHistoryRoleInput,
@@ -146,6 +147,7 @@ export function FieldDetails({
           )}
         </DetailsTable>
       </SidebarSection>
+      <CustomFieldSection field={field} table={table} />
       <SidebarSection title={t`Metadata`}>
         <MetadataSection
           field={field}

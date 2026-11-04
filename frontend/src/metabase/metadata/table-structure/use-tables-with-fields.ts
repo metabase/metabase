@@ -29,6 +29,21 @@ export function useTableFields(
     : database?.tables?.find(({ id }) => id === table.id)?.fields;
 }
 
+export function useSchemaTables(table: Pick<Table, "db_id" | "schema">): {
+  tables: Table[];
+  isLoading: boolean;
+} {
+  const { currentData: database, isLoading } = useGetDatabaseQuery(
+    getDatabaseRequest(table.db_id),
+  );
+  const tables = useMemo(
+    () =>
+      (database?.tables ?? []).filter(({ schema }) => schema === table.schema),
+    [database, table.schema],
+  );
+  return { tables, isLoading };
+}
+
 /**
  * The given tables with their fields, loaded per database while `isEnabled`.
  * Tables keep their own data; only `fields` comes from the database.

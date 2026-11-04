@@ -18,10 +18,13 @@ import {
   MetabotComparisonPrototype,
   MetabotDiscoveryPrototype,
 } from "./MetabotPrototype";
+import { ModelPrototype } from "./ModelPrototype";
 import { QueryBuilderPrototype } from "./QueryBuilderPrototype";
 import {
   CURATED_REGISTRY,
   CUSTOMER_PROPERTIES_ID,
+  DEALS_ID,
+  DEAL_AMOUNT_FIELD_ID,
   EMPTY_TABLE_STRUCTURE,
   PIVOTED_CUSTOMERS_SQL,
   WAREHOUSE_FIELD_VALUES,
@@ -71,6 +74,7 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
   return (
     <div style={{ height: "100vh" }}>
       <Wrapper>
+        <Route path="model/:slug" element={<ModelPrototype />} />
         <Route path="data-studio" element={<DataStudioLayout />}>
           <Route path="data">
             <Route element={<DataSectionLayout />}>
@@ -91,6 +95,20 @@ export const DataStudioRegistry = {
         schemaName: "public",
         tableId: CUSTOMER_PROPERTIES_ID,
         tab: "details",
+      })}
+    />
+  ),
+};
+
+export const DataStudioWildcardField = {
+  render: () => (
+    <DataStudioPage
+      initialRoute={Urls.dataStudioData({
+        databaseId: WAREHOUSE_ID,
+        schemaName: "public",
+        tableId: DEALS_ID,
+        tab: "field",
+        fieldId: DEAL_AMOUNT_FIELD_ID,
       })}
     />
   ),

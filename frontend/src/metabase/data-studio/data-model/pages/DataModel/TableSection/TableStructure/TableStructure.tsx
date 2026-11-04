@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useRef, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
   DetailsRow,
@@ -11,7 +11,6 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
-  type EavBinding,
   type HistoryBinding,
   type TableStructure as TableStructureValue,
   getPeriodGranularityOptions,
@@ -22,7 +21,6 @@ import {
   getTableRoleRowDescription,
   isRoleA,
   isTableRole,
-  usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -30,12 +28,10 @@ import {
   Badge,
   Box,
   Button,
-  Code,
   Group,
-  Loader,
+  Pill,
   Select,
   Stack,
-  Switch,
   Text,
   Transition,
   type TransitionProps,
@@ -45,6 +41,8 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { DetailsEditableText } from "../../DetailPanel";
+import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
+import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
 import {
   CurrentRuleHint,
   DefaultSegmentInput,
@@ -206,14 +204,14 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
         mounted={role != null && isRoleA(role, "role/CustomPropertyTable")}
         onReveal={scrollStructureToTop}
       >
-        <EavBindingSection
+        <CustomPropertiesSection
           table={table}
-          fields={fields}
-          binding={structure.eav}
           disabled={readOnly}
           onChange={(eav) => setEavBinding(table, eav)}
         />
       </RevealTransition>
+
+      <EntityCustomPropertiesSection table={table} />
     </>
   );
 }
@@ -370,7 +368,9 @@ function GrainFields({
             })}
             aria-label={t`Open ${field.display_name}`}
           >
-            <Code className={S.grainChip}>{field.name}</Code>
+            <Pill size="md" className={S.grainPill}>
+              {field.display_name}
+            </Pill>
           </Link>
         );
       })}
@@ -666,159 +666,5 @@ function HistoryBindingSection({
         )}
       </DetailsTable>
     </SidebarSection>
-  );
-}
-
-function EavBindingSection({
-  table,
-  fields,
-  binding,
-  disabled,
-  onChange,
-}: {
-  table: Table;
-  fields: Field[];
-  binding: EavBinding;
-  disabled: boolean;
-  onChange: (binding: Partial<EavBinding>) => void;
-}) {
-  return (
-    <SidebarSection title={t`Custom properties`}>
-      <Text size="sm" c="text-secondary">
-        {t`Each row is one property value of a thing. Properties can be pivoted into columns of that thing.`}
-      </Text>
-      <DetailsTable>
-        <DetailsRow
-          label={t`Entity key`}
-          value={
-            <FieldSelect
-              label={t`Entity key`}
-              fields={fields}
-              value={binding.entityKeyFieldId}
-              disabled={disabled}
-              onChange={(entityKeyFieldId) => onChange({ entityKeyFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Property field`}
-          value={
-            <FieldSelect
-              label={t`Property field`}
-              fields={fields}
-              value={binding.propertyFieldId}
-              disabled={disabled}
-              onChange={(propertyFieldId) => onChange({ propertyFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Value field`}
-          value={
-            <FieldSelect
-              label={t`Value field`}
-              fields={fields}
-              value={binding.valueFieldId}
-              disabled={disabled}
-              onChange={(valueFieldId) => onChange({ valueFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Changed at`}
-          value={
-            <FieldSelect
-              label={t`Changed at`}
-              fields={fields.filter((field) => isDate(field))}
-              value={binding.changedAtFieldId}
-              placeholder={t`No change date`}
-              clearable
-              disabled={disabled}
-              onChange={(changedAtFieldId) => onChange({ changedAtFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Properties`}
-          value={<PropertyRegistrySummary table={table} binding={binding} />}
-        />
-        <DetailsRow
-          label={t`Columns`}
-          value={
-            <Switch
-              py="xs"
-              label={t`Pivot properties into columns`}
-              checked={binding.pivotToColumns}
-              disabled={disabled}
-              onChange={(event) =>
-                onChange({ pivotToColumns: event.target.checked })
-              }
-            />
-          }
-        />
-      </DetailsTable>
-    </SidebarSection>
-  );
-}
-
-function PropertyRegistrySummary({
-  table,
-  binding,
-}: {
-  table: Table;
-  binding: EavBinding;
-}) {
-  const state = usePropertyRegistry(table, binding);
-  const propertiesUrl = Urls.dataStudioData({
-    databaseId: table.db_id,
-    schemaName: table.schema,
-    tableId: table.id,
-    tab: "properties",
-  });
-
-  if (state.status === "unbound") {
-    return (
-      <Text c="text-secondary">{t`Pick the property and value columns`}</Text>
-    );
-  }
-  if (state.status !== "loaded") {
-    return <Loader size="xs" />;
-  }
-
-  const { properties } = state.registry;
-  const attentionCount = properties.filter(
-    (property) => !property.isHidden && property.signals.length > 0,
-  ).length;
-
-  return (
-    <Stack gap="xs">
-      <Group gap="sm" align="baseline">
-        <Text c="text-primary" fw="bold">
-          {ngettext(
-            msgid`${properties.length} property`,
-            `${properties.length} properties`,
-            properties.length,
-          )}
-        </Text>
-        {attentionCount > 0 && (
-          <Badge color="warning" variant="light">
-            {t`${attentionCount} need attention`}
-          </Badge>
-        )}
-      </Group>
-      <Text size="sm" c="text-secondary">
-        {t`Profiled from ${state.registry.rowCount.toLocaleString()} rows about ${state.registry.entityCount.toLocaleString()} entities`}
-      </Text>
-      <Button
-        component={Link}
-        to={propertiesUrl}
-        size="compact-sm"
-        variant="subtle"
-        w="fit-content"
-        px={0}
-      >
-        {t`Review properties`}
-      </Button>
-    </Stack>
   );
 }

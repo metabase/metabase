@@ -1,15 +1,18 @@
 .grainLink {
   display: inline-flex;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: 999px;
 }
 
-.grainChip {
+.grainPill {
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 
   .grainLink:hover &,
   .grainLink:focus-visible & {
     color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 

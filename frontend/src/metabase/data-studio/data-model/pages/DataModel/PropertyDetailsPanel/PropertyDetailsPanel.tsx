@@ -9,14 +9,18 @@ import {
 } from "metabase/common/components/DetailSidebar";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { dayjs } from "metabase/dayjs";
 import {
+  MISMATCH_HANDLINGS,
+  type MismatchHandling,
+  type PropertyRegistry,
   type PropertySignal,
   type RegistryProperty,
+  type ResolvedEavBinding,
+  useEavBinding,
   usePropertyOverrides,
   usePropertyRegistry,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Alert,
   Button,
@@ -24,6 +28,7 @@ import {
   Group,
   Icon,
   Progress,
+  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -41,6 +46,7 @@ import {
 
 import {
   formatShare,
+  getEntityNoun,
   getPropertyIcon,
   getPropertySemanticTypeOptions,
   getPropertyTypeLabel,
@@ -66,11 +72,11 @@ export function PropertyDetailsPanel({
   onWidthChange,
   onClose,
 }: PropertyDetailsPanelProps) {
-  const { getTableStructure } = useTableStructures();
-  const state = usePropertyRegistry(table, getTableStructure(table).eav);
+  const state = usePropertyRegistry(table);
+  const resolved = useEavBinding(table);
   const property =
     state.status === "loaded"
-      ? state.registry.properties.find(({ name }) => name === propertyName)
+      ? state.registry.properties.find(({ key }) => key === propertyName)
       : undefined;
 
   return (
@@ -82,7 +88,7 @@ export function PropertyDetailsPanel({
     >
       <DetailPanelHeader
         icon={property ? getPropertyIcon(property) : "string"}
-        label={t`Property of ${table.display_name}`}
+        label={t`Custom property of ${resolved.entityTable?.display_name ?? table.display_name}`}
         title={property?.displayName ?? propertyName}
         isLoading={state.status === "loading"}
         onClose={onClose}
@@ -92,16 +98,27 @@ export function PropertyDetailsPanel({
         .with({ status: "error" }, ({ error }) => (
           <LoadingAndErrorWrapper loading={false} error={error} />
         ))
-        .otherwise(() =>
+        .with({ status: "loaded" }, ({ registry }) =>
           property ? (
-            <PropertyDetails table={table} property={property} />
+            <PropertyDetails
+              table={table}
+              property={property}
+              registry={registry}
+              resolved={resolved}
+            />
           ) : (
             <EmptyState
               message={t`This table has no property called ${propertyName}.`}
               spacing="sm"
             />
           ),
-        )}
+        )
+        .otherwise(() => (
+          <EmptyState
+            message={t`This table has no property called ${propertyName}.`}
+            spacing="sm"
+          />
+        ))}
     </DetailPanel>
   );
 }
@@ -109,27 +126,44 @@ export function PropertyDetailsPanel({
 function PropertyDetails({
   table,
   property,
+  registry,
+  resolved,
 }: {
   table: Table;
   property: RegistryProperty;
+  registry: PropertyRegistry;
+  resolved: ResolvedEavBinding;
 }) {
   const setOverrides = usePropertyOverrides(table);
   const save = (overrides: Parameters<typeof setOverrides>[1]) =>
     setOverrides(property.name, overrides);
-  const visibleSignals = property.signals.filter(
-    (signal) => signal.type !== "stale" || property.isHidden,
-  );
+  const definitionColumns = getDefinitionColumnNames(resolved);
+  const noun = getEntityNoun(resolved.entityTable);
+  const mergedIntoLabel =
+    registry.properties.find(({ name }) => name === property.mergedInto)
+      ?.displayName ?? property.mergedInto;
+  const visibleSignals = property.mergedInto != null ? [] : property.signals;
+  const hasAlerts = visibleSignals.length > 0 || mergedIntoLabel != null;
 
   return (
     <Stack gap="xxl">
-      {visibleSignals.length > 0 && (
+      {hasAlerts && (
         <SidebarSection title={t`Needs attention`}>
           <Stack gap="md">
+            {mergedIntoLabel != null && (
+              <MergedAlert
+                property={property}
+                mergedIntoLabel={mergedIntoLabel}
+                onUndo={() => save({ mergedInto: undefined })}
+              />
+            )}
             {visibleSignals.map((signal) => (
               <SignalAlert
                 key={signal.type}
                 property={property}
                 signal={signal}
+                noun={noun}
+                propertyColumn={resolved.propertyField?.name ?? t`the property`}
                 onSave={save}
               />
             ))}
@@ -154,8 +188,18 @@ function PropertyDetails({
             }
           />
           <DetailsRow
+            label={t`Label source`}
+            value={
+              <LabelSource
+                property={property}
+                definitionColumns={definitionColumns}
+                onReset={() => save({ displayName: undefined })}
+              />
+            }
+          />
+          <DetailsRow
             label={t`Raw name`}
-            value={<Code>{property.name}</Code>}
+            value={<RawName property={property} resolved={resolved} />}
           />
           <DetailsRow
             label={t`Description`}
@@ -173,7 +217,13 @@ function PropertyDetails({
           />
           <DetailsRow
             label={t`Type`}
-            value={<PropertyTypeInput property={property} onSave={save} />}
+            value={
+              <PropertyTypeInput
+                property={property}
+                definitionColumns={definitionColumns}
+                onSave={save}
+              />
+            }
           />
           <DetailsRow
             label={t`Semantic type`}
@@ -233,7 +283,7 @@ function PropertyDetails({
             value={
               <Stack gap="xs" py="xs">
                 <Text c="text-primary">
-                  {t`${formatShare(property.coverage)} of entities (${property.entityCount.toLocaleString()})`}
+                  {t`${formatShare(property.coverage)} of ${noun.plural} (${property.entityCount.toLocaleString()} of ${registry.entityCount.toLocaleString()})`}
                 </Text>
                 <Progress value={property.coverage * 100} size="sm" />
               </Stack>
@@ -243,14 +293,12 @@ function PropertyDetails({
             label={t`Distinct values`}
             value={property.distinctValueCount.toLocaleString()}
           />
-          <DetailsRow
-            label={t`First seen`}
-            value={formatDate(property.firstSeen)}
-          />
-          <DetailsRow
-            label={t`Last seen`}
-            value={formatDate(property.lastSeen)}
-          />
+          {property.mergedFrom.length > 0 && (
+            <DetailsRow
+              label={t`Merged in`}
+              value={property.mergedFrom.join(", ")}
+            />
+          )}
         </DetailsTable>
         <TopValues property={property} />
       </SidebarSection>
@@ -258,14 +306,114 @@ function PropertyDetails({
   );
 }
 
+type DefinitionColumnNames = {
+  table: string;
+  label: string | null;
+  type: string | null;
+};
+
+function getDefinitionColumnNames({
+  definitionTable,
+  binding,
+}: ResolvedEavBinding): DefinitionColumnNames | null {
+  if (!definitionTable) {
+    return null;
+  }
+  const fields = definitionTable.fields ?? [];
+  const nameOf = (fieldId: number | null) =>
+    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name ?? null;
+  return {
+    table: definitionTable.name,
+    label: nameOf(binding.labelFieldId),
+    type: nameOf(binding.typeFieldId),
+  };
+}
+
+function LabelSource({
+  property,
+  definitionColumns,
+  onReset,
+}: {
+  property: RegistryProperty;
+  definitionColumns: DefinitionColumnNames | null;
+  onReset: () => void;
+}) {
+  const definitionLabel = property.definition?.label;
+  const labelColumn =
+    definitionColumns?.label != null
+      ? `${definitionColumns.table}.${definitionColumns.label}`
+      : null;
+  return (
+    <Stack gap="xs" py="xs">
+      {match(property.labelSource)
+        .with("definition", () => (
+          <Text c="text-primary">{t`From ${labelColumn ?? t`the definitions`}`}</Text>
+        ))
+        .with("admin", () => (
+          <Text c="text-primary">
+            {definitionLabel
+              ? t`Edited by an admin. ${labelColumn ?? t`The definition`} says “${definitionLabel}”.`
+              : t`Edited by an admin`}
+          </Text>
+        ))
+        .with("values", () => (
+          <Text c="text-primary">
+            {definitionColumns
+              ? t`Not in ${definitionColumns.table}, so there's no label`
+              : t`The property name made readable`}
+          </Text>
+        ))
+        .exhaustive()}
+      {property.labelSource === "admin" && definitionLabel && (
+        <Button
+          size="compact-sm"
+          variant="subtle"
+          w="fit-content"
+          px={0}
+          onClick={onReset}
+        >
+          {t`Use “${definitionLabel}”`}
+        </Button>
+      )}
+    </Stack>
+  );
+}
+
+function RawName({
+  property,
+  resolved,
+}: {
+  property: RegistryProperty;
+  resolved: ResolvedEavBinding;
+}) {
+  const propertyColumn = resolved.propertyField?.name;
+  const showsKey = property.key !== property.name && propertyColumn != null;
+  return (
+    <Stack gap="xs" py="xs">
+      <Code w="fit-content">{property.name}</Code>
+      {showsKey && (
+        <Text size="sm" c="text-secondary">
+          {t`Rows where ${propertyColumn} is ${property.key}`}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
 function PropertyTypeInput({
   property,
+  definitionColumns,
   onSave,
 }: {
   property: RegistryProperty;
+  definitionColumns: DefinitionColumnNames | null;
   onSave: (overrides: { type?: RegistryProperty["type"] }) => void;
 }) {
-  const isOverridden = property.type !== property.inferredType;
+  const declaredType = property.definition?.declaredType;
+  const typeColumn =
+    definitionColumns?.type != null
+      ? `${definitionColumns.table}.${definitionColumns.type}`
+      : null;
   return (
     <Stack gap="xs" py="xs">
       <Select
@@ -283,11 +431,25 @@ function PropertyTypeInput({
         }}
       />
       <Text size="sm" c="text-secondary">
-        {isOverridden
-          ? t`Set by an admin. Values read as ${getPropertyTypeLabel(property.inferredType)}.`
-          : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text and cast when queried.`}
+        {match(property.typeSource)
+          .with(
+            "definition",
+            () =>
+              t`From ${typeColumn ?? t`the definitions`}: ${declaredType ?? ""}. Values are stored as text and cast when queried.`,
+          )
+          .with("values", () =>
+            declaredType == null && property.definition != null
+              ? t`Its definition has no type, so it's inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}.`
+              : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text and cast when queried.`,
+          )
+          .with(
+            "admin",
+            () =>
+              t`Set by an admin. The default is ${getPropertyTypeLabel(property.inferredType)}.`,
+          )
+          .exhaustive()}
       </Text>
-      {isOverridden && (
+      {property.typeSource === "admin" && (
         <Button
           size="compact-sm"
           variant="subtle"
@@ -295,118 +457,192 @@ function PropertyTypeInput({
           px={0}
           onClick={() => onSave({ type: undefined })}
         >
-          {t`Use the inferred type (${getPropertyTypeLabel(property.inferredType)})`}
+          {t`Use the default type (${getPropertyTypeLabel(property.inferredType)})`}
         </Button>
       )}
     </Stack>
   );
 }
 
+type SignalOverrides = {
+  isHidden?: boolean;
+  mergedInto?: string;
+  onMismatch?: MismatchHandling;
+};
+
 function SignalAlert({
   property,
   signal,
+  noun,
+  propertyColumn,
   onSave,
 }: {
   property: RegistryProperty;
   signal: PropertySignal;
-  onSave: (overrides: {
-    isHidden?: boolean;
-    mergedInto?: string;
-    type?: RegistryProperty["type"];
-  }) => void;
+  noun: ReturnType<typeof getEntityNoun>;
+  propertyColumn: string;
+  onSave: (overrides: SignalOverrides) => void;
 }) {
   return match(signal)
-    .with({ type: "new" }, () => (
-      <Alert
-        color="core-brand"
-        variant="light"
-        icon={<Icon name="sparkles" />}
-        title={t`New property`}
-      >
-        <Stack gap="sm">
-          <Text>
-            {t`Started arriving ${formatDate(property.firstSeen)} on ${property.entityCount.toLocaleString()} entities. Add a description so people and Metabot know what it means.`}
-          </Text>
-          <Group gap="sm">
-            <Button
-              size="compact-sm"
-              onClick={() => onSave({ isHidden: true })}
-            >
-              {t`Hide it for now`}
-            </Button>
-          </Group>
-        </Stack>
-      </Alert>
-    ))
-    .with({ type: "type-drift" }, ({ nonConformingCount, examples }) => (
+    .with({ type: "undefined" }, () => (
       <Alert
         color="warning"
         variant="light"
         icon={<Icon name="warning" />}
-        title={t`${nonConformingCount.toLocaleString()} values aren't ${getPropertyTypeLabel(property.type).toLowerCase()}s`}
+        title={t`Definition not found`}
       >
         <Stack gap="sm">
           <Text>
-            {t`For example ${examples
-              .slice(0, 3)
-              .map((example) => `"${example}"`)
-              .join(
-                ", ",
-              )}. They're left out when people filter or summarize ${property.displayName} as a number, and the filter says so.`}
+            {t`${property.entityCount.toLocaleString()} ${noun.plural} have values where ${propertyColumn} is ${property.key}, but the definitions table has no row for ${property.key}.`}
           </Text>
+          <Group gap="xs">
+            <Text size="sm" c="text-secondary">{t`Sample values`}</Text>
+            {property.topValues.slice(0, 3).map(({ value }) => (
+              <Code key={value}>{value}</Code>
+            ))}
+          </Group>
           <Group gap="sm">
-            <Button size="compact-sm" onClick={() => onSave({ type: "text" })}>
-              {t`Treat as text`}
+            <Button
+              size="compact-sm"
+              onClick={() => onSave({ isHidden: !property.isHidden })}
+            >
+              {property.isHidden
+                ? t`Show to people and Metabot`
+                : t`Hide from people and Metabot`}
             </Button>
           </Group>
         </Stack>
       </Alert>
     ))
-    .with({ type: "duplicate" }, ({ propertyName }) => (
+    .with({ type: "unused" }, () => (
+      <Alert
+        variant="light"
+        icon={<Icon name="info" />}
+        title={t`No values yet`}
+      >
+        <Text>
+          {t`It's defined, but no ${noun.singular} has a value. It's left out of the pivot model until it has values.`}
+        </Text>
+      </Alert>
+    ))
+    .with({ type: "type-drift" }, (drift) => (
+      <MismatchAlert property={property} signal={drift} onSave={onSave} />
+    ))
+    .with({ type: "duplicate" }, ({ propertyName, propertyLabel }) => (
       <Alert
         color="warning"
         variant="light"
         icon={<Icon name="copy" />}
-        title={t`Looks like ${propertyName}`}
+        title={t`Might be the same as ${propertyLabel}`}
       >
         <Stack gap="sm">
           <Text>
-            {t`Its values match ${propertyName}'s in other casing, on different entities. Merging shows both as one ${propertyName} column.`}
+            {t`Most of its values match ${propertyLabel}'s in other casing, and they're on different ${noun.plural}. Merging shows both as one ${propertyLabel} column. You can undo it.`}
           </Text>
           <Group gap="sm">
             <Button
               size="compact-sm"
-              variant="filled"
-              onClick={() =>
-                onSave({ mergedInto: propertyName, isHidden: true })
-              }
+              onClick={() => onSave({ mergedInto: propertyName })}
             >
-              {t`Merge into ${propertyName}`}
-            </Button>
-          </Group>
-        </Stack>
-      </Alert>
-    ))
-    .with({ type: "stale" }, () => (
-      <Alert
-        variant="light"
-        icon={<Icon name="clock" />}
-        title={t`No new values since ${formatDate(property.lastSeen)}`}
-      >
-        <Stack gap="sm">
-          <Text>{t`Hidden from people and Metabot because it stopped arriving.`}</Text>
-          <Group gap="sm">
-            <Button
-              size="compact-sm"
-              onClick={() => onSave({ isHidden: false })}
-            >
-              {t`Show it anyway`}
+              {t`Merge into ${propertyLabel}`}
             </Button>
           </Group>
         </Stack>
       </Alert>
     ))
     .exhaustive();
+}
+
+function MismatchAlert({
+  property,
+  signal,
+  onSave,
+}: {
+  property: RegistryProperty;
+  signal: Extract<PropertySignal, { type: "type-drift" }>;
+  onSave: (overrides: SignalOverrides) => void;
+}) {
+  const typeLabel = getPropertyTypeLabel(property.inferredType);
+  const share =
+    property.entityCount > 0
+      ? signal.nonConformingCount / property.entityCount
+      : 0;
+  const isKeptAsText = property.onMismatch === "text";
+  return (
+    <Alert
+      color={property.isMismatchHandlingSet ? "core-brand" : "warning"}
+      variant="light"
+      icon={<Icon name="warning" />}
+      title={t`${signal.nonConformingCount.toLocaleString()} values don't fit ${typeLabel}`}
+    >
+      <Stack gap="sm">
+        <Group gap="xs">
+          {signal.exampleCounts.slice(0, 4).map(({ value, entityCount }) => (
+            <Code key={value}>
+              {value === "" ? t`(empty)` : value} ·{" "}
+              {entityCount.toLocaleString()}
+            </Code>
+          ))}
+        </Group>
+        <SegmentedControl
+          fullWidth
+          value={property.onMismatch}
+          onChange={(value) => {
+            const handling = MISMATCH_HANDLINGS.find(
+              (option) => option === value,
+            );
+            if (handling) {
+              onSave({ onMismatch: handling });
+            }
+          }}
+          data={[
+            { value: "ignore", label: t`Leave out` },
+            { value: "text", label: t`Keep as text` },
+          ]}
+        />
+        <Text size="sm">
+          {isKeptAsText
+            ? t`${property.displayName} stays text, so nothing is left out, but it can't be summed or compared as ${typeLabel.toLowerCase()}.`
+            : t`${property.displayName} is read as ${typeLabel.toLowerCase()}. ${formatShare(share)} of its values are left out of filters and summaries, and the filter says so.`}
+        </Text>
+        <Text size="sm" c="text-secondary">
+          {isKeptAsText
+            ? t`Exported as type: text, so agents read it the same way.`
+            : t`Exported as on_mismatch: null, so agents use the same cast.`}
+        </Text>
+      </Stack>
+    </Alert>
+  );
+}
+
+function MergedAlert({
+  property,
+  mergedIntoLabel,
+  onUndo,
+}: {
+  property: RegistryProperty;
+  mergedIntoLabel: string;
+  onUndo: () => void;
+}) {
+  return (
+    <Alert
+      variant="light"
+      color="core-brand"
+      icon={<Icon name="check" />}
+      title={t`Merged into ${mergedIntoLabel}`}
+    >
+      <Stack gap="sm">
+        <Text>
+          {t`Its ${property.entityCount.toLocaleString()} values now show in the ${mergedIntoLabel} column, and ${property.displayName} isn't listed on its own.`}
+        </Text>
+        <Group gap="sm">
+          <Button size="compact-sm" onClick={onUndo}>
+            {t`Undo merge`}
+          </Button>
+        </Group>
+      </Stack>
+    </Alert>
+  );
 }
 
 function TopValues({ property }: { property: RegistryProperty }) {
@@ -454,6 +690,3 @@ function TopValues({ property }: { property: RegistryProperty }) {
     </Stack>
   );
 }
-
-const formatDate = (date: string | null) =>
-  date ? dayjs(date).format("MMM D, YYYY") : t`Unknown`;

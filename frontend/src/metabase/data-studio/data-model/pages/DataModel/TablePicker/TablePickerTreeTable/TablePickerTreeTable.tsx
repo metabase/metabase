@@ -13,6 +13,7 @@ import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
   getTableRoleLabel,
+  useCustomPropertyParents,
   useHistoryReviewStatus,
   useTableFields,
   useTableStructures,
@@ -111,7 +112,14 @@ export function TablePickerTreeTable({
     );
   }, [usersData]);
 
-  const treeData = useMemo(() => transformToTreeTableFormat(tree), [tree]);
+  const flatTreeData = useMemo(() => transformToTreeTableFormat(tree), [tree]);
+  const customPropertyParents = useCustomPropertyParents(
+    useMemo(() => collectTables(flatTreeData), [flatTreeData]),
+  );
+  const treeData = useMemo(
+    () => nestCustomPropertyTables(flatTreeData, customPropertyParents),
+    [flatTreeData, customPropertyParents],
+  );
 
   const nodeKeyToId = useMemo(() => {
     const map = new Map<string, string>();
@@ -228,10 +236,12 @@ export function TablePickerTreeTable({
         id: "name",
         header: t`Name`,
         cell: ({ row }) => (
-          <EntityNameCell
-            icon={TYPE_ICONS[row.original.type]}
-            name={row.original.name}
-          />
+          <Box pl={row.original.isNested ? "lg" : 0}>
+            <EntityNameCell
+              icon={TYPE_ICONS[row.original.type]}
+              name={row.original.name}
+            />
+          </Box>
         ),
       },
       {
@@ -726,4 +736,48 @@ function isNodeActive(node: TablePickerTreeNode, path: TreePath): boolean {
   }
 
   return false;
+}
+
+function collectTables(nodes: TablePickerTreeNode[]): Table[] {
+  return nodes.flatMap((node) => [
+    ...(node.table ? [node.table] : []),
+    ...collectTables(node.children ?? []),
+  ]);
+}
+
+function nestCustomPropertyTables(
+  nodes: TablePickerTreeNode[],
+  parents: Map<Table["id"], Table>,
+): TablePickerTreeNode[] {
+  if (parents.size === 0) {
+    return nodes;
+  }
+  const tableIds = new Set(nodes.map(({ tableId }) => tableId));
+  const isChild = (node: TablePickerTreeNode) =>
+    node.tableId != null && tableIds.has(parents.get(node.tableId)?.id);
+  const children = nodes.filter(isChild);
+  return nodes
+    .filter((node) => !isChild(node))
+    .flatMap((node) => {
+      const nested = children
+        .filter(
+          (child) =>
+            child.tableId != null &&
+            parents.get(child.tableId)?.id === node.tableId,
+        )
+        .map((child) => ({
+          ...child,
+          name: t`${node.name} › Custom properties`,
+          isNested: true,
+        }));
+      return [
+        {
+          ...node,
+          children: node.children
+            ? nestCustomPropertyTables(node.children, parents)
+            : node.children,
+        },
+        ...nested,
+      ];
+    });
 }

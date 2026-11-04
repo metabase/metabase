@@ -2,7 +2,12 @@ import { t } from "ttag";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isInteger, isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  Field,
+  FieldId,
+  Table,
+} from "metabase-types/api";
 
 import { inferDurableKeyFieldId, inferVersionFieldId } from "./history-source";
 import { type TableRole, getTableRoleLabel } from "./roles";
@@ -57,9 +62,31 @@ export type EavBinding = {
   entityKeyFieldId: FieldId | null;
   propertyFieldId: FieldId | null;
   valueFieldId: FieldId | null;
-  changedAtFieldId: FieldId | null;
+  definitionTableId: ConcreteTableId | null;
+  labelFieldId: FieldId | null;
+  typeFieldId: FieldId | null;
   pivotToColumns: boolean;
 };
+
+export type EavDefinitionInference = {
+  definitionTableId: ConcreteTableId | null;
+  labelFieldId: FieldId | null;
+  typeFieldId: FieldId | null;
+  signal: string;
+};
+
+export type DefinitionColumns = {
+  keyFieldId: FieldId | null;
+  labelFieldId: FieldId | null;
+  typeFieldId: FieldId | null;
+};
+
+export type CustomPropertyFacet = {
+  prefix: string;
+  suffix: string;
+};
+
+export type SchemaTable = Pick<Table, "id" | "name"> & { fields?: Field[] };
 
 type TableShape = { name: string; fields: Field[] };
 
@@ -81,6 +108,11 @@ const SURROGATE_KEY_RE = /_(sk|key)$/;
 const PROPERTY_RE =
   /(^|_)(property|attribute|key|field|name)(_name|_key|_id)?$/;
 const VALUE_RE = /(^|_)value$/;
+const DEFINITION_LABEL_RES = [/^title$/, /^label$/, /^display_name$/, /^name$/];
+const DEFINITION_TYPE_RE = /^(type|data_type|field_type|value_type)$/;
+const DEFINITION_KEY_RES = [/^name$/, /^key$/, /^(api|internal)_name$/];
+const WILDCARD_RE = /^(custom|property)_(.+)$/;
+const DEFINITION_SIBLING_SUFFIX_RE = /_(values?|history)$/;
 
 // Name rules, in priority order; downstream prefixes are strong signals
 const NAME_RULES: {
@@ -147,7 +179,7 @@ const NAME_RULES: {
   },
   {
     pattern:
-      /(^|_)(users?|accounts?|people|persons?|customers?|employees?|products?|companies|company|vendors?)$/,
+      /(^|_)(users?|accounts?|people|persons?|customers?|employees?|products?|companies|company|vendors?|deals?|tickets?)$/,
     role: "role/EntityDimension",
     confidence: "low",
   },
@@ -228,6 +260,11 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
   const fks = fields.filter(isFK);
   const dates = fields.filter((field) => isDate(field));
 
+  const eavRole = inferEavRole(fields);
+  if (eavRole) {
+    return eavRole;
+  }
+
   const validFrom = fields.find((field) => matches(field, VALID_FROM_RE));
   const validTo = fields.find((field) => matches(field, VALID_TO_RE));
   if (validFrom && validTo) {
@@ -279,6 +316,36 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
     return {
       role: "role/EntityDimension",
       signal: t`A single key, a name, and created and updated dates`,
+      confidence: "low",
+    };
+  }
+
+  return null;
+}
+
+function inferEavRole(fields: Field[]): RoleInference | null {
+  const valueField = fields.find((field) => matches(field, VALUE_RE));
+  const propertyField = fields.find(
+    (field) => !isPK(field) && matches(field, PROPERTY_RE),
+  );
+  const entityKey = fields.find(
+    (field) => isFK(field) && field !== propertyField,
+  );
+  if (valueField && propertyField && entityKey) {
+    return {
+      role: "role/CustomPropertyTable",
+      signal: t`Has ${entityKey.name}, ${propertyField.name} and ${valueField.name} columns`,
+      confidence: "high",
+    };
+  }
+
+  const { labelFieldId, typeFieldId } = inferDefinitionColumns(fields);
+  const labelField = fields.find((field) => idOf(field) === labelFieldId);
+  const typeField = fields.find((field) => idOf(field) === typeFieldId);
+  if (labelField && typeField && nameOf(labelField) !== "name") {
+    return {
+      role: "role/ConfigurationTable",
+      signal: t`Has ${labelField.name} and ${typeField.name} columns, like a table of field definitions`,
       confidence: "low",
     };
   }
@@ -373,13 +440,111 @@ export function inferEavBinding(fields: Field[]): EavBinding {
       ),
     ),
     valueFieldId: idOf(fields.find((field) => matches(field, VALUE_RE))),
-    changedAtFieldId: idOf(
-      fields.find(
-        (field) => matches(field, UPDATED_RE) || matches(field, CREATED_RE),
-      ),
-    ),
+    definitionTableId: null,
+    labelFieldId: null,
+    typeFieldId: null,
     pivotToColumns: false,
   };
+}
+
+const findByPriority = (fields: Field[], patterns: RegExp[]) =>
+  patterns
+    .map((pattern) => fields.find((field) => matches(field, pattern)))
+    .find((field) => field != null);
+
+export function inferDefinitionColumns(fields: Field[]): DefinitionColumns {
+  return {
+    keyFieldId: idOf(findByPriority(fields, DEFINITION_KEY_RES)),
+    labelFieldId: idOf(findByPriority(fields, DEFINITION_LABEL_RES)),
+    typeFieldId: idOf(
+      fields.find((field) => matches(field, DEFINITION_TYPE_RE)),
+    ),
+  };
+}
+
+const isConcreteTable = <T extends SchemaTable>(
+  table: T,
+): table is T & { id: ConcreteTableId } => typeof table.id === "number";
+
+export function findTargetTable<T extends SchemaTable>(
+  field: Field | undefined,
+  schemaTables: T[],
+) {
+  const targetFieldId = field?.fk_target_field_id;
+  return targetFieldId == null
+    ? undefined
+    : schemaTables
+        .filter(isConcreteTable)
+        .find((table) =>
+          (table.fields ?? []).some(({ id }) => id === targetFieldId),
+        );
+}
+
+export function inferEavDefinition(
+  table: TableShape,
+  propertyFieldId: FieldId | null,
+  schemaTables: SchemaTable[],
+): EavDefinitionInference {
+  const propertyField = table.fields.find(
+    (field) => idOf(field) === propertyFieldId,
+  );
+  const targetTable = findTargetTable(propertyField, schemaTables);
+  const baseName = table.name
+    .toLowerCase()
+    .replace(DEFINITION_SIBLING_SUFFIX_RE, "");
+  const siblingNames = [baseName, baseName.replace(/(^|_)custom_/, "$1")];
+  const siblingTable = schemaTables
+    .filter(isConcreteTable)
+    .find(
+      (candidate) =>
+        candidate.name !== table.name &&
+        siblingNames.includes(candidate.name.toLowerCase()),
+    );
+  const definitionTable = targetTable ?? siblingTable;
+  if (!definitionTable) {
+    return {
+      definitionTableId: null,
+      labelFieldId: null,
+      typeFieldId: null,
+      signal: t`No table of field definitions found`,
+    };
+  }
+  const { labelFieldId, typeFieldId } = inferDefinitionColumns(
+    definitionTable.fields ?? [],
+  );
+  return {
+    definitionTableId: definitionTable.id,
+    labelFieldId,
+    typeFieldId,
+    signal:
+      targetTable && propertyField
+        ? t`${propertyField.name} → ${definitionTable.name}`
+        : t`Named like ${table.name} without its suffix`,
+  };
+}
+
+export function inferCustomPropertyFacet(
+  field: Pick<Field, "name">,
+): CustomPropertyFacet | null {
+  const match = WILDCARD_RE.exec(field.name.toLowerCase());
+  return match ? { prefix: `${match[1]}_`, suffix: match[2] } : null;
+}
+
+export function inferWildcardDefinitionTable<T extends SchemaTable>(
+  table: Pick<Table, "name">,
+  schemaTables: T[],
+) {
+  const stem = table.name.toLowerCase().replace(/s$/, "");
+  return schemaTables.filter(isConcreteTable).find((candidate) => {
+    const { labelFieldId, typeFieldId } = inferDefinitionColumns(
+      candidate.fields ?? [],
+    );
+    return (
+      candidate.name.toLowerCase().startsWith(`${stem}_`) &&
+      labelFieldId != null &&
+      typeFieldId != null
+    );
+  });
 }
 
 /** The date a table is naturally viewed over time by, and why it was picked */

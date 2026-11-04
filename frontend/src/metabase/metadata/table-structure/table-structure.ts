@@ -4,7 +4,12 @@ import _ from "underscore";
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId, Table } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  Field,
+  FieldId,
+  Table,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
@@ -63,6 +68,7 @@ export type TableStructure = {
   scdTypeInference: ScdTypeInference;
   isScdTypeOverridden: boolean;
   eav: EavBinding;
+  eavOverrides: Partial<EavBinding>;
   /** `undefined` when the table has no main date */
   mainDateField: Field | undefined;
   mainDateInference: MainDateInference;
@@ -74,6 +80,9 @@ export type TableStructure = {
 const STORAGE_KEY = "metabase-prototype-table-structure";
 
 const parseFieldId = (value: unknown): FieldId | null | undefined =>
+  value === null || typeof value === "number" ? value : undefined;
+
+const parseTableId = (value: unknown): ConcreteTableId | null | undefined =>
   value === null || typeof value === "number" ? value : undefined;
 
 const parseBoolean = (value: unknown): boolean | undefined =>
@@ -101,7 +110,9 @@ function parseEavBinding(value: unknown): Partial<EavBinding> {
     entityKeyFieldId: parseFieldId(value.entityKeyFieldId),
     propertyFieldId: parseFieldId(value.propertyFieldId),
     valueFieldId: parseFieldId(value.valueFieldId),
-    changedAtFieldId: parseFieldId(value.changedAtFieldId),
+    definitionTableId: parseTableId(value.definitionTableId),
+    labelFieldId: parseFieldId(value.labelFieldId),
+    typeFieldId: parseFieldId(value.typeFieldId),
     pivotToColumns: parseBoolean(value.pivotToColumns),
   };
 }
@@ -206,6 +217,7 @@ export function useTableStructures() {
         scdTypeInference,
         isScdTypeOverridden: overrides.scdType != null,
         eav: withOverrides(inferEavBinding(fields), overrides.eav),
+        eavOverrides: overrides.eav ?? {},
         ...resolveMainDate(fields, role, overrides.mainDateFieldId),
       };
       return structure;
