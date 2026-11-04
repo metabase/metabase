@@ -7,7 +7,9 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 ![Meet Metabot](./images/metabot.png)
 
-Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations. Metabot is available on every Metabase plan.
+Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations. 
+
+Metabot is available on every Metabase plan.
 
 ## Set up Metabot
 
