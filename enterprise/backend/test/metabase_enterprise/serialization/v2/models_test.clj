@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase-enterprise.impersonation.models]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
@@ -11,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (comment
@@ -56,6 +58,16 @@
         (is (not (some #{column} copy)))
         (is (not (some #{column} skip)) "always skipped, so leave it out of :skip")
         (is (not (contains? transform column)))))))
+
+(defn- schema-keys
+  "The keys `schema` declares, across every branch of a `:multi`."
+  [schema]
+  (let [schema (mc/deref-all (mr/resolve-schema schema))]
+    (set (if (= :multi (mc/type schema))
+           (for [[_ _ branch] (mc/children schema)
+                 [k]          (mc/entries (mc/deref-all branch))]
+             k)
+           (map first (mc/entries schema))))))
 
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!
@@ -114,6 +126,12 @@
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
+          (testing "Every serialized key is declared in :schema\n"
+            (let [serialized (concat (:copy spec)
+                                     (for [[k transform] (:transform spec)
+                                           :when (not= (serdes/parent-ref) transform)]
+                                       (:as transform k)))]
+              (is (empty? (remove (schema-keys (:schema spec)) serialized)))))
           (testing ":defaults match actual DB field defaults"
             (let [serialized-fields (set (concat (:copy spec) (keys (:transform spec))))
                   declared-defaults (or (:defaults spec) {})]
@@ -178,7 +196,7 @@
               ;; check applies to the parent's `dependencies`, not theirs. Skipped either
               ;; via the explicit list in `serdes.models/inlined-models` or by detecting a
               ;; nil `generate-path` (the convention for nested-only models like
-              ;; QueryAction / HTTPAction / ImplicitAction).
+              ;; QueryAction / ImplicitAction).
               :when (not (or (inlined? m) (inlined-via-nested? m)))
               :let [fks (->> (:transform (serdes/make-spec m nil))
                              direct-fks

@@ -61,6 +61,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -286,11 +287,14 @@
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
   - `:defaults`: a map like `{:field-name value}`; fields whose exported values match their defaults are omitted
     from the output. All fields are assumed to default to `nil`; only specify non-nil defaults here.
+  - `:schema`: required, the schema of the serialized entity, usually the module's `::external-xxx` schema. Dev and
+    test check every extracted entity against it, see [[validate-external!]].
 
   Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
-    {:copy [:name :description :archived]
+    {:schema ::model-name.schema/external-model-name
+     :copy [:name :description :archived]
      :skip [;; please leave a comment why a field is skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}
@@ -304,6 +308,17 @@
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
   (make-spec model-name opts))
+
+(defn validate-external!
+  "In dev and test, throws when the extracted `entity` does not match the `:schema` of `model-name`'s `spec`."
+  [model-name spec entity]
+  (when (or config/is-dev? config/is-test?)
+    (let [schema (or (:schema spec)
+                     (throw (ex-info (format "No :schema in the serialization spec of %s" model-name)
+                                     {:model model-name})))]
+      (when-let [error (mr/explain schema entity)]
+        (throw (ex-info (format "Invalid export of %s: %s" model-name (pr-str (mu.humanize/humanize error)))
+                        {:model model-name :error (mu.humanize/humanize error)}))))))
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -355,29 +370,31 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec (*make-spec* model-name opts)]
-      (assert spec (str "No serialization spec defined for model " model-name))
-      (-> (into {}
-                (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
-                (select-keys instance (:copy spec)))
-          ;; won't assoc if `generate-path` returned `nil`
-          (m/assoc-some :serdes/meta (generate-path model-name instance))
-          (into (for [[k transform] (:transform spec)
-                      :let [_         (assert-one-defined transform :export :export-with-context)
-                            export-k  (:as transform k)
-                            input     (get instance k)
-                            f         (:export transform)
-                            f-context (:export-with-context transform)
-                            res       (if f (f input) (f-context instance k input))]
-                      :when (and (not= res ::skip)
-                                 (not= res (get-in spec [:defaults export-k])))]
-                  (do
-                    (when-not (contains? instance k)
-                      (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
-                                      {:model    model-name
-                                       :key      k
-                                       :instance instance})))
-                    [export-k res])))))
+    (let [spec      (*make-spec* model-name opts)
+          _         (assert spec (str "No serialization spec defined for model " model-name))
+          extracted (-> (into {}
+                              (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
+                              (select-keys instance (:copy spec)))
+                        ;; won't assoc if `generate-path` returned `nil`
+                        (m/assoc-some :serdes/meta (generate-path model-name instance))
+                        (into (for [[k transform] (:transform spec)
+                                    :let [_         (assert-one-defined transform :export :export-with-context)
+                                          export-k  (:as transform k)
+                                          input     (get instance k)
+                                          f         (:export transform)
+                                          f-context (:export-with-context transform)
+                                          res       (if f (f input) (f-context instance k input))]
+                                    :when (and (not= res ::skip)
+                                               (not= res (get-in spec [:defaults export-k])))]
+                                (do
+                                  (when-not (contains? instance k)
+                                    (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
+                                                    {:model    model-name
+                                                     :key      k
+                                                     :instance instance})))
+                                  [export-k res]))))]
+      (validate-external! model-name spec extracted)
+      extracted)
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))

@@ -8,7 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.native-query-snippets.schema]
+   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -169,7 +169,8 @@
    filter-ids))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name]
+  {:schema    ::native-query-snippets.schema/external-native-query-snippet
+   :copy      [:archived :content :description :entity_id :name]
    :skip      []
    :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

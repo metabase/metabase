@@ -17,8 +17,18 @@
 
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
+(def ^:private transform-flag
+  "Transform for a `_set` flag, which the serialization query computes with `COALESCE` and so gets back as a number
+  from MySQL and MariaDB, which have no boolean type of their own."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (t2/deftransforms :model/TableUserSettings
-  {:entity_type     mi/transform-keyword
+  {:description_set     transform-flag
+   :visibility_type_set transform-flag
+   :data_layer_set      transform-flag
+   :data_source_set     transform-flag
+   :entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
    :data_layer      (mi/transform-validator-with-fixes
@@ -211,7 +221,8 @@
       [db nil schema])))
 
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
-  {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
+  {:schema    ::warehouse-schema.schema/external-table-user-settings
+   :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
                :show_in_getting_started :data_authority :data_source :owner_email :is_published
                :description_set :visibility_type_set :data_layer_set :data_source_set]
    :skip      [:caveats_set :points_of_interest_set]

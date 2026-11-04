@@ -229,7 +229,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Non-implicit actions are archived if their model is converted to a saved question"
-        (doseq [type [:http :query]]
+        (doseq [type [:query]]
           (mt/with-actions [{:keys [action-id model-id]} {:type type}]
             (is (false? (t2/select-one-fn :archived :model/Action action-id)))
             (t2/update! :model/Card model-id {:type :question})

@@ -43,7 +43,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -708,7 +708,8 @@
       [db nil schema table])))
 
 (defmethod serdes/make-spec "FieldValues" [_model-name _opts]
-  {:copy      [:values :human_readable_values :has_more_values :hash_key]
+  {:schema    ::warehouse-schema.schema/external-field-values
+   :copy      [:values :human_readable_values :has_more_values :hash_key]
    :skip [:last_used_at]
    :transform {:type         (serdes/kw)
                :field_id     {::serdes/fk true

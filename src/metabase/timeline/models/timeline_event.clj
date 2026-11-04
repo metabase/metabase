@@ -3,7 +3,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -101,7 +101,8 @@
 
 ;; nested in Timeline
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :icon :name :time_matters :timezone]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :icon :name :time_matters :timezone]
    :skip      []
    :transform {:creator_id  (serdes/fk :model/User)
                :timeline_id (serdes/parent-ref)

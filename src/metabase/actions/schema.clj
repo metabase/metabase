@@ -1,12 +1,12 @@
 (ns metabase.actions.schema
   (:require
-   [metabase.actions.http-action :as http-action]
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -85,35 +85,8 @@
   [:enum
    {:decode/normalize keyword
     :description      (deferred-tru "Unsupported action type")}
-   :http
    :implicit
    :query])
-
-(mr/def ::http-action.json-query
-  [:and
-   {:description (deferred-tru "must be a valid json-query, something like ''.item.title''")}
-   string?
-   [:fn
-    {:error/fn (fn [_ _]
-                 (deferred-tru "must be a valid json-query, something like ''.item.title''"))}
-    #(http-action/apply-json-query {} %)]])
-
-(mr/def ::http-action.template
-  [:map {:closed true}
-   [:method                              [:enum "GET" "POST" "PUT" "DELETE" "PATCH"]]
-   [:url                                 [string? {:min 1}]]
-   [:body               {:optional true} [:maybe string?]]
-   [:headers            {:optional true} [:maybe string?]]
-   [:parameters         {:optional true} [:maybe ::parameters.schema/parameters]]])
-
-(def ^:private http-action-entries
-  [[:template        {:optional true} [:maybe ::http-action.template]]
-   [:response_handle {:optional true} [:maybe ::http-action.json-query]]
-   [:error_handle    {:optional true} [:maybe ::http-action.json-query]]
-   [:disabled        {:optional true} :boolean]])
-
-(mr/def ::http-action
-  (into [:map {:closed true}] http-action-entries))
 
 (mr/def ::implicit-action.kind
   [:enum
@@ -129,15 +102,9 @@
 (def ^:private implicit-action-entries
   [[:kind {:optional true} [:maybe ::implicit-action.kind]]])
 
-(mr/def ::implicit-action
-  (into [:map {:closed true}] implicit-action-entries))
-
 (def ^:private query-action-entries
   [[:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
-
-(mr/def ::query-action
-  (into [:map {:closed true}] query-action-entries))
 
 (mr/def ::action.parameter
   "One entry of an Action's `:parameters`. An implicit action's are computed from the model's Fields rather than
@@ -153,7 +120,7 @@
 (mr/def ::action.parameters
   [:sequential [:ref ::action.parameter]])
 
-(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
+(mu/defn- action-columns [schema-type :- [:enum :select :update :insert]]
   ;; `required-for-insert` = you have to specify this when you insert a row
   ;;
   ;; `not-null-in-app-db` = this is `NOT NULL` in the app DB, and will always come back when you `SELECT` something,
@@ -186,15 +153,21 @@
                                [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
                                [:entity_id          {:optional true} [:maybe :string]]
                                [:legacy_query       {:optional true} [:maybe :string]]]])]
-    [:merge
-     (into [:map {:closed true}] common)
-     [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-              :dispatch         (comp keyword :type)}
-      [:http     (into [:map {:closed true}] http-action-entries)]
-      [:implicit (into [:map {:closed true}] implicit-action-entries)]
-      [:query    (into [:map {:closed true}] query-action-entries)]
-      ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [:map {:closed true}] cat [http-action-entries implicit-action-entries query-action-entries])]]]))
+    (into [:map {:closed true}] common)))
+
+(mr/def ::action.columns
+  "The columns of an Action selected from the app DB that every type of Action has."
+  (action-columns :select))
+
+(mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
+  [:merge
+   (action-columns schema-type)
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :type)}
+    [:implicit (into [:map {:closed true}] implicit-action-entries)]
+    [:query    (into [:map {:closed true}] query-action-entries)]
+    ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
+    [nil       (into [:map {:closed true}] cat [implicit-action-entries query-action-entries])]]])
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."
@@ -208,21 +181,7 @@
   "Schema for updating an Action (REST API or internally)."
   (action-schema :update))
 
-(mr/def ::httpaction
-  "A HTTPAction as selected from the app DB: every column of `:http_action`."
-  [:merge
-   ::httpaction.update
-   [:map {:closed true}]])
-
-(mr/def ::httpaction.update
-  "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."
-  [:map {:closed true}
-   [:action_id       {:optional true} [:maybe ::lib.schema.id/action]]
-   [:template        {:optional true} [:maybe ::http-action.template]]
-   [:response_handle {:optional true} [:maybe :string]]
-   [:error_handle    {:optional true} [:maybe :string]]])
-
-(mr/def ::implicit-action.row
+(mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
@@ -238,7 +197,7 @@
   "The `:dataset_query` column of a QueryAction, decoded."
   ::lib-be.schema/maybe-legacy-or-empty-query)
 
-(mr/def ::query-action.row
+(mr/def ::query-action
   "A QueryAction as selected from the app DB: every column of `:query_action`."
   [:map {:closed true}
    [:action_id     ::lib.schema.id/action]
@@ -272,3 +231,32 @@
    [:invocation-id    {:optional true} [:maybe :string]]
    [:invocation-stack {:optional true} [:maybe [:sequential [:tuple qualified-keyword? :string]]]]
    [:effects          {:optional true} [:maybe [:sequential [:tuple qualified-keyword? ::execution.row-diff]]]]])
+
+(mr/def ::external-action
+  "An Action as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::action.columns [:archived :description :entity_id :name :public_uuid
+                                    :creator_id :made_public_by_id :model_id :parameters
+                                    :parameter_mappings :visualization_settings]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:type        {:optional true} [:enum "implicit" "query"]]
+     [:query       {:optional true} [:maybe [:sequential [:ref ::external-query-action]]]]
+     [:implicit    {:optional true} [:maybe [:sequential [:ref ::external-implicit-action]]]]]]])
+
+(mr/def ::external-query-action
+  "A QueryAction as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::query-action [:database_id :dataset_query]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-implicit-action
+  "An ImplicitAction as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::implicit-action [:kind]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

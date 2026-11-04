@@ -1,7 +1,7 @@
 (ns metabase.glossary.models.glossary
   (:require
    [metabase.glossary.db :as glossary.db]
-   [metabase.glossary.schema]
+   [metabase.glossary.schema :as glossary.schema]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -55,7 +55,8 @@
                               local)))
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
-  {:copy      [:entity_id :term :definition]
+  {:schema    ::glossary.schema/external-glossary
+   :copy      [:entity_id :term :definition]
    :transform {:creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/storage-path "Glossary" [item _]

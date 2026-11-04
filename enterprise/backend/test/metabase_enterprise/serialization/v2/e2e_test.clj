@@ -121,11 +121,11 @@
         (ts/with-db source-db
           (testing "insert"
             (test-gen/insert!
-             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query or implicit)
               ;; We generate 10 actions for each subtype, and 10 of each subtype.
-              ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
+              ;; actions 0-9 are query actions, and 10-19 are implicit actions.
               :action                  (apply concat
-                                              (for [type [:query :implicit :http]]
+                                              (for [type [:query :implicit]]
                                                 (many-random-fks 10
                                                                  {:spec-gen {:type type}}
                                                                  {:model_id   [:sm 10]
@@ -139,12 +139,6 @@
                                           (update-in x [1 :refs]
                                                      (fn [refs]
                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
-                                        (many-random-fks 10 {} {}))
-              :http-action             (map-indexed
-                                        (fn [idx x]
-                                          (update-in x [1 :refs]
-                                                     (fn [refs]
-                                                       (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
                                         (many-random-fks 10 {} {}))
               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                         [10  {:refs     {:personal_owner_id ::rs/omit}
@@ -222,7 +216,7 @@
           (testing "storage"
             (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"
-              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
+              (is (= 20 (count (dir->file-set (io/file dump-dir "actions"))))))
             (testing "for Collections"
               ;; +1 for the Trash collection
               (let [colls-dir  (io/file dump-dir "collections")

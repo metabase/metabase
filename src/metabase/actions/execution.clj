@@ -6,7 +6,6 @@
    [metabase.actions.args :as actions.args]
    [metabase.actions.audit :as actions.audit]
    [metabase.actions.db :as actions.db]
-   [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
@@ -36,9 +35,8 @@
 
 (def ^:private ExecuteActionOpts
   [:map {:closed true}
-   [:allow-http-actions? {:optional true} [:maybe :boolean]]
-   [:context             {:optional true} [:maybe :keyword]]
-   [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])
+   [:context      {:optional true} [:maybe :keyword]]
+   [:dashboard-id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
@@ -91,7 +89,7 @@
     (t2/hydrate (actions.db/table table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters opts]
-  (let [{action-type :type, action-id :id} action]
+  (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
     (let [model (actions.db/card (:model_id action))
           ;; the query executes against its own :database; fall back to the derived column if absent
@@ -103,24 +101,7 @@
     (try
       (case action-type
         :query
-        (execute-query-action! action request-parameters opts)
-
-        :http
-        ;; `execute-http-action!` refuses every call today, so this records the refused attempt. The template holds
-        ;; `url`/`headers`/`body`, which may carry credentials and `query.query` is plaintext -- so the hash
-        ;; identifies the action, never its content.
-        (actions.audit/with-audited-execution
-          {:action       :http/execute
-           :action-id    action-id
-           :dashboard-id (:dashboard-id opts)
-           :database-id  nil
-           :user-id      api/*current-user-id*
-           :context      (:context opts :action-execute)
-           :native?      false
-           :template     {:type :internal, :action :http/execute, :action-id action-id}
-           :inputs       (if (seq request-parameters) [request-parameters] [])}
-          (constantly {:result_rows 0})
-          (http-action/execute-http-action! action request-parameters)))
+        (execute-query-action! action request-parameters opts))
       (catch Exception e
         (log/errorf "Error executing action: %s" (ex-message e))
         (if-let [ed (ex-data e)]
@@ -249,10 +230,7 @@
    (execute-action! action request-parameters nil))
   ([action              :- ::actions.schema/action
     request-parameters  :- RequestParameters
-    {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts} :- [:maybe ExecuteActionOpts]]
-   (when (and (= (:type action) :http) (not allow-http-actions?))
-     (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
-                     {:status-code 403})))
+    opts                :- [:maybe ExecuteActionOpts]]
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
          field-settings         (get-in action [:visualization_settings :fields])
          hidden-param-ids       (->> (vals field-settings)
@@ -273,7 +251,7 @@
      (case (:type action)
        :implicit
        (execute-implicit-action! action request-parameters opts)
-       (:query :http)
+       :query
        (execute-custom-action! action request-parameters opts)
        (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action))))))
 

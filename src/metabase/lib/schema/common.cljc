@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
+  (:refer-clojure :exclude [mapv update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys every-key? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [mapv update-keys every-key? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -437,6 +437,15 @@
     [:source-field                       {:optional true} [:ref :metabase.lib.schema.id/field]]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
+
+(mr/def ::external-options
+  "[[::options]] as serialization writes them, keeping only the `:lib/uuid`s other clauses refer to."
+  (update (mr/schema ::options) 2
+          (fn [map-form]
+            (mapv #(if (and (vector? %) (= :lib/uuid (first %)))
+                     [:lib/uuid {:optional true} (peek %)]
+                     %)
+                  map-form))))
 
 (mr/def ::external-op
   [:map {:closed true}

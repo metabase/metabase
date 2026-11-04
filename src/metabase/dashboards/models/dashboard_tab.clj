@@ -55,7 +55,8 @@
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
-  {:copy      [:entity_id :name :position]
+  {:schema    ::dashboards.schema/external-dashboard-tab
+   :copy      [:entity_id :name :position]
    :skip      []
    :transform {:dashboard_id (serdes/parent-ref)}})
 

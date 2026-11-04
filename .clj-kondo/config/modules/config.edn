@@ -115,10 +115,7 @@
            users
            util
            warehouses}
-   :model-exports #{:model/Action
-                    :model/HTTPAction
-                    :model/ImplicitAction
-                    :model/QueryAction}
+   :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -947,6 +944,7 @@
            api
            app-db
            batch-processing
+           lib.schema
            models
            premium-features
            server
@@ -1661,6 +1659,7 @@
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
+           metabase.models.schema
            metabase.models.serialization
            metabase.models.serialization.resolve
            metabase.models.serialization.resolve.mp
@@ -1674,7 +1673,8 @@
            lib.schema
            parameters
            util
-           util.classloader}
+           util.classloader
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -1694,7 +1694,6 @@
                     :model/FieldUserSettings
                     :model/FieldValues
                     :model/Glossary
-                    :model/HTTPAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/Metabot
@@ -1738,6 +1737,7 @@
            collections
            events
            lib
+           lib.be
            lib.schema
            models
            permissions
@@ -1805,6 +1805,7 @@
    :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
+           lib.schema
            models
            request
            search.entity-retrieval
@@ -3591,6 +3592,7 @@
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
            events
+           lib.schema
            models
            premium-features
            server

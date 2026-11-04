@@ -2,6 +2,8 @@
   "Malli schemas for the osi module."
   (:require
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -35,3 +37,12 @@
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-osi-ai-context
+  "An OsiAiContext as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::osi-ai-context [:ai_context :entity_type]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:entity_local_id {:optional true} [:maybe [:or :string ::lib.schema.id/table]]]]]])

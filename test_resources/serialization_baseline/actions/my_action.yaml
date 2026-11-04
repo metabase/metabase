@@ -1,6 +1,5 @@
 creator_id: admin@example.com
 entity_id: aCtiOn00ExAmPlEx00001
-http: []
 implicit:
 - kind: row/update
 model_id: sRcMoDeL00ExAmPlEx001

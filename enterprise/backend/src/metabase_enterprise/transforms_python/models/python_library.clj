@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
-   [metabase-enterprise.transforms-python.schema]
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -86,7 +86,8 @@
 
 (defmethod serdes/make-spec "PythonLibrary"
   [_model-name _opts]
-  {:copy      [:path :source :entity_id]})
+  {:schema    ::transforms-python.schema/external-python-library
+   :copy      [:path :source :entity_id]})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])

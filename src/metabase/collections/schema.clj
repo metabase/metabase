@@ -1,6 +1,7 @@
 (ns metabase.collections.schema
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -149,3 +150,14 @@
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::external-collection
+  "A Collection as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::collection [:archive_operation_id :archived :archived_directly :authority_level :description
+                                :entity_id :is_remote_synced :is_sample :name :namespace :slug :type
+                                :personal_owner_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:parent_id {:optional true} [:maybe ::lib.schema.id/collection]]]]])

@@ -767,28 +767,21 @@
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"
      :type         ":type is not allowed in MBQL 5, use :lib/type instead."})])
 
+(def external-registry
+  "[[id/external-registry]], plus the clauses that change shape when their ids do, for a local registry that describes a
+  schema as serialization writes it."
+  (merge id/external-registry
+         {;; this spec has a :multi clause that assumes field IDs
+          ;; must be integers. the 3 in the assoc-in call refers to
+          ;; the :multi and the 2 refers to :dispatch-type/integer;
+          ;; if those get moved, this will need to change
+          :mbql.clause/field (assoc-in (mr/schema :mbql.clause/field)
+                                       [3 2 0] :dispatch-type/sequential)
+          ::common/options   ::common/external-options}))
+
 (mr/def ::external-query
   "Schema for \"External MBQL\" 5 query."
-  [:schema {:registry {::id/database :string
-                       ::id/card :string
-                       ::id/segment :string
-                       ::id/measure :string
-                       ::id/snippet :string
-                       ::id/schema [:or nil? :string]
-                       ::id/table [:cat ::id/database ::id/schema :string]
-                       ::id/field [:cat ::id/database ::id/schema :string [:+ :string]]
-                       ;; this spec has a :multi clause that assumes field IDs
-                       ;; must be integers. the 3 in the assoc-in call refers to
-                       ;; the :multi and the 2 refers to :dispatch-type/integer;
-                       ;; if those get moved, this will need to change
-                       :mbql.clause/field (assoc-in (mr/schema :mbql.clause/field)
-                                                    [3 2 0] :dispatch-type/sequential)
-                       ;; similarly we need to get rid of the :lib/uuid key of
-                       ::common/options (update (mr/schema ::common/options) 2
-                                                (fn [map-form]
-                                                  (into []
-                                                        (remove #(and (vector? %) (= :lib/uuid (first %))))
-                                                        map-form)))}}
+  [:schema {:registry external-registry}
    [:ref ::query]])
 
 (defn native-only-query?

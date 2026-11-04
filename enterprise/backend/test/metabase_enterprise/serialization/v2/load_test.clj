@@ -2476,7 +2476,7 @@
                        (get-in transform [:source :source-incremental-strategy :lookback])))))))))))
 
 (deftest transform-dangling-checkpoint-field-export-test
-  (testing "a checkpoint field id whose field no longer exists exports as-is and doesn't fail the import (GDGT-2906)"
+  (testing "a checkpoint field id whose field no longer exists is dropped from the export and doesn't fail the import (GDGT-2906)"
     (mt/with-premium-features #{:transforms-basic}
       (let [serialized (atom nil)]
         (ts/with-dbs [source-db dest-db]
@@ -2496,17 +2496,67 @@
                                              :name "target_table"
                                              :target-incremental-strategy {:type "append"}})]
               (reset! serialized (into [] (serdes.extract/extract {})))))
-          (testing "the dangling id is exported as a raw number, not a broken field ref"
+          (testing "the dangling id is dropped rather than exported as a local number or a broken field ref"
             (let [transform (first (filter #(= "Transform" (-> % :serdes/meta last :model)) @serialized))]
+              (is (= {:type "checkpoint"}
+                     (get-in transform [:source :source-incremental-strategy])))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (testing "a local id an older export carried is imported as is"
+              (serdes.load/load-metabase!
+               (ingestion-in-memory
+                (mapv #(cond-> %
+                         (= "Transform" (-> % :serdes/meta last :model))
+                         (assoc-in [:source :source-incremental-strategy :checkpoint-filter-field-id] 999999999))
+                      @serialized)))
               (is (= 999999999
-                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])))))
+                     (get-in (t2/select-one :model/Transform :name "Stale Checkpoint Transform")
+                             [:source :source-incremental-strategy :checkpoint-filter-field-id]))))))))))
+
+(defn- extract-merge-transform!
+  "Creates a merge-strategy Transform keyed on `target_table.id` in the current app DB and returns its extraction."
+  []
+  (t2/delete! :model/TransformTag)
+  (let [db           (ts/create! :model/Database :name "my-db")
+        source-table (ts/create! :model/Table :name "customers" :db_id (:id db))
+        target-table (ts/create! :model/Table :name "target_table" :schema "public" :db_id (:id db))
+        key-field    (ts/create! :model/Field :name "id" :table_id (:id target-table) :base_type :type/Integer)]
+    (ts/create! :model/Transform
+                :name "Merge Transform"
+                :source {:type  :query
+                         :query (mbql5-query (:id db) (:id source-table))}
+                :target {:database                    (:id db)
+                         :type                        "table-incremental"
+                         :schema                      "public"
+                         :name                        "target_table"
+                         :target-incremental-strategy {:type       "merge"
+                                                       :unique-key [{:name "id" :field-id (:id key-field)}]}})
+    (into [] (serdes.extract/extract {}))))
+
+(defn- merge-transform-unique-key
+  "The unique key of the merge Transform among `entities`."
+  [entities]
+  (get-in (first (by-model entities "Transform")) [:target :target-incremental-strategy :unique-key]))
+
+(deftest transform-merge-key-names-only-test
+  (testing "merge unique-key travels by column name only, so import creates no stub target table"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (reset! serialized (->> (extract-merge-transform!)
+                                    (remove #(some #{{:model "Table" :id "target_table"}} (:serdes/meta %)))
+                                    vec)))
+          (testing "export carries column names without field ids"
+            (is (= [{:name "id"}]
+                   (merge-transform-unique-key @serialized))))
           (ts/with-db dest-db
             (t2/delete! :model/TransformTag)
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (is (= 999999999
-                   (get-in (t2/select-one :model/Transform :name "Stale Checkpoint Transform")
-                           [:source :source-incremental-strategy :checkpoint-filter-field-id]))
-                "the stale numeric id survives the import unchanged")))))))
+            (is (= [{:name "id"}]
+                   (get-in (t2/select-one :model/Transform :name "Merge Transform")
+                           [:target :target-incremental-strategy :unique-key])))
+            (is (not (t2/exists? :model/Table :name "target_table")))))))))
 
 (deftest table-created-by-transform-load-test
   (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"
