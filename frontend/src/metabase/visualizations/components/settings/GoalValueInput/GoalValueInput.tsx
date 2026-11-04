@@ -208,10 +208,10 @@ export const GoalValueInput = ({
   };
 
   const selectEntityColumn = (columnName: string) => {
-    if (entity != null) {
+    if (entity != null && entityInfo.kind != null) {
       setDynamicValue(
         { type: entity.type, id: entity.id, column: columnName },
-        entityInfo.kind ?? entity.type,
+        entityInfo.kind,
       );
     }
   };
