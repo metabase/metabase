@@ -22,7 +22,12 @@ import {
 
 import { ParameterValueWidget } from "./ParameterValueWidget";
 
-function setup({ parameter }: { parameter?: Partial<UiParameter> } = {}) {
+interface SetupOpts {
+  parameter?: Partial<UiParameter>;
+  value?: ParameterValueOrArray | null;
+}
+
+function setup({ parameter, value = null }: SetupOpts = {}) {
   const defaultParameter: UiParameter = {
     ...createMockParameter({
       id: "test-param",
@@ -40,7 +45,7 @@ function setup({ parameter }: { parameter?: Partial<UiParameter> } = {}) {
     <ParameterValueWidget
       parameter={defaultParameter}
       setValue={setValue}
-      value={null}
+      value={value}
       placeholder="Enter a value"
     />,
   );
@@ -451,6 +456,36 @@ describe("ParameterValueWidget", () => {
 
       expect(input).toHaveValue("a");
       expect(getWidgetStatus()).toBe("none");
+    });
+  });
+
+  describe("required parameter with a default value", () => {
+    const parameter = createMockParameter({
+      id: "state",
+      type: "string/=",
+      slug: "state",
+      name: "State",
+      required: true,
+      default: "CA",
+    });
+
+    it.each([
+      { value: "CA", description: "the default value" },
+      { value: ["CA"], description: "the default value wrapped in an array" },
+    ])(
+      "should not offer to revert to the default value when the value is $description (metabase#38083)",
+      ({ value }) => {
+        setup({ parameter, value });
+
+        expect(screen.getByText("CA")).toBeInTheDocument();
+        expect(screen.queryByLabelText("revert icon")).not.toBeInTheDocument();
+      },
+    );
+
+    it("should offer to revert to the default value when the value differs from it", () => {
+      setup({ parameter, value: ["NY"] });
+
+      expect(screen.getByLabelText("revert icon")).toBeInTheDocument();
     });
   });
 });
