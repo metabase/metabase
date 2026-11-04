@@ -173,7 +173,10 @@ type BoundEav = {
   changedAtFieldId: FieldId | null;
 };
 
-function getBoundEav(binding: EavBinding): BoundEav | null {
+function getBoundEav(binding: EavBinding | null): BoundEav | null {
+  if (binding == null) {
+    return null;
+  }
   const { entityKeyFieldId, propertyFieldId, valueFieldId, changedAtFieldId } =
     binding;
   if (entityKeyFieldId == null || propertyFieldId == null) {
@@ -430,9 +433,10 @@ function buildRegistry(
     properties: _.sortBy(properties, (property) => -property.coverage),
   };
 }
+/** `binding` is null, or missing a column, when the table isn't profiled */
 export function usePropertyRegistry(
   table: Pick<Table, "db_id" | "id">,
-  binding: EavBinding,
+  binding: EavBinding | null,
 ): PropertyRegistryState {
   const [storage] = usePrototypeStorage(STORAGE_KEY, parseStorage);
   const eav = getBoundEav(binding);

@@ -7,7 +7,11 @@ import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton"
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
-import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
+import {
+  isRoleA,
+  usePropertyRegistry,
+  useTableStructures,
+} from "metabase/metadata/table-structure";
 import { useNavigate } from "metabase/router";
 import { Box, Group, Loader, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -46,9 +50,14 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const readOnly = !table.can_write;
-  const { role } = useTableStructures().getTableStructure(table);
+  const structure = useTableStructures().getTableStructure(table);
   const isCustomPropertyTable =
-    role != null && isRoleA(role, "role/CustomPropertyTable");
+    structure.role != null &&
+    isRoleA(structure.role, "role/CustomPropertyTable");
+  // Ad-hoc query results are dropped as soon as nothing reads them, so the
+  // Properties tab would re-profile on every visit. Reading the registry here,
+  // where it outlives tab switches, keeps it loaded while the table is open.
+  usePropertyRegistry(table, isCustomPropertyTable ? structure.eav : null);
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
