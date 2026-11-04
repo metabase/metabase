@@ -795,6 +795,39 @@ describe("fetchCardDataAction with goal references", () => {
     });
   });
 
+  it("returns the cached result of a series card whose own settings reference a goal, which the backend never answers", async () => {
+    const card = createMockCard({ id: 1, display: "line" });
+    const seriesCard = createMockCard({
+      id: 2,
+      display: "line",
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": { type: "card", id: 9, column: "total" },
+      },
+    });
+    const dashcard = createMockDashboardCard({
+      id: 1,
+      card_id: card.id,
+      dashboard_id: DASHBOARD_ID,
+      card,
+      series: [seriesCard],
+    });
+    const lastResults = {
+      [card.id]: createCachedResult({}),
+      [seriesCard.id]: createCachedResult({}),
+    };
+    const store = setupDashcardStore({ dashcard, lastResults });
+
+    const result = await store.dispatch(
+      fetchCardDataAction({ card: seriesCard, dashcard, options: {} }),
+    );
+
+    expect(fetchMock.callHistory.called(SERIES_QUERY_URL)).toBe(false);
+    expect(result.payload).toMatchObject({
+      result: lastResults[seriesCard.id],
+    });
+  });
+
   function setupVisualizerDashcard({
     referencedEntities = {},
   }: {
