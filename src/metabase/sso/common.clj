@@ -3,7 +3,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.sso.db :as sso.db]
@@ -73,4 +72,4 @@
    sso-source :- [:maybe [:or :keyword :string]]]
   (boolean (and (some? sso-source)
                 (sso.settings/sso-source-enabled? sso-source)
-                (not (contains? (auth-identity.db/user-ids-with-used-password #{user-id}) user-id)))))
+                (not (sso.db/used-password-exists? user-id)))))

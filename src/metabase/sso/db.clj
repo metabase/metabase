@@ -35,6 +35,15 @@
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
 
+(mu/defn used-password-exists?
+  "Whether the User with `user-id` has a `password` AuthIdentity that has been used to log in and has not expired."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/AuthIdentity
+              :user_id      user-id
+              :provider     "password"
+              :last_used_at [:not= nil]
+              {:where [:or [:= :expires_at nil] [:> :expires_at :%now]]}))
+
 (mu/defn slack-connect-identity
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
   [user-id :- ::lib.schema.id/user]
