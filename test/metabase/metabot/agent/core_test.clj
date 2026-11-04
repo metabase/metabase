@@ -842,6 +842,30 @@
             (is (= 2 @call-count))
             (is (= {:type :finish :finish-reason :stop} finish))))))))
 
+(deftest step-limit-reply-test
+  (testing "a turn that must call a tool on every step ends with a reply when it reaches the step limit"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [get-profile (mt/original-fn #'profiles/get-profile)
+              calls       (atom 0)
+              read-call   (fn []
+                            [{:type      :tool-input
+                              :id        (str "t" (swap! calls inc))
+                              :function  "list_available_fields"
+                              :arguments {:table_ids [] :model_ids [] :metric_ids []}}])]
+          (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
+                                      openrouter/openrouter (fn [_] (mut/mock-llm-response (read-call)))]
+            (is (=? [{:type :text
+                      :text "Metabot reached its step limit before it could finish. Try a more specific request."}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (->> (run-agent-loop {:messages   [{:role :user :content "Chart revenue by month"}]
+                                          :profile-id :document-generate-content})
+                         (into [])
+                         (take-last 3))))
+            (is (= 2 @calls))))))))
+
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
 

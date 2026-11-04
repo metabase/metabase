@@ -24,6 +24,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.util :as u]
@@ -255,6 +256,16 @@
     (when (or terminal (< allowed undeclared-failures))
       (or (not-empty (:user-message terminal))
           (tru "Something went wrong.")))))
+
+(defn- step-limit-message
+  "The reply for a turn that reached its step limit, or nil when `profile` lets the model answer in text.
+
+  A profile that requires a tool call on every step leaves the model no way to reply, so the turn would end with none.
+  In the other profiles the web chat and Slack show a notice about the step limit instead."
+  [profile]
+  (when (:required-tool-call? profile)
+    (tru "{0} reached its step limit before it could finish. Try a more specific request."
+         (metabot.settings/metabot-name))))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -626,10 +637,25 @@
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
 
-(defn- terminal-error-text-part
-  "Tool results are not rendered in the conversation, so a terminal error needs assistant text."
-  [message]
-  {:type :text, :id (str (random-uuid)), :text message})
+(defn- ended-loop-state
+  "The loop state for a turn that ends after this iteration for `reason`.
+
+  A `message` goes to the user as assistant text before the final state, and the status is `:reduced` instead when the
+  consumer stops on it. Tool results are not rendered in the conversation, so a turn that ends on a terminal error or
+  at the step limit would otherwise show no reply."
+  [{:keys [agent rf iteration] :as loop-state} result reason message]
+  (let [result (cond-> result
+                 message (rf {:type :text, :id (str (random-uuid)), :text message}))]
+    (if (reduced? result)
+      (assoc loop-state :status :reduced :finish-reason :reduced :result @result)
+      (do (if (= reason :length)
+            (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+            (log/info "Agent loop complete" {:iterations iteration :reason reason}))
+          (assoc loop-state
+                 :status :done
+                 ;; surfaced so run-agent-loop can record it on the turn span
+                 :finish-reason reason
+                 :result (rf result (final-state-part @(:memory-atom agent))))))))
 
 (defn- error-part [^Exception e]
   {:type :error, :error (or (self/context-overflow-error e)
@@ -722,14 +748,7 @@
               (assoc loop-state :status :reduced :finish-reason :reduced :result (unreduced result'))
 
               terminal-error
-              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
-                (if (reduced? result'')
-                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
-                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
-                      (assoc loop-state
-                             :status :done
-                             :finish-reason :terminal-error
-                             :result (rf result'' (final-state-part @memory-atom))))))
+              (ended-loop-state loop-state result' :terminal-error terminal-error)
 
               (should-continue? iteration max-iter terminal-tools parts)
               (assoc loop-state
@@ -740,14 +759,9 @@
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-                (if (= reason :length)
-                  (log/warn "Agent loop complete" {:iterations iteration :reason reason})
-                  (log/info "Agent loop complete" {:iterations iteration :reason reason}))
-                (assoc loop-state
-                       :status :done
-                       ;; surfaced so run-agent-loop can record it on the turn span
-                       :finish-reason reason
-                       :result (rf result' (final-state-part @memory-atom)))))))))))
+                (ended-loop-state loop-state result' reason
+                                  (when (= reason :max-iterations)
+                                    (step-limit-message profile)))))))))))
 
 ;;; Public API
 
