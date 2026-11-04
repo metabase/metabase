@@ -311,7 +311,7 @@
           (dissoc :anyOf)
           (update :allOf (fnil into [])
                   (cons {:type "array" :minItems 1 :prefixItems [{:enum (vec tags)}]}
-                        (map (fn [tag branch] {:if {:prefixItems [{:const tag}]} :then branch}) tags branches))))
+                        (map (fn [tag branch] {:if {:type "array" :prefixItems [{:const tag}]} :then branch}) tags branches))))
       node)))
 
 (mu/defn dispatch-on-tag :- ::json-schema

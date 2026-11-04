@@ -61,8 +61,8 @@
                 (mu.json-schema/transform [:or [:tuple [:= "a"] :int] [:tuple [:= "b"] :string]]))]
     (testing "tagged branches are checked only for their own tag"
       (is (= {:allOf [{:type "array" :minItems 1 :prefixItems [{:enum ["a" "b"]}]}
-                      {:if {:prefixItems [{:const "a"}]} :then {:type "array" :prefixItems [{:const "a"} {:type "integer"}] :items false :minItems 2}}
-                      {:if {:prefixItems [{:const "b"}]} :then {:type "array" :prefixItems [{:const "b"} {:type "string"}] :items false :minItems 2}}]}
+                      {:if {:type "array" :prefixItems [{:const "a"}]} :then {:type "array" :prefixItems [{:const "a"} {:type "integer"}] :items false :minItems 2}}
+                      {:if {:type "array" :prefixItems [{:const "b"}]} :then {:type "array" :prefixItems [{:const "b"} {:type "string"}] :items false :minItems 2}}]}
              schema)))))
 
 (deftest ^:parallel empty-schema-test
