@@ -32,8 +32,8 @@ function mapRedshiftValues(parsedValues: RegexFields) {
     ],
   ]);
 
-  if(parsedValues.protocol == "redshift:iam") {
-    fieldsMap.set("details.auth-mode", "iam");
+  if (parsedValues.protocol === "redshift:iam") {
+    fieldsMap.set("details.auth-mode", "iam-instance-profile");
   }
 
   if (fieldsMap.get("details.additional-options")) {
