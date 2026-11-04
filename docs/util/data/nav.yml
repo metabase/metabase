@@ -122,6 +122,8 @@ categories:
       - name: "Data apps"
         url: "data-apps/start"
         pages:
+          - name: "Getting started"
+            url: "data-apps/getting-started"
           - name: "Build a data app"
             url: "data-apps/build"
           - name: "Manage data apps"
@@ -255,7 +257,7 @@ categories:
             url: "data-modeling/models/models"
           - name: "Model persistence"
             url: "data-modeling/models/model-persistence"
-          - name: "Actions"
+          - name: "Model actions"
             pages:
               - name: "Overview"
                 url: "data-modeling/models/actions/introduction"

@@ -16,6 +16,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
+      ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
       openapi: ${{ steps.changes.outputs.openapi }}
@@ -86,6 +87,10 @@ jobs:
         - name: Run actionlint
           if: needs.files-changed.outputs.workflows == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.workflows_files }}
+
+        - name: Lint CI shell scripts
+          if: needs.files-changed.outputs.ci_scripts == 'true'
+          run: find .github -type f -name '*.sh' -exec shellcheck {} +
 
         - name: Check every workflow job sets a timeout
           if: needs.files-changed.outputs.workflows == 'true'

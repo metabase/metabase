@@ -14,6 +14,12 @@
 
 (use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
+(defn- venues-query
+  "Build an MBQL 5 query over the venues table."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."
   [text]
@@ -704,10 +710,8 @@
                                                         :namespace :transforms}
                        :model/Transform {transform-id :id} {:name "Test Transform"
                                                             :collection_id coll-id
-                                                            :source {:type "query"
-                                                                     :query {:database (mt/id)
-                                                                             :type :query
-                                                                             :query {:source-table (mt/id :venues)}}}
+                                                            :source {:type :query
+                                                                     :query (venues-query)}
                                                             :target {:database (mt/id)
                                                                      :type "table"
                                                                      :schema "public"
@@ -723,10 +727,8 @@
                                                         :namespace :transforms}
                        :model/Transform {transform-id :id} {:name "Test Transform"
                                                             :collection_id coll-id
-                                                            :source {:type "query"
-                                                                     :query {:database (mt/id)
-                                                                             :type :query
-                                                                             :query {:source-table (mt/id :venues)}}}
+                                                            :source {:type :query
+                                                                     :query (venues-query)}
                                                             :target {:database (mt/id)
                                                                      :type "table"
                                                                      :schema "public"
@@ -744,10 +746,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -765,10 +765,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -787,10 +785,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -808,10 +804,8 @@
                                                           :namespace :transforms}]
             (is (false? (mi/can-create? :model/Transform {:name "New Transform"
                                                           :collection_id coll-id
-                                                          :source {:type "query"
-                                                                   :query {:database (mt/id)
-                                                                           :type :query
-                                                                           :query {:source-table (mt/id :venues)}}}
+                                                          :source {:type :query
+                                                                   :query (venues-query)}
                                                           :target {:database (mt/id)
                                                                    :type "table"
                                                                    :schema "public"
@@ -828,10 +822,8 @@
                                                           :namespace :transforms}]
             (is (true? (mi/can-create? :model/Transform {:name "New Transform"
                                                          :collection_id coll-id
-                                                         :source {:type "query"
-                                                                  :query {:database (mt/id)
-                                                                          :type :query
-                                                                          :query {:source-table (mt/id :venues)}}}
+                                                         :source {:type :query
+                                                                  :query (venues-query)}
                                                          :target {:database (mt/id)
                                                                   :type "table"
                                                                   :schema "public"
@@ -847,10 +839,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -867,7 +857,7 @@
                                                         :namespace :transforms}
                        :model/Transform {transform-id :id} {:name "Read-only Transform"
                                                             :collection_id coll-id
-                                                            :source {:type "query"
+                                                            :source {:type :query
                                                                      :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                             :target {:database (mt/id)
                                                                      :type "table"
@@ -891,10 +881,8 @@
                                                           :namespace :transforms}]
             (is (false? (mi/can-create? :model/Transform {:name "New Transform"
                                                           :collection_id coll-id
-                                                          :source {:type "query"
-                                                                   :query {:database (mt/id)
-                                                                           :type :query
-                                                                           :query {:source-table (mt/id :venues)}}}
+                                                          :source {:type :query
+                                                                   :query (venues-query)}
                                                           :target {:database (mt/id)
                                                                    :type "table"
                                                                    :schema "public"

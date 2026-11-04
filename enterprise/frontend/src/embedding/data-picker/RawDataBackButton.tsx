@@ -7,7 +7,7 @@ import DataSelectorS from "./DataSelector/DataSelector.module.css";
 
 export function RawDataBackButton() {
   return (
-    <Flex align="center" className={CS.cursorPointer}>
+    <Flex component="span" align="center" className={CS.cursorPointer}>
       <Icon name="chevronleft" size={16} />
       <Box
         component="span"

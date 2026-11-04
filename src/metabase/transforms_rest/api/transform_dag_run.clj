@@ -10,6 +10,8 @@
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -19,14 +21,16 @@
   "The DAG traversal directions a reprocess run can take."
   [:upstream :downstream])
 
-(defn- check-seed-transform
+(mu/defn- check-seed-transform :- :nil
   "Check access to a DAG run by applying `check!` (`api/read-check`/`api/write-check`) to its seed
   transform. When the seed was deleted (`source_transform_id` nulled out by the FK) there is no
   transform left to check against, so fall back to requiring the data-analyst role."
-  [check! {:keys [source_transform_id] :as _dag-run}]
+  [check!                                    :- [:=> [:cat [:= :model/Transform] ms/PositiveInt] ::transforms.schema/transform]
+   {:keys [source_transform_id] :as _dag-run} :- ::transforms.schema/transform-dag-run]
   (if source_transform_id
     (check! :model/Transform source_transform_id)
-    (api/check-data-studio-access)))
+    (api/check-data-studio-access))
+  nil)
 
 (api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific DAG run."
