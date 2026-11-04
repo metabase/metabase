@@ -336,7 +336,12 @@
                            (setContentType [_ _])
                            (setHeader [_ _ _]))]
       (binding [streaming-response/*response* mock-response]
-        (f os canceled-chan))
+        ;; hand `f` the same kind of output stream the Jetty path does, so it carries the response's
+        ;; `:error-response-fn` to `write-error!`
+        (f (#'streaming-response/delay-output-stream
+            (delay os)
+            (:error-response-fn (.options ^StreamingResponse streaming-response)))
+           canceled-chan))
       {:body   (cond-> (.toByteArray os)
                  (some #(re-find % content-type) [#"json" #"text"])
                  (String. "UTF-8"))

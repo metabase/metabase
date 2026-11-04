@@ -372,7 +372,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :type        :json
   :default     []
   :feature     :sso-oidc
-  :visibility  :settings-manager
+  :visibility  :admin
   :export?     false
   :audit       :no-value
   :sensitive?  true)

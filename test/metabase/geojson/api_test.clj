@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [ring.adapter.jetty :as ring-jetty])
   (:import
    (java.net InetAddress)
@@ -154,19 +155,20 @@
       (-port [_] (.. server getURI getPort)))))
 
 (deftest url-proxy-endpoint-non-responding-server-test
-  (testing "error is returned if URL server never responds (#28752)"
+  (testing "a loopback URL is refused by the connection-time SSRF resolver, returning a good error
+           immediately instead of hanging on a server that accepts a connection but never responds"
     (with-redefs [api.geojson/connection-timeout-ms 200]
-      ;; use a webserver which accepts a connection and never responds. The geojson endpoint opens a reader to the url
-      ;; and responds with it. And if there are never any bytes going across, the whole thing just sits there. Our
-      ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
-      ;; issues. This ensures we give a good error message in this case.
+      ;; a webserver which accepts a connection and never responds -- the case that used to hang for 45s.
+      ;; We never even connect now: `localhost` resolves to loopback, which the resolver refuses.
       (with-open [server (non-responding-server)]
+        ;; bypass the up-front check so we exercise the connection-time resolver specifically
         (mt/with-dynamic-fn-redefs [geojson.settings/valid-geojson-url? (constantly true)]
           (let [never-responds-url (str "http://localhost:" (-port server))]
-            (testing "error is returned if URL connection fails"
-              (is (= "GeoJSON URL failed to load"
-                     (mt/user-http-request :crowberto :get 400 "geojson"
-                                           :url never-responds-url))))))))))
+            (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
+                        "URLs referring to hosts that supply internal hosting metadata are "
+                        "prohibited.")
+                   (mt/user-http-request :crowberto :get 400 "geojson"
+                                         :url never-responds-url)))))))))
 
 (deftest key-proxy-endpoint-test
   (with-geojson-mocks
@@ -225,13 +227,24 @@
       (is (= "Invalid custom GeoJSON key: us_states"
              (mt/user-real-request :crowberto :get 400 "geojson/us_states"))))))
 
-(deftest resolver-disallows-link-local-geojson-attack
-  (testing "Should block link local dns resolution"
-    (binding [api.geojson/*system-dns-resolver* (doto (InMemoryDnsResolver.)
-                                                  (.add "metabase.com"
-                                                        (into-array [(InetAddress/getByAddress (byte-array [1 1 1 1]))
-                                                                     (InetAddress/getByAddress (byte-array [169 254 169 254]))])))]
+(deftest resolver-disallows-non-public-geojson-attack
+  (testing "the connection-time resolver blocks a host that resolves to a non-public address at connect
+           time even though it passed the up-front check (DNS rebinding / multiple A records)"
+    (binding [u.http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                             (.add "metabase.com"
+                                                   (into-array [(InetAddress/getByAddress (byte-array [1 1 1 1]))
+                                                                (InetAddress/getByAddress (byte-array [169 254 169 254]))])))]
       (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
                   "URLs referring to hosts that supply internal hosting metadata are "
                   "prohibited.")
              (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))))
+
+(deftest url-proxy-rejects-any-local-ula-cgnat-test
+  (testing "hosts the old valid-host? let through -- any-local (0.0.0.0 / [::]), IPv6 ULA, IPv4 CGNAT --
+           are rejected up front, before any fetch"
+    (doseq [host ["0.0.0.0" "[::]" "100.64.0.1" "[fc00::1]"]]
+      (testing host
+        (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
+                    "URLs referring to hosts that supply internal hosting metadata are "
+                    "prohibited.")
+               (mt/user-http-request :crowberto :get 400 "geojson" :url (str "http://" host "/x.json"))))))))

@@ -180,7 +180,7 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
-            {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
+            <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xl" className={S.content}>
             <AdvisoryFilterBar

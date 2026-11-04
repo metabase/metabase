@@ -538,9 +538,10 @@
   (and (:is_audit database)
        (every? #(empty? (get database %)) details-keys)))
 
-(defn- validate-connection-hosts!
-  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
-  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+(defn- validate-connection-details!
+  "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
+  disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
+  endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
   import, config-file provisioning, and destination databases.
 
   `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
@@ -555,8 +556,11 @@
         (doseq [k     keys-to-check
                 :let  [details (get database k)]
                 :when (map? details)]
-          (driver.u/validate-connection-hosts! engine (cond->> details
-                                                        (not= k :details) (merge (:details database)))))))))
+          (let [details (cond->> details
+                          (not= k :details) (merge (:details database)))]
+            (driver.u/validate-connection-hosts! engine details)
+            (when (driver.impl/registered? engine)
+              (driver.u/validate-connection-parameters! engine details))))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -567,11 +571,11 @@
     ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
     ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
     ;; it accompanies rather than on its own.
-    (validate-connection-hosts! (or (:engine changes) (:engine original))
-                                (merge original changes)
-                                (if (contains? changes :engine)
-                                  details-keys
-                                  (filterv #(contains? changes %) details-keys))))
+    (validate-connection-details! (or (:engine changes) (:engine original))
+                                  (merge original changes)
+                                  (if (contains? changes :engine)
+                                    details-keys
+                                    (filterv #(contains? changes %) details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -629,7 +633,7 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-hosts! engine database details-keys)
+  (validate-connection-details! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
@@ -746,7 +750,7 @@
   (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_stub
                  :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
@@ -757,7 +761,12 @@
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
-                 :initial_sync_status {:export identity :import (constantly "complete")}}
+                 :initial_sync_status {:export identity :import (constantly "complete")}
+                 ;; Never trust an archive's `is_sample`: the real Sample Database is excluded from export
+                 ;; (see the `serdes/extract-query` method below), so any incoming `is_sample true` is forged --
+                 ;; and marking an imported row as the sample DB would let it ride sample-only code paths. Import false.
+                 :is_sample           {:export-with-context (fn [_current _ _is-sample] ::serdes/skip)
+                                       :import              (constantly false)}}
      :defaults  {:auto_run_queries true
                  :is_attached_dwh  false
                  :is_audit         false
@@ -807,9 +816,21 @@
     (throw (ex-info "h2 is not supported for serialization import"
                     {:engine (:engine ingested) :name (:name ingested)}))))
 
+(defn assert-sqlite-not-hosted!
+  "Refuse to import a SQLite Database on a hosted instance. SQLite is blocked as a warehouse on Metabase Cloud (only
+  the bundled Sample Database, which serdes never exports, is allowed); serialization import is the one write path
+  that never tests the connection, so without this an archive could persist a SQLite row whose attacker-chosen `:db`
+  path is later opened by sync. Mirrors [[assert-not-h2!]]. Self-hosted instances import SQLite normally."
+  [ingested]
+  (when (and (= :sqlite (keyword (:engine ingested)))
+             (premium-features/is-hosted?))
+    (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
+                    {:engine (:engine ingested) :name (:name ingested) :status-code 400}))))
+
 (defmethod serdes/load-one! "Database"
   [ingested maybe-local]
   (assert-not-h2! ingested)
+  (assert-sqlite-not-hosted! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)

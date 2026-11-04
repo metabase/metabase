@@ -12,6 +12,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
@@ -46,6 +47,33 @@
 
 (def ^:private save-execution-metadata-queue-capacity 500)
 
+(defn- insert-query-executions!
+  "Insert the QueryExecution `rows`. Runs in its own (possibly nested) transaction so that if the app DB rejects a
+  row, the failure is rolled back to a savepoint instead of aborting a caller's enclosing transaction."
+  [rows]
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/QueryExecution rows)))
+
+(defn- insert-query-executions-resiliently!
+  "Insert a batch of QueryExecutions in one statement. The batch is one transaction, so a single row the app DB
+  rejects (e.g. an overlong value in a narrow column) would discard every row in it: on failure, retry the rows one
+  at a time so only the bad row is lost. Any other failure (e.g. the app DB is down) would fail every retry too, each
+  possibly waiting for a connection, so then the batch is dropped."
+  [query-executions]
+  (try
+    (insert-query-executions! query-executions)
+    (catch Throwable e
+      (if (sql-errors/row-rejected? e)
+        (do
+          (log/warnf "Error saving %d QueryExecution(s) as a batch, retrying individually: %s"
+                     (count query-executions) (ex-message e))
+          (doseq [query-execution query-executions]
+            (try
+              (insert-query-executions! [query-execution])
+              (catch Throwable e
+                (log/errorf "Error saving query execution info: %s" (ex-message e))))))
+        (log/errorf "Error saving %d QueryExecution(s): %s" (count query-executions) (ex-message e))))))
+
 (defn- save-execution-metadata!*
   "Save a batch of `QueryExecution`s and update the average execution times for the corresponding `Query`s."
   [query-executions]
@@ -59,14 +87,11 @@
         (query/save-queries-and-update-average-execution-times! entries)
         (catch Throwable e
           (log/errorf "Error updating query average execution times: %s" (ex-message e)))))
-    (try
-      (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
-        (when (seq no-context)
-          (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
-        (when (seq with-context)
-          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
-      (catch Throwable e
-        (log/errorf "Error saving query execution info: %s" (ex-message e))))))
+    (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
+      (when (seq no-context)
+        (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
+      (when (seq with-context)
+        (insert-query-executions-resiliently! (map #(dissoc % :json_query) with-context))))))
 
 (defonce ^:private save-execution-metadata-queue
   (delay (grouper/start!
@@ -154,7 +179,9 @@
   postprocessing middleware (`is_impersonated`, `is_db_routed`, the routed `database_id`) are NOT computed here —
   they're added later by [[enrich-with-execution-context]] from inside the postprocessing rff, where the bindings
   are still in effect. See PR #71386 — reading those values from the query map at the top of the around middleware
-  was a timing bug because pre-processing hadn't yet run."
+  was a timing bug because pre-processing hadn't yet run.
+
+  Mirrored by `execution-row` in `metabase.actions.audit`; keep the two in step."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
@@ -228,6 +255,18 @@
     (when *execution-context-ref*
       (reset! *execution-context-ref* (snapshot-execution-context)))
     (qp query rff)))
+
+(defn do-with-captured-execution-context
+  "Run `f` with [[*execution-context-ref*]] bound, then hand `on-snapshot` whatever
+  [[capture-execution-context-middleware]] recorded (nil if it never ran), whether `f` returned or threw. For QP
+  entry points that write their own execution row, such as the writeback QP."
+  [f on-snapshot]
+  (let [context-ref (atom nil)]
+    (try
+      (binding [*execution-context-ref* context-ref]
+        (f))
+      (finally
+        (on-snapshot @context-ref)))))
 
 (defn- enrich-with-execution-context
   "Merges the snapshotted execution context (from [[*execution-context-ref*]]) into `execution-info`. Always

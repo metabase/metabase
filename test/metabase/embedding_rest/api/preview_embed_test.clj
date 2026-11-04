@@ -277,6 +277,14 @@
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (dashcard-url dashcard))))))))))
 
+(deftest dashcard-archived-card-test
+  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+    (testing "refuses a trashed Card, even though its DashboardCard row survives"
+      (embed-test/with-embedding-enabled-and-new-secret-key!
+        (embed-test/with-temp-dashcard [dashcard {:card {:archived true}}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 (dashcard-url dashcard)))))))))
+
 (deftest dashcard-locked-params-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (testing "LOCKED params"
@@ -469,6 +477,16 @@
             (testing "should fail if embedding is enabled and the wrong key is used"
               (is (= "Message seems corrupt or manipulated"
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (pivot-dashcard-url dashcard))))))))))))
+
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (embed-test/with-embedding-enabled-and-new-secret-key!
+        (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
+                                                  :card     (assoc (api.pivots/pivot-card) :archived true)
+                                                  :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 (pivot-dashcard-url dashcard)))))))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
@@ -817,6 +835,20 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                                                 (embed-test/dash-token dashboard-id) dashcard-id card-id)
+                                     :latField (tiles.api-test/encoded-lat-field-ref)
+                                     :lonField (tiles.api-test/encoded-lon-field-ref))))))))
 
 (deftest card-tile-query-implicit-join-ref-test
   (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"

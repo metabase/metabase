@@ -134,8 +134,6 @@
               entry  (first (filter #(= "cachebust-viz" (:identifier %)) result))]
           (is (re-find #"\?v=deadbeefcafe$" (:bundle_url entry))))))))
 
-;;; ------------------------------------------------ Bundle bytes not exposed ------------------------------------------------
-
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bytes-sec"

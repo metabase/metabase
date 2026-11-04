@@ -3,7 +3,6 @@ import { printBold } from "../../cypress-runner-utils";
 import { setupAppCleanup } from "../shared/helpers/setup-app-cleanup";
 
 import { SAMPLE_APP_SETUP_CONFIGS } from "./constants/sample-app-setup-configs";
-import { copyShoppyMetabaseAppDBDump } from "./helpers/copy-shoppy-metabase-app-db-dump";
 import { fetchApp } from "./helpers/fetch-app";
 import {
   copyExampleEnvFile,
@@ -62,10 +61,6 @@ export async function startSampleAppContainers(
 
     if (embeddingSdkVersion === "local") {
       copyLocalEmbeddingSdkPackage(rootPath);
-    }
-
-    if (testSuite === "shoppy-e2e") {
-      copyShoppyMetabaseAppDBDump(rootPath);
     }
 
     await startContainers({

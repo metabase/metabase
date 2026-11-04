@@ -8,6 +8,7 @@ import type { State } from "metabase/redux/store";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
 import { getSetting } from "metabase/selectors/settings";
+import { getBasename } from "metabase/utils/basename";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 import { getIsEmbeddingIframe } from "./selectors/embed";
@@ -29,6 +30,33 @@ const getRedirectUrl = () => {
     ? redirectUrlParam
     : "/";
 };
+
+/**
+ * A redirect target's pathname arrives in one of two shapes: basename-relative
+ * (`/oauth/x`) — the convention for every SPA path, including the backend's
+ * login redirect (the server sits behind the prefix-stripping proxy and never
+ * sees the subpath) — or, parsed out of an absolute URL, already carrying the
+ * subpath (`/metabase/oauth/x`). Strip the basename so the SPA router (which
+ * prepends it itself) and prefix checks like `isBackendOnlyPath` both see a
+ * router path.
+ */
+export const toRouterPathname = (pathname: string) => {
+  const basename = getBasename();
+  return basename && pathname.startsWith(`${basename}/`)
+    ? pathname.slice(basename.length)
+    : pathname;
+};
+
+/**
+ * The inverse: join the basename back on for a full-page redirect, producing
+ * the browser-real URL. String-join, not URL resolution: a leading "/" is
+ * *root*-relative and would discard the basename from a URL base.
+ */
+export const toBrowserUrl = (path: string) =>
+  new URL(
+    `${getBasename()}/${path.replace(/^\//, "")}`,
+    window.location.origin,
+  );
 
 const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
@@ -78,14 +106,17 @@ const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
     pathname: string;
     query?: Record<string, string>;
   }) => {
-    if (isBackendOnlyPath(location.pathname)) {
+    const pathname = toRouterPathname(location.pathname);
+    if (isBackendOnlyPath(pathname)) {
       const params = new URLSearchParams(location.query);
       const qs = params.toString();
-      const url = qs ? `${location.pathname}?${qs}` : location.pathname;
-      window.location.replace(url);
+      const path = qs ? `${pathname}?${qs}` : pathname;
+      // Absolute, basename-joined: a root-relative replace would drop the
+      // subpath when Metabase is hosted under one.
+      window.location.replace(toBrowserUrl(path).href);
       return routerActions.replace("/");
     }
-    return routerActions.replace(location);
+    return routerActions.replace({ ...location, pathname });
   },
   context: metabaseReduxContext,
 });

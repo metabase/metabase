@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isTableDisplay } from "metabase/dashboard/utils";
 import {
   Button,
   Flex,
@@ -13,6 +12,7 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
+import { hasColumnLevelClickBehavior } from "metabase/utils/dashboard";
 import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -113,7 +113,7 @@ export function CustomURLPicker({
             onChange={handleLinkTemplateChange}
             className={cx(CS.block, CS.full)}
           />
-          {isTableDisplay(dashcard) && (
+          {hasColumnLevelClickBehavior(dashcard) && (
             <CustomLinkText
               updateSettings={updateSettings}
               clickBehavior={clickBehavior}

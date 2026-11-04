@@ -5,9 +5,14 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.audit-app.events.audit-log]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as mt]
+   [metabase.users.settings]
    [toucan2.core :as t2]))
+
+(comment metabase.audit-app.events.audit-log/keep-me
+         metabase.users.settings/keep-me)
 
 (use-fixtures :each test-helpers/clean-remote-sync-state)
 

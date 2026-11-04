@@ -8,6 +8,8 @@
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -195,3 +197,52 @@
                           (hash-input-for-user-id-with-attributes user-id-2 {"State" "CA"} field)))
                 (is (not= (hash-input-for-user-id-with-attributes user-id-1 {"State" "CA"} field)
                           (hash-input-for-user-id-with-attributes user-id-2 {"State" "NY"} field)))))))))))
+
+(deftest unresolved-sandbox-attributes-test
+  (testing "a sandboxed user whose sandbox can't be resolved gets no values"
+    (met/with-gtaps! {:gtaps {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}}
+      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
+        (is (ee-params.field-values/field-is-sandboxed? field))
+        ;; the request's permissions cache keeps the sandbox, while the attribute lookup reads the app DB
+        (t2/delete! :model/Sandbox :group_id (u/the-id &group))
+        (t2/insert! :model/FieldValues {:field_id (u/the-id field)
+                                        :type     :advanced
+                                        :hash_key (str (hash {:field-id (u/the-id field), :sandbox-attributes nil}))
+                                        :values   [1 2 3 4]})
+        (is (nil? (params.field-values/get-or-create-field-values! field)))
+        (is (= {(u/the-id field) {}}
+               (params.field-values/field-id->field-values-for-current-user [(u/the-id field)])))))))
+
+(deftest batched-field-values-without-sandboxes-feature-test
+  (testing "the batched fetches give a sandboxed user no values while sandboxing is unavailable"
+    (mt/with-temp-copy-of-db
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+      (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                        :attributes {:cat 4}}
+        (mt/with-premium-features #{}
+          (is (= {(mt/id :venues :price) {}}
+                 (params.field-values/field-id->field-values-for-current-user [(mt/id :venues :price)])))
+          (is (= {(mt/id :venues :price) {}}
+                 (params.field-values/get-or-create-field-values-by-field-id!
+                  [(t2/select-one :model/Field :id (mt/id :venues :price))]))))))))
+
+(deftest batched-field-values-without-table-id-test
+  (testing "a field with no :table_id throws"
+    (is (thrown? AssertionError
+                 (params.field-values/get-or-create-field-values-by-field-id!
+                  [(dissoc (t2/select-one :model/Field :id (mt/id :venues :price)) :table_id)])))))
+
+(deftest batched-field-values-query-count-test
+  (testing "the batched fetch resolves a user's restrictions once per table, not once per field"
+    (doseq [features [#{} #{:sandboxes :advanced-permissions :database-routing}]]
+      (mt/with-premium-features features
+        (mt/with-test-user :rasta
+          (let [field-ids   (t2/select-pks-vec :model/Field :table_id (mt/id :venues))
+                query-count (fn [ids]
+                              ;; warms the memoized field and table lookups
+                              (params.field-values/field-id->field-values-for-current-user ids)
+                              (t2/with-call-count [call-count]
+                                (params.field-values/field-id->field-values-for-current-user ids)
+                                (call-count)))]
+            (is (= (query-count (take 1 field-ids))
+                   (query-count field-ids)))))))))

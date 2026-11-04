@@ -14,6 +14,7 @@
    [mage.fix-unused-requires-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.modules-test]
+   [mage.new-migration-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))

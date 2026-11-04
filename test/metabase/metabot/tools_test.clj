@@ -3,13 +3,16 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -166,6 +169,26 @@
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))
           (is (seq (:data-parts result))))))))
+
+(deftest construct-notebook-query-keeps-mbql5-temporal-filter-test
+  (testing "the generated_entity part carries a between filter of absolute-datetime bounds through JSON intact (BOT-1972)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                             (lib/absolute-datetime "2026-07-01" :day)
+                                             (lib/absolute-datetime "2026-07-31" :day))))]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [_ & _]
+                                    {:structured-output {:query-id       "q-1"
+                                                         :query          query
+                                                         :result-columns []}})]
+        (let [result (binding [shared/*profile-id* :nlq]
+                       (agent-tools/construct-notebook-query-tool
+                        {:query {:lib/type "mbql/query" :stages []}
+                         :title "Check-ins in July"}))
+              sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+          (is (= "mbql/query" (:lib/type sent)))
+          (is (= (lib/filters query)
+                 (-> sent lib/normalize :stages first :filters))))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"

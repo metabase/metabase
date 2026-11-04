@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -1023,3 +1024,12 @@
                         {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
         (is (= [{:name "readable", :schema "s", :description nil}]
                (into [] (#'redshift/describe-database-tables db))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "r.example.com" :port 5439 :user "u" :db "a?b"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :redshift details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

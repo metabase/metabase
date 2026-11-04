@@ -39,7 +39,9 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  queryQuestion(): Promise<Question | undefined>;
+  queryQuestion(options?: {
+    ignoreCache?: boolean;
+  }): Promise<Question | undefined>;
 
   loadAndQueryQuestion(): LoadQuestionResult;
 
@@ -117,13 +119,16 @@ export function useLoadQuestion({
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
   const shouldLoadQuestion = questionId != null || deserializedCard != null;
-  const [isQuestionLoading, setIsQuestionLoading] =
-    useState(shouldLoadQuestion);
+  const [isLoadInFlight, setIsLoadInFlight] = useState(shouldLoadQuestion);
+
+  const isQuestionLoading = isLoadInFlight || !shouldLoadQuestion;
 
   const [, loadAndQueryQuestion] = useAsyncFn(async () => {
-    if (shouldLoadQuestion) {
-      setIsQuestionLoading(true);
+    if (!shouldLoadQuestion) {
+      return {};
     }
+
+    setIsLoadInFlight(true);
 
     try {
       const questionState = await dispatch(
@@ -152,7 +157,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(results);
 
-      setIsQuestionLoading(false);
+      setIsLoadInFlight(false);
       return { ...results, originalQuestion };
     } catch (err) {
       // Ignore cancelled requests (e.g. when the component unmounts, or when a
@@ -160,7 +165,7 @@ export function useLoadQuestion({
       // shared `controllerRef`). React simulates unmounting on strict mode,
       // therefore "Question not found" will be shown without this.
       if (isAbortError(err)) {
-        setIsQuestionLoading(false);
+        setIsLoadInFlight(false);
         return {};
       }
 
@@ -180,7 +185,7 @@ export function useLoadQuestion({
         parameterValues: undefined,
       });
 
-      setIsQuestionLoading(false);
+      setIsLoadInFlight(false);
       return {};
     }
   }, [
@@ -194,32 +199,36 @@ export function useLoadQuestion({
     initialVisualization,
   ]);
 
-  const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
-    if (!question) {
-      return;
-    }
+  const [runQuestionState, queryQuestion] = useAsyncFn(
+    async (options?: { ignoreCache?: boolean }) => {
+      if (!question) {
+        return;
+      }
 
-    const state = await runQuestionQuerySdk({
+      const state = await runQuestionQuerySdk({
+        question,
+        isGuestEmbed,
+        token,
+        originalQuestion,
+        parameterValues,
+        signal: nextSignal(),
+        dispatch,
+        ignoreCache: options?.ignoreCache,
+      });
+
+      mergeQuestionState(state);
+
+      return state.question;
+    },
+    [
+      dispatch,
       question,
       isGuestEmbed,
       token,
       originalQuestion,
       parameterValues,
-      signal: nextSignal(),
-      dispatch,
-    });
-
-    mergeQuestionState(state);
-
-    return state.question;
-  }, [
-    dispatch,
-    question,
-    isGuestEmbed,
-    token,
-    originalQuestion,
-    parameterValues,
-  ]);
+    ],
+  );
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {

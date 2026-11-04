@@ -263,36 +263,25 @@
          {pulse-body       :content
           body-attachments :attachments
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
-         attachment-href                  (if dashcard
-                                            (urls/dashcard-url dashcard)
-                                            (card-href card))
          inline-parameters                (when (:channel.render/include-inline-parameters? options)
                                             (-> dashcard :visualization_settings :inline_parameters))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                        [:div
-                         [:a (cond-> {:target      "_blank"
-                                      :rel         "noopener noreferrer"
-                                      :style       (style/style
-                                                    (style/section-style)
-                                                    {:display         :block
-                                                     :text-decoration :none})}
-                               (not (:channel.render/disable-links? options))
-                               (assoc :href attachment-href))
-                          title
-                          description
-                          (when (seq inline-parameters)
-                            [:div {:style (style/style {:padding-bottom :16px})}
-                             (render.util/render-parameters inline-parameters)])
-                          [:div {:class "pulse-body"
-                                 :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
-                                                      :display :block
-                                                      :margin  :16px})}
-                           (if-let [more-results-message (body/attached-results-text render-type card)]
-                             (conj more-results-message (list pulse-body))
-                             pulse-body)]]]]}
+                        [:div {:style (style/style (style/section-style))}
+                         title
+                         description
+                         (when (seq inline-parameters)
+                           [:div {:style (style/style {:padding-bottom :16px})}
+                            (render.util/render-parameters inline-parameters)])
+                         [:div {:class "pulse-body"
+                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
+                                                     :display :block
+                                                     :margin  :16px})}
+                          (if-let [more-results-message (body/attached-results-text render-type card)]
+                            (conj more-results-message (list pulse-body))
+                            pulse-body)]]]}
        text (assoc :render/text text)))))
 
 (mu/defn render-pulse-card-for-display

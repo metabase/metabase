@@ -149,6 +149,23 @@
         (is (= "apply-changes-version" (written-version task))
             "an in-place collection edit (no rename) is incremental")))))
 
+(deftest collection-rename-falls-back-to-full-export-test
+  (testing "GHY-4642: a collection's path is its contents' directory, so a rename re-exports everything and moves the contents"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (t2/update! :model/Collection coll-id {:name "Marketing Reports"})
+        (set-status! "Collection" coll-id "update")
+        (let [task   (new-task!)
+              result (impl/export! (source.p/snapshot mock) task "rename collection")]
+          (is (= :success (:status result)))
+          (is (= "write-files-version" (written-version task)) "collection rename is a full export")
+          (is (= #{"collections/main/marketing_reports.yaml"
+                   "collections/main/marketing_reports/card_a.yaml"
+                   "collections/main/marketing_reports/card_b.yaml"}
+                 (set (keys (files mock)))))
+          (is (= "collections/main/marketing_reports/card_a.yaml" (:file_path (rso "Card" card-a))))
+          (is (= "collections/main/marketing_reports/card_b.yaml" (:file_path (rso "Card" card-b)))))))))
+
 (deftest rename-uses-incremental-path-test
   (with-exported-collection!
     (fn [{:keys [mock card-a]}]

@@ -4,6 +4,11 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.63.23
+
+- `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
+  that does not start with `.` or `-`. Other values get `400 Bad Request`.
+
 ## Metabase 0.63.15
 
 - `POST /api/slack/bug-report` now requires bug reporting to be enabled (`MB_BUG_REPORTING_ENABLED`).

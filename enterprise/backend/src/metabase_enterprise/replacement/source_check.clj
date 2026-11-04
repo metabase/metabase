@@ -24,10 +24,15 @@
            (t2/exists? :model/Card :id [:in sandbox-card-ids] :table_id table-id))))))
 
 (mu/defn- has-incoming-fks? :- :boolean
-  "Returns true if any active field has a FK pointing to a field in `table-id`."
+  "Returns true if any active field on an active table has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
   (if-let [field-ids (not-empty (t2/select-pks-set :model/Field :table_id table-id :active true))]
-    (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true)
+    (t2/exists? :model/Field {:from  [:metabase_field]
+                              :join  [:metabase_table [:= :metabase_field.table_id :metabase_table.id]]
+                              :where [:and
+                                      [:in :metabase_field.fk_target_field_id field-ids]
+                                      [:= :metabase_field.active true]
+                                      [:= :metabase_table.active true]]})
     false))
 
 (mu/defn- format-column :- ::replacement.schema/column

@@ -102,8 +102,9 @@
   [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
-        {:keys [email sso_source]}
-        (t2/query-one {:select [:u.email :u.sso_source]
+        {:keys [email sso_source saml_session_index saml_name_id saml_name_id_format]}
+        (t2/query-one {:select [:u.email :u.sso_source :session.saml_session_index
+                                :session.saml_name_id :session.saml_name_id_format]
                        :from   [[:core_user :u]]
                        :join   [[:core_session :session] [:= :u.id :session.user_id]]
                        :where  [:= :key_hashed metabase-session-key-hashed]})]
@@ -118,7 +119,15 @@
         :credential (metabase-enterprise.sso.integrations.saml/sp-cert-keystore-details)
         :idp-url (sso-settings/saml-identity-provider-slo-uri)
         :issuer (sso-settings/saml-application-name)
-        :user-email email
+        ;; Name the subject the way the IdP does. Its NameID is not necessarily the user's email
+        ;; - Auth0 sends an opaque `auth0|<id>` - and a LogoutRequest naming an identifier the IdP
+        ;; never issued matches no session. Fall back to email for sessions predating this column.
+        :user-email (or saml_name_id email)
+        :name-id-format saml_name_id_format
+        ;; Identifies which session to end. IdPs that map several sessions to one subject (Auth0)
+        ;; reject a LogoutRequest without it. Omitted when we have none, which keeps the request
+        ;; unchanged for IdPs that never sent one.
+        :session-index saml_session_index
         :relay-state (u/encode-base64
                       (str (system/site-url) metabase-slo-redirect-url))))}))
 

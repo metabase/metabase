@@ -27,8 +27,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -160,13 +159,8 @@
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
       (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+        (when-not (search.ingestion/await-pending-updates! 2000)
+          (log/warn "Returning search results before pending index updates finished.")))
       (let [weights (search.config/weights search-ctx)
             scorers (search.scoring/scorers search-ctx)
             query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
@@ -278,6 +272,7 @@
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (try
+    (search.index/delete-obsolete-tables!)
     (search.index/ensure-ready!)
     (if in-place?
       (when-let [table (search.index/active-table)]
@@ -295,7 +290,9 @@
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
-    (log/info "Reindexing appdb index because the site locale changed.")
-    (if search.ingestion/*force-sync*
-      (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+    (let [reindex! (fn []
+                     (log/info "Reindexing appdb index because the site locale changed.")
+                     (search.engine/reindex! :search.engine/appdb {}))]
+      (if search.ingestion/*force-sync*
+        (reindex!)
+        (mdb/do-after-commit #(future (reindex!)))))))

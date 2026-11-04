@@ -72,6 +72,7 @@ export {
   type InteractiveQuestionQuestionSettingsProps,
   type InteractiveQuestionQuestionSettingsDropdownProps,
   type InteractiveQuestionQuestionVisualizationProps,
+  type InteractiveQuestionRefreshButtonProps,
   type InteractiveQuestionResetButtonProps,
   type InteractiveQuestionSaveButtonProps,
   type InteractiveQuestionSaveQuestionFormProps,

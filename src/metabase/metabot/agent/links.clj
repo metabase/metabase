@@ -12,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,18 +30,43 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a pMBQL query (has `:lib/type`) to legacy MBQL. Frontend /question#
-  URLs require legacy MBQL format; non-pMBQL values pass through unchanged."
+  "Convert an MBQL 5 query (has `:lib/type`) to legacy MBQL.
+
+  Non-MBQL 5 values pass through unchanged.
+  Use [[->frontend-query]] for frontend links and chart data."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query) (:lib/type query))
     (lib/->legacy-MBQL query)
     query))
 
+(defn ->frontend-query
+  "Prepare a query for frontend links and chart data.
+
+  Structured MBQL 5 queries stay in MBQL 5 so temporal filters survive JSON serialization (BOT-1972),
+  and they keep their `:parameters`.
+  Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
+  `dataset_query.type` is `\"native\"`.
+
+  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query.
+  All other values go through [[->legacy-mbql]]."
+  [query]
+  (or (when (and (map? query) (or (:lib/type query) (:stages query)))
+        (try
+          (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+            (when (and (not (lib/native-only-query? normalized))
+                       (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
+              (cond-> (lib/prepare-for-serialization normalized)
+                (:parameters normalized) (assoc :parameters (:parameters normalized)))))
+          (catch Exception e
+            (log/warn e "Failed to normalize MBQL 5 query for the frontend")
+            nil)))
+      (->legacy-mbql query)))
+
 (defn- query->url-hash
   "Convert an MBQL query to a base64-encoded URL hash for /question# URLs."
   [query]
-  (-> {:dataset_query          (->legacy-mbql query)
+  (-> {:dataset_query          (->frontend-query query)
        :type                   "question"
        :visualization_settings {}}
       json/encode
@@ -48,12 +74,14 @@
       codecs/bytes->b64-str))
 
 (defn pseudo-card->link
-  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
+  "Convert a map of card properties into a link.
+
+  Relevant keys include `dataset_query`, `display` and `displayIsLocked`.
   `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from.
-  A pMBQL `:dataset_query` is normalized to legacy MBQL (/question# URLs are legacy-only)."
+  `:dataset_query` goes through [[->frontend-query]]."
   [pc]
   (let [pc (cond-> (merge {:visualization_settings {}} pc)
-             (:dataset_query pc) (update :dataset_query ->legacy-mbql))]
+             (:dataset_query pc) (update :dataset_query ->frontend-query))]
     (str "/question#"
          (-> pc
              json/encode

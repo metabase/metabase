@@ -746,7 +746,7 @@
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
-                                          (personal-collection-ids (first (location-path->ids location))))))]
+                                          (contains? personal-collection-ids (first (location-path->ids location))))))]
       (map (fn [{:keys [location personal_owner_id] :as coll}]
              (if (some? coll)
                (assoc coll :is_personal (or (some? personal_owner_id)
@@ -1387,7 +1387,8 @@
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
                     {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
@@ -1402,7 +1403,8 @@
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
                     {:remote-synced-models remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -1634,7 +1636,10 @@
                  [:like :location (str (children-location collection) "%")]
                  [:not :archived]]})
       (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (t2/update! model {:collection_id [:in affected-collection-ids]}
+        ;; Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own
+        ;; `archived` flag records only that the user deleted them
+        (t2/update! model (cond-> {:collection_id [:in affected-collection-ids]}
+                            (= model :model/Pulse) (assoc :dashboard_id nil))
                     {:archived true}))
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
@@ -1708,7 +1713,10 @@
                  [:= :archive_operation_id (:archive_operation_id collection)]
                  [:not= :archived_directly true]]})
       (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (t2/update! model {:collection_id [:in affected-collection-ids]}
+        ;; Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own
+        ;; `archived` flag records only that the user deleted them
+        (t2/update! model (cond-> {:collection_id [:in affected-collection-ids]}
+                            (= model :model/Pulse) (assoc :dashboard_id nil))
                     {:archived false}))
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id     [:in affected-collection-ids]
@@ -2274,7 +2282,8 @@
           (throw (ex-info msg {:status-code          400
                                :errors               {:collection_id msg}
                                :allowed-namespaces   allowed-namespaces
-                               :collection-namespace collection-namespace})))))))
+                               :collection-namespace collection-namespace
+                               :response/keys        #{:allowed-namespaces :collection-namespace}})))))))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are

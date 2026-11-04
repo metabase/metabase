@@ -185,7 +185,7 @@ See [Available tools](#available-tools) for the list of functionality supported 
 
 You can use the MCP server to help you create Metabase content as serialized YAML files that you can import into your Metabase. Point your agent at the MCP server to give it access to your Metabase's database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns.
 
-See [Agent-driven development](./file-based-development.md).
+See [Agent-driven development](./agent-driven-development.md).
 
 ## Connecting to a local MCP server
 
@@ -204,6 +204,6 @@ If the site URL doesn't match an address your MCP client can reach, like if you'
 ## Further reading
 
 - [Agent API](./agent-api.md)
-- [File-based development](./file-based-development.md)
+- [Agent-driven development](./agent-driven-development.md)
 - [Metabase API docs](../api.html)
 - [Model Context Protocol specification](https://modelcontextprotocol.io/)

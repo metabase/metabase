@@ -128,7 +128,11 @@
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
           (is (= "127.0.0.1"
-                 (request.current/ip-address mock-request))))))))
+                 (request.current/ip-address mock-request))))))
+    (testing "an oversized header value is bounded to the 45 characters an IP address can occupy"
+      (let [mock-request (-> (ring.mock/request :get "api/session")
+                             (ring.mock/header "X-Forwarded-For" (apply str (repeat 100 "a"))))]
+        (is (= 45 (count (request.current/ip-address mock-request))))))))
 
 (def ^:private mock-geojs-responses
   "Canned GeoJS responses for test IPs. These mock what GeoJS would return."

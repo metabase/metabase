@@ -104,6 +104,7 @@
            model-persistence
            models
            parameters
+           permissions
            public-sharing
            queries
            query-processor
@@ -119,6 +120,7 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Field
+                    :model/QueryExecution
                     :model/Table
                     :model/User}}
 
@@ -338,6 +340,7 @@
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
+           metabase.app-db.sql-errors
            metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader
@@ -510,6 +513,7 @@
            request
            settings
            slackbot
+           startup
            system
            task
            tiles
@@ -548,7 +552,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
@@ -868,6 +871,7 @@
            query-processor
            settings
            sql-tools
+           startup
            system
            tracing
            util
@@ -1054,6 +1058,7 @@
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.core
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -1131,7 +1136,8 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util}
+           metabase.lib.util
+           metabase.lib.walk}
    :uses #{config
            graph
            legacy-mbql
@@ -1302,6 +1308,7 @@
               permissions
               premium-features
               pulse
+              query-permissions
               query-processor
               request
               search
@@ -1842,6 +1849,7 @@
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -2015,7 +2023,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}}
+   :uses #{api driver models premium-features system util}}
 
   segments
   {:team "Graphy"
@@ -2177,8 +2185,8 @@
 
   sql-parsing
   {:team "DevEx"
-   :api #{metabase.sql-parsing.core}
-   :uses #{analytics-interface util}}
+   :api #{metabase.sql-parsing.core metabase.sql-parsing.init}
+   :uses #{analytics-interface settings util}}
 
   sql-tools
   {:team "DevEx"
@@ -2209,6 +2217,7 @@
               request
               server
               settings
+              startup
               system
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
@@ -2271,7 +2280,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance premium-features settings util}}
 
   task
   {:team "UX West"
@@ -2764,6 +2773,7 @@
            collections
            dashboards
            driver
+           indexed-entities
            legacy-mbql
            lib
            lib-be
@@ -2783,7 +2793,6 @@
                     :model/Database
                     :model/Field
                     :model/ModelIndex
-                    :model/ModelIndexValue
                     :model/Query
                     :model/Revision
                     :model/Segment
@@ -3102,6 +3111,7 @@
            events
            lib
            models
+           permissions
            premium-features
            query-processor
            settings
@@ -3242,14 +3252,19 @@
 
   enterprise/impersonation
   {:team "Graphy"
-   :api  #{metabase-enterprise.impersonation.api}
+   :api  #{metabase-enterprise.impersonation.api
+           metabase-enterprise.impersonation.init}
    :uses #{api
+           app-db
            audit-app
+           config
            driver
            lib
            models
            premium-features
            query-processor
+           settings
+           task
            util
            warehouse-schema
            enterprise/sandbox}

@@ -69,6 +69,12 @@
     (driver/hosts-from-details {:db db} [:db])
     []))
 
+;; H2's only connection detail, `:db`, is the whole connection string (`file:/path/to/db;OPTION=...`), passed through
+;; as-is, so it is not a value spliced into a URL Metabase builds
+(defmethod driver/url-building-detail-keys :h2
+  [_driver]
+  [])
+
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
 

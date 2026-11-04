@@ -188,7 +188,7 @@
         dashboard-id   (api.embed.common/unsigned-token->dashboard-id unsigned-token)
         dashboard      (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard       (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card           (api/check-404 (t2/select-one :model/Card card-id))]
+        card           (api/check-404 (api.embed.common/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-query-for-dashcard
      :export-format export-format
@@ -439,7 +439,7 @@
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
         dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card (api/check-404 (t2/select-one :model/Card card-id))]
+        card (api/check-404 (api.embed.common/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (request/as-admin
       (api.embed.common/process-tiles-query-for-dashcard

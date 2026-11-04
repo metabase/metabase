@@ -10,6 +10,7 @@ const propsSchema: Yup.SchemaOf<EditableDashboardProps> = Yup.object({
   dashboardId: Yup.mixed().required(),
   token: Yup.mixed().optional(),
   dataPickerProps: Yup.object({
+    dataPicker: Yup.mixed().optional(),
     entityTypes: Yup.mixed().optional(),
   })
     .optional()

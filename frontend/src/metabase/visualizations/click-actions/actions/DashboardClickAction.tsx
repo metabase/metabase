@@ -91,13 +91,9 @@ function getAction(
 
 export const DashboardClickAction: LegacyDrill = ({
   question,
-  settings,
   clicked = {},
 }): AlwaysDefaultClickAction[] => {
-  const clickObject: ClickObject = clicked.settings
-    ? clicked
-    : { ...clicked, settings };
-  const type = getDashboardDrillType(clickObject);
+  const type = getDashboardDrillType(clicked);
 
   if (!type) {
     return [];
@@ -107,7 +103,7 @@ export const DashboardClickAction: LegacyDrill = ({
     {
       name: "click_behavior",
       defaultAlways: true,
-      ...getAction(type, question, clickObject),
+      ...getAction(type, question, clicked),
     },
   ];
 };

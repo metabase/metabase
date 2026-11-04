@@ -8,6 +8,7 @@ import {
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
 import { databaseApi } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
 import {
@@ -18,7 +19,6 @@ import {
 import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting, getTokenFeature } from "metabase/selectors/settings";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
   Database,
@@ -93,7 +93,7 @@ export const getLoadingDatabaseTablesError = (
     return undefined;
   }
   const { error } = selectDatabaseTablesMetadata(state, params.databaseId);
-  return error ? getResponseErrorMessage(error) : undefined;
+  return error ? findErrorMessage(error) : undefined;
 };
 
 type RouteParamsSelectorParameters = {

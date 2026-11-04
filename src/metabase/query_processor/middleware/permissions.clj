@@ -136,8 +136,16 @@
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms
             *param-values-query*
-            (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-              (throw (query-perms/perms-exception required-perms)))
+            (do
+              ;; The value-source Card itself is read-checked by the caller, but its query may nest other Cards; the
+              ;; user must be able to read every one of those too, just like when running the Card normally.
+              ;; Otherwise a readable wrapper Card launders the values of a Card the user cannot read. The
+              ;; result_metadata check covers tables a Card's saved columns name but its query footprint does not.
+              (doseq [card-id source-card-ids]
+                (query-perms/check-card-read-perms database-id card-id)
+                (query-perms/check-card-result-metadata-data-perms database-id card-id))
+              (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+                (throw (query-perms/perms-exception required-perms))))
 
             ;; Ad-hoc query (not a saved question)
             :else
@@ -203,8 +211,10 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
-      :query-builder-and-native)))
+   (and (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
+           :query-builder-and-native)
+        ;; the compiled SQL of a sandboxed user's query exposes the sandbox definition
+        (not (perms/sandboxed-user-for-db? database-id)))))
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an

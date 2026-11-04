@@ -263,8 +263,14 @@
     (assoc request :success? false
            :error disabled-account-snippet
            :message disabled-account-message)
-    (let [{:keys [user device-info]} request
-          session (auth-session/create-session-with-auth-tracking! user device-info provider)]
+    (let [{:keys [user device-info saml-data]} request
+          session (auth-session/create-session-with-auth-tracking!
+                   user device-info provider
+                   ;; SAML logins carry the IdP's own identifiers; single logout needs them to
+                   ;; name the session and subject to end. Other providers have none and store NULL.
+                   {:saml-session-index  (:session-index saml-data)
+                    :saml-name-id        (:name-id saml-data)
+                    :saml-name-id-format (:name-id-format saml-data)})]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider

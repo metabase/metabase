@@ -63,6 +63,10 @@
                               :expressions/float                true
                               :expressions/integer              true
                               :expressions/text                 true
+                              ;; The JDBC driver sends the query timeout as the `max_execution_time` server setting,
+                              ;; which fails for users with `readonly = 1` (#85850). Long running queries will still
+                              ;; be cancelled by `schedule-query-timeout-cancel!`.
+                              :jdbc/set-query-timeout           false
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
                               :now                              true
@@ -143,6 +147,7 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
+    ;; https://clickhouse.com/docs/integrations/language-clients/java/jdbc
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
          :subname                        (str "//" host ":" port "/" dbname)
@@ -157,10 +162,10 @@
          :jdbc_schema_term               "schema"
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          :custom_http_params             (cond-> "select_sequential_consistency=1"
                                            (not (str/blank? clickhouse-settings))
-                                           (str "," clickhouse-settings))}
+                                           (str "," clickhouse-settings))
+         :jdbc_metadata_use_show_statements false}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
@@ -168,6 +173,8 @@
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
+  ;; run the shared connection-property denylist before opening any connection, on both paths below
+  (driver/validate-db-details! driver details)
   (if driver-api/is-test?
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,

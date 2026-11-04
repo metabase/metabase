@@ -563,10 +563,11 @@
         (let [creds (effective-bedrock-credentials credentials)]
           (when-not (metabot.settings/provider-credentials-complete? provider creds)
             (throw (ex-info (tru "AWS Bedrock credentials are incomplete.")
-                            {:status-code  400
-                             :api-error    true
-                             :missing-keys (vec (remove #(non-blank-string (get creds %))
-                                                        [:access-key-id :secret-access-key]))})))
+                            {:status-code   400
+                             :api-error     true
+                             :missing-keys  (vec (remove #(non-blank-string (get creds %))
+                                                         [:access-key-id :secret-access-key]))
+                             :response/keys #{:missing-keys}})))
           creds)))
 
     "azure"
@@ -577,10 +578,11 @@
         (let [creds (effective-azure-credentials credentials)]
           (when-not (metabot.settings/provider-credentials-complete? provider creds)
             (throw (ex-info (tru "Azure credentials are incomplete.")
-                            {:status-code  400
-                             :api-error    true
-                             :missing-keys (vec (remove #(non-blank-string (get creds %))
-                                                        [:api-key :base-url]))})))
+                            {:status-code   400
+                             :api-error     true
+                             :missing-keys  (vec (remove #(non-blank-string (get creds %))
+                                                         [:api-key :base-url]))
+                             :response/keys #{:missing-keys}})))
           creds)))
 
     (when (contains? body :api-key)

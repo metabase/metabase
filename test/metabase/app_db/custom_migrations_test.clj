@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected.
 
   As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
@@ -2680,20 +2680,21 @@
 
 (deftest migrate-clickhouse-details-keeps-encryption-state-test
   (testing "v57.2025-08-23T16:00:00 : rewriting details keeps each row as plaintext or ciphertext, whichever it was"
-    (encryption-test/with-secret-key "clickhouse-details-state-key-1234"
-      (impl/test-migrations "v57.2025-08-23T16:00:00" [migrate!]
-        (let [plain-id (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
-                                                                           :details (json/encode {:dbname "plain_db"})}))
-              enc-id   (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
-                                                                           :details (encryption/encrypt (json/encode {:dbname "enc_db"}))}))
-              raw      (fn [id] (t2/select-one-fn :details :metabase_database :id id))]
-          (migrate!)
-          (testing "a plaintext row stays plaintext"
-            (is (not (encryption/decryptable-string? (raw plain-id))))
-            (is (= "plain_db" (:db-filters-patterns (json/decode+kw (raw plain-id))))))
-          (testing "an encrypted row stays encrypted"
-            (is (encryption/decryptable-string? (raw enc-id)))
-            (is (= "enc_db" (:db-filters-patterns (json/decode+kw (encryption/maybe-decrypt (raw enc-id))))))))))))
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key "clickhouse-details-state-key-1234"
+        (impl/test-migrations "v57.2025-08-23T16:00:00" [migrate!]
+          (let [plain-id (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                             :details (json/encode {:dbname "plain_db"})}))
+                enc-id   (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                             :details (encryption/encrypt (json/encode {:dbname "enc_db"}))}))
+                raw      (fn [id] (t2/select-one-fn :details :metabase_database :id id))]
+            (migrate!)
+            (testing "a plaintext row stays plaintext"
+              (is (not (encryption/decryptable-string? (raw plain-id))))
+              (is (= "plain_db" (:db-filters-patterns (json/decode+kw (raw plain-id))))))
+            (testing "an encrypted row stays encrypted"
+              (is (encryption/decryptable-string? (raw enc-id)))
+              (is (= "enc_db" (:db-filters-patterns (json/decode+kw (encryption/maybe-decrypt (raw enc-id)))))))))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
@@ -2722,22 +2723,35 @@
 
 (deftest backfill-example-dashboard-id-value-with-aad-test
   (testing "v58.2026-09-03T00:00:04 : the example-dashboard-id row gets its value_with_aad from its encrypted value"
-    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
-      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
-        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
-        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value (encryption/encrypt "7")}]})
-        (migrate!)
-        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
-          (is (= "7" (encryption/maybe-decrypt value)))
-          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+        (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+          (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+          (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value (encryption/encrypt "7")}]})
+          (migrate!)
+          (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+            (is (= "7" (encryption/maybe-decrypt value)))
+            (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")}))))))))
+  (testing "a plaintext numeric value written by a version predating encryption of this setting is taken as-is"
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+        (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+          (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+          (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+          (migrate!)
+          (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+            (is (= "7" value))
+            (is (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")}))
+            (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")}))))))))
   (testing "without a key both columns stay plaintext"
-    (encryption-test/with-secret-key nil
-      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
-        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
-        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
-        (migrate!)
-        (is (= {:value "7", :value_with_aad "7"}
-               (select-keys (t2/select-one :setting :key "example-dashboard-id") [:value :value_with_aad])))))))
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key nil
+        (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+          (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+          (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+          (migrate!)
+          (is (= {:value "7", :value_with_aad "7"}
+                 (select-keys (t2/select-one :setting :key "example-dashboard-id") [:value :value_with_aad]))))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
@@ -2948,35 +2962,6 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest backfill-mfa-confirmed-at-test
-  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
-    (mt/with-empty-h2-app-db!
-      (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
-        (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
-          (let [confirmed-at "2026-07-01T12:00:00Z"
-                insert-identity!
-                (fn [user-id credentials-str]
-                  (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                           :provider    "totp"
-                                                           :credentials credentials-str
-                                                           :created_at  :%now
-                                                           :updated_at  :%now}))
-                enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
-                                                  (encryption/maybe-encrypt
-                                                   (json/encode {:secret "s1" :confirmed_at confirmed-at})))
-                plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
-                                                  (json/encode {:secret "s2" :confirmed_at confirmed-at}))
-                pending         (insert-identity! (:id (new-instance-with-default :core_user))
-                                                  (encryption/maybe-encrypt
-                                                   (json/encode {:secret "s3"})))]
-            (migrate!)
-            (testing "encrypted confirmed row gets the column"
-              (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
-            (testing "legacy plaintext confirmed row gets the column"
-              (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
-            (testing "pending (unconfirmed) enrollment stays null"
-              (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending))))))))))
-
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -3006,3 +2991,31 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))

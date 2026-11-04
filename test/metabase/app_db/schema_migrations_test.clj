@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -18,6 +18,7 @@
   51.x or older are now 'old'."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -26,6 +27,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations-test :as custom-migrations-test]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -52,6 +54,27 @@
 (use-fixtures :each (fn [thunk]
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
+
+(deftest run-migrations-in-range-records-per-major-versions-test
+  (testing "run-migrations-in-range! gives each legacy major its own deployment_id + databasechangelog_version row,"
+    (impl/with-temp-empty-app-db [conn :h2]
+      ;; from the start through v46, so the range spans many majors (we assert on two adjacent ones)
+      (impl/run-migrations-in-range! conn ["v00.00-000" "v46.00-000"])
+      (let [versions-table (versions/versions-table-name)
+            rows           (jdbc/query {:connection conn}
+                                       [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])
+            major->deps    (-> (group-by #(versions/version->major (:metabase_version %)) rows)
+                               (update-vals #(set (map :deployment_id %))))]
+        (testing "both majors in the range are recorded"
+          (is (= #{"x.45.0.0"} (set (map :metabase_version (filter #(= 45 (versions/version->major (:metabase_version %))) rows))))
+              "major 45 recorded as x.45.0.0")
+          (is (= #{"x.46.0.0"} (set (map :metabase_version (filter #(= 46 (versions/version->major (:metabase_version %))) rows))))
+              "major 46 recorded as x.46.0.0"))
+        (testing "each major gets its own distinct deployment_id"
+          (is (= 1 (count (get major->deps 45))))
+          (is (= 1 (count (get major->deps 46))))
+          (is (empty? (set/intersection (get major->deps 45) (get major->deps 46)))
+              "major 45 and 46 use different deployment_ids"))))))
 
 (defn- migrations-versions []
   (letfn [(form->version [form]
@@ -172,7 +195,8 @@
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
       (let [get-last-id (fn []
                           (-> {:datasource (mdb/app-db)}
-                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              ;; skip the version-tracking marker each run and rollback ends with
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG WHERE filename <> 'legacy-version-tracking' ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
         (migrate!)
@@ -2853,13 +2877,31 @@
       (migrate!)
       (is (nil? (t2/select-one :setting :key "encryption-check")))))
   (testing "an encrypted sentinel is left alone"
-    (encryption-test/with-secret-key "encryption-check-marker-key-1234"
-      (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
-        (let [sentinel (encryption/encrypt (str (random-uuid)))]
-          (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
-          (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
-          (migrate!)
-          (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key "encryption-check-marker-key-1234"
+        (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+          (let [sentinel (encryption/encrypt (str (random-uuid)))]
+            (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+            (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
+            (migrate!)
+            (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check")))))))))
+
+(deftest retire-confirmed-at-v59-ids-test
+  (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
+    (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]]
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (migrate!)
+        (is (empty? (t2/select clog :id [:in v59-ids])))))))
 
 (deftest workspace-input-normalization-migration-test
   (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
@@ -3349,3 +3391,63 @@
         (testing "normal db permissions are untouched"
           (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
           (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
+
+(deftest auth-identity-confirmed-at-retires-misnumbered-v59-ids-test
+  (testing "v63.2026-07-10 confirmed_at changesets adopt a database that ran them under their old v59 ids, and roll back"
+    (impl/test-migrations ["v63.2026-07-10T22:29:15" "v63.2026-07-10T22:29:17"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]
+            column?    #(seq (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                             " WHERE lower(table_name) = 'auth_identity' AND lower(column_name) = 'confirmed_at'"
+                                             (case (mdb/db-type)
+                                               :mysql    " AND table_schema = database()"
+                                               :postgres " AND table_schema = current_schema()"
+                                               :h2       ""))]))]
+        ;; simulate an instance upgraded by the code that shipped these changesets under v59 ids
+        (t2/query ["ALTER TABLE auth_identity ADD COLUMN confirmed_at TIMESTAMP NULL"])
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (migrate!)
+        (testing "the stale v59 rows are gone and the existing column is adopted"
+          (is (empty? (t2/select clog :id [:in v59-ids])))
+          (is (= "MARK_RAN" (t2/select-one-fn :exectype clog :id "v63.2026-07-10T22:29:16")))
+          (is (column?)))
+        (testing "rolling back to 62 drops the column"
+          (migrate! :down 62)
+          (is (not (column?))))))))
+
+(deftest resolve-pending-custom-viz-plugins-test
+  (testing "v63.m2tnuz, v63.18voz9: custom_viz_plugin rows left in 'pending' by older serialization imports are resolved"
+    (impl/test-migrations ["v63.m2tnuz" "v63.18voz9"] [migrate!]
+      (let [new-plugin! (fn [identifier status & {:as extra}]
+                          (t2/insert-returning-pk! :custom_viz_plugin (merge {:identifier   identifier
+                                                                              :display_name identifier
+                                                                              :status       status
+                                                                              :created_at   :%now
+                                                                              :updated_at   :%now}
+                                                                             extra)))
+            bundle      (.getBytes "pretend tgz bytes" "UTF-8")
+            pending-id  (new-plugin! "pending-viz" "pending" :bundle bundle :bundle_hash "abc")
+            dev-id      (new-plugin! "pending-dev-viz" "pending")
+            active-id   (new-plugin! "active-viz" "active" :bundle bundle :bundle_hash "abc")
+            error-id    (new-plugin! "error-viz" "error" :error_message "stale")]
+        (migrate!)
+        (testing "a pending row with a bundle becomes active"
+          (is (=? {:status "active" :error_message nil}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id pending-id))))
+        (testing "a pending row without a bundle (dev-only plugin) becomes an error"
+          (is (=? {:status "error" :error_message "Bundle is empty"}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id dev-id))))
+        (testing "already resolved rows are untouched"
+          (is (=? {:status "active" :error_message nil}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id active-id)))
+          (is (=? {:status "error" :error_message "stale"}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id error-id))))))))

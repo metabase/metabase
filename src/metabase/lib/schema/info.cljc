@@ -13,7 +13,10 @@
   [:enum
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
    {:decode/normalize identity}
+   ;; the prefetch read that pre-fills an implicit action's form -- not the action execution itself,
+   ;; which is action-execute (or public-action-execute from the public endpoints)
    :action
+   :action-execute
    :ad-hoc
    :agent
    :cache-refresh
@@ -27,6 +30,7 @@
    :csv-download
    :xlsx-download
    :json-download
+   :public-action-execute
    :public-dashboard
    :public-question
    :public-csv-download

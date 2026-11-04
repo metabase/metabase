@@ -867,6 +867,7 @@ Prevent the exception middleware from including stacktraces in responses.
 
 - Type: keyword
 - Default: `external-only`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which types of hosts are allowed as HTTP channel destinations.
 Options:
@@ -874,6 +875,8 @@ Options:
 - allow-private (external + private networks but NOT localhost)
 - allow-all (no restrictions including localhost).
 .
+
+Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`
 
 ### `MB_HUMANIZATION_STRATEGY`
 
@@ -1232,6 +1235,14 @@ Use SSL, TLS or plain text.
 
 Should we sync user attributes when someone logs in via LDAP?
 
+### `MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`
+
+- Type: csv
+- Default: ``
+- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-allowlist`
+
+Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.
+
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
 - Type: csv
@@ -1247,6 +1258,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 - [Configuration file name](./config-file.md): `ldap-timeout-seconds`
 
 Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
+### `MB_LDAP_TRUST_STORE`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `ldap-trust-store`
+
+Path to a JKS trust store of CA certificates used to validate the LDAP server's TLS certificate. Leave blank to use the JVM default trust store.
 
 ### `MB_LDAP_USER_BASE`
 
@@ -1525,6 +1544,16 @@ The custom illustration for the login page.
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+
+### `MB_MAX_UNAUTHENTICATED_REQUEST_BODY_BYTES`
+
+- Type: integer
+- Default: `4194304`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read.
+
+Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.
 
 ### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
@@ -1812,9 +1841,11 @@ If Metabase stops sending notifications like alerts, it may be because long-runn
 
 - Type: keyword
 - Default: `allow-all`
-- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to allow-all. Other values: external-only and allow-private
 
 ### `MB_OIDC_PROVIDERS`
 
@@ -2426,6 +2457,10 @@ This URL is used for things like creating links in emails, auth redirects, and i
 This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
         Make sure that the address defined is how Metabase is being accessed.
+        If left unset, Metabase learns this value from the request headers of the first authenticated
+        admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
+        that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
+        `MB_SITE_URL` explicitly.
 
 ### `MB_SLACK_APP_TOKEN`
 
@@ -2746,6 +2781,7 @@ Note: Sandboxed users will never see suggestions.
 
 - Type: keyword
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which networks Metabase may connect to for warehouse connections.
 Options:
@@ -2754,6 +2790,8 @@ Options:
 - allow-all (no restrictions).
 Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
+
+Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
 
 ## Other environment variables
 
@@ -2975,6 +3013,13 @@ Type: string<br>
 Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
+
+### `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION`
+
+Type: boolean<br>
+Default: `false`
+
+By default, when [MB_ENCRYPTION_SECRET_KEY](#mb_encryption_secret_key) is set, Metabase encrypts on startup any values that an older version of Metabase stored unencrypted, and logs a warning for each column it had to encrypt. When `true`, Metabase will refuse to start instead of encrypting such values, including settings saved by an older version.
 
 ### `MB_DISABLE_SCHEDULER`
 
@@ -3250,6 +3295,15 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_QUARTZ_MAX_CONNECTION_POOL_SIZE`
+
+Type: integer<br>
+Default: `5`
+
+Maximum number of connections in the dedicated pool that Metabase's internal task scheduler (Quartz) uses to talk to the application database. This pool is separate from the main application database pool (see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size)), so scheduled tasks can always reach the application database even when the main pool is fully in use.
+
+Scheduler operations are short, so the default is enough for most deployments. Consider raising it only if you run a very large number of scheduled items (subscriptions, alerts, syncs) and see tasks firing late.
 
 ### `MB_SESSION_SECRET_KEY`
 

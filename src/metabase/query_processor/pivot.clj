@@ -23,6 +23,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
+   [metabase.query-processor.middleware.drop-fields-in-summaries :as qp.drop-fields-in-summaries]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
@@ -38,6 +40,13 @@
    [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private max-powerset-breakouts
+  "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
+  pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
+  combinations. Each combination is a separate query on the multi-query path, so the cap is kept low: 10 breakouts
+  is 1024 combinations."
+  10)
 
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -67,6 +76,16 @@
     #(or (empty? %)
          (apply distinct? %))]])
 
+(defn- validate-powerset-size!
+  "Throw an `:invalid-query` error if `num-breakouts` is too large to expand into its full powerset of combinations."
+  [num-breakouts]
+  (when (> num-breakouts max-powerset-breakouts)
+    (throw (ex-info (tru "Too many breakouts for a pivot query without pivot rows or columns: {0} breakouts, but the maximum is {1}"
+                         num-breakouts max-powerset-breakouts)
+                    {:type          qp.error-type/invalid-query
+                     :num-breakouts num-breakouts
+                     :max-breakouts max-powerset-breakouts}))))
+
 (mu/defn- breakout-combinations :- ::pivot.common/breakout-combinations
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
 
@@ -89,6 +108,18 @@
                          :num-breakouts num-breakouts
                          :pivot-rows    pivot-rows
                          :pivot-cols    pivot-cols}))))
+    (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                        [:pivot-cols pivot-cols]]]
+      (when-not (apply distinct? (or (seq pivots) [nil]))
+        (throw (ex-info (tru "Invalid {0}: duplicate breakout indices" (name k))
+                        {:type       qp.error-type/invalid-query
+                         :pivot-rows pivot-rows
+                         :pivot-cols pivot-cols}))))
+    (when (some (set pivot-rows) pivot-cols)
+      (throw (ex-info (tru "Invalid pivot options: pivot-rows and pivot-cols must not overlap")
+                      {:type       qp.error-type/invalid-query
+                       :pivot-rows pivot-rows
+                       :pivot-cols pivot-cols})))
     (sort-by
      (partial pivot.common/group-bitmask num-breakouts)
      (m/distinct-by
@@ -98,7 +129,9 @@
        ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
        ;; we'll just generate everything
        (if (empty? (concat pivot-rows pivot-cols))
-         (powerset (range 0 num-breakouts))
+         (do
+           (validate-powerset-size! num-breakouts)
+           (powerset (range 0 num-breakouts)))
          (concat
           ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
           ;; primary data: return all breakouts
@@ -469,7 +502,12 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [remapped-query           (qp.add-remaps/add-remapped-columns query)
+  ;; `drop-fields-in-summaries` mirrors the QP preprocessing step that strips `:fields` from stages that
+  ;; also have `:aggregation`/`:breakout`. Without it, `lib/returned-columns` on such a stage would
+  ;; concat the `:fields` cols with the summary cols and overcount `:qp.pivot/num-remapped-cols` (#81203).
+  (let [remapped-query           (-> query
+                                     qp.drop-fields-in-summaries/drop-fields-in-summaries
+                                     qp.add-remaps/add-remapped-columns)
         remap                    (remapped-indexes (lib/breakouts remapped-query))
         remapped-cols            (lib/returned-columns remapped-query)
         num-remapped-cols        (count remapped-cols)
@@ -495,9 +533,33 @@
       (quot *pivot-max-result-rows* num-aggs)
       *pivot-max-result-rows*)))
 
+(mu/defn- run-pivot-query*
+  "Impl for [[run-pivot-query]]: generate one subquery per breakout combination, run each, and merge the results
+  through `rff`."
+  [query :- ::qp.schema/any-query
+   rff   :- ::qp.schema/rff]
+  (let [query       (-> query
+                        qp.middleware.normalize/normalize-preprocessing-middleware ; normalize to MBQL 5 if needed.
+                        lib/prepare-after-deserialization)
+        pivot-opts  (or
+                     (pivot-options query (get query :viz-settings))
+                     (pivot-options query (get-in query [:info :visualization-settings]))
+                     (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+        pivot-limit (pivot-query-max-rows query)
+        query       (-> query
+                        (assoc-in [:middleware :pivot-options] pivot-opts)
+                        (assoc-in [:constraints :max-results] pivot-limit)
+                        (cond-> (get-in query [:constraints :max-results-bare-rows])
+                          (update-in [:constraints :max-results-bare-rows] min pivot-limit))
+                        add-canonical-col-info)
+        all-queries (generate-queries query pivot-opts)]
+    (binding [qp.pipeline/*pivot?* true]
+      (process-multiple-queries all-queries rff pivot-limit))))
+
 (mu/defn run-pivot-query
-  "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
-  yourself."
+  "Run the pivot query. A query with `:info` is run as a userland query, so any error is caught and returned as a
+  formatted error response rather than thrown. You are expected to wrap this call in
+  [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query]
    (run-pivot-query query nil))
 
@@ -509,21 +571,12 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query       (-> query
-                           qp.middleware.normalize/normalize-preprocessing-middleware ; normalize to MBQL 5 if needed.
-                           lib/prepare-after-deserialization)
-           rff         (or rff qp.reducible/default-rff)
-           pivot-opts  (or
-                        (pivot-options query (get query :viz-settings))
-                        (pivot-options query (get-in query [:info :visualization-settings]))
-                        (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-           pivot-limit (pivot-query-max-rows query)
-           query       (-> query
-                           (assoc-in [:middleware :pivot-options] pivot-opts)
-                           (assoc-in [:constraints :max-results] pivot-limit)
-                           (cond-> (get-in query [:constraints :max-results-bare-rows])
-                             (update-in [:constraints :max-results-bare-rows] min pivot-limit))
-                           add-canonical-col-info)
-           all-queries (generate-queries query pivot-opts)]
-       (binding [qp.pipeline/*pivot?* true]
-         (process-multiple-queries all-queries rff pivot-limit))))))
+     (let [query (cond-> query
+                   (seq (:info query)) qp/userland-query)
+           rff   (or rff qp.reducible/default-rff)
+           ;; Everything between here and the first `qp/process-query`
+           ;; runs outside the QP's own middleware, so wrap it in the same exception-catching middleware
+           ;; `qp/process-query` applies to userland queries.
+           ;; No-op for non-userland queries.
+           qp    (qp.catch-exceptions/catch-exceptions run-pivot-query*)]
+       (qp query rff)))))

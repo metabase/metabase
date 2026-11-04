@@ -77,16 +77,6 @@ For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e bun run test-cypress-host-sample-apps
 ```
 
-##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
-
-For the Shoppy's Sample App Tests (`SDK_TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
-
-You can get it by:
-
-- Enabling the `Tailscale` and logging in using your work email address.
-- Running `pg_dump "postgres://{{ username }}:{{ password }}@{{ host }}:{{ port }}/{{ database }}" > ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql` command.
-  - See the `Shoppy Coredev Appdb` record in `1password` for credentials.
-
 #### CI runs
 
 On our CI, test failures do not block the merging of a pull request (PR). However, if a test fails, it’s most likely due to one of the following reasons:

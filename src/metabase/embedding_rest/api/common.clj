@@ -126,6 +126,12 @@
   "Runs check-embedding-enabled-for-object for a pre-loaded Dashboard entity."
   check-embedding-enabled-for-object)
 
+(mu/defn active-card
+  "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
+  select it as absent rather than checking `:archived` after the fact."
+  [card-id :- ms/PositiveInt]
+  (t2/select-one :model/Card :id card-id :archived false))
+
 (defn- resolve-card-parameters
   "Returns the combined `:parameters` (including template-tag parameters) for a pre-loaded `card` entity."
   [card]

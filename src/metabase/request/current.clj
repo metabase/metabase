@@ -5,7 +5,8 @@
   TODO -- move stuff like `*current-user-id*` into this namespace."
   (:require
    [clojure.string :as str]
-   [metabase.request.settings :as request.settings]))
+   [metabase.request.settings :as request.settings]
+   [metabase.util :as u]))
 
 (def ^:private ^:dynamic *request*
   nil)
@@ -83,4 +84,7 @@
             ;;. Assumes a single trusted hop.
             last
             ;; strip out non-ip-address characters like square brackets which we get sometimes
-            (str/replace #"[^0-9a-fA-F.:]" ""))))
+            (str/replace #"[^0-9a-fA-F.:]" "")
+            ;; no IP address is longer than 45 characters, and the header is attacker-controlled: bound it so an
+            ;; oversized value cannot fail the insert of the varchar(45) columns it lands in
+            (u/truncate 45))))

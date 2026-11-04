@@ -3,7 +3,6 @@ import { type EChartsType, init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { extractRemappings } from "metabase/visualizations";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
 import {
@@ -45,20 +44,14 @@ export function TreemapChart({
   height,
   fitWithinBounds = false,
 }: StaticChartProps) {
-  const rawSeriesWithRemappings = extractRemappings(rawSeries);
-  const cols = rawSeriesWithRemappings[0]?.data?.cols ?? [];
+  const cols = rawSeries[0]?.data?.cols ?? [];
   const treemapColumns = getTreemapChartColumns(cols, settings);
   if (!treemapColumns) {
     return null;
   }
 
   const treemapRows = settings["treemap.rows"];
-  const tree = getTreemapData(
-    rawSeriesWithRemappings,
-    treemapColumns,
-    treemapRows,
-    settings,
-  );
+  const tree = getTreemapData(rawSeries, treemapColumns, treemapRows, settings);
   const colors = getTreemapColors(tree, treemapRows);
   const formatters = getTreemapFormatters(treemapColumns, settings);
 

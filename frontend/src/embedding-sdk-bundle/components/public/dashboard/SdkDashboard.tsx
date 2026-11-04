@@ -51,6 +51,7 @@ import type {
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -200,8 +201,7 @@ export type SdkDashboardProps = PropsWithChildren<
      */
     onParametersChange?: (payload: ParameterChangePayload) => void;
   } & SdkDashboardDisplayProps &
-    DashboardEventHandlersProps &
-    EditableDashboardOwnProps
+    DashboardEventHandlersProps
 >;
 
 type RenderMode = "dashboard" | "question" | "queryBuilder";
@@ -214,11 +214,14 @@ type RenderMode = "dashboard" | "question" | "queryBuilder";
 export type EditableDashboardOwnProps = {
   /**
    * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
+   *
+   * Set `dataPicker: "staged"` to always get the staged data picker. By default, Metabase shows a simple dropdown menu with tables and models, and only switches to the staged picker when there are 100 or more data sources. `entityTypes: ["question"]` only takes effect in the staged picker.
    */
-  dataPickerProps?: Pick<SdkQuestionProps, "entityTypes">;
+  dataPickerProps?: Pick<SdkQuestionProps, "entityTypes" | "dataPicker">;
 };
 
 export type SdkDashboardInnerProps = SdkDashboardProps &
+  EditableDashboardOwnProps &
   Partial<
     Pick<
       DashboardContextProps,
@@ -545,7 +548,7 @@ const SdkDashboardInner = ({
         style={style}
       >
         <SdkError
-          message={errorPage.data?.message ?? t`Something's gone wrong`}
+          message={getErrorMessage(errorPage, t`Something's gone wrong`)}
         />
       </MaybeStyledWrapper>
     );
@@ -770,6 +773,7 @@ function DashboardQueryBuilder({
         name: dashboard.name,
       }}
       entityTypes={dataPickerProps?.entityTypes}
+      dataPicker={dataPickerProps?.dataPicker}
       withChartTypeSelector
       // Fill the available space so the query builder matches the dashboard's
       // sizing instead of a fixed height that leaves whitespace / scrolls.

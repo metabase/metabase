@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -55,24 +56,26 @@
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private disallowed-additional-opts
-  "JDBC connection properties that are not needed to connect to a warehouse and are rejected for every
-  SQL-JDBC driver. Matched case-insensitively against the raw `additional-options` string."
-  #"(?i)(?:socketFactory|sslfactory|sslhostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile)")
+;; JDBC connection properties that are not needed to connect to a warehouse and are rejected for every SQL-JDBC driver.
+;; Matched as substrings, so a token here also catches its longer spellings (`socketFactory` covers
+;; `socketFactoryClass`, `socketfactoryname`, `sslsocketfactoryname`; `hostnameverifier` covers `sslhostnameverifier`).
+;;
+;; These are all properties whose value a JDBC driver loads and instantiates as a Java class -- a no-arg constructor
+;; and/or static initializer runs inside the Metabase process -- which is arbitrary-class-instantiation leading to code
+;; execution when a gadget is on the classpath. None is needed to reach a data warehouse.
+(defmethod driver/disallowed-connection-parameters :sql-jdbc
+  [_driver]
+  ["socketFactory" "sslfactory" "hostnameverifier" "sslpasswordcallback" "xmlFactoryFactory" "loggerFile"
+   "queryInterceptors" "dnsResolver"])
 
 (defmethod driver/validate-db-details! :sql-jdbc
-  [_driver details]
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+  [driver details]
+  (driver.u/validate-connection-parameters! driver details))
 
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]
   (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
-
-(defmethod driver/validate-impersonated-query :sql-jdbc
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]

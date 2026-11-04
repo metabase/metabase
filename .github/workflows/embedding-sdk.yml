@@ -38,7 +38,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Retrieve Embedding SDK dist artifact
@@ -54,7 +54,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Retrieve Embedding SDK dist artifact
@@ -70,7 +70,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Prepare front-end environment

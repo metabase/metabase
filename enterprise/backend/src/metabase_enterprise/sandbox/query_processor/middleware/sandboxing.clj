@@ -121,12 +121,22 @@
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
                       {:type qp.error-type/missing-required-parameter})))
-    {:type   (if (and field-base-type (isa? field-base-type :type/Number))
-               :number/=
-               :string/=)
-     :target target
-     ;; :number/= and :string/= are variadic operators that require a sequential value
-     :value  [(attr-value->param-value field-base-type attr-value)]}))
+    (let [param-value (attr-value->param-value field-base-type attr-value)]
+      (when (nil? param-value)
+        ;; Without this a nil `param-value` propagates as `[nil]`, which
+        ;; `parameters.mbql/expand` treats as "no value" and filter is dropped. (#81821)
+        (throw (ex-info (tru "User attribute `{0}` value `{1}` cannot be coerced to column type {2}"
+                             (name attr-name) attr-value field-base-type)
+                        {:type            qp.error-type/invalid-parameter
+                         :attribute-name  attr-name
+                         :attribute-value attr-value
+                         :field-base-type field-base-type})))
+      {:type   (if (and field-base-type (isa? field-base-type :type/Number))
+                 :number/=
+                 :string/=)
+       :target target
+       ;; :number/= and :string/= are variadic operators that require a sequential value
+       :value  [param-value]})))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
@@ -216,7 +226,11 @@
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (t2/update! :model/Card card-id {:result_metadata cols}))
+                ;;
+                ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
+                ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
+                (request/as-admin
+                  (t2/update! :model/Card card-id {:result_metadata cols})))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

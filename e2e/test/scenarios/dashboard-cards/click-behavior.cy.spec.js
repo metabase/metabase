@@ -2608,9 +2608,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             size_x: 12,
             size_y: 6,
             visualization_settings: {
-              click_behavior: {
-                ...baseClickBehavior,
-                tabId: firstTab.id,
+              column_settings: {
+                '["name","PRODUCT_ID"]': {
+                  click_behavior: {
+                    ...baseClickBehavior,
+                    tabId: firstTab.id,
+                  },
+                },
               },
             },
           }),
@@ -2620,9 +2624,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             size_x: 12,
             size_y: 6,
             visualization_settings: {
-              click_behavior: {
-                ...baseClickBehavior,
-                tabId: secondTab.id,
+              column_settings: {
+                '["name","PRODUCT_ID"]': {
+                  click_behavior: {
+                    ...baseClickBehavior,
+                    tabId: secondTab.id,
+                  },
+                },
               },
             },
           }),

@@ -3,6 +3,7 @@ export * from "./use-attached-dwh";
 export * from "./use-confirmation";
 export * from "./use-dnd-sensors";
 export * from "./use-docs-url";
+export * from "./use-eol-date";
 export * from "./use-get-personal-collection";
 export * from "./use-has-token-feature";
 export * from "./use-locale";

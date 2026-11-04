@@ -82,6 +82,7 @@ These components are available via the `InteractiveQuestion` namespace (like `<I
 - [InteractiveQuestion.QuestionSettings](./sdk/api/InteractiveQuestion.html#questionsettings)
 - [InteractiveQuestion.QuestionSettingsDropdown](./sdk/api/InteractiveQuestion.html#questionsettingsdropdown)
 - [InteractiveQuestion.QuestionVisualization](./sdk/api/InteractiveQuestion.html#questionvisualization)
+- [InteractiveQuestion.RefreshButton](./sdk/api/InteractiveQuestion.html#refreshbutton)
 - [InteractiveQuestion.ResetButton](./sdk/api/InteractiveQuestion.html#resetbutton)
 - [InteractiveQuestion.SaveButton](./sdk/api/InteractiveQuestion.html#savebutton)
 - [InteractiveQuestion.SaveQuestionForm](./sdk/api/InteractiveQuestion.html#savequestionform)

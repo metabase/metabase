@@ -22,6 +22,7 @@ interface RunQuestionQueryParams {
   signal?: AbortSignal;
   dispatch: Dispatch;
   initialVisualization?: QueryVisualizationDisplayType;
+  ignoreCache?: boolean;
 }
 
 export async function runQuestionQuerySdk(
@@ -36,6 +37,7 @@ export async function runQuestionQuerySdk(
     signal,
     dispatch,
     initialVisualization,
+    ignoreCache = false,
   } = params;
 
   if (question.isSaved()) {
@@ -91,7 +93,7 @@ export async function runQuestionQuerySdk(
       runQuestionQuery(question, {
         dispatch,
         signal,
-        ignoreCache: false,
+        ignoreCache,
         isDirty: isQueryDirty,
         token,
         ...(isGuestEmbed && {

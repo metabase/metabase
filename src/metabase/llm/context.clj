@@ -200,8 +200,8 @@
                       ;; column's samples are not worth failing the request over.
                       (log/warnf "Could not fetch field values for field %s: %s" (:id field) (ex-message e))
                       nil))]
-      ;; `hash-input-for-sandbox` is gated on `:feature :sandboxes` while the restriction check is not, so
-      ;; a token-check blip can hand back the shared cache. Trust the row, not the feature.
+      ;; `restricted?` and the cache key are worked out separately, so a key that comes back unrestricted
+      ;; would hand back the shared cache. Trust the row, not the key.
       (when (= :advanced (:type fv))
         (not-empty (:values fv))))))
 

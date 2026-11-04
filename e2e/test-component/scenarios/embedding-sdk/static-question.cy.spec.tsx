@@ -5,6 +5,7 @@ import {
   StaticQuestion,
   type StaticQuestionProps,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, modal, popover } from "e2e/support/helpers";
@@ -117,6 +118,67 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
           expect(refWarningCalls).to.have.length(0);
         });
+      });
+    });
+  });
+
+  it("should show a loader instead of the empty results state until `questionId` resolves (EMB-2390)", () => {
+    const EMPTY_STATE_SELECTOR = 'img[alt="Code prompt icon"]';
+    const PENDING_ID_HOLD_MS = 1500;
+
+    const DeferredQuestion = ({ resolvedId }: { resolvedId: number }) => {
+      const [questionId, setQuestionId] = useState<number | null>(null);
+
+      return (
+        <div>
+          <StaticQuestion questionId={questionId} />
+          <button onClick={() => setQuestionId(resolvedId)}>Resolve id</button>
+        </div>
+      );
+    };
+
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(<DeferredQuestion resolvedId={questionId} />);
+
+      cy.log("keeps the loader up while the id is still null");
+      cy.window().then((win) => {
+        return new Cypress.Promise((resolve, reject) => {
+          const startedAt = Date.now();
+
+          const checkInterval = setInterval(() => {
+            if (win.document.querySelector(EMPTY_STATE_SELECTOR)) {
+              clearInterval(checkInterval);
+              reject(
+                new Error(
+                  "the empty results state must not show while `questionId` is null",
+                ),
+              );
+            } else if (Date.now() - startedAt >= PENDING_ID_HOLD_MS) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 20);
+        });
+      });
+      getSdkRoot().within(() => {
+        cy.findByTestId("loading-indicator").should("be.visible");
+      });
+
+      cy.findByRole("button", { name: "Resolve id" }).click();
+
+      cy.log("no flash between the id resolving and the results rendering");
+      H.assertElementNeverExists({
+        shouldNotExistSelector: EMPTY_STATE_SELECTOR,
+        successSelector: "[data-testid='table-header']",
+        rejectionMessage:
+          "the empty results state must not flash between the id resolving and the results rendering",
+        pollInterval: 20,
+        timeout: 15000,
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
       });
     });
   });

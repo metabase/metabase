@@ -939,6 +939,14 @@
                  :model_id   model_id
                  :file_path  (:new-path file-info)}]}
 
+      ;; a collection's path is also its contents' directory, so moving the collection moves every
+      ;; descendant's file too; only a full export rewrites them all
+      (and (= "Collection" model_type)
+           (= "update" status)
+           (not (str/blank? file_path))
+           (not= file_path (:new-path file-info)))
+      :remote-sync/incremental-not-possible
+
       ;; rename: update whose stored path differs from new path. Write the
       ;; new file and delete the old one.
       (and (= "update" status)
@@ -1456,8 +1464,9 @@
                                    (source.p/snapshot-at source last-task-version)))]
     (when (and has-dirty? (not force?) (not merge?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                      {:status-code 400
-                       :conflicts true})))
+                      {:status-code   400
+                       :conflicts     true
+                       :response/keys #{:conflicts}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

@@ -4,7 +4,9 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.measures.models.measure]
    [metabase.models.interface :as mi]
+   [metabase.segments.models.segment]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
@@ -12,6 +14,9 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
+
+(comment metabase.measures.models.measure/keep-me
+         metabase.segments.models.segment/keep-me)
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -82,6 +87,20 @@
             nil
             identity
             (fn [e] (throw e)))))))
+
+(deftest ^:parallel check-map-message-is-client-facing-test
+  (testing "a map message is the response body, and its keys stay readable in the ex-data"
+    (let [e (try
+              (api/check false [400 {:message "Nope", :error_code "archived", :errors {:id "bad"}}])
+              (catch ExceptionInfo e e))]
+      (is (=? {:status-code 400, :error_code "archived", :errors {:id "bad"}}
+              (ex-data e)))
+      (is (= {:message "Nope", :error_code "archived", :errors {:id "bad"}}
+             (:body (mock-api-fn (fn [_] (throw e)))))))))
+
+(deftest ^:parallel checkp-errors-are-client-facing-test
+  (is (= {:errors {:name "is bad"}}
+         (:body (mock-api-fn (fn [_] (api/checkp false "name" "is bad")))))))
 
 (methodical/defmethod hawk.approx/=?-diff [java.util.regex.Pattern clojure.lang.Symbol]
   [expected-re sym]
