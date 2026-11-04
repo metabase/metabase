@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { SidebarSection } from "metabase/common/components/DetailSidebar";
@@ -13,7 +13,6 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import {
-  Badge,
   Button,
   Card,
   Group,
@@ -154,61 +153,95 @@ function CurrentRuleComparison({
   ).length;
   const affectedRecordCount = getAffectedRecordCount(profile, check);
 
+  const hasAlternativeConflicts = alternativeConflicts > 0;
+
   return (
-    <Paper withBorder radius="md" p="md" mt="xs">
-      <Stack gap="sm">
-        <Text size="sm" fw="bold">{t`Compare current-row rules`}</Text>
-        <Group justify="space-between" wrap="nowrap" gap="md">
-          <Stack gap={2} miw={0}>
-            <Text size="sm">
-              {t`Now: ${describeCurrentRule(structure, fields)}`}
-            </Text>
-            <Text size="sm" c="feedback-negative">
-              {ngettext(
-                msgid`${countOf(check.entityKeys.length, noun)} with two current records, ${affectedRecordCount} record affected`,
-                `${countOf(check.entityKeys.length, noun)} with two current records, ${affectedRecordCount} records affected`,
-                affectedRecordCount,
-              )}
-            </Text>
-          </Stack>
-          <Badge color="neutral" variant="light" flex="0 0 auto">
-            {t`In use`}
-          </Badge>
-        </Group>
-        <Group justify="space-between" wrap="nowrap" gap="md">
-          <Stack gap={2} miw={0}>
-            <Text size="sm">
-              {t`Instead: ${describeCurrentRule(alternative, fields)}`}
-            </Text>
-            <Text
-              size="sm"
-              c={
-                alternativeConflicts > 0
-                  ? "feedback-negative"
-                  : "text-secondary"
-              }
-            >
-              {alternativeConflicts > 0
-                ? t`${countOf(alternativeConflicts, noun)} with two current records`
-                : t`No conflicts. ${countOf(currentEntityCount, noun)} have a current record.`}
-            </Text>
-            {dropsValidTo && (
-              <Text size="sm" c="text-secondary">
-                {t`${displayNameOf(fields, structure.history.validToFieldId)} won't be used. Each version ends where the next one starts.`}
-              </Text>
-            )}
-          </Stack>
+    <Stack gap="md">
+      <Text c="text-secondary">{t`Pick which rows count as current.`}</Text>
+      <RuleOption
+        label={t`In use`}
+        rule={describeCurrentRule(structure, fields)}
+        outcome={ngettext(
+          msgid`${countOf(check.entityKeys.length, noun)} with two current records, ${affectedRecordCount} record affected.`,
+          `${countOf(check.entityKeys.length, noun)} with two current records, ${affectedRecordCount} records affected.`,
+          affectedRecordCount,
+        )}
+        isProblem
+      />
+      <RuleOption
+        label={t`Alternative`}
+        rule={describeCurrentRule(alternative, fields)}
+        outcome={
+          hasAlternativeConflicts
+            ? t`${countOf(alternativeConflicts, noun)} with two current records.`
+            : t`No conflicts. ${countOf(currentEntityCount, noun)} have a current record.`
+        }
+        note={
+          dropsValidTo
+            ? t`${displayNameOf(fields, structure.history.validToFieldId)} won't be used. Each version ends where the next one starts.`
+            : undefined
+        }
+        isProblem={hasAlternativeConflicts}
+        action={
           <Button
-            size="compact-sm"
             variant="filled"
-            flex="0 0 auto"
+            w="fit-content"
             disabled={readOnly}
             onClick={() => setHistoryBinding(table, alternativeBinding)}
             data-testid="use-alternative-current-rule"
           >
             {t`Use this rule`}
           </Button>
+        }
+      />
+    </Stack>
+  );
+}
+
+const capitalize = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
+function RuleOption({
+  label,
+  rule,
+  outcome,
+  note,
+  isProblem,
+  action,
+}: {
+  label: string;
+  rule: string;
+  outcome: string;
+  note?: string;
+  isProblem: boolean;
+  action?: ReactNode;
+}) {
+  return (
+    <Paper withBorder radius="lg" p="lg">
+      <Stack gap="md">
+        <Stack gap="xs">
+          <Text size="sm" c="text-secondary">
+            {label}
+          </Text>
+          <Text fw="bold">{capitalize(rule)}</Text>
+        </Stack>
+        <Group gap="sm" wrap="nowrap" align="flex-start">
+          <Icon
+            name={isProblem ? "warning_round_filled" : "check_filled"}
+            c={isProblem ? "feedback-negative" : "feedback-positive"}
+            mt={2}
+            flex="0 0 auto"
+          />
+          <Text c={isProblem ? "feedback-negative" : "text-primary"}>
+            {outcome}
+          </Text>
         </Group>
+        {note && (
+          <Text size="sm" c="text-secondary">
+            {note}
+          </Text>
+        )}
+        {action}
       </Stack>
     </Paper>
   );
