@@ -101,9 +101,9 @@
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Transform {transform-id :id} {:name "Test Transform"
-                                                            :source {:type "query"
-                                                                     :query (mt/mbql-query nil
-                                                                              {:source-table (str "card__" card-id)})}
+                                                            :source {:type :query
+                                                                     :query (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+                                                                              (lib/query mp (lib.metadata/card mp card-id)))}
                                                             :target {:type "table" :name (mt/random-name)}}]
           (forget-status! :card card-id)
           (forget-status! :transform transform-id)
@@ -1214,10 +1214,8 @@
                         {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                         :model/Collection {other-collection-id :id} {}
                         :model/Card {card-id :id} {:dataset_query venues-query :collection_id collection-id}
-                        :model/Action {action-id :id} {:type :query :name "Delete venue" :collection_id collection-id}
-                        :model/QueryAction _ {:action_id     action-id
-                                              :database_id   (mt/id)
-                                              :dataset_query (lib/native-query mp "DELETE FROM venues WHERE id = 1")}]
+                        :model/Action {action-id :id} {:type :implicit :name "Update venue" :collection_id collection-id}
+                        :model/ImplicitAction _ {:action_id action-id :kind "row/update" :table_id (mt/id :venues)}]
            (testing "an app depends on the cards and actions in its resource collection"
              (assert-pending :data-app app-id)
              (deps.test/synchronously-run-dependency-job!)

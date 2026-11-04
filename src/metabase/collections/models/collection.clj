@@ -627,9 +627,9 @@
   (when (and collection-id
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
-             (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
+             (not (contains? #{:question :dashboard-question :action} (keyword model-type)))
              (perms/data-app-collection? collection-id))
-    (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
+    (throw (ex-info (tru "A data app''s collection can hold only questions and implicit actions.") {:status-code 400})))
   (check-library-content model-type collection-id))
 
 (defenterprise check-library-update

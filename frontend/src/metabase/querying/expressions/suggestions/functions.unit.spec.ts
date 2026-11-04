@@ -234,6 +234,20 @@ describe("suggestFunctions", () => {
       const results = completer("con|c()");
       expect(results).toEqual(RESULTS_NO_TEMPLATE);
     });
+
+    it("should suggest case for a single letter (metabase#16210)", async () => {
+      const completer = setup({ expressionMode });
+      const results = await completer("c|");
+      const labels = results?.options.map((option) => option.label);
+      expect(labels?.[0]).toBe("case");
+    });
+
+    it("should keep suggesting case after more letters are typed (metabase#16210)", async () => {
+      const completer = setup({ expressionMode });
+      const results = await completer("ca|");
+      const labels = results?.options.map((option) => option.label);
+      expect(labels).toContain("case");
+    });
   });
 
   it("should complete functions whose name starts with the an operator name as a prefix (metabase#55686)", async () => {

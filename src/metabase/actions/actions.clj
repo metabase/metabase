@@ -152,8 +152,12 @@
 
   nil)
 
-(defn- database-for-action [action-or-id]
-  (actions.db/database-for-action (u/the-id action-or-id)))
+(defn- database-for-action
+  "The Database `action-or-id` runs against; an ad-hoc action, which has no ID, names it as its `:database_id`."
+  [action-or-id]
+  (if (and (map? action-or-id) (nil? (:id action-or-id)))
+    (some-> (:database_id action-or-id) actions.db/database)
+    (actions.db/database-for-action (u/the-id action-or-id))))
 
 (defn check-actions-enabled
   "Throws an appropriate error if actions are unsupported or disabled for the database the action runs against,

@@ -168,6 +168,6 @@ FROM prospects;
 
 ## Further reading
 
-- [Introduction to actions](./introduction.md)
+- [Introduction to model actions](./introduction.md)
 - [Basic actions](./basic.md)
 - [Actions in dashboards](../../../dashboards/actions.md)

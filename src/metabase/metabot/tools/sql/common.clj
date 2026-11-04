@@ -13,6 +13,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.core :as tools]
@@ -94,6 +95,20 @@
   {:message "The SQL query contains more than one statement, and only one is supported. No changes were saved."
    :recovery [{:uses #{} :text "Rewrite the SQL as one statement, then retry."}]})
 
+(tools/defrecoverable invalid-template-syntax!
+  "The proposed SQL has `{{...}}` or `[[...]]` syntax that Metabase rejects."
+  {:payload [:map {:closed true} [:error-message :string] [:edit? :boolean]]}
+  [{:keys [error-message edit?]}]
+  (let [prefix (str "The SQL query has invalid Metabase `{{...}}` or `[[...]]` syntax. "
+                    (when edit? "The problem can be in SQL that this edit did not change. ")
+                    "No changes were saved. Parser details: ")
+        recovery [{:uses #{} :text (str "Close each `{{` with `}}` and each `[[` with `]]`. Give each `{{...}}` a name, "
+                                        "such as `{{category}}`. Put at least one `{{...}}` variable in each `[[...]]`, "
+                                        "or remove the `[[...]]` clause. Then retry.")}]
+        budget (tools.runtime/output-budget prefix recovery)]
+    {:message (str prefix (bounded-quote error-message budget))
+     :recovery recovery}))
+
 (tools/defrecoverable blank-sql!
   "Creating, replacing, or editing the query would leave it with no SQL."
   {:payload [:map {:closed true} [:query-id {:optional true} :string]]}
@@ -134,13 +149,22 @@
    [:action-result {:optional true} ::action-result]])
 
 (defn validated-sql-action!
-  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation."
-  [{:keys [validation-result action-result]}]
+  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation.
+
+  Set `:edit?` when the validated SQL keeps text from before the call, as `edit_sql_query` does."
+  [{:keys [validation-result action-result]} & {:keys [edit?]}]
   (let [{:keys [valid? dialect error-message reason]} validation-result]
     (cond
-      valid?                          action-result
-      (= :multiple-statements reason) (multiple-sql-statements! {})
-      :else                           (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+      valid?                              action-result
+      (= :multiple-statements reason)     (multiple-sql-statements! {})
+      (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message
+                                                                     :edit?         (boolean edit?)})
+      :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+
+(def notebook-instead-step
+  "The recovery step after a refusal to write SQL against a database: build the question in the notebook instead."
+  {:uses #{"construct_notebook_query"}
+   :text "Build the question with `construct_notebook_query` instead. Don't write SQL against this database again."})
 
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
@@ -156,8 +180,11 @@
                                     :native   {:query "SELECT 1"}})))
 
 (defn check-native-query-access!
-  "Throw an unrecoverable error unless the user may write native queries against `database-id`."
+  "Throw an unrecoverable error for the audit database or a user without native query permission on `database-id`."
   [database-id]
+  (when (= audit/audit-db-id database-id)
+    (tools/unrecoverable! ::sql-on-audit-database
+                          {:user-message (tru "Metabase does not run SQL on the Internal Metabase Database, for any user.")}))
   (when-not (native-query-access? database-id)
     (tools/unrecoverable! ::no-native-permission
                           {:user-message (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
