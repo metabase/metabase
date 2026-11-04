@@ -114,6 +114,72 @@ function setup({
   return { router };
 }
 
+describe("SlowContentPage findings by entity type", () => {
+  const TYPED_FINDINGS = [
+    createMockContentDiagnosticsSlowFinding({
+      id: 1,
+      entity_type: "card",
+      entity_id: 101,
+      entity_display_name: "Slow question",
+      duration_ms: 2500,
+    }),
+    createMockContentDiagnosticsSlowFinding({
+      id: 2,
+      entity_type: "dashboard",
+      entity_id: 102,
+      entity_display_name: "Slow dashboard",
+      duration_ms: 3100,
+    }),
+    createMockContentDiagnosticsSlowFinding({
+      id: 3,
+      entity_type: "document",
+      entity_id: 103,
+      entity_display_name: "Slow document",
+      duration_ms: 4200,
+    }),
+    createMockContentDiagnosticsSlowFinding({
+      id: 4,
+      entity_type: "transform",
+      entity_id: 104,
+      entity_display_name: "Slow transform",
+      duration_ms: 6700,
+    }),
+  ];
+
+  it("lists slow question, dashboard, document and transform findings", async () => {
+    setup({ findings: TYPED_FINDINGS });
+
+    const list = await screen.findByRole("treegrid");
+    for (const name of [
+      "Slow question",
+      "Slow dashboard",
+      "Slow document",
+      "Slow transform",
+    ]) {
+      expect(await within(list).findByText(name)).toBeInTheDocument();
+    }
+  });
+
+  it.each([
+    "Slow question",
+    "Slow dashboard",
+    "Slow document",
+    "Slow transform",
+  ])(
+    "shows a Duration label and a seconds-formatted duration in the sidebar for %s",
+    async (name) => {
+      setup({ findings: TYPED_FINDINGS });
+
+      const list = await screen.findByRole("treegrid");
+      await userEvent.click(await within(list).findByText(name));
+
+      const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+      expect(within(sidebar).getByText("Duration")).toBeInTheDocument();
+      expect(within(sidebar).getByText(/^\d+\.\ds$/)).toBeInTheDocument();
+    },
+  );
+});
+
 function getUrlQuery(router: TestRouter | undefined) {
   return parseSearchQuery(router?.location.search ?? "");
 }

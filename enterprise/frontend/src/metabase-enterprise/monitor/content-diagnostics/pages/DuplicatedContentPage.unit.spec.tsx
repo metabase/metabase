@@ -115,6 +115,139 @@ function setup({
   return { router };
 }
 
+describe("DuplicatedContentPage duplicates by entity type", () => {
+  function pair({
+    entityType,
+    name,
+    otherName,
+    cardType,
+    otherCardType,
+  }: {
+    entityType: "card" | "collection" | "dashboard" | "document" | "transform";
+    name: string;
+    otherName: string;
+    cardType?: "question" | "model";
+    otherCardType?: "question" | "model";
+  }) {
+    return [
+      createMockContentDiagnosticsDuplicatedFinding({
+        id: 1,
+        entity_type: entityType,
+        entity_id: 1,
+        entity_display_name: name,
+        card_type: cardType,
+        duplicate_count: 1,
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 2,
+              name: otherName,
+              entity_type: entityType,
+              card_type: otherCardType,
+            }),
+          ],
+        },
+      }),
+      createMockContentDiagnosticsDuplicatedFinding({
+        id: 2,
+        entity_type: entityType,
+        entity_id: 2,
+        entity_display_name: otherName,
+        card_type: otherCardType,
+        duplicate_count: 1,
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 1,
+              name,
+              entity_type: entityType,
+              card_type: cardType,
+            }),
+          ],
+        },
+      }),
+    ];
+  }
+
+  async function expectSidebarListsPeer(name: string, peerName: string) {
+    const list = await screen.findByRole("treegrid");
+    await userEvent.click((await within(list).findAllByText(name))[0]);
+
+    const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+    expect(within(sidebar).getByText("Duplicates (1)")).toBeInTheDocument();
+    expect(
+      within(
+        within(sidebar).getByRole("region", { name: "Duplicates" }),
+      ).getByText(peerName.replace(/\s+/g, " ")),
+    ).toBeInTheDocument();
+  }
+
+  it("lists both questions whose names differ in case and spacing, and links each to the other", async () => {
+    setup({
+      findings: pair({
+        entityType: "card",
+        name: "Dup question",
+        otherName: "dup  QUESTION",
+        cardType: "question",
+        otherCardType: "question",
+      }),
+    });
+
+    const list = await screen.findByRole("treegrid");
+    expect(await within(list).findByText("Dup question")).toBeInTheDocument();
+    expect(within(list).getByText("dup QUESTION")).toBeInTheDocument();
+    await expectSidebarListsPeer("Dup question", "dup  QUESTION");
+  });
+
+  it.each([
+    ["collection", "Dup collection", "dup collection"],
+    ["dashboard", "Dup dashboard", "dup dashboard"],
+    ["document", "Dup document", "dup document"],
+    ["transform", "Dup transform", "Dup transform"],
+  ] as const)(
+    "lists both %s duplicates and shows the peer in the sidebar",
+    async (entityType, name, otherName) => {
+      setup({ findings: pair({ entityType, name, otherName }) });
+
+      const list = await screen.findByRole("treegrid");
+      expect(
+        await within(list).findAllByText(new RegExp(name, "i")),
+      ).toHaveLength(2);
+      await expectSidebarListsPeer(name, otherName);
+    },
+  );
+
+  it("lists a question and a model with the same name with distinct type icons", async () => {
+    setup({
+      findings: pair({
+        entityType: "card",
+        name: "Same name",
+        otherName: "Same name",
+        cardType: "question",
+        otherCardType: "model",
+      }),
+    });
+
+    const list = await screen.findByRole("treegrid");
+    expect(await within(list).findAllByText("Same name")).toHaveLength(2);
+    expect(
+      within(list).getByRole("img", { name: "Question" }),
+    ).toBeInTheDocument();
+    expect(
+      within(list).getByRole("img", { name: "Model" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(list).getAllByText("Same name")[0]);
+    const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+    expect(within(sidebar).getByText("Duplicates (1)")).toBeInTheDocument();
+    expect(
+      within(
+        within(sidebar).getByRole("region", { name: "Duplicates" }),
+      ).getByText("Same name"),
+    ).toBeInTheDocument();
+  });
+});
+
 function getUrlQuery(router: TestRouter | undefined) {
   return parseSearchQuery(router?.location.search ?? "");
 }

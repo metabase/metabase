@@ -43,6 +43,13 @@ import { StaleContentPage } from "./StaleContentPage";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
+const DASHBOARDS_DROPPED: NonNullable<
+  ContentDiagnosticsStaleUserParams["entity_types"]
+> = ["question", "model", "metric", "document", "transform"];
+
+const REMEMBERED_FILTER_PATH =
+  "path:/api/user-key-value/namespace/content_diagnostics/key/stale";
+
 const FINDINGS: ContentDiagnosticsStaleFinding[] = [
   createMockContentDiagnosticsStaleFinding({
     id: 1,
@@ -887,33 +894,76 @@ describe("StaleContentPage", () => {
     ).toHaveValue("");
   });
 
+  it("puts the entity types in the URL and persists them when Dashboards is unchecked", async () => {
+    const { router } = setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    const popover = await openFilterPicker();
+    await userEvent.click(
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
+    );
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "entity-types": DASHBOARDS_DROPPED,
+      });
+    });
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(REMEMBERED_FILTER_PATH, {
+          method: "PUT",
+        }),
+      ).not.toHaveLength(0);
+    });
+    const [putCall] = fetchMock.callHistory.calls(REMEMBERED_FILTER_PATH, {
+      method: "PUT",
+    });
+    expect(JSON.parse(String(putCall.options.body))).toEqual({
+      value: { entity_types: DASHBOARDS_DROPPED },
+    });
+  });
+
   it("restores the last-used filter when the URL has no params", async () => {
     const { router } = setup({
       findings: FINDINGS,
       urlParams: {},
-      lastUsedParams: { entity_types: ["model"] },
+      lastUsedParams: { entity_types: DASHBOARDS_DROPPED },
     });
 
     await waitForListToLoad();
 
     await waitFor(() => {
       expect(getUrlQuery(router)).toEqual({
-        "entity-types": "model",
+        "entity-types": DASHBOARDS_DROPPED,
       });
     });
-    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
-      "model",
-    ]);
+    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual(
+      DASHBOARDS_DROPPED,
+    );
+    const popover = await openFilterPicker();
+    expect(
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
+    ).not.toBeChecked();
+    expect(
+      within(popover).getByRole("checkbox", { name: "Questions" }),
+    ).toBeChecked();
   });
 
   it("prefers URL params over the last-used filter", async () => {
     const { router } = setup({
       findings: FINDINGS,
       urlParams: { "entity-types": ["dashboard"] },
-      lastUsedParams: { entity_types: ["model"] },
+      lastUsedParams: { entity_types: DASHBOARDS_DROPPED },
     });
 
     await waitForListToLoad();
+    // let the remembered filter load, so a late overwrite would fail below
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(REMEMBERED_FILTER_PATH, { method: "GET" }),
+      ).toHaveLength(1);
+    });
+    await fetchMock.callHistory.flush(true);
 
     expect(getUrlQuery(router)).toEqual({
       "entity-types": "dashboard",
@@ -921,6 +971,13 @@ describe("StaleContentPage", () => {
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
       "dashboard",
     ]);
+    const popover = await openFilterPicker();
+    expect(
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
+    ).toBeChecked();
+    expect(
+      within(popover).getByRole("checkbox", { name: "Questions" }),
+    ).not.toBeChecked();
   });
 
   it("lets an explicit default-valued URL win over the last-used filter", async () => {
@@ -1072,6 +1129,144 @@ describe("StaleContentPage", () => {
   });
 });
 
+describe("StaleContentPage findings by entity type", () => {
+  const JUNE_15_2020 = "2020-06-15T12:00:00Z";
+
+  const DATED_FINDINGS = [
+    createMockContentDiagnosticsStaleFinding({
+      id: 1,
+      entity_type: "card",
+      entity_id: 101,
+      entity_display_name: "Old question",
+      last_active_at: JUNE_15_2020,
+    }),
+    createMockContentDiagnosticsStaleFinding({
+      id: 2,
+      entity_type: "dashboard",
+      entity_id: 102,
+      entity_display_name: "Old dashboard",
+      last_active_at: JUNE_15_2020,
+    }),
+    createMockContentDiagnosticsStaleFinding({
+      id: 3,
+      entity_type: "document",
+      entity_id: 103,
+      entity_display_name: "Old document",
+      last_active_at: JUNE_15_2020,
+    }),
+  ];
+
+  it("lists stale questions, dashboards and documents with their last activity date", async () => {
+    setup({ findings: DATED_FINDINGS });
+
+    const list = await screen.findByRole("treegrid");
+    for (const name of ["Old question", "Old dashboard", "Old document"]) {
+      expect(await within(list).findByText(name)).toBeInTheDocument();
+    }
+    expect(within(list).getAllByText("June 15, 2020")).toHaveLength(3);
+  });
+
+  it.each([
+    ["Old question", "Last used"],
+    ["Old dashboard", "Last viewed"],
+    ["Old document", "Last viewed"],
+  ])(
+    "opens the sidebar for %s with the %s label and date",
+    async (name, label) => {
+      setup({ findings: DATED_FINDINGS });
+
+      const list = await screen.findByRole("treegrid");
+      await userEvent.click(await within(list).findByText(name));
+
+      const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+      expect(within(sidebar).getByText(label)).toBeInTheDocument();
+      expect(within(sidebar).getByText("June 15, 2020")).toBeInTheDocument();
+    },
+  );
+
+  it("lists a stale transform and shows its last run in the sidebar", async () => {
+    setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 5,
+          entity_type: "transform",
+          entity_id: 55,
+          entity_display_name: "Old transform",
+          last_active_at: JUNE_15_2020,
+        }),
+      ],
+    });
+
+    const list = await screen.findByRole("treegrid");
+    await userEvent.click(await within(list).findByText("Old transform"));
+
+    const sidebar = await screen.findByTestId("content-diagnostics-sidebar");
+    expect(within(sidebar).getByText("Last run")).toBeInTheDocument();
+    expect(within(sidebar).getByText("June 15, 2020")).toBeInTheDocument();
+  });
+
+  it("permanently deletes a selected transform, shows an undo toast and refetches the list", async () => {
+    let findings = [
+      createMockContentDiagnosticsStaleFinding({
+        id: 5,
+        entity_type: "transform",
+        entity_id: 55,
+        entity_display_name: "Doomed transform",
+      }),
+    ];
+    fetchMock.delete("path:/api/transform/55", () => {
+      // the refetch after deletion must no longer include the transform
+      findings = [];
+      return 204;
+    });
+    setup({
+      withUndos: true,
+      getResponse: () =>
+        createMockListStaleFindingsResponse({
+          data: findings,
+          total: findings.length,
+        }),
+    });
+
+    await screen.findByText("Doomed transform");
+    await userEvent.click(
+      within(getFindingRow("Doomed transform")).getByRole("checkbox"),
+    );
+
+    const bar = screen.getByTestId("content-diagnostics-bulk-actions");
+    expect(within(bar).getByText("1 item selected")).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Delete" })).toBeEnabled();
+    expect(
+      within(bar).queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(within(bar).getByRole("button", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Delete 1 transform?")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "1 transform will be permanently deleted and cannot be restored.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/transform/55", {
+          method: "DELETE",
+        }),
+      ).toHaveLength(1);
+    });
+    expect(await screen.findByText("Deleted 1 item")).toBeInTheDocument();
+    expect(
+      await screen.findByText("No stale content found"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Doomed transform")).not.toBeInTheDocument();
+  });
+});
+
 function getUrlQuery(router: TestRouter | undefined) {
   return parseSearchQuery(router?.location.search ?? "");
 }
@@ -1084,6 +1279,13 @@ function getLastRequestUrl() {
     ),
     "http://localhost",
   );
+}
+
+async function openFilterPicker() {
+  await userEvent.click(
+    screen.getByTestId("content-diagnostics-filter-button"),
+  );
+  return screen.findByRole("dialog");
 }
 
 async function waitForListToLoad() {
