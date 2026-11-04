@@ -23,7 +23,7 @@ export const DetailsRow = ({
   return (
     <Flex>
       <Flex
-        w={160}
+        w={184}
         direction="column"
         align="flex-start"
         gap="xs"

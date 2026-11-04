@@ -57,6 +57,7 @@ export type TableStructure = {
   mainDateField: Field | undefined;
   mainDateInference: MainDateInference;
   isMainDateOverridden: boolean;
+  mainDateNeedsReview: boolean;
 };
 
 // PROTOTYPE: mocked. There's no table_role, grain, or binding column yet, so
@@ -306,7 +307,10 @@ function resolveMainDate(
   overrideFieldId: FieldId | null | undefined,
 ): Pick<
   TableStructure,
-  "mainDateField" | "mainDateInference" | "isMainDateOverridden"
+  | "mainDateField"
+  | "mainDateInference"
+  | "isMainDateOverridden"
+  | "mainDateNeedsReview"
 > {
   const mainDateInference = inferMainDate(fields, role);
   const isMainDateOverridden = overrideFieldId !== undefined;
@@ -319,5 +323,7 @@ function resolveMainDate(
     ),
     mainDateInference,
     isMainDateOverridden,
+    mainDateNeedsReview:
+      !isMainDateOverridden && mainDateInference.confidence === "low",
   };
 }

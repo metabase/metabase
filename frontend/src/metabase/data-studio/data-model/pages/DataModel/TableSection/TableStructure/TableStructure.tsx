@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -80,7 +81,13 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
           <DetailsRow
             label={t`Role`}
             fillValue
-            labelAside={<ValueOriginIcon origin={getRoleOrigin(structure)} />}
+            labelAside={
+              isRoleUnderReview(structure, readOnly) ? (
+                <NeedsReviewBadge />
+              ) : (
+                <ValueOriginIcon origin={getRoleOrigin(structure)} />
+              )
+            }
             labelNote={
               <RoleNote
                 structure={structure}
@@ -89,7 +96,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
               />
             }
             value={
-              <RoleSelect
+              <RoleValue
                 structure={structure}
                 disabled={readOnly}
                 onChange={(role) => setTableRole(table, role)}
@@ -127,7 +134,11 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
             label={t`Main date`}
             fillValue
             labelAside={
-              <ValueOriginIcon origin={getMainDateOrigin(structure)} />
+              isMainDateUnderReview(structure, readOnly) ? (
+                <NeedsReviewBadge />
+              ) : (
+                <ValueOriginIcon origin={getMainDateOrigin(structure)} />
+              )
             }
             labelNote={
               <MainDateNote
@@ -137,7 +148,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
               />
             }
             value={
-              <MainDateSelect
+              <MainDateValue
                 fields={fields}
                 structure={structure}
                 disabled={readOnly}
@@ -209,17 +220,127 @@ type RoleInputProps = {
   onChange: (role: TableStructureValue["role"]) => void;
 };
 
-function RoleSelect({ structure, disabled, onChange }: RoleInputProps) {
+/** A weak guess an admin can act on: shown as text to confirm or change */
+function isRoleUnderReview(
+  { needsReview, inference }: TableStructureValue,
+  disabled: boolean,
+) {
+  return needsReview && !disabled && inference.role != null;
+}
+
+function NeedsReviewBadge() {
+  return (
+    <Badge color="warning" variant="light" flex="0 0 auto">
+      {t`Needs review`}
+    </Badge>
+  );
+}
+
+/**
+ * A weak guess as plain text with its origin icon, to confirm or change.
+ * Either choice records it as the admin's, so the caller swaps in its select.
+ */
+function ReviewValue({
+  value,
+  origin,
+  onConfirm,
+  onChange,
+  "data-testid": dataTestId,
+}: {
+  value: string;
+  origin: ValueOrigin | null;
+  onConfirm: () => void;
+  /** Confirms, then opens the select so another value can be picked */
+  onChange: () => void;
+  "data-testid"?: string;
+}) {
+  return (
+    <Group
+      flex={1}
+      justify="space-between"
+      gap="sm"
+      wrap="nowrap"
+      px="lg"
+      py="sm"
+      data-testid={dataTestId}
+    >
+      <Group gap="xs" wrap="nowrap" miw={0}>
+        <Text truncate>{value}</Text>
+        <ValueOriginIcon origin={origin} />
+      </Group>
+      <Group gap="xs" wrap="nowrap" flex="0 0 auto">
+        <Button size="compact-sm" variant="filled" onClick={onConfirm}>
+          {t`Confirm`}
+        </Button>
+        <Button size="compact-sm" onClick={onChange}>
+          {t`Change`}
+        </Button>
+      </Group>
+    </Group>
+  );
+}
+
+/** The role, or its weak guess to confirm or change */
+function RoleValue({ structure, disabled, onChange }: RoleInputProps) {
+  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
+  const { inference } = structure;
+
+  if (isRoleUnderReview(structure, disabled) && inference.role) {
+    const inferredRole = inference.role;
+    return (
+      <ReviewValue
+        value={getTableRoleLabel(inferredRole)}
+        origin={getRoleOrigin(structure)}
+        onConfirm={() => onChange(inferredRole)}
+        onChange={() => {
+          setIsSelectOpenOnMount(true);
+          onChange(inferredRole);
+        }}
+        data-testid="table-role-review"
+      />
+    );
+  }
+
+  return (
+    <RoleSelect
+      structure={structure}
+      disabled={disabled}
+      isOpenOnMount={isSelectOpenOnMount}
+      onChange={onChange}
+    />
+  );
+}
+
+function RoleSelect({
+  structure,
+  disabled,
+  isOpenOnMount,
+  onChange,
+}: RoleInputProps & { isOpenOnMount: boolean }) {
+  const { role, inference } = structure;
+  // Once an admin picks something else, point out what sync guessed
+  const markedRole = role !== inference.role ? inference.role : null;
+  const options = getTableRoleOptions().map((group) => ({
+    ...group,
+    items: group.items.map((item) =>
+      item.value === markedRole
+        ? { ...item, label: t`${item.label} (Inferred)` }
+        : item,
+    ),
+  }));
+
   return (
     <Select
       aria-label={t`Role`}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      data={getTableRoleOptions()}
-      value={structure.role}
+      data={options}
+      value={role}
       placeholder={t`Choose a role`}
       searchable
       allowDeselect={false}
       disabled={disabled}
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
       onChange={(value) => {
         if (isTableRole(value)) {
           onChange(value);
@@ -282,7 +403,7 @@ function ValueOriginIcon({ origin }: { origin: ValueOrigin | null }) {
   );
 }
 
-/** The review or revert action that applies to the role */
+/** The revert action once an admin overrides the guess */
 function RoleNote({ structure, disabled, onChange }: RoleInputProps) {
   const { role, inference, isRoleOverridden, needsReview } = structure;
   // An admin picked the same role sync guessed, so there's nothing to revert to
@@ -290,10 +411,9 @@ function RoleNote({ structure, disabled, onChange }: RoleInputProps) {
 
   return (
     <>
-      {needsReview && (
-        <Badge color="warning" variant="light">
-          {t`Needs review`}
-        </Badge>
+      {/* Under review, the badge sits at the label's right instead */}
+      {needsReview && !isRoleUnderReview(structure, disabled) && (
+        <NeedsReviewBadge />
       )}
       {!disabled && isRoleOverridden && !isConfirmedGuess && inference.role && (
         <Button
@@ -304,17 +424,6 @@ function RoleNote({ structure, disabled, onChange }: RoleInputProps) {
           onClick={() => onChange(null)}
         >
           {t`Use the inferred role (${getTableRoleLabel(inference.role)})`}
-        </Button>
-      )}
-      {!disabled && needsReview && inference.role && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          px={0}
-          classNames={NOTE_ACTION_CLASS_NAMES}
-          onClick={() => onChange(inference.role)}
-        >
-          {t`Yes, this table's role is ${getTableRoleLabel(inference.role)}`}
         </Button>
       )}
     </>
@@ -372,21 +481,54 @@ function getMainDateFieldId({ mainDateField }: TableStructureValue) {
   return mainDateField ? getRawTableFieldId(mainDateField) : null;
 }
 
-/** The date the table is trended by; clearing it says the table has none */
-function MainDateSelect({
+/** A weak main date guess an admin can act on, like the role's */
+function isMainDateUnderReview(
+  { mainDateNeedsReview }: TableStructureValue,
+  disabled: boolean,
+) {
+  return mainDateNeedsReview && !disabled;
+}
+
+/** The main date, or its weak guess to confirm or change */
+function MainDateValue({
   fields,
   structure,
   disabled,
   onChange,
 }: MainDateInputProps & { fields: Field[] }) {
+  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
+  const inferredFieldId = structure.mainDateInference.fieldId;
+
+  if (isMainDateUnderReview(structure, disabled)) {
+    return (
+      <ReviewValue
+        // Not overridden, so the current main date is the inferred one
+        value={structure.mainDateField?.display_name ?? t`No main date`}
+        origin={getMainDateOrigin(structure)}
+        onConfirm={() => onChange(inferredFieldId)}
+        onChange={() => {
+          setIsSelectOpenOnMount(true);
+          onChange(inferredFieldId);
+        }}
+        data-testid="table-main-date-review"
+      />
+    );
+  }
+
+  const mainDateFieldId = getMainDateFieldId(structure);
   return (
     <FieldSelect
       label={t`Main date`}
       fields={fields.filter((field) => isDate(field))}
-      value={getMainDateFieldId(structure)}
+      value={mainDateFieldId}
+      // Once an admin picks something else, point out what sync guessed
+      inferredFieldId={
+        mainDateFieldId !== inferredFieldId ? inferredFieldId : null
+      }
       placeholder={t`No main date`}
       clearable
       disabled={disabled}
+      isOpenOnMount={isSelectOpenOnMount}
       onChange={onChange}
     />
   );
@@ -394,7 +536,8 @@ function MainDateSelect({
 
 /** The revert action for the main date, when it applies */
 function MainDateNote({ structure, disabled, onChange }: MainDateInputProps) {
-  const { mainDateInference, isMainDateOverridden } = structure;
+  const { mainDateInference, isMainDateOverridden, mainDateNeedsReview } =
+    structure;
   // An admin picked the same date sync guessed, so there's nothing to revert to
   const isConfirmedGuess =
     isMainDateOverridden &&
@@ -402,6 +545,10 @@ function MainDateNote({ structure, disabled, onChange }: MainDateInputProps) {
 
   return (
     <>
+      {/* Under review, the badge sits at the label's right instead */}
+      {mainDateNeedsReview && !isMainDateUnderReview(structure, disabled) && (
+        <NeedsReviewBadge />
+      )}
       {!disabled && isMainDateOverridden && !isConfirmedGuess && (
         <Button
           size="compact-sm"
@@ -421,33 +568,46 @@ function FieldSelect({
   label,
   fields,
   value,
+  inferredFieldId = null,
   placeholder = t`Choose a column`,
   clearable,
   disabled,
+  isOpenOnMount = false,
   onChange,
 }: {
   label: string;
   fields: Field[];
   value: FieldId | null;
+  /** Marked "(Inferred)" in the list */
+  inferredFieldId?: FieldId | null;
   placeholder?: string;
   clearable?: boolean;
   disabled: boolean;
+  isOpenOnMount?: boolean;
   onChange: (fieldId: FieldId | null) => void;
 }) {
   return (
     <Select
       aria-label={label}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      data={fields.map((field) => ({
-        value: String(getRawTableFieldId(field)),
-        label: field.display_name,
-      }))}
+      data={fields.map((field) => {
+        const fieldId = getRawTableFieldId(field);
+        return {
+          value: String(fieldId),
+          label:
+            fieldId === inferredFieldId
+              ? t`${field.display_name} (Inferred)`
+              : field.display_name,
+        };
+      })}
       value={value != null ? String(value) : null}
       placeholder={placeholder}
       searchable
       clearable={clearable}
       allowDeselect={clearable}
       disabled={disabled}
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
       onChange={(value) => onChange(value != null ? Number(value) : null)}
     />
   );
