@@ -29,6 +29,8 @@ export function getEditingCellTemplate({
         }}
         classNames={{
           textInputElement: S.inlineEditingTextInput,
+          textareaWrapper: S.textareaWrapper,
+          textareaElement: S.textareaElement,
           numberInputElement: S.inlineEditingTextInput,
           selectTextInputElement: S.inlineEditingTextInput,
           dateTextInputElement: S.inlineEditingTextInput,

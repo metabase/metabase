@@ -9,8 +9,8 @@ export type TableActionInputTextareaProps = TableActionInputSharedProps & {
   minRows?: number;
   maxRows?: number;
   classNames?: {
-    wrapper?: string;
-    textInputElement?: string;
+    textareaWrapper?: string;
+    textareaElement?: string;
   };
 };
 
@@ -44,8 +44,8 @@ export const TableActionInputTextarea = ({
         onBlur?.(event.currentTarget.value);
       }}
       classNames={{
-        wrapper: classNames?.wrapper,
-        input: classNames?.textInputElement,
+        wrapper: classNames?.textareaWrapper,
+        input: classNames?.textareaElement,
       }}
       {...inputProps}
       // Match the line height for single line text (should look like a regular input)

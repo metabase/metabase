@@ -22,6 +22,34 @@
   }
 }
 
+.textareaWrapper {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+.textareaElement {
+  transition: none;
+  outline: 2px solid var(--mb-color-background_surface-selected);
+  outline-offset: -2px;
+  border-color: transparent;
+  box-sizing: border-box;
+  background-color: var(--mb-color-background_page-primary);
+  border-radius: 0;
+  overflow: hidden;
+  white-space: normal;
+
+  /* Should be in sync with DEFAULT_FONT_SIZE */
+  font-size: 12.5px;
+
+  /* Properly alignment with BaseCell, to avoid text flickering (BaseCell has only border-bottom 1px) */
+  border-top-width: 0;
+
+  /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
+  &:focus {
+    outline: 2px solid var(--mb-color-background_surface-selected);
+  }
+}
+
 .selectLabel {
   /* Should be in sync with DEFAULT_FONT_SIZE */
   font-size: 12.5px;
