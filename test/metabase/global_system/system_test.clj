@@ -475,29 +475,42 @@
         (system/stop! handle)
         (mc/remove-root handle)))))
 
-(deftest ^:synchronized stop-all-test
-  (let [stopped (atom [])
-        handles [(system/mutable-component-handle ::stop-a (constantly nil))
-                 (system/mutable-component-handle ::stop-b (constantly nil))
-                 (system/mutable-component-handle ::stop-c (constantly nil))]
-        start!  (fn [handle stop] (system/ensure-started! handle (constantly (.-k ^metabase.global_system.system.ComponentHandle handle)) stop))]
-    (try
-      (doseq [handle handles]
-        (start! handle (fn [v] (swap! stopped conj v) (when (= v ::stop-b) (throw (ex-info "boom" {}))))))
-      (testing "halt stops components in reverse start order, and one failing stop does not prevent the others"
-        (is (= {:failures [::stop-b]}
-               (try (#'system/stop-all! (filter (set handles) (#'system/halt-order)))
-                    {:failures []}
-                    (catch clojure.lang.ExceptionInfo e
-                      {:failures (mapv first (:failures (ex-data e)))}))))
-        (is (= [::stop-c ::stop-b ::stop-a] @stopped))
-        (is (every? nil? (map deref handles))))
-      (finally
-        (doseq [handle handles]
+(deftest ^:synchronized start-reports-whether-it-started-test
+  (testing "start! says whether this call did the start, and later calls get the running value"
+    (let [handle (system/mutable-component-handle ::start-reports (constantly nil))]
+      (try
+        (is (= {:first [:running true], :second [:running false]}
+               {:first  (system/start! handle (constantly :running) (constantly nil))
+                :second (system/start! handle (constantly :other) (constantly nil))}))
+        (finally
           (system/stop! handle)
           (mc/remove-root handle))))))
 
-(deftest ^:synchronized lifecycle-edge-cases-test
+(deftest ^:synchronized halt-order-test
+  (testing "halt stops components in reverse start order, and one failing stop does not prevent the others"
+    (let [stopped (atom [])
+          stop    (fn [v] (swap! stopped conj v) (when (= v :b) (throw (ex-info "boom" {}))))
+          handles [(system/mutable-component-handle ::halt-a (constantly nil))
+                   (system/mutable-component-handle ::halt-b (constantly nil))
+                   (system/mutable-component-handle ::halt-c (constantly nil))]]
+      (try
+        (doseq [[handle value] (map vector handles [:a :b :c])]
+          (system/ensure-started! handle (constantly value) stop))
+        (is (= {:failures [::halt-b]
+                :stopped  [:c :b :a]
+                :values   [nil nil nil]}
+               {:failures (try (#'system/stop-all! (filter (set handles) (#'system/halt-order)))
+                               []
+                               (catch clojure.lang.ExceptionInfo e
+                                 (mapv first (:failures (ex-data e)))))
+                :stopped  @stopped
+                :values   (mapv deref handles)}))
+        (finally
+          (doseq [handle handles]
+            (system/stop! handle)
+            (mc/remove-root handle)))))))
+
+(deftest ^:synchronized start-returning-false-test
   (testing "a start that returns false still counts as started, so it runs once"
     (let [handle (system/mutable-component-handle ::starts-false (constantly nil))
           starts (atom 0)]
@@ -507,7 +520,9 @@
         (is (= 1 @starts))
         (finally
           (system/stop! handle)
-          (mc/remove-root handle)))))
+          (mc/remove-root handle))))))
+
+(deftest ^:synchronized start-returning-nil-test
   (testing "a start that returns nil throws, and leaves nothing registered"
     (let [handle (system/mutable-component-handle ::starts-nil (constantly nil))]
       (try
@@ -515,22 +530,26 @@
                               (system/ensure-started! handle (constantly nil) (constantly nil))))
         (is (false? (system/stop! handle)))
         (finally
-          (mc/remove-root handle)))))
+          (mc/remove-root handle))))))
+
+(deftest ^:synchronized stop-leaves-unmanaged-roots-test
   (testing "stop! leaves alone a root that ensure-started! did not start"
     (let [handle (system/mutable-component-handle ::unmanaged (constantly :installed))]
       (try
-        (is (false? (system/stop! handle)))
-        (is (= :installed @handle))
+        (is (= {:stopped? false, :value :installed}
+               {:stopped? (system/stop! handle), :value @handle}))
         (finally
-          (mc/remove-root handle)))))
+          (mc/remove-root handle))))))
+
+(deftest ^:synchronized stop-after-reload-test
   (testing "a handle made again for the same key, as a reload does, stops what the old handle started"
     (let [stopped (atom [])
           old     (system/mutable-component-handle ::reloaded (constantly nil))
           _       (system/ensure-started! old (constantly :running) #(swap! stopped conj %))
           new     (system/mutable-component-handle ::reloaded (constantly nil))]
       (try
-        (is (true? (system/stop! new)))
-        (is (= [:running] @stopped))
+        (is (= {:stopped? true, :stopped [:running]}
+               {:stopped? (system/stop! new), :stopped @stopped}))
         (finally
           (system/stop! new)
           (mc/remove-root new))))))
