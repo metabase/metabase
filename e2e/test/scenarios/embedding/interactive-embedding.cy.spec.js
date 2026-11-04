@@ -865,12 +865,12 @@ describe("scenarios > embedding > full app", () => {
           cy.findByTestId("data-step-cell").click();
 
           cy.log(
-            "assert that the tables should be filtered by the selected database from the starting data source.",
+            "assert that the join opens on the starting data source's database.",
           );
           H.getNotebookStep("data").button("Join data").click();
           H.popover().within(() => {
-            cy.findByText("Sample Database").should("not.exist");
             cy.findByText("QA Postgres12").should("be.visible");
+            cy.findByText("Sample Database").should("not.exist");
           });
 
           cy.log(
