@@ -13,6 +13,7 @@ import {
   isMocked,
   isMockedBySetup,
   stubFileOf,
+  virtualMockStubFor,
 } from "./mocks.ts";
 import {
   type ResolveContext,
@@ -45,6 +46,17 @@ export function registerModuleHooks(): void {
   registerHooks({
     resolve(specifier, context, nextResolve) {
       const parentFile = parentFileOf(context);
+      const virtualStub =
+        parentFile && !isBypassingMocks()
+          ? virtualMockStubFor(specifier, parentFile)
+          : null;
+      if (virtualStub) {
+        return {
+          url: pathToFileURL(virtualStub).href,
+          format: "commonjs",
+          shortCircuit: true,
+        };
+      }
       const result = resolveAny(specifier, context, parentFile, nextResolve);
       if (!isBypassingMocks()) {
         const stub = mockStubFor(result.url);

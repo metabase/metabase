@@ -24,11 +24,13 @@ export const processDirectory = path.join(
 );
 
 const factories = new Map<string, MockFactory>();
+const virtualMocks = new Set<string>();
 const mockExports = new Map<string, unknown>();
 const stubFiles = new Map<string, string>();
 // The real module of a mocked file, held for requireActual and for automocks.
 const actualModules = new Map<string, unknown>();
 let factoriesFromSetup: Map<string, MockFactory> | null = null;
+let virtualMocksFromSetup: Set<string> | null = null;
 let bypassDepth = 0;
 
 /**
@@ -81,19 +83,44 @@ export function withoutMocks<T>(load: () => T): T {
   }
 }
 
+/**
+ * Mocks a module from now on. A module that was required before gives its
+ * mock at the next require. A mock that was already built stays, as in jest,
+ * until jest.resetModules.
+ */
 export function setMock(key: string, factory: MockFactory): void {
   factories.set(key, factory);
-  mockExports.delete(key);
   actualModules.delete(key);
   if (!key.startsWith("node:")) {
     delete require.cache[key];
   }
-  // Consumers require the mock through its stub, and Node caches that module,
-  // so a later factory for the same key would otherwise never be read.
-  const stubFile = stubFiles.get(key);
-  if (stubFile) {
-    delete require.cache[stubFile];
+}
+
+/**
+ * The key of a virtual mock: the resolved path of a relative id, or else the
+ * id itself.
+ */
+export function virtualMockKey(id: string, from: string): string {
+  return id.startsWith(".") ? path.resolve(path.dirname(from), id) : id;
+}
+
+export function setVirtualMock(key: string, factory: MockFactory): void {
+  virtualMocks.add(key);
+  setMock(key, factory);
+}
+
+/**
+ * The stub of a virtual mock that a request from this file names, or null.
+ */
+export function virtualMockStubFor(
+  specifier: string,
+  parentFile: string,
+): string | null {
+  if (virtualMocks.size === 0) {
+    return null;
   }
+  const key = virtualMockKey(specifier, parentFile);
+  return virtualMocks.has(key) && factories.has(key) ? stubFileOf(key) : null;
 }
 
 export function removeMock(key: string): void {
@@ -165,6 +192,10 @@ export function forgetMockExports(): void {
  */
 export function resetMocksForNextFile(): void {
   factories.clear();
+  virtualMocks.clear();
+  for (const key of virtualMocksFromSetup ?? []) {
+    virtualMocks.add(key);
+  }
   for (const [key, factory] of factoriesFromSetup ?? []) {
     factories.set(key, factory);
   }
@@ -177,4 +208,5 @@ export function resetMocksForNextFile(): void {
  */
 export function recordSetupMocks(): void {
   factoriesFromSetup ??= new Map(factories);
+  virtualMocksFromSetup ??= new Set(virtualMocks);
 }

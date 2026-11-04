@@ -29,6 +29,8 @@ import {
   removeMock,
   requireActualFile,
   setMock,
+  setVirtualMock,
+  virtualMockKey,
   withoutMocks,
 } from "./mocks.ts";
 import {
@@ -39,9 +41,15 @@ import {
 import { resolveForMock } from "./module-hooks.ts";
 import { findFile, resolveProjectFile } from "./resolve.ts";
 import { recordSnapshots } from "./results.ts";
-import { type FakeTimersConfig, fakeClock, useFakeTimers } from "./timers.ts";
+import {
+  type FakeTimersConfig,
+  fakeClock,
+  realSystemTime,
+  useFakeTimers,
+} from "./timers.ts";
 
 type UnknownFunction = (...args: unknown[]) => unknown;
+type MockOptions = { virtual?: boolean };
 
 export const moduleMocker = new ModuleMocker(globalThis);
 
@@ -87,6 +95,7 @@ export function startSnapshots(specFile: string): void {
       rootDir: root,
     },
   );
+  expect.setState({ testPath: specFile });
 }
 
 /**
@@ -206,12 +215,12 @@ function createJestObject() {
     resetAllMocks: () => moduleMocker.resetAllMocks(),
     restoreAllMocks: () => moduleMocker.restoreAllMocks(),
     replaceProperty: moduleMocker.replaceProperty.bind(moduleMocker),
-    mock: (id: string, factory?: () => unknown) => {
-      mockModule(id, factory);
+    mock: (id: string, factory?: () => unknown, options?: MockOptions) => {
+      mockModule(id, factory, options);
       return jest;
     },
-    doMock: (id: string, factory?: () => unknown) => {
-      mockModule(id, factory);
+    doMock: (id: string, factory?: () => unknown, options?: MockOptions) => {
+      mockModule(id, factory, options);
       return jest;
     },
     unmock: (id: string) => {
@@ -267,7 +276,7 @@ function createJestObject() {
     clearAllTimers: () => fakeClock().clearAllTimers(),
     getTimerCount: () => fakeClock().getTimerCount(),
     setSystemTime: (now?: number | Date) => fakeClock().setSystemTime(now),
-    getRealSystemTime: () => fakeClock().getRealSystemTime(),
+    getRealSystemTime: () => realSystemTime(),
     now: () => fakeClock().now(),
     retryTimes: () => jest,
     setTimeout: (timeoutMs: number) => {
@@ -286,8 +295,18 @@ function requireActual(id: string): unknown {
   return requireActualFile(key);
 }
 
-function mockModule(id: string, factory?: () => unknown): void {
+function mockModule(
+  id: string,
+  factory?: () => unknown,
+  options?: MockOptions,
+): void {
   const from = callerFile();
+  // A virtual mock stands for a module that does not exist, so it cannot be
+  // resolved.
+  if (options?.virtual) {
+    setVirtualMock(virtualMockKey(id, from), factory ?? (() => ({})));
+    return;
+  }
   const key = resolveFrom(id, from);
   if (factory) {
     setMock(key, factory);
