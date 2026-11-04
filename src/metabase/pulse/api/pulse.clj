@@ -260,14 +260,27 @@
     (assert (integer? card-id))
     (api/read-check :model/Card card-id)))
 
+(defn- drop-unchanged-collection-keys
+  "Remove `:collection_id` and `:collection_position` from `pulse-updates` of a dashboard subscription.
+
+  Throw a 400 when either key differs from its stored value in `pulse`."
+  [pulse pulse-updates]
+  (doseq [k [:collection_id :collection_position]
+          :when (and (contains? pulse-updates k)
+                     (not= (get pulse-updates k) (get pulse k)))]
+    (throw (ex-info (tru "A dashboard subscription cannot change its {0}." (name k))
+                    {:status-code 400})))
+  (dissoc pulse-updates :collection_id :collection_position))
+
 (defn update-pulse-with-perm-checks!
   "Apply `pulse-updates` to the Pulse with `id`, running the same permission checks `PUT /api/pulse/:id`
   runs: the subscription/monitoring application permission, a write check on the Pulse, read checks on
   any `:cards`, the collection-change check, and the advanced-permissions gate on adding recipients.
   Returns the updated Pulse.
 
-  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-updates`, as it does on
-  create: it stays in the collection of its dashboard, and it has no pin position."
+  A dashboard subscription stays in the collection of its dashboard, and it has no pin position. Throw a 400 when
+  `pulse-updates` has a different `:collection_id` or `:collection_position`. Values equal to the stored ones are
+  accepted and ignored. Create ignores both keys."
   [id {:keys [cards] :as pulse-updates}]
   ;; Validate `:cards` up front so a bad card ref is a clean 400, not a 500. This fn is called
   ;; directly (e.g. from the agent API), not only through the PUT endpoint whose schema already
@@ -282,10 +295,10 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :subscription false)))
   (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))
-        ;; Drop the keys before every check below: the collection check would demand write access to the old and the
-        ;; requested collection, and `before-update` throws on any change to `:collection_id`, so `dissoc` is needed.
-        pulse-updates       (cond-> pulse-updates
-                              (:dashboard_id pulse-before-update) (dissoc :collection_id :collection_position))]
+        ;; Drop the unchanged keys before every check below: the collection check would demand write access to the old
+        ;; and the requested collection, and `before-update` throws on any change to `:collection_id`.
+        pulse-updates       (cond->> pulse-updates
+                              (:dashboard_id pulse-before-update) (drop-unchanged-collection-keys pulse-before-update))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can

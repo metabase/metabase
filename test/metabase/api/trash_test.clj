@@ -105,14 +105,12 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "pulse/" id) {:collection_id (collection/trash-collection-id)})))
           (is (nil? (stored-collection-id id)))))
-      (testing "A dashboard subscription ignores a move to the trash and stays in its dashboard's collection"
+      (testing "A dashboard subscription refuses a move to the trash and stays in its dashboard's collection"
         (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse"
-                                             (assoc (pulse-payload card-id) :dashboard_id dashboard-id))
-              response (mt/user-http-request :rasta :put 200 (str "pulse/" id)
-                                             {:collection_id (collection/trash-collection-id)})]
-          (is (= coll-id (:collection_id response)))
-          (is (= coll-id (stored-collection-id id)))
-          (is (not= (collection/trash-collection-id) (stored-collection-id id))))))))
+                                             (assoc (pulse-payload card-id) :dashboard_id dashboard-id))]
+          (mt/user-http-request :rasta :put 400 (str "pulse/" id)
+                                {:collection_id (collection/trash-collection-id)})
+          (is (= coll-id (stored-collection-id id))))))))
 
 (deftest ^:parallel cannot-move-collection-to-trash-test
   (testing "Cannot move a a collection to the trash"
