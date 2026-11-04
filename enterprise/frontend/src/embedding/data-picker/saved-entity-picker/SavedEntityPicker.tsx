@@ -19,7 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { useSelector } from "metabase/redux";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import { mergeLazily } from "metabase/utils/merge-lazily";
 import type {
   Collection,
@@ -173,14 +173,14 @@ function InnerSavedEntityPicker({
     <Box className={SavedEntityPickerS.SavedEntityPickerRoot}>
       <Box className={SavedEntityPickerS.CollectionsContainer}>
         {onBack ? (
-          <a
+          <UnstyledButton
             className={SavedEntityPickerS.BackButton}
             onClick={onBack}
             data-testid="saved-entity-back-navigation"
           >
-            <Icon name="chevronleft" className={CS.mr1} />
+            <Icon name="chevronleft" className={CS.mr1} aria-hidden />
             {CARD_INFO[type].title}
-          </a>
+          </UnstyledButton>
         ) : (
           <Box
             className={SavedEntityPickerS.Title}

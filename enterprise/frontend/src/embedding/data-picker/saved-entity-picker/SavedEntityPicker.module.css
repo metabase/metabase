@@ -41,4 +41,8 @@
   &:hover {
     color: var(--mb-color-core-brand);
   }
+
+  &:focus-visible {
+    outline-offset: -2px;
+  }
 }
