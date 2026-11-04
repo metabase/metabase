@@ -5,7 +5,8 @@
 #
 # It reads <run-dir>/context/pr.json and <run-dir>/context/issues/*.md when they exist.
 # Diff hunks and function bodies never reach the output: source files go through the surface extractors,
-# and the only test code included is the setup half of neighbouring specs as they are on the parent commit.
+# and the only test code included is the setup half of neighbouring specs and of the specs the PR touches,
+# as they are on the parent commit.
 
 set -euo pipefail
 
@@ -120,7 +121,14 @@ neighbour_specs() {
     if [[ "$status" == R* ]]; then
       path=$rest
     fi
-    is_test_file "$path" && continue
+    if is_test_file "$path"; then
+      case "$path" in
+        *.clj | *.cljc | *.ts | *.tsx | *.js | *.jsx)
+          [[ -f "$PARENT_DIR/$path" ]] && harness_files+=("$path")
+          ;;
+      esac
+      continue
+    fi
 
     if [[ "$status" == D ]]; then
       echo "### $path (deleted)"

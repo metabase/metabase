@@ -110,6 +110,24 @@
                      (str "\n  " (n/string k) (when v (str " " (if (literal? v) (n/string v) "…"))))))
          ")")))
 
+(defn- strip-comments
+  "`node` without its comments, which are implementation text like the bodies the surface leaves out.
+  A comment on a line of its own takes the line with it, and a comment after code leaves its line break."
+  [node]
+  (if-not (n/inner? node)
+    node
+    (n/replace-children
+     node
+     (reduce (fn [kept child]
+               (if (= :comment (n/tag child))
+                 (let [kept (cond-> kept (= :whitespace (some-> (peek kept) n/tag)) pop)]
+                   (if (or (empty? kept) (= :newline (n/tag (peek kept))))
+                     kept
+                     (conj kept (n/newline-node "\n"))))
+                 (conj kept (strip-comments child))))
+             []
+             (n/children node)))))
+
 (defn- surface-form [node]
   (let [head (head-name node)
         base (some-> head base-name)]
@@ -140,7 +158,7 @@
 (defn surface [file touched-spec]
   (let [forms   (filter #(= :list (n/tag %)) (n/children (p/parse-file-all file)))
         ranges  (parse-ranges touched-spec)
-        printed (keep (fn [form] (when-let [s (surface-form form)] [form s])) forms)
+        printed (keep (fn [form] (when-let [s (surface-form (strip-comments form))] [form s])) forms)
         kept    (set (map first printed))
         changed (for [[form _] printed :when (touched? ranges form)]
                   (if (= "ns" (base-name (head-name form))) "the ns form" (form-name form)))

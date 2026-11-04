@@ -174,8 +174,8 @@ function elideBodies(context) {
   return (root) => ts.visitNode(root, visit);
 }
 
-function printStatements(sourceFile, statements, transform) {
-  const printer = ts.createPrinter({ removeComments: false });
+function printStatements(sourceFile, statements, transform, removeComments) {
+  const printer = ts.createPrinter({ removeComments });
   const out = [];
   for (const statement of statements) {
     const node = transform
@@ -247,7 +247,7 @@ function surface(file, touchedSpec) {
       "",
     );
   }
-  lines.push(printStatements(sourceFile, kept, elideBodies));
+  lines.push(printStatements(sourceFile, kept, elideBodies, true));
   return lines.join("\n");
 }
 
@@ -267,7 +267,7 @@ function isTestBlock(statement) {
 function harness(file) {
   const sourceFile = parse(file);
   const kept = sourceFile.statements.filter((s) => !isTestBlock(s));
-  const text = printStatements(sourceFile, kept, null);
+  const text = printStatements(sourceFile, kept, null, false);
   const lines = text.split("\n");
   if (lines.length <= MAX_HARNESS_LINES) {
     return text;

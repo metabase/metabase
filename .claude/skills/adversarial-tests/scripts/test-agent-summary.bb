@@ -49,24 +49,37 @@
       (str/trim (or (first (remove str/blank? (rest from))) ""))
       line)))
 
+(defn- labelled-value
+  "The value after `label` on the first line of `lines` that starts with it, with the lines that continue it joined by
+  spaces. The value ends at a blank line, a report header or the next `expected:`, `actual:` or `diff:` line."
+  [lines label]
+  (let [[line & more] (drop-while #(not (str/starts-with? (str/trim %) label)) lines)]
+    (-> (str/join " " (cons (subs (str/trim (or line label)) (count label))
+                            (take-while #(not (or (str/blank? %)
+                                                  (re-find #"^(FAIL|ERROR) in " %)
+                                                  (re-find #"^\s*(expected|actual|diff):" %)))
+                                        more)))
+        (str/replace #"\s+" " ")
+        str/trim)))
+
 (defn- failure-lines
   "Expected and actual values under each FAIL header for `qualified-name`, or the exception under each ERROR,
-  each paired with the `testing` context and message printed between the header and the expected value."
+  each paired with the `testing` context and message printed between the header and the expected value.
+  The context leaves out the `with temporary ...` strings that `mt/with-temp` adds."
   [lines qualified-name status]
   (let [header (re-pattern (str "^(FAIL|ERROR) in " (java.util.regex.Pattern/quote qualified-name) " "))]
     (for [i    (keep-indexed #(when (re-find header %2) %1) lines)
           :let [after   (drop (inc i) lines)
-                actual  (labelled-line after "actual:")
                 context (->> after
                              (take-while #(not (or (re-find #"^(FAIL|ERROR) in " %)
                                                    (str/starts-with? (str/trim %) "expected:"))))
-                             (remove str/blank?)
                              (map str/trim)
+                             (remove #(or (str/blank? %) (str/starts-with? % "with temporary ")))
                              (str/join " "))]]
       [(if (= status "ERROR")
-         (truncate actual max-message-length)
-         (str "expected: " (truncate (labelled-line after "expected:") (quot max-message-length 2))
-              " | actual: " (truncate actual (quot max-message-length 2))))
+         (truncate (labelled-line after "actual:") max-message-length)
+         (str "expected: " (truncate (labelled-value after "expected:") max-message-length)
+              " | actual: " (truncate (labelled-value after "actual:") max-message-length)))
        (truncate context max-message-length)])))
 
 (defn- load-error-line

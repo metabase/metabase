@@ -25,7 +25,7 @@ These hold for the whole run, including any agent or `claude -p` process the run
 
 You need `gh` logged in, `bb`, `jq`, `bun` and an installed `node_modules` in your checkout, which the repo's own tooling already needs, and a `claude` CLI that accepts `--restricted` and `--strict-mcp-config`. The blind generator runs as a separate `claude -p` call on Opus, so a run spends tokens beyond this session. Run `claude --help | grep -c restricted` to check the CLI; if it prints 0, step 4 describes the fallback.
 
-A run takes 10 to 25 minutes of wall clock, going by the file timestamps of the four runs so far: 11 and 15 minutes for the two frontend PRs, 22 and 25 for the two backend PRs. Those times were measured before the current sequence, when the installs ran before anything else, the diff-informed generator made one or more calibration runs on the parent, and triage ran the parent twice. A couple of minutes go on setting up two worktrees and most of the rest on writing tests. The test runs themselves take seconds each under Jest and 1.5 to 2.5 minutes each under `./bin/test-agent`, which starts a JVM and loads every namespace every time. Triage makes two or three of those: `head-1`, `head-2` when anything failed there, and `parent-1`, plus one more for each round of harness repairs. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
+A run takes 10 to 25 minutes of wall clock, going by the file timestamps of the first four runs: 11 and 15 minutes for the two frontend PRs, 22 and 25 for the two backend PRs. Those times were measured before the current sequence, when the installs ran before anything else, the diff-informed generator made one or more calibration runs on the parent, and triage ran the parent twice. A backend run under the current sequence took 16 minutes, with three `./bin/test-agent` calls totalling 4 minutes, against 22 and 25 minutes with five or six calls before. A couple of minutes go on setting up two worktrees and most of the rest on writing tests. The test runs themselves take seconds each under Jest and 1.5 to 2.5 minutes each under `./bin/test-agent`, which starts a JVM and loads every namespace every time. Triage makes two or three of those: `head-1`, `head-2` when anything failed there, and `parent-1`, plus one more for each round of harness repairs. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
 
 The skill has run on four PRs so far, one in each mode: a frontend PR by number, a backend PR by number, an enterprise backend PR as the current branch and a frontend PR as the current branch.
 
@@ -36,8 +36,8 @@ The run uses three locations:
 | What | Where |
 | --- | --- |
 | Run directory: risks, context, results, test copies, report | `local/adversarial-tests/<run-id>/` at the repo root (gitignored by `/local`) |
-| Worktrees at the PR head and at the merge-base | `${TMPDIR:-/tmp}/metabase-adversarial-tests/<run-id>/head` and `.../parent` |
-| Sandbox for the blind generator | `${TMPDIR:-/tmp}/metabase-adversarial-tests/<run-id>/blind-sandbox` |
+| Worktrees at the PR head and at the merge-base | `${TMPDIR%/}/metabase-adversarial-tests/<run-id>/head` and `.../parent` |
+| Sandbox for the blind generator | `${TMPDIR%/}/metabase-adversarial-tests/<run-id>/blind-sandbox` |
 
 The worktrees live outside the repo because Jest's `testMatch` is `<rootDir>/**/*.unit.spec.*`, so a checkout nested under the repo gets crawled and its specs picked up by the next full run. For the same reason the run directory keeps test copies with a `.txt` suffix.
 
@@ -49,7 +49,7 @@ local/adversarial-tests/<run-id>/
   risks.md                               the ranked risk list from step 5
   blind/context.md                       the only input the blind generator sees
   blind/prompt.md, blind/SCENARIOS.md    its prompt and its scenario list
-  manifest.tsv                           every generated file: generator, path, risk or scenario
+  manifest.tsv                           one line per generated file, no header: generator, path, risk or scenario
   repairs.md                             every harness repair from step 8
   runs/*.json, runs/*.txt, runs/*.tsv    raw Jest results, raw test-agent output, and summaries
   runs/setup.log                         the install and build log from step 4
@@ -62,7 +62,7 @@ local/adversarial-tests/<run-id>/
 
 ### 1. Parse the arguments and create the run directory
 
-With no arguments, the target is the current branch. With `--pr <number>`, the target is that PR's head commit, which can be someone else's PR. Set `REPO` to the repo root (`git rev-parse --show-toplevel`), pick the run id, and create `RUN_DIR=$REPO/local/adversarial-tests/<run-id>` with `context/issues/` and `runs/` inside it. Every command below runs from `$REPO`. A command that needs another directory changes into it inside a subshell, so the session's working directory stays at `$REPO`.
+With no arguments, the target is the current branch. With `--pr <number>`, the target is that PR's head commit, which can be someone else's PR. Set `REPO` to the repo root (`git rev-parse --show-toplevel`), pick the run id, and create `RUN_DIR=$REPO/local/adversarial-tests/<run-id>` with `context/issues/` and `runs/` inside it. The run id uses `pr<number>` only with `--pr`. In current-branch mode it uses the branch name, because the PR number is not known until step 2. Every command below runs from `$REPO`. A command that needs another directory changes into it inside a subshell, so the session's working directory stays at `$REPO`.
 
 ### 2. Find the PR and set up the head and parent worktrees
 
@@ -117,7 +117,8 @@ MERGE_BASE=$(git merge-base "origin/$BASE" "$HEAD_SHA")
 Then create both worktrees:
 
 ```bash
-WT="${TMPDIR:-/tmp}/metabase-adversarial-tests/<run-id>"
+TMPDIR=${TMPDIR:-/tmp}
+WT="${TMPDIR%/}/metabase-adversarial-tests/<run-id>"
 git worktree add --detach --quiet "$WT/head" "$HEAD_SHA"
 git worktree add --detach --quiet "$WT/parent" "$MERGE_BASE"
 ```
@@ -166,7 +167,7 @@ cp "$SANDBOX/prompt.md" "$RUN_DIR/blind/prompt.md"
 
 Blindness is enforced by what the process can reach, not by asking it to look away. `--restricted` drops Bash and every other code-running tool, ignores user and project settings, and confines the file tools to the working directory. `--strict-mcp-config` with no `--mcp-config` loads no MCP servers, so connectors such as GitHub or Linear cannot fetch the PR. `--tools "Read,Write"` leaves it nothing else. The working directory is a fresh directory outside every git checkout, so the only files it can open are `prompt.md` and `context.md`, and the only place it can write is `out/`. The context file in turn is built by a script whose extractors drop function bodies and diff hunks.
 
-Then install the dependencies and build the ClojureScript in both worktrees, in one subshell that does the head and then the parent. Start it in the background as well:
+When the diff touches no frontend files, no frontend test will be generated, so do not start the subshell below at all. Otherwise install the dependencies and build the ClojureScript in both worktrees, in one subshell that does the head and then the parent, and start it in the background as well:
 
 ```bash
 (
@@ -177,7 +178,7 @@ Then install the dependencies and build the ClojureScript in both worktrees, in 
 ) > "$RUN_DIR/runs/setup.log" 2>&1
 ```
 
-The install takes a few seconds with a warm cache, and the ClojureScript build about 30 seconds. Skip the build when only backend tests will run. Step 8 waits for this subshell to finish before the first test run.
+The install takes a few seconds with a warm cache, and the ClojureScript build about 30 seconds. When the subshell was started, step 8 waits for it to finish before the first test run.
 
 Each worktree gets its own install. A symlink to the main checkout's `node_modules` fails whenever the main checkout has different dependencies installed, for example when Jest cannot find `jest-circus/runner`. Use `build-pure:cljs`, not `build:cljs`, because `build:cljs` runs `bun install` without `--frozen-lockfile` first. Backend tests need no preparation.
 
@@ -201,7 +202,7 @@ If `out/` is empty, read the transcript, fix the cause (usually the prompt) and 
 
 Read `reference/triage.md` and follow it. It runs every generated test on the head worktree, repairs harness errors within fixed rules, reruns each failure once to drop flakes, runs the survivors on the parent worktree once, and gives every test one verdict in `triage.tsv`.
 
-Before the first run, wait for the installs from step 4 to finish. `grep '^setup ' "$RUN_DIR/runs/setup.log"` prints `setup done` once they have, after a `setup failed in <side>` line if one of them failed, in which case read the log and fix the cause first. While it prints nothing, the installs are still running.
+If step 4 started the installs, wait for them to finish before the first run. `grep '^setup ' "$RUN_DIR/runs/setup.log"` prints `setup done` once they have, after a `setup failed in <side>` line if one of them failed, in which case read the log and fix the cause first. While it prints nothing, the installs are still running.
 
 Frontend runs go one process at a time, with `<side>` either `head` or `parent`:
 
@@ -229,11 +230,26 @@ A running REPL is attached to one checkout, so it cannot run the parent commit's
 
 ### 9. Report and clean up
 
-Fill in `reference/report-template.md` and write it to `report.md`. Inside a subagent, the Write tool refuses `report.md` with "Subagents should return findings as text, not write report files", so write the same content to `report.txt` and also return it as the subagent's answer. Then:
+Fill in `reference/report-template.md` and write it to `report.md`. Inside a subagent, the Write tool refuses `report.md` with "Subagents should return findings as text, not write report files", so write the same content to `report.txt` and also return it as the subagent's answer. Then copy every generated file to `tests/<generator>/<repo-relative path>.txt`. This block checks each copy against its file in the head worktree, and removes both worktrees only when every copy matches:
 
-1. Copy every generated file to `tests/<generator>/<repo-relative path>.txt`.
-2. Remove both worktrees with `git worktree remove --force <path>`, then run `git worktree prune`.
-3. Delete the sandbox directory, then the now-empty `$WT` directory with `rmdir "$WT"`.
-4. Run `git status --porcelain --untracked-files=all` in your checkout. Nothing outside `local/` may show up from this run.
+```bash
+missing=0
+while IFS=$'\t' read -r gen file rest || [[ -n "$gen" ]]; do
+  [[ -n "$gen" ]] || continue
+  mkdir -p "$(dirname "$RUN_DIR/tests/$gen/$file")"
+  cp "$WT/head/$file" "$RUN_DIR/tests/$gen/$file.txt"
+  cmp -s "$WT/head/$file" "$RUN_DIR/tests/$gen/$file.txt" || { echo "no copy of $file"; missing=1; }
+done < "$RUN_DIR/manifest.tsv"
+if [[ $missing == 0 ]]; then
+  git worktree remove --force "$WT/head" && git worktree remove --force "$WT/parent" && git worktree prune
+else
+  echo "stopped: the worktrees hold the only copy of each file above"
+fi
+```
+
+If it prints `stopped`, find out why the copy failed and fix it before you go on. Then:
+
+1. Delete the sandbox directory, then the now-empty `$WT` directory with `rmdir "$WT"`, then `rmdir "${TMPDIR%/}/metabase-adversarial-tests" 2>/dev/null || true`, which leaves that directory in place while another run is using it.
+2. Run `git status --porcelain --untracked-files=all` in your checkout. Nothing outside `local/` may show up from this run.
 
 Tell the user where `report.md` is, give the count table, and list the findings in one line each. If a finding looks like a real bug, say so plainly and give the repro. Do not tell the PR author or post anything, because that decision belongs to the person who ran the skill.

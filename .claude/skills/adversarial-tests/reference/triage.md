@@ -31,7 +31,7 @@ You must not change these parts:
 
 This applies to blind tests too. You have seen the diff, so a repair to a blind test must be mechanical: if fixing it needs knowledge of how the code works, drop the test as unrunnable instead. Write every repair to `repairs.md` as one line: the file, the test, what was wrong and what you changed.
 
-Repair at most twice per file, rerunning after each round. Label the reruns `head-1-r1` and `head-1-r2`. After a backend `LOAD_ERROR`, rerun every generated namespace, because none of their tests ran. In `triage.tsv`, the head-1 column holds each test's result from the last run that included it, and `repairs.md` keeps the history. A test still failing with a harness error after two rounds is unrunnable. Delete it from the head worktree, and record it in `triage.tsv` with the verdict `unrunnable`.
+Repair at most twice per file, rerunning after each round. Label the reruns `head-1-r1` and `head-1-r2`. After a backend `LOAD_ERROR`, rerun every generated namespace, because none of their tests ran. In `triage.tsv`, the head-1 column holds each test's result from the last run that included it, and `repairs.md` keeps the history. A test still failing with a harness error after two rounds is unrunnable. Delete it from the head worktree, and record it in `triage.tsv` with the verdict `unrunnable`. If that leaves its file with no tests, delete the file and its line in `manifest.tsv`, because step 9 of `SKILL.md` stops when a file in the manifest has no copy.
 
 ## 3. Rerun every failure once
 
@@ -80,10 +80,11 @@ If any answer is no, record the test as `invalid` with one sentence saying why. 
 
 A pre-existing failure that fails question 3 gets one repair under the rules in section 2, logged in `repairs.md`. Run it again on the head and the parent as in sections 3 and 4, and take its verdict from the table in section 5 again. If it still fails on the test's side, record it as `invalid`.
 
-A candidate gets two checks:
+A candidate gets three checks:
 
 - A test that fails on the parent only because a symbol it imports does not exist there (a `SUITE_ERROR` for a missing module, or `... is not a function` or React's "Element type is invalid" for a missing export) pins the symbol, not a behaviour, because any test that imports it fails there. Record it as `discarded` with the note "fails on the parent only because <symbol> does not exist there".
 - Check that neither the PR's own tests nor the existing specs for the changed files already assert the same thing. If one does, record the test as `discarded` with the note "already covered by <spec and test name>".
+- A test whose parent failure comes at a setup step that the PR's own tests already pin, such as the same request with the same input, and whose own assertions check behaviour the PR did not change, is already covered too. Record it as `discarded` with the note "already covered by <spec and test name>", naming the PR's test.
 
 ## 7. Write triage.tsv
 
