@@ -35,11 +35,11 @@ Repair at most twice per file, rerunning after each round. Label the reruns `hea
 
 ## 3. Rerun every failure once
 
-Rerun every spec that has an assertion failure (label `head-2`), filtered with `-t` to the failing tests. End each id in the pattern with the character that follows it in the title, such as `"S3 |R2:"`, because `S1` also matches `S13`. Tests that `-t` filters out show as `PENDING` in the summary, so ignore those lines. For backend tests, list each failing test as `<namespace>/<test name>` in `:only`, which selects exactly those tests, and give the summary script the same files as before: it prints only the tests the run selected. A test that passes on the rerun is a flake. Record it as `flake` and stop there. A test that fails both times goes on to the parent run.
+Rerun every spec that has an assertion failure (label `head-2`), filtered with `-t` to the failing tests. End each id in the pattern with the character that follows it in the title, such as `"S3 |R2:"`, because `S1` also matches `S13`. Tests that `-t` filters out show as `PENDING` in the summary, so ignore those lines. For backend tests, list each failing test as `<namespace>/<test name>` in `:only`, which selects exactly those tests, and give the summary script the same files as before: it prints only the tests the run selected. A test that passes on the rerun is a flake. Record it as `flake` and stop there. A test that fails both times goes on to the parent commit.
 
 ## 4. Run on the parent commit
 
-Copy every remaining generated file into the parent worktree at the same relative path, and run them all there once (label `parent-1`). There is no rerun on the parent, so a test's result in this run is its parent result.
+Copy every remaining generated file into the parent worktree at the same relative path, and run them all there (label `parent-1`). Then rerun every frontend spec that has a failing test there (label `parent-2`), filtered with `-t` to the failing tests as in section 3. A Jest run takes seconds, so this costs next to nothing. A frontend test counts as failing on the parent only if it fails both times. A test that passes on the rerun flaked on the parent. Record it as `flake` with the note "flaked on the parent" and stop there. Backend tests get no rerun on the parent, because each `./bin/test-agent` call takes 1.5 to 2.5 minutes. A backend test's result in `parent-1` is its parent result.
 
 If the code under test does not exist on the parent (a new file, a new export, a new endpoint), the test fails there by construction. Record the failure kind, because section 6 uses it.
 
@@ -51,14 +51,17 @@ Give each test the first verdict in this table that applies:
 | --- | --- | --- | --- |
 | harness error after repairs | | `unrunnable` | Dropped |
 | failed, then passed | | `flake` | Dropped |
+| | failed, then passed (Jest only) | `flake` | Dropped |
 | failed twice | failed | `pre-existing` | Fails without this PR too, so it is reported separately |
 | failed twice | passed | `finding`, after the check below | The PR broke the oracle |
 | passed | failed | `candidate`, after the check below | The test pins the PR's behaviour |
 | passed | passed | `discarded` | It cannot tell the PR from its parent |
 
+For a Jest test, "failed" in the Parent column means it failed both `parent-1` and `parent-2`.
+
 Tests whose oracle is the parent's behaviour can still be `unrunnable` or a `flake`, but otherwise skip the rest of the table. Their expected values are the generator's best guess at what the parent returns, and nothing has run on the parent to check that guess, so a failure on either side may only mean the guess was wrong. Calibrate them by reading the runs you already have, not by running anything again:
 
-1. For each case, read the parent's actual value from `parent-1`: the Received or `actual:` value if the case failed there, or the written expected value if it passed.
+1. For each case, read the parent's actual value from `parent-1`: the Received or `actual:` value if the case failed there, or the written expected value if it passed. A Jest case that failed `parent-1` and passed `parent-2` is a `flake`, not a value to calibrate from.
 2. Read the head's actual value the same way, from `head-2` if the case failed `head-1`, or from `head-1` if it passed.
 3. If the two values are equal, the verdict is `discarded`, because the head does what the parent does, whether or not the guess was right. If they differ, the verdict is `finding`, after the check in section 6, including question 4 on a parent value that is plainly broken. A `deftest` with several cases is a finding when any of its cases is one.
 4. Once every verdict is in and nothing more will run, change each expected value that differs from the parent's to the parent's value, in the head worktree's file that step 9 copies to `tests/`, so that the repro in the report fails on the head. Add "expected values corrected from parent-1, not rerun" to the test's note. The parent is the oracle for these tests, so this is calibration, not fitting.
@@ -91,7 +94,7 @@ A candidate gets three checks:
 Write one line per generated test, with tab-separated columns:
 
 ```
-generator  file  test name  risk or scenario  oracle  head-1  head-2  parent-1  verdict  note
+generator  file  test name  risk or scenario  oracle  head-1  head-2  parent-1  parent-2  verdict  note
 ```
 
-Use `-` for runs that did not happen. The note holds the failure line for findings and pre-existing failures, the parent failure kind for candidates, and the reason for invalid tests. For a parent-behaviour finding it holds the head's and the parent's values instead of the failure line.
+Use `-` for runs that did not happen, which for `parent-2` means every backend test and every frontend test that passed `parent-1`. The note holds the failure line for findings and pre-existing failures, the parent failure kind for candidates, and the reason for invalid tests. For a parent-behaviour finding it holds the head's and the parent's values instead of the failure line.
