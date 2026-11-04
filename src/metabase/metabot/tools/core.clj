@@ -137,11 +137,15 @@
   than in a separate key. `:structured-output` is not a success signal and is not a second copy of
   the output: include it only when a named consumer reads it (the agent loop's query and chart memory
   and its markdown link buffer, `metabase.metabot.used-tables`, the document API's chart draft,
-  `metabase.metabot.agent.user-context`, and EE analytics persistence)."
+  `metabase.metabot.agent.user-context`, and EE analytics persistence).
+
+  `:non-terminal?` keeps the turn open after a successful call to a tool that would end it, so the model can act on
+  what the output asks it to check (`metabase.metabot.agent.core/terminal-tool-call?`)."
   [:map {:closed true}
    [:output            ::renderable]
    [:structured-output {:optional true} ::schema.v2/tool-io]
-   [:data-parts        {:optional true} [:sequential DataPart]]])
+   [:data-parts        {:optional true} [:sequential DataPart]]
+   [:non-terminal?     {:optional true} :boolean]])
 
 (mr/def ::entry
   "One item's contribution, as [[compose]] sees it.
