@@ -25,7 +25,7 @@ These hold for the whole run, including any agent or `claude -p` process the run
 
 You need `gh` logged in, `bb`, `jq` and `bun`, which the repo's own tooling already needs, and a `claude` CLI that accepts `--restricted` and `--strict-mcp-config`. The blind generator runs as a separate `claude -p` call on Opus, so a run spends tokens beyond this session. Run `claude --help | grep -c restricted` to check the CLI; if it prints 0, step 5 describes the fallback.
 
-A run takes somewhere between 15 and 90 minutes of wall clock. The runs so far took 16 minutes for a five-file frontend PR and 40 to 70 minutes for the other three: a few minutes to set up two worktrees, most of the time writing tests, then two to four test runs on each worktree. Backend runs are the slow part, about 70 seconds each for a JVM start plus the tests. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
+A run takes 10 to 25 minutes of wall clock, going by the file timestamps of the four runs so far: 11 and 15 minutes for the two frontend PRs, 22 and 25 for the two backend PRs. A couple of minutes go on setting up two worktrees and most of the rest on writing tests. The test runs themselves take seconds each under Jest and 1.5 to 2.5 minutes each under `./bin/test-agent`, which starts a JVM and loads every namespace every time, and triage makes five or six of those. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
 
 The skill has run on four PRs so far, one in each mode: a frontend PR by number, a backend PR by number, an enterprise backend PR as the current branch and a frontend PR as the current branch.
 
