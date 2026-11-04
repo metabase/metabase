@@ -679,6 +679,11 @@ function getSavedGoalCard(
   card: Card,
   savedDashcard: DashboardCard,
 ): Pick<Card, "display" | "visualization_settings"> | null {
+  // series cards draw no goals
+  if (savedDashcard.card_id != null && card.id !== savedDashcard.card_id) {
+    return null;
+  }
+
   if (!isVisualizerDashboardCard(savedDashcard)) {
     return {
       display: card.display,
@@ -687,11 +692,6 @@ function getSavedGoalCard(
         ...savedDashcard.visualization_settings,
       },
     };
-  }
-
-  // a visualizer's series cards answer no goals
-  if (card.id !== savedDashcard.card_id) {
-    return null;
   }
 
   const { display, settings } =
