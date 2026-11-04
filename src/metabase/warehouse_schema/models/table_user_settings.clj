@@ -211,7 +211,8 @@
       [db nil schema])))
 
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
-  {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
+  {:schema    ::warehouse-schema.schema/external-table-user-settings
+   :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
                :show_in_getting_started :data_authority :data_source :owner_email :is_published
                :description_set :visibility_type_set :data_layer_set :data_source_set]
    :skip      [:caveats_set :points_of_interest_set]

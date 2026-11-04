@@ -1,6 +1,8 @@
 (ns metabase-enterprise.transforms-python.schema
   "Malli schemas for the transforms-python module."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -19,3 +21,11 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id  {:optional true} [:maybe :string]]])
+
+(mr/def ::external-python-library
+  "A PythonLibrary as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::python-library [:path :source :entity_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

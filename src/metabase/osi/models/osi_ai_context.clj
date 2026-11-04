@@ -19,7 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
-   [metabase.osi.schema]
+   [metabase.osi.schema :as osi.schema]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -146,7 +146,8 @@
 ;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
 ;; parent path on import, and `entity_type` is read back from the parent segment's model.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
-  {:copy      [:ai_context]
+  {:schema    ::osi.schema/external-osi-ai-context
+   :copy      [:ai_context]
    :transform {:entity_type     {:export (constantly ::serdes/skip)
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}

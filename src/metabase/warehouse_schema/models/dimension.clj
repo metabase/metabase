@@ -5,7 +5,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -25,7 +25,8 @@
   {:type mi/transform-keyword})
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
-  {:copy      [:name :type :entity_id]
+  {:schema    ::warehouse-schema.schema/external-dimension
+   :copy      [:name :type :entity_id]
    :skip      []
    :transform {:human_readable_field_id (serdes/fk :model/Field)
                :field_id                (serdes/parent-ref)}})

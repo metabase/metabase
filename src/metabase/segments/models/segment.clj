@@ -228,7 +228,8 @@
           [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+  {:schema    ::segments.schema/external-segment
+   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
                :table_id]
    :transform {:creator_id (serdes/fk :model/User)

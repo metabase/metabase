@@ -511,7 +511,8 @@
 
 (defmethod serdes/generate-path "QueryAction" [_ _] nil)
 (defmethod serdes/make-spec "QueryAction" [_model-name _opts]
-  {:copy      []
+  {:schema    ::actions.schema/external-query-action
+   :copy      []
    :skip      [;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
                :legacy_query]
    :transform {:action_id     (serdes/parent-ref)
@@ -525,11 +526,13 @@
 
 (defmethod serdes/generate-path "ImplicitAction" [_ _] nil)
 (defmethod serdes/make-spec "ImplicitAction" [_model-name _opts]
-  {:copy      [:kind]
+  {:schema    ::actions.schema/external-implicit-action
+   :copy      [:kind]
    :transform {:action_id (serdes/parent-ref)}})
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
-  {:copy      [:archived :description :entity_id :name :public_uuid]
+  {:schema    ::actions.schema/external-action
+   :copy      [:archived :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
                :public_uuid_prefix]
    :transform {:type                   (serdes/kw)

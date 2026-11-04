@@ -2,6 +2,7 @@
   "Malli schemas for the timeline module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -47,3 +48,21 @@
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-timeline
+  "A Timeline as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::timeline [:archived :default :description :entity_id :icon :name :collection_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:events {:optional true} [:maybe [:sequential [:ref ::external-timeline-event]]]]]]])
+
+(mr/def ::external-timeline-event
+  "A TimelineEvent as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::timeline-event [:archived :description :icon :name :time_matters :timezone :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:timestamp {:optional true} [:maybe ::models.schema/external-date]]]]])
