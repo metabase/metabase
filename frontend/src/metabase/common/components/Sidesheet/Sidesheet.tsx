@@ -37,6 +37,8 @@ const EXIT_TRANSITION_DURATION_MS = 250;
  */
 export type ConfirmSidesheetClose = () => boolean | Promise<boolean>;
 
+type CloseStatus = "idle" | "confirming" | "closing";
+
 const SidesheetCloseContext = createContext<(() => void) | null>(null);
 
 /**
@@ -60,7 +62,8 @@ interface SidesheetProps {
   /**
    * Asked before every user-initiated close (close button, Escape, overlay,
    * `closeHotkey`, `useSidesheetClose`). Nothing animates until it answers
-   * `true`, so a consumer can keep its state and ask the user first.
+   * `true`, so a consumer can keep its state and ask the user first. Further
+   * close attempts are ignored while an answer is pending.
    */
   confirmClose?: ConfirmSidesheetClose;
   /** a preset, or a width in pixels */
@@ -115,19 +118,23 @@ export function Sidesheet({
 
   // Consumers usually unmount the sheet in `onClose`, so play the exit
   // transition first and only then tell them.
-  const [isClosing, setIsClosing] = useState(false);
+  const [closeStatus, setCloseStatus] = useState<CloseStatus>("idle");
   const requestClose = useCallback(async () => {
-    if (!isOpen || isClosing) {
+    if (!isOpen || closeStatus !== "idle") {
       return;
     }
-    if (confirmClose && !(await confirmClose())) {
-      return;
+    setCloseStatus("confirming");
+    try {
+      const shouldClose = confirmClose ? await confirmClose() : true;
+      setCloseStatus(shouldClose ? "closing" : "idle");
+    } catch (error) {
+      setCloseStatus("idle");
+      throw error;
     }
-    setIsClosing(true);
-  }, [isOpen, isClosing, confirmClose]);
+  }, [isOpen, closeStatus, confirmClose]);
   const handleExitTransitionEnd = () => {
-    if (isClosing) {
-      setIsClosing(false);
+    if (closeStatus === "closing") {
+      setCloseStatus("idle");
       onClose();
     }
   };
@@ -138,7 +145,7 @@ export function Sidesheet({
     <SidesheetCloseContext.Provider value={requestClose}>
       <Modal.Root
         variant="sidesheet"
-        opened={isOpen && !isClosing}
+        opened={isOpen && closeStatus !== "closing"}
         onClose={requestClose}
         onExitTransitionEnd={handleExitTransitionEnd}
         closeOnEscape={closeOnEscape}
@@ -147,7 +154,11 @@ export function Sidesheet({
         transitionProps={transitionProps}
         // The theme's enter keyframes restart when the exit transition
         // starts, so the sheet would slide back in before it slides out.
-        styles={isClosing ? NO_ANIMATION_MODAL_PROPS.styles : undefined}
+        styles={
+          closeStatus === "closing"
+            ? NO_ANIMATION_MODAL_PROPS.styles
+            : undefined
+        }
       >
         {withOverlay && (
           <Modal.Overlay

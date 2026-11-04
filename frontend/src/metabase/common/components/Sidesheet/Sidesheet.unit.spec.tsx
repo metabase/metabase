@@ -231,6 +231,42 @@ describe("Sidesheet", () => {
         await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
       },
     );
+
+    it("should ask confirmClose once while its answer is pending", async () => {
+      const closeSpy = jest.fn();
+      const answer = defer<boolean>();
+      const confirmClose = jest.fn(() => answer.promise);
+      render(
+        <Sidesheet
+          title="My Title"
+          isOpen
+          onClose={closeSpy}
+          confirmClose={confirmClose}
+          closeHotkey="]"
+        >
+          <CloseFromInside />
+        </Sidesheet>,
+      );
+
+      await userEvent.click(screen.getByLabelText("Close"));
+      await userEvent.keyboard("{Escape}");
+      await userEvent.keyboard("]");
+      await userEvent.click(
+        screen.getByRole("button", { name: "close from inside" }),
+      );
+
+      expect(confirmClose).toHaveBeenCalledTimes(1);
+      expect(closeSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        answer.resolve(false);
+        await answer.promise;
+      });
+      await userEvent.click(screen.getByLabelText("Close"));
+
+      expect(confirmClose).toHaveBeenCalledTimes(2);
+      expect(closeSpy).not.toHaveBeenCalled();
+    });
   });
 
   it("useSidesheetClose should throw outside a Sidesheet", () => {
