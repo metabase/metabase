@@ -26,7 +26,7 @@ const SSO_SOURCE_ENABLED_SETTING = {
 
 type SsoOnlyUserOpts = {
   sso_source: User["sso_source"];
-  has_password?: boolean;
+  has_used_password?: boolean;
 };
 
 /**
@@ -37,9 +37,9 @@ type SsoOnlyUserOpts = {
  */
 export const getIsSsoOnlyUser = (
   state: State,
-  { sso_source, has_password }: SsoOnlyUserOpts,
+  { sso_source, has_used_password }: SsoOnlyUserOpts,
 ): boolean =>
-  has_password !== true &&
+  has_used_password !== true &&
   sso_source != null &&
   Boolean(getSetting(state, SSO_SOURCE_ENABLED_SETTING[sso_source]));
 

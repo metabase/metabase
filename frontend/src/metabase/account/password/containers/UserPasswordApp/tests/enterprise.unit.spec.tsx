@@ -46,9 +46,9 @@ describe("UserPasswordApp (EE)", () => {
     expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
   });
 
-  it("should show password form for LDAP user who has password", async () => {
+  it("should show password form for LDAP user who has used password", async () => {
     setup({
-      user: createMockUser({ sso_source: "ldap", has_password: true }),
+      user: createMockUser({ sso_source: "ldap", has_used_password: true }),
     });
 
     expect(

@@ -14,10 +14,13 @@ describe("UserProfileApp (OSS)", () => {
   });
 
   it.each(["google", "jwt", "saml", "ldap"] as const)(
-    "should show only language field for %s user who has password",
+    "should show only language field for %s user who has used password",
     (ssoSource) => {
       setup({
-        user: createMockUser({ sso_source: ssoSource, has_password: true }),
+        user: createMockUser({
+          sso_source: ssoSource,
+          has_used_password: true,
+        }),
       });
 
       expect(screen.queryByText(/first name/i)).not.toBeInTheDocument();

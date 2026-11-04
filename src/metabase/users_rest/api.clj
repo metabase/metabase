@@ -220,7 +220,7 @@
                           filters)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
-                   (t2/hydrate :personal_collection_id :tenant_collection_id :has_password)
+                   (t2/hydrate :personal_collection_id :tenant_collection_id :has_used_password)
 
                    (or api/*is-superuser?*
                        api/*is-group-manager?*)
@@ -379,7 +379,7 @@
    [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
-   [:has_password               :boolean]
+   [:has_used_password          :boolean]
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
@@ -401,7 +401,7 @@
       ;; endpoint's response
       (dissoc :type)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id
-                  :has_password)
+                  :has_used_password)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions
@@ -436,7 +436,7 @@
       (perms/check-group-manager)))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
-      (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_password))
+      (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_used_password))
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

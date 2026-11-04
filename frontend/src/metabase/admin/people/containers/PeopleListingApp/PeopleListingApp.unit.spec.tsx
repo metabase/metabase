@@ -208,9 +208,9 @@ describe("user menu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should offer to reset password of SSO user who has password", async () => {
+  it("should offer to reset password of SSO user who has used password", async () => {
     setup({
-      users: [{ ...ssoUser, has_password: true }],
+      users: [{ ...ssoUser, has_used_password: true }],
       settings: { "saml-enabled": true },
     });
     await openUserMenu();

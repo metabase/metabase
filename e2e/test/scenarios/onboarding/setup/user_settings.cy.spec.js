@@ -135,7 +135,7 @@ describe("user > settings", () => {
 
   ["ldap", "google", "jwt", "saml"].forEach((ssoSource) => {
     it(`should prevent ${ssoSource} users from editing SSO credentials (metabase#23298)`, () => {
-      stubCurrentUser({ sso_source: ssoSource, has_password: false });
+      stubCurrentUser({ sso_source: ssoSource, has_used_password: false });
       cy.visit("/account/profile");
       cy.wait("@getUser");
       cy.findByTestId("account-header").should("contain", email);

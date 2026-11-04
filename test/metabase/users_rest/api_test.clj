@@ -76,7 +76,7 @@
           (is (= (set
                   (concat
                    user/admin-or-self-visible-columns
-                   [:common_name :group_ids :personal_collection_id :tenant_collection_id :has_password]))
+                   [:common_name :group_ids :personal_collection_id :tenant_collection_id :has_used_password]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails
           (is (= #{"crowberto@metabase.com"
@@ -2235,7 +2235,7 @@
                                   (format "user/%d/password" user-id)
                                   {:password "newPassword12!!"})))))))
 
-(deftest has-password-test
+(deftest has-used-password-test
   (testing "GET /api/user and GET /api/user/:id report to admins whether user has used password"
     (mt/with-temp [:model/User {expired-user-id :id} {}
                    :model/AuthIdentity _ {:user_id      expired-user-id
@@ -2258,24 +2258,24 @@
                    :model/AuthIdentity _ {:user_id     unused-user-id
                                           :provider    "password"
                                           :credentials {:plaintext_password "somePassword12!!"}}]
-      (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
-      (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expiring-user-id))))
-      (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
-      (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
-      (let [id->has-password (into {}
-                                   (map (juxt :id :has_password))
-                                   (:data (mt/user-http-request :crowberto :get 200 "user")))]
-        (is (false? (id->has-password expired-user-id)))
-        (is (true? (id->has-password expiring-user-id)))
-        (is (true? (id->has-password used-user-id)))
-        (is (false? (id->has-password unused-user-id))))
+      (is (=? {:has_used_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" expired-user-id))))
+      (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" expiring-user-id))))
+      (is (=? {:has_used_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
+      (is (=? {:has_used_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
+      (let [id->has-used-password (into {}
+                                        (map (juxt :id :has_used_password))
+                                        (:data (mt/user-http-request :crowberto :get 200 "user")))]
+        (is (false? (id->has-used-password expired-user-id)))
+        (is (true? (id->has-used-password expiring-user-id)))
+        (is (true? (id->has-used-password used-user-id)))
+        (is (false? (id->has-used-password unused-user-id))))
       (testing "GET /api/user/current reports it to user themself"
-        (is (=? {:has_password false} (mt/user-http-request unused-user-id :get 200 "user/current")))
-        (is (=? {:has_password true} (mt/user-http-request used-user-id :get 200 "user/current")))))))
+        (is (=? {:has_used_password false} (mt/user-http-request unused-user-id :get 200 "user/current")))
+        (is (=? {:has_used_password true} (mt/user-http-request used-user-id :get 200 "user/current")))))))
 
 (mt/when-ee-evailable
- (deftest has-password-hidden-from-group-managers-test
-   (testing "GET /api/user/:id does not show group managers whether another user has password"
+ (deftest has-used-password-hidden-from-group-managers-test
+   (testing "GET /api/user/:id does not show group managers whether another user has used password"
      (mt/with-premium-features #{:advanced-permissions}
        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                       :model/PermissionsGroupMembership _ {:user_id          (mt/user->id :rasta)
@@ -2283,7 +2283,7 @@
                                                            :is_group_manager true}]
          (let [response (mt/user-http-request :rasta :get 200 (format "user/%d" (mt/user->id :crowberto)))]
            (is (= "crowberto@metabase.com" (:email response)))
-           (is (not (contains? response :has_password)))))))))
+           (is (not (contains? response :has_used_password)))))))))
 
 (deftest password-reset-url-nonexistent-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"

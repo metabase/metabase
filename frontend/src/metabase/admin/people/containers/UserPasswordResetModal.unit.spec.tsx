@@ -139,9 +139,9 @@ describe("UserPasswordResetModal", () => {
       ).toBe(false);
     });
 
-    it("should allow resetting password while provider is enabled when user has password", async () => {
+    it("should allow resetting password while provider is enabled when user has used password", async () => {
       setup({
-        user: { ...ssoUser, has_password: true },
+        user: { ...ssoUser, has_used_password: true },
         settings: { "saml-enabled": true },
       });
 
