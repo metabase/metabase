@@ -614,6 +614,25 @@ describe("NativeQuery", () => {
       expect(newParameters[0].values_source_type).toEqual("static-list");
       expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
     });
+
+    it("should use the default value of a required tag as the parameter default", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{cat}}",
+      );
+      const newQuery = oldQuery.setTemplateTag("cat", {
+        ...oldQuery.templateTagsMap()["cat"],
+        required: true,
+        default: "Gizmo",
+      });
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(1);
+      expect(newParameters[0]).toMatchObject({
+        slug: "cat",
+        required: true,
+        default: "Gizmo",
+      });
+    });
   });
 
   describe("variables", () => {

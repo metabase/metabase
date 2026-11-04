@@ -25,6 +25,7 @@ import type {
   ParameterValues,
   TemplateTag,
   TemplateTagType,
+  TemporalUnit,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -715,6 +716,85 @@ describe("TagEditorParam", () => {
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
 
       expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: [20] });
+    });
+  });
+
+  describe("time grouping", () => {
+    const TIME_GROUPING_OPTIONS: TemporalUnit[] = ["month", "year"];
+
+    const getTimeGroupingTag = (opts?: Partial<TemplateTag>) =>
+      createMockTemplateTag({
+        type: "temporal-unit",
+        name: "unit",
+        "display-name": "Unit",
+        dimension: ["field", ORDERS.CREATED_AT, null],
+        ...opts,
+      });
+
+    it("should be able to update the parameter widget label", async () => {
+      const tag = getTimeGroupingTag();
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: "Parameter widget label" }),
+        " updated",
+      );
+      await userEvent.tab();
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "display-name": "Unit updated",
+      });
+    });
+
+    it("should be able to set a default time grouping", async () => {
+      const tag = getTimeGroupingTag({ required: true });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByText("Enter a default value…"));
+      await userEvent.click(await screen.findByText("Year"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: "year" });
+    });
+
+    it("should reset the default value when it is removed from the time grouping options", async () => {
+      const tag = getTimeGroupingTag({ default: "year" });
+      const parameter = {
+        ...getTemplateTagParameter(tag),
+        temporal_units: TIME_GROUPING_OPTIONS,
+      };
+      const { setTemplateTag, setTemplateTagConfig, setParameterValue } = setup(
+        { tag, parameter },
+      );
+
+      await userEvent.click(screen.getByText("Month, Year"));
+      await userEvent.click(await screen.findByLabelText("Year"));
+
+      expect(setTemplateTagConfig).toHaveBeenCalledWith(tag, {
+        temporal_units: ["month"],
+      });
+      expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: null });
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, null);
+    });
+
+    it("should keep the default value when it stays in the time grouping options", async () => {
+      const tag = getTimeGroupingTag({ default: "year" });
+      const parameter = {
+        ...getTemplateTagParameter(tag),
+        temporal_units: TIME_GROUPING_OPTIONS,
+      };
+      const { setTemplateTag, setTemplateTagConfig, setParameterValue } = setup(
+        { tag, parameter },
+      );
+
+      await userEvent.click(screen.getByText("Month, Year"));
+      await userEvent.click(await screen.findByLabelText("Month"));
+
+      expect(setTemplateTagConfig).toHaveBeenCalledWith(tag, {
+        temporal_units: ["year"],
+      });
+      expect(setTemplateTag).not.toHaveBeenCalled();
+      expect(setParameterValue).not.toHaveBeenCalled();
     });
   });
 
