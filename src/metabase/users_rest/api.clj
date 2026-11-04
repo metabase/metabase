@@ -435,7 +435,8 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
-      (t2/hydrate :user_group_memberships :has_password)
+      (t2/hydrate :user_group_memberships)
+      (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_password))
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

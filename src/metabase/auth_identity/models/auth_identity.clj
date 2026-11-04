@@ -92,12 +92,11 @@
 
 (mi/define-batched-hydration-method add-has-password
   :has_password
-  "Adds `has_password`, whether each of `users` has a `password` AuthIdentity, to a collection of `users`."
+  "Adds `has_password`, whether each of `users` has a password that has been used to log in and has not expired."
   [users]
-  (when (seq users)
-    (let [user-ids (auth-identity.db/user-ids-with-auth-identity (set (map u/the-id users)) "password")]
-      (for [user users]
-        (assoc user :has_password (contains? user-ids (u/the-id user)))))))
+  (let [user-ids (auth-identity.db/user-ids-with-used-password (set (map u/the-id users)))]
+    (for [user users]
+      (assoc user :has_password (contains? user-ids (u/the-id user))))))
 
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the

@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.api.response :as api.response]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
@@ -2197,37 +2198,61 @@
       (mt/user-http-request :crowberto :post 200
                             (format "user/%d/password-reset-url" user-id)))))
 
-(deftest sso-user-with-password-can-be-given-password-test
-  (testing "PUT /api/user/:id/password and POST /api/user/:id/password-reset-url as an admin work for a user whose
-           SSO provider is enabled when they have a password"
-    (mt/with-temp [:model/User {user-id :id} {:sso_source "google"}
-                   :model/AuthIdentity _ {:user_id     user-id
-                                          :provider    "password"
-                                          :credentials {:plaintext_password "oldPassword12!!"}}]
-      (mt/with-premium-features #{}
-        (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
-                                           google-auth-enabled   true]
-          (is (contains? (mt/user-http-request :crowberto :post 200 (format "user/%d/password-reset-url" user-id))
-                         :password_reset_url))
-          (mt/user-http-request :crowberto :put 204 (format "user/%d/password" user-id)
-                                {:password "newPassword12!!"}))))))
+(deftest sso-user-with-used-password-can-be-given-password-test
+  (testing "admin can set or reset password of SSO user with enabled provider only when password is used and unexpired"
+    (doseq [[password-attrs expected-status] [[{:last_used_at (t/offset-date-time)} 200]
+                                              [{} 404]
+                                              [{:last_used_at (t/offset-date-time)
+                                                :expires_at   (t/minus (t/offset-date-time) (t/days 1))} 404]]]
+      (testing (pr-str password-attrs)
+        (mt/with-temp [:model/User {user-id :id} {:sso_source "google"}
+                       :model/AuthIdentity _ (merge {:user_id     user-id
+                                                     :provider    "password"
+                                                     :credentials {:plaintext_password "oldPassword12!!"}}
+                                                    password-attrs)]
+          (mt/with-premium-features #{}
+            (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                               google-auth-enabled   true]
+              (mt/user-http-request :crowberto :post expected-status (format "user/%d/password-reset-url" user-id))
+              (mt/user-http-request :crowberto :put (if (= 200 expected-status) 204 404)
+                                    (format "user/%d/password" user-id)
+                                    {:password "newPassword12!!"}))))))))
 
 (deftest has-password-test
-  (testing "GET /api/user, GET /api/user/:id and GET /api/user/current report whether the user has a password"
+  (testing "GET /api/user and GET /api/user/:id report to admins whether user has used password"
     (mt/with-temp [:model/User {sso-user-id :id} {:sso_source "jwt"}
-                   :model/User {password-user-id :id} {}
-                   :model/AuthIdentity _ {:user_id     password-user-id
+                   :model/User {used-user-id :id} {}
+                   :model/AuthIdentity _ {:user_id      used-user-id
+                                          :provider     "password"
+                                          :credentials  {:plaintext_password "somePassword12!!"}
+                                          :last_used_at (t/offset-date-time)}
+                   :model/User {unused-user-id :id} {}
+                   :model/AuthIdentity _ {:user_id     unused-user-id
                                           :provider    "password"
                                           :credentials {:plaintext_password "somePassword12!!"}}]
       (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" sso-user-id))))
-      (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" password-user-id))))
-      (is (=? {:has_password false} (mt/user-http-request sso-user-id :get 200 "user/current")))
-      (is (=? {:has_password true} (mt/user-http-request password-user-id :get 200 "user/current")))
+      (is (=? {:has_password true} (mt/user-http-request :crowberto :get 200 (format "user/%d" used-user-id))))
+      (is (=? {:has_password false} (mt/user-http-request :crowberto :get 200 (format "user/%d" unused-user-id))))
       (let [id->has-password (into {}
                                    (map (juxt :id :has_password))
                                    (:data (mt/user-http-request :crowberto :get 200 "user")))]
         (is (false? (id->has-password sso-user-id)))
-        (is (true? (id->has-password password-user-id)))))))
+        (is (true? (id->has-password used-user-id)))
+        (is (false? (id->has-password unused-user-id))))
+      (testing "GET /api/user/current reports it to user themself"
+        (is (=? {:has_password false} (mt/user-http-request sso-user-id :get 200 "user/current")))
+        (is (=? {:has_password true} (mt/user-http-request used-user-id :get 200 "user/current")))))))
+
+(deftest has-password-hidden-from-group-managers-test
+  (testing "GET /api/user/:id does not show group managers whether another user has password"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id          (mt/user->id :rasta)
+                                                          :group_id         group-id
+                                                          :is_group_manager true}]
+        (let [response (mt/user-http-request :rasta :get 200 (format "user/%d" (mt/user->id :crowberto)))]
+          (is (= "crowberto@metabase.com" (:email response)))
+          (is (not (contains? response :has_password))))))))
 
 (deftest password-reset-url-nonexistent-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"

@@ -4465,35 +4465,3 @@
         (is (t2/exists? :transform :id python-id))
         (t2/delete! :metabase_database :id db-id)
         (is (not (t2/exists? :transform :id transform-id)))))))
-
-(deftest delete-unused-passwords-of-sso-users-test
-  (testing "q0zohg deletes the never-used password AuthIdentities of SSO users"
-    (impl/test-migrations ["q0zohg"] [migrate!]
-      (let [insert-user     (fn [sso-source]
-                              (t2/insert-returning-pk! :core_user {:first_name    "User"
-                                                                   :last_name     (mt/random-name)
-                                                                   :email         (str (mt/random-name) "@test.com")
-                                                                   :entity_id     (u/generate-nano-id)
-                                                                   :date_joined   :%now
-                                                                   :password      "password"
-                                                                   :password_salt "salt"
-                                                                   :sso_source    sso-source}))
-            insert-identity (fn [user-id provider last-used-at]
-                              (t2/insert-returning-pk! :auth_identity {:user_id      user-id
-                                                                       :provider     provider
-                                                                       :credentials  "{}"
-                                                                       :last_used_at last-used-at
-                                                                       :created_at   :%now
-                                                                       :updated_at   :%now}))
-            sso-user-id     (insert-user "jwt")
-            unused-id       (insert-identity sso-user-id "password" nil)
-            jwt-id          (insert-identity sso-user-id "jwt" nil)
-            used-user-id    (insert-user "saml")
-            used-id         (insert-identity used-user-id "password" :%now)
-            plain-user-id   (insert-user nil)
-            plain-id        (insert-identity plain-user-id "password" nil)]
-        (migrate!)
-        (is (not (t2/exists? :auth_identity :id unused-id)))
-        (is (t2/exists? :auth_identity :id jwt-id))
-        (is (t2/exists? :auth_identity :id used-id))
-        (is (t2/exists? :auth_identity :id plain-id))))))

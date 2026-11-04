@@ -643,23 +643,38 @@
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
 
+(defn- jwt-login!
+  [email]
+  (client/client-real-response :get 302 "/auth/sso"
+                               {:request-options {:redirect-strategy :none}}
+                               :return_to default-redirect-uri
+                               :jwt (jwt/sign {:email email :first_name "Password" :last_name "User"}
+                                              default-jwt-secret)))
+
+(defn- reset-url-status
+  [user-id]
+  (binding [client/*url-prefix* "/api"]
+    (:status (mt/user-http-request-full-response :crowberto :post (format "user/%d/password-reset-url" user-id)))))
+
 (deftest password-user-keeps-password-reset-after-jwt-login-test
-  (testing "user with password can still get reset link after logging in with JWT"
+  (testing "admin can still create reset link for user who logged in with password and later with JWT"
     (with-jwt-default-setup!
       (mt/with-temp [:model/User user {:email "password-then-jwt@metabase.com"}]
         (auth-identity/set-password! (:id user) "somePassword12!!")
-        (is (sso.test-setup/successful-login?
-             (client/client-real-response :get 302 "/auth/sso"
-                                          {:request-options {:redirect-strategy :none}}
-                                          :return_to default-redirect-uri
-                                          :jwt (jwt/sign {:email      (:email user)
-                                                          :first_name "Password"
-                                                          :last_name  "User"}
-                                                         default-jwt-secret))))
-        (is (= :jwt (t2/select-one-fn :sso_source :model/User :id (:id user))))
         (binding [client/*url-prefix* "/api"]
-          (is (contains? (mt/user-http-request :crowberto :post 200 (format "user/%d/password-reset-url" (:id user)))
-                         :password_reset_url)))))))
+          (client/client :post 200 "session" {:username (:email user) :password "somePassword12!!"}))
+        (is (sso.test-setup/successful-login? (jwt-login! (:email user))))
+        (is (= :jwt (t2/select-one-fn :sso_source :model/User :id (:id user))))
+        (is (= 200 (reset-url-status (:id user))))))))
+
+(deftest unused-password-gives-no-reset-after-jwt-login-test
+  (testing "admin cannot create reset link for JWT user whose password was never used to log in"
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/User user {:email "unused-password-then-jwt@metabase.com"}]
+        (auth-identity/set-password! (:id user) "somePassword12!!")
+        (is (= 200 (reset-url-status (:id user))))
+        (is (sso.test-setup/successful-login? (jwt-login! (:email user))))
+        (is (= 404 (reset-url-status (:id user))))))))
 
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"
