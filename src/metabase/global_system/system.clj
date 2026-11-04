@@ -6,7 +6,10 @@
    All roots live in one atom, so [[snapshot]] reads every root at a single instant.
    Each thread's bindings are an overlay holding only the components bound on that thread, never a copy of the system.
    An unbound component reads straight through to its root, so binding or changing one component never affects
-   another."
+   another.
+
+   A component can also be started on first use with [[ensure-started!]], which records how to stop it, and [[halt!]]
+   stops every started component, last started first."
   (:require
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc])
@@ -147,7 +150,7 @@
 ;; Entries are matched by component key, not handle, since reloading a namespace makes a new handle for the same key.
 (defonce ^{:doc "The components [[ensure-started!]] started, as `{:k key, :handle h, :stop f}` maps in start order."
            :private true}
-  started
+  started-components
   (atom []))
 
 (defn- handle-key
@@ -162,7 +165,33 @@
 (defn- registered-stop
   "The stop function [[ensure-started!]] recorded for the component behind `handle`, or nil if it did not start it."
   [handle]
-  (some #(when (= (handle-key handle) (:k %)) (:stop %)) @started))
+  (some #(when (= (handle-key handle) (:k %)) (:stop %)) @started-components))
+
+(defn start!
+  "Like [[ensure-started!]], but returns `[value started?]`, where `started?` says whether this call started the
+   component."
+  [handle start stop]
+  (if (bound-here? handle)
+    [@handle false]
+    (let [current @handle]
+      (if (some? current)
+        [current false]
+        (mc/with-slot-lock handle
+          (let [current @handle]
+            (if (some? current)
+              [current false]
+              (let [k       (handle-key handle)
+                    started (start)]
+                (when (nil? started)
+                  (throw (ex-info (str "Starting component returned nil: " k) {:component k})))
+                ;; Registered before the root is published, so the root is never visible unregistered, and anything
+                ;; that starts after seeing it, and so may depend on it, registers after it and halts before it.
+                ;; Components `start` itself started registered first, for the same reason.
+                (swap! started-components (fn [entries]
+                                            (conj (filterv #(not= k (:k %)) entries)
+                                                  {:k k, :handle handle, :stop stop})))
+                (mc/reset! handle started)
+                [started true]))))))))
 
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
@@ -173,33 +202,13 @@
    The component's root must already be installed, usually as nil by [[mutable-component-handle]].
    A component started while [[halt!]] runs may be left running."
   [handle start stop]
-  (if (bound-here? handle)
-    @handle
-    (let [value @handle]
-      (if (some? value)
-        value
-        (mc/with-slot-lock handle
-          (let [value @handle]
-            (if (some? value)
-              value
-              (let [k     (handle-key handle)
-                    value (start)]
-                (when (nil? value)
-                  (throw (ex-info (str "Starting component returned nil: " k) {:component k})))
-                ;; Registered before the root is published, so the root is never visible unregistered, and anything
-                ;; that starts after seeing it, and so may depend on it, registers after it and halts before it.
-                ;; Components `start` itself started registered first, for the same reason.
-                (swap! started (fn [entries]
-                                 (conj (filterv #(not= k (:k %)) entries)
-                                       {:k k, :handle handle, :stop stop})))
-                (mc/reset! handle value)
-                value))))))))
+  (first (start! handle start stop)))
 
 (defn- unregister!
-  "Remove the [[started]] entry for the component behind `handle`."
+  "Remove the [[started-components]] entry for the component behind `handle`."
   [handle]
   (let [k (handle-key handle)]
-    (swap! started (fn [entries] (filterv #(not= k (:k %)) entries)))))
+    (swap! started-components (fn [entries] (filterv #(not= k (:k %)) entries)))))
 
 (defn stop!
   "Stop the component behind `handle` if [[ensure-started!]] started it: set its root back to nil, then call the stop
@@ -226,12 +235,12 @@
    component key with its exception."
   [handles]
   (let [failures (into []
-                       (keep (fn [^ComponentHandle handle]
+                       (keep (fn [handle]
                                (try
                                  (stop! handle)
                                  nil
                                  (catch Throwable e
-                                   [(.-k handle) e]))))
+                                   [(handle-key handle) e]))))
                        handles)]
     (when (seq failures)
       (throw (ex-info "Some components failed to stop"
@@ -241,7 +250,7 @@
 (defn- halt-order
   "The handles of the components [[ensure-started!]] started, in the order [[halt!]] stops them: last started first."
   []
-  (map :handle (rseq @started)))
+  (map :handle (rseq @started-components)))
 
 (defn halt!
   "Stop every component [[ensure-started!]] started, in reverse start order.
