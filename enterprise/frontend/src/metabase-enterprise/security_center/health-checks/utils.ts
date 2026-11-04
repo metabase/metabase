@@ -1,6 +1,5 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { BadgeColor } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -14,8 +13,6 @@ import type {
 } from "metabase-types/api";
 
 import { compareBySeverity } from "../utils";
-
-import { HEALTH_CHECK_STATUSES } from "./constants";
 
 type StatusStyle = {
   icon: IconName;
@@ -54,11 +51,10 @@ export const getChecksByStatus = (
   status: HealthCheckStatus,
 ) => checks.filter((check) => check.status === status).sort(compareBySeverity);
 
-export const partitionItemsByProblem = (items: HealthCheckItem[]) =>
-  _.partition(
-    _.sortBy(items, (item) => HEALTH_CHECK_STATUSES.indexOf(item.status)),
-    (item) => item.status !== "pass",
-  );
+export const getItemsByStatus = (
+  items: HealthCheckItem[],
+  status: HealthCheckStatus,
+) => items.filter((item) => item.status === status);
 
 type HealthCheckItemAction = {
   label: string;

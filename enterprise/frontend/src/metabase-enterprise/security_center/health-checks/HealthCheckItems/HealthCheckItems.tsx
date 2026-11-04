@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 
 import { HealthCheckItemRow } from "../HealthCheckItemRow/HealthCheckItemRow";
-import { getStatusInfo, partitionItemsByProblem } from "../utils";
+import { getItemsByStatus, getStatusInfo } from "../utils";
 
 import S from "./HealthCheckItems.module.css";
 
@@ -45,7 +45,11 @@ type HealthCheckItemsProps = {
 };
 
 export const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
-  const [problemItems, passedItems] = partitionItemsByProblem(check.items);
+  const problemItems = [
+    ...getItemsByStatus(check.items, "fail"),
+    ...getItemsByStatus(check.items, "unknown"),
+  ];
+  const passedItems = getItemsByStatus(check.items, "pass");
   const isPassedCollapsed = problemItems.length > 0 && passedItems.length > 0;
   const visibleItems = isPassedCollapsed
     ? problemItems
