@@ -32,14 +32,11 @@ describe("EmbeddingDataPicker", () => {
     it("should show tables when there is no models", async () => {
       setup({ embeddingType: "full-app", hasModels: false });
 
-      const databaseOption = await screen.findByText("Sample Database");
-      expect(databaseOption).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
 
       expect(screen.queryByText("Models")).not.toBeInTheDocument();
       expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
 
-      await userEvent.click(databaseOption);
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(screen.getByText("People")).toBeInTheDocument();
       expect(screen.getByText("Products")).toBeInTheDocument();
       expect(screen.getByText("Reviews")).toBeInTheDocument();
@@ -81,19 +78,19 @@ describe("EmbeddingDataPicker", () => {
           entityTypes: ["table"],
         });
 
-        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Orders")).toBeInTheDocument();
 
         expect(screen.queryByText("Models")).not.toBeInTheDocument();
         expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
       });
 
-      it('should not show "saved questions" in the database list when `entity_types=["table"]`', async () => {
+      it('should not show "saved questions" when `entity_types=["table"]`', async () => {
         setup({
           embeddingType: "full-app",
           entityTypes: ["table"],
         });
 
-        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Orders")).toBeInTheDocument();
         expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
       });
 
@@ -124,7 +121,7 @@ describe("EmbeddingDataPicker", () => {
           entityTypes: ["table"],
         });
 
-        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Orders")).toBeInTheDocument();
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 
@@ -186,7 +183,7 @@ describe("EmbeddingDataPicker", () => {
           entityTypes: ["table"],
         });
 
-        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Orders")).toBeInTheDocument();
         expect(screen.queryByText("Library")).not.toBeInTheDocument();
       });
 

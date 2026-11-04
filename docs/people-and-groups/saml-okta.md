@@ -34,10 +34,10 @@ To configure Okta app integration with Metabase, you'll need to use the informat
 
 #### General settings
 
-| Okta SAML                       | Metabase SAML                                                                                                                               |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Single sign-on URL**          | **URL the IdP should redirect to**. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso`. |
-| **Audience URI (SP Entity ID)** | **SAML Application Name** ("Metabase" by default)                                                                                           |
+| Okta SAML                       | Metabase SAML                                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Single sign-on URL**          | **URL the IdP should redirect back to**. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso`. |
+| **Audience URI (SP Entity ID)** | **SAML application name** ("Metabase" by default)                                                                                                |
 
 #### Attribute statements
 
@@ -115,9 +115,9 @@ Use the information from Okta SAML instructions to fill the Metabase SAML form i
 
 | Metabase SAML                      | Okta SAML                            |
 | ---------------------------------- | ------------------------------------ |
-| SAML Identity Provider URL         | Identity Provider Single Sign-On URL |
-| SAML Identity Provider Certificate | X.509 Certificate\*                  |
-| SAML Identity Provider Issuer      | Identity Provider Issuer             |
+| SAML identity provider URL         | Identity Provider Single Sign-On URL |
+| SAML identity provider certificate | X.509 Certificate\*                  |
+| SAML identity provider issuer      | Identity Provider Issuer             |
 
 \*Make sure to include any header and footer comments, like `---BEGIN CERTIFICATE---` and `---END CERTIFICATE---`.
 
@@ -152,15 +152,16 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
 4. In **Metabase SAML settings**:
 
-    1. Enable the **Synchronize Group Memberships** toggle.
-    2. Click **New mapping**.
-    3. Enter the name of a group you added to Okta users, then click **Add**.
-    4. Select the Metabase groups to map the group name to.
-    5. Repeat steps 2 to 4 for each group.
-    6. In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
-    7. Click **Save and enable**.
+   1. Turn on the **Group mapping** toggle.
+   2. Next to **Manual group mappings**, click **New**.
+   3. Enter the name of a group you added to Okta users.
+   4. Select the Metabase groups to map the group name to.
+   5. Click **Add mapping**.
+   6. Repeat steps 2 to 5 for each group.
+   7. In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
+   8. Click **Save and enable**.
 
-    ![Metabase group mapping](images/saml-okta-groups.png)
+   ![Metabase group mapping](images/saml-okta-groups.png)
 
 ### Map Okta User Groups to Metabase groups
 
@@ -183,24 +184,22 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
 3. In **Metabase SAML settings**:
 
-    1. Enable the **Synchronize Group Memberships** toggle.
-    2. Click **New mapping**.
-    3. Enter the name of an Okta group, then click **Add**.
-    4. Select the Metabase groups to map the group name to.
-    5. Repeat steps 2 to 4 for each group.
-    6. In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
-    7. Click **Save and enable**.
+   1. Turn on the **Group mapping** toggle.
+   2. Next to **Manual group mappings**, click **New**.
+   3. Enter the name of an Okta group.
+   4. Select the Metabase groups to map the group name to.
+   5. Click **Add mapping**.
+   6. Repeat steps 2 to 5 for each group.
+   7. In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
+   8. Click **Save and enable**.
 
-    ![Metabase group mapping](images/saml-okta-groups.png)
+   ![Metabase group mapping](images/saml-okta-groups.png)
 
 ## Troubleshooting SAML issues
 
 For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 
-[enabling-saml-in-metabase]: ./authenticating-with-saml.md#enabling-saml-authentication-in-metabase
 [okta-saml-docs]: https://help.okta.com/oie/en-us/content/topics/apps/apps_app_integration_wizard_saml.htm
-[okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
-[saml-doc]: ./authenticating-with-saml.md
 [site-url]: ../configuring-metabase/settings.md#site-url
 [troubleshooting-saml]: ../troubleshooting-guide/saml.md
 

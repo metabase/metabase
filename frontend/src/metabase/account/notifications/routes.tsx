@@ -11,13 +11,17 @@ import { UnsubscribePulseModal } from "./containers/UnsubscribePulseModal";
 export function getNotificationRoutes() {
   return (
     <Route path="notifications" element={<NotificationsApp />}>
-      {modalRoute("help", HelpModal)}
+      {modalRoute("help", HelpModal, { noWrap: true })}
       {modalRoute("alert/:alertId/archive", DeleteAlertModal, { noWrap: true })}
-      {modalRoute("pulse/:pulseId/archive", ArchivePulseModal)}
+      {modalRoute("pulse/:pulseId/archive", ArchivePulseModal, {
+        noWrap: true,
+      })}
       {modalRoute("alert/:alertId/unsubscribe", UnsubscribeAlertModal, {
         noWrap: true,
       })}
-      {modalRoute("pulse/:pulseId/unsubscribe", UnsubscribePulseModal)}
+      {modalRoute("pulse/:pulseId/unsubscribe", UnsubscribePulseModal, {
+        noWrap: true,
+      })}
     </Route>
   );
 }

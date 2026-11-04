@@ -90,9 +90,9 @@
                                 reconcile/with-index-read-lock                         (fn [_ds f]
                                                                                          (f ::locked-connection))]
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
+      (is (= :unavailable (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
-(deftest search-degrades-when-reconcile-holds-the-lock-test
+(deftest search-is-busy-when-reconcile-holds-the-lock-test
   (mt/with-premium-features #{:library-retrieval}
     (with-redefs [entity-retrieval.core/available?                        (constantly true)
                   semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
@@ -105,9 +105,9 @@
                   jdbc/execute!                                          (fn [& _]
                                                                            (throw (ex-info "must not query" {})))]
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
+      (is (= :busy (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
-(deftest search-degrades-when-configured-model-cannot-be-resolved-test
+(deftest search-is-unavailable-when-configured-model-cannot-be-resolved-test
   (mt/with-premium-features #{:library-retrieval}
     (with-redefs [entity-retrieval.core/available?                        (constantly true)
                   semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
@@ -124,17 +124,51 @@
                   jdbc/execute!                                          (fn [& _]
                                                                            (throw (ex-info "must not query" {})))]
       #_{:clj-kondo/ignore [:discouraged-var]}
-      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
+      (is (= :unavailable (entity-retrieval.core/search-unfiltered "the query" 10))))))
 
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
-    ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
-    ;; entity retrieval is dedicated-only, so no URL means available? is false, search returns [] and the
-    ;; write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
-        (is (= [] (search-unfiltered* "anything" 10)))
+        (is (= :unavailable (search-unfiltered* "anything" 10)))
         (is (nil? (mirror/request-entity-sync! "table" 1)))))))
+
+(deftest search-index-states-test
+  (doseq [[scenario expected]
+          [[:query-lock :busy]
+           [:missing-index :unavailable]
+           [:changed-index :unavailable]
+           [:missing-vectors :unavailable]
+           [:incompatible-vectors :unavailable]
+           [:no-matches []]]]
+    (testing (name scenario)
+      (let [lock-count (atom 0)]
+        (mt/with-premium-features #{:library-retrieval}
+          (mt/with-dynamic-fn-redefs
+            [entity-retrieval.core/available?                        (constantly true)
+             semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+             semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+             reconcile/with-index-read-lock                         (fn [_ f]
+                                                                      (when-not (and (= :query-lock scenario)
+                                                                                     (= 2 (swap! lock-count inc)))
+                                                                        (f ::connection)))
+             index-table/index-status                               (fn [& _]
+                                                                      (case scenario
+                                                                        :missing-index (throw (java.sql.SQLException.
+                                                                                               "missing" "42P01"))
+                                                                        :changed-index (if (= 2 (swap! lock-count inc))
+                                                                                         :incompatible
+                                                                                         :compatible)
+                                                                        :compatible))
+             semantic.embedding/get-embedding                       (constantly [0.0 0.0 0.0 0.0])
+             jdbc/execute!                                          (fn [& _]
+                                                                      (case scenario
+                                                                        :missing-vectors
+                                                                        (throw (java.sql.SQLException. "missing" "42P01"))
+                                                                        :incompatible-vectors
+                                                                        (throw (java.sql.SQLException. "dimensions" "22000"))
+                                                                        []))]
+            (is (= expected (search-unfiltered* "the query" 10)))))))))
 
 (deftest targeted-drain-reconciles-each-dirty-entity-test
   (testing "a targeted run snapshots and clears the dirty set, reconciling each entity once"
@@ -514,10 +548,8 @@
                                               (index-table/vectors-table) ", "
                                               (index-table/meta-table))]))))))))))))
 
-(deftest ^:synchronized search-degrades-on-dimension-mismatch-test
-  ;; A post-upgrade embedding-dimension change leaves the query vector incompatible with the index column
-  ;; until the next reconcile rebuilds it; search must degrade to [] rather than throw in that window.
-  (testing "an index/query vector dimension mismatch degrades search to [] instead of throwing"
+(deftest ^:synchronized search-is-unavailable-on-dimension-mismatch-test
+  (testing "an index/query vector dimension mismatch reports unavailable"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
         (let [suffix (System/nanoTime)
@@ -534,24 +566,19 @@
                 (try
                   (semantic.tu/with-mock-embeddings {"orders" [1.0 0.0 0.0 0.0]}
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model)))
-                  ;; Every entry point here is a defenterprise dispatcher that answers [] in OSS, so pair the
-                  ;; degrade assertion with a control: an unrun query and a degraded one both look like [].
                   #_{:clj-kondo/ignore [:discouraged-var]}
                   (semantic.tu/with-mock-embeddings {"orders" [1.0 0.0 0.0 0.0] "q" [1.0]}
                     (is (=? [{:model "table" :id table-id}]
                             (distinct (map :entity (entity-retrieval.core/search-unfiltered "orders" 10))))
-                        "the query really runs, so the [] below is the degrade path and not a fallback")
+                        "the query really runs, so the unavailable result below comes from pgvector")
                     ;; Shrink the configured model to one dimension, the way an upgrade would, keeping it
                     ;; self-consistent so the provider resolves it instead of rejecting a changed space.
-                    ;; The meta row still describes the dim-4 build, so the compatibility preflight would
-                    ;; answer [] on its own; stub it aside to reach the case this test is about — a dim-1
-                    ;; literal meeting the vector(4) column, which is pgvector SQLState 22000.
                     (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                                 (constantly (semantic.tu/resolved-mock-embedding-model
                                                              :vector-dimensions 1))
                                                 index-table/index-status (constantly :compatible)]
                       (mt/with-log-messages-for-level [messages [metabase-enterprise.search.entity-retrieval.core :warn]]
-                        (is (= [] (entity-retrieval.core/search-unfiltered "q" 10)))
+                        (is (= :unavailable (entity-retrieval.core/search-unfiltered "q" 10)))
                         (is (=? [{:level   :warn
                                   :message #"(?s)library entity index incompatible with the query vector.*"}]
                                 (messages))

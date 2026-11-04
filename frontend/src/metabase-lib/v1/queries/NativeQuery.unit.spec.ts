@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import NativeQuery, {
@@ -301,6 +302,32 @@ describe("NativeQuery", () => {
         );
         expect(q.canRun()).toBe(true);
       });
+    });
+
+    describe("required template tags", () => {
+      it.each(["text", "number", "date"] as const)(
+        "should run and save without a default value for a required %s tag",
+        (type) => {
+          const q = makeQuery().setQueryText(
+            "SELECT * from ORDERS where {{foo}}",
+          );
+          const requiredQuery = q.setTemplateTag(
+            "foo",
+            createMockTemplateTag({
+              name: "foo",
+              "display-name": "Foo",
+              type,
+              required: true,
+              default: undefined,
+            }),
+          );
+
+          expect(requiredQuery.canRun()).toBe(true);
+          expect(
+            Lib.canSave(requiredQuery.question().query(), "question"),
+          ).toBe(true);
+        },
+      );
     });
 
     describe("snippet template tags", () => {
