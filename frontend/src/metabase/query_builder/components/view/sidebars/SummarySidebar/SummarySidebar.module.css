@@ -1,0 +1,205 @@
+/* wells on the left, fields on the right, each half the panel and each scrolling on its own.
+   Halves are in container units, so the field list keeps its width while it slides away */
+.sidebar {
+  --summary-footer-height: 3rem;
+
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+  background-color: var(--mb-color-background_page-tertiary);
+}
+
+.wellsColumn {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* reserved for the Summarize by, Group by and pivot wells */
+.wells {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
+    var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+}
+
+/* as tall as the query builder's view footer beside the panel, so the controls along the bottom
+   share one centerline */
+.wellsFooter {
+  flex-shrink: 0;
+  height: var(--summary-footer-height);
+  padding: 0 var(--mantine-spacing-md) 0 var(--mantine-spacing-lg);
+}
+
+/* the field list's half of the panel, collapsing to nothing; the card inside keeps its width and
+   rides the drawer's left edge out past the panel's right edge */
+.fieldListDrawer {
+  display: flex;
+  flex: 0 0 50cqw;
+  /* below the card's width, which is what lets it collapse */
+  min-width: 0;
+  transition: flex-basis 200ms ease-out;
+
+  &:not([data-open]) {
+    flex-basis: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.fieldListCard {
+  --field-list-gutter: var(--mantine-spacing-xs);
+
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  width: calc(50cqw - var(--mantine-spacing-lg));
+  min-height: 0;
+  margin: var(--mantine-spacing-lg) var(--mantine-spacing-lg)
+    var(--mantine-spacing-lg) 0;
+  visibility: visible;
+  transition: visibility 0s;
+}
+
+/* out of the tab order once it's slid away, but only after the slide */
+.fieldListDrawer:not([data-open]) .fieldListCard {
+  visibility: hidden;
+  transition: visibility 0s linear 200ms;
+}
+
+/* the halves are container units, so a resize of the panel (which marks its content with
+   `data-resizing`) would otherwise restart the slide every frame and trail the drag */
+[data-resizing] .fieldListDrawer,
+[data-resizing] .fieldListCard {
+  transition: none;
+}
+
+/* always-on search above the sections, borderless so it reads as part of the list */
+.searchField {
+  flex-shrink: 0;
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+/* the design system's TextInput keeps a border even when unstyled, so drop it here. The xs input
+   is 32px tall, but its 11px text is smaller than the 14px items */
+.searchField .searchInput {
+  padding-inline: 1.5rem;
+  border-width: 0;
+  font-size: var(--mantine-font-size-md);
+  background-color: transparent;
+}
+
+/* the icons sit where the item icons do: flush with the edges, not inset past a border */
+.searchField .searchFieldSection {
+  color: var(--mb-color-text-secondary);
+  transition: color 120ms ease-out;
+
+  &[data-position="left"] {
+    inset-inline-start: 0;
+    justify-content: flex-start;
+  }
+
+  &[data-position="right"] {
+    inset-inline-end: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* no border to light up, so the icon carries the focus cue alongside the caret */
+.searchField:focus-within .searchFieldSection {
+  color: var(--mb-color-text-primary);
+}
+
+/* bleeds into the card's padding so the section chevrons line up with the search icon,
+   while the hover fill keeps a small inset from the card edge */
+.fieldListScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--field-list-gutter));
+}
+
+/* the section name is its own collapse toggle, with a chevron where item icons sit.
+   Padding rather than margin, so the whole band toggles the section */
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.75rem var(--field-list-gutter) 0.25rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+  transition: color 120ms ease-out;
+
+  &:hover:not(:disabled) {
+    color: var(--mb-color-text-primary);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+/* one chevron that turns to point down, rather than swapping between two icons */
+.sectionChevron {
+  flex-shrink: 0;
+  transition: rotate 150ms ease-out;
+}
+
+.sectionToggle[aria-expanded="true"] .sectionChevron {
+  rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionChevron {
+    transition: none;
+  }
+}
+
+.fieldItems {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fieldItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* starts where the section name does, past the 12px chevron and the toggle's gap, so the
+     items read as its contents. The hover fill still spans the full row */
+  padding: 0.375rem var(--field-list-gutter) 0.375rem
+    calc(var(--field-list-gutter) + 12px + 0.375rem);
+  /* concentric with the card: its 16px corner minus the 6px gutter */
+  border-radius: 10px;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.fieldListEmpty {
+  padding: var(--mantine-spacing-sm) var(--field-list-gutter);
+  text-wrap: pretty;
+}
+
+/* min-width lets it shrink as a flex child, so long names ellipsize */
+.matchedLabel {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.matchedLabelMatch {
+  font-weight: bold;
+}
