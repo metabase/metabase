@@ -220,9 +220,7 @@ const getMissingSourceMessage = (
     .with(undefined, () => t`This source no longer exists`)
     .exhaustive();
 
-export const getTooManyRowsMessage = (
-  sourceKind: ReferencedEntityKind | undefined,
-) =>
+const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
   match(sourceKind)
     .with(
       "question",

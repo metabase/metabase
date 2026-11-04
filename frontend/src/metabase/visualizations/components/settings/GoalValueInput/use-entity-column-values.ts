@@ -6,17 +6,14 @@ import type {
   GoalForeignEntityRef,
 } from "metabase-types/api";
 
-type EntityColumnValues = {
-  hasTooManyRows: boolean;
-  resolveColumnValue: (column: string) => number | null;
-};
+type ResolveColumnValue = (column: string) => number | null;
 
 export function useEntityColumnValues(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
-): EntityColumnValues {
+): ResolveColumnValue {
   const { currentData: freshDataset } = useReferencedEntitiesQuery(
     datasetQuery,
     enabled && entity != null ? [toReferencedEntity(entity)] : [],
@@ -25,21 +22,15 @@ export function useEntityColumnValues(
   const freshData = freshDataset?.data;
   const sourceData =
     entity != null &&
-    freshData?.referenced_entities?.[entity.type]?.[entity.id] != null
+    freshData?.referenced_entities?.[entity.type]?.[entity.id]?.data != null
       ? freshData
       : data;
-  const hasTooManyRows =
-    entity != null &&
-    sourceData.referenced_entities?.[entity.type]?.[entity.id]?.error_type ===
-      "too-many-rows";
 
-  function resolveColumnValue(column: string) {
+  return (column) => {
     if (entity == null) {
       return null;
     }
 
     return resolveGoalValue(sourceData, { ...entity, column }).value;
-  }
-
-  return { hasTooManyRows, resolveColumnValue };
+  };
 }
