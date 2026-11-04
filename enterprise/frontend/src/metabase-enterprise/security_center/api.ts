@@ -100,24 +100,23 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/ee/security-center/health-checks/recheck",
       }),
-      onQueryStarted: (_arg, { dispatch, getState, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (response) => {
-          const { data: cached } =
-            securityCenterApi.endpoints.listHealthChecks.select()(getState());
-          const checks = response.checks.map((check) =>
-            getLatestCheck(
-              cached?.checks.find(({ id }) => id === check.id),
-              check,
-            ),
-          );
+      onQueryStarted: (_arg, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, ({ checks }) =>
           dispatch(
-            securityCenterApi.util.upsertQueryData(
+            securityCenterApi.util.updateQueryData(
               "listHealthChecks",
               undefined,
-              { ...response, checks },
+              (draft) => {
+                draft.checks = checks.map((check) =>
+                  getLatestCheck(
+                    draft.checks.find(({ id }) => id === check.id),
+                    check,
+                  ),
+                );
+              },
             ),
-          );
-        }),
+          ),
+        ),
     }),
   }),
 });
