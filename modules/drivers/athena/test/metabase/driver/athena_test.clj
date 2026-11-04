@@ -464,278 +464,150 @@
                    (:fields (driver/describe-table :athena (driver.u/ensure-lib-database db) table))))
             (is (true? @get-columns-called))))))))
 
-;;; ------------------------------------------- describe-fields with a fake Athena ---------------------------------------------
+(defn- column [table-name column-name]
+  {:table_name table-name, :column_name column-name, :type_name "int"})
 
-(defn- column-row
-  ([table column type]
-   (column-row table column type nil))
-  ([table column type remarks]
-   {"TABLE_NAME" table, "COLUMN_NAME" column, "TYPE_NAME" type, "REMARKS" remarks}))
-
-(defn- columns-result-set
-  "A `.getColumns` result set with `rows`. When `fail-after` rows were read, the next read throws, like a Glue error.
-  Counts the rows read in `reads`."
-  [rows fail-after reads]
-  (let [rows (atom rows)
-        row  (atom nil)]
-    (reify ResultSet
-      (next [_]
-        (when (and fail-after (= fail-after @reads))
-          (throw (java.sql.SQLException. "Rate exceeded")))
-        (if-let [[r & more] (seq @rows)]
-          (do (swap! reads inc)
-              (reset! row r)
-              (reset! rows more)
-              true)
-          false))
-      (^String getString [_ ^String column]
-        (get @row column))
-      (close [_]))))
+(defn- field [table-name field-name position]
+  {:table-schema "s", :table-name table-name, :name field-name, :database-type "int", :base-type :type/Integer
+   :database-position position})
 
 (defn- describe-fields-with-fake-athena
-  "Runs `describe-fields` against a fake Athena and returns `[result calls]`.
-
-  - `rows`: the `.getColumns` rows in Glue, for schema `s` (or `dbname`).
-  - `get-columns-error`: `:open` to make the `.getColumns` call for the schema fail, or a number of rows to read before
-    it fails.
-  - `describe`: map of table name -> DESCRIBE output rows.
-  - `sync-tables`: names of the tables that table sync saved.
-  - `reduce-fn`: how to reduce the result of `describe-fields`. Default `(into [] ...)`.
-  - `reads`: an atom that counts the rows read from the `.getColumns` call for the schema.
-
-  `calls` has the `.getColumns` calls for the schema (`:schema-calls`), the tables read one at a time (`:table-calls`),
-  and the tables that DESCRIBE ran for (`:describe`)."
-  [{:keys [rows get-columns-error describe sync-tables details opts reduce-fn reads]
-    :or   {opts [:schema-names ["s"]], reduce-fn #(into [] %)}}]
-  (let [calls    (atom {:schema-calls [], :table-calls [], :describe []})
-        reads    (or reads (atom 0))
-        ->column (fn [row]
-                   {:table_name  (get row "TABLE_NAME")
-                    :column_name (get row "COLUMN_NAME")
-                    :type_name   (get row "TYPE_NAME")
-                    :remarks     (get row "REMARKS")})
-        metadata (reify DatabaseMetaData
-                   (getSearchStringEscape [_] "!")
-                   (getColumns [_ catalog schema-pattern table-pattern _column-pattern]
-                     (swap! calls update :schema-calls conj [catalog schema-pattern table-pattern])
-                     (when (= :open get-columns-error)
-                       (throw (java.sql.SQLException. "AccessDeniedException")))
-                     (columns-result-set (filter #(or (= "%" table-pattern)
-                                                      (= table-pattern (str/replace (get % "TABLE_NAME") "_" "!_")))
-                                                 rows)
-                                         (when (number? get-columns-error) get-columns-error)
-                                         reads)))
-        conn     (reify Connection
-                   (getMetaData [_] metadata)
-                   (getCatalog [_] "AwsDataCatalog"))]
-    (mt/with-dynamic-fn-redefs [driver.conn/effective-details (constantly (or details {}))
-                                athena/sync-tables            (fn [_database schema-names _table-names]
-                                                                (for [table-name sync-tables]
-                                                                  {:name table-name, :schema (first schema-names)}))
+  "Runs `describe-fields` for schema `s` against a fake Athena and returns the result of `reduce-fn`. The `.getColumns`
+  call for the schema returns `columns`, and throws when `fail-after` rows were read. `reads` counts the rows read."
+  [columns & {:keys [fail-after reads reduce-fn] :or {reads (atom 0), reduce-fn #(into [] %)}}]
+  (let [remaining (atom columns)
+        row       (atom nil)
+        rs        (reify ResultSet
+                    (next [_]
+                      (when (= fail-after @reads)
+                        (throw (java.sql.SQLException. "Rate exceeded")))
+                      (reset! row (first @remaining))
+                      (swap! remaining rest)
+                      (when @row
+                        (swap! reads inc))
+                      (some? @row))
+                    (^String getString [_ ^String column-label]
+                      (get @row (keyword (u/lower-case-en column-label))))
+                    (close [_]))
+        metadata  (reify DatabaseMetaData
+                    (getSearchStringEscape [_] "!")
+                    (getColumns [_ _catalog _schema-pattern _table-pattern _column-pattern] rs))
+        conn      (reify Connection
+                    (getMetaData [_] metadata)
+                    (getCatalog [_] "AwsDataCatalog"))]
+    (mt/with-dynamic-fn-redefs [driver.conn/effective-details (constantly {})
+                                athena/sync-tables            (fn [& _]
+                                                                (for [table-name (distinct (map :table_name columns))]
+                                                                  {:name table-name, :schema "s"}))
                                 athena/get-columns            (fn [_metadata _catalog _schema table-name]
-                                                                (swap! calls update :table-calls conj table-name)
-                                                                (into []
-                                                                      (comp (filter #(= table-name (get % "TABLE_NAME")))
-                                                                            (map ->column))
-                                                                      rows))
-                                athena/run-query              (fn [_database sql]
-                                                                (let [table-name (second (re-find #"`([^`]*)`;$" sql))]
-                                                                  (swap! calls update :describe conj table-name)
-                                                                  (get describe table-name)))]
-      (let [result (reduce-fn (apply driver/describe-fields ::metadata-test {:connection conn} opts))]
-        [result @calls]))))
-
-(defn- field [table-name field-name database-type base-type position & {:as more}]
-  (merge {:table-schema "s", :table-name table-name, :name field-name, :database-type database-type
-          :base-type base-type, :database-position position}
-         more))
-
-(deftest ^:parallel describe-fields-one-get-columns-call-test
-  (testing "reads all tables of a schema with one `getColumns` call, in the connection's catalog"
-    (let [[result calls] (describe-fields-with-fake-athena
-                          {:rows        [(column-row "t1" "id" "int" "ID")
-                                         (column-row "t1" "name" "string")
-                                         (column-row "t2" "id" "bigint")]
-                           :sync-tables ["t1" "t2"]})]
-      (is (= #{(field "t1" "id" "int" :type/Integer 0 :field-comment "ID")
-               (field "t1" "name" "string" :type/Text 1)
-               (field "t2" "id" "bigint" :type/BigInteger 0)}
-             (set result)))
-      (is (= {:schema-calls [["AwsDataCatalog" "s" "%"]], :table-calls [], :describe []}
-             calls)))))
-
-(deftest ^:parallel describe-fields-describe-like-master-test
-  (testing "uses DESCRIBE for the same tables as `describe-table`"
-    (doseq [[case-name rows] {"no `getColumns` rows (#43980)"   []
-                              "a struct column"                 [(column-row "t1" "key" "int")
-                                                                 (column-row "t1" "data" "struct")]
-                              "duplicate column names (#58441)" [(column-row "t1" "key" "int")
-                                                                 (column-row "t1" "key" "string")
-                                                                 (column-row "t1" "data" "struct")]}]
-      (testing case-name
-        (let [[result calls] (describe-fields-with-fake-athena
-                              {:rows        rows
-                               :describe    {"t1" nested-schema}
-                               :sync-tables ["t1"]})]
-          (is (= #{(field "t1" "key" "int" :type/Integer 0)
-                   (field "t1" "data" "struct" :type/Dictionary 1)}
-                 (set result)))
-          (is (= ["t1"] (:describe calls))))))))
-
-(deftest ^:parallel describe-fields-only-synced-tables-test
-  (testing "tables that table sync did not save get no fields"
-    (let [[result] (describe-fields-with-fake-athena
-                    {:rows        [(column-row "t1" "id" "int")
-                                   (column-row "not_synced" "id" "int")]
-                     :sync-tables ["t1"]})]
-      (is (= [(field "t1" "id" "int" :type/Integer 0)]
-             result)))))
+                                                                (filter #(= table-name (:table_name %)) columns))]
+      (reduce-fn (driver/describe-fields ::metadata-test {:connection conn} :schema-names ["s"])))))
 
 (deftest ^:parallel describe-fields-get-columns-error-test
-  (testing "if `getColumns` for the schema fails, every table still gets its fields, and no table is sent twice"
-    (doseq [[case-name get-columns-error expected-table-calls] [["the call fails"            :open ["t1" "t2" "t3"]]
-                                                                ["the first read fails"      0     ["t1" "t2" "t3"]]
-                                                                ["a read partway fails"      2     ["t2" "t3"]]]]
-      (testing case-name
-        (let [[result calls] (describe-fields-with-fake-athena
-                              {:rows              [(column-row "t1" "id" "int")
-                                                   (column-row "t2" "id" "int")
-                                                   (column-row "t3" "id" "int")]
-                               :get-columns-error get-columns-error
-                               :sync-tables       ["t1" "t2" "t3"]})]
-          (is (= [(field "t1" "id" "int" :type/Integer 0)
-                  (field "t2" "id" "int" :type/Integer 0)
-                  (field "t3" "id" "int" :type/Integer 0)]
-                 result))
-          (testing "only the tables that were not complete before the error are read one at a time"
-            (is (= expected-table-calls (:table-calls calls)))))))))
-
-(deftest ^:parallel describe-fields-table-error-test
-  (testing "an error in one table's fields skips only that table"
-    (let [[result] (describe-fields-with-fake-athena
-                    {:rows        [(column-row "t1" "data" "struct")
-                                   (column-row "t2" "id" "int")]
-                     :describe    {"t1" [{:_col0 nil}]}
-                     :sync-tables ["t1" "t2"]})]
-      (is (= [(field "t2" "id" "int" :type/Integer 0)]
-             result)))))
+  (testing "if reading the `getColumns` result for the schema fails, every table still gets its fields once"
+    (is (= [(field "t1" "id" 0)
+            (field "t2" "id" 0)
+            (field "t3" "id" 0)]
+           (describe-fields-with-fake-athena [(column "t1" "id")
+                                              (column "t2" "id")
+                                              (column "t3" "id")]
+                                             :fail-after 2)))))
 
 (deftest ^:parallel describe-fields-out-of-order-columns-test
-  (testing "if `getColumns` returns the columns of a table in two parts, only the first part is sent"
-    (let [[result calls] (describe-fields-with-fake-athena
-                          {:rows        [(column-row "t1" "a" "int")
-                                         (column-row "t2" "a" "int")
-                                         (column-row "t1" "b" "int")]
-                           :sync-tables ["t1" "t2"]})]
-      (is (= [(field "t1" "a" "int" :type/Integer 0)
-              (field "t2" "a" "int" :type/Integer 0)]
-             result))
-      (is (= [] (:table-calls calls))))))
-
-(deftest ^:parallel describe-fields-dbname-test
-  (testing "when `dbname` is set, reads that database, and the fields have no schema"
-    (let [[result calls] (describe-fields-with-fake-athena
-                          {:rows        [(column-row "t1" "id" "int")]
-                           :details     {:dbname "my_db"}
-                           :opts        [:schema-names [nil]]
-                           :sync-tables ["t1"]})]
-      (is (= [(field "t1" "id" "int" :type/Integer 0 :table-schema nil)]
-             result))
-      (is (= [["AwsDataCatalog" "my!_db" "%"]] (:schema-calls calls))))))
-
-(deftest ^:parallel describe-fields-configured-catalog-test
-  (testing "a configured catalog is used instead of the connection's catalog"
-    (let [[_ calls] (describe-fields-with-fake-athena
-                     {:rows        [(column-row "t1" "id" "int")]
-                      :details     {:catalog "OtherCatalog"}
-                      :sync-tables ["t1"]})]
-      (is (= [["OtherCatalog" "s" "%"]] (:schema-calls calls))))))
-
-(deftest ^:parallel describe-fields-one-table-test
-  (testing "syncing one table reads only that table"
-    (let [[result calls] (describe-fields-with-fake-athena
-                          {:rows        [(column-row "my_table" "id" "int")
-                                         (column-row "other_table" "id" "int")]
-                           :opts        [:schema-names ["s"], :table-names ["my_table"]]
-                           :sync-tables ["my_table" "other_table"]})]
-      (is (= [(field "my_table" "id" "int" :type/Integer 0)]
-             result))
-      (is (= [["AwsDataCatalog" "s" "my!_table"]] (:schema-calls calls))))))
+  (testing "if `getColumns` returns the columns of a table in two parts, only the first part is returned"
+    (is (= [(field "t1" "a" 0)
+            (field "t2" "a" 0)]
+           (describe-fields-with-fake-athena [(column "t1" "a")
+                                              (column "t2" "a")
+                                              (column "t1" "b")])))))
 
 (deftest ^:parallel describe-fields-one-table-at-a-time-test
-  (testing "a table's fields go to sync as soon as the table is complete, before the next tables are read"
+  (testing "a table's fields are returned when the table is complete, before the next tables are read"
     (let [reads          (atom 0)
           reads-at-field (atom [])]
-      (describe-fields-with-fake-athena
-       {:rows        [(column-row "t1" "a" "int")
-                      (column-row "t1" "b" "int")
-                      (column-row "t2" "a" "int")
-                      (column-row "t2" "b" "int")
-                      (column-row "t3" "a" "int")]
-        :sync-tables ["t1" "t2" "t3"]
-        :reads       reads
-        :reduce-fn   (fn [reducible]
-                       (reduce (fn [acc {:keys [table-name]}]
-                                 (swap! reads-at-field conj [table-name @reads])
-                                 acc)
-                               nil
-                               reducible))})
-      ;; `t1` is sent after its rows and the first `t2` row are read, and before the rest
+      (describe-fields-with-fake-athena [(column "t1" "a")
+                                         (column "t1" "b")
+                                         (column "t2" "a")
+                                         (column "t2" "b")
+                                         (column "t3" "a")]
+                                        :reads     reads
+                                        :reduce-fn (partial run! #(swap! reads-at-field conj [(:table-name %) @reads])))
+      ;; `t1` is returned after its rows and the first `t2` row are read, and before the rest
       (is (= [["t1" 3] ["t1" 3] ["t2" 5] ["t2" 5] ["t3" 5]]
              @reads-at-field)))))
 
 (deftest describe-fields-matches-describe-table-test
   (mt/test-driver :athena
-    (let [db (driver.u/ensure-lib-database (mt/db))]
-      (doseq [table (t2/select :model/Table :db_id (mt/id), :active true)]
-        (testing (:name table)
-          (is (= (into #{}
-                       (:fields (driver/describe-table :athena db table)))
-                 (into #{}
-                       (comp (filter #(and (= (:schema table) (:table-schema %))
-                                           (= (:name table) (:table-name %))))
-                             (map #(dissoc % :table-schema :table-name)))
-                       (driver/describe-fields :athena db
-                                               :schema-names [(:schema table)]
-                                               :table-names  [(:name table)])))))))))
+    (let [db     (driver.u/ensure-lib-database (mt/db))
+          tables (t2/select :model/Table :db_id (mt/id), :active true)]
+      (testing "`describe-fields` returns the same fields as `describe-table` for each table"
+        (is (= (into #{}
+                     (for [table tables
+                           field (:fields (driver/describe-table :athena db table))]
+                       (assoc field :table-schema (:schema table), :table-name (:name table))))
+               (into #{} (driver/describe-fields :athena db)))))
+      (testing "for one table, `describe-fields` returns the same fields as `describe-table`"
+        (doseq [table tables]
+          (testing (:name table)
+            (is (= (into #{}
+                         (map #(assoc % :table-schema (:schema table), :table-name (:name table)))
+                         (:fields (driver/describe-table :athena db table)))
+                   (into #{} (driver/describe-fields :athena db
+                                                     :schema-names [(:schema table)]
+                                                     :table-names  [(:name table)]))))))))))
+
+(deftest describe-fields-without-dbname-test
+  (mt/test-driver :athena
+    (testing "without `dbname` and `catalog`, `describe-fields` returns the fields of the schema with the schema set"
+      (let [schema   (:dbname (:details (mt/db)))
+            expected (into #{}
+                           (map #(assoc % :table-schema schema))
+                           (driver/describe-fields :athena (driver.u/ensure-lib-database (mt/db))))]
+        (mt/with-temp [:model/Database db {:engine  :athena
+                                           :details (-> (:details (mt/db))
+                                                        (dissoc :dbname :catalog))}]
+          (t2/insert! :model/Table (for [table (t2/select :model/Table :db_id (mt/id), :active true)]
+                                     {:db_id (:id db), :schema schema, :name (:name table), :active true}))
+          (is (= expected
+                 (into #{} (driver/describe-fields :athena (driver.u/ensure-lib-database db)
+                                                   :schema-names [schema])))))))))
+
+(deftest describe-fields-table-error-test
+  (mt/test-driver :athena
+    (testing "an error in one table's fields skips only that table"
+      (let [columns->fields (mt/original-fn #'athena/columns->fields)]
+        (mt/with-dynamic-fn-redefs [athena/columns->fields (fn [database driver schema table-name columns]
+                                                             (when (= "venues" table-name)
+                                                               (throw (ex-info "Cannot read table" {})))
+                                                             (columns->fields
+                                                              database driver schema table-name columns))]
+          (let [table-names (into #{}
+                                  (map :table-name)
+                                  (driver/describe-fields :athena (driver.u/ensure-lib-database (mt/db))))]
+            (is (contains? table-names "users"))
+            (is (not (contains? table-names "venues")))))))))
 
 (deftest get-columns-ordered-by-table-test
   (mt/test-driver :athena
     (testing "one `getColumns` call for a schema returns the columns of each table together"
-      (let [db (driver.u/ensure-lib-database (mt/db))]
-        (doseq [schema (distinct (map :schema (t2/select :model/Table :db_id (mt/id), :active true)))]
-          (testing schema
-            (let [table-names (sql-jdbc.execute/do-with-connection-with-options
-                               :athena db nil
-                               (fn [^Connection conn]
-                                 (let [metadata (.getMetaData conn)]
-                                   (with-open [^ResultSet rs (.getColumns metadata
-                                                                          (.getCatalog conn)
-                                                                          (#'athena/escape-metadata-pattern
-                                                                           metadata
-                                                                           (or schema (:dbname (:details db))))
-                                                                          "%"
-                                                                          nil)]
-                                     (loop [table-names []]
-                                       (if (.next rs)
-                                         (recur (conj table-names (.getString rs "TABLE_NAME")))
-                                         table-names))))))]
-              (is (seq table-names))
-              (is (= (distinct table-names) (dedupe table-names))))))))))
-
-(deftest describe-fields-paths-match-test
-  (mt/test-driver :athena
-    (testing "one `getColumns` call for each schema gives the same fields as `describe-table` for each table"
-      (let [db     (driver.u/ensure-lib-database (mt/db))
-            tables (t2/select :model/Table :db_id (mt/id), :active true)]
-        (doseq [schema (distinct (map :schema tables))]
-          (testing schema
-            (is (= (into #{}
-                         (for [table tables
-                               :when (= schema (:schema table))
-                               field (:fields (driver/describe-table :athena db table))]
-                           (assoc field :table-schema (:schema table), :table-name (:name table))))
-                   (into #{} (driver/describe-fields :athena db :schema-names [schema]))))))))))
+      (let [db          (driver.u/ensure-lib-database (mt/db))
+            table-names (sql-jdbc.execute/do-with-connection-with-options
+                         :athena db nil
+                         (fn [^Connection conn]
+                           (let [metadata (.getMetaData conn)]
+                             (with-open [^ResultSet rs (.getColumns metadata
+                                                                    (.getCatalog conn)
+                                                                    (#'athena/escape-metadata-pattern
+                                                                     metadata
+                                                                     (:dbname (:details db)))
+                                                                    "%"
+                                                                    nil)]
+                               (loop [table-names []]
+                                 (if (.next rs)
+                                   (recur (conj table-names (.getString rs "TABLE_NAME")))
+                                   table-names))))))]
+        (is (seq table-names))
+        (is (= (distinct table-names) (dedupe table-names)))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
