@@ -123,6 +123,25 @@
                             :rows [[1000]]}}
                   (referenced-goal-result part goal-id))))))))
 
+(deftest execute-dashboard-subscription-card-runs-dashcard-goal-test
+  (testing "execute-dashboard-subscription-card runs a dynamic goal set in the dashcard's own viz settings"
+    (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins
+                                                                        {:aggregation [[:count]]})}
+                   :model/Card          {card-id :id} {:display       :gauge
+                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard dashcard      {:dashboard_id           dash-id
+                                                       :card_id                card-id
+                                                       :visualization_settings
+                                                       {:gauge.segments [{:min   0
+                                                                          :max   {:id goal-id :type "card" :column "count"}
+                                                                          :color "#84BB4C"}]}}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
+          (is (=? {:status "completed"
+                   :data   {:rows [[1000]]}}
+                  (referenced-goal-result part goal-id))))))))
+
 (deftest execute-dashboard-subscription-visualizer-card-keeps-referenced-entities-test
   (testing "a visualizer dashcard's goal, nested in its chart settings, is answered by its primary card's result"
     (mt/with-temp [:model/Card          {goal-id :id}   {:dataset_query (mt/mbql-query checkins
