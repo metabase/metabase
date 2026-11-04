@@ -12,6 +12,7 @@
    [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.subscription :as tools.subscription]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -845,6 +846,23 @@
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}})))))
         (is (zero? (t2/count :model/Pulse :dashboard_id dash-id)))))))
+
+(deftest create-with-view-only-collection-access-test
+  (testing "a user who can only view the dashboard's collection can subscribe to the dashboard"
+    (mt/with-model-cleanup [:model/Pulse]
+      (mt/with-temp [:model/Collection    {coll-id :id :as coll} {}
+                     :model/Card          {card-id :id}          {:collection_id coll-id}
+                     :model/Dashboard     {dash-id :id}          {:collection_id coll-id}
+                     :model/DashboardCard _                      {:dashboard_id dash-id :card_id card-id}]
+        (mt/with-non-admin-groups-no-collection-perms coll
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+          (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes
+                                                (wire {:method       "create"
+                                                       :dashboard_id dash-id
+                                                       :schedule     {:schedule_type "hourly"}})))]
+            (is (= dash-id (:dashboard_id result)))
+            (testing "the subscription belongs to the dashboard's collection"
+              (is (= coll-id (t2/select-one-fn :collection_id :model/Pulse :id (:id result)))))))))))
 
 (deftest query-execute-scope-gates-deferred-execution-test
   (testing "a subscription is a scheduled run of the dashboard's questions with results delivered,
