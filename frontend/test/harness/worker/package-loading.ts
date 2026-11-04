@@ -49,6 +49,42 @@ const CLOCK_GLOBALS = [
  */
 export const globalsAddedByPackages = new Set<PropertyKey>();
 
+/**
+ * The JavaScript built-ins that a spec file can change, such as a prototype
+ * or Math. jest gives each file new ones. Here they are shared and reset
+ * between files.
+ */
+export const BUILT_IN_OBJECTS: object[] = [
+  Object,
+  Object.prototype,
+  Array,
+  Array.prototype,
+  Function.prototype,
+  String,
+  String.prototype,
+  Number,
+  Number.prototype,
+  Boolean.prototype,
+  Promise,
+  Promise.prototype,
+  RegExp.prototype,
+  Map.prototype,
+  Set.prototype,
+  Date,
+  Date.prototype,
+  Math,
+  JSON,
+  Reflect,
+];
+
+/**
+ * The keys of a built-in that a package added or changed while it loaded.
+ * They stay between files, because the package will not load again.
+ */
+export const builtInKeysOfPackages = new Map<object, Set<PropertyKey>>(
+  BUILT_IN_OBJECTS.map((target) => [target, new Set()]),
+);
+
 const sharedPackagesToRecord: NodeJS.Module[] = [];
 const sharedPackageBaselines: Array<[object, Descriptors]> = [];
 const recordedExports = new WeakSet<object>();
@@ -129,6 +165,9 @@ function compilePackage<T>(compile: () => T): T {
   const isOutermost = packageLoadDepth === 0;
   packageLoadDepth += 1;
   const keysBefore = isOutermost ? new Set(Reflect.ownKeys(globalThis)) : null;
+  const builtInsBefore = isOutermost
+    ? BUILT_IN_OBJECTS.map((target) => ownDescriptors(target))
+    : null;
   // A package keeps whatever clock functions it reads while it loads
   // (Mantine's `const raf = window.requestAnimationFrame`), so it must not
   // load under a spec's fake clock.
@@ -147,7 +186,23 @@ function compilePackage<T>(compile: () => T): T {
         }
       }
     }
+    if (builtInsBefore) {
+      noteBuiltInKeysOfPackage(builtInsBefore);
+    }
   }
+}
+
+function noteBuiltInKeysOfPackage(before: Descriptors[]): void {
+  BUILT_IN_OBJECTS.forEach((target, index) => {
+    const keysOfPackages = builtInKeysOfPackages.get(target);
+    for (const key of Reflect.ownKeys(target)) {
+      const previous = before[index].get(key);
+      const current = Object.getOwnPropertyDescriptor(target, key);
+      if (!previous || !sameDescriptor(current, previous)) {
+        keysOfPackages?.add(key);
+      }
+    }
+  });
 }
 
 // Puts the real clock globals in place and returns the fake ones they
