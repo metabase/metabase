@@ -10,10 +10,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
-  MISMATCH_HANDLINGS,
-  type MismatchHandling,
   type PropertyRegistry,
-  type PropertySignal,
   type RegistryProperty,
   type ResolvedEavBinding,
   useEavBinding,
@@ -28,7 +25,6 @@ import {
   Group,
   Icon,
   Progress,
-  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -45,8 +41,10 @@ import {
 } from "../DetailPanel";
 
 import {
+  type OpenPropertySignal,
   formatShare,
   getEntityNoun,
+  getOpenSignals,
   getPropertyIcon,
   getPropertySemanticTypeOptions,
   getPropertyTypeLabel,
@@ -142,7 +140,8 @@ function PropertyDetails({
   const mergedIntoLabel =
     registry.properties.find(({ name }) => name === property.mergedInto)
       ?.displayName ?? property.mergedInto;
-  const visibleSignals = property.mergedInto != null ? [] : property.signals;
+  const visibleSignals =
+    property.mergedInto != null ? [] : getOpenSignals(property);
   const hasAlerts = visibleSignals.length > 0 || mergedIntoLabel != null;
 
   return (
@@ -449,6 +448,7 @@ function PropertyTypeInput({
           )
           .exhaustive()}
       </Text>
+      <TypeDriftHint property={property} />
       {property.typeSource === "admin" && (
         <Button
           size="compact-sm"
@@ -464,10 +464,21 @@ function PropertyTypeInput({
   );
 }
 
+function TypeDriftHint({ property }: { property: RegistryProperty }) {
+  const drift = property.signals.find(({ type }) => type === "type-drift");
+  if (drift?.type !== "type-drift") {
+    return null;
+  }
+  return (
+    <Text size="sm" c="text-secondary">
+      {t`${drift.nonConformingCount.toLocaleString()} values don't fit ${getPropertyTypeLabel(property.type).toLowerCase()}. A generated data quality check flags them.`}
+    </Text>
+  );
+}
+
 type SignalOverrides = {
   isHidden?: boolean;
   mergedInto?: string;
-  onMismatch?: MismatchHandling;
 };
 
 function SignalAlert({
@@ -478,7 +489,7 @@ function SignalAlert({
   onSave,
 }: {
   property: RegistryProperty;
-  signal: PropertySignal;
+  signal: OpenPropertySignal;
   noun: ReturnType<typeof getEntityNoun>;
   propertyColumn: string;
   onSave: (overrides: SignalOverrides) => void;
@@ -520,13 +531,8 @@ function SignalAlert({
         icon={<Icon name="info" />}
         title={t`No values yet`}
       >
-        <Text>
-          {t`It's defined, but no ${noun.singular} has a value. It's left out of the pivot model until it has values.`}
-        </Text>
+        <Text>{t`It's defined, but no ${noun.singular} has a value yet.`}</Text>
       </Alert>
-    ))
-    .with({ type: "type-drift" }, (drift) => (
-      <MismatchAlert property={property} signal={drift} onSave={onSave} />
     ))
     .with({ type: "duplicate" }, ({ propertyName, propertyLabel }) => (
       <Alert
@@ -551,68 +557,6 @@ function SignalAlert({
       </Alert>
     ))
     .exhaustive();
-}
-
-function MismatchAlert({
-  property,
-  signal,
-  onSave,
-}: {
-  property: RegistryProperty;
-  signal: Extract<PropertySignal, { type: "type-drift" }>;
-  onSave: (overrides: SignalOverrides) => void;
-}) {
-  const typeLabel = getPropertyTypeLabel(property.inferredType);
-  const share =
-    property.entityCount > 0
-      ? signal.nonConformingCount / property.entityCount
-      : 0;
-  const isKeptAsText = property.onMismatch === "text";
-  return (
-    <Alert
-      color={property.isMismatchHandlingSet ? "core-brand" : "warning"}
-      variant="light"
-      icon={<Icon name="warning" />}
-      title={t`${signal.nonConformingCount.toLocaleString()} values don't fit ${typeLabel}`}
-    >
-      <Stack gap="sm">
-        <Group gap="xs">
-          {signal.exampleCounts.slice(0, 4).map(({ value, entityCount }) => (
-            <Code key={value}>
-              {value === "" ? t`(empty)` : value} ·{" "}
-              {entityCount.toLocaleString()}
-            </Code>
-          ))}
-        </Group>
-        <SegmentedControl
-          fullWidth
-          value={property.onMismatch}
-          onChange={(value) => {
-            const handling = MISMATCH_HANDLINGS.find(
-              (option) => option === value,
-            );
-            if (handling) {
-              onSave({ onMismatch: handling });
-            }
-          }}
-          data={[
-            { value: "ignore", label: t`Leave out` },
-            { value: "text", label: t`Keep as text` },
-          ]}
-        />
-        <Text size="sm">
-          {isKeptAsText
-            ? t`${property.displayName} stays text, so nothing is left out, but it can't be summed or compared as ${typeLabel.toLowerCase()}.`
-            : t`${property.displayName} is read as ${typeLabel.toLowerCase()}. ${formatShare(share)} of its values are left out of filters and summaries, and the filter says so.`}
-        </Text>
-        <Text size="sm" c="text-secondary">
-          {isKeptAsText
-            ? t`Exported as type: text, so agents read it the same way.`
-            : t`Exported as on_mismatch: null, so agents use the same cast.`}
-        </Text>
-      </Stack>
-    </Alert>
-  );
 }
 
 function MergedAlert({

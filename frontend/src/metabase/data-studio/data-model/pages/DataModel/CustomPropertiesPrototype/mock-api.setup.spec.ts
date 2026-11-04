@@ -74,7 +74,6 @@ export function catchUnmatchedRequests() {
 
 const PROPERTY_REGISTRY_STORAGE_KEY = "metabase-prototype-property-registry";
 const TABLE_STRUCTURE_STORAGE_KEY = "metabase-prototype-table-structure";
-const PIVOT_MODELS_STORAGE_KEY = "metabase-prototype-pivot-models";
 
 export function seedPrototypeStorage({
   registry,
@@ -91,5 +90,4 @@ export function seedPrototypeStorage({
     TABLE_STRUCTURE_STORAGE_KEY,
     JSON.stringify(tableStructure),
   );
-  window.localStorage.removeItem(PIVOT_MODELS_STORAGE_KEY);
 }

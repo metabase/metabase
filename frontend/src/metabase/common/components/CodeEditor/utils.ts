@@ -13,6 +13,7 @@ import {
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { yaml } from "@codemirror/legacy-modes/mode/yaml";
 import { unifiedMergeView } from "@codemirror/merge";
 import type { Extension } from "@codemirror/state";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
@@ -90,5 +91,7 @@ export function getLanguageExtension(
       });
     case "sql":
       return sql();
+    case "yaml":
+      return StreamLanguage.define(yaml);
   }
 }

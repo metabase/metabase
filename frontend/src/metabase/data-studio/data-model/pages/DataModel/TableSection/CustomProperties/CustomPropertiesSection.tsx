@@ -16,6 +16,7 @@ import {
   usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
+import { GeneratedChecksSummary } from "metabase/metadata/table-structure/generated-checks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Badge,
@@ -38,8 +39,9 @@ import {
   needsAttention,
 } from "../../PropertyDetailsPanel/property-labels";
 
-import { PivotModelInput } from "./PivotModelInput";
 import { RecognitionPreview } from "./RecognitionPreview";
+import { SuggestTransformInput } from "./SuggestTransformInput";
+import { useCustomPropertyChecks } from "./use-custom-property-checks";
 
 type CustomPropertiesSectionProps = {
   table: Table;
@@ -104,10 +106,11 @@ export function CustomPropertiesSection({
             />
           }
         />
+        <DetailsRow label={t`Checks`} value={<ChecksValue table={table} />} />
         <DetailsRow
-          label={t`Pivot model`}
+          label={t`Transform`}
           value={
-            <PivotModelInput
+            <SuggestTransformInput
               table={table}
               resolved={resolved}
               disabled={disabled}
@@ -116,6 +119,20 @@ export function CustomPropertiesSection({
         />
       </DetailsTable>
     </SidebarSection>
+  );
+}
+
+function ChecksValue({ table }: { table: Table }) {
+  const generated = useCustomPropertyChecks(table);
+  if (generated == null) {
+    return <Loader size="xs" />;
+  }
+  return (
+    <GeneratedChecksSummary
+      table={generated.tableRef}
+      checks={generated.checks}
+      results={generated.results}
+    />
   );
 }
 

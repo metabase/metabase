@@ -63,7 +63,6 @@ export type EavBinding = {
   definitionTableId: ConcreteTableId | null;
   labelFieldId: FieldId | null;
   typeFieldId: FieldId | null;
-  pivotToColumns: boolean;
 };
 
 export type EavDefinitionInference = {
@@ -431,7 +430,6 @@ export function inferEavBinding(fields: Field[]): EavBinding {
     definitionTableId: null,
     labelFieldId: null,
     typeFieldId: null,
-    pivotToColumns: false,
   };
 }
 
