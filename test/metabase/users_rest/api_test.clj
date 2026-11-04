@@ -14,6 +14,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
    [metabase.session.models.session :as session]
+   [metabase.sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -2217,6 +2218,17 @@
               (mt/user-http-request :crowberto :put (if (= 200 expected-status) 204 404)
                                     (format "user/%d/password" user-id)
                                     {:password "newPassword12!!"}))))))))
+
+(deftest ldap-user-with-used-password-cannot-be-given-password-test
+  (testing "admin cannot set or reset password of LDAP user with used password while LDAP is enabled"
+    (mt/with-dynamic-fn-redefs [metabase.sso.settings/sso-source-enabled? (fn [src] (= :ldap (keyword src)))]
+      (mt/with-temp [:model/User {user-id :id} {:sso_source "ldap"}
+                     :model/AuthIdentity _ {:user_id      user-id
+                                            :provider     "password"
+                                            :credentials  {:plaintext_password "oldPassword12!!"}
+                                            :last_used_at (t/offset-date-time)}]
+        (mt/user-http-request :crowberto :post 404 (format "user/%d/password-reset-url" user-id))
+        (mt/user-http-request :crowberto :put 404 (format "user/%d/password" user-id) {:password "newPassword12!!"})))))
 
 (deftest has-password-test
   (testing "GET /api/user and GET /api/user/:id report to admins whether user has used password"

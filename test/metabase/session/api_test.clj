@@ -466,6 +466,22 @@
                 (mt/client :post 204 "session/forgot_password" {:email (:email sso-user)})
                 (is (mt/received-email-body? (:email sso-user) (re-pattern expected-body)))))))))))
 
+(deftest forgot-password-ldap-user-with-used-password-test
+  (testing "POST /api/session/forgot_password - LDAP user with used password gets no reset link while LDAP is enabled"
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                                metabase.sso.settings/sso-source-enabled? (fn [src] (= :ldap (keyword src)))]
+      (mt/with-temp [:model/User ldap-user {:email "ldap-password-user@example.com" :sso_source :ldap}
+                     :model/AuthIdentity _ {:user_id      (:id ldap-user)
+                                            :provider     "password"
+                                            :credentials  {:plaintext_password "somePassword12!!"}
+                                            :last_used_at (t/offset-date-time)}]
+        (mt/with-temporary-setting-values [site-url "http://test.example.com"]
+          (mt/with-fake-inbox
+            (mt/client :post 204 "session/forgot_password" {:email (:email ldap-user)})
+            (is (mt/received-email-body? (:email ldap-user) #"single sign-on"))))))))
+
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl

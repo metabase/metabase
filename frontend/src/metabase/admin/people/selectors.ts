@@ -31,16 +31,16 @@ type SsoOnlyUserOpts = {
 
 /**
  * Whether the user signs in through an SSO provider that is currently enabled
- * and has no password. Admins can't reset passwords for these users; once the
- * provider is disabled (or its license lapses) the user falls back to password
- * login.
+ * and either is LDAP or the user has no used password. Admins can't reset
+ * passwords for these users; once the provider is disabled (or its license
+ * lapses) the user falls back to password login.
  */
 export const getIsSsoOnlyUser = (
   state: State,
   { sso_source, has_password }: SsoOnlyUserOpts,
 ): boolean =>
-  has_password !== true &&
   sso_source != null &&
+  (sso_source === "ldap" || has_password !== true) &&
   Boolean(getSetting(state, SSO_SOURCE_ENABLED_SETTING[sso_source]));
 
 export const shouldNudgeToPro = createSelector(
