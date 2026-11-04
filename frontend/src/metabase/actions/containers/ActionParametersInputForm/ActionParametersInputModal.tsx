@@ -38,7 +38,7 @@ function ActionParametersInputModal({
 
   // Unlike `Modal`, `Modal.Root` still renders its portal while closed, and
   // the action button keeps this mounted, so render nothing once it has
-  // finished closing, but stay rendered until then so it can fade out
+  // finished closing
   if (!isOpenOrClosing) {
     return null;
   }
