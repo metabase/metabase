@@ -97,7 +97,9 @@
         ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
         ;; duplicate target rows).
         ;; Capture is deliberately best-effort, so leave those statements uncaptured.
-        (and (map? query) (contains? query :using)))))
+        (and (map? query) (contains? query :using))
+        ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second time.
+        (and (map? query) (some #(contains? query %) [:with :with-recursive])))))
 
 ;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
 ;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
@@ -110,6 +112,13 @@
     (cond-> (dissoc query :delete)
       (contains? query :delete-from) (-> (dissoc :delete-from)
                                          (assoc :from [(:delete-from query)])))
+    query))
+
+(defn- with-row-cap
+  "The built `query` with a LIMIT of at most `n`, or `query` itself when it is not a HoneySQL map."
+  [query n]
+  (if (map? query)
+    (update query :limit #(if (number? %) (min % n) n))
     query))
 
 ;; Executed modelless because `after-select` methods and type transforms often dereference columns a narrow
@@ -126,15 +135,16 @@
   [query-type model fields parsed-args resolved-query]
   (when (restatable-as-select? resolved-query)
     (when-let [sql-args (try
-                          (let [built (t2.pipeline/build query-type model
-                                                         (assoc parsed-args :columns (vec fields))
-                                                         (delete-query->select-query resolved-query))]
+                          (let [built (-> (t2.pipeline/build query-type model
+                                                             (assoc parsed-args :columns (vec fields))
+                                                             (delete-query->select-query resolved-query))
+                                          (with-row-cap (inc max-pre-image-rows)))]
                             (t2.pipeline/compile query-type model built))
                           (catch Exception e
                             (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
                             nil))]
-      ;; Reduce rather than realize the whole result set, so one row past the ceiling is all a wide statement
-      ;; ever pulls into heap.
+      ;; The LIMIT stops the database sending rows past the ceiling; JDBC drivers such as PostgreSQL's otherwise
+      ;; buffer the whole result set before the reduction sees a row.
       (let [rows (into [] (comp (take (inc max-pre-image-rows)) (map t2.realize/realize))
                        (t2.execute/reducible-query sql-args))]
         (cond
