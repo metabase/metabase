@@ -3,7 +3,6 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.users.schema]
@@ -63,7 +62,7 @@
 
 (mr/def ::external-measure
   "A Measure as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::measure [:name :archived :description :entity_id :creator_id :definition]]
     [:map {:closed true}

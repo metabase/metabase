@@ -2,7 +2,6 @@
   (:require
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -260,7 +259,7 @@
 
 (mr/def ::external-action
   "An Action as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::action.columns [:archived :archived_directly :description :entity_id :name :public_uuid
                                     :creator_id :made_public_by_id :collection_id :model_id :parameters
@@ -273,7 +272,7 @@
 
 (mr/def ::external-query-action
   "A QueryAction as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::query-action [:database_id :dataset_query]]
     [:map {:closed true}
@@ -281,7 +280,7 @@
 
 (mr/def ::external-implicit-action
   "An ImplicitAction as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::implicit-action [:kind :table_id]]
     [:map {:closed true}

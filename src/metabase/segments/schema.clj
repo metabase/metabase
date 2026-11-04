@@ -2,7 +2,6 @@
   (:require
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.users.schema]
@@ -62,7 +61,7 @@
 
 (mr/def ::external-segment
   "A Segment as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::segment [:name :points_of_interest :archived :caveats :description :entity_id
                              :show_in_getting_started :creator_id :definition]]

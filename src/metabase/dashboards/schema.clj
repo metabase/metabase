@@ -3,7 +3,7 @@
    [metabase.actions.schema]
    [metabase.collections.schema]
    [metabase.content-verification.schema]
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.schema :as models.schema]
@@ -162,7 +162,7 @@
 
 (mr/def ::external-dashboard
   "A Dashboard as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::dashboard [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
@@ -175,7 +175,7 @@
 
 (mr/def ::external-dashboard-tab
   "A DashboardTab as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::dashboard-tab [:entity_id :name :position]]
     [:map {:closed true}
@@ -183,7 +183,7 @@
 
 (mr/def ::external-dashboard-card
   "A DashboardCard as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::dashboard-card [:col :entity_id :inline_parameters :row :size_x :size_y :card_id :action_id
                                     :dashboard_tab_id :parameter_mappings :visualization_settings]]
@@ -193,7 +193,7 @@
 
 (mr/def ::external-dashboard-card-series
   "A DashboardCardSeries as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::dashboard-card-series [:position :card_id]]
     [:map {:closed true}

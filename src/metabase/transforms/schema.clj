@@ -2,7 +2,6 @@
   (:require
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
@@ -417,8 +416,8 @@
    [:user_id         [:maybe ::lib.schema.id/user]]])
 
 (def ^:private external-registry
-  "[[lib.schema/external-registry]], plus the dangling Field ids serialization exports as is."
-  (assoc lib.schema/external-registry ::field-id [:or ::lib.schema.id/field pos-int?]))
+  "[[lib-be.schema/external-registry]], plus the dangling Field ids serialization exports as is."
+  (assoc lib-be.schema/external-registry ::field-id [:or ::lib.schema.id/field pos-int?]))
 
 (mr/def ::external-transform
   "A Transform as serialization writes it, with portable references in place of ids."

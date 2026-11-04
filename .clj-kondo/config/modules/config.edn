@@ -1872,6 +1872,7 @@
            collections
            events
            lib
+           lib.be
            lib.schema
            models
            permissions

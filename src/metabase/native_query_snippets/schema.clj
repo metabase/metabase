@@ -1,7 +1,7 @@
 (ns metabase.native-query-snippets.schema
   (:require
    [metabase.collections.schema]
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.models.schema :as models.schema]
@@ -35,7 +35,7 @@
 
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."
-  [:schema {:registry lib.schema/external-registry}
+  [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::native-query-snippet [:archived :description :entity_id :name :collection_id :creator_id :content
                                           :template_tags]]
