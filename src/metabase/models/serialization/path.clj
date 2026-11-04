@@ -78,9 +78,3 @@
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str :- :string]
   (models.db/entity-by-entity-id model id-str))
-
-(defn field-hierarchy
-  "Returns the field hierarchy (field + parents) for a field ID. Used by resolvers."
-  [id]
-  (reverse
-   (models.db/field-hierarchy-rows id)))

@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.resolve :as resolve]
+   [metabase.models.serialization.resolve.default :as resolve.default]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -140,3 +142,75 @@
                    :active    false}
                   (t2/select-one :model/Field :id field-id)))
           (is (= 1 (t2/count :model/Field :table_id table-id :name "outer"))))))))
+
+(defn- query-count [thunk]
+  (t2/with-call-count [call-count]
+    (thunk)
+    (call-count)))
+
+(deftest export-fields-query-count-test
+  (testing "exporting nested Fields in bulk takes one query per nesting level, whatever their number"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "test-db"}
+                   :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}
+                   :model/Field    {outer-id :id} {:table_id table-id :name "outer"}]
+      (let [field-ids (vec (for [i (range 30)]
+                             (t2/insert-returning-pk! :model/Field {:table_id      table-id
+                                                                    :parent_id     outer-id
+                                                                    :name          (str "inner_" i)
+                                                                    :base_type     :type/Text
+                                                                    :database_type "TEXT"})))
+            export    #(resolve/export-fields resolve.default/default-export-resolver %)]
+        (is (= {(first field-ids) ["test-db" "public" "events" "outer" "inner_0"]
+                (last field-ids)  ["test-db" "public" "events" "outer" "inner_29"]}
+               (select-keys (export field-ids) [(first field-ids) (last field-ids)])))
+        (is (= (query-count #(export (take 2 field-ids)))
+               (query-count #(export field-ids))))))))
+
+(deftest import-fields-bulk-test
+  (testing "importing Field paths in bulk finds existing Fields and creates each missing node once"
+    (mt/with-model-cleanup [:model/Field]
+      (mt/with-temp [:model/Database {db-id :id}    {:name "test-db"}
+                     :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}
+                     :model/Field    {outer-id :id} {:table_id table-id :name "outer"}]
+        (let [paths    [["test-db" "public" "events" "outer"]
+                        ["test-db" "public" "events" "outer" "x"]
+                        ["test-db" "public" "events" "outer" "y"]
+                        ["test-db" "public" "events" "fresh" "z"]]
+              resolved (resolve/import-fields resolve.default/default-import-resolver paths)]
+          (is (= outer-id (get resolved (first paths))))
+          (is (= #{outer-id} (t2/select-fn-set :parent_id :model/Field :id [:in (map resolved (take 2 (rest paths)))])))
+          (is (= 1 (t2/count :model/Field :table_id table-id :name "fresh")))
+          (testing "and resolves the same paths again without creating anything"
+            (is (= resolved (resolve/import-fields resolve.default/default-import-resolver paths)))
+            (is (= 5 (t2/count :model/Field :table_id table-id))))
+          (testing "with a query count independent of the number of paths"
+            (is (= (query-count #(resolve/import-fields resolve.default/default-import-resolver (take 2 paths)))
+                   (query-count #(resolve/import-fields resolve.default/default-import-resolver paths))))))))))
+
+(deftest export-fks-bulk-test
+  (testing "exporting FKs in bulk leaves out missing targets, and the single lookup throws for them"
+    (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}]
+      (is (= {coll-id coll-eid}
+             (resolve/export-fks resolve.default/default-export-resolver :model/Collection [coll-id Integer/MAX_VALUE])))
+      (is (=? {:skip true :metabase.models.serialization/type :target-not-found}
+              (try (serdes/*export-fk* Integer/MAX_VALUE :model/Collection)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
+(deftest export-table-fk-missing-test
+  (testing "exporting missing Table throws target-not-found error"
+    (is (=? {:skip true :metabase.models.serialization/type :target-not-found}
+            (try (serdes/*export-table-fk* Integer/MAX_VALUE)
+                 nil
+                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+
+(deftest lenient-import-fk-test
+  (testing "lenient resolver resolves missing FK target to nil, and strict one throws"
+    (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {}]
+      (let [missing "aaaaaaaaaaaaaaaaaaaaa"]
+        (is (= {coll-eid coll-id missing nil}
+               (resolve/import-fks resolve.default/lenient-import-resolver :model/Collection [coll-eid missing])))
+        (is (=? {:metabase.models.serialization/type :target-not-found}
+                (try (resolve/import-fk resolve.default/default-import-resolver missing :model/Collection)
+                     nil
+                     (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))

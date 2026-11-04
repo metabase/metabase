@@ -2323,11 +2323,10 @@
   (let [fill     #'repair/fill-from-candidates
         unused   #(throw (ex-info "unexpected resolver call" {}))
         resolver (reify serdes.resolve/SerdesExportResolver
-                   (export-fk [_ _ _] (unused))
-                   (export-fk-keyed [_ _ _ _] (unused))
-                   (export-user [_ _] (unused))
-                   (export-table-fk [_ _] (unused))
-                   (export-field-fk [_ _] (throw (ex-info "boom" {}))))
+                   (export-fks [_ _ _] (unused))
+                   (export-fks-keyed [_ _ _ _] (unused))
+                   (export-tables [_ _] (unused))
+                   (export-fields [_ _] (throw (ex-info "boom" {}))))
         clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
         run      (fn [strict?]
                    (fill clause {} (nth clause 2) resolver [{:source-field-id 1}]

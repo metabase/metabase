@@ -20,25 +20,117 @@
 ;;; ============================================================
 
 (defprotocol SerdesExportResolver
-  "Resolve database IDs to portable references during export."
-  (export-fk        [this id model]        "Given a numeric FK and model, return a portable ID (string or vector).")
-  (export-fk-keyed  [this id model field]  "Given a numeric ID, look up a different identifying field.")
-  (export-user      [this id]              "Export a user as their email address.")
-  (export-table-fk  [this table-id]        "Given a numeric table_id, return [db-name schema table-name].")
-  (export-field-fk  [this field-id]        "Given a numeric field_id, return [db-name schema table-name field-name]."))
+  "Resolves collections of database ids to portable references during export, each method returning a map from every
+  input it found to its reference and leaving out the inputs with no target."
+  (export-fks       [this model ids]       "The portable ids (strings, or vectors for nested models) of the `model` rows with `ids`.")
+  (export-fks-keyed [this model field ids] "The `field` values of the `model` rows with `ids`.")
+  (export-tables    [this table-ids]       "The `[db-name schema table-name]` references of the Tables with `table-ids`.")
+  (export-fields    [this field-ids]       "The `[db-name schema table-name & field-names]` references of the Fields with `field-ids`."))
 
 (defprotocol SerdesImportResolver
-  "Resolve portable references back to database IDs during import."
-  (import-fk        [this eid model]       "Given a portable ID and model, return the numeric PK.")
-  (import-fk-keyed  [this portable model field] "Given a portable identifying field value, return the numeric :id.")
-  (import-user      [this email]           "Import a user by email, creating if needed. Returns PK.")
-  (import-database-fk [this db-name]       "Given a portable database name, return the numeric database id.")
-  (import-table-fk  [this path]            "Given [db-name schema table-name], return numeric table_id.")
-  (import-field-fk  [this path]            "Given [db-name schema table-name field-name], return numeric field_id."))
+  "Resolves collections of portable references back to database ids during import, each method returning a map from
+  every input it found to its id and leaving out the inputs with no target."
+  (import-fks       [this model eids]         "The primary keys of the `model` rows with portable ids `eids`, a vector naming its last element.")
+  (import-fks-keyed [this model field values] "The primary keys of the `model` rows whose `field` is one of `values`.")
+  (import-users     [this emails]             "The ids of the Users with `emails`, creating inactive ones for the missing emails.")
+  (import-databases [this db-names]           "The ids of the Databases named `db-names`, creating stubs for the missing names.")
+  (import-tables    [this paths]              "The ids of the Tables at `[db-name schema table-name]` `paths`, creating inactive ones for the missing paths.")
+  (import-fields    [this paths]              "The ids of the Fields at `[db-name schema table-name & field-names]` `paths`, creating inactive ones for the missing paths."))
 
 (defprotocol ResettableCache
   "A resolver whose memoized lookups can be dropped."
   (reset-cache! [this] "Drop every memoized lookup."))
+
+;;; ============================================================
+;;; Single-reference lookups
+;;; ============================================================
+
+(defn- export-target-not-found [model id]
+  (ex-info "FK target not found" {:model                               model
+                                  :id                                  id
+                                  :skip                                true
+                                  :metabase.models.serialization/type :target-not-found}))
+
+(defn- resolved-or-throw
+  "The value `resolved` maps `k` to, throwing the ex-info `not-found` returns when `resolved` has no entry for `k`."
+  [resolved k not-found]
+  (if (contains? resolved k)
+    (get resolved k)
+    (throw (not-found))))
+
+(defn export-fk
+  "The portable id of the `model` row with `id`, throwing a `:target-not-found` error when there is no such row."
+  [resolver id model]
+  (when (some? id)
+    (resolved-or-throw (export-fks resolver model [id]) id #(export-target-not-found model id))))
+
+(defn export-fk-keyed
+  "The `field` value of the `model` row with `id`, or nil."
+  [resolver id model field]
+  (when (some? id)
+    (get (export-fks-keyed resolver model field [id]) id)))
+
+(defn export-user
+  "The email of the User with `id`, or nil."
+  [resolver id]
+  (export-fk-keyed resolver id :model/User :email))
+
+(defn export-table-fk
+  "The `[db-name schema table-name]` reference of the Table with `table-id`, throwing a `:target-not-found` error
+  when there is no such Table."
+  [resolver table-id]
+  (when (some? table-id)
+    (resolved-or-throw (export-tables resolver [table-id]) table-id #(export-target-not-found :model/Table table-id))))
+
+(defn export-field-fk
+  "The `[db-name schema table-name & field-names]` reference of the Field with `field-id`, throwing a
+  `:target-not-found` error when there is no such Field."
+  [resolver field-id]
+  (when (some? field-id)
+    (resolved-or-throw (export-fields resolver [field-id]) field-id #(export-target-not-found :model/Field field-id))))
+
+(defn import-fk
+  "The primary key of the `model` row with portable id `eid`, throwing a `:target-not-found` error when there is no
+  such row."
+  [resolver eid model]
+  (when (some? eid)
+    (resolved-or-throw (import-fks resolver model [eid])
+                       eid
+                       #(ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
+                                 {:entity_id                           (if (vector? eid) (last eid) eid)
+                                  :model                               (name model)
+                                  :metabase.models.serialization/type :target-not-found}))))
+
+(defn import-fk-keyed
+  "The primary key of the `model` row whose `field` is `portable`, or nil."
+  [resolver portable model field]
+  (when (some? portable)
+    (get (import-fks-keyed resolver model field [portable]) portable)))
+
+(defn import-user
+  "The id of the User with `email`, created as an inactive User when missing."
+  [resolver email]
+  (when (some? email)
+    (get (import-users resolver [email]) email)))
+
+(defn import-database-fk
+  "The id of the Database named `db-name`, created as a stub when missing."
+  [resolver db-name]
+  (when (some? db-name)
+    (get (import-databases resolver [db-name]) db-name)))
+
+(defn import-table-fk
+  "The id of the Table at `[db-name schema table-name]` `path`, created as an inactive Table when missing."
+  [resolver path]
+  (when (some? path)
+    (get (import-tables resolver [path]) path)))
+
+(defn import-field-fk
+  "The id of the Field at `[db-name schema table-name & field-names]` `path`, created as an inactive Field when
+  missing."
+  [resolver path]
+  (when (some? path)
+    (get (import-fields resolver [path]) path)))
 
 ;;; ============================================================
 ;;; Dynamic vars — bound to resolver instances

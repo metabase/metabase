@@ -24,26 +24,12 @@
    entity-id :- :string]
   (t2/select-one model :entity_id entity-id))
 
-(mu/defn entity-field
-  "The `field` of the `model` row with `id`, or nil."
-  [model :- [:or :keyword symbol?]
-   id    :- ms/PositiveInt
-   field :- :keyword]
-  (t2/select-one-fn field model :id id))
-
 (mu/defn pk-by-entity-id
   "The `pk-column` of the `model` row with `entity-id`, or nil."
   [model     :- [:or :keyword symbol?]
    pk-column :- :keyword
    entity-id :- :string]
   (t2/select-one-fn pk-column [model pk-column] :entity_id entity-id))
-
-(mu/defn pk-by-field
-  "The primary key of the `model` row whose `field` is `value`, or nil."
-  [model :- [:or :keyword symbol?]
-   field :- :keyword
-   value :- [:maybe [:or :string :int :boolean :keyword]]]
-  (t2/select-one-pk model field value))
 
 (def ^:private model-row-schema
   "The literal registry keyword of the row/update schema of each model the generic entity helpers below are called
@@ -236,42 +222,6 @@
   []
   (t2/select [:model/Document :entity_id :name]))
 
-(mu/defn field-hierarchy-rows
-  "The name and Table id of the Field with `field-id` and each of its ancestors, deepest first."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select :model/Field
-             {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
-                                ^:allow-subquery {:union-all [^:allow-subquery {:from   [[(t2/table-name :model/Field) :mf]]
-                                                                                :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                                                                :where  [:= :id field-id]}
-                                                              ^:allow-subquery {:from   [[(t2/table-name :model/Field) :pf]]
-                                                                                :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                                                                :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
-              :from           [:parents]
-              :select         [:name :table_id]}))
-
-(mu/defn table-ref-columns
-  "The id, Database id, name, and schema of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id))
-
-(mu/defn database-name
-  "The name of the Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
-
-(mu/defn database-id-by-name
-  "The id of the Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-fn :id :model/Database :name database-name))
-
-(mu/defn table-id-by-name
-  "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
-  [table-name  :- :string
-   schema      :- [:maybe :string]
-   database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id))
-
 (mu/defn insert-stub-database!
   "Insert a stub Postgres Database named `database-name` with empty connection details and return its id."
   [database-name :- :string]
@@ -291,13 +241,6 @@
                                          :name   table-name
                                          :active false}))
 
-(mu/defn field-pk
-  "The id of the Field named `field-name` under `parent-id` in the Table with `table-id`, or nil."
-  [table-id   :- ::lib.schema.id/table
-   field-name :- :string
-   parent-id  :- [:maybe ms/PositiveInt]]
-  (t2/select-one-pk :model/Field :table_id table-id :name field-name :parent_id parent-id))
-
 (defn- field-in-path-query
   [table-id [field & rest]]
   (when field
@@ -307,14 +250,6 @@
                                [:= :table_id table-id]
                                [:= :name field]
                                [:= :parent_id (field-in-path-query table-id rest)]]}))
-
-(mu/defn field-pk-in-path
-  "The id of the Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
-  `table-id`, or nil."
-  [table-id    :- ::lib.schema.id/table
-   field-names :- [:sequential :string]]
-  (when (seq field-names)
-    (t2/select-one-pk :model/Field :id [:in (field-in-path-query table-id field-names)])))
 
 (mu/defn field-in-path
   "The Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -364,8 +299,70 @@
   [event-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
 
-(mu/defn entity-by-own-pk
-  "The `model` row identified by `id`, using whatever column is that model's own primary key."
+(mu/defn entities-by-own-pks
+  "The `model` rows whose own primary key is one of `ids`."
   [model :- [:or :keyword symbol?]
-   id    :- [:or :int :string]]
-  (t2/select-one model (first (t2/primary-keys model)) id))
+   ids   :- [:sequential [:or :int :string]]]
+  (t2/select model (first (t2/primary-keys model)) [:in ids]))
+
+(mu/defn entity-fields-by-ids
+  "The `:id` and `field` of the `model` rows with `ids`."
+  [model :- [:or :keyword symbol?]
+   field :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (t2/select [model :id field] :id [:in ids]))
+
+(mu/defn pks-by-entity-ids
+  "The `pk-column` and `:entity_id` of the `model` rows with `entity-ids`."
+  [model      :- [:or :keyword symbol?]
+   pk-column  :- :keyword
+   entity-ids :- [:sequential :string]]
+  (t2/select [model pk-column :entity_id] :entity_id [:in entity-ids]))
+
+(mu/defn pks-by-field-values
+  "The `pk-column` and `field` of the `model` rows whose `field` is one of `values`, oldest first."
+  [model     :- [:or :keyword symbol?]
+   pk-column :- :keyword
+   field     :- :keyword
+   values    :- [:sequential [:or :string :int :boolean]]]
+  (t2/select [model pk-column field] field [:in values] {:order-by [[pk-column :asc]]}))
+
+(mu/defn table-ref-rows
+  "The id, Database id, name, and schema of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :db_id :name :schema] :id [:in table-ids]))
+
+(mu/defn database-names-by-ids
+  "The id and name of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select [:model/Database :id :name] :id [:in database-ids]))
+
+(mu/defn database-ids-by-names
+  "The id and name of the Databases named one of `database-names`, oldest first."
+  [database-names :- [:sequential :string]]
+  (t2/select [:model/Database :id :name] :name [:in database-names] {:order-by [[:id :asc]]}))
+
+(mu/defn tables-by-names
+  "The id, Database id, schema, and name of the Tables in the Databases with `database-ids` named one of
+  `table-names`, oldest first."
+  [database-ids :- [:sequential ::lib.schema.id/database]
+   table-names  :- [:sequential :string]]
+  (t2/select [:model/Table :id :db_id :schema :name]
+             :db_id [:in database-ids]
+             :name  [:in table-names]
+             {:order-by [[:id :asc]]}))
+
+(mu/defn field-parent-rows
+  "The id, name, parent id, and Table id of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select [:model/Field :id :name :parent_id :table_id] :id [:in field-ids]))
+
+(mu/defn fields-by-names
+  "The id, Table id, parent id, and name of the Fields in the Tables with `table-ids` named one of `field-names`,
+  oldest first."
+  [table-ids   :- [:sequential ::lib.schema.id/table]
+   field-names :- [:sequential :string]]
+  (t2/select [:model/Field :id :table_id :parent_id :name]
+             :table_id [:in table-ids]
+             :name     [:in field-names]
+             {:order-by [[:id :asc]]}))

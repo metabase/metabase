@@ -95,7 +95,6 @@
 (p/import-vars
  [metabase.models.serialization.path
   entity-id
-  field-hierarchy
   generate-path
   infer-self-path
   lookup-by-id
@@ -106,7 +105,7 @@
 
 (def query-batch-size
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
-  1000)
+  resolve.default/query-batch-size)
 
 ;;; # Serialization Overview
 ;;;
@@ -1036,23 +1035,13 @@
 
 ;;; ## Fields
 
-;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
-;; database and table exporters above. Fields are unbounded in number (millions on large
-;; instances), and the dominant traffic — each field's own path during a data-model export —
-;; has no reuse, so a cache would retain an O(field-count) map for near-zero hits and can OOM
-;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
-;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
-;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when field-id
-    (let [fields                      (field-hierarchy field-id)
-          [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
-      (into [db-name schema table-name] (map :name fields)))))
+  (resolve/export-field-fk (export-resolver) field-id))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-field-fk*

@@ -16,10 +16,10 @@
   MBQL suitable for `lib.query/query` / the QP.
 
   Implemented scope for the representations pipeline:
-    * `import-database-fk`, `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
+    * `import-databases`, `import-tables`, `import-fields`, `export-tables`, `export-fields` for
       warehouse metadata.
-    * `export-fk-keyed` for `:model/Database` by `:name`.
-    * `import-fk` / `export-fk` for `Card`, `Measure`, and `Segment` references by `entity_id`.
+    * `export-fks-keyed` for `:model/Database` by `:name`.
+    * `import-fks` / `export-fks` for `Card`, `Measure`, and `Segment` references by `entity_id`.
 
   Everything else throws `:not-implemented-yet` for now.
 
@@ -727,6 +727,57 @@
       :else
       (:id segment))))
 
+(defn- each
+  "The map from each of the distinct `inputs` to what `f` resolves it to."
+  [f inputs]
+  (into {} (map (fn [x] [x (f x)])) (distinct inputs)))
+
+(defn- import-content-fk
+  "The id of the Card, Measure, or Segment `model` row that `eid`, a portable entity id or a bare numeric id, names."
+  [metadata-provider content-store eid model]
+  (if (int? eid)
+    (cond
+      (card-model? model)    (import-card-by-id metadata-provider content-store eid)
+      (measure-model? model) (import-measure-by-id metadata-provider content-store eid)
+      (segment-model? model) (import-segment-by-id metadata-provider content-store eid)
+      :else                  (not-implemented! :import-fk))
+    (cond
+      (card-model? model)    (import-card-by-entity-id metadata-provider content-store eid)
+      (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
+      (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
+      :else                  (not-implemented! :import-fk))))
+
+(defn- export-content-fk
+  "The entity id of the Card, Measure, or Segment `model` row with `id`."
+  [metadata-provider content-store id model]
+  (cond
+    (card-model? model)    (export-card-by-id metadata-provider content-store id)
+    (measure-model? model) (export-measure-by-id metadata-provider content-store id)
+    (segment-model? model) (export-segment-by-id metadata-provider content-store id)
+    :else                  (not-implemented! :export-fk)))
+
+(defn- export-table-ref
+  "The `[db-name schema table-name]` reference of the Table with `table-id`."
+  [metadata-provider table-id]
+  (let [t (lib.metadata.protocols/table metadata-provider table-id)]
+    (when-not t
+      (throw (ex-info (tru "No table found with id {0}." (str table-id))
+                      {:status-code 400
+                       :error       :unknown-table-id
+                       :table-id    table-id})))
+    [(db-name metadata-provider) (:schema t) (:name t)]))
+
+(defn- export-field-ref
+  "The `[db-name schema table-name & field-names]` reference of the Field with `field-id`."
+  [metadata-provider field-id]
+  (let [f (lib.metadata.protocols/field metadata-provider field-id)]
+    (when-not f
+      (throw (ex-info (tru "No field found with id {0}." (str field-id))
+                      {:status-code 400
+                       :error       :unknown-field-id
+                       :field-id    field-id})))
+    (export-field-path metadata-provider f)))
+
 (defn import-resolver
   "Build a `SerdesImportResolver` backed by `metadata-provider` (warehouse metadata) and
   `content-store` (Metabase content / assets).
@@ -738,43 +789,24 @@
   with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
-    * `import-database-fk`, `import-table-fk`, `import-field-fk`.
-    * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
+    * `import-databases`, `import-tables`, `import-fields`.
+    * `import-fks` for `Card`, `Measure`, and `Segment` by `entity_id` or numeric id.
 
   Other methods throw `:not-implemented-yet`."
   ([metadata-provider]
    (import-resolver metadata-provider unchecked-app-db-content-store))
   ([metadata-provider content-store]
    (reify resolve/SerdesImportResolver
-     (import-fk       [_ eid model]
-       (cond
-         (nil? eid)             nil
-         ;; A bare numeric id, which only the numeric-id surface may author. It needs no
-         ;; translation, but it still has to go through the (read-checked) content store —
-         ;; see [[import-card-by-id]]. Every content model gets this, not just Card: a numeric
-         ;; metric / segment / measure ref reaches the resolver by exactly the same route.
-         (int? eid)
-         (cond
-           (card-model? model)    (import-card-by-id metadata-provider content-store eid)
-           (measure-model? model) (import-measure-by-id metadata-provider content-store eid)
-           (segment-model? model) (import-segment-by-id metadata-provider content-store eid)
-           :else                  (not-implemented! :import-fk))
-
-         (card-model? model)    (import-card-by-entity-id metadata-provider content-store eid)
-         (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
-         (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
-         :else                  (not-implemented! :import-fk)))
-     (import-fk-keyed [_ _portable _model _field] (not-implemented! :import-fk-keyed))
-     (import-user     [_ _email]                  (not-implemented! :import-user))
-     (import-database-fk [_ db-name]
-       (when db-name
-         (import-database-by-name metadata-provider db-name)))
-     (import-table-fk [_ path]
-       (when path
-         (:id (find-table metadata-provider path))))
-     (import-field-fk [_ path]
-       (when path
-         (:id (find-field metadata-provider path)))))))
+     (import-fks [_ model eids]
+       (each #(import-content-fk metadata-provider content-store % model) eids))
+     (import-fks-keyed [_ _model _field _values] (not-implemented! :import-fk-keyed))
+     (import-users     [_ _emails]               (not-implemented! :import-user))
+     (import-databases [_ db-names]
+       (each #(import-database-by-name metadata-provider %) db-names))
+     (import-tables [_ paths]
+       (each #(:id (find-table metadata-provider %)) paths))
+     (import-fields [_ paths]
+       (each #(:id (find-field metadata-provider %)) paths)))))
 
 (defn export-resolver
   "Build a `SerdesExportResolver` backed by `metadata-provider` and `content-store`.
@@ -783,49 +815,23 @@
   an explicit permission-aware store so exported content entity IDs are read-checked.
 
   Implemented methods:
-    * `export-table-fk`, `export-field-fk` for warehouse metadata.
-    * `export-fk-keyed` for `:model/Database` by `:name`.
-    * `export-fk` for `Card` / `:model/Card` by `entity_id` (source-card and metric refs).
-    * `export-fk` for `:model/Measure` and `:model/Segment` by `entity_id`.
+    * `export-tables`, `export-fields` for warehouse metadata.
+    * `export-fks-keyed` for `:model/Database` by `:name`.
+    * `export-fks` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
   ([metadata-provider]
    (export-resolver metadata-provider unchecked-app-db-content-store))
   ([metadata-provider content-store]
    (reify resolve/SerdesExportResolver
-     (export-fk       [_ id model]
-       (cond
-         (nil? id)              nil
-         (card-model? model)    (export-card-by-id metadata-provider content-store id)
-         (measure-model? model) (export-measure-by-id metadata-provider content-store id)
-         (segment-model? model) (export-segment-by-id metadata-provider content-store id)
-         :else                  (not-implemented! :export-fk)))
-     (export-fk-keyed [_ id model field]
-       (cond
-         (nil? id) nil
-
-         (and (or (= model :model/Database) (= model 'Database))
-              (= field :name))
-         (export-database-name metadata-provider id)
-
-         :else
+     (export-fks [_ model ids]
+       (each #(export-content-fk metadata-provider content-store % model) ids))
+     (export-fks-keyed [_ model field ids]
+       (if (and (or (= model :model/Database) (= model 'Database))
+                (= field :name))
+         (each #(export-database-name metadata-provider %) ids)
          (not-implemented! :export-fk-keyed)))
-     (export-user     [_ _id]               (not-implemented! :export-user))
-     (export-table-fk [_ table-id]
-       (when table-id
-         (let [t (lib.metadata.protocols/table metadata-provider table-id)]
-           (when-not t
-             (throw (ex-info (tru "No table found with id {0}." (str table-id))
-                             {:status-code 400
-                              :error       :unknown-table-id
-                              :table-id    table-id})))
-           [(db-name metadata-provider) (:schema t) (:name t)])))
-     (export-field-fk [_ field-id]
-       (when field-id
-         (let [f (lib.metadata.protocols/field metadata-provider field-id)]
-           (when-not f
-             (throw (ex-info (tru "No field found with id {0}." (str field-id))
-                             {:status-code 400
-                              :error       :unknown-field-id
-                              :field-id    field-id})))
-           (export-field-path metadata-provider f)))))))
+     (export-tables [_ table-ids]
+       (each #(export-table-ref metadata-provider %) table-ids))
+     (export-fields [_ field-ids]
+       (each #(export-field-ref metadata-provider %) field-ids)))))
