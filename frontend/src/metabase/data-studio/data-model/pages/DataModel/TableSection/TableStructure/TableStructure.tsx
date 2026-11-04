@@ -85,15 +85,13 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
               isRoleUnderReview(structure, readOnly) ? (
                 <NeedsReviewBadge />
               ) : (
-                <ValueOriginIcon origin={getRoleOrigin(structure)} />
+                <InferredIcon description={getRoleInference(structure)} />
               )
             }
             labelNote={
-              <RoleNote
-                structure={structure}
-                disabled={readOnly}
-                onChange={(role) => setTableRole(table, role)}
-              />
+              // Read-only tables keep the badge here; there's no review cell
+              structure.needsReview &&
+              !isRoleUnderReview(structure, readOnly) && <NeedsReviewBadge />
             }
             value={
               <RoleValue
@@ -137,15 +135,15 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
               isMainDateUnderReview(structure, readOnly) ? (
                 <NeedsReviewBadge />
               ) : (
-                <ValueOriginIcon origin={getMainDateOrigin(structure)} />
+                <InferredIcon description={getMainDateInference(structure)} />
               )
             }
             labelNote={
-              <MainDateNote
-                structure={structure}
-                disabled={readOnly}
-                onChange={(fieldId) => setMainDate(table, fieldId)}
-              />
+              // Read-only tables keep the badge here; there's no review cell
+              structure.mainDateNeedsReview &&
+              !isMainDateUnderReview(structure, readOnly) && (
+                <NeedsReviewBadge />
+              )
             }
             value={
               <MainDateValue
@@ -237,18 +235,19 @@ function NeedsReviewBadge() {
 }
 
 /**
- * A weak guess as plain text with its origin icon, to confirm or change.
+ * A weak guess as plain text with its AI icon, to confirm or change.
  * Either choice records it as the admin's, so the caller swaps in its select.
  */
 function ReviewValue({
   value,
-  origin,
+  inference,
   onConfirm,
   onChange,
   "data-testid": dataTestId,
 }: {
   value: string;
-  origin: ValueOrigin | null;
+  /** Why sync guessed it, shown on the AI icon */
+  inference: string | null;
   onConfirm: () => void;
   /** Confirms, then opens the select so another value can be picked */
   onChange: () => void;
@@ -266,7 +265,7 @@ function ReviewValue({
     >
       <Group gap="xs" wrap="nowrap" miw={0}>
         <Text truncate>{value}</Text>
-        <ValueOriginIcon origin={origin} />
+        <InferredIcon description={inference} />
       </Group>
       <Group gap="xs" wrap="nowrap" flex="0 0 auto">
         <Button size="compact-sm" variant="filled" onClick={onConfirm}>
@@ -290,7 +289,7 @@ function RoleValue({ structure, disabled, onChange }: RoleInputProps) {
     return (
       <ReviewValue
         value={getTableRoleLabel(inferredRole)}
-        origin={getRoleOrigin(structure)}
+        inference={getRoleInference(structure)}
         onConfirm={() => onChange(inferredRole)}
         onChange={() => {
           setIsSelectOpenOnMount(true);
@@ -351,82 +350,36 @@ function RoleSelect({
   );
 }
 
-const NOTE_ACTION_CLASS_NAMES = {
-  root: S.noteAction,
-  label: S.noteActionLabel,
-};
-
-/** Whether sync inferred the value or an admin set it, and why */
-type ValueOrigin = { isInferred: boolean; description: string };
-
-/** No origin once an admin confirms the guess: there's nothing left to flag */
-function getRoleOrigin({
-  role,
+/** Why sync picked the role; nothing once an admin has set it */
+function getRoleInference({
   inference,
   isRoleOverridden,
-}: TableStructureValue): ValueOrigin | null {
-  if (!isRoleOverridden) {
-    return { isInferred: true, description: t`Inferred: ${inference.signal}` };
-  }
-  return role === inference.role
-    ? null
-    : { isInferred: false, description: t`Set by an admin` };
+}: TableStructureValue): string | null {
+  return isRoleOverridden ? null : t`Inferred: ${inference.signal}`;
 }
 
-function getMainDateOrigin(structure: TableStructureValue): ValueOrigin | null {
-  const { mainDateInference, isMainDateOverridden } = structure;
-  if (!isMainDateOverridden) {
-    return {
-      isInferred: true,
-      description: t`Inferred: ${mainDateInference.signal}`,
-    };
-  }
-  return getMainDateFieldId(structure) === mainDateInference.fieldId
-    ? null
-    : { isInferred: false, description: t`Set by an admin` };
+/** Why sync picked the main date; nothing once an admin has set it */
+function getMainDateInference({
+  mainDateInference,
+  isMainDateOverridden,
+}: TableStructureValue): string | null {
+  return isMainDateOverridden ? null : t`Inferred: ${mainDateInference.signal}`;
 }
 
-/** An AI icon for an inferred value or a person for an admin's, explained on hover */
-function ValueOriginIcon({ origin }: { origin: ValueOrigin | null }) {
-  if (!origin) {
+/** An AI icon for an inferred value, explained on hover */
+function InferredIcon({ description }: { description: string | null }) {
+  if (description == null) {
     return null;
   }
   return (
-    <Tooltip label={origin.description} maw={280} multiline>
+    <Tooltip label={description} maw={280} multiline>
       <Icon
-        name={origin.isInferred ? "ai" : "person"}
+        name="ai"
         c="text-secondary"
-        aria-label={origin.description}
+        aria-label={description}
         flex="0 0 auto"
       />
     </Tooltip>
-  );
-}
-
-/** The revert action once an admin overrides the guess */
-function RoleNote({ structure, disabled, onChange }: RoleInputProps) {
-  const { role, inference, isRoleOverridden, needsReview } = structure;
-  // An admin picked the same role sync guessed, so there's nothing to revert to
-  const isConfirmedGuess = isRoleOverridden && role === inference.role;
-
-  return (
-    <>
-      {/* Under review, the badge sits at the label's right instead */}
-      {needsReview && !isRoleUnderReview(structure, disabled) && (
-        <NeedsReviewBadge />
-      )}
-      {!disabled && isRoleOverridden && !isConfirmedGuess && inference.role && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          px={0}
-          classNames={NOTE_ACTION_CLASS_NAMES}
-          onClick={() => onChange(null)}
-        >
-          {t`Use the inferred role (${getTableRoleLabel(inference.role)})`}
-        </Button>
-      )}
-    </>
   );
 }
 
@@ -504,7 +457,7 @@ function MainDateValue({
       <ReviewValue
         // Not overridden, so the current main date is the inferred one
         value={structure.mainDateField?.display_name ?? t`No main date`}
-        origin={getMainDateOrigin(structure)}
+        inference={getMainDateInference(structure)}
         onConfirm={() => onChange(inferredFieldId)}
         onChange={() => {
           setIsSelectOpenOnMount(true);
@@ -531,36 +484,6 @@ function MainDateValue({
       isOpenOnMount={isSelectOpenOnMount}
       onChange={onChange}
     />
-  );
-}
-
-/** The revert action for the main date, when it applies */
-function MainDateNote({ structure, disabled, onChange }: MainDateInputProps) {
-  const { mainDateInference, isMainDateOverridden, mainDateNeedsReview } =
-    structure;
-  // An admin picked the same date sync guessed, so there's nothing to revert to
-  const isConfirmedGuess =
-    isMainDateOverridden &&
-    getMainDateFieldId(structure) === mainDateInference.fieldId;
-
-  return (
-    <>
-      {/* Under review, the badge sits at the label's right instead */}
-      {mainDateNeedsReview && !isMainDateUnderReview(structure, disabled) && (
-        <NeedsReviewBadge />
-      )}
-      {!disabled && isMainDateOverridden && !isConfirmedGuess && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          px={0}
-          classNames={NOTE_ACTION_CLASS_NAMES}
-          onClick={() => onChange(undefined)}
-        >
-          {t`Use the inferred main date`}
-        </Button>
-      )}
-    </>
   );
 }
 

@@ -61,12 +61,6 @@ export const trackDataStudioTableUnpublished = (id?: ConcreteTableId) => {
   });
 };
 
-export const trackDataStudioBulkSyncSettingsClicked = () => {
-  trackSimpleEvent({
-    event: "data_studio_bulk_sync_settings_clicked",
-  });
-};
-
 export const trackDataStudioBulkAttributeUpdated = (
   attributeType: "owner" | "layer" | "entity_type" | "data_source",
   result: "success" | "failure",

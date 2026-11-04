@@ -15,13 +15,3 @@
     background-color: var(--mb-color-background_surface-hover);
   }
 }
-
-/* Lets a note action wrap in the narrow label column instead of overflowing */
-.noteAction {
-  height: auto;
-  text-align: start;
-}
-
-.noteActionLabel {
-  white-space: normal;
-}
