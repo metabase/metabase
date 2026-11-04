@@ -64,11 +64,14 @@
   (mapv #(t2/instance model %) rows))
 
 (defn- submit-handoff!
-  [model op thunk]
-  (let [run #(try
-               (thunk)
-               (catch Throwable e
-                 (log/errorf e "Failed search-index handoff for %s %s" model op)))]
+  "Run each of `steps` in order, off the calling thread unless ingestion is forced to be synchronous.
+  A step that throws is logged, and the steps after it still run."
+  [model op & steps]
+  (let [run #(doseq [step steps]
+               (try
+                 (step)
+                 (catch Throwable e
+                   (log/errorf e "Failed search-index handoff for %s %s" model op))))]
     (if search.ingestion/*force-sync*
       (run)
       (future (run)))))
@@ -87,6 +90,5 @@
     (let [instances (rows->instances model rows)]
       (mdb/do-after-commit
        #(submit-handoff! model op
-                         (fn []
-                           (search/bulk-update! instances)
-                           (search/reconcile-cascading-documents! dependents)))))))
+                         (fn [] (search/bulk-update! instances))
+                         (fn [] (search/reconcile-cascading-documents! dependents)))))))
