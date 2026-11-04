@@ -188,16 +188,24 @@ patch_head_jar() {
   log "HEAD JAR patched"
 }
 
+compose_files_for() {
+  local image="$1"
+  COMPOSE_FILES=(-f docker-compose.yml)
+  if [[ -n "$HEAD_IMAGE" && "$image" == "$HEAD_IMAGE" ]]; then
+    COMPOSE_FILES+=(-f docker-compose.head.yml)
+  fi
+}
+
 # Start Metabase with a specific image
 start_metabase() {
   local image="$1"
   log "Starting Metabase with image: $image"
 
-  local compose_files=(-f docker-compose.yml)
-  [[ -n "$HEAD_IMAGE" && "$image" == "$HEAD_IMAGE" ]] && compose_files+=(-f docker-compose.head.yml)
+  local COMPOSE_FILES
+  compose_files_for "$image"
 
   METABASE_IMAGE="$image" METABASE_PORT="$METABASE_PORT" \
-    docker compose "${compose_files[@]}" up -d --quiet-pull
+    docker compose "${COMPOSE_FILES[@]}" up -d --quiet-pull
 }
 
 # Docker deletes a container's logs when the container is removed, and both
@@ -241,24 +249,19 @@ get_edition_prefix() {
 # This function is idempotent - it takes a version string and handles everything internally.
 migrate_down_step() {
   local version="$1"
-  local image is_head="false"
+  local image COMPOSE_FILES
 
   # Resolve image from version
   image=$(cli image "$version") || return 1
-  [[ "$version" == "HEAD" ]] && is_head="true"
+  compose_files_for "$image"
 
   log "Running 'migrate down' for version: $version (image: $image)"
 
   local output
   local exit_code=0
 
-  if [[ "$is_head" == "true" ]]; then
-    output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull \
-      -v "$HEAD_JAR:/app/metabase.jar:ro" \
-      metabase "migrate down" 2>&1) || exit_code=$?
-  else
-    output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull metabase "migrate down" 2>&1) || exit_code=$?
-  fi
+  output=$(METABASE_IMAGE="$image" docker compose "${COMPOSE_FILES[@]}" run --rm --quiet-pull \
+    metabase "migrate down" 2>&1) || exit_code=$?
 
   # Always print output for visibility
   echo "$output"
