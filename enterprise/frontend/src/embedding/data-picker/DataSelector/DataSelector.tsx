@@ -7,6 +7,7 @@ import _ from "underscore";
 import {
   cardApi,
   databaseApi,
+  tableApi,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useListDatabasesQuery,
@@ -32,7 +33,6 @@ import {
 } from "metabase/querying/common/components/DataSelector";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
-import { fetchTableMetadata } from "metabase/redux/tables";
 import { getSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
 import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
@@ -46,6 +46,7 @@ import type {
   SchemaId,
   SearchModel,
   SearchResponse,
+  Table,
   TableId,
 } from "metabase-types/api";
 
@@ -177,7 +178,7 @@ interface DataSelectorStateProps {
 
 interface DataSelectorDispatchProps {
   fetchDatabases: () => Promise<unknown>;
-  fetchFields: (tableId: TableId) => Promise<unknown>;
+  fetchFields: (tableId: TableId) => Promise<Table>;
   fetchQuestion: (id: CardId) => Promise<unknown>;
 }
 
@@ -220,6 +221,8 @@ interface DataSelectorState extends ComputedDataSelectorState {
   selectedDatabaseId: DatabaseId | null | undefined;
   selectedSchemaId: SchemaId | null | undefined;
   selectedTableId: TableId | null | undefined;
+  // The Library collection a reopened table is published in, to open on it
+  selectedLibraryCollectionId: CollectionId | null;
 }
 
 type SelectedIdsState = Pick<
@@ -260,6 +263,7 @@ export class UnconnectedDataSelector extends Component<
       selectedDatabaseId: props.selectedDatabaseId,
       selectedSchemaId: props.selectedSchemaId,
       selectedTableId: props.selectedTableId,
+      selectedLibraryCollectionId: null,
       isPopoverOpen: Boolean(props.isInitiallyOpen && !props.readOnly),
     };
     const computedState = this._getComputedState(props, state);
@@ -581,7 +585,37 @@ export class UnconnectedDataSelector extends Component<
     return databases;
   };
 
+  // As the core pickers do, a published table reopens in the Library, whichever
+  // path it was picked from. A table whose collection the user can't read comes
+  // back without one and reopens in Raw Data.
+  async getLibraryCollectionIdOfTable(
+    tableId: TableId,
+  ): Promise<CollectionId | null> {
+    try {
+      const table = await this.props.fetchFields(tableId);
+      return table.collection != null ? table.collection_id : null;
+    } catch {
+      return null;
+    }
+  }
+
   async hydrateActiveStep(): Promise<void> {
+    const { selectedTableId } = this.state;
+    if (
+      selectedTableId != null &&
+      !this.isSavedEntitySelected() &&
+      this.hasLibrary()
+    ) {
+      const libraryCollectionId =
+        await this.getLibraryCollectionIdOfTable(selectedTableId);
+      if (libraryCollectionId != null) {
+        await this.switchToStep(LIBRARY_STEP, {
+          selectedLibraryCollectionId: libraryCollectionId,
+        });
+        return;
+      }
+    }
+
     if (this.isSavedEntitySelected()) {
       // The card's type arrives with `fetchQuestion`, which hydrates again
       const { selectedCardType } = this.props;
@@ -735,6 +769,7 @@ export class UnconnectedDataSelector extends Component<
         selectedDatabaseId: null,
         selectedSchemaId: null,
         selectedTableId: null,
+        selectedLibraryCollectionId: null,
       };
     } else if (step === DATABASE_STEP) {
       return {
@@ -1005,7 +1040,8 @@ export class UnconnectedDataSelector extends Component<
   };
 
   renderContent = (): ReactNode => {
-    const { activeStep, selectedTable } = this.state;
+    const { activeStep, selectedTable, selectedLibraryCollectionId } =
+      this.state;
     const {
       canChangeDatabase,
       libraryCollection,
@@ -1029,6 +1065,7 @@ export class UnconnectedDataSelector extends Component<
             canSelectMetric={this.canSelectSemanticLayerMetrics()}
             databaseId={currentDatabaseId}
             selectedSource={selectedSource}
+            collectionId={selectedLibraryCollectionId}
             onSelect={this.handleSavedEntitySelect}
             onBack={this.hasDataBucketChoice() ? this.previousStep : undefined}
           />
@@ -1256,7 +1293,12 @@ const DataSelector = withDatabasesPrefetch(
               { forceRefetch: false },
             ),
           fetchFields: (tableId) =>
-            Promise.resolve(dispatch(fetchTableMetadata({ id: tableId }))),
+            runRtkEndpoint(
+              { id: tableId },
+              dispatch,
+              tableApi.endpoints.getTableQueryMetadata,
+              { forceRefetch: false },
+            ),
           fetchQuestion: (id) =>
             runRtkEndpoint({ id }, dispatch, cardApi.endpoints.getCard),
         }),

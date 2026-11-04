@@ -47,6 +47,28 @@ import { DataSourceSelector } from "../DataSelector";
 
 const DATABASES = [createSampleDatabase()];
 
+// The table API leaves out `collection` when the user can't read it
+function createDatabasesWithOrdersPublishedIn(
+  collection: Collection,
+  { isCollectionReadable = true } = {},
+) {
+  const database = createSampleDatabase();
+  return [
+    {
+      ...database,
+      tables: database.tables?.map((table) =>
+        table.id === ORDERS_ID
+          ? {
+              ...table,
+              collection_id: collection.id,
+              collection: isCollectionReadable ? collection : undefined,
+            }
+          : table,
+      ),
+    },
+  ];
+}
+
 const OTHER_DB_ID = 2;
 const OTHER_DB_TABLE_ID = 9001;
 const REVENUE_METRIC_ID = 9002;
@@ -291,7 +313,7 @@ function setup({
       collection: LIBRARY_DATA_SUBFOLDER,
       collectionItems: [
         createMockCollectionItem({
-          id: getNextId(),
+          id: ORDERS_ID,
           name: "Finance Orders",
           model: "table",
           database_id: SAMPLE_DB_ID,
@@ -313,7 +335,7 @@ function setup({
       collection: CLIENT_B_COLLECTION,
       collectionItems: [
         createMockCollectionItem({
-          id: getNextId(),
+          id: ORDERS_ID,
           name: "Client B Accounts",
           model: "table",
           database_id: SAMPLE_DB_ID,
@@ -1019,6 +1041,121 @@ describe("DataSourceSelector", () => {
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
       expect(screen.queryByText("Published Elsewhere")).not.toBeInTheDocument();
       expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should open on the Library folder holding the table, not Raw Data, when reopened with a published table", async () => {
+      setup({
+        ...setupOpts,
+        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        libraryCollection: LIBRARY_COLLECTION,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Finance Orders")).toBeInTheDocument();
+      expect(screen.getByLabelText("Finance Orders")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.queryByText("Published Orders")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("saved-entity-back-navigation"),
+      ).toHaveTextContent("Data");
+    });
+
+    it("should open on the Library folder holding the table when reopened with a published table and the user can't read Data itself", async () => {
+      setup({
+        ...setupOpts,
+        databases: createDatabasesWithOrdersPublishedIn(CLIENT_B_COLLECTION),
+        libraryCollection: LIBRARY_COLLECTION_WITH_UNREADABLE_DATA,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Client B Accounts")).toBeInTheDocument();
+      expect(screen.getByLabelText("Client B Accounts")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.queryByText("Client A Orders")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should open the join on the Library folder holding the table when it is reopened with a published table", async () => {
+      setup({
+        ...setupOpts,
+        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        libraryCollection: LIBRARY_COLLECTION,
+        isJoinStep: true,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Finance Orders")).toBeInTheDocument();
+      expect(screen.getByLabelText("Finance Orders")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.queryByText("Published Orders")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the Library, when reopened with a table that isn't published", async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, as core does, when reopened with a published table whose Library folder the user can't read", async () => {
+      setup({
+        ...setupOpts,
+        databases: createDatabasesWithOrdersPublishedIn(
+          LIBRARY_DATA_SUBFOLDER,
+          { isCollectionReadable: false },
+        ),
+        libraryCollection: LIBRARY_COLLECTION,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
+    });
+
+    it('should open the tables, not the Library, when reopened with a published table and `entityTypes` = ["table"]', async () => {
+      setup({
+        ...setupOpts,
+        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        libraryCollection: LIBRARY_COLLECTION,
+        entityTypes: ["table"],
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
+    });
+
+    it("should go back to the Data and Metrics folders from a reopened Library folder", async () => {
+      setup({
+        ...setupOpts,
+        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        libraryCollection: LIBRARY_COLLECTION,
+        entityTypes: ["semantic-layer"],
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      await userEvent.click(
+        await screen.findByTestId("saved-entity-back-navigation"),
+      );
+
+      expect(
+        await screen.findAllByTestId("data-bucket-list-item"),
+      ).toHaveLength(2);
+      expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the Library via its back button", async () => {

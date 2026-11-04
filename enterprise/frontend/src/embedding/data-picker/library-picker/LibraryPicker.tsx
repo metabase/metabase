@@ -6,6 +6,7 @@ import type { DataSource } from "metabase/embedding-sdk/types/components/data-pi
 import { Box, Icon, UnstyledButton } from "metabase/ui";
 import type {
   Collection,
+  CollectionId,
   DatabaseId,
   LibraryCollection,
 } from "metabase-types/api";
@@ -26,6 +27,8 @@ interface LibraryPickerProps {
   canSelectMetric: boolean;
   databaseId?: DatabaseId | null;
   selectedSource?: DataSource;
+  /** Opens the Data or Metrics collection holding this collection, and lists it. */
+  collectionId?: CollectionId | null;
   onSelect: (source: DataSource) => void;
   /** Without it, there's no link back to the bucket step. */
   onBack?: () => void;
@@ -41,14 +44,17 @@ export function LibraryPicker({
   canSelectMetric,
   databaseId,
   selectedSource,
+  collectionId,
   onSelect,
   onBack,
 }: LibraryPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery(
     COLLECTION_TREE_REQUEST,
   );
-  const [selectedCollectionKindId, setSelectedCollectionKindId] =
-    useState<DataTypeInfoItem["id"]>();
+  // `null` once the user went back from the collection opened for `collectionId`
+  const [selectedCollectionKindId, setSelectedCollectionKindId] = useState<
+    DataTypeInfoItem["id"] | null
+  >();
 
   if (!collections) {
     return null;
@@ -62,9 +68,11 @@ export function LibraryPicker({
   const selectedCollectionKind =
     collectionKinds.length === 1
       ? collectionKinds[0]
-      : collectionKinds.find(
-          (collectionKind) =>
-            collectionKind.infoItem.id === selectedCollectionKindId,
+      : collectionKinds.find((collectionKind) =>
+          selectedCollectionKindId === undefined
+            ? collectionId != null &&
+              findCollectionById(collectionKind.collections, collectionId)
+            : collectionKind.infoItem.id === selectedCollectionKindId,
         );
 
   if (selectedCollectionKind) {
@@ -73,12 +81,13 @@ export function LibraryPicker({
         type={selectedCollectionKind.type}
         libraryCollections={selectedCollectionKind.collections}
         selectedSource={selectedSource}
+        collectionId={collectionId}
         databaseId={databaseId}
         onSelect={onSelect}
         onBack={
           collectionKinds.length === 1
             ? onBack
-            : () => setSelectedCollectionKindId(undefined)
+            : () => setSelectedCollectionKindId(null)
         }
       />
     );
