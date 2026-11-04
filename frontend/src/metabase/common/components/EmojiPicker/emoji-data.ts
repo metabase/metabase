@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { EmojiData, EmojiDataResolver } from "frimousse";
 
 import { throwIfSignalAborted } from "metabase/utils/retry";

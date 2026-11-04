@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";

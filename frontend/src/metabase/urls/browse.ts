@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import slugg from "slugg";
 
 import type DatabaseV1 from "metabase-lib/v1/metadata/Database";

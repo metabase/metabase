@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   BOOLEAN,

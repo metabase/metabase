@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { ThunkAction, UnknownAction } from "@reduxjs/toolkit";
 
 import type {

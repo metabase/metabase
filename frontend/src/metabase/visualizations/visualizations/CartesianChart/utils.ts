@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { EChartsCoreOption } from "echarts/core";
 
 import { dayjs } from "metabase/dayjs";

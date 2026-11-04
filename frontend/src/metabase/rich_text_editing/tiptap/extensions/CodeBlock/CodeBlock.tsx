@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { NodeViewProps } from "@tiptap/core";
 import { CodeBlock, type CodeBlockOptions } from "@tiptap/extension-code-block";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";

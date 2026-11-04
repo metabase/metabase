@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { permissionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
 import { navigate } from "metabase/router";

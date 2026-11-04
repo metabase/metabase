@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import slugg from "slugg";
 
 import MetabaseSettings from "metabase/utils/settings";

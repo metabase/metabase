@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Group } from "@visx/group";
 import { init } from "echarts/core";
 

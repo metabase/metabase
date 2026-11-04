@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createSelector } from "@reduxjs/toolkit";
 
 import { ACTIVE_USERS_NUDGE_THRESHOLD } from "metabase/admin/people/constants";

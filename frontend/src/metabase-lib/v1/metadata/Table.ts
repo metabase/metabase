@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import { singularize } from "metabase/utils/formatting";
 import type { Measure, NormalizedTable, Segment } from "metabase-types/api";

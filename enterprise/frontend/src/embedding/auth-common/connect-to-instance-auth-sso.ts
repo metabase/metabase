@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as MetabaseError from "embedding-sdk-shared/errors";
 import type { MetabaseAuthMethod } from "embedding-sdk-shared/types/auth-config";
 

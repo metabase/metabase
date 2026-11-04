@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
