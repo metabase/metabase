@@ -837,25 +837,53 @@
                                       (when-not reply? (step-limit-message))))
                   (ended-loop-state loop-state result' reason nil))))))))))
 
+(def ^:private finish-reason->result
+  "The top-level `result` of an agent_turn_finished event for each finish reason, so a fleet query that
+  filters `ai_service_event` on `result` counts failed turns the way it counts failed tool calls.
+
+  A turn succeeds when the user got what the turn could give:
+  - `:stop`           the model ended its answer
+  - `:terminal-tool`  a terminal tool completed the turn
+  - `:reduced`        the client cancelled or disconnected; the server did not fail
+
+  A turn fails when the user got no answer, or an incomplete one:
+  - `:error`           the LLM call failed, or an exception escaped the loop
+  - `:terminal-error`  a tool failed unrecoverably, only the user can act
+  - `:max-iterations`  the step cap was reached with tool calls still pending
+  - `:empty-response`  the model returned nothing
+  - `:length`          the provider cut the answer at its output-token limit"
+  {:stop           "success"
+   :terminal-tool  "success"
+   :reduced        "success"
+   :error          "error"
+   :terminal-error "error"
+   :max-iterations "error"
+   :empty-response "error"
+   :length         "error"})
+
 (defn- report-turn-finished!
   "Fires one agent_turn_finished :snowplow/ai_service_event per turn, with the request id of the turn's
   agent_used_tool events, so the fleet view can join a turn to its tool calls. Fires only when :source and
-  :request-id are present in tracking-opts, like the tool event. The details carry the finish reason and the
-  number of steps (LLM calls) the turn took; `steps` is absent when the turn died before its first step."
+  :request-id are present in tracking-opts, like the tool event. `result` is success or error by
+  [[finish-reason->result]]. The details carry the finish reason and the number of steps (LLM calls) the turn
+  took; `steps` is absent when the turn died before its first step."
   [{:keys [request-id session-id source profile-id]} finish-reason steps duration-ms]
   (when (and (some? source)
              (some? request-id))
     (analytics.core/track-event! :snowplow/ai_service_event
-                                 {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
-                                  :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
-                                  :source                        source
-                                  :event                         "agent_turn_finished"
-                                  :user-id                       api/*current-user-id*
-                                  :session-id                    session-id
-                                  :profile                       (some-> profile-id name)
-                                  :duration-ms                   (long duration-ms)
-                                  :event-details                 (cond-> {"finish_reason" (name finish-reason)}
-                                                                   (some? steps) (assoc "steps" steps))})))
+                                 (cond-> {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                          :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                          :source                        source
+                                          :event                         "agent_turn_finished"
+                                          :user-id                       api/*current-user-id*
+                                          :session-id                    session-id
+                                          :profile                       (some-> profile-id name)
+                                          :duration-ms                   (long duration-ms)
+                                          :event-details                 (cond-> {"finish_reason" (name finish-reason)}
+                                                                           (some? steps) (assoc "steps" steps))}
+                                   ;; a reason outside the map leaves `result` unset rather than failing the event
+                                   (contains? finish-reason->result finish-reason)
+                                   (assoc :result (finish-reason->result finish-reason))))))
 
 ;;; Public API
 

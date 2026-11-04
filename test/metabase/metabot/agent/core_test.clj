@@ -2060,6 +2060,7 @@
                                       "session_id"    "00000000-0000-0000-0000-000000000003"
                                       "request_id"    string?
                                       "duration_ms"   nat-int?
+                                      "result"        "success"
                                       "event_details" {"finish_reason" "stop"
                                                        "steps"         2}}}]
                           turn-events))
@@ -2079,7 +2080,8 @@
                                       (snowplow-test/pop-event-data-and-user-id!))]
               (is (= 1 (count turn-events)))
               (is (=? {"session_id"  "00000000-0000-0000-0000-000000000004"
-                       "duration_ms" nat-int?}
+                       "duration_ms" nat-int?
+                       "result"      "error"}
                       (:data (first turn-events))))
               (is (= {"finish_reason" "error"}
                      (get-in (first turn-events) [:data "event_details"]))))))))))
