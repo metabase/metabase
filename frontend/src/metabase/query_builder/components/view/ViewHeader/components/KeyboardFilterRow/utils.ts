@@ -424,7 +424,7 @@ function getNumberValueKind(operator: Lib.NumberFilterOperator): ValueKind {
 
 const OPERATOR_ALIASES: Partial<Record<string, string[]>> = {
   "=": ["=", "==", "==="],
-  "!=": ["!=", "!==", "<>", "≠"],
+  "!=": ["!=", "!==", "≠"],
   ">": [">"],
   "<": ["<"],
   ">=": [">=", "=>", "≥"],
