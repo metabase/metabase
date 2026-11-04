@@ -193,6 +193,8 @@
                                   :has_notebook_query       has-notebook?
                                   :has_query_tools          (or has-sql? has-notebook?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  ;; Off when an admin turns docs lookup off (the tool's capability is gone).
+                                  :has_docs_tool            (contains? tools "search_metabase_documentation")
                                   ;; run_query reads values only from a query the model can build and run: a
                                   ;; notebook query, or SQL where run_query may run it.
                                   :has_query_execution      (and (contains? tools "run_query")

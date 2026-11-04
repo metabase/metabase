@@ -114,6 +114,22 @@
   :default    true
   :export?    false)
 
+(defsetting metabot-docs-search-enabled?
+  (deferred-tru "Whether Metabot can look up the Metabase docs to answer questions about Metabase itself. The question is sent to the Metabase docs assistant (docs.metabase.fyi); no data from this instance is.")
+  :type       :boolean
+  :visibility :admin
+  :default    true
+  :export?    false)
+
+(defsetting metabot-docs-api-url
+  "Base URL of the Metabase docs assistant API, which `search_metabase_documentation` calls."
+  :type       :string
+  :visibility :internal
+  :default    "https://docs.metabase.fyi"
+  :encryption :no
+  :export?    false
+  :doc        false)
+
 (defsetting metabot-sql-execution-enabled?
   "Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL."
   :type       :boolean

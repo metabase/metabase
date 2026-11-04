@@ -75,7 +75,9 @@
          (when (premium-features/has-feature? :semantic-search)
            :feature-semantic-search)
          (when (metabot.settings/metabot-query-execution-enabled?)
-           :feature-query-execution)]))
+           :feature-query-execution)
+         (when (metabot.settings/metabot-docs-search-enabled?)
+           :feature-docs-search)]))
 
 (defn- feature-capability?
   [cap]
