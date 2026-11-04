@@ -617,22 +617,20 @@
   ([]
    (start-refresher! tick-interval-ms))
   ([interval-ms]
-   (let [started? (volatile! false)]
-     (system/ensure-started!
-      refresher-component
-      (fn []
-        (vreset! started? true)
-        (doto (Executors/newSingleThreadScheduledExecutor
-               (reify ThreadFactory
-                 (newThread [_ r]
-                   (doto (Thread. r "premium-features-token-refresher")
-                     (.setDaemon true)))))
-          (.scheduleWithFixedDelay ^Runnable safe-tick! (long interval-ms) (long interval-ms) TimeUnit/MILLISECONDS)))
-      (fn [^ScheduledExecutorService exec]
-        (.shutdownNow exec)
-        (when-not (.awaitTermination exec 5 TimeUnit/SECONDS)
-          (log/warn "The premium features token refresher did not stop within 5s."))))
-     @started?)))
+   (second
+    (system/start!
+     refresher-component
+     (fn []
+       (doto (Executors/newSingleThreadScheduledExecutor
+              (reify ThreadFactory
+                (newThread [_ r]
+                  (doto (Thread. r "premium-features-token-refresher")
+                    (.setDaemon true)))))
+         (.scheduleWithFixedDelay ^Runnable safe-tick! (long interval-ms) (long interval-ms) TimeUnit/MILLISECONDS)))
+     (fn [^ScheduledExecutorService exec]
+       (.shutdownNow exec)
+       (when-not (.awaitTermination exec 5 TimeUnit/SECONDS)
+         (log/warn "The premium features token refresher did not stop within 5s.")))))))
 
 (defn stop-refresher!
   "Stop the thread started by [[start-refresher!]]. Halting the global system stops it too."
@@ -651,12 +649,13 @@
   [token-hash]
   ;; `:ticked-for-token-hash` gives each new token one early tick
   (when-let [^ScheduledExecutorService exec @refresher-component]
-    (when (and (not= token-hash (:token-hash (:last-failure (state))))
-               (not= token-hash (:ticked-for-token-hash (first (swap-state! assoc :ticked-for-token-hash token-hash)))))
-      (try
-        (.execute exec ^Runnable safe-tick!)
-        (catch RejectedExecutionException _e
-          nil)))))
+    (when (not= token-hash (get-in (state) [:last-failure :token-hash]))
+      (let [[previous] (swap-state! assoc :ticked-for-token-hash token-hash)]
+        (when (not= token-hash (:ticked-for-token-hash previous))
+          (try
+            (.execute exec ^Runnable safe-tick!)
+            (catch RejectedExecutionException _e
+              nil)))))))
 
 (defn- current-status
   []
