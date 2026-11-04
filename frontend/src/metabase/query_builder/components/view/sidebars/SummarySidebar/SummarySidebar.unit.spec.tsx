@@ -145,6 +145,50 @@ describe("SummarySidebar", () => {
     expect(getLastQuery()).toEqual({ values: ["Count"], dimensions: [] });
   });
 
+  it("doesn't rerun when a value that's already there is picked again", async () => {
+    const { onQueryChange } = setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+          },
+        ],
+      }),
+    });
+
+    await userEvent.type(screen.getByLabelText("Add a value by name"), "count");
+    const options = await screen.findAllByRole("option");
+    const countOption = options.find(
+      (option) => option.textContent === "Count of rows",
+    );
+    if (countOption == null) {
+      throw new Error("No Count of rows option");
+    }
+    await userEvent.click(countOption);
+
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
+  it("aggregates a column picked in the Summarize by typeahead with its default operator", async () => {
+    const { getLastQuery } = setup();
+
+    await userEvent.type(screen.getByLabelText("Add a value by name"), "quant");
+    const options = await screen.findAllByRole("option");
+    const quantityOption = options.find(
+      (option) => option.textContent === "Quantity",
+    );
+    if (quantityOption == null) {
+      throw new Error("No Quantity option");
+    }
+    await userEvent.click(quantityOption);
+
+    expect(getLastQuery()).toEqual({
+      values: ["Count", "Sum of Quantity"],
+      dimensions: [],
+    });
+  });
+
   it("drops the starting count without running when it's removed first", async () => {
     const { onQueryChange } = setup();
 

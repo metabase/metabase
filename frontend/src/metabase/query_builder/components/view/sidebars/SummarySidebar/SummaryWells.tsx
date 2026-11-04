@@ -11,7 +11,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import S from "./SummarySidebar.module.css";
@@ -23,13 +23,11 @@ import type {
   SummaryWellId,
 } from "./types";
 import {
-  addField,
   changeValueOperator,
   getDimensionItems,
   getValueItems,
   getValueOperatorOptions,
   getWellFieldSections,
-  removeItem,
 } from "./utils";
 
 type SummaryWellsProps = {
@@ -37,21 +35,21 @@ type SummaryWellsProps = {
   stageIndex: number;
   /** Every field the summary can be built from; each well offers its own part. */
   sections: SummaryFieldSection[];
-  /** Whether the Count chip is the starting one, shown but not yet run. */
-  isStartingCountHeld: boolean;
+  /** A field was picked in a well's typeahead. */
+  onPick: (wellId: SummaryWellId, field: SummaryField) => void;
+  /** A chip was removed or changed. */
   onChange: (nextQuery: Lib.Query, wellId: SummaryWellId) => void;
 };
 
 /**
  * Summarize by and Group by: the stage's aggregations and breakouts as chips, each with a
- * typeahead to add more. Opens ready to type into Summarize by. Picking Count of rows while the
- * starting count is held runs it as it is.
+ * typeahead to add more. Opens ready to type into Summarize by.
  */
 export function SummaryWells({
   query,
   stageIndex,
   sections,
-  isStartingCountHeld,
+  onPick,
   onChange,
 }: SummaryWellsProps) {
   const valueItems = useMemo(
@@ -71,21 +69,10 @@ export function SummaryWells({
     [sections],
   );
 
-  const handlePick = (wellId: SummaryWellId, field: SummaryField) => {
-    const nextQuery = addField(query, stageIndex, wellId, field);
-    // a pick that changes nothing, like a metric that's already there, shouldn't rerun the
-    // question; picking Count of rows while the starting count waits is how it gets run
-    const isAppliedStartingCount =
-      field.kind === "count" && isStartingCountHeld;
-    if (nextQuery !== query || isAppliedStartingCount) {
-      onChange(nextQuery, wellId);
-    }
-  };
-
   const handleRemove = (
     wellId: SummaryWellId,
     clause: Lib.AggregationClause | Lib.BreakoutClause,
-  ) => onChange(removeItem(query, stageIndex, clause), wellId);
+  ) => onChange(Lib.removeClause(query, stageIndex, clause), wellId);
 
   return (
     <Box className={S.wells} data-testid="summary-wells">
@@ -95,10 +82,13 @@ export function SummaryWells({
           sections={valueSections}
           hasItems={valueItems.length > 0}
           autoFocus
-          onPick={(field) => handlePick("values", field)}
-          onRemoveLast={() =>
-            handleRemove("values", valueItems[valueItems.length - 1].clause)
-          }
+          onPick={(field) => onPick("values", field)}
+          onRemoveLast={() => {
+            const lastItem = valueItems.at(-1);
+            if (lastItem) {
+              handleRemove("values", lastItem.clause);
+            }
+          }}
         >
           {valueItems.map((item, index) => (
             <ValueChip
@@ -106,13 +96,7 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
-              onChangeOperator={(operator) =>
-                item.kind === "column" &&
-                onChange(
-                  changeValueOperator(query, stageIndex, item, operator),
-                  "values",
-                )
-              }
+              onChange={(nextQuery) => onChange(nextQuery, "values")}
               onRemove={() => handleRemove("values", item.clause)}
             />
           ))}
@@ -123,13 +107,13 @@ export function SummaryWells({
           wellId="columns"
           sections={columnSections}
           hasItems={dimensionItems.length > 0}
-          onPick={(field) => handlePick("columns", field)}
-          onRemoveLast={() =>
-            handleRemove(
-              "columns",
-              dimensionItems[dimensionItems.length - 1].clause,
-            )
-          }
+          onPick={(field) => onPick("columns", field)}
+          onRemoveLast={() => {
+            const lastItem = dimensionItems.at(-1);
+            if (lastItem) {
+              handleRemove("columns", lastItem.clause);
+            }
+          }}
         >
           {dimensionItems.map((item, index) => (
             <WellChip
@@ -149,7 +133,6 @@ export function SummaryWells({
 // clicks on these keep their own behavior instead of focusing the well's field
 const INTERACTIVE_SELECTOR =
   "button, input, a, [role='button'], [contenteditable='true']";
-const FIELD_SELECTOR = "input";
 
 type SummaryWellProps = {
   wellId: SummaryWellId;
@@ -166,8 +149,7 @@ function SummaryWell({ wellId, title, children }: SummaryWellProps) {
     ) {
       return;
     }
-    const field =
-      event.currentTarget.querySelector<HTMLElement>(FIELD_SELECTOR);
+    const field = event.currentTarget.querySelector("input");
     if (field) {
       // keep the mousedown from blurring the field we're about to focus
       event.preventDefault();
@@ -230,7 +212,7 @@ type ValueChipProps = {
   query: Lib.Query;
   stageIndex: number;
   item: SummaryValueItem;
-  onChangeOperator: (operator: Lib.AggregationOperator) => void;
+  onChange: (nextQuery: Lib.Query) => void;
   onRemove: () => void;
 };
 
@@ -238,7 +220,7 @@ function ValueChip({
   query,
   stageIndex,
   item,
-  onChangeOperator,
+  onChange,
   onRemove,
 }: ValueChipProps) {
   return (
@@ -248,7 +230,7 @@ function ValueChip({
           query={query}
           stageIndex={stageIndex}
           item={item}
-          onChangeOperator={onChangeOperator}
+          onChange={onChange}
         />
       ) : (
         <>
@@ -264,7 +246,7 @@ type ColumnValueMenuProps = {
   query: Lib.Query;
   stageIndex: number;
   item: Extract<SummaryValueItem, { kind: "column" }>;
-  onChangeOperator: (operator: Lib.AggregationOperator) => void;
+  onChange: (nextQuery: Lib.Query) => void;
 };
 
 /** A column value's chip: picks how the column is aggregated. */
@@ -272,7 +254,7 @@ function ColumnValueMenu({
   query,
   stageIndex,
   item,
-  onChangeOperator,
+  onChange,
 }: ColumnValueMenuProps) {
   const options = useMemo(
     () => getValueOperatorOptions(query, stageIndex, item),
@@ -297,7 +279,11 @@ function ColumnValueMenu({
             rightSection={
               option.isSelected ? <Icon name="check" aria-hidden /> : null
             }
-            onClick={() => onChangeOperator(option.operator)}
+            onClick={() =>
+              onChange(
+                changeValueOperator(query, stageIndex, item, option.operator),
+              )
+            }
           >
             {option.displayName}
           </Menu.Item>

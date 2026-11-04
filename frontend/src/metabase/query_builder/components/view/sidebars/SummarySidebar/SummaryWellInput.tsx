@@ -54,11 +54,19 @@ function getCardFrame(field: HTMLElement): DropdownFrame | null {
   };
 }
 
-function getPlaceholder(wellId: SummaryWellId, hasItems: boolean) {
-  if (hasItems) {
-    return wellId === "values" ? t`Add a value…` : t`Add a column…`;
+function getFieldTexts(wellId: SummaryWellId, hasItems: boolean) {
+  if (wellId === "values") {
+    return {
+      label: t`Add a value by name`,
+      placeholder: hasItems ? t`Add a value…` : t`Type a metric or column`,
+      noMatches: t`No matching metrics or columns`,
+    };
   }
-  return wellId === "values" ? t`Type a metric or column` : t`Type a column`;
+  return {
+    label: t`Add a grouping by name`,
+    placeholder: hasItems ? t`Add a column…` : t`Type a column`,
+    noMatches: t`No matching columns`,
+  };
 }
 
 function getOptionValue(sectionKey: string, itemKey: string) {
@@ -102,6 +110,7 @@ export function SummaryWellInput({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
   const [searchText, setSearchText] = useState("");
+  const texts = getFieldTexts(wellId, hasItems);
 
   useEffect(() => {
     if (autoFocus) {
@@ -114,7 +123,6 @@ export function SummaryWellInput({
     [sections, searchText],
   );
   // highlight the best match once the filtered options render, so Enter picks it
-  // rather than whatever sat first in the previous list
   const comboboxRef = useLatest(combobox);
   useEffect(() => {
     if (searchText.length > 0) {
@@ -138,7 +146,7 @@ export function SummaryWellInput({
     }
   };
 
-  // the typeahead waits for the first character, so focusing a well doesn't cover the wells below
+  // the dropdown waits for the first character, so focusing a well doesn't cover the one below
   const handleSearchChange = (text: string) => {
     setSearchText(text);
     if (text.trim().length > 0) {
@@ -180,13 +188,9 @@ export function SummaryWellInput({
             <PillsInput.Field
               ref={inputRef}
               className={S.wellFieldInput}
-              placeholder={getPlaceholder(wellId, hasItems)}
+              placeholder={texts.placeholder}
               value={searchText}
-              aria-label={
-                wellId === "values"
-                  ? t`Add a value by name`
-                  : t`Add a grouping by name`
-              }
+              aria-label={texts.label}
               data-testid={`summary-well-input-${wellId}`}
               onChange={(event) =>
                 handleSearchChange(event.currentTarget.value)
@@ -203,11 +207,7 @@ export function SummaryWellInput({
           style={{ overflowY: "auto" }}
         >
           {matchingSections.length === 0 && (
-            <Combobox.Empty>
-              {wellId === "values"
-                ? t`No matching metrics or columns`
-                : t`No matching columns`}
-            </Combobox.Empty>
+            <Combobox.Empty>{texts.noMatches}</Combobox.Empty>
           )}
           {matchingSections.map((section) => (
             <Combobox.Group key={section.key} label={section.name}>

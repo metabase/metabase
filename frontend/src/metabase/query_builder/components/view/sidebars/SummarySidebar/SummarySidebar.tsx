@@ -70,20 +70,23 @@ export function SummarySidebar({
     }
   };
 
+  const handleAdd = (wellId: SummaryWellId, field: SummaryField) => {
+    const nextQuery = addField(query, stageIndex, wellId, field);
+    // picking Count of rows while the starting count waits is how it gets run; any other
+    // pick that changes nothing, like a metric that's already there, shouldn't rerun the question
+    const isStartingCountPicked =
+      field.kind === "count" && hasDefaultAggregation;
+    if (nextQuery !== query || isStartingCountPicked) {
+      handleChange(nextQuery, wellId);
+    }
+  };
+
   const handleFieldSelect = (field: SummaryField) => {
     const wellId = getFieldWellId(field);
     handleChange(
       replaceWellWithField(query, stageIndex, wellId, field),
       wellId,
     );
-  };
-
-  const handleFieldAdd = (field: SummaryField) => {
-    const wellId = getFieldWellId(field);
-    const nextQuery = addField(query, stageIndex, wellId, field);
-    if (nextQuery !== query) {
-      handleChange(nextQuery, wellId);
-    }
   };
 
   const handleClearAll = () =>
@@ -104,7 +107,7 @@ export function SummarySidebar({
           query={query}
           stageIndex={stageIndex}
           sections={sections}
-          isStartingCountHeld={hasDefaultAggregation}
+          onPick={handleAdd}
           onChange={handleChange}
         />
         <Flex className={S.wellsFooter} align="center" justify="space-between">
@@ -140,7 +143,7 @@ export function SummarySidebar({
         <SummaryFieldList
           sections={sections}
           onSelect={handleFieldSelect}
-          onAdd={handleFieldAdd}
+          onAdd={(field) => handleAdd(getFieldWellId(field), field)}
         />
       </Box>
     </Box>

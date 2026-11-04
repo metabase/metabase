@@ -1,7 +1,9 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 import type {
   SummaryDimensionItem,
@@ -14,35 +16,14 @@ import type {
 } from "./types";
 
 const DEFAULT_OPERATOR_SHORT_NAMES = ["sum", "distinct"];
+const VALUE_SECTION_KEYS = ["measures", "metrics"];
 
-function getMeasureItems(
-  query: Lib.Query,
-  stageIndex: number,
-): SummaryFieldItem[] {
-  return Lib.availableMeasures(query, stageIndex).map((measure) => {
-    const { name, displayName } = Lib.displayInfo(query, stageIndex, measure);
-    return {
-      key: name,
-      name: displayName,
-      icon: "ruler",
-      field: { kind: "measure", measure },
-    };
-  });
-}
-
-function getMetricItems(
-  query: Lib.Query,
-  stageIndex: number,
-): SummaryFieldItem[] {
-  return Lib.availableMetrics(query, stageIndex).map((metric) => {
-    const { name, displayName } = Lib.displayInfo(query, stageIndex, metric);
-    return {
-      key: name,
-      name: displayName,
-      icon: "metric",
-      field: { kind: "metric", metric },
-    };
-  });
+function toFieldItem(
+  { name, displayName }: { name: string; displayName: string },
+  icon: IconName,
+  field: SummaryField,
+): SummaryFieldItem {
+  return { key: name, name: displayName, icon, field };
 }
 
 function getColumnSections(
@@ -50,25 +31,17 @@ function getColumnSections(
   stageIndex: number,
 ): SummaryFieldSection[] {
   const columns = Lib.breakoutableColumns(query, stageIndex);
-  return Lib.groupColumns(columns).map((group, groupIndex) => {
-    const { displayName } = Lib.displayInfo(query, stageIndex, group);
-    const items = Lib.getColumnsFromColumnGroup(group).map(
-      (column): SummaryFieldItem => {
-        const { name, displayName } = Lib.displayInfo(
-          query,
-          stageIndex,
-          column,
-        );
-        return {
-          key: name,
-          name: displayName,
-          icon: getColumnIcon(column),
-          field: { kind: "column", column },
-        };
-      },
-    );
-    return { key: `table-${groupIndex}`, name: displayName, items };
-  });
+  return Lib.groupColumns(columns).map((group, groupIndex) => ({
+    key: `table-${groupIndex}`,
+    name: Lib.displayInfo(query, stageIndex, group).displayName,
+    items: Lib.getColumnsFromColumnGroup(group).map((column) =>
+      toFieldItem(
+        Lib.displayInfo(query, stageIndex, column),
+        getColumnIcon(column),
+        { kind: "column", column },
+      ),
+    ),
+  }));
 }
 
 function withoutEmptySections(sections: SummaryFieldSection[]) {
@@ -88,12 +61,22 @@ export function getFieldSections(
     {
       key: "measures",
       name: t`Measures`,
-      items: getMeasureItems(query, stageIndex),
+      items: Lib.availableMeasures(query, stageIndex).map((measure) =>
+        toFieldItem(Lib.displayInfo(query, stageIndex, measure), "ruler", {
+          kind: "measure",
+          measure,
+        }),
+      ),
     },
     {
       key: "metrics",
       name: t`Metrics`,
-      items: getMetricItems(query, stageIndex),
+      items: Lib.availableMetrics(query, stageIndex).map((metric) =>
+        toFieldItem(Lib.displayInfo(query, stageIndex, metric), "metric", {
+          kind: "metric",
+          metric,
+        }),
+      ),
     },
     ...getColumnSections(query, stageIndex),
   ]);
@@ -108,27 +91,25 @@ export function getWellFieldSections(
   sections: SummaryFieldSection[],
   wellId: SummaryWellId,
 ): SummaryFieldSection[] {
-  const isValueSection = (section: SummaryFieldSection) =>
-    section.key === "measures" || section.key === "metrics";
+  const [valueSections, columnSections] = _.partition(sections, (section) =>
+    VALUE_SECTION_KEYS.includes(section.key),
+  );
   if (wellId === "columns") {
-    return sections.filter((section) => !isValueSection(section));
+    return columnSections;
   }
-  return [
-    {
-      key: "count",
-      name: t`Basic`,
-      items: [
-        {
-          key: "count",
-          name: t`Count of rows`,
-          icon: "sum",
-          field: { kind: "count" },
-        },
-      ],
-    },
-    ...sections.filter(isValueSection),
-    ...sections.filter((section) => !isValueSection(section)),
-  ];
+  const countSection: SummaryFieldSection = {
+    key: "count",
+    name: t`Basic`,
+    items: [
+      {
+        key: "count",
+        name: t`Count of rows`,
+        icon: "sum",
+        field: { kind: "count" },
+      },
+    ],
+  };
+  return [countSection, ...valueSections, ...columnSections];
 }
 
 /**
@@ -222,13 +203,10 @@ function getDefaultOperatorOption(
     Lib.availableAggregationOperators(query, stageIndex),
     column,
   );
-  return (
-    DEFAULT_OPERATOR_SHORT_NAMES.map((shortName) =>
-      options.find((option) => option.shortName === shortName),
-    ).find((option) => option != null) ??
-    options[0] ??
-    null
+  const preferredOptions = DEFAULT_OPERATOR_SHORT_NAMES.map((shortName) =>
+    options.find((option) => option.shortName === shortName),
   );
+  return [...preferredOptions, options[0]].find((option) => option) ?? null;
 }
 
 function getColumnAggregation(
@@ -334,10 +312,7 @@ function getMeasureKey(
   return Lib.displayInfo(query, stageIndex, measure).name;
 }
 
-/**
- * Whether Summarize by already has `field`. A metric or measure from the field list carries no
- * position in this query, so it's looked up among the query's own.
- */
+// a metric or measure from the field list carries no position in this query, so the query's own is looked up
 function hasValue(
   query: Lib.Query,
   stageIndex: number,
@@ -377,7 +352,7 @@ function hasValue(
 /**
  * Adds `field` to a well: as a breakout in Group by, or as an aggregation in Summarize by, a
  * column with its default operator. Returns `query` itself when the well already has the field,
- * or when a column can't be aggregated. A column that can't be grouped is left to `Lib.breakout`.
+ * or when a column can't be aggregated.
  */
 export function addField(
   query: Lib.Query,
@@ -419,15 +394,6 @@ export function addField(
         ? query
         : Lib.aggregate(query, stageIndex, field.measure);
   }
-}
-
-/** Takes a chip off its well, dropping the clauses that depend on it too. */
-export function removeItem(
-  query: Lib.Query,
-  stageIndex: number,
-  clause: Lib.AggregationClause | Lib.BreakoutClause,
-): Lib.Query {
-  return Lib.removeClause(query, stageIndex, clause);
 }
 
 /** Empties a well, dropping the clauses that depend on its contents too. */

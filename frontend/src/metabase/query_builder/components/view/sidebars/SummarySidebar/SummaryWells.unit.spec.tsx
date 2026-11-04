@@ -7,7 +7,7 @@ import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { SummaryWells } from "./SummaryWells";
-import type { SummaryWellId } from "./types";
+import type { SummaryField, SummaryWellId } from "./types";
 import { getDimensionItems, getFieldSections, getValueItems } from "./utils";
 
 const STAGE_INDEX = -1;
@@ -31,21 +31,18 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
-  isStartingCountHeld?: boolean;
 };
 
-function setup({
-  spec = SUMMARIZED_QUERY,
-  isStartingCountHeld = false,
-}: SetupOpts = {}) {
+function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
+  const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryWellId]>();
   renderWithProviders(
     <SummaryWells
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
-      isStartingCountHeld={isStartingCountHeld}
+      onPick={onPick}
       onChange={onChange}
     />,
   );
@@ -62,7 +59,7 @@ function setup({
     };
   }
 
-  return { onChange, getLastChange };
+  return { onPick, onChange, getLastChange };
 }
 
 function getChipLabels(wellId: SummaryWellId) {
@@ -131,78 +128,40 @@ describe("SummaryWells", () => {
     expect(getLastChange().values).toEqual(["Count", "Average of Total"]);
   });
 
-  it("adds a grouping from the Group by typeahead", async () => {
-    const { getLastChange } = setup();
+  it("picks a grouping from the Group by typeahead", async () => {
+    const { onPick, onChange } = setup();
 
     await userEvent.type(getGroupingField(), "categ");
     await userEvent.click(await findOption("Category"));
 
-    expect(getLastChange()).toEqual({
-      wellId: "columns",
-      values: ["Count", "Sum of Total"],
-      dimensions: ["Created At: Month", "Product → Category"],
-    });
+    expect(onPick).toHaveBeenCalledTimes(1);
+    const [wellId, field] = onPick.mock.calls[0];
+    expect(wellId).toBe("columns");
+    expect(field.kind).toBe("column");
+    expect(onChange).not.toHaveBeenCalled();
     expect(getGroupingField()).toHaveValue("");
   });
 
-  it("adds Count of rows from the Summarize by typeahead with Enter", async () => {
-    const { getLastChange } = setup({ spec: DEFAULT_TEST_QUERY });
+  it("picks Count of rows from the Summarize by typeahead with Enter", async () => {
+    const { onPick } = setup({ spec: DEFAULT_TEST_QUERY });
 
     await userEvent.type(getValuesField(), "count");
     await findOption("Count of rows");
     await userEvent.keyboard("{Enter}");
 
-    expect(getLastChange()).toEqual({
-      wellId: "values",
-      values: ["Count"],
-      dimensions: [],
-    });
+    expect(onPick).toHaveBeenCalledWith("values", { kind: "count" });
   });
 
-  it("doesn't change anything when a value that's already there is picked again", async () => {
-    const { onChange } = setup();
-
-    await userEvent.type(getValuesField(), "count");
-    await userEvent.click(await findOption("Count of rows"));
-
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("applies the held starting count when Count of rows is picked", async () => {
-    const { onChange, getLastChange } = setup({
-      spec: {
-        stages: [
-          {
-            source: { type: "table", id: ORDERS_ID },
-            aggregations: [{ type: "operator", operator: "count" }],
-          },
-        ],
-      },
-      isStartingCountHeld: true,
-    });
-
-    await userEvent.type(getValuesField(), "count");
-    await userEvent.click(await findOption("Count of rows"));
-
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(getLastChange()).toEqual({
-      wellId: "values",
-      values: ["Count"],
-      dimensions: [],
-    });
-  });
-
-  it("aggregates a column picked in the Summarize by typeahead with its default operator", async () => {
-    const { getLastChange } = setup();
+  it("offers the columns to Summarize by as well", async () => {
+    const { onPick } = setup();
 
     await userEvent.type(getValuesField(), "quant");
     await userEvent.click(await findOption("Quantity"));
 
-    expect(getLastChange()).toEqual({
-      wellId: "values",
-      values: ["Count", "Sum of Total", "Sum of Quantity"],
-      dimensions: ["Created At: Month"],
-    });
+    expect(onPick).toHaveBeenCalledTimes(1);
+    const [wellId, field] = onPick.mock.calls[0];
+    expect(wellId).toBe("values");
+    expect(field.kind).toBe("column");
   });
 
   it("says when nothing matches in a typeahead", async () => {

@@ -5,14 +5,12 @@
   border-left: 1px solid var(--mb-color-border-neutral);
 }
 
-/* out of flow, so a long sidebar scrolls inside the panel instead of stretching the page */
 .content {
   position: absolute;
   inset: 0;
   overflow-y: auto;
 }
 
-/* dragging across the results shouldn't select their text */
 .isResizing {
   user-select: none;
   cursor: col-resize;
