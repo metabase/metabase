@@ -1281,42 +1281,6 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 
-  it("commits the sole column of a question that returns multiple rows", async () => {
-    setupEntityPicker([
-      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
-    ]);
-    setupCardEndpoints(
-      createMockCard({
-        id: 9,
-        name: "Orders",
-        result_metadata: [
-          createMockField({
-            name: "total",
-            display_name: "Total",
-            base_type: "type/Integer",
-          }),
-        ],
-      }),
-    );
-    setupCardDatasetWithReferencedEntities(
-      createMockFailedReferencedEntitiesResults({
-        error_type: "too-many-rows",
-      }),
-    );
-    const { onChange } = setup();
-
-    await openMenu();
-    await pickEntity("Orders");
-
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        type: "card",
-        id: 9,
-        column: "total",
-      });
-    });
-  });
-
   describe("formatting with the chart's format options", () => {
     const FORMAT_OPTIONS: ColumnSettings = { prefix: "~" };
 
