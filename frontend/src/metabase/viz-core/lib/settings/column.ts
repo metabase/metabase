@@ -4,6 +4,7 @@ import _ from "underscore";
 import { getNullDisplayValue } from "metabase/utils/constants";
 import {
   currency,
+  formatNumber,
   getCurrency,
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
@@ -267,13 +268,20 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Format`;
     },
     widget: "segmentedControl",
-    getProps: () => ({
-      options: [
-        { name: "1.23", value: "decimal" },
-        { name: "123%", value: "percent" },
-        { name: "$1.23", value: "currency" },
-        { name: "1.23e+0", value: "scientific" },
-      ],
+    // Each option is the same sample value rendered in that style, so the
+    // examples reflect the column's separators and currency.
+    getProps: (_column, settings) => ({
+      options: (["decimal", "percent", "currency", "scientific"] as const).map(
+        (numberStyle) => ({
+          name: formatNumber(1.23, {
+            number_style: numberStyle,
+            number_separators: settings.number_separators,
+            currency: settings.currency,
+            currency_style: "symbol",
+          }),
+          value: numberStyle,
+        }),
+      ),
     }),
     getDefault: getDefaultNumberStyle,
     readDependencies: ["currency"],

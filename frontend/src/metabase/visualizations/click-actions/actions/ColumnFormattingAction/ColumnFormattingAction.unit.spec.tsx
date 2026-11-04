@@ -21,8 +21,8 @@ import {
 
 registerVisualizations();
 
-// A text column with no semantic type gets 5 "Display as" options, which makes
-// the widget a Select rather than a radio group.
+// A text column with no semantic type gets 5 "Display as text, link, or image"
+// options, which makes the widget a Select rather than a radio group.
 const column = createMockColumn({
   name: "PASSWORD",
   display_name: "Password",
@@ -70,7 +70,9 @@ describe("ColumnFormattingAction", () => {
     setup();
 
     const scrollContainer = await screen.findByTestId(POPOVER_TEST_ID);
-    await userEvent.click(screen.getByLabelText("Display as"));
+    await userEvent.click(
+      screen.getByLabelText("Display as text, link, or image"),
+    );
 
     const option = await screen.findByRole("option", { name: "Email link" });
     expect(scrollContainer).not.toContainElement(option);

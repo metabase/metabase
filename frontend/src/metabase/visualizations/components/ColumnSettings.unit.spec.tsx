@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ColumnSettings as ApiColumnSettings } from "metabase-types/api";
 import {
@@ -75,7 +75,60 @@ describe("ColumnSettings", () => {
       />,
     );
 
-    expect(screen.getByText("Display as")).toBeInTheDocument();
+    expect(
+      screen.getByText("Display as text, link, or image"),
+    ).toBeInTheDocument();
+  });
+
+  it("puts the number format first and Display as last for a number Field", () => {
+    renderWithProviders(
+      <ColumnSettings
+        column={createMockField({
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+          semantic_type: null,
+        })}
+        value={{}}
+      />,
+    );
+
+    const settingIds = screen
+      .getAllByTestId(/^chart-settings-widget-/)
+      .map((widget) =>
+        widget
+          .getAttribute("data-testid")
+          ?.replace("chart-settings-widget-", ""),
+      );
+    expect(settingIds.slice(0, 5)).toEqual([
+      "column_title",
+      "show_mini_bar",
+      "text_align",
+      "number_style",
+      "currency",
+    ]);
+    expect(settingIds.slice(-3)).toEqual(["view_as", "link_text", "link_url"]);
+  });
+
+  it("shows each number format as an example in the column's separators and currency", () => {
+    renderWithProviders(
+      <ColumnSettings
+        column={createMockField({
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        })}
+        value={{ number_separators: ",.", currency: "EUR" }}
+      />,
+    );
+
+    const format = within(
+      screen.getByTestId("chart-settings-widget-number_style"),
+    );
+    expect(
+      format.getAllByRole("radio").map((radio) => radio.getAttribute("value")),
+    ).toEqual(["decimal", "percent", "currency", "scientific"]);
+    ["1,23", "123%", "€1,23", "1,23e+0"].forEach((name) =>
+      expect(format.getByRole("radio", { name })).toBeInTheDocument(),
+    );
   });
 });
 
@@ -104,6 +157,7 @@ describe("ColumnSettings disabled", () => {
     expect(screen.getByTestId("prefix")).toBeDisabled();
     expect(screen.getByTestId("suffix")).toBeDisabled();
     expect(screen.getByRole("switch")).toBeDisabled();
+    expect(screen.getByLabelText("Number of decimal places")).toBeDisabled();
   });
 
   it("disables the radio settings of a disabled column", () => {
@@ -119,6 +173,7 @@ describe("ColumnSettings disabled", () => {
 
     expect(screen.getByTestId("prefix")).toBeEnabled();
     expect(screen.getByRole("switch")).toBeEnabled();
+    expect(screen.getByLabelText("Number of decimal places")).toBeEnabled();
     screen
       .getAllByRole("radio")
       .forEach((radio) => expect(radio).toBeEnabled());

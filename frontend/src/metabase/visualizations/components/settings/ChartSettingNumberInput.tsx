@@ -9,6 +9,7 @@ interface ChartSettingNumberInputProps extends Omit<
   placeholder?: string;
   min?: number;
   max?: number;
+  disabled?: boolean;
 }
 
 export const ChartSettingNumberInput = ({
@@ -18,6 +19,7 @@ export const ChartSettingNumberInput = ({
   placeholder,
   min = -Infinity,
   max = Infinity,
+  disabled,
 }: ChartSettingNumberInputProps) => {
   const handleChange = (newValue: number | string) => {
     onChange(newValue === "" ? undefined : Number(newValue));
@@ -34,6 +36,7 @@ export const ChartSettingNumberInput = ({
       allowDecimal={false}
       allowNegative={min < 0}
       hideControls={false}
+      disabled={disabled}
     />
   );
 };

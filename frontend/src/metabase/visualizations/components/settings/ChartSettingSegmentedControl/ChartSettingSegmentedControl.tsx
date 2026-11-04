@@ -9,6 +9,7 @@ export const ChartSettingSegmentedControl = ({
   options,
   onChange,
   value,
+  disabled,
 }: ChartSettingSegmentedControlProps) => {
   const handleChange = (encodedValue: string) => {
     const option = options.find(
@@ -25,6 +26,7 @@ export const ChartSettingSegmentedControl = ({
       data={options.map(getSegmentedControlItem)}
       value={encodeWidgetValue(value)}
       onChange={handleChange}
+      disabled={disabled}
     />
   );
 };

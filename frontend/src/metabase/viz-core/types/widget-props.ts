@@ -48,6 +48,7 @@ export type ChartSettingSegmentedControlProps = {
   options: ChartSettingSegmentedControlOption[];
   onChange: (value: ChartSettingSegmentedControlValue) => void;
   value: ChartSettingSegmentedControlValue;
+  disabled?: boolean;
 };
 
 export type ChartSettingGoalInputProps = {

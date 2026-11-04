@@ -101,7 +101,7 @@ You can specify whether a column should appear in the table view, or just in a d
 - Table and detail views
 - Detail views only
 
-### Display as
+### Display as text, link, or image
 
 - Text
 - Link (it's a URL people should be able to click on)
