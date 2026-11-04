@@ -1,28 +1,47 @@
 import { skipToken, useSearchQuery } from "metabase/api";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import type { SearchRequest } from "metabase-types/api";
+import type { SearchModel, SearchRequest } from "metabase-types/api";
 
 const SEARCH_PARAMS: Partial<SearchRequest> = { limit: 5 };
 
-const MEASURE_MODELS: MiniPickerPickableItem["model"][] = ["measure"];
-
-const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = [
-  "card",
+const PICKABLE_MODELS: MiniPickerPickableItem["model"][] = [
+  "measure",
   "metric",
+  "card",
 ];
 
+const MEASURE_AND_METRIC_MODELS: SearchModel[] = ["measure", "metric"];
+
+/**
+ * Without a search query, the picker lists only measures and metrics, unless
+ * the instance has none. A search query also finds questions.
+ */
 export function useEntityPickerSearch(enabled: boolean) {
-  const { data: measuresProbe } = useSearchQuery(
+  const { data: measuresAndMetricsProbe } = useSearchQuery(
     enabled
-      ? { models: ["measure"], limit: 0, context: "entity-picker" }
+      ? {
+          models: MEASURE_AND_METRIC_MODELS,
+          limit: 0,
+          context: "entity-picker",
+        }
       : skipToken,
   );
-  const shouldFallBackToQuestions = measuresProbe?.total === 0;
+  const hasNoMeasuresAndMetrics = measuresAndMetricsProbe?.total === 0;
 
   return {
-    models: shouldFallBackToQuestions
-      ? QUESTION_FALLBACK_MODELS
-      : MEASURE_MODELS,
-    searchParams: SEARCH_PARAMS,
+    models: PICKABLE_MODELS,
+    searchParams: hasNoMeasuresAndMetrics
+      ? SEARCH_PARAMS
+      : getMeasuresAndMetricsFirstSearchParams,
   };
+}
+
+function getMeasuresAndMetricsFirstSearchParams({
+  q,
+}: SearchRequest): Partial<SearchRequest> {
+  const hasSearchQuery = Boolean(q?.trim());
+
+  return hasSearchQuery
+    ? SEARCH_PARAMS
+    : { ...SEARCH_PARAMS, models: MEASURE_AND_METRIC_MODELS };
 }

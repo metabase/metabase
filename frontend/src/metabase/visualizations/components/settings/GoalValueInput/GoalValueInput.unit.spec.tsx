@@ -65,6 +65,12 @@ const DATA = createMockDatasetData({
 
 const DATASET_QUERY = createMockStructuredDatasetQuery();
 
+const GOAL_SOURCES = [
+  createMockSearchResult({ id: 4, model: "measure", name: "Goal measure" }),
+  createMockSearchResult({ id: 12, model: "metric", name: "Goal metric" }),
+  createMockSearchResult({ id: 15, model: "card", name: "Goal question" }),
+];
+
 type SetupOpts = {
   data?: DatasetData;
   excludedSelfColumn?: string;
@@ -837,24 +843,55 @@ describe("GoalValueInput", () => {
     expect(screen.queryByText(/Other question/)).not.toBeInTheDocument();
   });
 
-  it("searches questions and metrics, but not models, when the instance has no measures", async () => {
+  it("lists only measures and metrics without a search query when the instance has any (GDGT-3457)", async () => {
+    setupEntityPicker(GOAL_SOURCES);
+    setup();
+
+    await openEntityPicker();
+
+    expect(await screen.findByText("Goal measure")).toBeInTheDocument();
+    expect(screen.getByText("Goal metric")).toBeInTheDocument();
+    expect(screen.queryByText("Goal question")).not.toBeInTheDocument();
+  });
+
+  it("searches questions, metrics, and measures with a search query when the instance has measures or metrics (GDGT-3457)", async () => {
+    setupEntityPicker(GOAL_SOURCES);
+    setup();
+
+    await openEntityPicker();
+    await screen.findByText("Goal measure");
+    await userEvent.type(screen.getByPlaceholderText("Search…"), "Goal");
+
+    expect(await screen.findByText("Goal question")).toBeInTheDocument();
+    expect(screen.getByText("Goal measure")).toBeInTheDocument();
+    expect(screen.getByText("Goal metric")).toBeInTheDocument();
+  });
+
+  it("lists and searches questions, but not models, when the instance has no measures and no metrics", async () => {
     setupEntityPicker([
-      createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
+      createMockSearchResult({ id: 15, model: "card", name: "Goal question" }),
+      createMockSearchResult({ id: 16, model: "dataset", name: "Goal model" }),
     ]);
     setup();
 
-    await openMenu();
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /Value from another question/ }),
-    );
-    expect(await screen.findByText("Other question")).toBeInTheDocument();
+    await openEntityPicker();
+    expect(await screen.findByText("Goal question")).toBeInTheDocument();
+    expect(screen.queryByText("Goal model")).not.toBeInTheDocument();
 
     const url = new URL(
       checkNotNull(fetchMock.callHistory.lastCall("path:/api/search")).url,
     );
-    expect(url.searchParams.getAll("models")).toEqual(["card", "metric"]);
     expect(url.searchParams.get("limit")).toBe("5");
     expect(url.searchParams.has("ids")).toBe(false);
+
+    await userEvent.type(screen.getByPlaceholderText("Search…"), "Goal");
+    await waitFor(() =>
+      expect(fetchMock.callHistory.lastCall("path:/api/search")?.url).toContain(
+        "q=Goal",
+      ),
+    );
+    expect(await screen.findByText("Goal question")).toBeInTheDocument();
+    expect(screen.queryByText("Goal model")).not.toBeInTheDocument();
   });
 
   it("commits a single-column pick without opening the column list", async () => {
@@ -1608,6 +1645,13 @@ function getEntityPickerBackItem() {
 async function openMenu() {
   await userEvent.click(
     screen.getByRole("button", { name: "Pick a dynamic value" }),
+  );
+}
+
+async function openEntityPicker() {
+  await openMenu();
+  await userEvent.click(
+    screen.getByRole("menuitem", { name: /Value from another question/ }),
   );
 }
 
