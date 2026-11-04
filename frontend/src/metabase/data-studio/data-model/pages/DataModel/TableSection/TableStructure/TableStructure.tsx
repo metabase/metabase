@@ -80,7 +80,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
           <DetailsRow
             label={t`Role`}
             fillValue
-            labelAside={<ValueOriginIcon {...getRoleOrigin(structure)} />}
+            labelAside={<ValueOriginIcon origin={getRoleOrigin(structure)} />}
             labelNote={
               <RoleNote
                 structure={structure}
@@ -126,7 +126,9 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
           <DetailsRow
             label={t`Main date`}
             fillValue
-            labelAside={<ValueOriginIcon {...getMainDateOrigin(structure)} />}
+            labelAside={
+              <ValueOriginIcon origin={getMainDateOrigin(structure)} />
+            }
             labelNote={
               <MainDateNote
                 structure={structure}
@@ -236,23 +238,21 @@ const NOTE_ACTION_CLASS_NAMES = {
 /** Whether sync inferred the value or an admin set it, and why */
 type ValueOrigin = { isInferred: boolean; description: string };
 
+/** No origin once an admin confirms the guess: there's nothing left to flag */
 function getRoleOrigin({
   role,
   inference,
   isRoleOverridden,
-}: TableStructureValue): ValueOrigin {
+}: TableStructureValue): ValueOrigin | null {
   if (!isRoleOverridden) {
     return { isInferred: true, description: t`Inferred: ${inference.signal}` };
   }
-  return {
-    isInferred: false,
-    // An admin picked the same role sync guessed
-    description:
-      role === inference.role ? t`Confirmed by an admin` : t`Set by an admin`,
-  };
+  return role === inference.role
+    ? null
+    : { isInferred: false, description: t`Set by an admin` };
 }
 
-function getMainDateOrigin(structure: TableStructureValue): ValueOrigin {
+function getMainDateOrigin(structure: TableStructureValue): ValueOrigin | null {
   const { mainDateInference, isMainDateOverridden } = structure;
   if (!isMainDateOverridden) {
     return {
@@ -260,24 +260,22 @@ function getMainDateOrigin(structure: TableStructureValue): ValueOrigin {
       description: t`Inferred: ${mainDateInference.signal}`,
     };
   }
-  return {
-    isInferred: false,
-    // An admin picked the same date sync guessed
-    description:
-      getMainDateFieldId(structure) === mainDateInference.fieldId
-        ? t`Confirmed by an admin`
-        : t`Set by an admin`,
-  };
+  return getMainDateFieldId(structure) === mainDateInference.fieldId
+    ? null
+    : { isInferred: false, description: t`Set by an admin` };
 }
 
 /** An AI icon for an inferred value or a person for an admin's, explained on hover */
-function ValueOriginIcon({ isInferred, description }: ValueOrigin) {
+function ValueOriginIcon({ origin }: { origin: ValueOrigin | null }) {
+  if (!origin) {
+    return null;
+  }
   return (
-    <Tooltip label={description} maw={280} multiline>
+    <Tooltip label={origin.description} maw={280} multiline>
       <Icon
-        name={isInferred ? "ai" : "person"}
+        name={origin.isInferred ? "ai" : "person"}
         c="text-secondary"
-        aria-label={description}
+        aria-label={origin.description}
         flex="0 0 auto"
       />
     </Tooltip>

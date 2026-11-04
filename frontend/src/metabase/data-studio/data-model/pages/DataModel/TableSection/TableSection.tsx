@@ -78,7 +78,8 @@ const TableSectionBase = ({
     <Stack data-testid="table-section" gap="lg">
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="xl">
+          {/* Bleeds into the panel's padding so the border spans the drawer */}
+          <Tabs.List mb="xl" mx="-xl" px="xl">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
@@ -94,9 +95,9 @@ const TableSectionBase = ({
                 onDescriptionChange={handleDescriptionChange}
               />
 
-              <TableStructure table={table} readOnly={readOnly} />
-
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
+
+              <TableStructure table={table} readOnly={readOnly} />
 
               {table.is_published && <TableCollection table={table} />}
 

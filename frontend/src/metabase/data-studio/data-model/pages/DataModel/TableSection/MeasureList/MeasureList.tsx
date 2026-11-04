@@ -5,7 +5,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
-import { Button, Group, Icon, Stack } from "metabase/ui";
+import { Button, Group, Icon, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
@@ -66,7 +66,7 @@ export function MeasureList({ table }: MeasureListProps) {
           message={t`Create a measure to define a reusable aggregation for this table.`}
         />
       ) : (
-        <Stack gap="sm" role="list">
+        <Stack gap={rem(12)} role="list">
           {measures.map((measure) => (
             <MeasureItem
               key={measure.id}

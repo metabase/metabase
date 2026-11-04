@@ -5,7 +5,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
-import { Button, Group, Icon, Stack } from "metabase/ui";
+import { Button, Group, Icon, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -63,7 +63,7 @@ export function SegmentList({ table }: SegmentListProps) {
           message={t`Create a segment to filter rows in this table.`}
         />
       ) : (
-        <Stack gap="sm" role="list">
+        <Stack gap={rem(12)} role="list">
           {segments.map((segment) => (
             <SegmentItem
               key={segment.id}
