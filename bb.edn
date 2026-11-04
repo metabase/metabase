@@ -402,6 +402,18 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
+  serdes-json-schemas
+  {:group "Local dev"
+   :doc "Write the JSON Schema of every serialized model as <Model>.json."
+   :examples [["./bin/mage serdes-json-schemas" "Write the schemas into ./serdes-json-schemas"]
+              ["./bin/mage serdes-json-schemas ../representations/core-spec/v1/schemas" "Write the schemas into another directory"]]
+   :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:string {:description "Output directory"}]]]
+   :requires [[mage.serdes-json-schemas :as serdes-json-schemas]]
+   :task (task! (serdes-json-schemas/write! parsed))}
+
   project-tests
   {:group "Tests & checks"
    :doc "Run project-level checks."
