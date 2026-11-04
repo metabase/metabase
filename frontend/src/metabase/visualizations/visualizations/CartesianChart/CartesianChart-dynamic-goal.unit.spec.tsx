@@ -8,6 +8,7 @@ import {
 } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { api } from "metabase/api/client";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
@@ -295,6 +296,42 @@ describe("normalized stacked chart with a dynamic goal", () => {
     });
 
     expectGoalLineHalfwayUpPercentAxis();
+  });
+});
+
+// public and embedded cards carry a query but no session, so the re-run gets a 401
+describe("line chart without a session whose goal column no longer exists", () => {
+  const onUnauthorized = jest.fn<void, [string]>();
+
+  beforeEach(() => {
+    api.on(401, onUnauthorized);
+  });
+
+  afterEach(() => {
+    api.off(401, onUnauthorized);
+    onUnauthorized.mockClear();
+    jest.useRealTimers();
+  });
+
+  it("renders the chart without the goal and keeps the 401 from the app's login redirect", async () => {
+    setupCardDataset({ status: 401 });
+    const onUpdateGoalWarning = jest.fn<void, [boolean]>();
+
+    await setup({
+      display: "line",
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "other",
+        value: 250,
+      }),
+      onUpdateGoalWarning,
+    });
+
+    expect(await screen.findByText("Jan")).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+    expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+    expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
+    expect(onUnauthorized).not.toHaveBeenCalled();
   });
 });
 
