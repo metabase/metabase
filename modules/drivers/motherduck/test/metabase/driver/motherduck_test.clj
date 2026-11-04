@@ -108,6 +108,33 @@
         "^(?P<first_word>\\w+) Medicine$" "Red" ; a name Java rejects
         "^Blue"            nil))))        ; no match: NULL, not ''
 
+;; The inherited Postgres methods derive these units by dividing, and DuckDB's `/` returns a DOUBLE. The shared
+;; datetime-diff tests read results through `int`, which hides fractions, so check for whole numbers here. Each
+;; expected value would round the other way, so a cast that rounds instead of truncating fails too. QUE-1072 tracks
+;; tightening the shared tests, which would make this one redundant.
+(deftest datetime-diff-whole-units-test
+  (mt/test-driver :motherduck
+    (let [mp    (mt/metadata-provider)
+          units [:quarter :week :hour :minute]
+          diffs (fn [x y]
+                  (let [query (reduce (fn [query unit]
+                                        (lib/expression query (name unit)
+                                                        (lib/expression-clause :datetime-diff [x y unit] nil)))
+                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                          (lib/limit 1))
+                                      units)]
+                    (->> (lib/with-fields query (mapv #(lib/expression-ref query (name %)) units))
+                         qp/process-query
+                         mt/rows
+                         first
+                         (zipmap units))))]
+      ;; 349 days, 10:31:45 apart: 3.67 quarters, 49.86 weeks, 8386.53 hours, 503191.75 minutes.
+      (is (= {:quarter 3, :week 49, :hour 8386, :minute 503191}
+             (diffs "2020-01-01T00:00:00" "2020-12-15T10:31:45")))
+      (testing "negative differences truncate toward zero"
+        (is (= {:quarter -3, :week -49, :hour -8386, :minute -503191}
+               (diffs "2020-12-15T10:31:45" "2020-01-01T00:00:00")))))))
+
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects. Like
   pgjdbc on the endpoint's text, the stand-in can't read the value as an object, so the reader falls back to the string."
