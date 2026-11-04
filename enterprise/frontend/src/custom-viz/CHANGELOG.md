@@ -6,6 +6,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 ### Bug Fixes
 
+- **Security:** updated Vite in scaffolded projects from 8.0.16 to 8.1.6 to pick up upstream security fixes ([#85837](https://github.com/metabase/metabase/pull/85837)).
 - The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes, or when a directory is added to `public/assets`. One save now triggers a single reload. Assets deleted from `public/assets` are now removed from `dist/assets` too ([#83597](https://github.com/metabase/metabase/pull/83597)).
 
 ### Fix the asset watcher in existing projects
