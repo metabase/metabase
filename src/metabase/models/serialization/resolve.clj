@@ -188,7 +188,7 @@
         (update :source_table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:table-id #'vector?}
+    {:table-id (_ :guard vector?)}
     (-> &match
         (update :table-id (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
