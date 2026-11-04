@@ -763,7 +763,7 @@ function assertAnswered(
   cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
     const answers = interceptions.flatMap(
       ({ response }) =>
-        response?.body.data.referenced_entities?.[type]?.[id] ?? [],
+        response?.body?.data?.referenced_entities?.[type]?.[id] ?? [],
     );
     const isAnswered = answers.some(
       (answer) =>
