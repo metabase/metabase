@@ -211,7 +211,9 @@
     (testing "boolean params"
       (mt/dataset places-cam-likes
         (field-filter-param-test-is-count-= 2
-                                            :places :liked :boolean true)))))
+                                            :places :liked :boolean true)
+        (field-filter-param-test-is-count-= 1
+                                            :places :liked :boolean [false])))))
 
 (deftest ^:parallel alias-field-filter-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/dynamic-dataset-loading)

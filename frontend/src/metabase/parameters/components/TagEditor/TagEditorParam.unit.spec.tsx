@@ -36,6 +36,7 @@ import {
 import {
   ORDERS,
   PEOPLE,
+  PRODUCTS,
   PRODUCTS_ID,
   REVIEWS,
   createSampleDatabase,
@@ -191,6 +192,22 @@ describe("TagEditorParam", () => {
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         type: "number",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+    });
+
+    it("should be able to change the type of the tag to boolean", async () => {
+      const tag = createMockTemplateTag({ type: "text" });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Boolean"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "boolean",
         default: undefined,
         dimension: undefined,
         "widget-type": undefined,
@@ -566,6 +583,32 @@ describe("TagEditorParam", () => {
         await screen.findByTestId("filter-widget-type-select"),
       );
       expect(screen.getByText("String")).toBeInTheDocument();
+    });
+
+    it("should show the legacy category widget-type as String", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "category",
+      });
+      setup({ tag });
+
+      expect(
+        await screen.findByTestId("filter-widget-type-select"),
+      ).toHaveValue("String");
+    });
+
+    it("should show a disabled ID widget type for a PK field", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.ID, null],
+        "widget-type": "id",
+      });
+      setup({ tag });
+
+      const select = await screen.findByTestId("filter-widget-type-select");
+      expect(select).toHaveValue("ID");
+      expect(select).toBeDisabled();
     });
   });
 

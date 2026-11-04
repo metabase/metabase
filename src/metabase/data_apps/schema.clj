@@ -6,6 +6,7 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -154,3 +155,17 @@
    [:kind  ::actions.schema/implicit-action.kind]
    [:table [:map {:closed true}
             [:id ::lib.schema.id/table]]]])
+
+(mr/def ::external-data-app
+  "A DataApp as serialization writes it, with portable references in place of ids, its slug, display name, and bundle
+  path under the keys of its manifest, and its bundle as a resource file."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::data-app [:entity_id :description :version :allowed_hosts]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:collection       {:optional true} [:maybe ::lib.schema.id/collection]]
+     [:slug             {:optional true} ::slug]
+     [:name             {:optional true} ::display-name]
+     [:path             {:optional true} ::bundle-path]
+     [:serdes/resources {:optional true} [:map-of :string :string]]]]])

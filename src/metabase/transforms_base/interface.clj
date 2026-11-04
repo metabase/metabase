@@ -7,11 +7,13 @@
 
    For scheduled execution with transform_run tracking, see metabase.transforms.interface."
   (:require
-   [metabase.util.log :as log]))
+   [metabase.transforms-base.schema :as transforms-base.schema]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
-(defn transform->transform-type
+(mu/defn transform->transform-type :- :keyword
   "Extract the transform type from a transform's source."
-  [transform]
+  [transform :- ::transforms-base.schema/transform]
   (-> transform :source :type keyword))
 
 (defmulti source-db-id

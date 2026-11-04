@@ -3,6 +3,7 @@
    [metabase.collections.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -49,3 +50,18 @@
    [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
+
+(def ^:private external-registry
+  "[[lib.schema.id/external-registry]], plus the serdes paths serialization writes in place of the ids a document's
+  nodes refer to, or the id it keeps when the entity is gone."
+  (assoc lib.schema.id/external-registry
+         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::models.schema/external-meta]]))
+
+(mr/def ::external-document
+  "A Document as serialization writes it, with portable references in place of ids."
+  [:schema {:registry external-registry}
+   [:merge
+    [:select-keys ::document [:archived :archived_directly :content_type :entity_id :name :collection_position
+                              :document :collection_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

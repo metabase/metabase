@@ -889,6 +889,7 @@
            api-scope
            lib.be
            lib.schema
+           models
            premium-features
            util}}
 
@@ -1018,6 +1019,7 @@
            api
            app-db
            batch-processing
+           lib.schema
            models
            premium-features
            server
@@ -1790,6 +1792,7 @@
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
+           metabase.models.schema
            metabase.models.serialization
            metabase.models.serialization.resolve
            metabase.models.serialization.resolve.mp
@@ -1804,7 +1807,8 @@
            lib.schema
            parameters.schema
            util
-           util.classloader}
+           util.classloader
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -1868,6 +1872,7 @@
            collections
            events
            lib
+           lib.be
            lib.schema
            models
            permissions
@@ -1937,6 +1942,7 @@
    :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
+           lib.schema
            models
            request
            search.entity-retrieval
@@ -3111,7 +3117,7 @@
   transforms.feature-gating
   {:team "Graphy"
    :api  #{metabase.transforms.feature-gating}
-   :uses #{api premium-features}}
+   :uses #{api premium-features util}}
 
   transforms.indexes
   {:team "Gadget"
@@ -3349,6 +3355,7 @@
                     :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
+                    :model/Transform
                     :model/User}}
 
   warehouses.rest
@@ -3822,6 +3829,7 @@
    :uses #{api
            api-scope
            events
+           lib.schema
            models
            premium-features
            server
@@ -3952,7 +3960,6 @@
                     :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/DataApp
-                    :model/Database
                     :model/Dimension
                     :model/Document
                     :model/Field
@@ -4437,8 +4444,9 @@
    :model-imports #{:model/User}}
 
   enterprise/serialization
-  {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api
+  {:team       "Data Apps"
+   :codeowners true
+   :api #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.dump
@@ -4581,16 +4589,21 @@
            driver
            events
            lib
+           lib.be
            lib.schema
            models
+           permissions
            premium-features
+           query-permissions
            query-processor
+           remote-sync
            request
            revisions
            run-tracking
            sql-tools
            sql-tools.parsing
            task
+           transforms
            transforms.base
            util}
    :model-exports #{:model/TransformTest}
