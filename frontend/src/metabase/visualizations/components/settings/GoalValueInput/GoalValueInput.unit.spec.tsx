@@ -1863,6 +1863,47 @@ describe("GoalValueInput", () => {
       });
     });
 
+    it("tracks picking a column of a multi-column saved question with its card type", async () => {
+      setupEntityPicker([
+        createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+      ]);
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          type: "question",
+          result_metadata: [
+            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockField({
+              name: "avg",
+              display_name: "Average",
+              base_type: "type/Integer",
+            }),
+          ],
+        }),
+      );
+      setupCardDatasetWithReferencedEntities({});
+      const { onChange } = setup();
+
+      await openMenu();
+      await pickEntity("Orders");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Average/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "avg",
+      });
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "question",
+      });
+    });
+
     it("tracks replacing a column of this question with another one", async () => {
       const { onChange } = setup({ value: "sum" });
 
@@ -1992,6 +2033,87 @@ describe("GoalValueInput", () => {
         event_detail: "metric",
       });
     });
+
+    it("tracks removing a reference to a source that can't be loaded as a card", async () => {
+      setupDeletedCard();
+      setup({
+        data: createDeletedSourceData(),
+        value: { type: "card", id: 9, column: "total" },
+      });
+      expect(
+        await screen.findByText("This source no longer exists"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove value source" }),
+      );
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_unset",
+        triggered_from: "progress",
+        event_detail: "card",
+      });
+    });
+
+    it("tracks removing a reference to a source that is still loading as a card", async () => {
+      const response = setupSlowCardEndpoint(
+        createMockCard({ id: 9, name: "Orders", type: "metric" }),
+      );
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "total",
+            value: 250,
+          }),
+        }),
+        value: { type: "card", id: 9, column: "total" },
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove value source" }),
+      );
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_unset",
+        triggered_from: "progress",
+        event_detail: "card",
+      });
+      await resolveAndSettle(response);
+    });
+
+    it("tracks replacing a reference to a source that can't be loaded", async () => {
+      setupDeletedCard();
+      const { onChange } = setup({
+        data: createDeletedSourceData(),
+        value: { type: "card", id: 9, column: "total" },
+      });
+      expect(
+        await screen.findByText("This source no longer exists"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", {
+          name: /Value from this question/,
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Count/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith("count");
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_replaced",
+        triggered_from: "progress",
+        event_detail: "self_column",
+      });
+    });
   });
 });
 
@@ -2058,6 +2180,16 @@ async function resolveAndSettle(response: Deferred<void>) {
 
 function setupDeletedCard() {
   fetchMock.get("path:/api/card/9", 404);
+}
+
+function createDeletedSourceData() {
+  return createMockDatasetData({
+    ...DATA,
+    referenced_entities: createMockFailedReferencedEntitiesResults({
+      error: "Not found.",
+      error_type: "not-found",
+    }),
+  });
 }
 
 function setupEntityPicker(searchResults: SearchResult[]) {
