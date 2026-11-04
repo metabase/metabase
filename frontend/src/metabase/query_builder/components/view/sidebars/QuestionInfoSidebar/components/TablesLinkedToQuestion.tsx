@@ -1,10 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { DetailsTable } from "metabase/common/components/DetailSidebar";
+import {
+  DetailsRow,
+  DetailsTable,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 
 import { getQuestionWithoutComposing } from "../../../../../store/selectors";
 
@@ -32,11 +35,14 @@ export const TablesLinkedToQuestion = () => {
   return (
     <DetailsTable>
       {!filtered.length && (
-        <Text px="lg" py="sm" c="text-secondary">
-          {question.type() === "model"
-            ? t`This model is not linked to any tables.`
-            : t`This question is not linked to any tables.`}
-        </Text>
+        <DetailsRow
+          label={
+            question.type() === "model"
+              ? t`This model is not linked to any tables.`
+              : t`This question is not linked to any tables.`
+          }
+          spanLabel
+        />
       )}
       {filtered.map(({ href, name, iconProps }) => (
         <Flex key={href} px="lg" py="sm">

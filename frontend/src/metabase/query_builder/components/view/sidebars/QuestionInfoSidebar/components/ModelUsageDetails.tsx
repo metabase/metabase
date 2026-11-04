@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { useListCardsQuery } from "metabase/api";
-import { DetailsTable } from "metabase/common/components/DetailSidebar";
+import {
+  DetailsRow,
+  DetailsTable,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useGetIcon } from "metabase/hooks/use-icon";
@@ -50,9 +53,10 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
   if (cards.length === 0) {
     return (
       <DetailsTable>
-        <Text px="lg" py="sm" c="text-secondary">
-          {t`This model is not used by any questions yet.`}
-        </Text>
+        <DetailsRow
+          label={t`This model is not used by any questions yet.`}
+          spanLabel
+        />
       </DetailsTable>
     );
   }

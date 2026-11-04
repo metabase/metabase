@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   useGetCollectionItemsMetadataQuery,
@@ -71,9 +71,7 @@ export const CollectionContentsSection = ({
             </Repeat>
           )}
           {data && presentModels.length === 0 && (
-            <Text px="lg" py="sm" c="text-secondary">
-              {t`This collection is empty.`}
-            </Text>
+            <DetailsRow label={t`This collection is empty.`} spanLabel />
           )}
           {presentModels.map((model) => (
             <CollectionContentsRow
@@ -151,7 +149,8 @@ const CollectionContentsCount = ({
         type="button"
         fz="md"
         fw="bold"
-        aria-label={t`Show only ${label}`}
+        aria-label={c("{0} is a plural item type, for example Questions")
+          .t`Show only ${label}`}
         onClick={onClick}
       >
         {count}

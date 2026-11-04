@@ -30,7 +30,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           <DetailsRow
             label={t`Created`}
             value={
-              <Text c="text-primary">
+              <Text>
                 {c(
                   "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
                 ).jt`${(
@@ -44,7 +44,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           <DetailsRow
             label={t`Last edited`}
             value={
-              <Text c="text-primary">
+              <Text>
                 {c(
                   "Describes when a dashboard was last edited. {0} is a date/time and {1} is a person's name",
                 ).jt`${(
@@ -92,7 +92,7 @@ function VisibilityRow({ dashboard }: { dashboard: Dashboard }) {
         <Stack gap="xs">
           {publicUUID && (
             <Group gap="sm" wrap="nowrap">
-              <Text c="text-primary">{t`Shared publicly`}</Text>
+              <Text>{t`Shared publicly`}</Text>
               <DashboardPublicLinkPopover
                 target={
                   <ActionIcon
@@ -111,7 +111,7 @@ function VisibilityRow({ dashboard }: { dashboard: Dashboard }) {
               />
             </Group>
           )}
-          {embeddingEnabled && <Text c="text-primary">{t`Embedded`}</Text>}
+          {embeddingEnabled && <Text>{t`Embedded`}</Text>}
         </Stack>
       }
     />

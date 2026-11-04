@@ -44,7 +44,6 @@ export const CollectionInfoSidebar = ({
       title={t`Info`}
       titleSize="h3"
       isOpen
-      data-testid="collection-sidesheet"
       size={SIDEBAR_WIDTH}
       onClose={onClose}
       footer={

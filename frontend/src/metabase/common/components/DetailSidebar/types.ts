@@ -9,12 +9,20 @@ export type SidebarSectionProps = {
   gap?: StackProps["gap"];
 };
 
-export type DetailsRowProps = {
-  label: ReactNode;
-  value: ReactNode;
-  bold?: boolean;
-  spanLabel?: boolean;
-};
+export type DetailsRowProps =
+  | {
+      label: ReactNode;
+      value: ReactNode;
+      bold?: boolean;
+      spanLabel?: false;
+    }
+  | {
+      /** A full-width note row, such as an empty state */
+      label: ReactNode;
+      value?: never;
+      bold?: never;
+      spanLabel: true;
+    };
 
 export type SidebarNavDirection = "previous" | "next";
 

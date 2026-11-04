@@ -36,7 +36,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         <DetailsRow
           label={t`Created`}
           value={
-            <Text c="text-primary">
+            <Text>
               {c(
                 "Describes when a question was created. {0} is a date/time and {1} is a person's name",
               ).jt`${(
@@ -49,7 +49,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           <DetailsRow
             label={t`Last edited`}
             value={
-              <Text c="text-primary">
+              <Text>
                 {c(
                   "Describes when a question was last edited. {0} is a date/time and {1} is a person's name",
                 ).jt`${(
@@ -126,7 +126,7 @@ function VisibilityRow({ question }: { question: Question }) {
         <Stack gap="xs">
           {publicUUID && (
             <Group gap="sm" wrap="nowrap">
-              <Text c="text-primary">{t`Shared publicly`}</Text>
+              <Text>{t`Shared publicly`}</Text>
               <QuestionPublicLinkPopover
                 target={
                   <ActionIcon
@@ -145,7 +145,7 @@ function VisibilityRow({ question }: { question: Question }) {
               />
             </Group>
           )}
-          {embeddingEnabled && <Text c="text-primary">{t`Embedded`}</Text>}
+          {embeddingEnabled && <Text>{t`Embedded`}</Text>}
         </Stack>
       }
     />

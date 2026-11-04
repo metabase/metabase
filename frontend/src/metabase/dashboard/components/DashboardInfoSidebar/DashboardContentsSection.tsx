@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  DetailsRow,
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
@@ -61,9 +62,10 @@ export const DashboardContentsSection = ({
     <SidebarSection title={title}>
       <DetailsTable role="list" aria-label={title}>
         {cards.length === 0 && (
-          <Text px="lg" py="sm" c="text-secondary">
-            {t`This dashboard doesn't have any questions, models, or metrics.`}
-          </Text>
+          <DetailsRow
+            label={t`This dashboard doesn't have any questions, models, or metrics.`}
+            spanLabel
+          />
         )}
         {cards.map((card) => {
           const model = MODEL_BY_CARD_TYPE[card.type];

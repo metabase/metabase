@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import {
   SIDEBAR_WIDTH,
+  SidebarCard,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
 import { EntityIdFooter } from "metabase/common/components/EntityIdFooter";
@@ -14,7 +15,7 @@ import { SidesheetEditableDescription } from "metabase/common/components/Sideshe
 import { InsightsAction } from "metabase/common/components/upsells/components/InsightsAction";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { ActionIcon, Box, Icon, Stack, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
@@ -60,7 +61,6 @@ export const QuestionInfoSidebar = ({
       onClose={handleClose}
       closeHotkey="]"
       isOpen
-      data-testid="question-info-sidebar"
       size={SIDEBAR_WIDTH}
       actions={
         <>
@@ -117,9 +117,9 @@ export const QuestionInfoSidebar = ({
         </SidebarSection>
         {!isIAQuestion && (
           <SidebarSection title={t`History`}>
-            <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="lg" p="sm">
+            <SidebarCard>
               <QuestionActivityTimeline question={question} />
-            </Box>
+            </SidebarCard>
           </SidebarSection>
         )}
       </Stack>

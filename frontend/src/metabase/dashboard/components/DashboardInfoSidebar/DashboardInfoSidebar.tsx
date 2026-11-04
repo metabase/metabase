@@ -6,6 +6,7 @@ import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import {
   SIDEBAR_WIDTH,
+  SidebarCard,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
 import {
@@ -27,7 +28,7 @@ import {
 } from "metabase/dashboard/context";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, Stack, Text } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   Dashboard,
@@ -133,14 +134,27 @@ export function DashboardInfoSidebarInner({
           }
         >
           <Stack gap="xxl">
-            <Overview
-              dashboard={dashboard}
-              handleDescriptionChange={handleDescriptionChange}
-              handleDescriptionBlur={handleDescriptionBlur}
-              descriptionError={descriptionError}
-              setDescriptionError={setDescriptionError}
-              canWrite={canWrite}
-            />
+            <SidebarSection title={t`Description`} gap={0}>
+              <Stack gap="sm">
+                <SidesheetEditableDescription
+                  description={dashboard.description}
+                  onChange={handleDescriptionChange}
+                  canWrite={canWrite}
+                  onFocus={() => setDescriptionError("")}
+                  onBlur={handleDescriptionBlur}
+                />
+                {Boolean(descriptionError) && (
+                  <Text c="feedback-negative" size="xs">
+                    {descriptionError}
+                  </Text>
+                )}
+                <PLUGIN_MODERATION.ModerationReviewTextForDashboard
+                  dashboard={dashboard}
+                />
+              </Stack>
+            </SidebarSection>
+            <DashboardDetails dashboard={dashboard} />
+            <DashboardContentsSection dashboard={dashboard} />
             {!isIADashboard && (
               <SidebarSection title={t`History`}>
                 <History
@@ -166,48 +180,6 @@ const getEntityIdItems = (dashboard: Dashboard): EntityIdFooterItem[] => [
   ),
 ];
 
-const Overview = ({
-  dashboard,
-  handleDescriptionChange,
-  handleDescriptionBlur,
-  descriptionError,
-  setDescriptionError,
-  canWrite,
-}: {
-  dashboard: Dashboard;
-  handleDescriptionChange: (description: string) => void;
-  handleDescriptionBlur: (event: FocusEvent<HTMLTextAreaElement>) => void;
-  descriptionError: string | null;
-  setDescriptionError: (error: string | null) => void;
-  canWrite: boolean;
-}) => {
-  return (
-    <Stack gap="xxl">
-      <SidebarSection title={t`Description`} gap={0}>
-        <Stack gap="sm">
-          <SidesheetEditableDescription
-            description={dashboard.description}
-            onChange={handleDescriptionChange}
-            canWrite={canWrite}
-            onFocus={() => setDescriptionError("")}
-            onBlur={handleDescriptionBlur}
-          />
-          {!!descriptionError && (
-            <Text c="feedback-negative" size="xs">
-              {descriptionError}
-            </Text>
-          )}
-          <PLUGIN_MODERATION.ModerationReviewTextForDashboard
-            dashboard={dashboard}
-          />
-        </Stack>
-      </SidebarSection>
-      <DashboardDetails dashboard={dashboard} />
-      <DashboardContentsSection dashboard={dashboard} />
-    </Stack>
-  );
-};
-
 const History = ({
   dashboard,
   canWrite,
@@ -230,7 +202,7 @@ const History = ({
   );
 
   return (
-    <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="lg" p="sm">
+    <SidebarCard>
       <RevisionHistoryTimeline
         events={events}
         data-testid="dashboard-history-list"
@@ -240,6 +212,6 @@ const History = ({
         canWrite={canWrite}
         entity="dashboard"
       />
-    </Box>
+    </SidebarCard>
   );
 };
