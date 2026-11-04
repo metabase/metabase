@@ -85,11 +85,15 @@
     required))
 
 (defn- tuple-length
-  "Require every item of a malli `:tuple`, which JSON Schema's `prefixItems` leaves optional."
+  "Require every item of a malli `:tuple` and no more, which JSON Schema's `prefixItems` leaves optional and readers
+  that drop `items: false` leave open."
   [node]
   (cond-> node
     (and (:prefixItems node) (false? (:items node)) (not (:minItems node)))
-    (assoc :minItems (count (:prefixItems node)))))
+    (assoc :minItems (count (:prefixItems node)))
+
+    (and (:prefixItems node) (false? (:items node)) (not (:maxItems node)))
+    (assoc :maxItems (count (:prefixItems node)))))
 
 (defn- any-of
   "Malli's branching schemas pass when any branch does, so a `oneOf` whose branches overlap is an `anyOf`."
@@ -185,7 +189,7 @@
 
 (defn- sequence-schema
   "Compile the segments of a malli sequence schema to an array schema, checking only its leading items when JSON Schema
-  cannot spell them, which needs a required prefix followed by either optional items or one repeated item."
+  cannot spell them, which needs a required prefix followed by either one optional item or one repeated item."
   [segs]
   (let [[required more]   (split-with #(= 1 (:min %) (:max %)) segs)
         [optional more]   (split-with #(and (= 0 (:min %)) (= 1 (:max %))) more)
@@ -194,6 +198,7 @@
     (with-meta
      (if (or (seq more)
              (and (seq optional) repeated)
+             (< 1 (count optional))
              (mp/some nil? (map :item segs)))
        (let [known (take-while some? (map :item required))]
          (cond-> {:type "array" :minItems (count known)}
@@ -251,7 +256,7 @@
         items      (map entry-schema children)]
     (vary-meta
      (if (or (:json-schema properties) (= :any (mc/type schema)))
-       (vary-meta (malli-walker schema path children options) assoc ::declared true)
+       (vary-meta (merge (mjs/select properties) (malli-walker schema path children options)) assoc ::declared true)
        (into (case (#(if (= 'some? %) :some %) (mc/type schema))
                ::mc/val     (first items)
                (::mc/schema :ref) (registered-schema schema path children options)

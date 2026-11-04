@@ -28,6 +28,9 @@
   (testing "repeated sequences cannot be spelled, so only the leading items are checked"
     (is (= {:type "array" :prefixItems [{:type "integer"}] :minItems 1}
            (mu.json-schema/transform [:cat :int [:+ [:cat :string :int]]]))))
+  (testing "several optional items cannot be spelled by position, so only the leading items are checked"
+    (is (= {:type "array" :minItems 0}
+           (mu.json-schema/transform [:cat [:? :string] [:? :int]]))))
   (testing "unexpressible sequences check only their leading items"
     (is (= {:type "array" :prefixItems [{:type "integer"}] :minItems 1}
            (mu.json-schema/transform [:cat :int [:* :string] :int])))))
@@ -39,7 +42,7 @@
 
 (deftest ^:parallel tuple-test
   (testing "every tuple item is required"
-    (is (= {:type "array" :prefixItems [{:type "integer"} {:type "string"}] :items false :minItems 2}
+    (is (= {:type "array" :prefixItems [{:type "integer"} {:type "string"}] :items false :minItems 2 :maxItems 2}
            (mu.json-schema/transform [:tuple :int :string])))))
 
 (deftest ^:parallel property-names-test
@@ -61,8 +64,8 @@
                 (mu.json-schema/transform [:or [:tuple [:= "a"] :int] [:tuple [:= "b"] :string]]))]
     (testing "tagged branches are checked only for their own tag"
       (is (= {:allOf [{:type "array" :minItems 1 :prefixItems [{:enum ["a" "b"]}]}
-                      {:if {:type "array" :prefixItems [{:const "a"}]} :then {:type "array" :prefixItems [{:const "a"} {:type "integer"}] :items false :minItems 2}}
-                      {:if {:type "array" :prefixItems [{:const "b"}]} :then {:type "array" :prefixItems [{:const "b"} {:type "string"}] :items false :minItems 2}}]}
+                      {:if {:type "array" :prefixItems [{:const "a"}]} :then {:type "array" :prefixItems [{:const "a"} {:type "integer"}] :items false :minItems 2 :maxItems 2}}
+                      {:if {:type "array" :prefixItems [{:const "b"}]} :then {:type "array" :prefixItems [{:const "b"} {:type "string"}] :items false :minItems 2 :maxItems 2}}]}
              schema)))))
 
 (deftest ^:parallel empty-schema-test
@@ -75,6 +78,9 @@
                           (mu.json-schema/transform [:map [:n [:fn odd?]]]))))
   (testing "a :json-schema property says what the schema accepts"
     (is (= {:type "integer"} (mu.json-schema/transform [:fn {:json-schema {:type "integer"}} odd?]))))
+  (testing "a :json-schema property keeps the schema's description"
+    (is (= {:type "integer" :description "an odd number"}
+           (mu.json-schema/transform [:fn {:json-schema {:type "integer"} :description "an odd number"} odd?]))))
   (testing "refinements of a schema with a shape only narrow it"
     (is (= {:type "integer"} (mu.json-schema/transform [:and :int [:fn odd?]]))))
   (testing ":any accepts anything on purpose"
