@@ -52,7 +52,6 @@ import {
   HistoryKindInput,
   HistoryVersionsSummary,
   SharedPointerNote,
-  getTableHistoryKind,
 } from "../TableHistory";
 
 import S from "./TableStructure.module.css";
@@ -508,7 +507,6 @@ function HistoryBindingSection({
 }) {
   const binding = structure.history;
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
-  const isHistory = getTableHistoryKind(structure) !== "not-history";
   const hasCurrentFlag = binding.currentFlagFieldId != null;
   const showAdvancedLabel = hasCurrentFlag
     ? t`Show version`
@@ -531,10 +529,6 @@ function HistoryBindingSection({
                 onScdTypeChange(structure.scdTypeInference.scdType)
               }
               onChange={(kind) => {
-                if (kind === "not-history") {
-                  onScdTypeChange(1);
-                  return;
-                }
                 onScdTypeChange(2);
                 if (kind === "latest-row-per-key") {
                   onChange({ validToFieldId: null });
@@ -543,67 +537,57 @@ function HistoryBindingSection({
             />
           }
         />
-        {isHistory && (
-          <DetailsRow
-            label={t`Entity key`}
-            value={
+        <DetailsRow
+          label={t`Entity key`}
+          value={
+            <FieldSelect
+              label={t`Entity key`}
+              fields={fields}
+              value={binding.durableKeyFieldId}
+              disabled={disabled}
+              onChange={(durableKeyFieldId) => onChange({ durableKeyFieldId })}
+            />
+          }
+        />
+        <DetailsRow
+          label={t`Valid from`}
+          value={
+            <Stack gap="xs" py="xs">
               <FieldSelect
-                label={t`Entity key`}
+                label={t`Valid from`}
                 fields={fields}
-                value={binding.durableKeyFieldId}
+                value={binding.validFromFieldId}
                 disabled={disabled}
-                onChange={(durableKeyFieldId) =>
-                  onChange({ durableKeyFieldId })
-                }
+                onChange={(validFromFieldId) => onChange({ validFromFieldId })}
               />
-            }
-          />
-        )}
-        {isHistory && (
-          <DetailsRow
-            label={t`Valid from`}
-            value={
-              <Stack gap="xs" py="xs">
-                <FieldSelect
-                  label={t`Valid from`}
+              <SharedPointerNote structure={structure} fields={fields} />
+            </Stack>
+          }
+        />
+        <DetailsRow
+          label={t`Valid to`}
+          value={
+            <Stack gap="xs" py="xs">
+              <FieldSelect
+                label={t`Valid to`}
+                fields={fields}
+                value={binding.validToFieldId}
+                placeholder={t`No valid to`}
+                clearable
+                disabled={disabled}
+                onChange={(validToFieldId) => onChange({ validToFieldId })}
+              />
+              {!hasCurrentFlag && (
+                <CurrentRuleHint
+                  table={table}
+                  structure={structure}
                   fields={fields}
-                  value={binding.validFromFieldId}
-                  disabled={disabled}
-                  onChange={(validFromFieldId) =>
-                    onChange({ validFromFieldId })
-                  }
                 />
-                <SharedPointerNote structure={structure} fields={fields} />
-              </Stack>
-            }
-          />
-        )}
-        {isHistory && (
-          <DetailsRow
-            label={t`Valid to`}
-            value={
-              <Stack gap="xs" py="xs">
-                <FieldSelect
-                  label={t`Valid to`}
-                  fields={fields}
-                  value={binding.validToFieldId}
-                  placeholder={t`No valid to`}
-                  clearable
-                  disabled={disabled}
-                  onChange={(validToFieldId) => onChange({ validToFieldId })}
-                />
-                {!hasCurrentFlag && (
-                  <CurrentRuleHint
-                    table={table}
-                    structure={structure}
-                    fields={fields}
-                  />
-                )}
-              </Stack>
-            }
-          />
-        )}
-        {isHistory && hasCurrentFlag && (
+              )}
+            </Stack>
+          }
+        />
+        {hasCurrentFlag && (
           <DetailsRow
             label={t`Current flag`}
             value={
@@ -623,41 +607,35 @@ function HistoryBindingSection({
             }
           />
         )}
-        {isHistory && (
-          <DetailsRow
-            label={t`Default filter`}
-            value={
-              <DefaultSegmentInput
-                structure={structure}
-                fields={fields}
-                disabled={disabled}
-                onChange={(currentRowsOnly) => onChange({ currentRowsOnly })}
-              />
-            }
-          />
-        )}
-        {isHistory && (
-          <DetailsRow
-            label={t`Versions`}
-            value={<HistoryVersionsSummary table={table} />}
-          />
-        )}
-        {isHistory && (
-          <DetailsRow
-            label={t`Advanced`}
-            value={
-              <Button
-                size="compact-sm"
-                variant="subtle"
-                px={0}
-                onClick={toggleAdvanced}
-              >
-                {isAdvancedOpen ? hideAdvancedLabel : showAdvancedLabel}
-              </Button>
-            }
-          />
-        )}
-        {isHistory && isAdvancedOpen && !hasCurrentFlag && (
+        <DetailsRow
+          label={t`Default filter`}
+          value={
+            <DefaultSegmentInput
+              structure={structure}
+              fields={fields}
+              disabled={disabled}
+              onChange={(currentRowsOnly) => onChange({ currentRowsOnly })}
+            />
+          }
+        />
+        <DetailsRow
+          label={t`Versions`}
+          value={<HistoryVersionsSummary table={table} />}
+        />
+        <DetailsRow
+          label={t`Advanced`}
+          value={
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              px={0}
+              onClick={toggleAdvanced}
+            >
+              {isAdvancedOpen ? hideAdvancedLabel : showAdvancedLabel}
+            </Button>
+          }
+        />
+        {isAdvancedOpen && !hasCurrentFlag && (
           <DetailsRow
             label={t`Current flag`}
             value={
@@ -670,7 +648,7 @@ function HistoryBindingSection({
             }
           />
         )}
-        {isHistory && isAdvancedOpen && (
+        {isAdvancedOpen && (
           <DetailsRow
             label={t`Version`}
             value={

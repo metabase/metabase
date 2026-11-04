@@ -168,18 +168,11 @@ export function getHistorySignalLabel(rule: HistoryInferenceRule | null) {
 export const HISTORY_KINDS = [
   "versions-with-dates",
   "latest-row-per-key",
-  "not-history",
 ] as const;
 
 export type HistoryKind = (typeof HISTORY_KINDS)[number];
 
-export function getHistoryKind(
-  scdType: ScdType | null,
-  hasValidTo: boolean,
-): HistoryKind {
-  if (scdType === 0 || scdType === 1) {
-    return "not-history";
-  }
+export function getHistoryKind(hasValidTo: boolean): HistoryKind {
   return hasValidTo ? "versions-with-dates" : "latest-row-per-key";
 }
 
@@ -198,11 +191,6 @@ export function getHistoryKindOptions(): {
       value: "latest-row-per-key",
       label: t`Latest row per key, older rows kept`,
       description: t`No end date. The newest row for each key is the current one.`,
-    },
-    {
-      value: "not-history",
-      label: t`Not a history table`,
-      description: t`Every row counts as its own record.`,
     },
   ];
 }

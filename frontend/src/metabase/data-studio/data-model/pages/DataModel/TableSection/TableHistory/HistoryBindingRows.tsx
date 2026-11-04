@@ -93,17 +93,13 @@ export function describeCurrentRule(
 }
 
 export function getTableHistoryKind(structure: TableStructure) {
-  return getHistoryKind(
-    structure.scdType,
-    structure.history.validToFieldId != null,
-  );
+  return getHistoryKind(structure.history.validToFieldId != null);
 }
 
 export function HistoryIntro({ structure }: { structure: TableStructure }) {
   const intros: Record<HistoryKind, string> = {
     "versions-with-dates": t`Each row is one version of an entity. Counting rows counts versions, so counts use distinct entity keys.`,
     "latest-row-per-key": t`Each row is one version of an entity, and the newest row per key is the current one. Counts use distinct entity keys.`,
-    "not-history": t`Every row counts as its own record, so counts stay plain row counts.`,
   };
   return (
     <Text size="sm" c="text-secondary">
