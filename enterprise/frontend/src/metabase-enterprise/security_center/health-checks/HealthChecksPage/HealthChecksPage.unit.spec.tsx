@@ -124,6 +124,12 @@ describe("HealthChecksPage", () => {
     expect(screen.getByText("1 of 3 checks pass")).toBeInTheDocument();
   });
 
+  it("uses the singular form when there is only one check", async () => {
+    await setup({ checks: [FAILING_CHECK] });
+
+    expect(screen.getByText("0 of 1 check passes")).toBeInTheDocument();
+  });
+
   it("shows the all clear state only when every check passes", async () => {
     await setup({ checks: [PASSING_CHECK] });
 
