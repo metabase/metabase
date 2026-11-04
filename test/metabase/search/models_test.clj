@@ -26,20 +26,21 @@
 
 (deftest delete-enqueues-one-bulk-update-test
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
-    (let [calls (atom [])]
-      (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
-                                  (fn [updates] (swap! calls conj updates))]
-        (mt/with-temp [:model/Card {id :id} {}]
-          ;; the temp card's own creation enqueues an unrelated message via the after-insert hook; only the
-          ;; delete's message is under test.
-          (reset! calls [])
-          (t2/delete! :model/Card :id id)
-          (is (=? [#{["card" [:= id :this.id]]
-                     ["dataset" [:= id :this.id]]
-                     ["metric" [:= id :this.id]]
-                     ["action" [:= id :this.model_id]]
-                     ["indexed-entity" [:= id :model_index.model_id]]}]
-                  (mapv set @calls))))))))
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [calls (atom [])]
+        (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
+                                    (fn [updates] (swap! calls conj updates))]
+          (mt/with-temp [:model/Card {id :id} {}]
+            ;; the temp card's own creation enqueues an unrelated message via the after-insert hook; only the
+            ;; delete's message is under test.
+            (reset! calls [])
+            (t2/delete! :model/Card :id id)
+            (is (=? [#{["card" [:= id :this.id]]
+                       ["dataset" [:= id :this.id]]
+                       ["metric" [:= id :this.id]]
+                       ["action" [:= id :this.model_id]]
+                       ["indexed-entity" [:= id :model_index.model_id]]}]
+                    (mapv set @calls)))))))))
 
 (deftest capture-fields-disabled-without-engine-test
   (testing "capture-fields is skipped entirely (no pre-select) when no search engine is active"
@@ -53,9 +54,10 @@
 
 (deftest only-delete-capture-is-enabled-test
   (testing "only :delete is captured; inserts and updates keep their row-level hooks"
-    (is (some? (seq (search.engine/active-engines))) "this test needs an active engine to be meaningful")
-    (is (nil? (dml-capture/capture-fields :model/Card :insert)))
-    (is (nil? (dml-capture/capture-fields :model/Card :update)))))
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (is (some? (dml-capture/capture-fields :model/Card :delete)))
+      (is (nil? (dml-capture/capture-fields :model/Card :insert)))
+      (is (nil? (dml-capture/capture-fields :model/Card :update))))))
 
 (deftest purge-one-on-delete-test
   (testing "deleting an indexed card purges its index row (appdb engine)"
@@ -81,34 +83,36 @@
 
 (deftest delete-of-a-joined-model-enqueues-the-fed-models-test
   (testing "deleting a row that only feeds other models' documents enqueues re-derivation for each of them"
-    (let [calls (atom [])]
-      (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
-                                  (fn [updates] (swap! calls conj updates))]
-        (mt/with-temp [:model/Card             {card-id :id} {}
-                       :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
-                                                              :moderated_item_id   card-id
-                                                              :moderator_id        (mt/user->id :crowberto)
-                                                              :status              "verified"
-                                                              :most_recent         true}]
-          (reset! calls [])
-          (t2/delete! :model/ModerationReview :id mr-id)
-          (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
-            (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
-                    (mapv set @calls)))))))))
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [calls (atom [])]
+        (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
+                                    (fn [updates] (swap! calls conj updates))]
+          (mt/with-temp [:model/Card             {card-id :id} {}
+                         :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
+                                                                :moderated_item_id   card-id
+                                                                :moderator_id        (mt/user->id :crowberto)
+                                                                :status              "verified"
+                                                                :most_recent         true}]
+            (reset! calls [])
+            (t2/delete! :model/ModerationReview :id mr-id)
+            (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
+              (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
+                      (mapv set @calls))))))))))
 
 (deftest rollback-discards-handoff-and-leaves-the-row-test
   (testing "a rolled-back delete discards its post-commit handoff, and the row survives"
-    (let [calls (atom [])]
-      (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
-                                  (fn [updates] (swap! calls conj updates))]
-        (mt/with-temp [:model/Card {id :id} {}]
-          (reset! calls [])
-          (is (thrown? clojure.lang.ExceptionInfo
-                       (t2/with-transaction [_conn]
-                         (t2/delete! :model/Card :id id)
-                         (throw (ex-info "boom" {})))))
-          (is (empty? @calls))
-          (is (t2/exists? :model/Card :id id)))))))
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [calls (atom [])]
+        (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
+                                    (fn [updates] (swap! calls conj updates))]
+          (mt/with-temp [:model/Card {id :id} {}]
+            (reset! calls [])
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (t2/with-transaction [_conn]
+                           (t2/delete! :model/Card :id id)
+                           (throw (ex-info "boom" {})))))
+            (is (empty? @calls))
+            (is (t2/exists? :model/Card :id id))))))))
 
 (deftest superseded-review-delete-keeps-the-card-test
   (testing "deleting a review that is no longer the most recent leaves the card it reviewed in the index"
