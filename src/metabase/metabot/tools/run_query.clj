@@ -700,10 +700,7 @@
                     (str (format (str "This ran the saved version of %s %d: edits and filter values on the user's"
                                       " screen are not applied. Link to it as `metabase://%s/%d`, not as a query.")
                                  (name type) id (name type) id)
-                         ;; Only a saved question gets a query ID for its query on screen (`assign-context-ids`).
-                         (when (= :question type)
-                           (str " If the user is viewing it, run its query ID to read the query on the user's"
-                                " screen."))))
+                         " If the user is viewing it, run its query ID to read the query on the user's screen."))
                   (cond
                     none-fit?
                     (str "The query returned rows, but one row is longer than the output limit."
@@ -753,8 +750,8 @@
        "Use it when the answer needs actual values: a number, the top item, whether a filter matches anything.\n"
        "`query_id` is the ID of a query that you built or that the user is viewing.\n"
        "Use the question's or model's own ID as `query_id` for saved questions and models.\n"
-       "For a saved question the user is viewing, its own ID runs the saved version, and its query ID runs the\n"
-       "query on the user's screen.\n"
+       "For a saved question or model the user is viewing, its own ID runs the saved version, and its query ID\n"
+       "runs the query on the user's screen.\n"
        "A SQL query that you built or that the user is viewing, and a question with SQL that Metabot saved, run only\n"
        "when SQL execution is on and each query is a single read-only SELECT statement. Other saved questions run by\n"
        "their own ID, SQL or not. Build the question with `construct_notebook_query` if SQL is refused.\n"
