@@ -146,6 +146,27 @@
                   (is (= [(:id card)]
                          (map :card_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))))))))
 
+(deftest duplicate-dashcard-with-inaccessible-goal-test
+  (testing "a new dashcard may carry a goal the caller cannot read when the dashboard already carries it, as in the REST writer"
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Card goal-source {:collection_id (:id restricted)}
+                   :model/Card card {:display :gauge}
+                   :model/Dashboard dashboard {}
+                   :model/DashboardCard dashcard {:dashboard_id           (:id dashboard)
+                                                  :card_id                (:id card)
+                                                  :visualization_settings {:gauge.segments [{:min   {:type   "card"
+                                                                                                     :id     (:id goal-source)
+                                                                                                     :column "count"}
+                                                                                             :max   100
+                                                                                             :color "red"}]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                               (wire {:method "update" :id (:id dashboard)
+                                      :ops [{:op "duplicate_card" :id -1 :dashcard_id (:id dashcard)}]})))
+      (is (= [(:id goal-source) (:id goal-source)]
+             (map #(get-in % [:visualization_settings :gauge.segments 0 :min :id])
+                  (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))
+
 (deftest move-card-between-tabs-on-shared-dashboard-test
   (testing "deleting a tab and re-adding its card on another tab in one update exposes nothing new, as in REST"
     (mt/with-temporary-setting-values [enable-public-sharing true]

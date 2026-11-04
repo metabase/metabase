@@ -338,6 +338,29 @@
                  (get-in (t2/select-one :model/Card :id (first new-cards))
                          [:visualization_settings :timeline.selected_timeline_ids]))))))))
 
+(deftest duplicate-dashboard-keeps-inaccessible-dashcard-goal-test
+  (testing "a copy keeps dashcard goals the caller cannot read, like the REST copy: the copy isn't public"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Collection {restricted :id} {}
+                     :model/Card {goal-id :id} {:collection_id restricted
+                                                :dataset_query (venues-query)}
+                     :model/Card {card-id :id} {:name          "Revenue gauge"
+                                                :type          :question
+                                                :display       :gauge
+                                                :dataset_query (venues-query)}
+                     :model/Dashboard {dash-id :id} {:name "Sales"}
+                     :model/DashboardCard _ {:dashboard_id           dash-id
+                                             :card_id                card-id
+                                             :visualization_settings
+                                             {:gauge.segments [{:min   {:type "card" :id goal-id :column "count"}
+                                                                :max   100
+                                                                :color "red"}]}}]
+        (perms/revoke-collection-permissions! (perms/all-users-group) restricted)
+        (let [result (tool-result (call-tool! :rasta {:type "dashboard" :id dash-id}))]
+          (is (= [goal-id]
+                 (map #(get-in % [:visualization_settings :gauge.segments 0 :min :id])
+                      (copied-dashcards (:id result))))))))))
+
 (deftest duplicate-dashboard-deep-uncopied-test
   (testing "GHY-4151: a deep copy reports cards it left behind as `uncopied`, and an unreadable one
             is reported by id alone — the tool must not hand the agent the name or query of a card
