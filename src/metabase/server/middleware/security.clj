@@ -278,7 +278,8 @@
                                  ;; Near-Membrane needs `eval`. Same-origin, the realm host
                                  ;; (`/api/ee/browser-sandboxing/sandbox-host`) holds that grant so the cookie-bearing
                                  ;; document doesn't. On the isolated origin there is no session cookie and no realm
-                                 ;; host, so the membrane uses an `about:blank` realm that inherits this CSP.
+                                 ;; host, so the membrane uses an `about:blank` realm that inherits this CSP (the
+                                 ;; frontend picks it: `realmHostUrl` in the data-app runtime's `loader.ts`).
                                  (when (and data-app-iframe? (server.settings/isolated-origin))
                                    ["'unsafe-eval'"])
                                  (when-not config/is-dev?

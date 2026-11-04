@@ -46,26 +46,36 @@ x.com")
   :visibility :public
   :export?    true)
 
-(defn- normalize-origin
-  "The `scheme://host[:port]` origin of `s`, in the form browsers report in `Origin` and `MessageEvent.origin`: a
-  path, trailing slash, or default port is dropped. A value without a scheme takes the site URL's scheme (https
-  without a site URL). Nil when no http(s) origin can be read from `s`."
-  [^String s]
-  (let [s (if (re-find #"^[A-Za-z][A-Za-z0-9+.-]*://" s)
-            s
-            (str (or (some-> (system/site-url) (str/split #":" 2) first) "https") "://" s))]
-    (try
-      (let [uri    (java.net.URI. s)
-            scheme (some-> (.getScheme uri) u/lower-case-en)
-            host   (some-> (.getHost uri) u/lower-case-en)
-            port   (.getPort uri)]
-        (when (and (#{"http" "https"} scheme)
-                   (not (str/blank? host)))
-          (str scheme "://" host
-               (when-not (contains? #{-1 ({"http" 80, "https" 443} scheme)} port)
-                 (str ":" port)))))
-      (catch java.net.URISyntaxException _
-        nil))))
+(defn- ->uri
+  "`s` as a URI. A value without a scheme takes the site URL's scheme (https without a site URL). Nil when `s` isn't
+  a URI."
+  ^java.net.URI [^String s]
+  (try
+    (java.net.URI. (if (re-find #"^[A-Za-z][A-Za-z0-9+.-]*://" s)
+                     s
+                     (str (or (some-> (system/site-url) (str/split #":" 2) first) "https") "://" s)))
+    (catch java.net.URISyntaxException _
+      nil)))
+
+(defn- uri-origin
+  "The `scheme://host[:port]` origin of `uri`, in the form browsers report in `Origin` and `MessageEvent.origin`: the
+  default port is dropped. Nil when `uri` has no http(s) origin."
+  [^java.net.URI uri]
+  (let [scheme (some-> (.getScheme uri) u/lower-case-en)
+        host   (some-> (.getHost uri) u/lower-case-en)
+        port   (.getPort uri)]
+    (when (and (#{"http" "https"} scheme)
+               (not (str/blank? host)))
+      (str scheme "://" host
+           (when-not (contains? #{-1 ({"http" 80, "https" 443} scheme)} port)
+             (str ":" port))))))
+
+(defn- origin-only?
+  "True when `uri` has no path but `/`, no query and no fragment."
+  [^java.net.URI uri]
+  (and (contains? #{"" "/"} (str (.getRawPath uri)))
+       (nil? (.getRawQuery uri))
+       (nil? (.getRawFragment uri))))
 
 (defn- configured-isolated-origin
   "The trimmed `MB_ISOLATED_ORIGIN` value, or nil when it is unset or blank."
@@ -73,12 +83,17 @@ x.com")
   (some-> (setting/get-value-of-type :string :isolated-origin) str/trim not-empty))
 
 (defn- isolated-origin-problem
-  "Why `origin` (the normalized setting value, nil when it has no origin) can't be the isolated origin, or nil."
-  [origin]
+  "Why `uri` (the parsed setting value), whose origin is `origin` (nil when it has none), can't be the isolated
+  origin, or nil."
+  [uri origin]
   (let [site-url (system/site-url)]
     (cond
       (nil? origin)
       "it is not an http(s) URL like https://example-isolated.com"
+
+      ;; Silently dropping the rest would hide a mistake, such as expecting only that path to be isolated.
+      (not (origin-only? uri))
+      "it has a path, query or fragment, but the isolated origin is a whole host: give only the scheme, host and port"
 
       ;; Without it, a value on the main host's name and another port would put the whole instance under the isolated
       ;; origin's rules.
@@ -111,8 +126,9 @@ x.com")
   :setter     :none
   :getter     (fn []
                 (when-let [value (configured-isolated-origin)]
-                  (let [origin (normalize-origin value)]
-                    (if-let [problem (isolated-origin-problem origin)]
+                  (let [uri    (->uri value)
+                        origin (some-> uri uri-origin)]
+                    (if-let [problem (isolated-origin-problem uri origin)]
                       (log-invalid-isolated-origin! value problem)
                       origin))))
   :export?    false
@@ -121,12 +137,13 @@ x.com")
   Metabase goes through the page that shows them. The address must meet these requirements:
 
   - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
   - Its host name differs from the site URL's host name. A different port isn't enough.
   - It uses https when the site URL does.
   - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
-  - If Metabase runs under a path, both addresses serve it under that path.
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
 
-  If the value breaks one of the first three requirements, Metabase turns data apps off until you fix it. A separate
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
   domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
   `SameSite` is `lax` or `strict`.")
 
