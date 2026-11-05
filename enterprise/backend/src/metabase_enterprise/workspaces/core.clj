@@ -92,11 +92,17 @@
    {:schema (not-empty (:to_schema row)),   :table (:to_table_name row)}])
 
 (defenterprise table-remappings
-  "EE implementation: the remappings recorded for the database, read only in workspace mode."
+  "EE implementation: the remappings recorded for the database that the installed workspace's schema map still backs
+  (the row's scratch namespace is the one the map gives its main schema), read only in workspace mode. A row the map
+  no longer backs, e.g. after `MB_INSTANCE_WORKSPACE` changed without a POST to clear it, is ignored."
   :feature :none
   [database-id]
   (when (workspace-mode?)
-    (not-empty (into {} (map row->specs) (ws.db/table-remappings-of-database database-id)))))
+    (when-let [schema-map (ws/workspace-schemas (ws.db/database-name-and-engine database-id))]
+      (not-empty (into {}
+                       (comp (filter #(= (:to_schema %) (get schema-map (:from_schema %))))
+                             (map row->specs))
+                       (ws.db/table-remappings-of-database database-id))))))
 
 (defenterprise workspace-schemas
   "EE implementation: the schema map the installed workspace gives the database with `database`'s name."

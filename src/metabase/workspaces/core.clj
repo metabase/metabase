@@ -36,8 +36,8 @@
   false)
 
 (defenterprise table-remappings
-  "The [[::remappings]] recorded for the database with id `database-id`, or nil when there are none or this instance is
-  not in workspace mode."
+  "The [[::remappings]] recorded for the database with id `database-id` that the installed workspace still backs, or
+  nil when there are none or this instance is not in workspace mode."
   metabase-enterprise.workspaces.core
   [_database-id]
   nil)
