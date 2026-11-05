@@ -387,13 +387,14 @@
             queue-size    (tracing.settings/tracing-max-queue-size)
             timeout-ms    (tracing.settings/tracing-export-timeout-ms)
             delay-ms      (tracing.settings/tracing-schedule-delay-ms)]
-        (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
-                   service-name endpoint groups-str log-level-str)
-        (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
-                   queue-size timeout-ms delay-ms)
         (system/ensure-started!
          otel-sdk-component
          (fn []
+           ;; logged here, so a second call, which starts nothing, does not log config that is not in effect
+           (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
+                      service-name endpoint groups-str log-level-str)
+           (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
+                      queue-size timeout-ms delay-ms)
            (let [otel (build-otel-sdk {:endpoint     endpoint
                                        :service-name service-name
                                        :queue-size   queue-size
