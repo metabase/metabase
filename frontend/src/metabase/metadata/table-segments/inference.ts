@@ -178,11 +178,53 @@ const LIFECYCLE_RULES: LifecycleRule[] = [
   },
 ];
 
-/** A system segment's conditions from the table's lifecycle columns, ANDed */
+/** The columns a history table's binding names for its current version */
+export type CurrentVersionBinding = {
+  currentFlagFieldId: FieldId | null;
+  validToFieldId: FieldId | null;
+};
+
+function inferCurrentRowsFromHistory(
+  fields: Field[],
+  { currentFlagFieldId, validToFieldId }: CurrentVersionBinding,
+): SystemSegmentInference {
+  const findField = (fieldId: FieldId | null) =>
+    fields.find((field) => idOf(field) === fieldId);
+  const currentFlag = findField(currentFlagFieldId);
+  if (currentFlag != null) {
+    return {
+      conditions: [isTrue(idOf(currentFlag))],
+      signal: t`${currentFlag.display_name} marks the current version, as set in History`,
+      confidence: "high",
+    };
+  }
+  const validTo = findField(validToFieldId);
+  if (validTo != null) {
+    return {
+      conditions: [isNull(idOf(validTo))],
+      signal: t`${validTo.display_name} is empty on current versions, as set in History`,
+      confidence: "high",
+    };
+  }
+  return {
+    conditions: [],
+    signal: t`The current version is the latest row per key, which a segment can't express`,
+    confidence: "high",
+  };
+}
+
+/**
+ * A system segment's conditions from the table's lifecycle columns, ANDed.
+ * On a history table, its binding decides the current rows instead.
+ */
 export function inferSystemSegment(
   fields: Field[],
   role: SystemSegmentRole,
+  history?: CurrentVersionBinding,
 ): SystemSegmentInference {
+  if (role === "current_rows" && history != null) {
+    return inferCurrentRowsFromHistory(fields, history);
+  }
   const matches = LIFECYCLE_RULES.filter((rule) => rule.role === role).flatMap(
     (rule) =>
       fields
@@ -213,14 +255,17 @@ export function inferSystemSegment(
  * Current versions first, since a history table's old versions would double
  * count; then deleted rows; then test data, a weaker guess as a default.
  */
-export function inferDefaultSegment(fields: Field[]): DefaultSegmentInference {
+export function inferDefaultSegment(
+  fields: Field[],
+  history?: CurrentVersionBinding,
+): DefaultSegmentInference {
   const roles: SystemSegmentRole[] = [
     "current_rows",
     "exclude_deleted",
     "exclude_test",
   ];
   for (const role of roles) {
-    const inference = inferSystemSegment(fields, role);
+    const inference = inferSystemSegment(fields, role, history);
     if (inference.conditions.length > 0) {
       return {
         segment: { type: "system", role },
@@ -231,7 +276,10 @@ export function inferDefaultSegment(fields: Field[]): DefaultSegmentInference {
   }
   return {
     segment: { type: "all" },
-    signal: t`No deleted, current-version, or test-data column`,
+    signal:
+      history != null
+        ? inferSystemSegment(fields, "current_rows", history).signal
+        : t`No deleted, current-version, or test-data column`,
     confidence: "high",
   };
 }

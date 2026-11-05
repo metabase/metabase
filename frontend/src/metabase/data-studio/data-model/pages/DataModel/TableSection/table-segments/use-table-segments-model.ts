@@ -22,7 +22,7 @@ import {
   useSegmentSettings,
   useTableSegments,
 } from "metabase/metadata/table-segments";
-import { useTableStructures } from "metabase/metadata/table-structure";
+import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, FieldId, Segment, Table } from "metabase-types/api";
 
@@ -207,7 +207,11 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
   const fields = table.fields ?? [];
   const customSegments = table.segments ?? [];
   const overrides = getTableSegmentsOverrides(table);
-  const { mainDateField } = getTableStructure(table);
+  const { mainDateField, role: tableRole, history } = getTableStructure(table);
+  const currentVersion =
+    tableRole != null && isRoleA(tableRole, "role/HistoryDimension")
+      ? history
+      : undefined;
   const { getSegmentSettings } = useSegmentSettings();
   const settings = getSegmentSettings(table.db_id, table.schema);
   const generationOffSignal = getGenerationOffSignal(settings);
@@ -216,7 +220,7 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     (role) => {
       const inference: SystemSegmentInference =
         generationOffSignal == null
-          ? inferSystemSegment(fields, role)
+          ? inferSystemSegment(fields, role, currentVersion)
           : { conditions: [], signal: generationOffSignal, confidence: "high" };
       const definition = overrides.systemSegments[role];
       const query = definition
@@ -236,7 +240,7 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
 
   const defaultInference: DefaultSegmentInference =
     generationOffSignal == null
-      ? inferDefaultSegment(fields)
+      ? inferDefaultSegment(fields, currentVersion)
       : {
           segment: { type: "all" },
           signal: generationOffSignal,

@@ -38,6 +38,7 @@ import {
   getMissingBindingMessage,
   needsAttention,
 } from "../../PropertyDetailsPanel/property-labels";
+import { DataQualityChecks } from "../DataQualityChecks";
 import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
 type CustomPropertiesSectionProps = {
@@ -132,8 +133,6 @@ export function CustomPropertiesSection({
   );
 }
 
-const DATA_QUALITY_URL = "https://github.com/metabase/data-quality";
-
 const hasSignal = (
   properties: RegistryProperty[],
   type: PropertySignal["type"],
@@ -154,35 +153,13 @@ function countFailingChecks({ properties }: PropertyRegistry) {
 }
 
 function ChecksRow({ registry }: { registry: PropertyRegistry | undefined }) {
-  const failingCount = registry ? countFailingChecks(registry) : null;
   return (
     <DetailsRow
       label={t`Checks`}
       value={
-        <Group gap="sm" justify="space-between" wrap="nowrap">
-          <Group gap="xs" miw={0}>
-            <Text>{t`In data quality`}</Text>
-            {failingCount == null && <Loader size="xs" />}
-            {failingCount != null && failingCount > 0 && (
-              <Badge color="warning" variant="light" flex="0 0 auto">
-                {t`${failingCount} failing`}
-              </Badge>
-            )}
-            {failingCount === 0 && (
-              <Text c="text-secondary">{t`all passing`}</Text>
-            )}
-          </Group>
-          <Button
-            component="a"
-            href={DATA_QUALITY_URL}
-            target="_blank"
-            rel="noreferrer"
-            size="compact-sm"
-            flex="0 0 auto"
-          >
-            {t`View in data quality`}
-          </Button>
-        </Group>
+        <DataQualityChecks
+          failingCount={registry ? countFailingChecks(registry) : null}
+        />
       }
     />
   );

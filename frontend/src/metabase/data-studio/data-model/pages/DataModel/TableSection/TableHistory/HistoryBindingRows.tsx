@@ -8,11 +8,15 @@ import {
   getHistoryKind,
   getHistoryKindOptions,
   getHistorySignalLabel,
+  inferHistoryBinding,
   useHistoryReviewStatus,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Badge, Button, Loader, Radio, Stack, Text } from "metabase/ui";
+import { Button, Group, Loader, Radio, Stack, Text } from "metabase/ui";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
+
+import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
 import { countOf, getEntityNoun } from "./history-labels";
 
@@ -46,25 +50,38 @@ export function getTableHistoryKind(structure: TableStructure) {
   return getHistoryKind(structure.history.validToFieldId != null);
 }
 
-export function HistoryIntro({ structure }: { structure: TableStructure }) {
-  const intros: Record<HistoryKind, string> = {
-    "versions-with-dates": t`Each row is one version of an entity. Counting rows counts versions, so counts use distinct entity keys.`,
-    "latest-row-per-key": t`Each row is one version of an entity, and the newest row per key is the current one. Counts use distinct entity keys.`,
-  };
-  return (
-    <Text size="sm" c="text-secondary">
-      {intros[getTableHistoryKind(structure)]}
-    </Text>
+export function getValidToForDates(
+  fields: Field[],
+  binding: Pick<HistoryBinding, "validFromFieldId">,
+): FieldId | null {
+  const inferredFieldId = inferHistoryBinding(fields).validToFieldId;
+  if (inferredFieldId != null) {
+    return inferredFieldId;
+  }
+  const otherDateField = fields.find(
+    (field) =>
+      isDate(field) && getRawTableFieldId(field) !== binding.validFromFieldId,
   );
+  return otherDateField ? getRawTableFieldId(otherDateField) : null;
+}
+
+function getInferenceDescription({
+  scdType,
+  scdTypeInference,
+}: TableStructure) {
+  const source = t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`;
+  return scdType != null ? t`SCD type ${scdType} · ${source}` : source;
 }
 
 export function HistoryKindInput({
   structure,
+  fields,
   disabled,
   onChange,
   onConfirmGuess,
 }: {
   structure: TableStructure;
+  fields: Field[];
   disabled: boolean;
   onChange: (kind: HistoryKind) => void;
   onConfirmGuess: () => void;
@@ -72,16 +89,23 @@ export function HistoryKindInput({
   const { scdTypeInference, isScdTypeOverridden } = structure;
   const isWeakGuess =
     !isScdTypeOverridden && scdTypeInference.confidence === "low";
+  const selectedKind = getTableHistoryKind(structure);
+  const hasDateRange = getValidToForDates(fields, structure.history) != null;
 
   return (
     <Stack gap="sm" py="xs">
       {isWeakGuess && (
-        <Badge color="warning" variant="light" w="fit-content">
-          {t`Needs review`}
-        </Badge>
+        <Group gap="xs">
+          <NeedsReviewBadge />
+          {!disabled && (
+            <Button size="compact-sm" variant="filled" onClick={onConfirmGuess}>
+              {t`Confirm`}
+            </Button>
+          )}
+        </Group>
       )}
       <Radio.Group
-        value={getTableHistoryKind(structure)}
+        value={selectedKind}
         onChange={(value) => {
           const option = getHistoryKindOptions().find(
             (option) => option.value === value,
@@ -97,28 +121,24 @@ export function HistoryKindInput({
             <Radio
               key={option.value}
               value={option.value}
-              label={option.label}
-              disabled={disabled}
+              label={
+                <Group gap="xs" wrap="nowrap">
+                  {option.label}
+                  {option.value === selectedKind && !isScdTypeOverridden && (
+                    <InferredIcon
+                      description={getInferenceDescription(structure)}
+                    />
+                  )}
+                </Group>
+              }
+              disabled={
+                disabled ||
+                (option.value === "versions-with-dates" && !hasDateRange)
+              }
             />
           ))}
         </Stack>
       </Radio.Group>
-      <Text size="sm" c="text-secondary">
-        {isScdTypeOverridden
-          ? t`Set by an admin`
-          : t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`}
-      </Text>
-      {!disabled && isWeakGuess && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={onConfirmGuess}
-        >
-          {t`Yes, that's right`}
-        </Button>
-      )}
     </Stack>
   );
 }

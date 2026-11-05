@@ -28,6 +28,7 @@ import {
   Box,
   Button,
   Group,
+  Icon,
   Pill,
   Select,
   Stack,
@@ -52,10 +53,10 @@ import {
 } from "../InferenceReview";
 import {
   HistoryChecksStatus,
-  HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
   SharedPointerNote,
+  getValidToForDates,
 } from "../TableHistory";
 
 import S from "./TableStructure.module.css";
@@ -603,31 +604,28 @@ function HistoryBindingSection({
   const binding = structure.history;
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
   const hasCurrentFlag = binding.currentFlagFieldId != null;
-  const showAdvancedLabel = hasCurrentFlag
-    ? t`Show version`
-    : t`Show current flag and version`;
-  const hideAdvancedLabel = hasCurrentFlag
-    ? t`Hide version`
-    : t`Hide current flag and version`;
 
   return (
     <SidebarSection title={t`History`}>
-      <HistoryIntro structure={structure} />
       <DetailsTable>
         <DetailsRow
           label={t`History`}
           value={
             <HistoryKindInput
               structure={structure}
+              fields={fields}
               disabled={disabled}
               onConfirmGuess={() =>
                 onScdTypeChange(structure.scdTypeInference.scdType)
               }
               onChange={(kind) => {
                 onScdTypeChange(2);
-                if (kind === "latest-row-per-key") {
-                  onChange({ validToFieldId: null });
-                }
+                onChange({
+                  validToFieldId:
+                    kind === "latest-row-per-key"
+                      ? null
+                      : getValidToForDates(fields, binding),
+                });
               }}
             />
           }
@@ -696,36 +694,39 @@ function HistoryBindingSection({
         />
         <DetailsRow
           label={t`Checks`}
-          value={<HistoryChecksStatus table={table} readOnly={disabled} />}
+          value={<HistoryChecksStatus table={table} />}
         />
-        <DetailsRow
-          label={t`Advanced`}
-          value={
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              px={0}
-              onClick={toggleAdvanced}
-            >
-              {isAdvancedOpen ? hideAdvancedLabel : showAdvancedLabel}
-            </Button>
-          }
-        />
-        {isAdvancedOpen && !hasCurrentFlag && (
-          <DetailsRow
-            label={t`Current flag`}
-            fillValue
-            value={
-              <CurrentFlagSelect
-                fields={fields}
-                binding={binding}
-                disabled={disabled}
-                onChange={onChange}
-              />
-            }
-          />
-        )}
-        {isAdvancedOpen && (
+      </DetailsTable>
+      <Button
+        variant="subtle"
+        size="compact-sm"
+        px={0}
+        w="fit-content"
+        c="text-secondary"
+        leftSection={
+          <Icon name={isAdvancedOpen ? "chevrondown" : "chevronright"} />
+        }
+        aria-expanded={isAdvancedOpen}
+        onClick={toggleAdvanced}
+      >
+        {t`Advanced`}
+      </Button>
+      {isAdvancedOpen && (
+        <DetailsTable>
+          {!hasCurrentFlag && (
+            <DetailsRow
+              label={t`Current flag`}
+              fillValue
+              value={
+                <CurrentFlagSelect
+                  fields={fields}
+                  binding={binding}
+                  disabled={disabled}
+                  onChange={onChange}
+                />
+              }
+            />
+          )}
           <DetailsRow
             label={t`Version`}
             fillValue
@@ -741,8 +742,8 @@ function HistoryBindingSection({
               />
             }
           />
-        )}
-      </DetailsTable>
+        </DetailsTable>
+      )}
     </SidebarSection>
   );
 }
