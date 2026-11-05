@@ -76,11 +76,26 @@
       (run)
       (future (run)))))
 
+(defn- sql-error?
+  "Whether `e`, or anything in its cause chain, is a `java.sql.SQLException`."
+  [e]
+  (some #(instance? java.sql.SQLException %) (take-while some? (iterate ex-cause e))))
+
 ;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything but
 ;; `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
+;; This runs inside the user's delete, so a search bug must not fail it: other errors skip the enumeration and leave
+;; those documents to the scheduled reindex.
+;; A database error is rethrown, because it has already aborted a PostgreSQL transaction and swallowing it would only
+;; make the delete fail later and less clearly.
 (defmethod dml-capture/dependents :hook/search-index-delete
   [model rows]
-  (search/cascading-documents (rows->instances model rows)))
+  (try
+    (search/cascading-documents (rows->instances model rows))
+    (catch Exception e
+      (when (sql-error? e)
+        (throw e))
+      (log/errorf e "Skipping search cascade enumeration for %s" model)
+      nil)))
 
 (defmethod dml-capture/captured! :hook/search-index-delete
   [model {:keys [op rows dependents]}]
