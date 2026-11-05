@@ -147,7 +147,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
@@ -163,7 +163,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    {:default {:select [1] :from [:core_user]
                                                     :where [:= :email "nonexistent@example.com"] :limit 1}}
                       :match_status      "active"
@@ -179,7 +179,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    nil
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
@@ -194,7 +194,7 @@
                       :title             "Test"
                       :description       "Test"
                       :remediation       "Upgrade"
-                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                       :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
@@ -295,7 +295,7 @@
                         :description       "Test"
                         :remediation       "Upgrade"
                         ;; Range that would normally match any realistic version.
-                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "unknown"
                         :published_at      #t "2026-03-24T00:00:00Z"
@@ -320,7 +320,7 @@
                             :title             "Test"
                             :description       "Test"
                             :remediation       "Upgrade"
-                            :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                            :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                             :matching_query    query
                             :match_status      prior-status
                             :acknowledged_at   acked-at
@@ -341,7 +341,7 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "active"
                         :acknowledged_at   acked-at
@@ -360,7 +360,7 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "not_affected"
                         :published_at      #t "2026-03-24T00:00:00Z"
@@ -378,7 +378,7 @@
                     :title             "Active advisory"
                     :description       "Test"
                     :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                    :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                     :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"
@@ -389,7 +389,7 @@
                     :title             "Not affected advisory"
                     :description       "Test"
                     :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                    :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                     :matching_query    {:default {:select [1] :from [:core_user]
                                                   :where [:= :email "nonexistent@example.com"] :limit 1}}
                     :match_status      "not_affected"
@@ -401,7 +401,7 @@
                     :title             "Erroring advisory"
                     :description       "Test"
                     :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                    :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                     :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"
