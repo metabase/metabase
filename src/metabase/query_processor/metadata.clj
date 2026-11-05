@@ -20,7 +20,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv not-empty select-keys]]))
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys]]
+   [metabase.workspaces.core :as ws]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
@@ -55,9 +56,9 @@
       ([cols _row]
        (ensure-reduced cols)))))
 
-(mu/defmethod driver/query-result-metadata :default :- [:sequential :map]
-  [_driver :- :keyword
-   query   :- ::qp.schema/any-query]
+(mu/defn- metadata-by-running-query :- [:sequential :map]
+  "Result metadata from running `query` with `LIMIT 1` through the whole QP."
+  [query :- ::qp.schema/any-query]
   (let [query' (query-with-limit-1 query)]
     (try
       (qp/process-query query' result-metadata-rff)
@@ -66,6 +67,11 @@
           (log/debugf "Not running query to determine Card result metadata: %s" (ex-message e))
           (log/errorf "Error running query to determine Card result metadata: %s" (ex-message e)))
         []))))
+
+(mu/defmethod driver/query-result-metadata :default :- [:sequential :map]
+  [_driver :- :keyword
+   query   :- ::qp.schema/any-query]
+  (metadata-by-running-query query))
 
 (mu/defn- metadata-from-driver :- [:sequential :map]
   "Get metadata from the driver's implementation of [[metabase.driver/query-result-metadata]]. For JDBC-based drivers
@@ -76,7 +82,11 @@
   (let [query  (cond-> query
                  current-user-id (assoc-in [:info :executed-by] current-user-id))
         driver (driver.u/database->driver (:database query))]
-    (driver/query-result-metadata driver query)))
+    ;; On a workspace sidecar a driver's own implementation (e.g. JDBC's PREPARE) would describe the SQL as written,
+    ;; reading main tables; running the query goes through the execution rewrite, so it describes the scratch tables.
+    (if (ws/table-remappings (:database query))
+      (metadata-by-running-query query)
+      (driver/query-result-metadata driver query))))
 
 (mu/defn- add-extra-column-metadata :- :map
   [col           :- [:or ::lib.schema.metadata/column :metabase.legacy-mbql.schema/legacy-column-metadata]
