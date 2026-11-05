@@ -112,16 +112,16 @@
     (get-in (instance-workspace) [:databases (:name database) :schemas])))
 
 (defn- supported-engine?
-  "Engines whose workspace namespaces are schemas in `schema.table` SQL: the Postgres family. On MySQL and ClickHouse a
-  scratch namespace is a database, and SQL Server, Snowflake and BigQuery name tables in three parts; their remapping
-  comes with their own engine work."
+  "Workspaces support Postgres only so far. Redshift derives from Postgres but folds and truncates identifiers
+  differently; MySQL and ClickHouse scratch namespaces are databases; SQL Server, Snowflake and BigQuery name tables
+  in three parts. Their remapping comes with their own engine work."
   [engine]
-  (isa? driver/hierarchy (keyword engine) :postgres))
+  (= :postgres (keyword engine)))
 
 (defn- check-supported-engine!
   [{database-name :name, :keys [engine]}]
   (when-not (supported-engine? engine)
-    (throw (ex-info (tru "Database {0} is a {1} database; workspaces support only Postgres-family databases so far."
+    (throw (ex-info (tru "Database {0} is a {1} database; workspaces support only Postgres databases so far."
                          (pr-str database-name) (name engine))
                     {:status-code 400, :database database-name, :engine engine}))))
 
@@ -270,10 +270,11 @@
   (setting/set! :instance-workspace value :bypass-read-only? true))
 
 (defn- in-one-transaction!
-  "Run `f`, which changes the remappings and the `instance-workspace` setting, in one app-DB transaction, so no query
-  sees the new map with the old remappings or the other way round. Writing the setting updates this instance's
-  in-memory settings cache at once, before the commit; when the transaction rolls back, the cache is reloaded from the
-  app DB so it does not keep a value that was never committed."
+  "Run `f`, which changes the remappings and the `instance-workspace` setting, in one app-DB transaction, so a failure
+  leaves both as they were. (A query that reads between the two writes is kept consistent by [[table-remappings]],
+  which ignores a remapping the current map doesn't back.) Writing the setting updates this instance's in-memory
+  settings cache at once, before the commit; when the transaction rolls back, the cache is reloaded from the app DB so
+  it does not keep a value that was never committed."
   [f]
   (try
     (t2/with-transaction [_conn]
