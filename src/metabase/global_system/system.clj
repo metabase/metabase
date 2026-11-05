@@ -17,6 +17,7 @@
    (clojure.lang IDeref)
    (java.io Writer)
    (java.util.concurrent ConcurrentHashMap)
+   (java.util.concurrent.locks ReentrantReadWriteLock)
    (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
@@ -169,6 +170,16 @@
   stopping
   (atom #{}))
 
+;; A start holds the read side from its check of [[halted]] until it registers, and [[halt!]] takes the write side to
+;; set it, so a halt waits for the starts already running and sees them registered.
+(defonce ^:private admission
+  (ReentrantReadWriteLock.))
+
+(defonce ^{:doc "Whether [[halt!]] has run, so components may no longer start."
+           :private true}
+  halted
+  (atom false))
+
 (defn- handle-key
   [^ComponentHandle handle]
   (.-k handle))
@@ -203,36 +214,46 @@
     (let [current @handle]
       (if (some? current)
         [current false]
-        (mc/with-slot-lock handle
-          (let [k       (handle-key handle)
-                current @handle]
-            (cond
-              (some? current)
-              [current false]
+        ;; the read side before the slot lock: a nested start takes another slot lock while holding it, and a start
+        ;; holding a slot lock must never wait behind a halt that is itself waiting for that nested start
+        (let [read-lock (.readLock ^ReentrantReadWriteLock admission)]
+          (.lock read-lock)
+          (try
+            (mc/with-slot-lock handle
+              (let [k       (handle-key handle)
+                    current @handle]
+                (cond
+                  (some? current)
+                  [current false]
 
-              (contains? @stopping k)
-              (throw (ex-info (str "Component is stopping: " k) {:component k}))
+                  @halted
+                  (throw (ex-info (str "The system has halted, so a component cannot start: " k) {:component k}))
 
-              :else
-              (let [started (run-start k start)]
-                ;; Registered before the root is published, so the root is never visible unregistered, and anything
-                ;; that starts after seeing it, and so may depend on it, comes after it in [[start-order]].
-                ;; Components `start` itself started come before it, for the same reason.
-                (swap! start-order (fn [ks] (cond-> ks (not (some #{k} ks)) (conj k))))
-                (swap! started-components assoc k {:handle handle, :stop stop})
-                (mc/reset! handle started)
-                [started true]))))))))
+                  (contains? @stopping k)
+                  (throw (ex-info (str "Component is stopping: " k) {:component k}))
+
+                  :else
+                  (let [started (run-start k start)]
+                    ;; Registered before the root is published, so the root is never visible unregistered, and
+                    ;; anything that starts after seeing it, and so may depend on it, comes after it in
+                    ;; [[start-order]]. Components `start` itself started come before it, for the same reason.
+                    (swap! start-order (fn [ks] (cond-> ks (not (some #{k} ks)) (conj k))))
+                    (swap! started-components assoc k {:handle handle, :stop stop})
+                    (mc/reset! handle started)
+                    [started true]))))
+            (finally
+              (.unlock read-lock))))))))
 
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
    Starting calls `start` with no arguments and with no bindings in place, which must return a non-nil value,
    installs that as the root, and records `stop`, a function of the value, for [[stop!]] and [[halt!]].
    Threads racing to start the component start it once, and `start` runs holding the component's slot lock.
-   So `start` must not wait for another thread that writes this component or starts it.
+   So `start` must not wait for another thread that writes this component or starts any component.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
-   Throws if the component is being stopped, or if `start` tries to start the component it is starting.
-   The component's root must already be installed, usually as nil by [[mutable-component-handle]].
-   A component started while [[halt!]] runs may be left running."
+   Throws if the component is being stopped, if `start` tries to start the component it is starting, or once
+   [[halt!]] has begun, until [[reopen!]].
+   The component's root must already be installed, usually as nil by [[mutable-component-handle]]."
   [handle start stop]
   (first (start! handle start stop)))
 
@@ -278,9 +299,13 @@
                                    [(handle-key handle) e]))))
                        handles)]
     (when (seq failures)
-      (throw (ex-info "Some components failed to stop"
-                      {:failures failures}
-                      (second (first failures)))))))
+      (let [cause (second (first failures))]
+        ;; so a log of the one exception shows every failure's stack trace
+        (doseq [[_ e] (rest failures)]
+          (.addSuppressed ^Throwable cause e))
+        (throw (ex-info "Some components failed to stop"
+                        {:failures failures}
+                        cause))))))
 
 (defn- halt-order
   "The handles of the running components, in the order [[halt!]] stops them: the reverse of the order they first
@@ -289,8 +314,27 @@
   (let [running @started-components]
     (keep #(get-in running [% :handle]) (rseq @start-order))))
 
+(defn- close-admission!
+  "Refuse every later start, once the starts already running have finished and registered."
+  []
+  (let [write-lock (.writeLock ^ReentrantReadWriteLock admission)]
+    (.lock write-lock)
+    (try
+      (reset! halted true)
+      (finally
+        (.unlock write-lock)))))
+
 (defn halt!
   "Stop every running component [[start!]] started, in the reverse of the order they first started in.
+   From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
+   left running.
    Throws after trying them all if any stop threw; see [[stop-all!]]."
   []
+  (close-admission!)
   (stop-all! (halt-order)))
+
+(defn reopen!
+  "Let components start again after [[halt!]], for a REPL that halts the system and starts it again in one JVM."
+  []
+  (reset! halted false)
+  nil)

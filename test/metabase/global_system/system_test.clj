@@ -513,29 +513,69 @@
           (cleanup! [handle]))))))
 
 ;; halt! itself is never called in these tests: it stops every component this test JVM has started, such as the test
-;; web server, which later tests need. It is only (stop-all! (halt-order)), and this test drives both on throwaway
-;; components, so a regression in either fails here.
+;; web server, which later tests need. It is only (close-admission!) then (stop-all! (halt-order)), and these tests
+;; drive each part on throwaway components, reopening afterwards, so a regression in any of them fails here.
 (deftest ^:synchronized halt-order-test
-  (testing "halt stops components in reverse start order, and one failing stop does not prevent the others"
+  (testing "halt stops components in reverse start order, and failing stops do not stop the rest and are all reported"
     (let [stopped (atom [])
-          stop    (fn [v] (swap! stopped conj v) (when (= v :b) (throw (ex-info "boom" {}))))
+          stop    (fn [v]
+                    (swap! stopped conj v)
+                    (when (#{:b :c} v)
+                      (throw (ex-info (str "stop " (name v)) {}))))
           handles [(system/mutable-component-handle ::halt-a (constantly nil))
                    (system/mutable-component-handle ::halt-b (constantly nil))
                    (system/mutable-component-handle ::halt-c (constantly nil))]]
       (try
         (doseq [[handle value] (map vector handles [:a :b :c])]
           (system/ensure-started! handle (constantly value) stop))
-        (is (= {:failures [::halt-b]
-                :stopped  [:c :b :a]
-                :values   [nil nil nil]}
-               {:failures (try (#'system/stop-all! (filter (set handles) (#'system/halt-order)))
-                               []
-                               (catch clojure.lang.ExceptionInfo e
-                                 (mapv first (:failures (ex-data e)))))
-                :stopped  @stopped
-                :values   (mapv deref handles)}))
+        (is (= {:failures   [::halt-c ::halt-b]
+                :cause      "stop c"
+                :suppressed ["stop b"]
+                :stopped    [:c :b :a]
+                :values     [nil nil nil]}
+               (merge (try (#'system/stop-all! (filter (set handles) (#'system/halt-order)))
+                           {}
+                           (catch clojure.lang.ExceptionInfo e
+                             {:failures   (mapv first (:failures (ex-data e)))
+                              :cause      (ex-message (ex-cause e))
+                              :suppressed (mapv ex-message (.getSuppressed (ex-cause e)))}))
+                      {:stopped @stopped
+                       :values  (mapv deref handles)})))
         (finally
           (cleanup! handles))))))
+
+(deftest ^:synchronized halted-system-refuses-starts-test
+  (testing "once a halt begins no component starts, until the system is reopened"
+    (let [handle (system/mutable-component-handle ::after-halt (constantly nil))]
+      (try
+        (#'system/close-admission!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The system has halted"
+                              (system/ensure-started! handle (constantly :started) (constantly nil))))
+        (system/reopen!)
+        (is (= :started (system/ensure-started! handle (constantly :started) (constantly nil))))
+        (finally
+          (system/reopen!)
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized halt-waits-for-running-starts-test
+  (testing "a halt waits for a start already running, so the halt order includes it"
+    (let [handle (system/mutable-component-handle ::starting-during-halt (constantly nil))
+          inside (promise)
+          leave  (promise)]
+      (try
+        (let [starter (future (system/ensure-started! handle
+                                                      #(do (deliver inside true) @leave :started)
+                                                      (constantly nil)))
+              _       @inside
+              closing (future (#'system/close-admission!))]
+          (is (= ::still-waiting (deref closing 200 ::still-waiting)))
+          (deliver leave true)
+          @starter
+          @closing
+          (is (some #{handle} (#'system/halt-order))))
+        (finally
+          (system/reopen!)
+          (cleanup! [handle]))))))
 
 (deftest ^:synchronized start-returning-false-test
   (testing "a start that returns false still counts as started, so it runs once"
