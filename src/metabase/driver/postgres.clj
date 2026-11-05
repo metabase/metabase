@@ -105,9 +105,11 @@
                               :transforms/table               true
                               :transforms/testing             true
                               :uploads                        true
-                              :uuid-type                      true
-                              :workspace                      true}]
+                              :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
+
+;; Postgres only, not the drivers that derive from it: their catalogs may lack what the workspace methods query
+(defmethod driver/database-supports? [:postgres :workspace] [driver _feature _db] (= driver :postgres))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
   [_driver _feat db]
@@ -1586,28 +1588,53 @@
   (jdbc/execute! conn ["SET LOCAL search_path = pg_catalog, pg_temp"])
   (jdbc/execute! conn [(format "SET LOCAL lock_timeout = '%s'" workspace-lock-timeout)]))
 
+(defn- sql-state [t]
+  (when (instance? java.sql.SQLException t)
+    (.getSQLState ^java.sql.SQLException t)))
+
 (defn- workspace-error
   "`t` as the error to rethrow: the server's own message, scrubbed of `secrets`, and a lock timeout as a 409 to retry."
   [t secrets]
   (let [t (driver.u/scrub-exceptions (driver.u/batch-exception t) secrets)]
-    (if (and (instance? java.sql.SQLException t) (= "55P03" (.getSQLState ^java.sql.SQLException t)))
-      (ex-info (str "Another session holds a lock this workspace operation needs, such as another workspace operation "
-                    "on the same schema. Retry once it is done.")
+    (if (= "55P03" (sql-state t))
+      (ex-info (str "Another session holds a lock this workspace operation needs, such as a session of a workspace "
+                    "user on one of its tables. Retry once that session ends.")
                {:status-code 409} t)
       t)))
 
+(defn- concurrent-update?
+  "Two transactions changing the same catalog rows at once, such as two workspaces granting on one main schema: one
+  fails with `tuple concurrently updated` rather than waiting, or both wait and the server breaks the deadlock."
+  [t]
+  (let [t (driver.u/batch-exception t)]
+    (or (= "40P01" (sql-state t))
+        (and (= "XX000" (sql-state t))
+             (str/includes? (str (ex-message t)) "tuple concurrently updated")))))
+
+(def ^:private concurrent-update-attempts 6)
+
 (defn- do-in-workspace-transaction
   "Calls `(f conn)` in one transaction on `database` as its workspace provisioning login, and returns what it returns.
-  Errors are rethrown through [[workspace-error]]."
+  Retries the whole transaction, with backoff, when it collides with a concurrent catalog update. Errors are rethrown
+  through [[workspace-error]]."
   [database secrets f]
-  (try
-    ;; bound here rather than trusted to the caller: outside it, the DDL would run as the database's main login
-    (jdbc/with-db-transaction [conn (driver.conn/with-workspace-provisioning-connection
-                                      (sql-jdbc.conn/db->pooled-connection-spec database))]
-      (start-workspace-transaction! conn)
-      (f conn))
-    (catch Throwable t
-      (throw (workspace-error t secrets)))))
+  (loop [attempt 1]
+    (let [result (try
+                   ;; bound here rather than trusted to the caller: outside it, the DDL would run as the database's main
+                   ;; login
+                   {:value (jdbc/with-db-transaction [conn (driver.conn/with-workspace-provisioning-connection
+                                                             (sql-jdbc.conn/db->pooled-connection-spec database))]
+                             (start-workspace-transaction! conn)
+                             (f conn))}
+                   (catch Throwable t
+                     (if (and (concurrent-update? t) (< attempt concurrent-update-attempts))
+                       {:retry t}
+                       (throw (workspace-error t secrets)))))]
+      (if (contains? result :value)
+        (:value result)
+        (do
+          (Thread/sleep (long (+ (* 50 (bit-shift-left 1 attempt)) (rand-int 50))))
+          (recur (inc attempt)))))))
 
 (defn- run-workspace-ddl!
   "In a [[do-in-workspace-transaction]], call `(statements-fn conn)` for the statements to run, then run them as one
@@ -1625,16 +1652,6 @@
        (after-fn conn))))
   nil)
 
-(defn- advisory-lock! [conn lock-key]
-  (jdbc/query conn ["SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(?::text)) AS locked" lock-key]))
-
-(defn- lock-main-schemas!
-  "Take a transaction-scoped advisory lock per schema in `schemas`, in sorted order so two callers cannot deadlock.
-  Two workspaces granting on one main schema at once otherwise fail with `tuple concurrently updated`."
-  [conn schemas]
-  (doseq [schema (sort (distinct schemas))]
-    (advisory-lock! conn (str "mb__isolation:" schema))))
-
 (defn- role-exists? [conn role]
   (boolean (seq (jdbc/query conn ["SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = ?::text" role]))))
 
@@ -1645,22 +1662,90 @@
   (.alterUserPassword ^PGConnection (.unwrap ^Connection (jdbc/db-connection conn) PGConnection)
                       ^String user (char-array password) "scram-sha-256"))
 
-(defn- check-no-public-create-anywhere!
-  "Every login, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC (`public`
-  before Postgres 15): writes outside its scratch namespaces, and functions that shadow catalog ones for whoever runs
-  with that schema on its search_path."
+(defn- connectable-databases
+  "The databases of the cluster that any login, the workspace user included, may connect to: those that allow
+  connections and grant CONNECT to PUBLIC. template0 never allows them."
   [conn]
-  (when-let [schemas (seq (map :nspname (jdbc/query conn [(str "SELECT n.nspname FROM pg_catalog.pg_namespace n "
-                                                               "CROSS JOIN LATERAL pg_catalog.aclexplode(n.nspacl) a "
-                                                               "WHERE a.grantee = 0 AND a.privilege_type = 'CREATE' "
-                                                               "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
-                                                               "AND n.nspname NOT LIKE 'pg\\_toast%' "
-                                                               "ORDER BY n.nspname")])))]
-    (throw (ex-info (format "%d schema(s) grant CREATE to PUBLIC: %s. Run `%s` and retry."
-                            (count schemas) (str/join ", " schemas)
-                            (str/join " " (for [schema schemas]
-                                            (format "REVOKE CREATE ON SCHEMA %s FROM PUBLIC;" (quote-schema schema)))))
-                    {:status-code 412, :schemas (vec schemas)}))))
+  (map :datname (jdbc/query conn [(str "SELECT d.datname FROM pg_catalog.pg_database d WHERE d.datallowconn "
+                                       "AND d.datname <> 'template0' AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode("
+                                       "  COALESCE(d.datacl, pg_catalog.acldefault('d', d.datdba))) a "
+                                       "  WHERE a.grantee = 0 AND a.privilege_type = 'CONNECT') "
+                                       "ORDER BY d.datname")])))
+
+(defn- public-create-schemas
+  "The schemas of the connected database that grant CREATE to PUBLIC."
+  [conn]
+  (map :nspname (jdbc/query conn [(str "SELECT n.nspname FROM pg_catalog.pg_namespace n "
+                                       "CROSS JOIN LATERAL pg_catalog.aclexplode(n.nspacl) a "
+                                       "WHERE a.grantee = 0 AND a.privilege_type = 'CREATE' "
+                                       "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+                                       "AND n.nspname NOT LIKE 'pg\\_toast%' "
+                                       "ORDER BY n.nspname")])))
+
+(defn- public-create-findings
+  "`[database-name schemas]` for each of `databases`: the schemas there that grant CREATE to PUBLIC, or `:unverifiable`
+  when the provisioning login cannot connect to check."
+  [database conn databases]
+  (let [current (:db (first (jdbc/query conn ["SELECT pg_catalog.current_database() AS db"])))]
+    (for [db databases]
+      [db (if (= db current)
+            (public-create-schemas conn)
+            (try
+              (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+               :postgres
+               (assoc (driver.conn/with-workspace-provisioning-connection (driver.conn/effective-details database))
+                      :dbname db)
+               (fn [spec]
+                 (jdbc/with-db-transaction [other spec]
+                   (start-workspace-transaction! other)
+                   (doall (public-create-schemas other)))))
+              (catch java.sql.SQLException _
+                :unverifiable)))])))
+
+(defn- check-no-public-create-anywhere!
+  "Every login, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC, in any
+  database it may connect to (`public` before Postgres 15): writes outside its scratch namespaces, objects that keep
+  it from being dropped, and functions that shadow catalog ones for whoever runs with that schema on its search_path."
+  [database conn]
+  (let [findings     (doall (public-create-findings database conn (connectable-databases conn)))
+        schemas      (for [[db found] findings :when (sequential? found), schema found] [db schema])
+        unverifiable (for [[db found] findings :when (= :unverifiable found)] db)]
+    (when (or (seq schemas) (seq unverifiable))
+      (throw (ex-info
+              (str "The workspace user could create objects outside its scratch namespaces."
+                   (when (seq schemas)
+                     (format " These schemas grant CREATE to PUBLIC: %s."
+                             (str/join ", " (for [[db schema] schemas] (str db "." schema)))))
+                   (when (seq unverifiable)
+                     (format " The provisioning login cannot connect to check these databases: %s."
+                             (str/join ", " unverifiable)))
+                   (format " Run %s, or keep the workspace user out of a database with `REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`, and retry."
+                           (str/join ", " (concat
+                                           (for [[db schema] schemas]
+                                             (format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;` in database %s"
+                                                     (quote-schema schema) (quote-role db)))
+                                           (for [db unverifiable]
+                                             (format "`REVOKE CONNECT ON DATABASE %s FROM PUBLIC;`" (quote-role db)))))))
+              {:status-code  412
+               :schemas      (vec (for [[db schema] schemas] (str db "." schema)))
+               :unverifiable (vec unverifiable)})))))
+
+(defn- grant-membership-statement
+  "Makes the provisioning login a member of the workspace user, with its privileges: so that teardown can end the
+  user's sessions and drop what it owns, wherever it made it. The provisioning login gains the workspace user's
+  privileges, never the reverse. Before Postgres 16, a CREATEROLE login may grant any role; from 16, the login holds
+  ADMIN on the roles it creates, and memberships take INHERIT and SET options."
+  [conn user]
+  (if (<= 160000 (:v (first (jdbc/query conn ["SELECT pg_catalog.current_setting('server_version_num')::int AS v"]))))
+    (format "GRANT %s TO CURRENT_USER WITH INHERIT TRUE, SET TRUE" (quote-role user))
+    (format "GRANT %s TO CURRENT_USER" (quote-role user))))
+
+(defn- role-exists-error [user cause]
+  (ex-info (format (str "The warehouse already has a role named %s. It may belong to another workspace, so it was "
+                        "left unchanged.")
+                   (quote-role user))
+           {:status-code 409, :workspace/cleanup? false, :user user}
+           cause))
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database wsd]
@@ -1669,19 +1754,23 @@
     (when-not (and (string? password) (not (str/blank? password)))
       (throw (ex-info "The workspace database details have no password for the workspace user."
                       {:status-code 400, :user user})))
-    (run-workspace-ddl!
-     database [password]
-     (fn [conn]
-       (check-no-public-create-anywhere! conn)
-       (advisory-lock! conn (str "mb__isolation-role:" user))
-       (when (role-exists? conn user)
-         (throw (ex-info (format (str "The warehouse already has a role named %s. It may belong to another "
-                                      "workspace, so it was left unchanged.")
-                                 (quote-role user))
-                         {:status-code 409, :workspace/cleanup? false, :user user})))
-       [(format "CREATE USER %s" (quote-role user))])
-     (fn [conn]
-       (set-password! conn user password)))))
+    (try
+      (run-workspace-ddl!
+       database [password]
+       (fn [conn]
+         (check-no-public-create-anywhere! database conn)
+         (when (role-exists? conn user)
+           (throw (role-exists-error user nil)))
+         [(format "CREATE USER %s" (quote-role user))])
+       (fn [conn]
+         (set-password! conn user password)
+         (jdbc/execute! conn [(grant-membership-statement conn user)])))
+      (catch java.sql.SQLException e
+        ;; a concurrent init with the same isolation id created the role between the check and CREATE USER: a duplicate
+        ;; role, or a duplicate key in pg_authid when both inserted at once
+        (if (#{"42710" "23505"} (sql-state e))
+          (throw (role-exists-error user e))
+          (throw e))))))
 
 ;;; Preconditions of [[driver/add-workspace-schema!]] on the main schema. Each catches a state in which the GRANTs would
 ;;; run without error yet leave the workspace user able to write to the main schema, or unable to read all of it.
@@ -1885,7 +1974,6 @@
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
      (fn [conn]
-       (lock-main-schemas! conn [main-schema])
        (let [login  (:current_user (first (jdbc/query conn ["SELECT current_user"])))
              owners (table-creators conn main-schema)]
          (check-no-public-create! conn main-schema)
@@ -1949,7 +2037,6 @@
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
      (fn [conn]
-       (lock-main-schemas! conn [main-schema])
        (cons (format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch))
              (map #(revoke-statement user %) (main-grants conn))))
      (fn [conn]
@@ -1960,17 +2047,6 @@
                                  (str/join "; " (map #(revoke-statement user %) left)))
                          {:schema main-schema})))))))
 
-(defn- workspace-user-details
-  "`details` with the workspace user's login in place of the provisioning login, and no other way to authenticate: an
-  auth provider or a client certificate would log in as someone else."
-  [details user password]
-  (-> (into {} (remove (fn [[k _]]
-                         (let [n (name k)]
-                           (or (str/starts-with? n "ssl-key") (str/starts-with? n "ssl-client-cert")))))
-            details)
-      (dissoc :ssl-use-client-auth :use-auth-provider :auth-provider)
-      (assoc :user user, :password password)))
-
 (defn- scratch-schemas
   "`user`'s scratch namespaces, found by their `<user>_s` prefix."
   [conn user]
@@ -1980,97 +2056,98 @@
                                          "ORDER BY nspname")
                                     prefix prefix]))))
 
-(defn- revoke-everything!
-  "Drops `user`'s scratch namespaces and revokes every grant left to it, under the main schemas' locks. Each REVOKE
-  runs under its own savepoint, so one this login cannot make (a grant from a role it cannot act for) leaves the rest
-  revoked; `DROP USER` then fails naming it."
+(defn- end-sessions!
+  "Ends every session of `user` that this login may end: all of them, since it holds the user's privileges."
   [conn user]
-  (let [scratches (scratch-schemas conn user)]
-    (doseq [scratch scratches]
-      (jdbc/execute! conn [(format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch))]))
-    (when (role-exists? conn user)
-      (let [grants #(remove (comp (set scratches) :schema) (grants-to-role conn user))]
-        (lock-main-schemas! conn (keep :schema (grants)))
-        (doseq [grant (grants)]
-          (jdbc/execute! conn ["SAVEPOINT workspace_revoke"])
-          (try
-            (jdbc/execute! conn [(revoke-statement user grant)])
-            (jdbc/execute! conn ["RELEASE SAVEPOINT workspace_revoke"])
-            (catch java.sql.SQLException e
-              (log/warnf "Could not revoke %s from workspace user %s: %s" (pr-str grant) user (ex-message e))
-              (jdbc/execute! conn ["ROLLBACK TO SAVEPOINT workspace_revoke"]))))))))
+  (jdbc/query conn [(str "SELECT pg_catalog.pg_terminate_backend(pid) AS ended FROM pg_catalog.pg_stat_activity "
+                         "WHERE usename = ?::text AND pg_catalog.pg_has_role(current_user, usesysid, 'USAGE')")
+                    user]))
 
 (defn- lock-out-workspace-user!
-  "Commits on its own, first, so that it holds whatever fails later: the user can no longer log in, its role settings
-  are reset, and its sessions are ended where this login has the right to end them."
-  [database user]
-  (do-in-workspace-transaction
-   database []
-   (fn [conn]
-     (when (role-exists? conn user)
-       (let [db (:db (first (jdbc/query conn ["SELECT pg_catalog.current_database() AS db"])))]
-         (doseq [sql [(format "ALTER ROLE %s NOLOGIN" (quote-role user))
-                      (format "ALTER ROLE %s RESET ALL" (quote-role user))
-                      (format "ALTER ROLE %s IN DATABASE %s RESET ALL" (quote-role user) (quote-role db))]]
-           (jdbc/execute! conn [sql]))
-         (jdbc/query conn [(str "SELECT pg_catalog.pg_terminate_backend(pid) AS ended FROM pg_catalog.pg_stat_activity "
-                                "WHERE usename = ?::text "
-                                "AND (pg_catalog.pg_has_role(current_user, 'pg_signal_backend', 'USAGE') "
-                                "     OR pg_catalog.pg_has_role(current_user, usesysid, 'USAGE'))")
-                           user]))))))
+  "The user can no longer log in, its role settings are reset, and its sessions are ended."
+  [conn user db]
+  (doseq [sql [(format "ALTER ROLE %s NOLOGIN" (quote-role user))
+               (format "ALTER ROLE %s RESET ALL" (quote-role user))
+               (format "ALTER ROLE %s IN DATABASE %s RESET ALL" (quote-role user) (quote-role db))]]
+    (jdbc/execute! conn [sql]))
+  (end-sessions! conn user))
 
-(defn- drop-owned-as-workspace-user!
-  "As the workspace user itself, drop what it owns outside scratch, such as a table made through a PUBLIC grant or a
-  large object, which would make `DROP USER` fail. The user gets a new password and LOGIN for this step only, so it
-  needs nothing from the user or its stored password. Skipped when the user cannot log in even so."
+(def ^:private session-exit-wait-ms
+  "How long teardown waits for the workspace user's sessions to exit once they are told to."
+  5000)
+
+(defn- check-no-sessions-left!
+  "Throws a 409 while any session of `user` is still open: teardown must not leave one holding what it is about to
+  revoke or drop."
   [database user]
-  (let [password   (driver.u/random-workspace-password)
-        connected? (volatile! false)]
-    (when (do-in-workspace-transaction
-           database [password]
-           (fn [conn]
-             (when (role-exists? conn user)
-               (jdbc/execute! conn [(format "ALTER ROLE %s LOGIN" (quote-role user))])
-               (set-password! conn user password)
-               true)))
+  (loop [waited 0]
+    (let [sessions (do-in-workspace-transaction
+                    database []
+                    (fn [conn]
+                      (:n (first (jdbc/query conn [(str "SELECT count(*) AS n FROM pg_catalog.pg_stat_activity "
+                                                        "WHERE usename = ?::text")
+                                                   user])))))]
+      (cond
+        (zero? sessions)                   nil
+        (< waited session-exit-wait-ms)    (do (Thread/sleep 250) (recur (+ waited 250)))
+        :else
+        (throw (ex-info (format (str "%d session(s) of workspace user %s are still open, and the provisioning login "
+                                     "could not end them. The user can no longer log in. Have a superuser run "
+                                     "`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '%s'`, "
+                                     "then retry.")
+                                sessions (quote-role user) user)
+                        {:status-code 409, :user user, :sessions sessions}))))))
+
+(defn- revoke-grants!
+  "Revokes every grant to `user` outside its scratch namespaces, each REVOKE under its own savepoint: one this login
+  cannot make (a grant from a role it cannot act for) leaves the rest revoked, and `DROP USER` then fails naming it."
+  [conn user]
+  (let [scratches (set (scratch-schemas conn user))]
+    (doseq [grant (remove (comp scratches :schema) (grants-to-role conn user))]
+      (jdbc/execute! conn ["SAVEPOINT workspace_revoke"])
       (try
-        (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
-         :postgres
-         (workspace-user-details (driver.conn/with-workspace-provisioning-connection
-                                   (driver.conn/effective-details database))
-                                 user password)
-         (fn [spec]
-           (jdbc/with-db-transaction [conn spec]
-             (vreset! connected? true)
-             (start-workspace-transaction! conn)
-             ;; names the user rather than CURRENT_USER, so a connection that resolved to another login drops nothing
-             (jdbc/execute! conn [(format "DROP OWNED BY %s" (quote-role user))]))))
-        (catch Throwable t
-          (let [t (workspace-error t [password])]
-            (when @connected?
-              (throw t))
-            ;; DROP USER below still fails, naming what is left, if the user owns anything outside scratch
-            (log/warnf t "Workspace user %s could not log in; destroying it without DROP OWNED" user)))
-        (finally
-          (do-in-workspace-transaction
-           database []
-           (fn [conn]
-             (when (role-exists? conn user)
-               (jdbc/execute! conn [(format "ALTER ROLE %s NOLOGIN" (quote-role user))])))))))))
+        (jdbc/execute! conn [(revoke-statement user grant)])
+        (jdbc/execute! conn ["RELEASE SAVEPOINT workspace_revoke"])
+        (catch java.sql.SQLException e
+          (log/warnf "Could not revoke %s from workspace user %s: %s" (pr-str grant) user (ex-message e))
+          (jdbc/execute! conn ["ROLLBACK TO SAVEPOINT workspace_revoke"]))))))
+
+(defn- drop-user-error
+  "`DROP USER` failing on objects the user still owns or privileges it still holds, often in another database, as a 409
+  naming them."
+  [user ^Throwable e]
+  (let [e (driver.u/batch-exception e)]
+    (if (= "2BP01" (sql-state e))
+      (ex-info (format (str "Workspace user %s cannot be dropped yet: %s It can no longer log in and holds no grant from "
+                            "the provisioning login. Drop or reassign what it still owns, as a superuser where it is in "
+                            "another database, then retry.")
+                       (quote-role user) (ex-message e))
+               {:status-code 409, :user user}
+               e)
+      e)))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database wsd]
-  (let [user (workspace-user-name wsd)]
-    ;; each step commits on its own, so a later failure leaves the user locked out with no grants
-    (lock-out-workspace-user! database user)
-    (do-in-workspace-transaction database [] #(revoke-everything! % user))
-    (drop-owned-as-workspace-user! database user)
+  (let [user (workspace-user-name wsd)
+        step (fn [f] (do-in-workspace-transaction database [] (fn [conn] (when (role-exists? conn user) (f conn)))))]
+    ;; each step commits on its own, so a later failure leaves the user locked out and without main access
+    (step #(lock-out-workspace-user! % user (:db (first (jdbc/query % ["SELECT pg_catalog.current_database() AS db"])))))
+    ;; before waiting on sessions, so that one that stays open has lost its main access
+    (step #(revoke-grants! % user))
+    (when (step (constantly true))
+      (check-no-sessions-left! database user))
     (do-in-workspace-transaction
      database []
      (fn [conn]
-       (revoke-everything! conn user)
-       (when (role-exists? conn user)
-         (jdbc/execute! conn [(format "DROP USER %s" (quote-role user))]))))
+       (doseq [scratch (scratch-schemas conn user)]
+         (jdbc/execute! conn [(format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch))]))))
+    (try
+      ;; the provisioning login holds the user's privileges, so DROP OWNED reaches everything it made in this database
+      (step (fn [conn]
+              (jdbc/execute! conn [(format "DROP OWNED BY %s" (quote-role user))])
+              (jdbc/execute! conn [(format "DROP USER %s" (quote-role user))])))
+      (catch java.sql.SQLException e
+        (throw (drop-user-error user e))))
     nil))
 
 (defmethod driver/check-workspace-provisioning! :postgres
