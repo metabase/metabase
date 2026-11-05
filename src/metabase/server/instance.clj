@@ -162,7 +162,10 @@
                (.start new-server)
                (catch Throwable e
                  ;; not yet the instance, so nothing else would stop what part of it started
-                 (.stop new-server)
+                 (try
+                   (.stop new-server)
+                   (catch Throwable stop-e
+                     (.addSuppressed e stop-e)))
                  (throw e)))
              new-server))
          (fn [^Server server]
