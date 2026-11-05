@@ -96,10 +96,18 @@
   {:discouraged-var       :var-usages
    :discouraged-namespace :namespace-usages})
 
+(defn- alias-namespaces
+  "A map of `[file lang alias]` to the namespace the file requires under that alias, from kondo's
+  `namespace-usages`; a `.cljc` file can require a different one for each language."
+  [namespace-usages]
+  (into {}
+        (for [{:keys [filename lang alias to]} namespace-usages
+              :when                            alias]
+          [[filename (some-> lang str) (str alias)] to])))
+
 (defn- usage-symbol
   "The fully-qualified symbol a var-usage or namespace-usage names.
-  A var used through an alias takes its namespace from that alias in `alias-ns`, a map of `[file lang alias]` to
-  the namespace the file requires under it; a `.cljc` file can require a different one for each language."
+  A var used through an alias takes its namespace from `alias-ns`, as [[alias-namespaces]] returns it."
   [alias-ns {:keys [filename lang alias to name]}]
   ;; Kondo resolves a re-exported var to the namespace it learned the var came from, which depends on its cache
   ;; and on which files share the run. The namespace the file required under the alias doesn't move.
@@ -113,32 +121,53 @@
   ;; a copy of hooks.metabase.premium-features.defenterprise/enterprise-ns-key, whose namespace babashka can't load
   :metabase/enterprise-ns)
 
-(defn source-aliases
-  "A map from each of `vars` that is another of them under a second name to the one it counts under.
-  `var-definitions` is kondo's analysis of the namespaces defining `vars`. A potemkin re-export counts under the
-  var it imports, and an enterprise `defenterprise` under the OSS var dispatching to it; a chain of them ends at
-  the last of `vars` on it."
-  [var-definitions vars]
-  (let [edges  (into {}
-                     (for [{:keys [ns name imported-ns meta]} var-definitions
-                           :let  [sym   (symbol (str ns) (str name))
-                                  ee-ns (get meta enterprise-ns-key)]
-                           edge  [(when imported-ns [sym (symbol (str imported-ns) (str name))])
-                                  (when ee-ns [(symbol (str ee-ns) (str name)) sym])]
-                           :when edge]
-                       edge))
-        source (fn [sym]
-                 (loop [sym sym, seen #{}, source sym]
-                   (let [source (if (vars sym) sym source)
-                         next   (edges sym)]
-                     (if (and next (not (seen next)))
-                       (recur next (conj seen sym) source)
-                       source))))]
+(def ^:private imports-key
+  "Var metadata the `import-fn`, `import-def` and `import-macro` kondo macros put on a definition, naming the var
+  it re-exports as the file writes it."
+  ;; a copy of the key in the macros under .clj-kondo/macros/potemkin and .clj-kondo/macros/metabase/util
+  :metabase/imports)
+
+(defn alias-edges
+  "A map from each var defined in `analysis` that is another var under a second name to that var.
+  `analysis` is kondo's, with `:var-definitions` (and their [[enterprise-ns-key]] and [[imports-key]] metadata)
+  and `:namespace-usages`.
+  A potemkin `import-vars` or an `import-fn` re-export points at the var it imports, and an enterprise
+  `defenterprise` at the OSS var that dispatches to it."
+  [{:keys [var-definitions namespace-usages]}]
+  (let [alias-ns (alias-namespaces namespace-usages)]
     (into {}
-          (for [sym  vars
-                :let [src (source sym)]
-                :when (not= src sym)]
-            [sym src]))))
+          (for [{:keys [filename lang ns imported-ns meta], var-name :name} var-definitions
+                :let  [sym      (symbol (str ns) (str var-name))
+                       imported (some-> (get meta imports-key) symbol)
+                       ee-ns    (get meta enterprise-ns-key)]
+                edge  [(when imported-ns
+                         [sym (symbol (str imported-ns) (str var-name))])
+                       (when imported
+                         [sym (symbol (str (get alias-ns [filename (some-> lang str) (namespace imported)]
+                                                (namespace imported)))
+                                      (name imported))])
+                       (when ee-ns
+                         [(symbol (str ee-ns) (str var-name)) sym])]
+                :when edge]
+            edge))))
+
+(defn- chain
+  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`, stopping before a repeat."
+  [edges sym]
+  (loop [sym sym, seen []]
+    (if (or (nil? sym) (some #{sym} seen))
+      seen
+      (recur (edges sym) (conj seen sym)))))
+
+(defn source-aliases
+  "A map from each of `vars` that is another of them under a second name to the one it counts under, following
+  `edges` from [[alias-edges]]; a chain of them ends at the last of `vars` on it."
+  [edges vars]
+  (into {}
+        (for [sym   vars
+              :let  [src (last (filter vars (chain edges sym)))]
+              :when (not= src sym)]
+          [sym src])))
 
 (defn attribute-discouraged
   "Per-symbol actual counts for the [[kondo-ratchet/discouragement-linters]] ignores in `contents`, a map of
@@ -147,75 +176,73 @@
   ignores disabled by [[disable-ignores]] and its `:filename`s mapped back to the keys of `contents`.
   `baseline` is kondo's findings for the files as they are, with the ignores in place.
   `known` maps each linter to its configured symbols.
-  An ignore counts once for each distinct symbol among the findings it covers, under the key of the symbol
-  [[source-aliases]] says it counts under, from the `:var-definitions` in `output`.
+  An ignore counts once for each distinct symbol among the findings it covers, under the key of the symbol it
+  counts under by [[source-aliases]] over `edges` (default none).
   Returns `{:actual {linter {key count}}, :unattributed _, :unresolved _, :aliases _}`, with keys from
   [[kondo-ratchet/discouraged-count-key]]; `:aliases` is [[source-aliases]] as a map of those keys.
   The `:unattributed` ignores cover no finding, and the `:unresolved` findings have no configured symbol; both
   are `{:file _, :line _, :linters [linter]}` maps."
-  [contents output baseline known]
-  ;; A finding missing from `baseline` was suppressed by one of the disabled ignores: the last one before it
-  ;; naming its linter. Kondo has already applied `:config-in-ns` scopes, `:off` overrides, and inline ns
-  ;; config, so only usages it flagged are counted.
-  ;;
-  ;; Known gap: nested ignores undercount. The last ignore before a finding isn't always the one whose form
-  ;; holds it, so with an ignore inside another for the same linter, the inner one also takes the outer one's
-  ;; later findings. The outer ignore then counts toward no budget, leaving its symbol's budget one short, and
-  ;; is reported as unattributed even though removing it would surface a warning. So a new ignore wrapped
-  ;; around an existing one needs no budget.
-  ;; TODO: charge each finding to the ignore that covers it alone. Also lint copies of files with nested
-  ;; ignores, one ignore disabled per copy, and charge a finding that only copy i reveals to ignore i.
-  (let [aliases   (source-aliases (get-in output [:analysis :var-definitions]) (:discouraged-var known))
-        ignores   (update-vals contents discouraged-ignores)
-        offsets   (update-vals contents offset-fn)
-        reported? (set (map (juxt :filename :row :col :type) baseline))
-        alias-ns  (into {}
-                        (for [{:keys [filename lang alias to]} (get-in output [:analysis :namespace-usages])
-                              :when                            alias]
-                          [[filename (some-> lang str) (str alias)] to]))
-        ;; kondo puts each finding at its usage's own :row/:col
-        usages-at (group-by (juxt :linter :filename :row :col)
-                            (for [[linter k] usages-key
-                                  usage      (get-in output [:analysis k])]
-                              (assoc usage :linter linter)))
-        hits      (for [{:keys [filename row col], :as finding} (:findings output)
-                        :let  [linter (keyword (:type finding))]
-                        :when (and (usages-key linter)
-                                   (contains? contents filename)
-                                   (not (reported? [filename row col (:type finding)])))
-                        :let  [offset ((offsets filename) row col)]]
-                    {:file   filename
-                     :line   row
-                     :linter linter
-                     :ignore (last (filter #(and (<= (:end %) offset) (some #{linter} (:linters %)))
-                                           (ignores filename)))
-                     :symbol (some (comp (known linter) (partial usage-symbol alias-ns))
-                                   (usages-at [linter filename row col]))})
-        counted   (distinct (for [{:keys [file linter ignore symbol]} hits
-                                  :when (and ignore symbol)]
-                              [file ignore linter (kondo-ratchet/discouraged-count-key (get aliases symbol symbol))]))
-        covered?  (set (map (juxt :file :linter :ignore) hits))]
-    {:actual       (into {}
-                         (for [linter kondo-ratchet/discouragement-linters]
-                           [linter (frequencies (for [[_ _ l k] counted :when (= l linter)] k))]))
-     :unattributed (vec (for [[file file-ignores] ignores
-                              ignore              file-ignores
-                              linter              (filter kondo-ratchet/discouragement-linters (:linters ignore))
-                              :when               (not (covered? [file linter ignore]))]
-                          {:file file, :line (:line ignore), :linters [linter]}))
-     :unresolved   (vec (for [{:keys [file line linter symbol]} hits
-                              :when (nil? symbol)]
-                          {:file file, :line line, :linters [linter]}))
-     :aliases      (-> aliases
-                       (update-keys kondo-ratchet/discouraged-count-key)
-                       (update-vals kondo-ratchet/discouraged-count-key))}))
+  ([contents output baseline known]
+   (attribute-discouraged contents output baseline known {}))
+  ([contents output baseline known edges]
+   ;; A finding missing from `baseline` was suppressed by one of the disabled ignores: the last one before it
+   ;; naming its linter. Kondo has already applied `:config-in-ns` scopes, `:off` overrides, and inline ns
+   ;; config, so only usages it flagged are counted.
+   ;;
+   ;; Known gap: nested ignores undercount. The last ignore before a finding isn't always the one whose form
+   ;; holds it, so with an ignore inside another for the same linter, the inner one also takes the outer one's
+   ;; later findings. The outer ignore then counts toward no budget, leaving its symbol's budget one short, and
+   ;; is reported as unattributed even though removing it would surface a warning. So a new ignore wrapped
+   ;; around an existing one needs no budget.
+   ;; TODO: charge each finding to the ignore that covers it alone. Also lint copies of files with nested
+   ;; ignores, one ignore disabled per copy, and charge a finding that only copy i reveals to ignore i.
+   (let [aliases   (source-aliases edges (:discouraged-var known))
+         ignores   (update-vals contents discouraged-ignores)
+         offsets   (update-vals contents offset-fn)
+         reported? (set (map (juxt :filename :row :col :type) baseline))
+         alias-ns  (alias-namespaces (get-in output [:analysis :namespace-usages]))
+         ;; kondo puts each finding at its usage's own :row/:col
+         usages-at (group-by (juxt :linter :filename :row :col)
+                             (for [[linter k] usages-key
+                                   usage      (get-in output [:analysis k])]
+                               (assoc usage :linter linter)))
+         hits      (for [{:keys [filename row col], :as finding} (:findings output)
+                         :let  [linter (keyword (:type finding))]
+                         :when (and (usages-key linter)
+                                    (contains? contents filename)
+                                    (not (reported? [filename row col (:type finding)])))
+                         :let  [offset ((offsets filename) row col)]]
+                     {:file   filename
+                      :line   row
+                      :linter linter
+                      :ignore (last (filter #(and (<= (:end %) offset) (some #{linter} (:linters %)))
+                                            (ignores filename)))
+                      :symbol (some (comp (known linter) (partial usage-symbol alias-ns))
+                                    (usages-at [linter filename row col]))})
+         counted   (distinct (for [{:keys [file linter ignore symbol]} hits
+                                   :when (and ignore symbol)]
+                               [file ignore linter (kondo-ratchet/discouraged-count-key (get aliases symbol symbol))]))
+         covered?  (set (map (juxt :file :linter :ignore) hits))]
+     {:actual       (into {}
+                          (for [linter kondo-ratchet/discouragement-linters]
+                            [linter (frequencies (for [[_ _ l k] counted :when (= l linter)] k))]))
+      :unattributed (vec (for [[file file-ignores] ignores
+                               ignore              file-ignores
+                               linter              (filter kondo-ratchet/discouragement-linters (:linters ignore))
+                               :when               (not (covered? [file linter ignore]))]
+                           {:file file, :line (:line ignore), :linters [linter]}))
+      :unresolved   (vec (for [{:keys [file line linter symbol]} hits
+                               :when (nil? symbol)]
+                           {:file file, :line line, :linters [linter]}))
+      :aliases      (-> aliases
+                        (update-keys kondo-ratchet/discouraged-count-key)
+                        (update-vals kondo-ratchet/discouraged-count-key))})))
 
 (defn- lint-with-ignores-disabled!
   "Kondo's JSON output, as [[attribute-discouraged]] takes it, for `contents` (a map of file to text) with
   their [[kondo-ratchet/discouragement-linters]] ignores disabled, plus its findings for the files as they
-  are: `[output baseline]`.
-  `defining` names more files to lint as they are, for their `:var-definitions`."
-  [contents defining]
+  are: `[output baseline]`."
+  [contents]
   ;; Lints the files and, in the same run, copies with the discouraged ignores disabled, under a temp
   ;; directory. Kondo configures a copy the same as the original because every ns-group matches on namespace
   ;; names, not paths.
@@ -230,10 +257,8 @@
         (spit copy (disable-ignores content (discouraged-ignores content))))
       ;; Without the cache, a run's findings depend only on the files in it, so CI and a local run agree.
       (let [output (run-kondo! :json
-                               {:output {:analysis {:var-usages       true
-                                                    :namespace-usages true
-                                                    :var-definitions  {:meta [enterprise-ns-key]}}}}
-                               (distinct (concat (keys contents) (keys original) defining))
+                               {:output {:analysis {:var-usages true, :namespace-usages true}}}
+                               (concat (keys contents) (keys original))
                                false)]
         [(-> output
              (update :findings restore)
@@ -244,17 +269,37 @@
         (fs/delete-tree dir)))))
 
 (def ^:private source-dirs
-  ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"])
+  (delay (into ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"]
+               (map str)
+               (fs/glob "modules/drivers" "*/{src,test}"))))
 
 (defn- namespace-file
   "The file defining the namespace `ns-name`, or nil for one outside [[source-dirs]]."
   [ns-name]
   (let [path (-> (str ns-name) (str/replace "-" "_") (str/replace "." "/"))]
-    (first (for [dir  source-dirs
-                 ext  [".clj" ".cljc"]
-                 :let [file (str dir "/" path ext)]
+    (first (for [dir   @source-dirs
+                 ext   [".clj" ".cljc" ".cljs"]
+                 :let  [file (str dir "/" path ext)]
                  :when (fs/exists? file)]
              file))))
+
+(defn- alias-edges!
+  "[[alias-edges]] for the namespaces on each of `vars`' [[chain]]s of re-exports."
+  [vars]
+  ;; Each pass lints the namespaces where a chain ends so far, so a chain is followed through vars that aren't
+  ;; configured. The passes are separate from the attribution run, so its findings don't depend on them.
+  (let [config {:output {:analysis {:var-definitions  {:meta [enterprise-ns-key imports-key]}
+                                    :namespace-usages true}}}]
+    (loop [linted #{}, edges {}]
+      (let [pending (into #{}
+                          (comp (map #(namespace (peek (chain edges %))))
+                                (remove linted))
+                          vars)
+            files   (into (sorted-set) (keep namespace-file) pending)]
+        (if (empty? files)
+          edges
+          (recur (into linted pending)
+                 (merge edges (alias-edges (:analysis (run-kondo! :json config files false))))))))))
 
 (defn attribute-occurrences!
   "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores in each of `groups`, a seq
@@ -273,13 +318,13 @@
         known             (into {}
                                 (for [linter kondo-ratchet/discouragement-linters]
                                   [linter (kondo-ratchet/discouraged-symbols linter config)]))
+        ;; the alias passes run alongside the attribution run, since each kondo run is mostly JVM startup
+        edges             (future (if (empty? contents) {} (alias-edges! (:discouraged-var known))))
         [output baseline] (if (empty? contents)
                             [{} []]
-                            (lint-with-ignores-disabled!
-                             contents
-                             ;; where the configured vars are defined, so attribution can follow their aliases
-                             (into (sorted-set) (keep (comp namespace-file namespace)) (:discouraged-var known))))]
-    (mapv #(attribute-discouraged (select-keys contents %) output baseline known) file-groups)))
+                            (lint-with-ignores-disabled! contents))
+        edges             @edges]
+    (mapv #(attribute-discouraged (select-keys contents %) output baseline known edges) file-groups)))
 
 (def keep-marker
   "Comment token marking an ignore as a verified `:redundant-ignore` false positive.
