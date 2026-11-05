@@ -281,10 +281,11 @@
   pointer-events: none;
 }
 
-/* "Add a filter..." after the last pill, while the bar isn't focused. The
-   space between it and the last pill. */
+/* "Add a filter..." after the last pill, while the bar isn't focused. With the
+   collapsed caret slot before it, the text starts where the focused input's
+   placeholder does: the slot's padding. */
 .trailingPlaceholder {
-  margin-left: var(--mantine-spacing-sm);
+  margin-left: 0.25rem;
   white-space: nowrap;
 }
 
