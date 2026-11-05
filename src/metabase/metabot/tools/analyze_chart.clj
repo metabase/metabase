@@ -7,10 +7,12 @@
   (:require
    [clojure.string :as str]
    [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
    [metabase.util.quoting :as quoting]
    [tech.v3.resource :as resource]))
 
@@ -69,13 +71,18 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (defn- viewed-card
   "The saved question or model that the user is viewing as the chart `chart-config-id`, or nil when the chart is of
-  neither. The lookup matches an item with one chart config, whose config ID is the item's ID."
+  neither, or the card is gone or the current user can't read it. The lookup matches an item with one chart config,
+  whose config ID is the item's ID."
   [chart-config-id]
-  (some (fn [{:keys [id type]}]
-          (let [type (some-> type name)]
-            (when (and (#{"question" "model"} type) (pos-int? id) (= chart-config-id (str id)))
-              {:id id :type type})))
-        (:user_is_viewing (shared/current-context))))
+  (when-let [card-id (some (fn [{:keys [id type]}]
+                             (when (and (#{"question" "model"} (some-> type name))
+                                        (pos-int? id)
+                                        (= chart-config-id (str id)))
+                               id))
+                           (:user_is_viewing (shared/current-context)))]
+    (let [card (metabot.db/card card-id)]
+      (when (and (#{:question :model} (:type card)) (mi/can-read? card))
+        {:id card-id :type (name (:type card))}))))
 
 (defn- read-values-steps
   "Return the steps that read the chart's values with `run_query` instead.
@@ -177,15 +184,15 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (defn- validate-chart-config!
   "Throw a recoverable error when `chart-config` is too malformed to analyze.
-  `sql-only-run-query?` and `source`, a map of `:query-id` and `:card`, pick the recovery steps, as in
-  [[read-values-steps]]."
-  [{:keys [series] :as chart-config} sql-only-run-query? source]
+  `sql-only-run-query?` and the map of `:query-id` and `:card` that `source-fn` returns pick the recovery steps, as in
+  [[read-values-steps]]. `source-fn` is called only for a chart that can't be analyzed."
+  [{:keys [series] :as chart-config} sql-only-run-query? source-fn]
   (when (empty? (interestingness/analyzable-series chart-config))
-    (no-series-data! (assoc source :sql-only-run-query? sql-only-run-query?)))
+    (no-series-data! (assoc (source-fn) :sql-only-run-query? sql-only-run-query?)))
   (doseq [[series-name {:keys [y_values]}] series]
     (when (non-numeric-y-value? y_values)
       ;; compute-chart-stats assumes each series has numeric y-values.
-      (non-numeric-series! (assoc source :series series-name :sql-only-run-query? sql-only-run-query?)))))
+      (non-numeric-series! (assoc (source-fn) :series series-name :sql-only-run-query? sql-only-run-query?)))))
 
 (defrecord AnalyzeChartTool [sql-only-run-query?]
   tools/Tool
@@ -205,8 +212,9 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
       ;; Seeding stores a viewed item's chart under the ID of its one chart config, with the ID of the item's query
       (validate-chart-config! chart-config
                               sql-only-run-query?
-                              {:query-id (get-in (shared/current-charts-state) [chart_config_id :query_id])
-                               :card     (viewed-card chart_config_id)})
+                              (fn []
+                                {:query-id (get-in (shared/current-charts-state) [chart_config_id :query_id])
+                                 :card     (viewed-card chart_config_id)}))
       ;; Wrap TMD operations in resource context to ensure off-heap memory is released
       (resource/stack-resource-context
        (let [{:keys [timeline_events title display_type]} chart-config
