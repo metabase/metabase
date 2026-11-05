@@ -14,10 +14,10 @@
 
 (set! *warn-on-reflection* true)
 
-;; Images are pinned to an exact tag, rather than tracking the `latest` the `app-db-snapshot` workflow also tests
-;; against, so that regenerating a year from now writes the same file it writes today. That workflow's drift jobs are
-;; what cover loading a snapshot into servers newer than the one it came from. The environment matches what the
-;; workflow starts its own servers with. Readiness is checked over TCP because the temporary server the MySQL and
+;; Images are pinned to an exact tag, rather than tracking the `latest` the `app-db.yml` workflow also tests against,
+;; so that regenerating a year from now writes the same file it writes today. The drift test in that workflow's
+;; migrations shard is what covers loading a snapshot into servers newer than the one it came from. The environment
+;; matches what the workflow starts its own servers with. Readiness is checked over TCP because the temporary server the MySQL and
 ;; Postgres images run during initialization listens on a unix socket only, and polling that would report ready while
 ;; the real server is still coming up.
 (def ^:private flavor->server

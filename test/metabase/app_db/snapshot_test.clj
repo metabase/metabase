@@ -1,4 +1,4 @@
-(ns metabase.app-db.snapshot-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.snapshot-test
   "Guards the checked-in app DB snapshots against drift.
 
   A snapshot stands in for every changeset up to its boundary, so it is only safe while loading it and migrating the
@@ -8,8 +8,9 @@
 
   The comparison always runs on H2, where a full replay takes seconds, so drift Liquibase cannot see, such as an edit
   to a custom migration's code, is caught on every backend run.
-  The other dialects are slower and only checked when `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`, which the
-  `app-db-snapshot` CI workflow sets.
+  The other dialects are slower and only checked when `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`.
+  The migrations shard of the `app-db.yml` CI workflow sets it when an `app_db_snapshot` path in
+  `.github/file-paths.yaml` changes.
   Everything else about the snapshot is cheap enough to check every run."
   (:require
    [clojure.java.io :as io]
@@ -501,6 +502,11 @@
 
 (deftest snapshot-is-what-generating-it-today-writes-test
   (testing "the checked-in snapshot is the file a regeneration would write, so nobody has to guess whether it is stale"
+    ;; Opt-in, and not run in CI. A changeset that lands before the boundary after the snapshot was cut also makes the
+    ;; two differ, since regenerating would fold it in, and the drift test already shows that such a snapshot is still
+    ;; correct. So a difference here says only that regenerating would change the file. Use it when changing the
+    ;; generator or the dumpers.
+    ;;
     ;; Every flavor is checked here rather than once per driver in the matrix, because regenerating starts the server
     ;; it dumps -- so which flavors this can speak does not depend on which DB the job it runs in was given. It needs
     ;; a working docker and nothing else.
@@ -515,7 +521,8 @@
               (let [{:keys [content]} (generate/dump-snapshot! flavor)]
                 (is (nil? (first-difference (comparable-statements (slurp checked-in))
                                             (comparable-statements content)))
-                    (format "the %s snapshot is stale; regenerate it with (snapshot-test-util.generate/generate! %s)"
+                    (format (str "regenerating the %s snapshot would change it; if that is intended, run "
+                                 "(metabase.app-db.snapshot-test-util.generate/generate! %s)")
                             (name flavor) flavor))))))))))
 
 (deftest skip-ran-replays-only-what-the-snapshot-does-not-record-test

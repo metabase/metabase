@@ -21,7 +21,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all
+      filters: backend_all app_db_snapshot
 
   app-db-matrix:
     needs: gate
@@ -40,9 +40,13 @@ jobs:
         uses: actions/github-script@v9
         env:
           RUN_ALL: ${{ needs.gate.outputs.force-run }}
+          MATCHED_FILTERS: ${{ needs.gate.outputs.matched }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
+            // The app DB snapshot drift comparison replays the whole changelog twice, so the migrations shard turns
+            // it on only when something that decides the migrated DB changed (see metabase.app-db.snapshot-test).
+            const snapshotDrift = JSON.parse(process.env.MATCHED_FILTERS || '[]').includes('app_db_snapshot');
 
             const versions = {
               mariadb: [
@@ -114,6 +118,7 @@ jobs:
               {
                 name: 'EE App DB Tests (Part 1)', // migrations shard
                 'build-static-viz': true,
+                'snapshot-drift': snapshotDrift ? 'true' : 'false',
                 'test-args': `:only '"test"' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
               },
               {
@@ -152,6 +157,8 @@ jobs:
           MARIADB_DATABASE: mb_test
     env:
       CI: 'true'
+      # true only in the migrations shard, and only when an app_db_snapshot path changed
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: ${{ matrix.job.snapshot-drift || 'false' }}
       DRIVERS: mysql
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
@@ -212,6 +219,8 @@ jobs:
           MYSQL_DATABASE: mb_test
     env:
       CI: 'true'
+      # true only in the migrations shard, and only when an app_db_snapshot path changed
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: ${{ matrix.job.snapshot-drift || 'false' }}
       DRIVERS: mysql
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
@@ -259,6 +268,8 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       CI: 'true'
+      # true only in the migrations shard, and only when an app_db_snapshot path changed
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: ${{ matrix.job.snapshot-drift || 'false' }}
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
