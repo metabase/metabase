@@ -26,7 +26,10 @@ export function useRouteDataAppAction() {
     error: databasesError,
   } = useActionDatabases();
 
-  const action = currentData?.type === "query" ? currentData : undefined;
+  const action =
+    currentData?.type === "query" || currentData?.type === "implicit"
+      ? currentData
+      : undefined;
   const isLoadingAction = currentData === undefined && isFetchingAction;
   const isActionNotFound =
     !isLoadingAction && actionFetchError === undefined && action === undefined;

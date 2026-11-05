@@ -10,6 +10,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest transform-test-revision-serialization-test
   (let [transform-test (t2/instance :model/TransformTest
                                     {:id           1

@@ -4,6 +4,16 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.66.0
+
+- `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
+  values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
+  `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
+  those keys holds something else, such as a whole connection string (H2) or a file path (SQLite).
+
+- `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
+  whitespace as well as case.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
@@ -48,9 +58,9 @@ title: Driver interface changelog
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-- `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
-  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
-  in the docstring of this method.
+- New driver features `:stage-ctes` and `:stage-ctes/nested`. These let drivers opt in to compiling multi-stage queries
+  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
+  comment for these features in `metabase.driver/features`.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.

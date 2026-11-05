@@ -89,6 +89,14 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
    [:value [:ref ::literal/literal]]])
 
+(mr/def ::test-literal-arg-spec
+  "A literal argument of an operator: a value, or several values that are each an argument, as in `[:= x 4 5]`."
+  [:map {:closed true}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
+   [:value [:or
+            [:ref ::literal/literal]
+            [:sequential {:min 1} [:ref ::literal/literal]]]]])
+
 (mr/def ::test-operator-spec
   ;; TODO(@romeovs): be more specific here and limit to all valid operators?
   keyword?)
@@ -112,7 +120,7 @@
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-spec]]
-   [:literal [:ref ::test-literal-expression-spec]]
+   [:literal [:ref ::test-literal-arg-spec]]
    [:operator [:ref ::test-operator-expression-spec]]
    [:segment [:ref ::test-segment-spec]]
    [:measure [:ref ::test-measure-spec]]

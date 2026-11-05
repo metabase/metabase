@@ -28,6 +28,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- uses-default-describe-table? [driver]
   (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
        (not (driver.u/supports? driver :describe-fields nil))))

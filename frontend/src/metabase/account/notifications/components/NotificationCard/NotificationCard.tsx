@@ -103,7 +103,7 @@ export const NotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-disabled"
+          c="text-secondary"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
@@ -113,7 +113,7 @@ export const NotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-disabled"
+          c="text-secondary"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />

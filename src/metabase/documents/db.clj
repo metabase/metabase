@@ -10,7 +10,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn document
@@ -91,7 +90,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
@@ -142,7 +141,7 @@
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id id))
 
 (mu/defn dashboard
   "The Dashboard with `id`, or nil."

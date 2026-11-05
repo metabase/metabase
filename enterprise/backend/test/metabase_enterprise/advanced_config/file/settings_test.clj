@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase.core.config-from-file :as config-from-file]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.test-util :as premium-features.tu]
    [metabase.premium-features.token-check :as token-check]
@@ -79,3 +80,18 @@
                  :config  {:settings {:config-from-file-settings-test-setting-FAKE 1000}}})))
         (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")}]
                 (messages)))))))
+
+(deftest boot-initialize-test
+  (testing "The OSS boot hook applies the config file from disk, with `{{env VAR}}` templates expanded"
+    (mt/with-temp-file [filename "boot-config-file.yml"]
+      (spit filename (str "version: 1\n"
+                          "config:\n"
+                          "  settings:\n"
+                          "    config-from-file-settings-test-setting: '{{env config-from-file-boot-test-value}}'\n"))
+      (mt/with-temporary-setting-values [config-from-file-settings-test-setting nil]
+        (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env*
+                                                    :mb-config-file-path             filename
+                                                    :config-from-file-boot-test-value "from-env")]
+          (config-from-file/boot-initialize!)
+          (is (= "from-env"
+                 (config-from-file-settings-test-setting))))))))

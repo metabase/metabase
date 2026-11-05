@@ -64,7 +64,7 @@ For example, to add the attribute "First name":
 1. In Google Admin, you can EITHER:
    - Set up a multi-value [custom user attribute](https://knowledge.workspace.google.com/admin/users/create-custom-attributes-for-user-profiles) for your users. Recommended if you manage multiple SAML app permissions in Google or if you lack existing Google Groups that align with your desired Metabase groups.
    - [Map to existing Google Groups](https://knowledge.workspace.google.com/admin/apps/about-group-membership-mapping).
-2. Follow the instructions for [Configuring the group schema](./authenticating-with-saml.md#configuring-the-group-schema-in-metabase) using the `App attribute` that you used in Google as the Group attribute name in Metabase.
+2. Follow the instructions for [Configuring group mappings](./authenticating-with-saml.md#configuring-group-mappings-in-metabase) using the `App attribute` that you used in Google as the Group attribute name in Metabase.
 
 ## Troubleshooting SAML issues
 

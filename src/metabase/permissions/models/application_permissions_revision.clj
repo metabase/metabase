@@ -6,6 +6,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/ApplicationPermissionsRevision [_model] :application_permissions_revision)
 
 (doto :model/ApplicationPermissionsRevision

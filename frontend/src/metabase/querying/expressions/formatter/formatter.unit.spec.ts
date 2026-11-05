@@ -607,6 +607,61 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     });
   });
 
+  it("should format is-empty and not-empty", async () => {
+    await all({
+      "isEmpty([User → Name])": op("is-empty", fields.people.NAME),
+      "notEmpty([User → Name])": op("not-empty", fields.people.NAME),
+      "NOT isEmpty([User → Name])": op(
+        "not",
+        op("is-empty", fields.people.NAME),
+      ),
+    });
+  });
+
+  it("should format single-value string filters with options", async () => {
+    await all({
+      'contains([User → Name], "MULLER", "case-insensitive")': opt(
+        "contains",
+        { "case-sensitive": false },
+        fields.people.NAME,
+        "MULLER",
+      ),
+      'doesNotContain([Product → Title], "Wallet", "case-insensitive")': opt(
+        "does-not-contain",
+        { "case-sensitive": false },
+        fields.products.TITLE,
+        "Wallet",
+      ),
+    });
+  });
+
+  it("should format comparisons between two columns", async () => {
+    await all({
+      "[Total] < [Subtotal]": op(
+        "<",
+        fields.orders.TOTAL,
+        fields.orders.SUBTOTAL,
+      ),
+      "[Total] < [Product → Price]": op(
+        "<",
+        fields.orders.TOTAL,
+        fields.products.PRICE,
+      ),
+    });
+  });
+
+  it("should format the include-current option of interval", async () => {
+    await all({
+      'interval([Created At], -30, "day", "include-current")': opt(
+        "time-interval",
+        { "include-current": true },
+        fields.orders.CREATED_AT,
+        -30,
+        "day",
+      ),
+    });
+  });
+
   it("should format aggregation functions", async () => {
     await all({
       "Count()": op("count"),

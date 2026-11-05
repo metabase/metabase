@@ -16,7 +16,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.dashboards.schema]
    [metabase.formatter.core :as formatter]
-   [metabase.geojson.api :as geojson.api]
+   [metabase.geojson.core :as geojson.core]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -440,9 +440,9 @@
     (order-distinct-values state (distinct (map #(nth % value-idx) rows)))))
 
 (defn- simple-pivot-grid
-  "Port of the browser's `pivot` (visualizations/lib/data_grid.ts): fold a three-column result into a 2D grid, header
-  row first. Column 0 holds the normal column's title and its values; the other columns are the distinct pivot values.
-  Each cell is the cell column's value for that (normal, pivot) pair, or nil when no row has the pair."
+  "Port of the browser's `pivot` (visualizations/lib/data_grid.ts): fold the normal, pivot and cell columns into a 2D
+  grid, header row first. Column 0 holds the normal column's title and its values; the other columns are the distinct
+  pivot values. Each cell is the cell column's value for that (normal, pivot) pair, or nil when no row has the pair."
   [timezone-id {:keys [cols rows viz-settings] :as data} {:keys [normal pivot cell]}]
   (let [format-rows?  (get data :format-rows? true)
         formatter-for (fn [idx]
@@ -818,7 +818,7 @@
   ;; Resolve the display type the same way detection does, so a visualizer dashcard's display wins.
   (let [display-type (or (render.util/visualizer-display-type dashcard) (:display card))
         region-key   (region-map-region-key display-type card dashcard data)
-        geojson      (some-> region-key geojson.api/region-geojson)]
+        geojson      (some-> region-key geojson.core/region-geojson)]
     (if-not geojson
       ;; The region's GeoJSON couldn't be resolved (e.g. a custom map whose fetch failed); degrade to a
       ;; table of the data rather than emit an empty map.

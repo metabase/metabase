@@ -110,7 +110,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -186,7 +186,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -317,7 +317,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -375,7 +375,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -420,7 +420,7 @@ LIMIT
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -470,7 +470,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -859,7 +859,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -900,7 +900,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -918,7 +918,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.settingsTab().click();
@@ -940,7 +940,7 @@ LIMIT
 
       cy.log("run the transform and verify the new table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -964,7 +964,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.settingsTab().click();
@@ -987,7 +987,7 @@ LIMIT
 
       cy.log("run the transform and verify the new table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1011,7 +1011,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("delete the old target without creating the new one");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1034,7 +1034,7 @@ LIMIT
 
       cy.log("run the transform to re-create the original target");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("verify the target is available");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1047,7 +1047,7 @@ LIMIT
       cy.log("run a transform so its target table exists");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("change another transform's target to that table");
       createMbqlTransform({
@@ -1098,7 +1098,7 @@ LIMIT
 
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink().click();
       H.main().within(() => {
@@ -1165,7 +1165,7 @@ LIMIT
 
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
@@ -1200,7 +1200,7 @@ LIMIT
 
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -1267,7 +1267,7 @@ LIMIT
 
         cy.log("run the transform and make sure the query has changed");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -1285,7 +1285,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("create and run another transform");
       createSqlTransform({
@@ -1294,7 +1294,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("assert that the list is filtered by the current transform");
       getRunListLink().click();
@@ -1336,7 +1336,7 @@ LIMIT
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
@@ -1361,7 +1361,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
@@ -1379,66 +1379,6 @@ LIMIT
       cy.log("make sure the table is deleted");
       visitTableQuestion({ targetTable: TARGET_TABLE_2 });
       assertTableDoesNotExistError({ targetTable: TARGET_TABLE_2 });
-    });
-  });
-
-  describe("disconnected database", () => {
-    it("should warn about transforms when deleting a database and show disconnected banner on transform pages", () => {
-      cy.log("create a transform");
-      createMbqlTransform({ visitTransform: false });
-
-      cy.log("go to admin and delete the writable database");
-      cy.intercept("GET", "/api/database/*/usage_info").as("usageInfo");
-      cy.intercept("DELETE", "/api/database/*").as("deleteDb");
-      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-      cy.button("Remove this database").click();
-      cy.wait("@usageInfo");
-
-      cy.log(
-        "verify the delete modal warns about transforms that will stop working",
-      );
-      H.modal().within(() => {
-        cy.findByLabelText(/1 transform will stop working/)
-          .should("not.be.checked")
-          .click()
-          .should("be.checked");
-        cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
-        cy.findByText("Delete this DB connection").click();
-        cy.wait("@deleteDb");
-      });
-
-      cy.log(
-        "visit the transform query page and verify the disconnected banner",
-      );
-      cy.visit("/data-studio/transforms/1");
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log("edit definition button should not be visible");
-      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
-
-      cy.log(
-        "visit the run page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.runTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the settings page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.settingsTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the inspect page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.inspectTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the dependencies page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.dependenciesTab().click();
-      verifyDisconnectedDatabaseBanner();
     });
   });
 
@@ -1555,7 +1495,7 @@ LIMIT
         visitTransform: true,
       }).then(() => {
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
       });
 
       createMbqlTransform({
@@ -1565,7 +1505,7 @@ LIMIT
         visitTransform: true,
       }).then(() => {
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
       });
 
       createMbqlTransform({
@@ -1636,7 +1576,7 @@ LIMIT
         });
 
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -1690,7 +1630,7 @@ LIMIT
         });
 
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -1715,7 +1655,7 @@ LIMIT
           `,
         );
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -2606,6 +2546,12 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("runs", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/transform-job/*/transforms").as(
+        "jobTransforms",
+      );
+    });
+
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -2618,13 +2564,14 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
 
       cy.log("the job renders its transforms table");
+      cy.wait("@jobTransforms");
       H.DataStudio.Jobs.editor()
         .findByText("Transforms")
         .scrollIntoView()
         .should("be.visible");
       getJobTransformTable().findByText("MBQL transform").should("be.visible");
 
-      runTransformAndWaitForSuccess();
+      H.runTransformJobFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_job_trigger_manual_run",
       });
@@ -2637,11 +2584,15 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       getRunsNavLink().click();
       getDetailedViewSwitch().click();
-      getTransformRunTable().within(() => {
-        cy.findByText("MBQL transform").should("be.visible");
-        cy.findByText("Success").should("be.visible");
-        cy.findByText("Manual").should("be.visible");
-      });
+      cy.log("the manual run is listed, whatever scheduled runs exist");
+      getTransformRunTable()
+        .findAllByRole("row")
+        .filter(':contains("Manual")')
+        .should("have.length", 1)
+        .within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("Success").should("be.visible");
+        });
     });
 
     it("should display the error message from a failed run", () => {
@@ -2655,7 +2606,9 @@ describe("scenarios > admin > transforms > jobs", () => {
           { visitTransformJob: true },
         );
       });
-      runTransformAndWaitForFailure();
+      cy.log("the run button stays disabled until the job transforms load");
+      cy.wait("@jobTransforms");
+      H.runTransformJobFromUiAndWaitForStatus("failed");
       H.DataStudio.Jobs.editor().findByText(
         "Last run failed a few seconds ago.",
       );
@@ -2778,7 +2731,7 @@ describe("scenarios > admin > transforms > runs", () => {
             visitTransform: true,
           });
           H.DataStudio.Transforms.runTab().click();
-          runTransformAndWaitForSuccess();
+          H.runTransformFromUiAndWaitForStatus("succeeded");
           createSqlTransform({
             sourceQuery: "SELECT * FROM abc",
             targetTable: TARGET_TABLE_2,
@@ -2786,7 +2739,7 @@ describe("scenarios > admin > transforms > runs", () => {
             visitTransform: true,
           });
           H.DataStudio.Transforms.runTab().click();
-          runTransformAndWaitForFailure();
+          H.runTransformFromUiAndWaitForStatus("failed");
 
           cy.log("the failed run shows its error message");
           getRunErrorInfoButton().click();
@@ -3300,16 +3253,6 @@ describe("scenarios > admin > transforms", () => {
   });
 });
 
-function verifyDisconnectedDatabaseBanner() {
-  return cy
-    .findByRole("alert")
-    .should("be.visible")
-    .and(
-      "contain.text",
-      "The database this transform depends on has been disconnected",
-    );
-}
-
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Data transformation" });
 }
@@ -3460,16 +3403,6 @@ function visitRunListPage() {
 
 function getDetailedViewSwitch() {
   return cy.findByTestId("detailed-view-switch");
-}
-
-function runTransformAndWaitForSuccess() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
-}
-
-function runTransformAndWaitForFailure() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Run failed");
 }
 
 function createMbqlTransform(

@@ -1,11 +1,8 @@
 import "dotenv/config";
-import fs from "fs";
-
 import { WebClient } from "@slack/web-api";
 import type { Block, KnownBlock, MessageAttachment } from "@slack/web-api";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import fetch from "node-fetch";
 
 dayjs.extend(relativeTime);
 
@@ -235,6 +232,18 @@ export async function findSlackMessage({
     throw new Error(`Could not find channel ${channelName}`);
   }
 
+  return findMessageInChannel({ channelId, text, limit });
+}
+
+async function findMessageInChannel({
+  channelId,
+  text,
+  limit = 100,
+}: {
+  channelId: string;
+  text: string;
+  limit?: number;
+}) {
   const response = await slack.conversations.history({
     channel: channelId,
     limit,
@@ -281,10 +290,6 @@ export async function getRecentSlackMessages({
   return response.messages?.map((message) => message.text ?? "") ?? [];
 }
 
-function getExistingSlackMessage(version: string, channelName: string) {
-  return findSlackMessage({ channelName, text: getReleaseTitle(version) });
-}
-
 export async function sendSlackReply({
   channelName,
   message,
@@ -313,54 +318,6 @@ export async function sendSlackReply({
   });
 }
 
-export async function addSlackReaction({
-  channelName,
-  messageId,
-  emoji,
-}: {
-  channelName: string;
-  messageId: string;
-  emoji: string;
-}) {
-  const channelId = await getSlackChannelId(channelName);
-  if (!channelId) {
-    console.error(`Could not find channel ${channelName}`);
-    return;
-  }
-
-  return slack.reactions
-    .add({
-      channel: channelId,
-      name: emoji,
-      timestamp: messageId,
-    })
-    .catch(console.warn);
-}
-
-export async function removeSlackReaction({
-  channelName,
-  messageId,
-  emoji,
-}: {
-  channelName: string;
-  messageId: string;
-  emoji: string;
-}) {
-  const channelId = await getSlackChannelId(channelName);
-  if (!channelId) {
-    console.error(`Could not find channel ${channelName}`);
-    return;
-  }
-
-  return slack.reactions
-    .remove({
-      channel: channelId,
-      name: emoji,
-      timestamp: messageId,
-    })
-    .catch(console.warn);
-}
-
 const getReleaseTitle = (version: string) =>
   `:rocket: *${getGenericVersion(version)} Release* :rocket:`;
 
@@ -378,6 +335,61 @@ export function githubRunLink(
     text,
     `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
   );
+}
+
+export type ReleaseStatus = "failure" | "success";
+
+export async function sendReleaseSlackMessage({
+  channelName,
+  version,
+  emoji,
+  message,
+  startThread = false,
+  status,
+}: {
+  channelName: string;
+  version?: string;
+  emoji?: string;
+  message: string;
+  startThread?: boolean;
+  status?: ReleaseStatus;
+}) {
+  const channelId = await getSlackChannelId(channelName);
+  if (!channelId) {
+    throw new Error(`Could not find channel ${channelName}`);
+  }
+
+  const title = version ? getReleaseTitle(version) : null;
+  const thread =
+    title && !startThread
+      ? await findMessageInChannel({ channelId, text: title }).catch(() => null)
+      : null;
+  const text = emoji ? `:${emoji}: ${message}` : message;
+
+  const response = await slack.chat.postMessage({
+    channel: channelId,
+    text: startThread && title ? `${title}\n${text}` : text,
+    thread_ts: thread?.id,
+  });
+
+  const ts = thread?.id || response.ts || "";
+
+  if (status && ts) {
+    if (status === "success") {
+      await slack.reactions
+        .remove({ channel: channelId, name: "x", timestamp: ts })
+        .catch(() => {});
+    }
+    await slack.reactions
+      .add({
+        channel: channelId,
+        name: status === "success" ? "very-green-check" : "x",
+        timestamp: ts,
+      })
+      .catch(console.warn);
+  }
+
+  return { ts };
 }
 
 export type ReleaseKind = "patch" | "minor";
@@ -427,7 +439,7 @@ export function buildAutoReleaseSkipMessage({
 export async function sendAutoReleaseFailureMessage(
   args: AutoReleaseSkipArgs & { channelName: string },
 ) {
-  return sendSlackMessage({
+  return sendReleaseSlackMessage({
     channelName: args.channelName,
     message: buildAutoReleaseSkipMessage(args),
   });
@@ -449,8 +461,6 @@ export async function sendPreReleaseMessage({
   channelName: string;
   userName: string;
 }) {
-  const title = getReleaseTitle(version);
-
   const milestone = await findMilestone({ version, github, owner, repo });
   console.log("Milestone", milestone);
   const milestoneLink = milestone?.number
@@ -467,7 +477,7 @@ export async function sendPreReleaseMessage({
 
   const githubBuildLink = githubRunLink("_🏗️ CI Build_", runId, owner, repo);
 
-  const preReleaseMessage = [
+  const message = [
     releaseCommitLink,
     milestoneLink,
     githubBuildLink,
@@ -478,42 +488,33 @@ export async function sendPreReleaseMessage({
     .filter(Boolean)
     .join(" - ");
 
-  const message = `${title}\n${preReleaseMessage}`;
-
-  await sendSlackMessage({ message, channelName });
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    message,
+    startThread: true,
+  });
 }
 
 export async function sendTestsCompleteMessage({
   channelName,
   version,
   runId,
-  testStatus,
   owner,
   repo,
 }: {
   channelName: string;
   version: string;
   runId: number;
-  testStatus: "success" | "failure";
   owner: string;
   repo: string;
 }) {
-  const message =
-    testStatus === "success"
-      ? `:very-green-check: ${getGenericVersion(version)} ${githubRunLink("Pre-release Tests Passed", runId.toString(), owner, repo)}`
-      : `:x: ${getGenericVersion(version)} ${githubRunLink("Pre-release Tests Failed", runId.toString(), owner, repo)}`;
-
-  const buildThread = await getExistingSlackMessage(version, channelName);
-
-  await sendSlackReply({ channelName, message, messageId: buildThread?.id });
-
-  if (testStatus !== "success" && buildThread?.id) {
-    await addSlackReaction({
-      channelName,
-      messageId: buildThread?.id,
-      emoji: "warning",
-    });
-  }
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    emoji: "very-green-check",
+    message: `${getGenericVersion(version)} ${githubRunLink("Pre-release Tests Passed", runId.toString(), owner, repo)}`,
+  });
 }
 
 export async function sendPublishStartMessage({
@@ -529,69 +530,17 @@ export async function sendPublishStartMessage({
   owner: string;
   repo: string;
 }) {
-  const message = `:loading: ${githubRunLink(`Publishing ${getGenericVersion(version)}`, runId.toString(), owner, repo)}`;
-  const buildThread = await getExistingSlackMessage(version, channelName);
-  await sendSlackReply({ channelName, message, messageId: buildThread?.id });
-}
-
-export async function sendPublishFailureMessage({
-  channelName,
-  version,
-  runId,
-  owner,
-  repo,
-  details,
-}: {
-  channelName: string;
-  version: string;
-  runId: number;
-  owner: string;
-  repo: string;
-  details: string;
-}) {
-  const message = `:x: ${githubRunLink(`Publishing ${getGenericVersion(version)} failed`, runId.toString(), owner, repo)}\n${details}`;
-
-  const buildThread = await getExistingSlackMessage(version, channelName);
-
-  if (!buildThread?.id) {
-    // Without the release thread, say it in the channel rather than not at all.
-    await sendSlackMessage({ channelName, message });
-    return;
-  }
-
-  await sendSlackReply({ channelName, message, messageId: buildThread.id });
-  await addSlackReaction({
+  await sendReleaseSlackMessage({
     channelName,
-    messageId: buildThread.id,
-    emoji: "warning",
+    version,
+    emoji: "loading",
+    message: githubRunLink(
+      `Publishing ${getGenericVersion(version)}`,
+      runId.toString(),
+      owner,
+      repo,
+    ),
   });
-}
-
-export async function sendDockerReadmeFailureMessage({
-  channelName,
-  version,
-  runId,
-  owner,
-  repo,
-  edition,
-}: {
-  channelName: string;
-  version: string;
-  runId: number;
-  owner: string;
-  repo: string;
-  edition: string;
-}) {
-  const message = `:warning: ${githubRunLink(`Updating the ${edition} Docker Hub README for ${getGenericVersion(version)} failed`, runId.toString(), owner, repo)}. The release itself is fine.`;
-
-  const buildThread = await getExistingSlackMessage(version, channelName);
-
-  if (!buildThread?.id) {
-    await sendSlackMessage({ channelName, message });
-    return;
-  }
-
-  await sendSlackReply({ channelName, message, messageId: buildThread.id });
 }
 
 export async function sendPublishCompleteMessage({
@@ -607,7 +556,7 @@ export async function sendPublishCompleteMessage({
   owner: string;
   repo: string;
 }) {
-  const baseMessage = `:partydeploy: *${githubRunLink(`${getGenericVersion(version)} Release is Complete`, runId.toString(), owner, repo)}* :partydeploy:`;
+  const baseMessage = `*${githubRunLink(`${getGenericVersion(version)} Release is Complete`, runId.toString(), owner, repo)}* :partydeploy:`;
 
   const fullMessage = `\n
     • ${slackLink("Ops Issues", `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam("successengineers")}
@@ -615,23 +564,13 @@ export async function sendPublishCompleteMessage({
 
   const isPatch = version.split(".").length > 3;
 
-  const message = `${baseMessage}${isPatch ? "" : fullMessage}`;
-
-  const buildThread = await getExistingSlackMessage(version, channelName);
-  await sendSlackReply({ channelName, message, messageId: buildThread?.id });
-
-  if (buildThread?.id) {
-    await removeSlackReaction({
-      channelName,
-      messageId: buildThread?.id,
-      emoji: "warning",
-    });
-    await addSlackReaction({
-      channelName,
-      messageId: buildThread?.id,
-      emoji: "very-green-check",
-    });
-  }
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    emoji: "partydeploy",
+    message: `${baseMessage}${isPatch ? "" : fullMessage}`,
+    status: "success",
+  });
 }
 
 export async function sendFlakeStatusReport({
@@ -686,104 +625,6 @@ export async function sendFlakeStatusReport({
     blocks,
     attachments,
     text: `Flaky issue summary`,
-  });
-}
-
-/**
- * uploading a file to slack is a three step process:
- * 1) make an api call to get a specific url to upload to
- * 2) make an http POST request to that url with the file
- * 3) make an api call to "complete" the upload and post it somewhere in slack
- */
-export async function uploadFileToSlack({
-  channelName,
-  thread_ts,
-  fileName,
-  file,
-  message,
-}: {
-  channelName: string;
-  thread_ts?: string;
-  fileName: string;
-  file: Buffer;
-  message: string;
-}) {
-  console.log(`Uploading file ${fileName} to slack`);
-
-  const uploadRequest = await slack.files.getUploadURLExternal({
-    filename: fileName,
-    length: file.length,
-  });
-
-  if (
-    !uploadRequest.ok ||
-    !uploadRequest.upload_url ||
-    !uploadRequest.file_id
-  ) {
-    throw new Error(`Failed to get upload URL: ${uploadRequest.error}`);
-  }
-
-  const uploadResult = await fetch(uploadRequest.upload_url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/octet-stream",
-    },
-    body: file,
-  });
-
-  if (!uploadResult.ok) {
-    throw new Error(`Failed to upload file: ${uploadResult.statusText}`);
-  }
-
-  const channelId = await getSlackChannelId(channelName);
-
-  if (!channelId) {
-    throw new Error("channel id not found");
-  }
-
-  return slack.files.completeUploadExternal({
-    files: [{ id: uploadRequest.file_id, title: fileName }],
-    channel_id: channelId,
-    thread_ts,
-    initial_comment: message,
-  });
-}
-
-const milestoneCheckProjectUrl = "https://github.com/orgs/metabase/projects/93";
-
-export async function sendMilestoneCheckMessage({
-  channelName,
-  issueCount,
-  version,
-}: {
-  channelName: string;
-  issueCount: number;
-  version: string;
-}) {
-  console.log("Sending milestone check slack message to ", channelName);
-  let buildThread = await getExistingSlackMessage(version, channelName);
-
-  // if we can't find a build thread, we'll make our own pre-build thread
-  if (!buildThread) {
-    const message = `:file_folder: *${getGenericVersion(version)} Pre-release milestone check*`;
-    const response = await sendSlackMessage({ channelName, message });
-    buildThread = { id: response.ts ?? "", body: message };
-  }
-
-  const message = `:mag: ${getGenericVersion(version)} has ${slackLink(`${issueCount} issues that need to be checked`, milestoneCheckProjectUrl)}`;
-
-  await sendSlackReply({ message, channelName, messageId: buildThread.id });
-
-  const fileName = `milestone-audit-${version}.md`;
-  const file = fs.readFileSync("./" + fileName);
-  const fileMessage = `:page_with_curl: ${getGenericVersion(version)} milestone audit`;
-
-  return uploadFileToSlack({
-    channelName,
-    thread_ts: buildThread.id,
-    fileName,
-    file,
-    message: fileMessage,
   });
 }
 

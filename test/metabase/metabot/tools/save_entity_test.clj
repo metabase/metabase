@@ -431,9 +431,13 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-dynamic-fn-redefs [queries/create-card!
                                 (fn [& _] (throw (ex-info "Private save failure." {:status-code 500})))]
-      (is (= {:error {:class :unrecoverable :code :internal}
-              :output "This call failed and the user was shown the error (:internal). Don't retry it."}
-             (invoke-save-entity (assoc chart-args :destination {:target_type "collection"})))))))
+      (testing "the card may have been saved before the failure, so the turn ends and the user is told to check"
+        (is (= {:output "This call failed and the user was shown the error (:unconfirmed-write). Don't retry it."
+                :error  {:class        :unrecoverable
+                         :code         :unconfirmed-write
+                         :user-message (str "Something went wrong. The change may have been saved, "
+                                            "so check before you try again.")}}
+               (invoke-save-entity (assoc chart-args :destination {:target_type "collection"}))))))))
 
 (deftest sensitive-query-test
   (let [provider (mt/metadata-provider)

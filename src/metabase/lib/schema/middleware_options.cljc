@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.middleware-options
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::middleware-options
@@ -41,6 +42,12 @@
      :description
      "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,
   this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`."}
+    :boolean]
+   [:card-reference?
+    {:optional true
+     :description
+     "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside
+  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs."}
     :boolean]
    [:userland-query?
     {:optional true
@@ -119,4 +126,4 @@
       [:show-column-totals {:optional true} [:maybe :boolean]]
       [:column-sort-order  {:optional true} [:maybe [:multi {:dispatch map?}
                                                      [true  [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]
-                                                     [false [:fn {:error/message "map"} map?]]]]]]]]])
+                                                     [false (mu/never {:error/message "map"})]]]]]]]])

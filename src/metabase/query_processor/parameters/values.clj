@@ -34,6 +34,7 @@
    [metabase.util.performance :refer [every? get-in mapv not-empty some]])
   (:import
    (clojure.lang ExceptionInfo)
+   (java.sql SQLException)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -234,6 +235,24 @@
                 (perms/impersonation-enforced-for-db? database-id)
                 (perms/routing-token-for-db database-id)))))
 
+(defn- param-error-type
+  "Return the error `:type` for the failure `e` while Metabase resolves a parameter.
+
+    (ex-info \"x\" {:type :missing-required-parameter})  ;; -> :missing-required-parameter
+    (ex-info \"x\" {} (SQLException. \"no such column\")) ;; -> :qp
+    (NumberFormatException. \"abc\")                     ;; -> :invalid-parameter
+
+  If the failure has a `:type`, return it. If the failure has no `:type` and a `SQLException` is in its cause
+  chain, return `:qp`. Return `:invalid-parameter` for all other failures."
+  [e]
+  (or (:type (ex-data e))
+      ;; The other parameter steps read only the app DB. The compile of a referenced question adds a `:type` to
+      ;; its own failures, warehouse errors too. So an untyped `SQLException` here comes from the app DB or a
+      ;; connection.
+      (when (some #(instance? SQLException %) (u/full-exception-chain e))
+        qp.error-type/qp)
+      qp.error-type/invalid-parameter))
+
 (mu/defmethod parse-tag :card :- ::params.types/referenced-card-query
   [metadata-providerable      :- ::lib.schema.metadata/metadata-providerable
    {:keys [card-id], :as tag} :- ::lib.schema.template-tag/template-tag
@@ -254,7 +273,9 @@
             {:keys [query params]} (or (when (and (qp.persistence/can-substitute? card persisted-info)
                                                   (persisted-cache-allowed-for-current-user? database-id))
                                          {:query (qp.persistence/persisted-info-native-query database-id persisted-info)})
-                                       (qp.compile/compile (qp/disable-max-results query)))]
+                                       (qp.compile/compile (-> query
+                                                               qp/disable-max-results
+                                                               (assoc-in [:middleware :card-reference?] true))))]
         (lib/parsed-referenced-card-query-param card-id query params))
       (catch ExceptionInfo e
         (throw (ex-info
@@ -263,7 +284,7 @@
                 {:card-query-error? true
                  :card-id           card-id
                  :tag               tag
-                 :type              qp.error-type/invalid-parameter}
+                 :type              (param-error-type e)}
                 e))))))
 
 (mu/defmethod parse-tag :table :- ::params.types/referenced-table-query
@@ -479,7 +500,7 @@
                            (pr-str (:name tag))
                            (ex-message e))
                       {:tag    tag
-                       :type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                       :type   (param-error-type e)
                        :params params}
                       e)))))
 
@@ -505,7 +526,7 @@
                    [k' v]))))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
-                      {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                      {:type   (param-error-type e)
                        :tags   tags
                        :params params}
                       e)))))

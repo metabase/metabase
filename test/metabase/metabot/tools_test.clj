@@ -122,6 +122,8 @@
                                                     #{:permission-write-sql-queries}))]
     (is (map? tools))
     (is (contains? tools "list_available_data_sources"))
+    (is (contains? tools "read_resource")
+        "the model can find a database and its tables, which list_available_data_sources does not list")
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
@@ -824,7 +826,7 @@
       (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
       (is (str/includes? text "No table found matching portable FK"))
       (is (str/includes? text "metabase://database/<numeric id>/tables"))))
-  (testing "An exception without a declared `:error` code ends the turn, even if `:agent-error?` is true."
+  (testing "An exception without a declared `:error` code is `:internal`, even if `:agent-error?` is true."
     (doseq [[what e] {"stamped by the pipeline, no :error code"
                       (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
 

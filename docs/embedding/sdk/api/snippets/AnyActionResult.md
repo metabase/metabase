@@ -3,7 +3,6 @@ type AnyActionResult =
   | ActionResultForCreate
   | ActionResultForUpdate
   | ActionResultForDelete
-  | ActionResultForBulk
   | ActionResultForSql;
 ```
 

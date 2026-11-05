@@ -400,7 +400,7 @@
    (fn [_]
      {:entity_id (u/generate-nano-id)
       :name (str "Test Transform " (u/generate-nano-id))
-      :source {:type  "query"
+      :source {:type  :query
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
@@ -493,17 +493,6 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
-  "Give a temp data app a temp collection named like the one the API creates, unless the attributes set
-  `resource_collection_id`, even to nil."
-  [model explicit-attributes f]
-  (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)]
-    (if (contains? attributes :resource_collection_id)
-      (next-method model attributes f)
-      (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:name      (str "Data App: " (:name attributes))
-                                                                      :namespace "data-apps"}]
-        (next-method model (assoc attributes :resource_collection_id collection-id) f)))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -755,12 +744,13 @@
 
   The token-value binding will contain the random token that was set."
   [[token-value] & body]
-  `(let [~token-value (premium-features.test-util/random-token)]
-     (with-redefs [metabase.premium-features.token-check/check-token
-                   (constantly {:valid    true
-                                :status   "fake"
-                                :features ["test" "fixture"]
-                                :trial    false})]
+  `(let [~token-value (premium-features.test-util/random-token)
+         status#      {:valid    true
+                       :status   "fake"
+                       :features ["test" "fixture"]
+                       :trial    false}]
+     (with-redefs [metabase.premium-features.token-check/current-status (constantly status#)
+                   metabase.premium-features.token-check/fetch-status   (constantly status#)]
        (with-temporary-raw-setting-values [:premium-embedding-token ~token-value]
          ~@body))))
 

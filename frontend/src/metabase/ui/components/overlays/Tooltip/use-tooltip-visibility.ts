@@ -70,7 +70,7 @@ export function useTooltipVisibility(
   );
 
   return {
-    isHoverable: !isControlled && (phase === "entering" || phase === "open"),
+    isHoverable: !isControlled && phase === "open",
     isReplaced,
     isEnteringInstantly: isReplacing && phase === "entering",
     transitionProps: resolvedTransitionProps,

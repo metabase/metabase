@@ -672,6 +672,18 @@
                             :error  {:class :unrecoverable :code :internal}}}
               (last result))))))
 
+(deftest ^:parallel escaped-jvm-errors-keep-their-code-test
+  (testing "a JVM error or an interrupt that escapes a tool is reported with its own code"
+    (doseq [[throwable code] [[(StackOverflowError.) :jvm-error]
+                              [(InterruptedException.) :interrupted]]]
+      (let [tools  {"fail" {:tool-name "fail"
+                            :doc       "Throws."
+                            :schema    [:=> [:cat [:map {:closed true}]] :any]
+                            :fn        (fn [_] (throw throwable))}}
+            chunks (test-util/parts->aisdk-chunks [{:type :tool-input :id "call-1" :function "fail" :arguments {}}])]
+        (is (=? {:result {:error {:class :unrecoverable :code code}}}
+                (last (into [] (self.core/tool-executor-xf tools) chunks))))))))
+
 (def ^:private failing-tool-exception
   "What `failing-tool` throws. An atom so the tool can be a real var, which is what `adapt` accepts."
   (atom nil))
@@ -2088,7 +2100,9 @@
                                     "event_details" {"tool_name" "get-time"}}}
                          {:data {"event"         "agent_used_tool"
                                  "result"        "error"
-                                 "event_details" {"tool_name" "unknown"}}}]
+                                 "event_details" {"tool_name"   "unknown"
+                                                  "error_class" "validation"
+                                                  "error_code"  "unknown-tool"}}}]
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
@@ -2910,17 +2924,24 @@
   (testing (str "from `invoke` through the part to the SSE writer and persistence. Nothing spanned "
                 "this before, which is how the error moving into `:result` left three consumers "
                 "still reading it off the part and reporting every failure as a success.")
-    (doseq [[label thrower expected-text]
+    (doseq [[label thrower expected-text expected-class expected-code]
             [["recoverable"
               #(tools.error/throw-recoverable! :metabase.metabot.tools.recoverable.common/not-found
                                                {:kind :table :id 7})
-              "Metabot could not complete this step."]
+              "Metabot could not complete this step."
+              "recoverable" "metabase.metabot.tools.recoverable.common/not-found"]
              ["unrecoverable with a :user-message"
               #(tools.error/unrecoverable! ::nope {:user-message "Ask an admin for access."})
-              "Ask an admin for access."]
+              "Ask an admin for access."
+              "unrecoverable" "metabase.metabot.self-test/nope"]
              ["unrecoverable without one"
               #(tools.error/unrecoverable! ::nope {})
-              "Metabot could not complete this step."]]]
+              "Metabot could not complete this step."
+              "unrecoverable" "metabase.metabot.self-test/nope"]
+             ["an exception nothing classified"
+              #(throw (ex-info "connection reset by peer" {}))
+              "Metabot could not complete this step."
+              "unrecoverable" "internal"]]]
       (testing label
         (let [outcome (failed-outcome "failer" thrower)
               part    (tool-output-part outcome)]
@@ -2936,20 +2957,47 @@
               (testing "and never the model's own text, nor the EDN of the error map"
                 (is (not (str/includes? body "Don't retry")) body)
                 (is (not (str/includes? body ":class")) body))))
+          (testing "the Snowplow event carries the class and the code of the error, and no text of it"
+            (snowplow-test/with-fake-snowplow-collector
+              (transduce (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
+                                                      #{"failer"})
+                         (constantly nil)
+                         [part])
+              ;; The collector may also hold a `new_instance_created` from the first read of a setting in
+              ;; this JVM, so filter for the tool events as the other Snowplow tests do.
+              (let [events (filter #(= "agent_used_tool" (get-in % [:data "event"]))
+                                   (snowplow-test/pop-event-data-and-user-id!))]
+                (is (=? [{:data {"event"         "agent_used_tool"
+                                 "profile"       "nlq"
+                                 "result"        "error"
+                                 "event_details" {"tool_name"   "failer"
+                                                  "step"        2
+                                                  "error_class" expected-class
+                                                  "error_code"  expected-code}}}]
+                        events))
+                (is (not (str/includes? (pr-str events) (:output outcome)))
+                    "the text written for the model stays on the instance")
+                (is (not (str/includes? (pr-str events) expected-text))
+                    "so does the text written for the reader"))))
           (testing (str "persistence stores it as a failed step, keeping the MODEL's text: "
                         "`tool-part->llm-messages` replays `:errorText` to the model, so a generic "
-                        "sentence here would lose the authored failure on every replay")
-            (let [stored (#'persistence/internal-parts->storable
-                          [{:type :tool-input :id "c1" :function "failer" :arguments {}}
-                           part])
-                  entry  (first (filter #(= "tool-failer" (:type %)) stored))]
+                        "sentence here would lose the authored failure on every replay. Only an exception "
+                        "nothing classified is stored as one neutral sentence, because its live text tells "
+                        "the model not to retry in a turn that will have ended")
+            (let [stored   (#'persistence/internal-parts->storable
+                            [{:type :tool-input :id "c1" :function "failer" :arguments {}}
+                             part])
+                  entry    (first (filter #(= "tool-failer" (:type %)) stored))
+                  replayed (if (= "internal" expected-code)
+                             "This call failed with an unexpected error."
+                             (:output outcome))]
               (is (= "output-error" (:state entry)) (pr-str entry))
-              (is (= (:output outcome) (:errorText entry)))
+              (is (= replayed (:errorText entry)))
               (is (nil? (:output entry))
                   "a failed step stores no :output; its text is the :errorText")
               (testing "and that text replays to the model verbatim"
                 ;; a pair: the assistant's tool_call, then the `:tool` message the model reads
-                (is (= (:output outcome)
+                (is (= replayed
                        (:content (last (persistence/tool-part->llm-messages entry)))))))))))))
 
 (deftest a-rejected-argument-is-failed-at-every-consumer-test

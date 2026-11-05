@@ -13,7 +13,7 @@
   "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
-                 collection-id))
+                 :id [:auto/param collection-id]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
