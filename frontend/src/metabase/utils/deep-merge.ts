@@ -14,13 +14,17 @@ function mergeRecords(
 ): Record<string, unknown> {
   let result = target;
   for (const key of Object.keys(source)) {
+    // Assigning `__proto__` would change the prototype of the result.
+    if (key === "__proto__") {
+      continue;
+    }
     const sourceValue = source[key];
     const targetValue = target[key];
     const nextValue =
       isPlainObject(sourceValue) && isPlainObject(targetValue)
         ? mergeRecords(targetValue, sourceValue)
         : sourceValue;
-    if (nextValue !== targetValue || !(key in target)) {
+    if (nextValue !== targetValue || !Object.hasOwn(target, key)) {
       if (result === target) {
         result = { ...target };
       }

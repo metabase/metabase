@@ -57,4 +57,12 @@ describe("deepMerge", () => {
     const target: { a?: number } = { a: 1 };
     expect(deepMerge(target, { a: undefined })).toEqual({ a: undefined });
   });
+
+  it("ignores __proto__ keys from the source", () => {
+    const target: Record<string, unknown> = { a: 1 };
+    const source: Record<string, unknown> = JSON.parse('{"__proto__":{"b":2}}');
+    const result = deepMerge(target, source);
+    expect(result).toBe(target);
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+  });
 });
