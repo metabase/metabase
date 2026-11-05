@@ -119,18 +119,39 @@
       ;; the same rows in opposite orders would deadlock
       [workspace-id (mapv #(insert-database-rows! workspace-id %) (sort-by :database-id databases))])))
 
+(defn- refresh-locks!
+  "Restart the staleness clock of every row in `locks`, `[kind id token]` triples this request holds. Throws a 409 for
+  the first one another request has taken over."
+  [locks]
+  (doseq [[kind id token] locks]
+    (ws.status/refresh-lock! kind id token)))
+
+(defn- database-lock
+  [{{:keys [id lock_token]} :wsd}]
+  [:database id lock_token])
+
+(defn- schema-locks
+  [schema-rows]
+  (for [{schema-id :id, schema-token :lock_token} schema-rows]
+    [:schema schema-id schema-token]))
+
 (defn- provision-database!
   "Create the workspace user and scratch namespaces of `database` in the warehouse, moving each schema to `:active`
-  and the database to `:provisioned`. Refreshes the database's lock before each step, so a long create keeps it, and
-  throws a 409 before any warehouse change once another request has taken it over. Returns the new lock token."
-  [{:keys [engine lib-db wsd schema-rows]}]
-  (let [{:keys [id lock_token]} wsd]
-    (ws.status/refresh-lock! :database id lock_token)
+  and the database to `:provisioned`. Before each step it refreshes `other-locks` (the request's rows on other
+  databases) and its own rows still in flight, so no row of a long create reads as failed mid-way, and it throws a 409
+  before any warehouse change once another request has taken one over. Returns the new lock token."
+  [{:keys [engine lib-db wsd schema-rows] :as database} other-locks]
+  (let [{:keys [id lock_token]} wsd
+        held                    (fn [schemas-left]
+                                  (concat [(database-lock database)] other-locks (schema-locks schemas-left)))]
+    (refresh-locks! (held schema-rows))
     (driver/init-workspace-isolation! engine lib-db wsd)
-    (doseq [{schema-id :id, :keys [main_schema scratch_namespace], schema-token :lock_token} schema-rows]
-      (ws.status/refresh-lock! :database id lock_token)
-      (driver/add-workspace-schema! engine lib-db wsd main_schema scratch_namespace)
-      (ws.status/change-status! :schema schema-id schema-token #{:adding} :active))
+    (loop [[{schema-id :id, :keys [main_schema scratch_namespace], schema-token :lock_token} :as schemas-left] schema-rows]
+      (when (seq schemas-left)
+        (refresh-locks! (held schemas-left))
+        (driver/add-workspace-schema! engine lib-db wsd main_schema scratch_namespace)
+        (ws.status/change-status! :schema schema-id schema-token #{:adding} :active)
+        (recur (rest schemas-left))))
     (ws.status/change-status! :database id lock_token #{:provisioning} :provisioned)))
 
 (defn- provision-all!
@@ -143,7 +164,10 @@
     (if-not database
       {:provisioned provisioned}
       (let [result (try
-                     {:token (provision-database! database)}
+                     {:token (provision-database! database (concat (map database-lock provisioned)
+                                                                   (mapcat #(cons (database-lock %)
+                                                                                  (schema-locks (:schema-rows %)))
+                                                                           more)))}
                      (catch Throwable e
                        {:error e}))]
         (if-let [e (:error result)]
@@ -183,9 +207,16 @@
                         teardown)]
     (if (empty? left)
       (ws.db/delete-workspace! workspace-id)
-      (doseq [{{wsd-id :id} :wsd} databases
-              :when (not (left wsd-id))]
-        (ws.db/delete-workspace-database! wsd-id)))
+      (doseq [{{wsd-id :id} :wsd, :keys [schema-rows]} databases]
+        (if (left wsd-id)
+          ;; its schemas not yet added would read as in flight, and refuse the delete that finishes the cleanup, for
+          ;; up to 10 minutes; those already active changed token and are not in flight
+          (doseq [{schema-id :id, schema-token :lock_token} schema-rows]
+            (try
+              (ws.status/change-status! :schema schema-id schema-token #{:adding} :failed)
+              (catch Throwable _
+                nil)))
+          (ws.db/delete-workspace-database! wsd-id))))
     left))
 
 (mu/defn create-workspace! :- ::create-result
@@ -269,19 +300,13 @@
       {:database_id database_id
        :message     (or (ex-message e) (tru "The warehouse returned an error."))})))
 
-(mu/defn delete-workspace! :- :nil
-  "Tear down every database of the Workspace with `id` in the warehouse, then delete it. Throws a 404 when there is
-  none, and a 409 when another request holds one of its databases (nothing is torn down then). Each database's row is
-  deleted once its teardown succeeds; when some fail, throws a 502 listing them, the Workspace and their rows stay
-  `:failed`, and a retry is safe."
-  [id :- ms/PositiveInt]
-  (workspace-or-404 id)
-  (let [wsds     (map (fn [wsd]
-                        (-> wsd
-                            (assoc :status (ws.status/effective-status (:status wsd) (:stale wsd)))
-                            (dissoc :stale)))
-                      (ws.db/workspace-databases-of-workspaces [id] (ws.status/staleness :database)))
-        failures (into [] (keep tear-down-database!) (take-delete-locks! wsds))]
+(def ^:private in-flight-statuses
+  #{:provisioning :deprovisioning :adding :removing})
+
+(defn- delete-workspace-locked!
+  "Take the lock of each of `wsds`, tear each down, and delete the Workspace with `id` when all are gone."
+  [id wsds]
+  (let [failures (into [] (keep tear-down-database!) (take-delete-locks! wsds))]
     (when (seq failures)
       (throw (ex-info (tru "Tearing down the workspace failed for some databases; retry the delete.")
                       {:status-code   502
@@ -291,3 +316,27 @@
                        :response/keys #{:workspace_id :databases}})))
     (ws.db/delete-workspace! id)
     nil))
+
+(mu/defn delete-workspace! :- :nil
+  "Tear down every database of the Workspace with `id` in the warehouse, then delete it. Throws a 404 when there is
+  none, and a 409 when another request is changing it (a row of it is in flight and not stale) or holds one of its
+  databases; nothing is torn down then. Each database's row is
+  deleted once its teardown succeeds; when some fail, throws a 502 listing them, the Workspace and their rows stay
+  `:failed`, and a retry is safe."
+  [id :- ms/PositiveInt]
+  (workspace-or-404 id)
+  (let [effective (fn [row]
+                    (-> row
+                        (assoc :status (ws.status/effective-status (:status row) (:stale row)))
+                        (dissoc :stale)))
+        wsds      (map effective (ws.db/workspace-databases-of-workspaces [id] (ws.status/staleness :database)))
+        schemas   (when (seq wsds)
+                    (map effective (ws.db/workspace-schemas-of-workspace-databases (mapv :id wsds)
+                                                                                   (ws.status/staleness :schema))))]
+    ;; A create or schema change in flight holds its rows' locks; a provisioned database of an unfinished create
+    ;; holds none, so without this check a delete could tear it down under the create. Checked before any lock is
+    ;; taken, so a refused delete changes no token.
+    (when-let [busy (seq (filter (comp in-flight-statuses :status) (concat wsds schemas)))]
+      (throw (ex-info (tru "Workspace {0} is being changed by another request; retry when it finishes." (str id))
+                      {:status-code 409, :error-code "workspace_busy", :id id, :rows (count busy)})))
+    (delete-workspace-locked! id wsds)))

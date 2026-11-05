@@ -12,9 +12,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private db-name "workspace_manager_lifecycle_test")
 
@@ -32,6 +35,26 @@
 (defn- drop-role-if-exists! [spec role]
   (when (seq (query spec "SELECT 1 FROM pg_roles WHERE rolname = ?" role))
     (exec! spec (format "DROP OWNED BY %s" role) (format "DROP ROLE %s" role))))
+
+(defn- do-with-database!
+  "Calls `(f db-id)` with `db-id` a new Database on the test warehouse whose provisioning login, stored through the
+  API, is [[provisioner]]; deletes its workspaces and itself afterwards. A plain insert rather than `mt/with-temp`,
+  which binds a connection that `future`s inherit, so concurrent requests in a test would share one transaction."
+  [f]
+  (let [db-id (t2/insert-returning-pk! :model/Database {:name    (mt/random-name)
+                                                        :engine  :postgres
+                                                        :details (superuser-details)})]
+    (try
+      (mt/user-http-request :crowberto :put 204
+                            (format "ee/workspace-manager/database/%d/provisioning-connection" db-id)
+                            {:details provisioner})
+      (f db-id)
+      (finally
+        (t2/delete! :model/Workspace :id [:in ^:allow-subquery {:select [:workspace_id]
+                                                                :from   [:workspace_database]
+                                                                :where  [:= :database_id db-id]}])
+        (t2/delete! :model/WorkspaceProvisioningConnection :database_id db-id)
+        (t2/delete! :model/Database :id db-id)))))
 
 (defn- do-with-warehouse!
   "Calls `(f spec db-id)` with `db-id` a Database on a fresh warehouse whose provisioning login, stored through the
@@ -56,18 +79,10 @@
              "CREATE TABLE finance.ledger (id int)"
              "ALTER TABLE finance.ledger OWNER TO mb_wsm_lifecycle_etl")
       (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details (superuser-details)}]
-          ;; the cluster-wide PUBLIC CREATE check covers only this test's database: the other databases of a shared
-          ;; test cluster are not this suite's to change
-          (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name])]
-            (mt/user-http-request :crowberto :put 204
-                                  (format "ee/workspace-manager/database/%d/provisioning-connection" db-id)
-                                  {:details provisioner})
-            (try
-              (f spec db-id)
-              (finally
-                (t2/delete! :model/Workspace)
-                (t2/delete! :model/WorkspaceProvisioningConnection :database_id db-id)))))))))
+        ;; the cluster-wide PUBLIC CREATE check covers only this test's database: the other databases of a shared
+        ;; test cluster are not this suite's to change
+        (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name])]
+          (do-with-database! #(f spec %)))))))
 
 (defn- workspace-roles
   "The workspace users [[provisioner]] made: init makes it a member of each. Roles are cluster-wide, so this ignores
@@ -248,7 +263,7 @@
            {wsd-id :id} (t2/select-one :model/WorkspaceDatabase :workspace_id ws-id)]
        (testing "a database another request holds, fresh in flight, is a 409 and nothing is torn down"
          (ws.status/take-lock! :database wsd-id #{:provisioned} :deprovisioning)
-         (is (str/includes? (mt/user-http-request :crowberto :delete 409 (ws-url ws-id)) "is deprovisioning"))
+         (is (=? {:error-code "workspace_busy"} (mt/user-http-request :crowberto :delete 409 (ws-url ws-id))))
          (is (= 1 (count (workspace-roles spec))))
          (is (= :deprovisioning (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))))
        (testing "once it is stale it reads as failed and DELETE takes it over"
@@ -292,3 +307,122 @@
              (is (str/includes? (apply mt/user-http-request :crowberto method 402 path (when body [body])) "Workspaces"))))
          (mt/user-http-request :crowberto :delete 204 (ws-url ws-id))
          (is (empty? (workspace-roles spec))))))))
+
+(defn- two-database-body [db-a db-b schema-b]
+  {:name "two", :databases [{:database_id db-a, :schemas ["sales"]} {:database_id db-b, :schemas [schema-b]}]})
+
+(defn- workspace-rows []
+  [(t2/count :model/Workspace) (t2/count :model/WorkspaceDatabase) (t2/count :model/WorkspaceSchema)])
+
+(deftest a-later-database-failing-rolls-back-the-provisioned-one-test
+  (do-with-warehouse!
+   (fn [spec db-a]
+     (do-with-database!
+      (fn [db-b]
+        (testing "A provisions, B fails a precondition: 412, and A's user and scratch are gone"
+          (exec! spec "GRANT INSERT ON finance.ledger TO PUBLIC")
+          (mt/user-http-request :crowberto :post 412 url (two-database-body db-a db-b "finance"))
+          (exec! spec "REVOKE INSERT ON finance.ledger FROM PUBLIC")
+          (is (empty? (workspace-roles spec)))
+          (is (empty? (workspace-schemas spec)))
+          (is (= [0 0 0] (workspace-rows))))
+        (testing "A provisions, B fails in the warehouse: 502, and A is gone"
+          (is (=? {:error-code "warehouse_error"}
+                  (mt/user-http-request :crowberto :post 502 url (two-database-body db-a db-b "nosuch"))))
+          (is (empty? (workspace-roles spec)))
+          (is (empty? (workspace-schemas spec)))
+          (is (= [0 0 0] (workspace-rows))))
+        (testing "A provisions, B's user already exists: 409, A is gone and B's user is left alone"
+          (drop-role-if-exists! spec "mb__isolation_zzzzzzzz")
+          (exec! spec "CREATE ROLE mb__isolation_zzzzzzzz LOGIN PASSWORD 'OtherParentPassw0rd'")
+          (try
+            (let [ids (atom ["aaaabbbb" "zzzzzzzz"])]
+              (mt/with-dynamic-fn-redefs [driver.u/random-isolation-id (fn [] (let [[id] @ids] (swap! ids rest) id))]
+                (is (=? {:error-code "workspace_user_exists"}
+                        (mt/user-http-request :crowberto :post 409 url (two-database-body db-a db-b "finance"))))))
+            (is (empty? (workspace-roles spec)))
+            (is (empty? (workspace-schemas spec)))
+            (is (= [{:rolcanlogin true}]
+                   (query spec "SELECT rolcanlogin FROM pg_roles WHERE rolname = 'mb__isolation_zzzzzzzz'")))
+            (is (= [0 0 0] (workspace-rows)))
+            (finally
+              (drop-role-if-exists! spec "mb__isolation_zzzzzzzz")))))))))
+
+(defn- blocking
+  "`f` wrapped so that each call delivers the next of `entered` and waits for the next of `released` first."
+  [f entered released]
+  (let [calls (atom -1)]
+    (fn [& args]
+      (let [i (swap! calls inc)]
+        (deliver (nth entered i) true)
+        (deref (nth released i) 30000 nil)
+        (apply f args)))))
+
+(defn- age-rows!
+  "Move `updated_at` of the rows of `table` with ids in `ids` past the staleness cutoff."
+  [table ids]
+  (t2/query-one {:update table
+                 :set    {:updated_at (t/minus (t/offset-date-time) (t/minutes (inc ws.status/stale-after-minutes)))}
+                 :where  [:in :id ids]}))
+
+(deftest a-long-create-keeps-every-row-it-holds-fresh-test
+  (do-with-warehouse!
+   (fn [spec db-a]
+     (do-with-database!
+      (fn [db-b]
+        ;; three adds: A's two schemas, then B's, which is let through at once
+        (let [entered  [(promise) (promise) (promise)]
+              released [(promise) (promise) (doto (promise) (deliver true))]
+              add      driver/add-workspace-schema!]
+          (with-redefs [driver/add-workspace-schema! (blocking add entered released)]
+            (let [create (future (mt/user-http-request :crowberto :post 200 url
+                                                       {:name      "long"
+                                                        :databases [{:database_id db-a, :schemas ["sales" "finance"]}
+                                                                    {:database_id db-b, :schemas ["sales"]}]}))]
+              (is (deref (first entered) 30000 false))
+              (let [b-wsd     (t2/select-one-pk :model/WorkspaceDatabase :database_id db-b)
+                    b-schemas (t2/select-pks-vec :model/WorkspaceSchema :workspace_database_id b-wsd)]
+                (testing "rows of B, not reached yet, aged while A's first schema is added"
+                  (age-rows! :workspace_database [b-wsd])
+                  (age-rows! :workspace_schema b-schemas))
+                (deliver (first released) true)
+                (is (deref (second entered) 30000 false))
+                (testing "before A's next step, every row the create holds was refreshed, so none reads as failed"
+                  (is (=? {:data [{:databases [{:status "provisioning"} {:status "provisioning"
+                                                                         :schemas [{:status "adding"}]}]}]}
+                          (mt/user-http-request :crowberto :get 200 url))))
+                (deliver (second released) true)
+                (is (=? {:databases [{:status "provisioned"} {:status "provisioned"}]} (deref create 60000 nil)))))))
+        (mt/user-http-request :crowberto :delete 204 (ws-url (t2/select-one-pk :model/Workspace)))
+        (is (empty? (workspace-roles spec))))))))
+
+(deftest delete-refuses-a-create-in-flight-test
+  (do-with-warehouse!
+   (fn [spec db-a]
+     (do-with-database!
+      (fn [db-b]
+        (let [entered  [(promise)]
+              released [(promise)]
+              init     driver/init-workspace-isolation!
+              calls    (atom 0)]
+          ;; block B's init: by then A is provisioned and holds no in-flight lock
+          (with-redefs [driver/init-workspace-isolation! (fn [& args]
+                                                           (when (= 2 (swap! calls inc))
+                                                             (deliver (first entered) true)
+                                                             (deref (first released) 30000 nil))
+                                                           (apply init args))]
+            (let [create (future (mt/user-http-request :crowberto :post 200 url (two-database-body db-a db-b "sales")))]
+              (is (deref (first entered) 30000 false))
+              (let [ws-id    (t2/select-one-pk :model/Workspace)
+                    a-wsd    (t2/select-one :model/WorkspaceDatabase :database_id db-a)
+                    tokens   #(t2/select-fn-set :lock_token :model/WorkspaceDatabase :workspace_id ws-id)
+                    before   (tokens)]
+                (is (= :provisioned (:status a-wsd)))
+                (testing "DELETE is a 409 and touches no lock token, even of the provisioned database"
+                  (is (=? {:error-code "workspace_busy"} (mt/user-http-request :crowberto :delete 409 (ws-url ws-id))))
+                  (is (= before (tokens))))
+                (deliver (first released) true)
+                (testing "so the create finishes"
+                  (is (=? {:databases [{:status "provisioned"} {:status "provisioned"}]} (deref create 60000 nil))))
+                (mt/user-http-request :crowberto :delete 204 (ws-url ws-id))
+                (is (empty? (workspace-roles spec))))))))))))
