@@ -739,15 +739,24 @@
 
 (deftest ^:parallel tool-executor-xf-stream-error-test
   (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
-    (let [running  (test-util/parts->aisdk-chunks
+    (let [started  (promise)
+          tools    (update-in test-util/TOOLS ["get-time" :fn]
+                              (fn [get-time]
+                                (fn [args]
+                                  (deliver started true)
+                                  (get-time args))))
+          running  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
           cut-off  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-2" :function "convert-currency"
                       :arguments {:amount 100, :from "EUR", :to "USD"}}])
-          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+          error    {:type :error :errorText "Overloaded"}
+          streamed (concat running (butlast cut-off) [error])]
       (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
-                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+                (into [] (self.core/tool-executor-xf tools)
+                      ;; A call that has not started when the error comes never starts
+                      (concat running (butlast cut-off) (lazy-seq (deref started 5000 nil) [error (last cut-off)])))))
         (testing "and a warning names the call that never ran"
           (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
 
@@ -824,6 +833,41 @@
         (finally
           (deliver release true)))
       (is (= 20 (tool-output-count (deref response 5000 nil)))))))
+
+(deftest ^:parallel tool-executor-xf-starts-no-waiting-call-after-an-error-test
+  (testing "after an :error chunk, the calls waiting behind a running call never start, and the running call finishes"
+    (let [started (promise)
+          release (promise)
+          ran     (atom [])
+          tool    (fn [tool-name runs-alone?]
+                    {:tool-name   tool-name
+                     :doc         "Records that it ran."
+                     :schema      [:=> [:cat [:map {:closed true}]] :any]
+                     :runs-alone? runs-alone?
+                     :fn          (fn [_]
+                                    (swap! ran conj tool-name)
+                                    {:output "ok"})})
+          tools   {"slow"  (releasable-tool "slow" false started release)
+                   "edit"  (tool "edit" true)
+                   "after" (tool "after" false)
+                   "late"  (tool "late" false)}
+          chunks  (concat (response-chunks ["slow" "edit" "after"])
+                          ;; The error comes once the slow call is running, as it would during a long query
+                          (lazy-seq
+                           (deref started 5000 nil)
+                           (cons {:type :error :errorText "Overloaded"}
+                                 (test-util/parts->aisdk-chunks
+                                  [{:type :tool-input :id "late" :function "late" :arguments {}}]))))
+          result  (into [] (comp (self.core/tool-executor-xf tools)
+                                 (map (fn [chunk]
+                                        (when (= :error (:type chunk))
+                                          (deliver release true))
+                                        chunk)))
+                        chunks)]
+      (is (= [] @ran))
+      (is (= ["call-0"] (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result)))
+      (testing "and the calls whose input comes after the error are dropped"
+        (is (not-any? #(= "late" (:toolCallId %)) result))))))
 
 ;;; tool argument validation tests
 

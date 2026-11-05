@@ -1116,7 +1116,8 @@
   - Spawns virtual thread for each tool when input is complete
   - A call to a tool whose entry sets `:runs-alone?` starts once the calls before it have finished, and the calls
     after it start once it has finished
-  - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
+  - Once an :error chunk comes through, starts no more tools, the calls already waiting to start included, and drops
+    the tool-input chunks after it
   - At completion, waits for all tools and appends results, in call order once a call has run alone
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
@@ -1156,7 +1157,9 @@
                (when-let [{:keys [chunks]} (get @active toolCallId)]
                  (let [runs-alone? (:runs-alone? (get tools toolName))
                        after       (if runs-alone? @started (some-> @alone list))
-                       task        (submit-virtual after (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
+                       task        (submit-virtual after (bound-fn* #(if @errored?
+                                                                       []
+                                                                       (run-tool toolCallId toolName tools chunks))))]
                    (vswap! started conj task)
                    (when runs-alone?
                      (vreset! alone task))
