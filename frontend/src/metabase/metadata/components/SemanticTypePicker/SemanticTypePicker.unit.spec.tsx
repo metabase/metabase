@@ -115,7 +115,7 @@ describe("SemanticTypePicker", () => {
         initialValue: TYPE.CancelationDate,
       });
 
-      expect(screen.getByText("Cancelation date")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Cancelation date")).toBeInTheDocument();
 
       await assertSemanticTypesVisibility({
         visibleTypes: ["Creation date", "Cancelation date"],
@@ -128,7 +128,7 @@ describe("SemanticTypePicker", () => {
         initialValue: TYPE.CancelationDate,
       });
 
-      expect(screen.getByText("Cancelation date")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Cancelation date")).toBeInTheDocument();
 
       const picker = screen.getByPlaceholderText("Select a semantic type");
       await userEvent.click(picker);
@@ -136,7 +136,11 @@ describe("SemanticTypePicker", () => {
       await userEvent.click(dropdown.getByText("Creation date"));
       await userEvent.click(picker);
 
-      expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
+      // the list is rebuilt on every open, so look it up again
+      const reopenedDropdown = within(screen.getByRole("listbox"));
+      expect(
+        reopenedDropdown.queryByText("Cancelation date"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -242,6 +246,37 @@ describe("SemanticTypePicker", () => {
       visibleTypes: ["Title"],
       hiddenTypes: ["Birthday", "Creation date"],
     });
+  });
+
+  it("should only highlight the picked type when the value changes while closed (GDGT-2860)", async () => {
+    const { rerender } = renderWithProviders(
+      <SemanticTypePicker
+        field={TEXT_FIELD}
+        value={TYPE.Name}
+        onChange={jest.fn()}
+      />,
+    );
+    const picker = screen.getByPlaceholderText("Select a semantic type");
+    expect(picker).toHaveValue("Entity Name");
+
+    rerender(
+      <SemanticTypePicker
+        field={TEXT_FIELD}
+        value={TYPE.Category}
+        onChange={jest.fn()}
+      />,
+    );
+    expect(picker).toHaveValue("Category");
+
+    await userEvent.click(picker);
+
+    const dropdown = within(screen.getByRole("listbox"));
+    expect(
+      dropdown.getByRole("option", { name: /Entity Key/ }),
+    ).not.toHaveAttribute("data-combobox-selected");
+    expect(dropdown.getByRole("option", { name: /Category/ })).toHaveAttribute(
+      "data-combobox-active",
+    );
   });
 
   it("falls back to using field's base_type if effective_type is not available", async () => {

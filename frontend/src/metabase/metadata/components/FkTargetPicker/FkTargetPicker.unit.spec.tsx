@@ -73,13 +73,14 @@ function setup({
 }
 
 describe("FkTargetPicker", () => {
-  it("should show empty state when there are no idFields", async () => {
+  it("should be disabled when there are no idFields", async () => {
     setup({ idFields: [] });
 
     const select = screen.getByPlaceholderText("No key available");
+    expect(select).toBeDisabled();
     await userEvent.click(select);
 
-    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("should render options with label, description, and icon", async () => {
@@ -134,6 +135,18 @@ describe("FkTargetPicker", () => {
     expect(
       screen.queryByText("Public.Table 1 → Field A"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show empty state when the search has no results", async () => {
+    setup();
+
+    const select = screen.getByPlaceholderText("Select a target");
+    await userEvent.click(select);
+    await userEvent.type(select, "no such field");
+
+    expect(
+      await screen.findByText("Didn't find any results"),
+    ).toBeInTheDocument();
   });
 
   it("should include schema in the label if there are multiple schemas", async () => {

@@ -168,6 +168,10 @@
   [_parser driver sql table-name]
   (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
 
+(defmethod sql-tools/add-insert-clause-impl :sqlglot
+  [_parser driver sql table-name]
+  (sql-parsing/add-insert-clause (driver->dialect driver) sql table-name))
+
 (defmethod sql-tools/replace-names-impl :sqlglot
   [_parser driver sql-string replacements _opts]
   ;; Convert map keys to list-of-pairs for JSON serialization
