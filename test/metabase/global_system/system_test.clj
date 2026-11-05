@@ -442,6 +442,13 @@
 
 ;;; ------------------------------------------------ Lifecycle ------------------------------------------------
 
+(defn- cleanup!
+  "Stop each of `handles` and remove its root."
+  [handles]
+  (doseq [handle handles]
+    (system/stop! handle)
+    (mc/remove-root handle)))
+
 (deftest ^:synchronized ensure-started-test
   (let [handle  (system/mutable-component-handle ::ensure-started (constantly nil))
         starts  (atom 0)
@@ -472,8 +479,7 @@
         (is (some? (system/ensure-started! handle start stop)))
         (is (= 2 @starts)))
       (finally
-        (system/stop! handle)
-        (mc/remove-root handle)))))
+        (cleanup! [handle])))))
 
 (deftest ^:synchronized start-reports-whether-it-started-test
   (testing "start! says whether this call did the start, and later calls get the running value"
@@ -483,8 +489,7 @@
                {:first  (system/start! handle (constantly :running) (constantly nil))
                 :second (system/start! handle (constantly :other) (constantly nil))}))
         (finally
-          (system/stop! handle)
-          (mc/remove-root handle))))))
+          (cleanup! [handle]))))))
 
 ;; halt! itself is never called in these tests: it stops every component this test JVM has started, such as the test
 ;; web server, which later tests need. It is only (stop-all! (halt-order)), and this test drives both on throwaway
@@ -509,9 +514,7 @@
                 :stopped  @stopped
                 :values   (mapv deref handles)}))
         (finally
-          (doseq [handle handles]
-            (system/stop! handle)
-            (mc/remove-root handle)))))))
+          (cleanup! handles))))))
 
 (deftest ^:synchronized start-returning-false-test
   (testing "a start that returns false still counts as started, so it runs once"
@@ -522,8 +525,7 @@
           (system/ensure-started! handle #(do (swap! starts inc) false) (constantly nil)))
         (is (= 1 @starts))
         (finally
-          (system/stop! handle)
-          (mc/remove-root handle))))))
+          (cleanup! [handle]))))))
 
 (deftest ^:synchronized start-returning-nil-test
   (testing "a start that returns nil throws, and leaves nothing registered"
@@ -533,7 +535,7 @@
                               (system/ensure-started! handle (constantly nil) (constantly nil))))
         (is (false? (system/stop! handle)))
         (finally
-          (mc/remove-root handle))))))
+          (cleanup! [handle]))))))
 
 (deftest ^:synchronized stop-leaves-unmanaged-roots-test
   (testing "stop! leaves alone a root that ensure-started! did not start"
@@ -542,7 +544,7 @@
         (is (= {:stopped? false, :value :installed}
                {:stopped? (system/stop! handle), :value @handle}))
         (finally
-          (mc/remove-root handle))))))
+          (cleanup! [handle]))))))
 
 (deftest ^:synchronized stop-after-reload-test
   (testing "a handle made again for the same key, as a reload does, stops what the old handle started"
@@ -554,15 +556,7 @@
         (is (= {:stopped? true, :stopped [:running]}
                {:stopped? (system/stop! new), :stopped @stopped}))
         (finally
-          (system/stop! new)
-          (mc/remove-root new))))))
-
-(defn- cleanup!
-  "Stop each of `handles` and remove its root."
-  [handles]
-  (doseq [handle handles]
-    (system/stop! handle)
-    (mc/remove-root handle)))
+          (cleanup! [new]))))))
 
 (deftest ^:synchronized restart-keeps-halt-place-test
   (testing "a component restarted after its dependents still halts after them"
@@ -626,14 +620,14 @@
         (finally
           (cleanup! [handle]))))))
 
-(deftest ^:synchronized stop-uses-started-value-test
-  (testing "stop! stops the value that was started, and leaves a root someone replaced since"
+(deftest ^:synchronized stop-uses-current-value-test
+  (testing "stop! stops the value the root holds now, which a running component may have replaced"
     (let [handle  (system/mutable-component-handle ::replaced (constantly nil))
           stopped (atom [])]
       (try
-        (system/ensure-started! handle (constantly :started) #(swap! stopped conj %))
-        (mc/alter-root handle :replaced)
-        (is (= {:stopped? true, :stopped [:started], :root :replaced}
+        (system/ensure-started! handle (constantly {:pools {}}) #(swap! stopped conj %))
+        (mc/swap! handle assoc-in [:pools 1] :open-pool)
+        (is (= {:stopped? true, :stopped [{:pools {1 :open-pool}}], :root nil}
                {:stopped? (system/stop! handle), :stopped @stopped, :root @handle}))
         (finally
           (cleanup! [handle]))))))
