@@ -31,6 +31,7 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
+          base: ${{ github.ref }}
           filters: .github/file-paths.yaml
           list-files: shell
 
