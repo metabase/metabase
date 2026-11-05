@@ -307,7 +307,7 @@
    :status           "unknown"
    :running          false
    :checked_at       string?
-   :items            [{:status "unknown", :message "The check could not run: the setting is unreadable"}]})
+   :items            [{:status "unknown", :message "Couldn't run this check. Check the server logs for the underlying error."}]})
 
 (deftest list-health-checks-test
   (testing "GET /api/ee/security-center/health-checks"

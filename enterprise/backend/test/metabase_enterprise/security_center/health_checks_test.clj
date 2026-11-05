@@ -98,7 +98,7 @@
       (let [response (health-checks/run-check (fake-check :run #(throw (ex-info "the setting is unreadable" {}))))]
         (is (mr/validate ::security-center.schema/health-check response))
         (is (= :unknown (:status response)))
-        (is (= [{:status :unknown, :message "The check could not run: the setting is unreadable"}]
+        (is (= [{:status :unknown, :message "Couldn't run this check. Check the server logs for the underlying error."}]
                (:items response))))
       (is (=? [{:level :error, :message "Health check https-redirect failed"}]
               (messages)))))
@@ -317,21 +317,21 @@
   (is (true? (health-checks/applicable? (health-checks/check-by-id :supported-version))))
   (testing "unknown when Check for updates is off"
     (mt/with-temporary-setting-values [check-for-updates false]
-      (is (=? {:status :unknown, :items [{:status :unknown, :message "Check for updates is off"}]}
+      (is (=? {:status :unknown, :items [{:status :unknown, :message "Turn on Check for updates so Metabase can see when your version reaches end of life"}]}
               (run-check-by-id :supported-version)))))
   (testing "unknown before the first fetch"
     (mt/with-temporary-setting-values [check-for-updates true, version-info-last-checked nil]
-      (is (=? {:status :unknown, :items [{:status :unknown, :message "Version info has not been fetched yet"}]}
+      (is (=? {:status :unknown, :items [{:status :unknown, :message "Version info hasn't been fetched yet"}]}
               (run-check-by-id :supported-version)))))
   (mt/with-temporary-setting-values [check-for-updates         true
                                      version-info-last-checked #t "2026-11-03T10:00:00Z"]
     (testing "unknown when the last fetch failed and left no version info"
       (mt/with-temporary-setting-values [version-info {}]
-        (is (=? {:status :unknown, :items [{:status :unknown, :message "The last fetch of the version info failed"}]}
+        (is (=? {:status :unknown, :items [{:status :unknown, :message #"Couldn't fetch version info from static.metabase.com.*"}]}
                 (supported-version-with-major 64)))))
     (mt/with-temporary-setting-values [version-info version-info]
       (testing "unknown for a build without a major version"
-        (is (=? {:status :unknown, :items [{:status :unknown, :message "This build has no version number"}]}
+        (is (=? {:status :unknown, :items [{:status :unknown, :message "Can't tell the version of this build"}]}
                 (supported-version-with-major nil))))
       (testing "passes for a version newer than every version in the feed"
         (is (=? {:status :pass, :items [{:status :pass, :message "Version 70 is newer than every version in the version info"}]}

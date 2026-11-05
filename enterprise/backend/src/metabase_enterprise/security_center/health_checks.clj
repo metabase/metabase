@@ -207,7 +207,7 @@
    :severity          :medium
    :title             (deferred-tru "All Users have limited permissions")
    :description       (deferred-tru "Everyone who signs in gets the permissions of All Users.")
-   :remediation       (deferred-tru "Remove Curate on Our analytics from All Users.")
+   :remediation       (deferred-tru "Remove Curate on Our analytics and query access to every database from All Users.")
    :docs-page         "permissions/introduction"
    :docs-anchor       "key-points-regarding-permissions"
    :requires-restart? false
@@ -242,17 +242,18 @@
         support (:major_version_support (setting/get :version-info))]
     (cond
       (not (setting/get :check-for-updates))
-      [(item :unknown (tru "Check for updates is off"))]
+      [(item :unknown (tru "Turn on Check for updates so Metabase can see when your version reaches end of life"))]
 
       ;; the upgrade check writes the timestamp before each fetch, and empties the version info when the fetch fails
       (nil? (setting/get :version-info-last-checked))
-      [(item :unknown (tru "Version info has not been fetched yet"))]
+      [(item :unknown (tru "Version info hasn''t been fetched yet"))]
 
       (not (mr/validate [:sequential {:min 1} ::major-version-support] support))
-      [(item :unknown (tru "The last fetch of the version info failed"))]
+      [(item :unknown (tru (str "Couldn''t fetch version info from static.metabase.com. Allow outbound HTTPS to it from the Metabase "
+                                "server, or point MB_VERSION_INFO_EE_URL to a mirror. The Metabase log has the error")))]
 
       (nil? major)
-      [(item :unknown (tru "This build has no version number"))]
+      [(item :unknown (tru "Can''t tell the version of this build"))]
 
       :else
       (let [majors (map :major support)
@@ -351,7 +352,8 @@
     (mu/validate-throw ::items (vec (run)))
     (catch Throwable e
       (log/errorf e "Health check %s failed" (name id))
-      [(unknown-item (tru "The check could not run: {0}" (ex-message e)))])))
+      ;; a generic text: an exception message may hold anything, and the log has it
+      [(unknown-item (tru "Couldn''t run this check. Check the server logs for the underlying error."))])))
 
 (mu/defn run-check :- ::security-center.schema/health-check
   "Runs `entry` and returns the `HealthCheck` the API serves: the texts in the current user's locale, the items of this
