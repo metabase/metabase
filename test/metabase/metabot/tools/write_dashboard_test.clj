@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.test-util :as test-util]
@@ -63,11 +64,20 @@
 (defn- failure [args]
   (test-util/tool-failure write-dashboard/write-dashboard-tool args tool-names))
 
+(defn- data-parts
+  "The result's data parts by type, checking it has no other types."
+  [result]
+  (let [by-type (into {} (map (juxt :data-type :data)) (:data-parts result))]
+    (is (every? #{"dashboard_saved" "generated_entity"} (keys by-type)))
+    by-type))
+
 (defn- event [result]
-  (let [[part & more] (:data-parts result)]
-    (is (empty? more))
-    (is (= "dashboard_saved" (:data-type part)))
-    (:data part)))
+  (get (data-parts result) "dashboard_saved"))
+
+(defn- opened
+  "The dashboard the frontend navigates to, if any."
+  [result]
+  (get (data-parts result) "generated_entity"))
 
 (defn- dashcards [dashboard-id]
   (t2/select [:model/DashboardCard :id :card_id :row :col :size_x :size_y :dashboard_tab_id :parameter_mappings]
@@ -127,7 +137,9 @@
                   :collection_id personal
                   :open          true
                   :saved_charts  []}
-                 data)))
+                 data))
+          (is (= {:type "dashboard", :id dashboard_id, :title "Q4 planning", :url (str "/dashboard/" dashboard_id)}
+                 (opened result))))
         (testing "the model reads where it was saved and how to link it"
           (is (re-find #"<dashboard_saved action=\"created\" url=\"metabase://dashboard/\d+\">" (:output result)))
           (is (re-find #"<collection id=\"\d+\" name=\"Rasta Toucan's Personal Collection\"/>" (:output result)))
@@ -180,7 +192,8 @@
                                               " connected_dashcards=\"\\d+, \\d+, \\d+\"/>"))
                              (:output result))))
               (testing "opens the dashboard only in internal Metabot"
-                (is (= open? (:open data))))
+                (is (= open? (:open data)))
+                (is (= open? (some? (opened result)))))
               (testing "leaves other dashboards alone"
                 (is (empty? (dashcards other-id)))))))))))
 
@@ -224,11 +237,12 @@
            (testing "shows a new dashboard question in the same slot, full width"
              (is (=? [{:id dashcard-id, :card_id (:id new-card), :row 0, :col 0, :size_x 24, :size_y 6}]
                      (dashcards dash-id))))
-           (testing "an edit doesn't open the dashboard"
+           (testing "internal Metabot opens the dashboard it edited"
              (is (=? {:action       "updated"
-                      :open         false
+                      :open         true
                       :saved_charts [{:chart_id "A", :card_id (:id new-card)}]}
-                     (event result))))
+                     (event result)))
+             (is (=? {:id dash-id} (opened result))))
            (testing "leaves the replaced question and the other dashboard unchanged"
              (is (=? {:name "Revenue by month", :archived false} (t2/select-one :model/Card :id card-id)))
              (is (= "Marketing" (t2/select-one-fn :name :model/Dashboard :id other-id))))
@@ -322,7 +336,8 @@
        (let [result (call {:dashboard_id dash-id, :archived true} :internal)]
          (testing "moves the dashboard to the trash without asking"
            (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-           (is (=? {:action "trashed", :open false} (event result))))
+           (is (=? {:action "trashed", :open false} (event result)))
+           (is (nil? (opened result))))
          (testing "the result is the header only"
            (is (not (re-find #"<dashboard " (:output result))))
            (is (re-find #"restore it from there" (:output result))))
@@ -330,10 +345,26 @@
            (is (=? {:class :recoverable, :code ::save-entity/destination-archived}
                    (failure {:dashboard_id dash-id, :name "New name"}))))
          (testing "restores it"
-           (is (=? {:action "restored"} (event (call {:dashboard_id dash-id, :archived false}))))
+           (let [result (call {:dashboard_id dash-id, :archived false} :internal)]
+             (is (=? {:action "restored", :open true} (event result)))
+             (is (=? {:id dash-id} (opened result))))
            (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id))))
          (testing "leaves other dashboards alone"
            (is (false? (t2/select-one-fn :archived :model/Dashboard :id other-id)))))))))
+
+(deftest edit-trashed-while-waiting-test
+  (sales-dashboard!
+   (fn [{:keys [dash-id]}]
+     (mt/with-current-user (mt/user->id :rasta)
+       ;; A parallel call trashes the dashboard after this call's first read, before it takes the lock.
+       (let [reread metabot.db/dashboard]
+         (mt/with-dynamic-fn-redefs [metabot.db/dashboard (fn [id]
+                                                            (t2/update! :model/Dashboard :id id {:archived true})
+                                                            (reread id))]
+           (testing "an edit refuses a dashboard trashed while it waited"
+             (is (=? {:class :recoverable, :code ::save-entity/destination-archived}
+                     (failure {:dashboard_id dash-id, :name "Renamed"})))
+             (is (= "Sales overview" (t2/select-one-fn :name :model/Dashboard :id dash-id))))))))))
 
 (deftest unarchive-untrashed-dashboard-test
   (sales-dashboard!
