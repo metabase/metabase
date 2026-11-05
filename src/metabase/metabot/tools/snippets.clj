@@ -64,6 +64,7 @@
                        "a snippet. Also call it when the SQL in the editor references a snippet whose SQL you "
                        "need. Then call `get_snippet_details` to read the SQL of each snippet that may fit.")
      :scope       scope/agent-snippets-read
+     :metabot/curation :sql
      :args        [:map {:closed true}
                    [:page {:optional true}
                     [:maybe [:int {:min         1
@@ -94,6 +95,7 @@
                        "copying its SQL. A snippet is not tied to a database: use it only if its SQL works with "
                        "the database you are querying.")
      :scope       scope/agent-snippets-read
+     :metabot/curation :sql
      :args        [:map {:closed true} [:snippet_id :int]]})
   (handle [_ {snippet-id :snippet_id} _ctx]
     (let [snippet (tools/with-entity {:kind :snippet :id snippet-id}

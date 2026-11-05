@@ -353,6 +353,7 @@
     {:name            "save_entity"
      :description     tool-description
      :scope           scope/agent-question-create
+     :metabot/curation :conversation-state
      :args            save-entity-schema
      :metabot/writes? true})
 

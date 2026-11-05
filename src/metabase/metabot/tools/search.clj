@@ -835,6 +835,7 @@
      :description description
      :args args
      :scope scope/agent-search
+     :metabot/curation :filtered
      :metabot/title-fn search-display})
   (handle [_ {:keys [database_id semantic_queries keyword_queries] :as args} {:keys [metabot]}]
     (let [queries (concat semantic_queries keyword_queries)]

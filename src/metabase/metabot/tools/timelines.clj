@@ -59,6 +59,7 @@
                        "If a timeline looks relevant to the user's request, fetch its events using the "
                        "get_timeline_details tool.")
      :scope       scope/agent-timelines-read
+     :metabot/curation :navigation
      :args        [:map {:closed true}]})
   (handle [_ _args _ctx]
     {:output (format-timeline-list-output (timeline/list-timelines))}))
@@ -75,6 +76,7 @@
                        "Use this tool to retrieve the events on a timeline after identifying it "
                        "with list_timelines. Events include timestamps, names, and descriptions.")
      :scope       scope/agent-timelines-read
+     :metabot/curation :navigation
      :args        [:map {:closed true} [:timeline_id :int]]})
   (handle [_ {:keys [timeline_id]} _ctx]
     ;; `with-entity` covers the 403 a read check raises. A nil is the other way this misses, and it

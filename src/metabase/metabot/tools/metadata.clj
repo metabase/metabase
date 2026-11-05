@@ -90,6 +90,7 @@
     {:name "list_available_fields"
      :description "Retrieve metadata for a table, model, or metric."
      :scope scope/agent-metadata-read
+     :metabot/curation :gated
      :args [:map {:closed true}
             [:entity-type [:enum :table :model :metric]]
             [:entity-id :int]]})
@@ -171,6 +172,7 @@
     {:name "list_available_data_sources"
      :description "List all data sources (metrics and models) available to the metabot instance."
      :scope scope/agent-metadata-read
+     :metabot/curation :filtered
      :args [:map {:closed true}]})
   (handle [_ _args {:keys [metabot]}]
     (when-not (:id metabot)
@@ -221,6 +223,7 @@
     {:name "get_field_values"
      :description "Return metadata for a given field of a given data source."
      :scope scope/agent-metadata-read
+     :metabot/curation :gated
      :args get-field-values-schema})
   (handle [_ {data-source :data_source source-id :source_id field-id :field_id} _ctx]
     (tools/with-entity {:kind (if (= data-source "report") :question (keyword data-source)) :id source-id}
