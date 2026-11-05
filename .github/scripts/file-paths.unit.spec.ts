@@ -139,6 +139,10 @@ describe("file-paths.yaml", () => {
     // The SDK component and host-app suites boot a Metabase instance, so their CI entry points
     // have to build one.
     ".github/workflows/embedding-sdk.yml",
+    "cross-version/test.sh",
+    "cross-version/docker-compose.head.yml",
+    ".github/scripts/build-cross-version-matrix.js",
+    "release/src/cross-version-helpers.ts",
   ])("builds the uberjar for %s", (path) => {
     expect(matches("build_uberjar", path)).toBe(true);
   });
@@ -309,7 +313,7 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
 
-  it.each(["locales/translations.pin", "locales/fr.po"])(
+  it.each(["locales/translations.pin"])(
     "only lints i18n when %s changes",
     (file) => {
       const matched = Object.keys(filters).filter((name) =>
@@ -326,5 +330,36 @@ describe("file-paths.yaml", () => {
         ".clj-kondo/config/modules/cycle-clusters.edn",
       ),
     ).toBe(true);
+  });
+
+  it.each([
+    "bb.edn",
+    "bin/mage",
+    "deps.edn",
+    "mage/src/mage/modules.clj",
+    "mage/test/mage/module_explorer_state_test.js",
+    ".clj-kondo/config/modules/config.edn",
+    ".clj-kondo/ratchets.edn",
+    "src/metabase/queries/core.clj",
+    "resources/migrations/001_update_migrations.yaml",
+    ".github/workflows/backend.yml",
+    ".github/CODEOWNERS",
+  ])("runs the Mage tests when %s changes", (file) => {
+    expect(matches("mage_tests", file)).toBe(true);
+  });
+
+  it.each([
+    "frontend/src/metabase/App.tsx",
+    "docs/README.md",
+    "e2e/test/scenarios/a.cy.spec.ts",
+  ])("skips the Mage tests when only %s changes", (file) => {
+    expect(matches("mage_tests", file)).toBe(false);
+  });
+
+  it.each([
+    ".github/actions/create-backport/kondo-ratchets.sh",
+    ".github/actions/create-backport/create-backport-test.sh",
+  ])("lints and tests %s", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
   });
 });

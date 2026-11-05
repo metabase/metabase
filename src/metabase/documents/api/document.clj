@@ -55,6 +55,19 @@
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
 
+(defn- insert-card-embed!
+  "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
+  transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
+  [document-id card-id position extra-attrs]
+  (t2/with-transaction [_conn]
+    (let [document (api/check-404 (documents.db/document document-id))
+          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+          updates  (cond-> (select-keys updated [:document])
+                     (:is_placeholder document) (assoc :is_placeholder false))]
+      (documents.db/update-document! document-id updates)
+      (collections/check-for-remote-sync-update document)
+      (merge document updates))))
+
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
   document with `document-id` and persist it. `position` is a 0-based index among the document's
@@ -66,16 +79,16 @@
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a
-  concurrent edit cannot be overwritten. Returns the updated document."
+  concurrent edit cannot be overwritten. Returns the updated document, hydrated as by
+  [[m.document/get-document]]; [[add-card-to-document-row!]] skips the hydration."
   [document-id card-id position & {:keys [extra-attrs]}]
-  (t2/with-transaction [_conn]
-    (let [document (api/check-404 (documents.db/document document-id))
-          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
-          updates  (cond-> (select-keys updated [:document])
-                     (:is_placeholder document) (assoc :is_placeholder false))]
-      (documents.db/update-document! document-id updates)
-      (collections/check-for-remote-sync-update document)))
+  (insert-card-embed! document-id card-id position extra-attrs)
   (m.document/get-document document-id :log-view? false))
+
+(defn add-card-to-document-row!
+  "[[add-card-to-document!]] for callers that don't need the hydrated document result."
+  [document-id card-id position & {:keys [extra-attrs]}]
+  (api/read-check (insert-card-embed! document-id card-id position extra-attrs)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -365,6 +378,12 @@
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
 
+(defn- +content-gate-cache
+  [handler]
+  (fn [request respond raise]
+    (m.document/with-content-gate-cache
+      (handler request respond raise))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/document/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth +content-gate-cache))

@@ -9,7 +9,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useDeleteBookmarkMutation } from "metabase/api";
@@ -22,6 +28,7 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isFocusVisible } from "metabase/utils/dom";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../Sidebar";
@@ -52,7 +59,11 @@ interface BookmarkItemProps {
   isSorting: boolean;
   selectedItem?: SelectedItem;
   onSelect: () => void;
-  onDeleteBookmark: (bookmark: Bookmark) => void;
+  onDeleteBookmark: (
+    bookmark: Bookmark,
+    index: number,
+    button: HTMLButtonElement,
+  ) => void;
 }
 
 function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
@@ -78,6 +89,7 @@ function getBookmarkModel(bookmark: Bookmark) {
 
 const BookmarkItem = ({
   bookmark,
+  index,
   isDraggable,
   isSorting,
   selectedItem,
@@ -98,7 +110,8 @@ const BookmarkItem = ({
     },
     { isTenantUser },
   );
-  const onRemove = () => onDeleteBookmark(bookmark);
+  const onRemove = (event: MouseEvent<HTMLButtonElement>) =>
+    onDeleteBookmark(bookmark, index, event.currentTarget);
 
   const iconName = isSelected ? "bookmark_filled" : "bookmark";
 
@@ -113,14 +126,17 @@ const BookmarkItem = ({
         isDraggable={isDraggable}
         onClick={onSelect}
         right={
-          <button
-            className={cx(S.removeButton, CS.cursorPointer)}
-            onClick={onRemove}
-          >
-            <Tooltip label={t`Remove bookmark`} position="bottom">
+          <Tooltip label={t`Remove bookmark`} position="right">
+            <button
+              className={cx(S.removeButton, CS.cursorPointer)}
+              aria-label={t`Remove bookmark`}
+              // The tooltip repeats the accessible name, so it mustn't also describe it.
+              aria-describedby={undefined}
+              onClick={onRemove}
+            >
               <Icon name={iconName} />
-            </Tooltip>
-          </button>
+            </button>
+          </Tooltip>
         }
       >
         {bookmark.name}
@@ -138,8 +154,19 @@ const BookmarkList = ({
   initialState,
 }: CollectionSidebarBookmarksProps) => {
   const [deleteBookmark] = useDeleteBookmarkMutation();
-  const onDeleteBookmark = ({ item_id, type }: Bookmark) =>
+  const listRef = useRef<HTMLUListElement>(null);
+  const onDeleteBookmark = (
+    { item_id, type }: Bookmark,
+    index: number,
+    button: HTMLButtonElement,
+  ) => {
+    // Removing the row takes the focused button with it, which drops focus to the page
+    if (isFocusVisible(button)) {
+      const links = listRef.current?.querySelectorAll("a");
+      (links?.[index + 1] ?? links?.[index - 1])?.focus();
+    }
     deleteBookmark({ id: item_id, type });
+  };
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
 
@@ -189,13 +216,13 @@ const BookmarkList = ({
           items={bookmarkIds ?? []}
           strategy={verticalListSortingStrategy}
         >
-          <ul>
+          <ul ref={listRef}>
             {orderedBookmarks.map((bookmark, index) => (
               <BookmarkItem
                 bookmark={bookmark}
                 isDraggable={orderedBookmarks.length > 1}
                 isSorting={isSorting}
-                key={index}
+                key={bookmark.id}
                 index={index}
                 selectedItem={selectedItem}
                 onSelect={onSelect}

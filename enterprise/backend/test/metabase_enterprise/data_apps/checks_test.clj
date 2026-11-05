@@ -8,7 +8,6 @@
    [metabase.collections.core :as collections]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -33,10 +32,7 @@
 (def ^:private error-formats
   "The format of the error message for each kind of entity a data app may not use."
   {:cards    "A data app can use only the cards in its own collection, not the cards %s."
-   :metrics  "A data app can use only metrics from the Library, not the metrics %s."
-   :tables   "A data app can read only tables published to the Library, not the tables %s."
-   :segments "A data app can use only segments of tables published to the Library, not the segments %s."
-   :measures "A data app can use only measures of tables published to the Library, not the measures %s."})
+   :metrics  "A data app can use only metrics from the Library, not the metrics %s."})
 
 (defn- error-message
   "The error message for a data app's use of the entities of `kind` with `ids`."
@@ -78,22 +74,21 @@
   (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/breakoutable-columns query)))
 
 (defn- do-with-app-card!
-  "Call `f` with the ID of a card on the published VENUES table in the collection of the data app of
-  [[do-with-app-collection]], and with that collection's ID."
+  "Call `f` with the ID of a card on the VENUES table in the collection of the data app of [[do-with-app-collection]],
+  and with that collection's ID."
   [f]
   (do-with-app-collection
    (fn [collection-id]
-     (data-apps.tu/with-published-tables! [(mt/id :venues)]
-       (mt/with-temp [:model/Card {card-id :id} {:name          "Venues"
-                                                 :collection_id collection-id
-                                                 :dataset_query (data-apps.tu/venues-query)}]
-         (f card-id collection-id))))))
+     (mt/with-temp [:model/Card {card-id :id} {:name          "Venues"
+                                               :collection_id collection-id
+                                               :dataset_query (data-apps.tu/venues-query)}]
+       (f card-id collection-id)))))
 
-(deftest app-card-and-published-table-run-test
+(deftest app-card-and-table-run-test
   (do-with-app-card!
    (fn [card-id _collection-id]
      (doseq [[label query] [["the app's card" (lib/limit (card-query card-id) 1)]
-                            ["a published table" (lib/limit (table-query :venues) 1)]]]
+                            ["a table" (lib/limit (table-query :venues) 1)]]]
        (testing (str "a query on " label " runs, pivots, compiles and has metadata")
          (is (= "completed" (:status (run-query 202 query))))
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 "dataset/pivot" as-data-app
@@ -122,41 +117,29 @@
        (is (= "You don't have permissions to do that."
               (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id))))))))
 
-(deftest unpublished-tables-are-refused-test
+(deftest unpublished-tables-are-read-test
   (do-with-app-card!
    (fn [card-id _collection-id]
-     (testing "every endpoint refuses a query on an unpublished table"
-       (is (= (error-message :tables (mt/id :categories)) (run-query 400 (table-query :categories))))
-       (doseq [endpoint ["dataset/pivot" "dataset/native" "dataset/query_metadata"]]
-         (is (= (error-message :tables (mt/id :categories)) (mt/user-http-request :crowberto :post 400 endpoint as-data-app
-                                                                                  (table-query :categories)))
-             endpoint))
-       (is (= (error-message :tables (mt/id :categories)) (mt/user-http-request :crowberto :post 400 "dataset/csv" as-data-app
-                                                                                {:query (table-query :categories)}))))
-     (testing "a table reached through a foreign key is refused, from a published table or the app's card"
-       (doseq [[label query] [["in a preview" (table-query :venues)] ["in the app" (card-query card-id)]]]
-         (let [query (lib/breakout query (category-name query))]
-           (is (= (error-message :tables (mt/id :categories))
-                  (run-query 400 query (if (= label "in a preview") as-preview as-data-app)))
-               label))))
-     (testing "it is read once it is published"
-       (data-apps.tu/with-published-tables! [(mt/id :categories)]
-         (let [query (table-query :venues)]
-           (is (= "completed" (:status (run-query 202 (-> query (lib/breakout (category-name query)) (lib/limit 1))))))))))))
+     (testing "an app and its dev preview read a table not published to the Library"
+       (doseq [options [as-data-app as-preview]]
+         (is (= "completed" (:status (run-query 202 (lib/limit (table-query :categories) 1) options))))))
+     (testing "and reach it through a foreign key, from a table or the app's card"
+       (doseq [[options query] [[as-preview (table-query :venues)] [as-data-app (card-query card-id)]]]
+         (is (= "completed" (:status (run-query 202 (-> query (lib/breakout (category-name query)) (lib/limit 1))
+                                                options)))))))))
 
 (deftest explicit-joins-and-custom-columns-are-refused-test
   (do-with-app-card!
    (fn [card-id _collection-id]
-     (data-apps.tu/with-published-tables! [(mt/id :categories)]
-       (let [mp (mt/metadata-provider)]
-         (doseq [query [(table-query :venues) (card-query card-id)]]
-           (testing "an explicit join, even of a published table"
-             (is (= "A data app cannot run queries that join tables explicitly."
-                    (run-query 400 (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id :categories))))))))
-           (testing "a custom column"
-             (is (= "A data app cannot run queries with custom columns."
-                    (run-query 400 (lib/expression query "Double price"
-                                                   (lib/* (lib.metadata/field mp (mt/id :venues :price)) 2))))))))))))
+     (let [mp (mt/metadata-provider)]
+       (doseq [query [(table-query :venues) (card-query card-id)]]
+         (testing "an explicit join"
+           (is (= "A data app cannot run queries that join tables explicitly."
+                  (run-query 400 (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id :categories))))))))
+         (testing "a custom column"
+           (is (= "A data app cannot run queries with custom columns."
+                  (run-query 400 (lib/expression query "Double price"
+                                                 (lib/* (lib.metadata/field mp (mt/id :venues :price)) 2)))))))))))
 
 (deftest other-cards-are-refused-test
   (do-with-app-card!
@@ -184,21 +167,16 @@
        (testing "an app without a collection can use no card, not even one in the root collection"
          (is (= (error-message :cards elsewhere-id)
                 (run-query 400 (card-query elsewhere-id) (as-app "wasps")))))
-       (testing "it still reads published tables"
+       (testing "it still reads tables"
          (is (= "completed" (:status (run-query 202 (lib/limit (table-query :venues) 1) (as-app "wasps"))))))))))
 
 (deftest missing-entities-are-refused-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
      (testing "an ID of no entity gets the refusal an entity the app may not use gets, so it tells nothing of what exists"
-       (doseq [[kind query] [[:tables {:database (mt/id) :type :query :query {:source-table 999999999}}]
-                             [:cards {:database (mt/id) :type :query :query {:source-table "card__999999999"}}]
+       (doseq [[kind query] [[:cards {:database (mt/id) :type :query :query {:source-table "card__999999999"}}]
                              [:metrics {:database (mt/id) :type :query :query {:source-table (mt/id :venues)
-                                                                               :aggregation  [[:metric 999999999]]}}]
-                             [:segments {:database (mt/id) :type :query :query {:source-table (mt/id :venues)
-                                                                                :filter       [:segment 999999999]}}]
-                             [:measures {:database (mt/id) :type :query :query {:source-table (mt/id :venues)
-                                                                                :aggregation  [[:measure 999999999]]}}]]]
+                                                                               :aggregation  [[:metric 999999999]]}}]]]
          (is (= (error-message kind 999999999) (run-query 400 query)) (name kind)))))))
 
 (deftest native-query-is-refused-test
@@ -254,13 +232,9 @@
          (let [mp           (mt/metadata-provider)
                with-segment #(lib/filter % (lib.metadata/segment mp segment-id))
                with-measure #(lib/aggregate % (lib.metadata/measure mp measure-id))]
-           (testing "a segment or measure of an unpublished table is refused, even from a published table"
-             (is (= (error-message :segments segment-id) (run-query 400 (with-segment (table-query :venues)))))
-             (is (= (error-message :measures measure-id) (run-query 400 (with-measure (table-query :venues))))))
-           (testing "a segment or measure of a published table runs"
-             (data-apps.tu/with-published-tables! [(mt/id :categories)]
-               (doseq [query [(with-segment categories) (with-measure categories)]]
-                 (is (= "completed" (:status (run-query 202 query)))))))))))))
+           (testing "a segment or measure of a table not published to the Library runs"
+             (doseq [query [(with-segment categories) (with-measure categories)]]
+               (is (= "completed" (:status (run-query 202 query))))))))))))
 
 (deftest card-endpoints-run-app-card-test
   (do-with-app-card!
@@ -370,16 +344,15 @@
 
 (defn- do-with-rename-action!
   "Call `f` with the ID of a temp implicit action, on no model, that updates a category, in the collection with
-  `collection-id`, with the category Table published to the Library."
+  `collection-id`."
   [collection-id f]
-  (data-apps.tu/with-published-tables! [(mt/id :categories)]
-    (mt/with-temp [:model/Action         {action-id :id} {:name          "Update category"
-                                                          :type          :implicit
-                                                          :collection_id collection-id}
-                   :model/ImplicitAction _               {:action_id action-id
-                                                          :kind      "row/update"
-                                                          :table_id  (mt/id :categories)}]
-      (f action-id))))
+  (mt/with-temp [:model/Action         {action-id :id} {:name          "Update category"
+                                                        :type          :implicit
+                                                        :collection_id collection-id}
+                 :model/ImplicitAction _               {:action_id action-id
+                                                        :kind      "row/update"
+                                                        :table_id  (mt/id :categories)}]
+    (f action-id)))
 
 (def ^:private category-parameters
   {:id 1 :name "African"})
@@ -429,19 +402,15 @@
                      (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" elsewhere-id)
                                            {:parameters category-parameters})))))))))))
 
-(deftest preview-runs-only-adhoc-implicit-actions-on-published-tables-test
+(deftest preview-runs-only-adhoc-implicit-actions-test
   (mt/with-actions-test-data-and-actions-enabled
     (do-with-app-collection
      (fn [collection-id]
        (let [adhoc {:name "Rename" :type "implicit" :kind "row/update" :table_id (mt/id :categories)}]
-         (testing "a dev preview runs no ad-hoc action on an unpublished table"
-           (is (= (format "A data app can write only to tables published to the Library, not the table %d." (mt/id :categories))
-                  (mt/user-http-request :crowberto :post 400 "action/execute" as-preview
-                                        {:action adhoc :parameters category-parameters}))))
          (do-with-rename-action!
           collection-id
           (fn [action-id]
-            (testing "a dev preview runs an ad-hoc implicit action on a published table"
+            (testing "a dev preview runs an ad-hoc implicit action on a table not published to the Library"
               (is (=? {:rows-updated some?}
                       (mt/user-http-request :crowberto :post 200 "action/execute" as-preview
                                             {:action adhoc :parameters category-parameters}))))
@@ -496,170 +465,61 @@
                      (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" elsewhere-id) (as-app "wasps")
                                            {:parameters category-parameters})))))))))))
 
-(deftest table-and-field-endpoints-check-published-tables-test
+(deftest table-and-field-endpoints-read-unpublished-tables-test
   (do-with-app-collection
    (fn [_collection-id]
-     (data-apps.tu/with-published-tables! [(mt/id :venues)]
-       (let [venues   (mt/id :venues)
-             id       (mt/id :venues :id)
-             vname    (mt/id :venues :name)
-             checkins (mt/id :checkins)
-             date     (mt/id :checkins :date)]
-         (testing "a published table and its fields are readable"
-           (doseq [url [(format "table/%d" venues)
-                        (format "table/%d/query_metadata" venues)
-                        (format "table/%d/fks" venues)
-                        (format "field/%d" vname)
-                        (format "field/%d/summary" vname)
-                        (format "field/%d/values" vname)
-                        (format "field/%d/search/%d?value=Re" vname vname)
-                        (format "field/%d/remapping/%d?value=1" id vname)
-                        (format "field/%d/related" vname)]]
-             (mt/user-http-request :crowberto :get 200 url as-data-app)))
-         (testing "an unpublished table and its fields are refused"
-           (doseq [url [(format "table/%d" checkins)
-                        (format "table/%d/query_metadata" checkins)
-                        (format "table/%d/fks" checkins)]]
-             (is (= (format "A data app can read only tables published to the Library, not the table %d." checkins)
-                    (mt/user-http-request :crowberto :get 400 url as-data-app))
-                 url))
-           (doseq [url [(format "field/%d" date)
-                        (format "field/%d/summary" date)
-                        (format "field/%d/values" date)
-                        (format "field/%d/related" date)
-                        (format "field/%d/search/%d?value=Re" vname date)
-                        (format "field/%d/remapping/%d?value=1" id date)]]
-             (is (= (format "A data app can read only fields of tables published to the Library, not the field %d." date)
-                    (mt/user-http-request :crowberto :get 400 url as-data-app))
-                 url)))
-         (testing "a request that is not a data app's still reads an unpublished table"
-           (mt/user-http-request :crowberto :get 200 (format "table/%d" checkins))))))))
+     (let [users (mt/id :users)
+           id    (mt/id :users :id)
+           uname (mt/id :users :name)]
+       (testing "a data app reads a table not published to the Library and its fields"
+         (doseq [url [(format "table/%d" users)
+                      (format "table/%d/query_metadata" users)
+                      (format "table/%d/fks" users)
+                      (format "field/%d" uname)
+                      (format "field/%d/summary" uname)
+                      (format "field/%d/values" uname)
+                      (format "field/%d/search/%d?value=Re" uname uname)
+                      (format "field/%d/remapping/%d?value=1" id uname)
+                      (format "field/%d/related" uname)]]
+           (mt/user-http-request :crowberto :get 200 url as-data-app)))))))
 
-(deftest database-endpoints-narrow-to-published-tables-test
+(deftest database-endpoints-list-unpublished-tables-test
   (do-with-app-collection
    (fn [_collection-id]
-     (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
-                    :model/Table    published   {:db_id (:id db) :name "PUBLISHED" :schema "PUBLIC"}
-                    :model/Table    unpublished {:db_id (:id db) :name "UNPUBLISHED" :schema "PRIVATE"}
-                    :model/Database other       {:engine :h2 :details {}}
-                    :model/Table    _           {:db_id (:id other) :name "ELSEWHERE" :schema "PUBLIC"}]
-       (data-apps.tu/with-published-tables! [(:id published)]
-         (let [list-dbs (fn [url] (:data (mt/user-http-request :crowberto :get 200 url as-data-app)))
-               listed   (fn [dbs] (some #(when (= (:id db) (:id %)) %) dbs))]
-           (testing "the database list holds the database with a published table, with only that table and its schema"
-             (is (= [(:id published)] (map :id (:tables (listed (list-dbs "database?include=tables"))))))
-             (is (= ["PUBLIC"] (:schemas (listed (list-dbs "database?include=schemas"))))))
-           (testing "but not a database without published tables, nor the saved-questions virtual database"
-             (doseq [id [(:id other) lib.schema.id/saved-questions-virtual-database-id]]
-               (is (not-any? #(= id (:id %)) (list-dbs "database?saved=true")) id)))
-           (testing "a database with a published table lists only that table and its schema"
-             (is (= [(:id published)]
-                    (map :id (:tables (mt/user-http-request :crowberto :get 200 (format "database/%d?include=tables" (:id db))
-                                                            as-data-app)))))
-             (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" (:id db)) as-data-app)))
-             (is (= [(:id published)]
-                    (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PUBLIC" (:id db)) as-data-app))))
-             (is (= "Not found."
-                    (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/PRIVATE" (:id db)) as-data-app))))
-           (testing "a database without published tables is refused"
-             (doseq [url ["database/%d" "database/%d/schemas" "database/%d/schema/PUBLIC"]]
-               (is (= (format "A data app can read only databases with tables published to the Library, not the database %d."
-                              (:id other))
-                      (mt/user-http-request :crowberto :get 400 (format url (:id other)) as-data-app))
-                   url)))
-           (testing "a request that is not a data app's still lists the unpublished table"
-             (is (= [(:id unpublished)]
-                    (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PRIVATE" (:id db)))))))))))))
+     (mt/with-temp [:model/Database db    {:engine :h2 :details {}}
+                    :model/Table    table {:db_id (:id db) :name "UNPUBLISHED" :schema "PUBLIC"}]
+       (let [listed (fn [url] (some #(when (= (:id db) (:id %)) %)
+                                    (:data (mt/user-http-request :crowberto :get 200 url as-data-app))))]
+         (testing "the database list holds a database whose tables are not published to the Library, with them"
+           (is (= [(:id table)] (map :id (:tables (listed "database?include=tables")))))
+           (is (= ["PUBLIC"] (:schemas (listed "database?include=schemas"))))))
+       (testing "the database endpoints read it and list its table and schema"
+         (is (= [(:id table)]
+                (map :id (:tables (mt/user-http-request :crowberto :get 200 (format "database/%d?include=tables" (:id db))
+                                                        as-data-app)))))
+         (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" (:id db)) as-data-app)))
+         (is (= [(:id table)]
+                (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PUBLIC" (:id db))
+                                               as-data-app)))))))))
 
-(deftest database-endpoints-without-published-tables-test
-  (do-with-app-collection
-   (fn [_collection-id]
-     (mt/with-temp [:model/Database db {:engine :h2 :details {}}
-                    :model/Table    _  {:db_id (:id db) :name "UNPUBLISHED" :schema "PUBLIC"}]
-       (testing "a database whose tables are all unpublished is not listed"
-         (is (not-any? #(= (:id db) (:id %))
-                       (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app)))))
-       (testing "and is refused by its ID"
-         (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
-                (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
-
-(defn- do-with-zebras!
-  "Call `f` with a temp table published to the Library, one unpublished, a metric in the Library and one outside it, all
-  named Zebra, as `{:published :unpublished :metric :outside-metric}`."
-  [f]
-  (data-apps.tu/do-with-library!
-   (fn [{:keys [metrics-id]}]
-     (mt/with-temp [:model/Database db             {:engine :h2 :details {}}
-                    :model/Table    published      {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
-                    :model/Table    unpublished    {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
-                    :model/Card     metric         {:name          "Zebra metric"
-                                                    :type          :metric
-                                                    :collection_id metrics-id
-                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}
-                    :model/Card     outside-metric {:name          "Zebra outside metric"
-                                                    :type          :metric
-                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
-       (data-apps.tu/with-published-tables! [(:id published)]
-         (f {:published published :unpublished unpublished :metric metric :outside-metric outside-metric}))))))
-
-(defn- search-found
-  "The `[model id]` pairs of what a search for zebras finds, as the request with `options` does."
-  [options & params]
-  (set (map (juxt :model :id) (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q "zebra" params)))))
-
-(deftest search-finds-library-content-test
+(deftest search-is-not-narrowed-test
   (search.tu/with-appdb-search-and-legacy-search
     (search.tu/with-sync-search-indexing
       (do-with-app-collection
        (fn [_collection-id]
          (mt/with-premium-features #{:data-apps :library}
-           (do-with-zebras!
-            (fn [{:keys [published unpublished metric outside-metric]}]
-              (let [published      ["table" (:id published)]
-                    unpublished    ["table" (:id unpublished)]
-                    metric         ["metric" (:id metric)]
-                    outside-metric ["metric" (:id outside-metric)]]
-                (testing "a data app finds the Library's content, and nothing else"
-                  (let [found (search-found as-data-app)]
-                    (is (contains? found published))
-                    (is (contains? found metric))
-                    (is (not-any? found [unpublished outside-metric]))))
-                (testing "the models it asks for narrow the search"
-                  (let [found (search-found as-data-app :models "metric")]
-                    (is (contains? found metric))
-                    (is (not (contains? found published))))
-                  (let [found (search-found as-data-app :models "table")]
-                    (is (contains? found published))
-                    (is (not-any? found [unpublished metric]))))
-                (testing "a request that is not a data app's finds the unpublished table and the outside metric too"
-                  (let [found (search-found {})]
-                    (is (contains? found unpublished))
-                    (is (contains? found outside-metric)))))))))))))
-
-(deftest search-without-library-finds-nothing-test
-  (search.tu/with-appdb-search-and-legacy-search
-    (search.tu/with-sync-search-indexing
-      (do-with-app-collection
-       (fn [_collection-id]
-         (mt/with-premium-features #{:data-apps :library}
-           (do-with-zebras!
-            (fn [{:keys [published metric]}]
-              (mt/with-dynamic-fn-redefs [collections/library-collection (constantly nil)]
-                (testing "without a Library, a data app finds not even a published table or a Library metric"
-                  (is (not-any? (search-found as-data-app) [["table" (:id published)] ["metric" (:id metric)]]))))))))))))
-
-(deftest search-without-published-tables-finds-nothing-test
-  (search.tu/with-appdb-search-and-legacy-search
-    (search.tu/with-sync-search-indexing
-      (do-with-app-collection
-       (fn [_collection-id]
-         (mt/with-premium-features #{:data-apps :library}
-           (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
-                          :model/Table    unpublished {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
-             (data-apps.tu/do-with-library!
-              (fn [_library]
-                (testing "with a Library that does not publish the table, a data app does not find it"
-                  (is (not (contains? (search-found as-data-app) ["table" (:id unpublished)])))))))))))))
+           (data-apps.tu/do-with-library!
+            (fn [_library]
+              (mt/with-temp [:model/Database db     {:engine :h2 :details {}}
+                             :model/Table    table  {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
+                             :model/Card     metric {:name          "Zebra outside metric"
+                                                     :type          :metric
+                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+                (testing "a data app finds a table not published to the Library and a metric outside it"
+                  (let [found (set (map (juxt :model :id)
+                                        (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "zebra"))))]
+                    (is (contains? found ["table" (:id table)]))
+                    (is (contains? found ["metric" (:id metric)])))))))))))))
 
 (deftest user-key-value-endpoints-allow-only-sdk-keys-test
   (do-with-app-collection

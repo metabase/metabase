@@ -203,6 +203,8 @@
                          "ask_for_sql_clarification"}
   :tools               [#'tools/sql-search-tool
                         #'tools/read-resource-tool
+                        #'tools/list-snippets-tool
+                        #'tools/get-snippet-details-tool
                         #'tools/create-sql-query-code-edit-tool
                         #'tools/edit-sql-query-tool
                         #'tools/replace-sql-query-tool
