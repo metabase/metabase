@@ -147,12 +147,11 @@
 
 ;;; ------------------------------------------------ Lifecycle ------------------------------------------------
 
-;; Entries are matched by component key, not handle, since reloading a namespace makes a new handle for the same key.
-(defonce ^{:doc "The components [[start!]] started and that are still running, as `{:k key, :handle h, :stop f,
-             :value v}` maps."
+;; Keyed by component key, not handle, since reloading a namespace makes a new handle for the same key.
+(defonce ^{:doc "Component key -> `{:handle h, :stop f}` for each component [[start!]] started that is still running."
            :private true}
   started-components
-  (atom []))
+  (atom {}))
 
 ;; A component keeps the place of its first start, so one restarted after its dependents still halts after them.
 (defonce ^{:doc "Component keys in the order [[start!]] first started them."
@@ -178,11 +177,6 @@
   "Whether this thread has a binding of the component behind `handle`."
   [handle]
   (contains? *bound-boxes* (handle-key handle)))
-
-(defn- registered-entry
-  "The [[started-components]] entry for the component under `k`, or nil if it is not running."
-  [k]
-  (some #(when (= k (:k %)) %) @started-components))
 
 (defn- run-start
   "Call `start` for the component under `k` and return its value, which must not be nil.
@@ -225,9 +219,7 @@
                 ;; that starts after seeing it, and so may depend on it, comes after it in [[start-order]].
                 ;; Components `start` itself started come before it, for the same reason.
                 (swap! start-order (fn [ks] (cond-> ks (not (some #{k} ks)) (conj k))))
-                (swap! started-components (fn [entries]
-                                            (conj (filterv #(not= k (:k %)) entries)
-                                                  {:k k, :handle handle, :stop stop, :value started})))
+                (swap! started-components assoc k {:handle handle, :stop stop})
                 (mc/reset! handle started)
                 [started true]))))))))
 
@@ -244,29 +236,29 @@
   (first (start! handle start stop)))
 
 (defn stop!
-  "Stop the component behind `handle` if [[start!]] started it: unregister it, set its root back to nil if it still
-   holds the started value, then call the stop function recorded at start on that value.
+  "Stop the component behind `handle` if [[start!]] started it.
+   It is unregistered and its root set back to nil, and then the stop function recorded at start is called on the
+   value the root held, which is the latest one, since a component may replace its own value as it runs.
    Returns true if there was a running component to stop.
-   The stop function runs without the component's lock, so it can wait for threads that use the system; any of them
-   that tries to start this component meanwhile gets an exception.
+   The stop function runs without the component's lock, so it can wait for threads that use the system.
+   Any of them that tries to start this component meanwhile gets an exception.
    Leaves alone a component [[start!]] did not start, and any binding on this thread, since bindings are never
    started."
   [handle]
-  (let [k     (handle-key handle)
-        entry (mc/without-binding
-               handle
-               (fn []
-                 (mc/with-slot-lock handle
-                   (when-let [entry (registered-entry k)]
-                     (swap! started-components (fn [entries] (filterv #(not= k (:k %)) entries)))
-                     (when (identical? (:value entry) (some-> (mc/root-entry handle) val))
-                       (mc/reset! handle nil))
-                     (swap! stopping conj k)
-                     entry))))]
-    (if entry
+  (let [k       (handle-key handle)
+        stopped (mc/without-binding
+                 handle
+                 (fn []
+                   (mc/with-slot-lock handle
+                     (when-let [{:keys [stop]} (get @started-components k)]
+                       (swap! started-components dissoc k)
+                       (swap! stopping conj k)
+                       {:stop stop, :value (first (mc/reset-vals! handle nil))}))))]
+    (if stopped
       (try
-        ((:stop entry) (:value entry))
-        true
+        (when (some? (:value stopped))
+          ((:stop stopped) (:value stopped)))
+        (some? (:value stopped))
         (finally
           (swap! stopping disj k)))
       false)))
@@ -293,8 +285,8 @@
   "The handles of the running components, in the order [[halt!]] stops them: the reverse of the order they first
   started in."
   []
-  (let [handle-by-key (into {} (map (juxt :k :handle)) @started-components)]
-    (keep handle-by-key (rseq @start-order))))
+  (let [running @started-components]
+    (keep #(get-in running [% :handle]) (rseq @start-order))))
 
 (defn halt!
   "Stop every running component [[start!]] started, in the reverse of the order they first started in.
