@@ -158,6 +158,28 @@
           (testing resource
             (is (= [(mcp-url)] (:resource (token! email :resource resource))))))))))
 
+(deftest exchange-scope-claim-test
+  (with-jwt-bearer-setup!
+    (let [email   "jwt-bearer-scope-claim@metabase.com"
+          request (fn [status claim requested]
+                    (:body (token-response status (cond-> {:assertion (assertion {:email email, :scope claim})}
+                                                    requested (assoc :scope requested)))))]
+      (testing "the token gets only the scopes that the JWT's scope claim allows"
+        (doseq [[claim requested granted]
+                [["agent:content:read"               nil                             "agent:content:read"]
+                 ["agent:sql:run agent:content:read" "agent:query:run agent:sql:run" "agent:sql:run"]
+                 ["agent:*"                          "agent:query:run agent:sql:run" "agent:query:run agent:sql:run"]]]
+          (testing (pr-str claim)
+            (is (= granted (:scope (request 200 claim requested)))))))
+      (testing "a claim that allows none of the requested scopes is refused"
+        (doseq [[claim requested] [["agent:content:read" "agent:sql:run"]
+                                   [""                   nil]]]
+          (testing (pr-str claim)
+            (is (= {:error             "invalid_scope"
+                    :error_description (str "The JWT's scope claim must allow at least one of these scopes: "
+                                            (or requested (str/join " " (mcp/v2-scopes))))}
+                   (request 400 claim requested)))))))))
+
 (deftest exchange-provisioning-test
   (with-jwt-bearer-setup!
     (let [email   "jwt-bearer-provisioning@metabase.com"
@@ -321,7 +343,9 @@
     (with-jwt-bearer-setup!
       (mcp.tu/with-group-level-mode
         (let [verified   [["unsupported_grant_type" #(assertion {:email "jwt-bearer-no-mcp@metabase.com"})]
-                          ["invalid_grant"          #(assertion {:first_name "Jay"})]]
+                          ["invalid_grant"          #(assertion {:first_name "Jay"})]
+                          ["invalid_scope"          #(assertion {:email "jwt-bearer-no-scope@metabase.com"
+                                                                 :scope "openid"})]]
               unverified [["invalid_grant" #(jwt/sign {:email "jwt-bearer-forged@metabase.com"} "not-the-secret")]
                           ["invalid_grant" #(assertion {:email "jwt-bearer-expired@metabase.com"
                                                         :exp   (- (buddy-util/now) 60)})]]]

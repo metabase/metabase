@@ -4,6 +4,7 @@
   The token belongs to the user named in the JWT."
   (:require
    [clojure.string :as str]
+   [metabase.api-scope.core :as api-scope]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.events.core :as events]
    [metabase.mcp.core :as mcp]
@@ -93,10 +94,11 @@
 (defn- log-in!
   "Log in through JWT authentication without creating a session.
 
-  Return the user named in the JWT `assertion`, which must have `exp` and `iat` claims.
+  Return the login result for the JWT `assertion`, which must have `exp` and `iat` claims: its `:user` is the user
+  the JWT names, and its `:jwt-data` holds the verified claims.
   Throw `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
   [assertion request]
-  (let [{:keys [success? user message] :as result}
+  (let [{:keys [success? message] :as result}
         (try
           (auth-identity/login! :provider/jwt (assoc request
                                                      :token                    assertion
@@ -107,10 +109,26 @@
             {:message     (ex-message e)
              :status-code (:status-code (ex-data e))}))]
     (if success?
-      user
+      result
       (throw (ex-info (str message) {:error             "invalid_grant"
                                      :error-description (refusal-description result)
                                      ::verified?        (verified-login-refusal? result)})))))
+
+(defn- scopes-allowed-by-claim
+  "Return the `scopes` that the JWT's `scope` claim allows, or all of them when the JWT has no `scope` claim.
+
+  `jwt-data` holds the verified claims.
+  Throw `ex-info` carrying `invalid_scope` when the claim allows none of `scopes`."
+  [scopes jwt-data]
+  (if-let [[_ claim] (find jwt-data :scope)]
+    (let [allowed (api-scope/parse-scopes claim)]
+      (or (not-empty (filterv #(api-scope/scope-matches? allowed %) scopes))
+          (throw (ex-info "the JWT's scope claim allows none of the requested scopes"
+                          {:error             "invalid_scope"
+                           :error-description (str "The JWT's scope claim must allow at least one of these scopes: "
+                                                   (str/join " " scopes))
+                           ::verified?        true}))))
+    scopes))
 
 (defn- check-mcp-access!
   "Throws `ex-info` carrying `unsupported_grant_type` unless the groups of the User with `user-id` allow MCP."
@@ -125,8 +143,8 @@
 (defn verified-refusal?
   "Return whether `e` refuses a JWT bearer grant whose assertion passed verification.
 
-  These are the JWT login refusals that [[verified-login-refusal?]] accepts, and refusals of users whose groups don't
-  allow MCP."
+  These are the JWT login refusals that [[verified-login-refusal?]] accepts, refusals of JWTs whose `scope` claim
+  allows none of the requested scopes, and refusals of users whose groups don't allow MCP."
   [e]
   (boolean (::verified? (ex-data e))))
 
@@ -134,13 +152,16 @@
   "Issue an MCP access token to the user named in the JWT `assertion`.
 
   Return the RFC 6749 token response. The token carries `scopes`, or every MCP scope when `scopes` is nil,
-  and is bound to the MCP endpoint, which `resource` must name when it is given.
+  and is bound to the MCP endpoint, which `resource` must name when it is given. A `scope` claim in the JWT limits
+  the token to the scopes the claim allows.
   Once the token is issued, publish `:event/user-login`, and `:event/user-joined` when the user had never logged in.
   Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused; see [[verified-refusal?]]."
   [provider request {:keys [assertion scopes resource]}]
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)
-        user    (log-in! assertion request)
+        login   (log-in! assertion request)
+        scopes  (scopes-allowed-by-claim scopes (:jwt-data login))
+        user    (:user login)
         user-id (:id user)
         _       (check-mcp-access! user-id)
         token   (oidc.token/generate-access-token)
