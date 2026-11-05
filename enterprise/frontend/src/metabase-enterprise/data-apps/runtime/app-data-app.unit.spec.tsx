@@ -65,8 +65,11 @@ describe("data-app iframe entry, on a subpath deployment", () => {
 
     await waitFor(() => expect(hostPort.postMessage).toHaveBeenCalledTimes(1));
     const [message] = hostPort.postMessage.mock.calls[0];
+    // Jest's `Request` keeps a relative URL relative; the page resolves it the same way.
     const path =
-      message.type === "request" ? new URL(message.url).pathname : null;
+      message.type === "request"
+        ? new URL(message.url, window.location.origin).pathname
+        : null;
 
     expect(path).toBe("/mb/api/ee/apps/sales/bundle");
   });
