@@ -482,8 +482,7 @@
     (is (= {:actual       {:discouraged-var       {:clojure.core/eval 2, :clojure.core/println 1}
                            :discouraged-namespace {}}
             :unattributed [{:file "a.clj", :line 6, :linters [:discouraged-var]}]
-            :unresolved   []
-            :aliases      {}}
+            :unresolved   []}
            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println [] known))))
   (testing "two findings of one symbol under one ignore count once"
     (is (= {:clojure.core/eval 1}
@@ -511,8 +510,7 @@
                            :discouraged-namespace {}}
             :unattributed [{:file "a.clj", :line 4, :linters [:discouraged-var]}
                            {:file "a.clj", :line 6, :linters [:discouraged-var]}]
-            :unresolved   []
-            :aliases      {}}
+            :unresolved   []}
            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
                                                 eval-and-println
                                                 [{:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}]
@@ -579,6 +577,10 @@
                                  :name     "parse-parameters"
                                  :meta     {:metabase/imports "parse/parse"}}]
              :namespace-usages [{:filename "core.cljc", :lang "clj", :to "lib.parameters.parse", :alias "parse"}]}))))
+  (testing "an unqualified import-fn source is a var of the defining namespace"
+    (is (= '{a/middle a/source}
+           (kondo-ratchet/alias-edges
+            {:var-definitions [{:ns "a", :name "middle", :meta {:metabase/imports "source"}}]}))))
   (testing "an enterprise defenterprise points at the OSS var that dispatches to it"
     (is (= '{ee.core/f oss.mirror/f}
            (kondo-ratchet/alias-edges
@@ -593,15 +595,30 @@
     (testing "a chain through an unconfigured var ends at the last configured one"
       (is (= '{a/f c/f}
              (kondo-ratchet/source-aliases '{a/f b/f, b/f c/f} '#{a/f c/f}))))
-    (testing "a cycle stops instead of looping"
-      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f}))))
+    (testing "a cycle stops instead of looping, and its vars keep their own keys"
+      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f})))
+      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f b/f}))))
+    (testing "a var leading into a cycle counts under the var where it enters"
+      (is (= '{x/f a/f} (kondo-ratchet/source-aliases '{x/f a/f, a/f b/f, b/f a/f} '#{x/f a/f b/f}))))
     (testing "a var whose source isn't configured counts under itself"
       (is (= {} (kondo-ratchet/source-aliases edges '#{lib.core/g}))))))
 
+(deftest alias-edges!-test
+  (testing "each pass lints the namespaces where the chains end so far, following them through unconfigured vars"
+    (let [analyses {"a.clj" {:var-definitions [{:ns "a", :name "f", :imported-ns "b"}]}
+                    "b.clj" {:var-definitions [{:ns "b", :name "f", :imported-ns "c"}]}
+                    "c.clj" {:var-definitions [{:ns "c", :name "f"}]}}
+          linted   (atom [])
+          analyze  (fn [files]
+                     (swap! linted conj (vec files))
+                     {:var-definitions (mapcat (comp :var-definitions analyses) files)})]
+      (is (= '{a/f b/f, b/f c/f}
+             (kondo-ratchet/alias-edges! '#{a/f c/f} #(str % ".clj") analyze)))
+      (is (= [["a.clj" "c.clj"] ["b.clj"]] @linted)))))
+
 (deftest attribute-discouraged-alias-test
-  (testing "an ignore on a re-exported var counts under its source, and the alias comes back as ratchet keys"
-    (is (= {:actual  {:lib.convert/->legacy-MBQL 1}
-            :aliases {:lib.core/->legacy-MBQL :lib.convert/->legacy-MBQL}}
+  (testing "an ignore on a re-exported var counts under its source"
+    (is (= {:lib.convert/->legacy-MBQL 1}
            (-> (kondo-ratchet/attribute-discouraged
                 {"d.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(lib/->legacy-MBQL q)\n"}
                 {:findings [{:filename "d.clj", :row 2, :col 2, :type "discouraged-var"}]
@@ -610,8 +627,7 @@
                 []
                 {:discouraged-var #{'metabase.lib.convert/->legacy-MBQL 'metabase.lib.core/->legacy-MBQL}}
                 '{metabase.lib.core/->legacy-MBQL metabase.lib.convert/->legacy-MBQL})
-               (update :actual :discouraged-var)
-               (select-keys [:actual :aliases]))))))
+               (get-in [:actual :discouraged-var]))))))
 
 (deftest parse-kondo-output-test
   (testing "a run that reported findings still parses"

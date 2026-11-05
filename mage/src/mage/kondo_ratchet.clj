@@ -143,8 +143,10 @@
                 edge  [(when imported-ns
                          [sym (symbol (str imported-ns) (str var-name))])
                        (when imported
-                         [sym (symbol (str (get alias-ns [filename (some-> lang str) (namespace imported)]
-                                                (namespace imported)))
+                         ;; an unqualified source is a var of the defining namespace
+                         [sym (symbol (str (if-let [written (namespace imported)]
+                                             (get alias-ns [filename (some-> lang str) written] written)
+                                             ns))
                                       (name imported))])
                        (when ee-ns
                          [(symbol (str ee-ns) (str var-name)) sym])]
@@ -152,12 +154,14 @@
             edge))))
 
 (defn- chain
-  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`, stopping before a repeat."
+  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`. A chain that reaches a cycle
+  stops where it enters it, so every var on a cycle is a chain of its own."
   [edges sym]
   (loop [sym sym, seen []]
-    (if (or (nil? sym) (some #{sym} seen))
-      seen
-      (recur (edges sym) (conj seen sym)))))
+    (cond
+      (nil? sym)          seen
+      (some #{sym} seen)  (conj (vec (take-while #(not= sym %) seen)) sym)
+      :else               (recur (edges sym) (conj seen sym)))))
 
 (defn source-aliases
   "A map from each of `vars` that is another of them under a second name to the one it counts under, following
@@ -178,8 +182,8 @@
   `known` maps each linter to its configured symbols.
   An ignore counts once for each distinct symbol among the findings it covers, under the key of the symbol it
   counts under by [[source-aliases]] over `edges` (default none).
-  Returns `{:actual {linter {key count}}, :unattributed _, :unresolved _, :aliases _}`, with keys from
-  [[kondo-ratchet/discouraged-count-key]]; `:aliases` is [[source-aliases]] as a map of those keys.
+  Returns `{:actual {linter {key count}}, :unattributed _, :unresolved _}`, with keys from
+  [[kondo-ratchet/discouraged-count-key]].
   The `:unattributed` ignores cover no finding, and the `:unresolved` findings have no configured symbol; both
   are `{:file _, :line _, :linters [linter]}` maps."
   ([contents output baseline known]
@@ -233,10 +237,7 @@
                            {:file file, :line (:line ignore), :linters [linter]}))
       :unresolved   (vec (for [{:keys [file line linter symbol]} hits
                                :when (nil? symbol)]
-                           {:file file, :line line, :linters [linter]}))
-      :aliases      (-> aliases
-                        (update-keys kondo-ratchet/discouraged-count-key)
-                        (update-vals kondo-ratchet/discouraged-count-key))})))
+                           {:file file, :line line, :linters [linter]}))})))
 
 (defn- lint-with-ignores-disabled!
   "Kondo's JSON output, as [[attribute-discouraged]] takes it, for `contents` (a map of file to text) with
@@ -283,23 +284,57 @@
                  :when (fs/exists? file)]
              file))))
 
-(defn- alias-edges!
-  "[[alias-edges]] for the namespaces on each of `vars`' [[chain]]s of re-exports."
+(defn- analyze-for-aliases!
+  "Kondo's analysis of `files`, as [[alias-edges]] takes it."
+  [files]
+  (:analysis (run-kondo! :json
+                         {:output {:analysis {:var-definitions  {:meta [enterprise-ns-key imports-key]}
+                                              :namespace-usages true}}}
+                         files
+                         false)))
+
+(defn alias-edges!
+  "[[alias-edges]] for the namespaces on each of `vars`' [[chain]]s of re-exports, found with `ns-file` (default
+  [[namespace-file]]) and analyzed by `analyze` (default [[analyze-for-aliases!]]), a function of a file seq."
+  ([vars]
+   (alias-edges! vars namespace-file analyze-for-aliases!))
+  ([vars ns-file analyze]
+   ;; Each pass lints the namespaces where a chain ends so far, so a chain is followed through vars that aren't
+   ;; configured. The passes are separate from the attribution run, so its findings don't depend on them.
+   (loop [linted #{}, edges {}]
+     (let [pending (into #{}
+                         (comp (map #(namespace (peek (chain edges %))))
+                               (remove linted))
+                         vars)
+           files   (into (sorted-set) (keep ns-file) pending)]
+       (if (empty? files)
+         edges
+         (recur (into linted pending)
+                (merge edges (alias-edges (analyze files)))))))))
+
+(def ^:private edges-cache
+  "[[alias-edges!]] results by the vars they were asked for, as delays."
+  (atom {}))
+
+(defn- cached-alias-edges!
+  "[[alias-edges!]] for `vars`, run once per process. Attribution and [[alias-keys!]] share the result, and a
+  caller that arrives while the passes run waits for them, then sees their result or their exception."
   [vars]
-  ;; Each pass lints the namespaces where a chain ends so far, so a chain is followed through vars that aren't
-  ;; configured. The passes are separate from the attribution run, so its findings don't depend on them.
-  (let [config {:output {:analysis {:var-definitions  {:meta [enterprise-ns-key imports-key]}
-                                    :namespace-usages true}}}]
-    (loop [linted #{}, edges {}]
-      (let [pending (into #{}
-                          (comp (map #(namespace (peek (chain edges %))))
-                                (remove linted))
-                          vars)
-            files   (into (sorted-set) (keep namespace-file) pending)]
-        (if (empty? files)
-          edges
-          (recur (into linted pending)
-                 (merge edges (alias-edges (:analysis (run-kondo! :json config files false))))))))))
+  (force (get (swap! edges-cache update vars #(or % (delay (alias-edges! vars)))) vars)))
+
+(defn- discouraged-vars
+  "The symbols configured under :discouraged-var."
+  []
+  (kondo-ratchet/discouraged-symbols :discouraged-var (kondo-ratchet/kondo-config)))
+
+(defn alias-keys!
+  "The `:aliases` that [[dev.kondo-ratchet/check]] and `fix!` take: a map from the ratchet key of each configured
+  discouraged var that is another under a second name to the key its ignores count under."
+  []
+  (let [vars (discouraged-vars)]
+    (-> (source-aliases (cached-alias-edges! vars) vars)
+        (update-keys kondo-ratchet/discouraged-count-key)
+        (update-vals kondo-ratchet/discouraged-count-key))))
 
 (defn attribute-occurrences!
   "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores in each of `groups`, a seq
@@ -318,12 +353,14 @@
         known             (into {}
                                 (for [linter kondo-ratchet/discouragement-linters]
                                   [linter (kondo-ratchet/discouraged-symbols linter config)]))
-        ;; the alias passes run alongside the attribution run, since each kondo run is mostly JVM startup
-        edges             (future (if (empty? contents) {} (alias-edges! (:discouraged-var known))))
+        vars              (:discouraged-var known)
+        ;; Started first so the alias passes run alongside the attribution run: each kondo run is mostly JVM
+        ;; startup. The cache's delay rethrows a failed pass's own exception below.
+        _                 (future (cached-alias-edges! vars))
         [output baseline] (if (empty? contents)
                             [{} []]
                             (lint-with-ignores-disabled! contents))
-        edges             @edges]
+        edges             (cached-alias-edges! vars)]
     (mapv #(attribute-discouraged (select-keys contents %) output baseline known edges) file-groups)))
 
 (def keep-marker

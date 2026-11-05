@@ -611,7 +611,7 @@
         test-budgets (empty-test-ratchets-file! dir)
         occurrences  [{:file "src/f.clj", :line 1, :linters [:discouraged-var]}
                       {:file "src/g.clj", :line 1, :linters [:discouraged-var]}]
-        attribution  (assoc no-findings :actual {:discouraged-var {:a/x 2}}, :aliases {:b/y :a/x})]
+        attribution  (assoc no-findings :actual {:discouraged-var {:a/x 2}})]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)
               kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
@@ -622,7 +622,8 @@
                                   kondo-ratchet/module-escape-hatches (constantly {})]
         (with-out-str
           (kondo-ratchet/fix! {:seed      ":discouraged-var/b/y"
-                               :attribute (constantly [attribution no-findings])}))
+                               :attribute (constantly [attribution no-findings])
+                               :aliases   (constantly {:b/y :a/x})}))
         (is (= {:a/x 2} (:discouraged-var-counts (kondo-ratchet/read-ratchets)))
             "seeding the alias raises its source's budget, and the alias's own budget is dropped")))))
 
@@ -882,29 +883,35 @@
   (mt/with-dynamic-fn-redefs [kondo-ratchet/discouraged-count-keys (constantly #{:a/x :ee.b/y})]
     (testing "an ordinary linter seeds itself in :ignore-counts"
       (is (= {:ignore-counts [:some-linter]}
-             (#'kondo-ratchet/resolve-seed ":some-linter" {}))))
+             (#'kondo-ratchet/resolve-seed ":some-linter"))))
     (testing "a bare discouragement linter seeds every configured symbol in its own field"
       (is (= {:discouraged-var-counts [:a/x :ee.b/y], :bulk #{:discouraged-var-counts}}
-             (#'kondo-ratchet/resolve-seed ":discouraged-var" {}))))
+             (#'kondo-ratchet/resolve-seed ":discouraged-var"))))
     (testing "a symbol suffix seeds that symbol, named either way"
       (is (= {:discouraged-var-counts [:ee.b/y]}
-             (#'kondo-ratchet/resolve-seed ":discouraged-var/metabase-enterprise.b/y" {})
-             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y" {}))))
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/metabase-enterprise.b/y")
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y"))))
     (testing "an unconfigured or empty symbol suffix throws instead of seeding"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"a/nope\" is not a symbol configured under :discouraged-var"
-                            (#'kondo-ratchet/resolve-seed ":discouraged-var/a/nope" {})))
+                            (#'kondo-ratchet/resolve-seed ":discouraged-var/a/nope")))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"\" is not a symbol configured under :discouraged-var"
-                            (#'kondo-ratchet/resolve-seed ":discouraged-var/" {}))))
-    (testing "a symbol that counts under another seeds that one's budget"
-      (is (= {:discouraged-var-counts [:a/x]}
-             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y" {:ee.b/y :a/x}))))
+                            (#'kondo-ratchet/resolve-seed ":discouraged-var/"))))
     (testing "nil seeds nothing"
-      (is (= {} (#'kondo-ratchet/resolve-seed nil {}))))))
+      (is (= {} (#'kondo-ratchet/resolve-seed nil))))))
+
+(deftest ^:parallel follow-aliases-test
+  (testing "a seeded key that counts under another seeds that one, once"
+    (is (= {:discouraged-var-counts [:a/x :c/z], :bulk #{:discouraged-var-counts}}
+           (#'kondo-ratchet/follow-aliases {:discouraged-var-counts [:a/x :b/y :c/z], :bulk #{:discouraged-var-counts}}
+                                           {:b/y :a/x}))))
+  (testing "other fields are left alone"
+    (is (= {:discouraged-namespace-counts [:b/y]}
+           (#'kondo-ratchet/follow-aliases {:discouraged-namespace-counts [:b/y]} {:b/y :a/x})))))
 
 (deftest ^:parallel unconfigured-budget-warnings-test
   (is (= [(str "WARNING: r.edn budgets :discouraged-var symbols no longer configured in .clj-kondo/config.edn: :a/gone"
                " -- `./bin/mage kondo-ratchets-shrink` drops them")
-          (str "WARNING: r.edn budgets :discouraged-var symbols whose ignores count under the symbol they name:"
+          (str "WARNING: r.edn budgets :discouraged-var symbols that count under another symbol's key:"
                " :b/x -> :a/x -- `./bin/mage kondo-ratchets-shrink` drops them")]
          (kondo-ratchet/unconfigured-budget-warnings "r.edn"
                                                      {:discouraged-var-counts {:a/x 1, :a/gone 1, :b/x 1}}
@@ -1240,7 +1247,8 @@
                                         attribution
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         {:api-any 1, :uses-any 2}
-                                        {:ignore-counts [:new :void]}))
+                                        {:ignore-counts [:new :void]}
+                                        {}))
         "untouched budgets (:same, :cfg-same, :dv-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
          ignores left; the empty unlimited policy (:empty) is kept and warned about; per-symbol fields report
@@ -1253,7 +1261,18 @@
                                         {:actual {:discouraged-var {:dv-new 1}}}
                                         {}
                                         {}
-                                        {:discouraged-var-counts [:dv-new]})))))
+                                        {:discouraged-var-counts [:dv-new]}
+                                        {}))))
+  (testing "a key other keys count under names them"
+    (is (= ["WARNING: :dv-x (also counts :dv-y) is over budget (1 recorded, 2 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-x`"]
+           (kondo-ratchet/change-report {:ignore-counts {}, :discouraged-var-counts {:dv-x 1}, :config-counts {}, :comment-exempt #{}}
+                                        {}
+                                        []
+                                        {:actual {:discouraged-var {:dv-x 2}}}
+                                        {}
+                                        {}
+                                        {}
+                                        {:dv-y :dv-x})))))
 
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"
