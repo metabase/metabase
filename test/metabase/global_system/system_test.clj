@@ -411,32 +411,42 @@
 
 (deftest ^:synchronized writes-wait-for-slot-lock-test
   (testing "a write to a slot waits until a with-slot-lock section on that slot ends"
-    (doseq [[slot run] {:root    (fn [f] (f))
-                        :binding (fn [f] (mc/binding db-handle :bound-db f))}]
-      (testing (name slot)
-        (mc/alter-root db-handle :root-db)
-        (run (fn []
-               (let [inside        (promise)
-                     leave         (promise)
-                     writer-thread (promise)
-                     holder        (future (mc/with-slot-lock db-handle
-                                             (deliver inside true)
-                                             @leave
-                                             (mc/reset! db-handle :checked-value)))
-                     _             @inside
-                     writer        (future (deliver writer-thread (Thread/currentThread))
-                                           (mc/reset! db-handle :plain-write))]
-                 (testing "the writer is blocked on the lock, not just slow to start"
-                   (is (true? (loop [tries 0]
-                                (cond
-                                  (= Thread$State/BLOCKED (.getState ^Thread @writer-thread)) true
-                                  (< tries 400)                                              (do (Thread/sleep 5)
-                                                                                                 (recur (inc tries)))
-                                  :else                                                      false)))))
-                 (deliver leave true)
-                 @holder
-                 (is (= {:writer :plain-write, :value :plain-write}
-                        {:writer @writer, :value @db-handle})))))))))
+    (let [in-root    (fn [f] (f))
+          in-binding (fn [f] (mc/binding db-handle :bound-db f))
+          value      #(deref db-handle)
+          root-entry #(mc/root-entry db-handle)]
+      (doseq [[label run write read expected]
+              ;; label             slot        write                                    read        expected
+              [["root reset!"      in-root     #(mc/reset! db-handle :plain-write)      value       :plain-write]
+               ["root alter-root"  in-root     #(mc/alter-root db-handle :plain-write)  value       :plain-write]
+               ["root remove-root" in-root     #(mc/remove-root db-handle)              root-entry  nil]
+               ["binding reset!"   in-binding  #(mc/reset! db-handle :plain-write)      value       :plain-write]]]
+        (testing label
+          (mc/alter-root db-handle :root-db)
+          (run (fn []
+                 (let [inside        (promise)
+                       leave         (promise)
+                       writer-thread (promise)
+                       holder        (future (mc/with-slot-lock db-handle
+                                               (deliver inside true)
+                                               @leave
+                                               (mc/reset! db-handle :checked-value)))
+                       _             @inside
+                       writer        (future (deliver writer-thread (Thread/currentThread))
+                                             (write))]
+                   (testing "the writer is blocked on the lock, not just slow to start"
+                     (is (true? (loop [tries 0]
+                                  (cond
+                                    (= Thread$State/BLOCKED (.getState ^Thread @writer-thread)) true
+                                    (< tries 400)                                              (do (Thread/sleep 5)
+                                                                                                   (recur (inc tries)))
+                                    :else                                                      false)))))
+                   (deliver leave true)
+                   @holder
+                   @writer
+                   (testing "the write lands after the section's own write"
+                     (is (= expected (read)))))))))
+      (mc/alter-root db-handle :root-db))))
 
 (deftest ^:synchronized component-bound-fn-test
   (testing "a function made with component-bound-fn carries component bindings to another thread, and nothing else"
