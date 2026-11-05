@@ -150,17 +150,6 @@
   (api/check-superuser)
   {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
 
-(api.macros/defendpoint :post "/health-checks/:id/recheck" :- ::security-center.schema/health-check
-  "Run one health check again. 404 for an id that is not a check, and for a check that does not apply to this
-  instance."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/NonBlankString]]]
-  (api/check-superuser)
-  (let [check (health-checks/check-by-id (keyword id))]
-    (api/check-404 (and check (health-checks/applicable? check)))
-    (let [response (health-checks/run-check check)]
-      (metrics/set-health-check-gauges! [response])
-      response)))
-
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."
   (routes.common/wrap-middleware-for-open-api-spec-generation

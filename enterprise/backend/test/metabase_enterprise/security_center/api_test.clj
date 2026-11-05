@@ -335,30 +335,6 @@
             (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
                                         {:check_id "session-secret-key", :severity "high", :status "unknown"})))))))))
 
-(deftest recheck-health-check-test
-  (testing "POST /api/ee/security-center/health-checks/:id/recheck"
-    (testing "requires premium feature"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error
-         "Security Center"
-         (mt/user-http-request :crowberto :post 402 "ee/security-center/health-checks/https-redirect/recheck"))))
-    (mt/with-premium-features #{:admin-security-center}
-      (with-redefs [health-checks/checks fake-health-checks]
-        (testing "non-superuser gets 403"
-          (mt/user-http-request :rasta :post 403 "ee/security-center/health-checks/https-redirect/recheck"))
-        (testing "runs the check again and returns it"
-          (is (=? passing-health-check
-                  (mt/user-http-request :crowberto :post 200 "ee/security-center/health-checks/https-redirect/recheck"))))
-        (testing "a check that throws is unknown with a message"
-          (is (=? throwing-health-check
-                  (mt/user-http-request :crowberto :post 200 "ee/security-center/health-checks/session-secret-key/recheck"))))
-        (testing "404 for an id that is not a check"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :post 404 "ee/security-center/health-checks/not-a-check/recheck"))))
-        (testing "404 for a check that does not apply"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :post 404 "ee/security-center/health-checks/sso-login/recheck"))))))))
-
 (deftest recheck-health-checks-test
   (testing "POST /api/ee/security-center/health-checks/recheck"
     (testing "requires premium feature"
