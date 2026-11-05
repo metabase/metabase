@@ -24,23 +24,20 @@
       (binding [search.ingestion/*force-sync* true]
         (f)))))
 
-(deftest delete-enqueues-one-bulk-update-test
-  (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
-    (search.tu/with-appdb-search-if-available-without-fallback
-      (let [calls (atom [])]
-        (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
-                                    (fn [updates] (swap! calls conj updates))]
-          (mt/with-temp [:model/Card {id :id} {}]
-            ;; the temp card's own creation enqueues an unrelated message via the after-insert hook; only the
-            ;; delete's message is under test.
-            (reset! calls [])
-            (t2/delete! :model/Card :id id)
-            (is (=? [#{["card" [:= id :this.id]]
-                       ["dataset" [:= id :this.id]]
-                       ["metric" [:= id :this.id]]
-                       ["action" [:= id :this.model_id]]
-                       ["indexed-entity" [:= id :model_index.model_id]]}]
-                    (mapv set @calls)))))))))
+(defn- indexed-count
+  "How many appdb index rows `search-model` has for the given model ids."
+  [search-model & ids]
+  (t2/count (search.index/active-table) :model search-model :model_id [:in (map str ids)]))
+
+(defn- capture-enqueues!
+  "Run `thunk`, returning the update sets it handed to ingestion, in order, without ingesting them."
+  [thunk]
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async! (fn [updates] (swap! calls conj (set updates)))]
+      (thunk))
+    @calls))
+
+;;; Capture wiring
 
 (deftest capture-fields-disabled-without-engine-test
   (testing "capture-fields is skipped entirely (no pre-select) when no search engine is active"
@@ -59,13 +56,41 @@
       (is (nil? (dml-capture/capture-fields :model/Card :insert)))
       (is (nil? (dml-capture/capture-fields :model/Card :update))))))
 
+;;; Re-derivation on delete
+
+(deftest delete-enqueues-one-bulk-update-test
+  (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {}]
+        (is (= [#{["card" [:= id :this.id]]
+                  ["dataset" [:= id :this.id]]
+                  ["metric" [:= id :this.id]]
+                  ["action" [:= id :this.model_id]]
+                  ["indexed-entity" [:= id :model_index.model_id]]}]
+               (capture-enqueues! #(t2/delete! :model/Card :id id))))))))
+
+(deftest delete-of-a-joined-model-enqueues-the-fed-models-test
+  (testing "deleting a row that only feeds other models' documents enqueues re-derivation for each of them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {card-id :id} {}
+                     :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         true}]
+        (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
+          (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
+                 (capture-enqueues! #(t2/delete! :model/ModerationReview :id mr-id)))))))))
+
+;;; Purges
+
 (deftest purge-one-on-delete-test
   (testing "deleting an indexed card purges its index row (appdb engine)"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Temp Purge Card"}]
-        (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str id))))
+        (is (= 1 (indexed-count "card" id)))
         (t2/delete! :model/Card :id id)
-        (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id (str id))))))))
+        (is (= 0 (indexed-count "card" id)))))))
 
 (deftest purge-bulk-on-delete-test
   (testing "bulk deletion purges every affected row (cards first, then their now-empty collection)"
@@ -73,46 +98,13 @@
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Temp Bulk Collection"}
                      :model/Card       {c1 :id}      {:name "Bulk Card 1", :collection_id coll-id}
                      :model/Card       {c2 :id}      {:name "Bulk Card 2", :collection_id coll-id}]
-        (is (= 2 (t2/count (search.index/active-table) :model "card" :model_id [:in [(str c1) (str c2)]])))
-        (is (= 1 (t2/count (search.index/active-table) :model "collection" :model_id (str coll-id))))
+        (is (= 2 (indexed-count "card" c1 c2)))
+        (is (= 1 (indexed-count "collection" coll-id)))
         ;; cards must go first: a collection with contents refuses deletion.
         (t2/delete! :model/Card :collection_id coll-id)
         (t2/delete! :model/Collection :id coll-id)
-        (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id [:in [(str c1) (str c2)]])))
-        (is (= 0 (t2/count (search.index/active-table) :model "collection" :model_id (str coll-id))))))))
-
-(deftest delete-of-a-joined-model-enqueues-the-fed-models-test
-  (testing "deleting a row that only feeds other models' documents enqueues re-derivation for each of them"
-    (search.tu/with-appdb-search-if-available-without-fallback
-      (let [calls (atom [])]
-        (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
-                                    (fn [updates] (swap! calls conj updates))]
-          (mt/with-temp [:model/Card             {card-id :id} {}
-                         :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
-                                                                :moderated_item_id   card-id
-                                                                :moderator_id        (mt/user->id :crowberto)
-                                                                :status              "verified"
-                                                                :most_recent         true}]
-            (reset! calls [])
-            (t2/delete! :model/ModerationReview :id mr-id)
-            (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
-              (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
-                      (mapv set @calls))))))))))
-
-(deftest rollback-discards-handoff-and-leaves-the-row-test
-  (testing "a rolled-back delete discards its post-commit handoff, and the row survives"
-    (search.tu/with-appdb-search-if-available-without-fallback
-      (let [calls (atom [])]
-        (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
-                                    (fn [updates] (swap! calls conj updates))]
-          (mt/with-temp [:model/Card {id :id} {}]
-            (reset! calls [])
-            (is (thrown? clojure.lang.ExceptionInfo
-                         (t2/with-transaction [_conn]
-                           (t2/delete! :model/Card :id id)
-                           (throw (ex-info "boom" {})))))
-            (is (empty? @calls))
-            (is (t2/exists? :model/Card :id id))))))))
+        (is (= 0 (indexed-count "card" c1 c2)))
+        (is (= 0 (indexed-count "collection" coll-id)))))))
 
 (deftest superseded-review-delete-keeps-the-card-test
   (testing "deleting a review that is no longer the most recent leaves the card it reviewed in the index"
@@ -123,6 +115,19 @@
                                                             :moderator_id        (mt/user->id :crowberto)
                                                             :status              "verified"
                                                             :most_recent         false}]
-        (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id))))
+        (is (= 1 (indexed-count "card" card-id)))
         (t2/delete! :model/ModerationReview :id mr-id)
-        (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id))))))))
+        (is (= 1 (indexed-count "card" card-id)))))))
+
+;;; Failure handling
+
+(deftest rollback-discards-handoff-and-leaves-the-row-test
+  (testing "a rolled-back delete discards its post-commit handoff, and the row survives"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {}]
+        (is (empty? (capture-enqueues!
+                     #(is (thrown? clojure.lang.ExceptionInfo
+                                   (t2/with-transaction [_conn]
+                                     (t2/delete! :model/Card :id id)
+                                     (throw (ex-info "boom" {}))))))))
+        (is (t2/exists? :model/Card :id id))))))
