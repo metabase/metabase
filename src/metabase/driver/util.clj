@@ -1093,14 +1093,20 @@
   (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
 
 (defn scrub-exceptions
-  "A copy of `t` and its cause chain with every occurrence of each of `secrets` in their messages replaced by `****`."
+  "A copy of `t` and its cause chain with every occurrence of each of `secrets` in their messages replaced by `****`,
+  keeping each stack trace. An `Error` or `InterruptedException` is returned as it is."
   [^Throwable t secrets]
   (let [secrets (remove str/blank? secrets)
         msg     (redact-secrets (ex-message t) secrets)
         cause   (some-> (.getCause t) (scrub-exceptions secrets))]
     (cond
+      ;; rethrown as they are: an Error or an interrupt must keep its type, and neither carries a statement
+      (or (instance? Error t) (instance? InterruptedException t))
+      t
+
       (instance? clojure.lang.ExceptionInfo t)
-      (ex-info msg (ex-data t) cause)
+      (doto ^Throwable (ex-info msg (ex-data t) cause)
+        (.setStackTrace (.getStackTrace t)))
 
       (instance? java.sql.SQLException t)
       (let [^java.sql.SQLException sql-ex t

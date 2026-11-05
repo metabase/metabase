@@ -11,10 +11,10 @@ title: Driver interface changelog
   wsd]`, `metabase.driver/workspace-scratch-namespace` `[driver database wsd schema-row]`,
   `metabase.driver/init-workspace-isolation!` `[driver database wsd]`, `metabase.driver/add-workspace-schema!`
   `[driver database wsd main-schema scratch]`, `metabase.driver/remove-workspace-schema!` `[driver database wsd
-  main-schema scratch]` and `metabase.driver/destroy-workspace-isolation!` `[driver database wsd]`. Callers run them
-  inside the new `:workspace-provisioning` connection type
-  (`metabase.driver.connection/with-workspace-provisioning-connection`), which throws when the database has no
-  provisioning login. A driver that implements them reports the new `:workspace` feature. Postgres implements them;
+  main-schema scratch]` and `metabase.driver/destroy-workspace-isolation!` `[driver database wsd]`. The warehouse
+  methods bind the new `:workspace-provisioning` connection type
+  (`metabase.driver.connection/with-workspace-provisioning-connection`) themselves, so their DDL runs as the
+  database's provisioning login; it throws when the database has none. A driver that implements them reports the new `:workspace` feature. Postgres implements them;
   Redshift inherits the Postgres methods but reports `:workspace` false. Workspace users and scratch namespaces are named for
   the `wsd`'s `:isolation_id`, from `metabase.driver.util/random-isolation-id`.
 
