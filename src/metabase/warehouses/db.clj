@@ -120,6 +120,12 @@
   (t2/query {:delete-from (t2/table-name :model/Card)
              :where       [:= :database_id database-id]}))
 
+(mu/defn delete-transforms-for-database! :- :int
+  "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number
+  deleted."
+  [database-id :- ::lib.schema.id/database]
+  (t2/delete! :model/Transform :source_database_id database-id))
+
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled, returning the number updated."
   []

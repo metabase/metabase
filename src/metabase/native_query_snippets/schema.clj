@@ -1,8 +1,10 @@
 (ns metabase.native-query-snippets.schema
   (:require
    [metabase.collections.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.models.schema :as models.schema]
    [metabase.users.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -30,3 +32,12 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
+
+(mr/def ::external-native-query-snippet
+  "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::native-query-snippet [:archived :description :entity_id :name :collection_id :creator_id :content
+                                          :template_tags]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

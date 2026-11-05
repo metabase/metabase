@@ -21271,11 +21271,11 @@
         "type" : "object",
         "properties" : { }
       },
-      "metabase.logger.api.log-level" : {
+      "metabase.logger.rest.api.log-level" : {
         "type" : "string",
         "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ]
       },
-      "metabase.logger.api.time-unit" : {
+      "metabase.logger.rest.api.time-unit" : {
         "type" : "string",
         "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ]
       },
@@ -40109,11 +40109,7 @@
                 "type" : "object",
                 "properties" : {
                   "data_authority" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.data-studio.api.table.data-authorities"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.data-studio.api.table.data-authorities"
                   },
                   "data_layer" : {
                     "oneOf" : [ {
@@ -57521,12 +57517,8 @@
                     } ]
                   },
                   "visibility_type" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "enum" : [ "retired", "sensitive", "normal", "hidden", "details-only" ]
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "type" : "string",
+                    "enum" : [ "retired", "sensitive", "normal", "hidden", "details-only" ]
                   },
                   "coercion_strategy" : {
                     "oneOf" : [ {
@@ -57536,11 +57528,7 @@
                     } ]
                   },
                   "json_unfolding" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "type" : "boolean"
                   },
                   "data_sensitivity" : {
                     "oneOf" : [ {
@@ -57558,30 +57546,11 @@
                     } ]
                   },
                   "has_field_values" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.has-field-values"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.has-field-values"
                   },
                   "display_name" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "minLength" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "nfc_path" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "type" : "string",
+                    "minLength" : 1
                   },
                   "caveats" : {
                     "oneOf" : [ {
@@ -59757,7 +59726,7 @@
                     "type" : "integer"
                   },
                   "duration_unit" : {
-                    "$ref" : "#/components/schemas/metabase.logger.api.time-unit"
+                    "$ref" : "#/components/schemas/metabase.logger.rest.api.time-unit"
                   },
                   "log_levels" : {
                     "description" : "Value must be a map.",
@@ -59846,7 +59815,7 @@
                           "type" : "object",
                           "properties" : {
                             "level" : {
-                              "$ref" : "#/components/schemas/metabase.logger.api.log-level"
+                              "$ref" : "#/components/schemas/metabase.logger.rest.api.log-level"
                             },
                             "name" : {
                               "type" : "string"
@@ -70608,11 +70577,7 @@
                     } ]
                   },
                   "data_authority" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "data_layer" : {
                     "oneOf" : [ {
@@ -70881,11 +70846,7 @@
                     } ]
                   },
                   "data_authority" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
-                    }, {
-                      "type" : "null"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "data_layer" : {
                     "oneOf" : [ {

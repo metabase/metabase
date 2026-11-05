@@ -695,11 +695,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
-(mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
-  "The IDs of the Transforms reading from the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (or (t2/select-pks-set :model/Transform :source_database_id db-id) #{}))
-
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (mu/defn dependencies-from
