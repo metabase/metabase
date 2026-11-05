@@ -192,12 +192,12 @@
 (defmethod sql-tools/replace-names-impl :macaw
   [_parser driver sql-string replacements opts]
   ;; Macaw can't honor the strict options, and a caller that asks for them must not get a lax rewrite instead.
-  (when (or (:strict-statements? opts) (:unquoted-identifiers-fold-to-lower? opts))
+  (when (or (:strict-statements? opts) (:postgres-identifiers? opts))
     (throw (ex-info "The Macaw parser can't do a strict replace-names; use SQLGlot." {:opts opts})))
   ;; Note: :case-insensitive :agnostic causes ClassCastException in Macaw's replace-names
   ;; due to regex pattern handling. Omit it for now until Macaw is fixed.
   (macaw/replace-names sql-string replacements (merge (dissoc (macaw-options driver) :case-insensitive)
-                                                      (dissoc opts :strict-statements? :unquoted-identifiers-fold-to-lower?))))
+                                                      (dissoc opts :strict-statements? :postgres-identifiers?))))
 
 (defmethod sql-tools/transpile-sql-impl :macaw
   [_parser _sql _from-dialect _to-dialect]

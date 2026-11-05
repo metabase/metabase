@@ -7,6 +7,7 @@
   whatever its token (`:feature :none`), because a sidecar whose token lapses must keep writing to scratch; each
   returns its OSS value without touching the app DB unless [[workspace-mode?]]."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver :as driver]
@@ -173,13 +174,20 @@
   (when (and (workspace-mode?) (:schema target))
     (ws.db/delete-table-remapping! database-id (:schema target) (:name target))))
 
+(defn- postgres-identifier
+  "`identifier` as Postgres stores it unquoted: ASCII letters lower-cased (only A-Z), cut to 63 bytes on a UTF-8
+  boundary. Applied whether or not the reference was quoted, which `referenced-tables-raw` doesn't say: refusing on
+  a false match costs less than a missed one."
+  [identifier]
+  (u/truncate-string-to-byte-count (str/replace identifier #"[A-Z]" u/lower-case-en) 63))
+
 (defn- unqualified-references-to-remapped-tables
-  "The tables `sql` names without a schema whose name (ignoring case) is the name of a remapped main table."
+  "The tables `sql` names without a schema whose name, as Postgres stores it, is the name of a remapped main table."
   [driver remappings sql]
-  (let [remapped-names (into #{} (map (comp u/lower-case-en :table)) (keys remappings))]
+  (let [remapped-names (into #{} (map (comp postgres-identifier :table)) (keys remappings))]
     (into []
           (filter (fn [{:keys [schema table]}]
-                    (and (nil? schema) (contains? remapped-names (u/lower-case-en table)))))
+                    (and (nil? schema) (contains? remapped-names (postgres-identifier table)))))
           (sql-tools/referenced-tables-raw driver sql {:fail-on-parse-error? true}))))
 
 (defenterprise rewrite-sql
@@ -199,11 +207,11 @@
                            (pr-str (:table (first unqualified))) (:table (first unqualified)))
                       {:type qp.error-type/invalid-query})))
     (try
-      ;; strict: rewrite only statements whose tables SQLGlot can all see, and fold unquoted names as Postgres
-      ;; does (workspaces support only the Postgres family)
-      (sql-tools/replace-names driver sql {:tables remappings} {:allow-unused?                       true
-                                                                :strict-statements?                  true
-                                                                :unquoted-identifiers-fold-to-lower? true})
+      ;; strict: rewrite only statements whose tables SQLGlot can all see, and match names as Postgres stores them
+      ;; (workspaces support only the Postgres family)
+      (sql-tools/replace-names driver sql {:tables remappings} {:allow-unused?         true
+                                                                :strict-statements?    true
+                                                                :postgres-identifiers? true})
       (catch Exception e
         (throw (ex-info (tru "This instance is a workspace, which must read remapped tables from their scratch copies, and it could not read which tables this SQL uses: {0}" (ex-message e))
                         {:type qp.error-type/invalid-query}

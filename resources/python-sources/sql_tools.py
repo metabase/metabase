@@ -655,9 +655,24 @@ def fold_lookup(folded, key):
     return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
 
 
-# Functions that run SQL given to them as text, which a rewrite can't see into.
-SQL_RUNNING_FUNCTIONS = {"query_to_xml", "query_to_xml_and_xmlschema", "query_to_xmlschema", "cursor_to_xml",
-                         "cursor_to_xmlschema"}
+# Beyond `_SQL_EXECUTING_FUNCTIONS`: Postgres functions that read a table, schema or database named as text, which a
+# workspace rewrite can't see into. Other functions that resolve a name at run time (a ::regclass cast, ...) are not
+# listed.
+WORKSPACE_TABLE_READING_FUNCTIONS = frozenset(
+    {
+        "table_to_xml", "table_to_xmlschema", "table_to_xml_and_xmlschema",
+        "schema_to_xml", "schema_to_xmlschema", "schema_to_xml_and_xmlschema",
+        "database_to_xml", "database_to_xmlschema", "database_to_xml_and_xmlschema",
+    }
+)
+
+
+def postgres_identifier(name: str, quoted: bool) -> str:
+    """`name` as Postgres stores it: an unquoted name has its ASCII letters lower-cased (only A-Z), and every name is
+    cut to 63 bytes on a UTF-8 character boundary."""
+    if not quoted:
+        name = "".join(chr(ord(c) + 32) if "A" <= c <= "Z" else c for c in name)
+    return name.encode("utf-8")[:63].decode("utf-8", errors="ignore")
 
 
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
@@ -691,11 +706,11 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     # Opt-in strictness, off unless a caller asks for it, so no other caller's behaviour changes:
     # - strict_statements: rewrite only statements whose every table reference sqlglot can see (see
     #   `check_strict_statement`), and raise on anything else.
-    # - unquoted_identifiers_fold_to_lower: an unquoted reference names the lower-cased identifier, as on Postgres, so
+    # - postgres_identifiers: a reference names the identifier Postgres would (`postgres_identifier`), so
     #   `public.mixed` does not match a key for the table `"Mixed"`.
     options = replacements.get("options") or {}
     strict_statements = options.get("strict_statements")
-    fold_to_lower = options.get("unquoted_identifiers_fold_to_lower")
+    postgres_identifiers = options.get("postgres_identifiers")
     schemas = replacements.get("schemas") or {}
     # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
     # None when the key doesn't name one.
@@ -722,9 +737,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             return key_part == ref_part if quoted else key_part.lower() == ref_part.lower()
 
         def find_table_replacement(db, schema, table, quoted):
-            if fold_to_lower:
+            if postgres_identifiers:
                 # Fold each unquoted part as the engine does, then match exactly.
-                key = tuple(part if was_quoted or part is None else part.lower()
+                key = tuple(None if part is None else postgres_identifier(part, was_quoted)
                             for part, was_quoted in zip((db, schema, table), quoted))
                 for shape in (key, (None,) + key[1:], (None, None, key[2])):
                     replacement = table_map.get(shape)
@@ -873,12 +888,16 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
         if ast.find(exp.Command):
             raise ValueError("The SQL contains a statement sqlglot can't read into (for example EXPLAIN, DECLARE, "
                              "PREPARE, EXECUTE or DO), so its tables can't be rewritten.")
-        for func in ast.find_all(exp.Func):
-            name = func.this if isinstance(func, exp.Anonymous) and isinstance(func.this, str) else func.sql_name()
-            name = name.lower()
-            if name in SQL_RUNNING_FUNCTIONS or name.startswith("dblink"):
-                raise ValueError(f"The SQL calls {name}, which runs SQL given as text, so its tables can't be rewritten.")
-            for arg in func.iter_expressions():
+        executor = _sql_executing_function(ast) or next(
+            (name for name in map(_function_name, ast.walk()) if name in WORKSPACE_TABLE_READING_FUNCTIONS), None)
+        if executor:
+            raise ValueError(f"The SQL calls {executor}, which runs SQL or reads a table named in text, so its "
+                             f"tables can't be rewritten.")
+        for node in ast.walk():
+            name = _function_name(node)
+            if name is None:
+                continue
+            for arg in node.iter_expressions():
                 if isinstance(arg, exp.Literal) and arg.is_string and names_replaced_table(arg.this):
                     raise ValueError(f"The SQL passes {name} SQL text that names a remapped table, which can't be "
                                      f"rewritten.")

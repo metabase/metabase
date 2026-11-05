@@ -60,8 +60,8 @@
    ;; see: no unstructured command anywhere in it and no SQL-running function (query_to_xml, dblink, ...); refuse
    ;; anything else.
    [:strict-statements? {:optional true} :boolean]
-   ;; Match an unquoted reference as the lower-cased identifier, as Postgres folds it.
-   [:unquoted-identifiers-fold-to-lower? {:optional true} :boolean]])
+   ;; Match a reference as the identifier Postgres stores: unquoted ASCII letters lower-cased, cut to 63 bytes.
+   [:postgres-identifiers? {:optional true} :boolean]])
 
 (mr/def ::simple-query-result
   "Schema for simple-query? return value."
