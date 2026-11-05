@@ -1,6 +1,7 @@
 (ns metabase.serialization.transform
-  "Spec transforms of columns: values kept as they are, dates and keywords."
+  "Spec transforms of columns: values kept as they are, dates, keywords, and the database ids of rows."
   (:require
+   [metabase.serialization.resolve :as resolve]
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
@@ -46,3 +47,40 @@
 (def keyword-transform
   "A transform of keyword values, by [[export-keywords]] and [[import-keywords]]."
   {:export export-keywords :import import-keywords})
+
+(defn- column-values
+  "The values `found`, a map from input to result, holds for the inputs `xs` of `model`, in order, nil for nil."
+  [model xs found]
+  (mapv #(when (some? %) (resolve/resolved-value found model %)) xs))
+
+(defn column-refs
+  "The references of the `model` rows with database ids `ids` (see [[resolve/row-refs]])."
+  [store model ids]
+  (column-values model ids (resolve/row-refs store model (into #{} (remove nil?) ids))))
+
+(defn column-ids
+  "The database ids of the `model` rows with references `refs`, with `opts` (see [[resolve/row-ids]])."
+  [store model refs opts]
+  (column-values model refs (resolve/row-ids store model (into #{} (remove nil?) refs) opts)))
+
+(defn fk-transform
+  "A spec transform between the database ids of `model` rows and their references."
+  [model]
+  {:export (fn [store _ ids _] (column-refs store model ids))
+   :import (fn [store _ refs opts] (column-ids store model refs opts))})
+
+(def user-transform
+  "A spec transform between User ids and emails."
+  (fk-transform :model/User))
+
+(def database-transform
+  "A spec transform between Database ids and names."
+  (fk-transform :model/Database))
+
+(def table-transform
+  "A spec transform between Table ids and their `[db-name schema table-name]` references."
+  (fk-transform :model/Table))
+
+(def field-transform
+  "A spec transform between Field ids and their `[db-name schema table-name & field-names]` references."
+  (fk-transform :model/Field))

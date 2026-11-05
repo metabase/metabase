@@ -22,6 +22,7 @@
   - import: entities to rows, resolving references to database ids and creating the Users, Databases, Tables and
     Fields the store lacks when asked to (see [[metabase.serialization.resolve]])."
   (:require
+   [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.resolve :as resolve]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.transform :as serialization.transform]
@@ -29,6 +30,8 @@
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
+ [protocol.app-db
+  rows-by-refs]
  [resolve
   collecting?
   export-in-bulk
@@ -50,8 +53,19 @@
   import-keywords
   import-only-transform
   import-unchanged
-  keyword-transform])
+  keyword-transform
+  column-ids
+  column-refs
+  database-transform
+  field-transform
+  fk-transform
+  table-transform
+  user-transform])
 
 (def batch-size
   "The number of rows, ids or entities that serialization queries or processes together."
   serialization.util/batch-size)
+
+(def app-db-store
+  "The store of the application database."
+  protocol.app-db/store)

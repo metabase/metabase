@@ -2639,10 +2639,33 @@
   serialization
   {:team "Data Apps"
    :api  #{}
-   :uses #{lib util util.config}
-   :model-imports #{:model/Database
+   :uses #{app-db
+           lib
+           util
+           util.config}
+   :model-imports #{:model/Card
+                    :model/Channel
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Dimension
                     :model/Field
+                    :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/ImplicitAction
+                    :model/Measure
+                    :model/MetabotPrompt
+                    :model/OsiAiContext
+                    :model/QueryAction
+                    :model/Segment
+                    :model/Setting
                     :model/Table
+                    :model/TableIndex
+                    :model/TableUserSettings
+                    :model/TimelineEvent
+                    :model/TransformJobTransformTag
+                    :model/TransformTransformTag
                     :model/User}}
 
   server
