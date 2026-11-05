@@ -2052,10 +2052,12 @@ LIMIT
       H.modal().within(() => {
         cy.findByText('Delete "Delete Me"?').should("be.visible");
         cy.findByText(
-          "This will also delete the 1 transform inside it:",
+          "This will delete the folder, its subfolders and the 1 transform inside it.",
         ).should("be.visible");
-        cy.findByText("Transform In Collection").should("be.visible");
         cy.findByLabelText("Delete the transforms only").should("be.checked");
+        cy.findByText("These transforms will be deleted:").should("be.visible");
+        cy.findByText("Transform In Collection").should("be.visible");
+        cy.findByText("This can’t be undone.").should("be.visible");
         cy.button("Delete transforms only").click();
       });
 

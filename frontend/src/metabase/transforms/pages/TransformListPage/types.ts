@@ -15,6 +15,7 @@ export type TreeNode = {
   icon: IconName;
   updated_at?: string;
   target?: Transform["target"];
+  target_table_id?: Transform["target_table_id"];
   owner?: TransformOwner | null;
   owner_email?: string | null;
   children?: TreeNode[];
@@ -40,7 +41,10 @@ export function getTransformNodeId(transformId: number): string {
   return `transform-${transformId}`;
 }
 
-export type FolderTransform = Pick<Transform, "id" | "name" | "can_write"> &
+export type FolderTransform = Pick<
+  Transform,
+  "id" | "name" | "can_write" | "target_table_id"
+> &
   Partial<Pick<Transform, "target">>;
 
 export type DeleteTransformsFolderModalState = {

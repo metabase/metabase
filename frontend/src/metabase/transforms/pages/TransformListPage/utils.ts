@@ -149,6 +149,7 @@ export function buildTreeData(
       icon: "transform",
       updated_at: transform.updated_at,
       target: transform.target,
+      target_table_id: transform.target_table_id,
       owner: transform.owner,
       owner_email: transform.owner_email,
       transformId: transform.id,
@@ -175,6 +176,7 @@ export function getTransformsInFolder(node: TreeNode): FolderTransform[] {
             name: child.name,
             can_write: child.can_write,
             target: child.target,
+            target_table_id: child.target_table_id,
           },
         ]
       : getTransformsInFolder(child),

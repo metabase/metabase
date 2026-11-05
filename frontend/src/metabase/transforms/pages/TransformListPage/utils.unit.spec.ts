@@ -416,6 +416,7 @@ describe("getTransformsInFolder", () => {
       icon: "transform",
       transformId: id,
       can_write,
+      target_table_id: id * 10,
       target: {
         type: "table",
         name: `table_${id}`,
@@ -446,6 +447,7 @@ describe("getTransformsInFolder", () => {
         id: 1,
         name: "First",
         can_write: true,
+        target_table_id: 10,
         target: {
           type: "table",
           name: "table_1",
@@ -457,6 +459,7 @@ describe("getTransformsInFolder", () => {
         id: 2,
         name: "Nested",
         can_write: false,
+        target_table_id: 20,
         target: {
           type: "table",
           name: "table_2",
@@ -468,6 +471,7 @@ describe("getTransformsInFolder", () => {
         id: 3,
         name: "Last",
         can_write: true,
+        target_table_id: 30,
         target: {
           type: "table",
           name: "table_3",

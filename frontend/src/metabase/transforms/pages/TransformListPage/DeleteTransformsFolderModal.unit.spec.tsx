@@ -19,6 +19,7 @@ const TRANSFORMS: FolderTransform[] = [
     id: 1,
     name: "Orders by day",
     can_write: true,
+    target_table_id: 10,
     target: {
       type: "table",
       name: "orders_by_day",
@@ -30,6 +31,7 @@ const TRANSFORMS: FolderTransform[] = [
     id: 2,
     name: "Products by category",
     can_write: true,
+    target_table_id: null,
     target: {
       type: "table",
       name: "products_by_category",
@@ -74,15 +76,25 @@ describe("DeleteTransformsFolderModal", () => {
 
     expect(screen.getByText('Delete "Folder"?')).toBeInTheDocument();
     expect(
-      screen.getByText("This will also delete the 2 transforms inside it:"),
+      screen.getByText(
+        "This will delete the folder, its subfolders and the 2 transforms inside it.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Orders by day")).toBeInTheDocument();
-    expect(screen.getByText("(public.orders_by_day)")).toBeInTheDocument();
-    expect(screen.getByText("Products by category")).toBeInTheDocument();
-    expect(screen.getByText("(products_by_category)")).toBeInTheDocument();
     expect(
       screen.getByRole("radio", { name: "Delete the transforms only" }),
     ).toBeChecked();
+    expect(
+      screen.getByText("Queries that use these tables will break."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("These transforms will be deleted:"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Orders by day")).toBeInTheDocument();
+    expect(screen.getByText("Products by category")).toBeInTheDocument();
+    expect(
+      screen.queryByText("(public.orders_by_day)"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("This can’t be undone.")).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Delete transforms only" }),
@@ -96,7 +108,7 @@ describe("DeleteTransformsFolderModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
-  it("sends delete-tables=true when the user chooses to delete the tables too", async () => {
+  it("names the tables of the transforms that ran when the user chooses to delete the tables too", async () => {
     const { onClose } = setup({ transforms: TRANSFORMS });
 
     await userEvent.click(
@@ -104,6 +116,16 @@ describe("DeleteTransformsFolderModal", () => {
         name: "Delete the transforms and their tables",
       }),
     );
+
+    expect(
+      screen.getByText("These transforms and tables will be deleted:"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("(public.orders_by_day)")).toBeInTheDocument();
+    expect(screen.getByText("Products by category")).toBeInTheDocument();
+    expect(
+      screen.queryByText("(products_by_category)"),
+    ).not.toBeInTheDocument();
+
     await userEvent.click(
       screen.getByRole("button", { name: "Delete transforms and tables" }),
     );

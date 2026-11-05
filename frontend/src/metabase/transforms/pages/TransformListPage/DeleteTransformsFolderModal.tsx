@@ -11,6 +11,7 @@ import {
   List,
   Modal,
   Radio,
+  ScrollArea,
   Stack,
   Text,
 } from "metabase/ui";
@@ -37,7 +38,8 @@ export function DeleteTransformsFolderModal({
   const [deleteTransformsFolder] = useDeleteTransformsFolderMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [shouldDeleteTables, setShouldDeleteTables] = useState(false);
-  const hasTransforms = transforms.length > 0;
+  const count = transforms.length;
+  const hasTransforms = count > 0;
 
   const handleSubmit = async () => {
     try {
@@ -65,26 +67,38 @@ export function DeleteTransformsFolderModal({
         <Form>
           <Stack gap="xl">
             {hasTransforms ? (
-              <TransformsInFolder transforms={transforms} />
+              <>
+                <Text>
+                  {ngettext(
+                    msgid`This will delete the folder, its subfolders and the ${count} transform inside it.`,
+                    `This will delete the folder, its subfolders and the ${count} transforms inside it.`,
+                    count,
+                  )}
+                </Text>
+                <Radio.Group
+                  value={shouldDeleteTables.toString()}
+                  onChange={(value) => setShouldDeleteTables(value === "true")}
+                >
+                  <Stack gap="sm">
+                    <Radio
+                      value="false"
+                      label={t`Delete the transforms only`}
+                    />
+                    <Radio
+                      value="true"
+                      label={t`Delete the transforms and their tables`}
+                      description={t`Queries that use these tables will break.`}
+                    />
+                  </Stack>
+                </Radio.Group>
+                <TransformsInFolder
+                  transforms={transforms}
+                  showTables={shouldDeleteTables}
+                />
+                <Text>{t`This can’t be undone.`}</Text>
+              </>
             ) : (
               <Text>{t`This will delete the folder and its subfolders. This can’t be undone.`}</Text>
-            )}
-            {hasTransforms && (
-              <Radio.Group
-                value={shouldDeleteTables.toString()}
-                onChange={(value) => setShouldDeleteTables(value === "true")}
-              >
-                <Stack gap="sm">
-                  <Radio value="false" label={t`Delete the transforms only`} />
-                  <Radio
-                    value="true"
-                    label={t`Delete the transforms and their tables`}
-                  />
-                </Stack>
-              </Radio.Group>
-            )}
-            {hasTransforms && (
-              <Text>{t`Deleting the tables will break queries that used them. This can’t be undone, so please be careful.`}</Text>
             )}
           </Stack>
           <Modal.Footer>
@@ -101,32 +115,45 @@ export function DeleteTransformsFolderModal({
   );
 }
 
-function TransformsInFolder({ transforms }: { transforms: FolderTransform[] }) {
-  const count = transforms.length;
+type TransformsInFolderProps = {
+  transforms: FolderTransform[];
+  showTables: boolean;
+};
+
+function TransformsInFolder({
+  transforms,
+  showTables,
+}: TransformsInFolderProps) {
   return (
     <Stack gap="sm">
       <Text>
-        {ngettext(
-          msgid`This will also delete the ${count} transform inside it:`,
-          `This will also delete the ${count} transforms inside it:`,
-          count,
-        )}
+        {showTables
+          ? t`These transforms and tables will be deleted:`
+          : t`These transforms will be deleted:`}
       </Text>
-      <List>
-        {transforms.map((transform) => (
-          <List.Item key={transform.id}>
-            <Text component="span">{transform.name}</Text>
-            {transform.target != null && (
-              <Text component="span" c="text-secondary">
-                {" "}
-                ({getTargetTableName(transform.target)})
-              </Text>
-            )}
-          </List.Item>
-        ))}
-      </List>
+      <ScrollArea.Autosize mah="50vh">
+        <List>
+          {transforms.map((transform) => (
+            <List.Item key={transform.id}>
+              <Text component="span">{transform.name}</Text>
+              {showTables && hasTable(transform) && (
+                <Text component="span" c="text-secondary">
+                  {" "}
+                  ({getTargetTableName(transform.target)})
+                </Text>
+              )}
+            </List.Item>
+          ))}
+        </List>
+      </ScrollArea.Autosize>
     </Stack>
   );
+}
+
+function hasTable(
+  transform: FolderTransform,
+): transform is FolderTransform & { target: TransformTarget } {
+  return transform.target_table_id != null && transform.target != null;
 }
 
 function getTargetTableName({ schema, name }: TransformTarget) {
