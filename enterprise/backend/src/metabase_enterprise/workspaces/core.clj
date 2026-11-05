@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -23,6 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.quick-task :as quick-task]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
 
@@ -286,6 +288,15 @@
       (catch Exception e
         (log/warnf e "Could not re-sync table %s.%s after removing its workspace remapping" from_schema from_table_name)))))
 
+(defn- resync-main-tables-after-commit!
+  "[[resync-main-tables!]] now, or, inside a transaction (applying a config.yml), on a background task once it commits:
+  its warehouse calls must not hold the transaction or the workspace lock open."
+  [rows]
+  (cond
+    (empty? rows)          nil
+    (mdb/in-transaction?)  (mdb/do-after-commit (fn [] (quick-task/submit-task! (fn [] (resync-main-tables! rows)))))
+    :else                  (resync-main-tables! rows)))
+
 (defonce ^:private instance-workspace-lock (Object.))
 
 (defn call-with-instance-workspace-lock
@@ -326,7 +337,7 @@
      (fn []
        (ws.db/delete-table-remappings! (into #{} (map :id) stale))
        (write-instance-workspace! (json/encode instance))))
-    (resync-main-tables! stale)
+    (resync-main-tables-after-commit! stale)
     (instance-workspace)))
 
 (defn clear-instance-workspace!

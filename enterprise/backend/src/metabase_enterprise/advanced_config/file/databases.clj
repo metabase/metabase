@@ -104,8 +104,8 @@
      (fn [] (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id database))))))
     (log/info "Sync on database creation when initializing from file is disabled. Skipping sync.")))
 
-(defn- init-from-config-file!
-  [database]
+(defn- init-database!
+  [database {:keys [connection-tested?]}]
   (cond
     (contains? database :delete)
     ;; Databases can be managed as a service by us.  When the service is canceled, we need to delete any information
@@ -127,7 +127,7 @@
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       ;; Stubs are placeholders with no usable details, so we skip the connection test.
-      (when-not (:is_stub database)
+      (when-not (or (:is_stub database) connection-tested?)
         (driver.u/with-database-network-policy database
           (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
       (let [existing (advanced-config.db/database-by-name (:name database))]
@@ -155,7 +155,18 @@
               (log/info "Created stub database; skipping sync.")
               (sync-if-configured! db))))))))
 
+(defn- init-from-config-file!
+  [database]
+  (init-database! database {:connection-tested? false}))
+
 (defmethod advanced-config.file.i/initialize-section! :databases
   [_section-name databases]
   (doseq [database databases]
     (init-from-config-file! database)))
+
+(defn initialize-tested-databases!
+  "Initialize the `databases:` section as [[advanced-config.file.i/initialize-section!]] does, for a caller that has
+  already tested each entry's connection, so a transaction it holds open does not wait on a warehouse."
+  [databases]
+  (doseq [database databases]
+    (init-database! database {:connection-tested? true})))

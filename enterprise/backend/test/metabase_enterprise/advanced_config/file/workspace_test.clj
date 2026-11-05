@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.quick-task :as quick-task]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -403,6 +404,43 @@
           (is (= "Could not apply the databases section of this config.yml: user **** on port 5432 has password ****"
                  (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
                                        {:config (config-yml (mt/random-name))}))))))))
+
+
+(deftest connections-are-tested-once-outside-the-transaction-test
+  (with-clean-workspace!
+    (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+      (let [database-name (mt/random-name)
+            calls         (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (fn [& _] (swap! calls inc) true)]
+            (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config" {:config (config-yml database-name)}))
+          (is (= 1 @calls))
+          (finally
+            (t2/delete! :model/Database :name database-name)
+            (ws/clear-instance-workspace!)))))))
+
+
+(deftest stale-remappings-resync-after-the-commit-test
+  (testing "the main tables of the remappings a re-apply drops are re-synced on a task after the commit, not inside it"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (let [database-name (mt/random-name)
+              submitted     (atom 0)]
+          (try
+            (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config" {:config (config-yml database-name)})
+            (t2/insert! :model/TableRemapping {:database_id     (t2/select-one-pk :model/Database :name database-name)
+                                               :from_db         "", :from_schema "finance", :from_table_name "t"
+                                               :to_db           "", :to_schema "mb__isolation_k3f9q2xa_s43_finance"
+                                               :to_table_name   "t"})
+            (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submitted inc))]
+              (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
+                                    {:config (str/replace (config-yml database-name)
+                                                          "          finance: mb__isolation_k3f9q2xa_s43_finance\n" "")}))
+            (is (= 1 @submitted))
+            (is (zero? (t2/count :model/TableRemapping)))
+            (finally
+              (t2/delete! :model/Database :name database-name)
+              (ws/clear-instance-workspace!))))))))
 
 
 (deftest stub-entry-checks-the-existing-database-engine-test

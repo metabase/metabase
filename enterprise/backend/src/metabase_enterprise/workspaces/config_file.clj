@@ -223,7 +223,10 @@
        ;; every section the boot loader takes, for now; MBCWS-43 revisits which sections this endpoint should accept
        (doseq [[section-name section] (advanced-config/sort-by-initialization-order sections)]
          (try
-           (advanced-config/initialize-section! section-name section)
+           (if (= :databases section-name)
+             ;; tested above, outside the transaction
+             (advanced-config/initialize-tested-databases! section)
+             (advanced-config/initialize-section! section-name section))
            (catch Exception e
              (refuse! section-name section e))))))
     (ws/instance-workspace)))
