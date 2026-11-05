@@ -88,10 +88,9 @@ Reference items using: [name](metabase://type/id)")
        "- Present what the query does in a way that matches the user's intent and follow up if they need clarification"))
 
 (defn query-hidden-instructions-for
-  "Instructions for a SQL query the user was not shown, built only for the model to read with `run_query`."
+  "Instructions for a SQL query the model asked not to show the user."
   [query-id]
-  (str "Your query has been created. The user has not been shown it.\n\n"
-       "To read its values, call `run_query` with `query_id` `" query-id "`. "
+  (str "The user has not been shown this query. To read its values, call `run_query` with `query_id` `" query-id "`. "
        "Give the user the values in your answer."))
 
 (defn- delivery-instruction

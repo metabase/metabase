@@ -602,20 +602,20 @@
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
         ;;
-        ;; The show_chart argument only does anything where run_query can read the query's results, so a
-        ;; turn where it cannot declares the query tools as they were before the argument existed: the
-        ;; notebook builder needs run_query, and the SQL tools need SQL execution as well.
-        ;; `without-show-chart` edits the entry's `:schema`, which `->entries` synthesises in the
-        ;; same `[:=> [:cat args] out]` shape it read off the var before.
-        hide-show-chart (cond-> #{}
-                          (not (contains? base-tools "run_query"))
-                          (conj "construct_notebook_query")
+        ;; The show_chart argument does nothing unless run_query can read the query's results, so a turn where it
+        ;; can't declares the query tools without it. The notebook builder needs run_query; the SQL tools also need
+        ;; SQL execution.
+        ;; Removing it edits the `[:=> [:cat args] out]` `:schema` that `->entries` synthesises.
+        run-query?   (contains? base-tools "run_query")
+        no-chart-arg (cond-> #{}
+                       (not run-query?)
+                       (conj "construct_notebook_query")
 
-                          (not (and (contains? base-tools "run_query") (scope/sql-execution-allowed?)))
-                          (into ["create_sql_query" "edit_sql_query" "replace_sql_query"]))
+                       (not (and run-query? (scope/sql-execution-allowed?)))
+                       (into tools/sql-query-tool-names))
         tools        (update-vals (reduce #(m/update-existing %1 %2 tools/without-show-chart)
                                           (tools/->entries (vals base-tools) memory-atom metabot profile-id)
-                                          hide-show-chart)
+                                          no-chart-arg)
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
