@@ -61,6 +61,13 @@
   [k]
   (.computeIfAbsent ^ConcurrentHashMap root-locks k (reify Function (apply [_ _] (Object.)))))
 
+(defmacro ^:private with-root-lock
+  "Run `body` holding the lock for the root slot of `k`."
+  [k & body]
+  `(let [lock# (root-lock ~k)]
+     (locking lock#
+       ~@body)))
+
 (defn- current-value
   "The value of `k` visible to this thread: the bound one if `k` is bound here, otherwise the root."
   [k]
@@ -78,18 +85,23 @@
   (binding [_ new-value thunk]
     (clojure.core/binding [*bound-boxes* (assoc *bound-boxes* k (atom new-value))]
       (thunk)))
+  ;; Every write holds its slot's lock, so a [[mc/with-slot-lock]] read-check-write is never interleaved with one.
   (swap-vals!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
-      (apply swap-vals! box f args)
-      (let [[before after] (swap-vals! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args))))]
-        [(get before k) (get after k)])))
+      (locking box
+        (apply swap-vals! box f args))
+      (with-root-lock k
+        (let [[before after] (swap-vals! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args))))]
+          [(get before k) (get after k)]))))
   (alter-root [_ new-value]
-    (let [[before _] (swap-vals! roots assoc k new-value)]
-      (get before k)))
+    (with-root-lock k
+      (let [[before _] (swap-vals! roots assoc k new-value)]
+        (get before k))))
   (root-entry [_]
     (find @roots k))
   (remove-root [_]
-    (swap! roots dissoc k)
+    (with-root-lock k
+      (swap! roots dissoc k))
     nil)
   (without-binding [_ thunk]
     (clojure.core/binding [*bound-boxes* (dissoc *bound-boxes* k)]
@@ -114,9 +126,8 @@
   ([k]
    (ComponentHandle. k))
   ([k init-root]
-   (let [handle (ComponentHandle. k)
-         lock   (root-lock k)]
-     (locking lock
+   (let [handle (ComponentHandle. k)]
+     (with-root-lock k
        (when-not (mc/root-entry handle)
          (mc/alter-root handle (init-root))))
      handle)))
