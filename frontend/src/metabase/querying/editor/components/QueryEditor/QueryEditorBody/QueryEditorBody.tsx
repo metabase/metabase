@@ -6,7 +6,6 @@ import { useWindowSize } from "react-use";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
-import { RefreshButton } from "metabase/querying/editor/components/QueryEditor/QueryEditorBody/RefreshButton";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import type { QueryModalType } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
@@ -24,6 +23,7 @@ import type {
 } from "../../../types";
 
 import S from "./QueryEditorBody.module.css";
+import { RefreshButton } from "./RefreshButton";
 
 const DEFAULT_EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
