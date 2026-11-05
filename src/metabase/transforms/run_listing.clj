@@ -9,20 +9,45 @@
   their parent run. Because ids are per-table, a row is identified by the `(run_type, id)` pair;
   `entity_id` is the id of the associated job/transform."
   (:require
-   [medley.core :as m]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.models.util :as transforms.models.u]))
+   [metabase.transforms.models.util :as transforms.models.u]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::run-summary.response
+  "A [[::transforms.schema/run-summary]] as [[present-run-summaries]] prepares it for an API response."
+  [:map {:closed true}
+   [:run_type        [:enum :job :dag :transform]]
+   [:id              ms/PositiveInt]
+   [:entity_id       [:maybe ms/PositiveInt]]
+   [:name            [:maybe :string]]
+   [:direction       [:maybe [:enum :upstream :downstream]]]
+   [:transform_count [:maybe :int]]
+   [:run_method      [:maybe :keyword]]
+   [:status          :keyword]
+   [:is_active       [:maybe :boolean]]
+   [:start_time      [:maybe :string]]
+   [:end_time        {:optional true} [:maybe :string]]
+   [:message         [:maybe :string]]
+   [:user_id         [:maybe ::lib.schema.id/user]]])
 
 (def run-types
   "The `run_type` discriminator values a listing row can have."
   [:job :dag :transform])
 
-(defn paged-run-summaries
-  "Return a page of root runs as a `{:data :limit :offset :total}` envelope. Rows are raw — see
-  [[present-run-summaries]].
+(mu/defn paged-run-summaries :- [:map {:closed true}
+                                 [:data   [:sequential ::transforms.schema/run-summary]]
+                                 [:limit  ms/PositiveInt]
+                                 [:offset ms/IntGreaterThanOrEqualToZero]
+                                 [:total  :int]]
+  "Return a page of root runs as a `{:data :limit :offset :total}` envelope; [[present-run-summaries]] prepares its
+  rows for an API response.
 
   Options (filter semantics match [[metabase.transforms.models.transform-run/paged-runs]]):
   - `:types`          subset of [[run-types]] to include; nil/empty means all three
@@ -32,10 +57,21 @@
   - `:end-time`       likewise for `end_time`
   - `:transform-ids`  only runs that ran any of these transforms (job/DAG runs whose members include
                       one, or the standalone runs of them)
-  - `:sort-column`    `\"start_time\"` / `\"end_time\"`
-  - `:sort-direction` `\"asc\"` / `\"desc\"`
+  - `:sort-column`    `:start_time` / `:end_time`
+  - `:sort-direction` `:asc` / `:desc`
   - `:offset`/`:limit` pagination (default 0 / 20)"
-  [{:keys [types statuses run-methods start-time end-time transform-ids sort-column sort-direction offset limit]}]
+  [{:keys [types statuses run-methods start-time end-time transform-ids sort-column sort-direction offset limit]}
+   :- [:map {:closed true}
+       [:types          {:optional true} [:maybe [:sequential [:enum :job :dag :transform]]]]
+       [:statuses       {:optional true} [:maybe [:sequential :string]]]
+       [:run-methods    {:optional true} [:maybe [:sequential :string]]]
+       [:start-time     {:optional true} [:maybe ms/NonBlankString]]
+       [:end-time       {:optional true} [:maybe ms/NonBlankString]]
+       [:transform-ids  {:optional true} [:maybe [:sequential ::lib.schema.id/transform]]]
+       [:sort-column    {:optional true} [:maybe [:enum :start_time :end_time]]]
+       [:sort-direction {:optional true} [:maybe [:enum :asc :desc]]]
+       [:offset         {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+       [:limit          {:optional true} [:maybe ms/PositiveInt]]]]
   (let [offset              (or offset 0)
         limit               (or limit 20)
         [start-at end-at]   (when start-time (transforms.models.u/timestamp-range start-time))
@@ -47,25 +83,21 @@
      :total  (transforms.db/root-run-summaries-count types statuses run-methods start-at end-at ended-at end-end
                                                      transform-ids)}))
 
-(defn present-run-summaries
-  "Prepare raw summary rows for an API response: hydrate each row's `:name` (nil when the underlying
-  job/transform was deleted), keywordize the discriminator columns, and localize timestamps."
-  [rows]
+(mu/defn present-run-summaries :- [:sequential ::run-summary.response]
+  "Prepare summary rows for an API response: hydrate each row's `:name` (nil when the underlying job/transform was
+  deleted) and localize timestamps."
+  [rows :- [:sequential ::transforms.schema/run-summary]]
   (let [by-type         (group-by :run_type rows)
-        job-ids         (seq (keep :entity_id (get by-type "job")))
-        transform-ids   (seq (keep :entity_id (concat (get by-type "dag") (get by-type "transform"))))
+        job-ids         (seq (keep :entity_id (get by-type :job)))
+        transform-ids   (seq (keep :entity_id (concat (get by-type :dag) (get by-type :transform))))
         job->name       (when job-ids (transforms.db/job-names-by-id job-ids))
         transform->name (when transform-ids (transforms.db/transform-names-by-id transform-ids))]
     (map (fn [{:keys [run_type entity_id entity_name] :as row}]
            (-> row
-               (assoc :name (or (if (= run_type "job")
+               (assoc :name (or (if (= run_type :job)
                                   (get job->name entity_id)
                                   (get transform->name entity_id))
                                 entity_name))
                (dissoc :entity_name)
-               (update :run_type keyword)
-               (update :status keyword)
-               (m/update-existing :run_method #(some-> % keyword))
-               (m/update-existing :direction #(some-> % keyword))
                transforms-base.u/localize-run-timestamps))
          rows)))

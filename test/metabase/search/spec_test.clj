@@ -121,24 +121,14 @@
                                 :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}
                                {:search-model "segment"
                                 :fields       #{:location :type}
-                                :where        [:and
-                                               [:= [:coalesce :settings.is_published :table.is_published] true]
-                                               [:= :updated.id [:case
-                                                                [:not= :settings.is_published nil] :settings.collection_id
-                                                                :else :table.collection_id]]]}}
-                 :TableUserSettings #{{:search-model "table"
-                                       :fields       #{:updated_at}
-                                       :where        [:= :updated.table_id :this.id]}
-                                      {:search-model "segment"
-                                       :fields       #{:collection_id :is_published}
-                                       :where        [:= :updated.table_id :this.table_id]}}}
+                                :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
            (#'search.spec/search-model-hooks (search.spec/spec "collection"))]))))
 
 (deftest ^:parallel measure-parent-table-hooks-test
-  (testing "a measure is reindexed when its parent table, that table's user settings, or its collection changes"
+  (testing "a measure is reindexed when its parent table or its collection changes"
     (is (= #:model{:Table      #{{:search-model "measure"
                                   :fields       #{:collection_id
                                                   :db_id
@@ -150,14 +140,7 @@
                                   :where        [:= :updated.id :this.table_id]}}
                    :Collection #{{:search-model "measure"
                                   :fields       #{:location :type}
-                                  :where        [:and
-                                                 [:= [:coalesce :settings.is_published :table.is_published] true]
-                                                 [:= :updated.id [:case
-                                                                  [:not= :settings.is_published nil] :settings.collection_id
-                                                                  :else :table.collection_id]]]}}
-                   :TableUserSettings #{{:search-model "measure"
-                                         :fields       #{:collection_id :is_published}
-                                         :where        [:= :updated.table_id :this.table_id]}}}
+                                  :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
            (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/spec "measure"))])
                         [:model/Table :model/Collection :model/TableUserSettings])))))
 

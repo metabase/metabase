@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics-interface]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
+   [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.files :as u.files])
   (:import
@@ -63,3 +64,14 @@
                                                                          (throw (Exception. "boom"))))]
       (is (thrown? TimeoutException
                    (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))
+
+(deftest timeout-comes-from-setting-test
+  (testing "Python calls run under the timeout set by MB_SQL_PARSING_TIMEOUT_MS."
+    (let [timeout-ms (atom nil)]
+      (mt/with-temp-env-var-value! [mb-sql-parsing-timeout-ms 1234]
+        (dynamic-redefs/with-dynamic-fn-redefs [graal/with-timeout* (fn [ms _]
+                                                                      (reset! timeout-ms ms)
+                                                                      :metabase.sql-parsing.graal/timeout)]
+          (is (thrown-with-msg? TimeoutException #"after 1234ms"
+                                (sql-parsing/referenced-tables "postgres" "SELECT 1")))))
+      (is (= 1234 @timeout-ms)))))

@@ -1,13 +1,18 @@
 ---
 title: Data actions
 summary: Data actions insert, update, or delete rows in your database. You can run them in Data Studio or share them as public forms.
+redirect_from:
+  - /docs/latest/actions
+  - /docs/latest/actions/start
 ---
 
 # Data actions
 
+![A table action that inserts a row into the Products table](./images/add-product-data-action.png)
+
 _Data Studio > Data actions_
 
-Data actions let people change the data in your database. For example, a data action can approve a request, or mark an order as refunded.
+Data actions let people change the data in your database. For example, a data action can add a product, update a customer's address, or mark an order as refunded.
 
 Each data action does one job: it inserts, updates, or deletes rows. An admin sets up the action once, and people can only make the changes that the action allows.
 
@@ -16,13 +21,38 @@ You can run data actions in two ways:
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
 
-Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). For a dashboard button, use a model action.
+Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md), and you can't add data actions as buttons to dashboards. For a [dashboard button](../dashboards/actions.md), use a model action.
 
 If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
 
+## Databases that support data actions
+
+Data actions are available for the following databases:
+
+- [PostgreSQL](../databases/connections/postgresql.md)
+- [MySQL](../databases/connections/mysql.md)
+
+The same databases support [model actions](./models/actions/introduction.md) and actions in [data apps](../data-apps/build.md#what-a-data-app-can-read-and-write).
+
+You can't turn on data actions for a database that uses [database routing](../permissions/database-routing.md).
+
+## Turn on data actions for a database
+
+_Admin > Databases > Data actions_
+
+Before you can create or run actions on a database, an admin has to turn on data actions for that database. The setting covers every kind of action on the database: data actions, actions in [data apps](../data-apps/build.md#what-a-data-app-can-read-and-write), and [model actions](./models/actions/introduction.md).
+
+You can turn on data actions only for [databases that support them](#databases-that-support-data-actions).
+
+1. Click the **grid** icon in the upper right, and go to **Admin** > **Databases**.
+2. Click the database.
+3. In the **Data actions** section, turn on **Data actions**.
+
+Actions write to your database, so the database user you use to connect to the database needs [write privileges](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). If the database has a [writable connection](../databases/writable-connection.md), actions use it.
+
 ## Create a data action
 
-Only admins can create data actions. Data actions only work on PostgreSQL and MySQL databases. The **New** button only shows up if an admin has [turned on data actions](./models/actions/introduction.md#enabling-actions-for-a-database) for at least one of these databases.
+Only admins can create data actions. The **New** button only shows up if an admin has [turned on data actions](#turn-on-data-actions-for-a-database) for at least one database.
 
 You can create a data action in two ways:
 
@@ -33,7 +63,7 @@ You can create a data action in two ways:
 
 1. Go to [Data Studio](./data-studio.md#get-to-data-studio) > **Data actions**.
 2. Click **New** > **SQL query**.
-3. Write your SQL. Each {% raw %}{{ variable }}{% endraw %} in the SQL becomes a field on the action's form. For examples, see [Example custom actions](./models/actions/custom.md#example-custom-actions).
+3. Write your SQL. Each `{% raw %}{{ variable }}{% endraw %}` in the SQL becomes a field on the action's form. For examples, see [Example custom actions](./models/actions/custom.md#example-custom-actions).
 4. Click **Save**, enter a **Name**, pick a **Folder**, and click **Save** again.
 
 ### Create a data action that changes one row
@@ -43,9 +73,7 @@ Pick a table and an operation, and Metabase builds the form from the table's col
 1. Go to [Data Studio](./data-studio.md#get-to-data-studio) > **Data actions**.
 2. Click **New** > **Table**, and pick a table. The picker only lists tables in databases with data actions turned on.
 3. Under **Operation**, pick **Insert** to add a row, **Update** to change a row, or **Delete** to remove a row. Update and Delete find the row by its primary key, and Update keeps the current value of any field you leave empty.
-4. Click **Save**, enter a **Name** (Metabase suggests one, like "Insert Orders"), pick a **Folder**, and click **Save** again.
-
-![A table action that inserts a row into the Products table](./images/add-product-data-action.png)
+4. Click **Save**, enter a **Name**, pick a **Folder**, and click **Save** again.
 
 ## Run a data action
 
@@ -53,7 +81,7 @@ Pick a table and an operation, and Metabase builds the form from the table's col
 2. Go to the **Run** tab and click the **Run** button.
 3. Fill out the form and submit it. Metabase makes the change in your database.
 
-If the **Run** button is grayed out, data actions are turned off for the action's database, or you don't have access to that database.
+If the **Run** button is grayed out, [data actions are turned off](#turn-on-data-actions-for-a-database) for the action's database, or you don't have access to that database.
 
 ![The form for the Add product action](./images/data-action-form.png)
 
@@ -62,7 +90,9 @@ If the **Run** button is grayed out, data actions are turned off for the action'
 Go to **Data Studio** > **Data actions** and click the action.
 
 - **To change what the action does**, go to the **Definition** tab. For a SQL action, click **Edit definition**. For a table action, click **Change table** or pick another **Operation**.
-- **To change the action's form**, go to the **Fields** tab and click a field to change its type, input, default value, and more. A SQL action has one field for each {% raw %}{{ variable }}{% endraw %} in the SQL. A table action has one field for each column that it writes (for Delete, only the primary key), and you can only show or hide these fields. If you turn off **Show field**, the action uses the field's default value.
+- **To change the action's form**, go to the **Fields** tab and click a field to change its type, input, default value, and more. A SQL action has one field for each `{% raw %}{{ variable }}{% endraw %}` in the SQL. A table action has one field for each column that it writes (for Delete, only the primary key), and you can only show or hide these fields. If you turn off **Show field**, the action uses the field's default value.
+
+![The Fields tab of the Add review action, with the details of the Rating field](./images/data-action-fields.png)
 
 ## Share a data action as a public form
 
@@ -90,6 +120,8 @@ Anyone who can view a folder can run the actions in it. So use folders to give e
 - **Change who can run a folder's actions**: Click the **three-dot** menu next to the folder, and select **Change permissions**. For actions that aren't in a folder, click the **three-dot** menu next to the **New** button, and select **Change permissions**.
 - **Move an action to another folder**: Open the action, click the **three-dot** menu next to its name, and select **Move**.
 
+![The permissions of the Reviews folder, where only the Data Analysts group can view the folder's actions](./images/data-action-folder-permissions.png)
+
 ## Archive and unarchive data actions
 
 - **Archive an action**: Open the action, click the **three-dot** menu next to its name, and select **Archive**. Public forms that use an archived action stop working until you unarchive the action.
@@ -104,7 +136,8 @@ Only admins can create, edit, move, archive, or unarchive data actions and their
 
 ## Further reading
 
-- [Introduction to actions](./models/actions/introduction.md)
+- [Data Studio](./data-studio.md)
+- [Data apps](../data-apps/start.md)
+- [Introduction to model actions](./models/actions/introduction.md)
 - [Basic actions](./models/actions/basic.md)
 - [Custom actions](./models/actions/custom.md)
-- [Data Studio](./data-studio.md)

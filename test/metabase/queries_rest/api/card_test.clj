@@ -860,10 +860,10 @@
           type-schema            (resolve-schema (get body-properties "type"))
           result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema..card.type"} {:type :null}]}
+        (is (=? {:anyOf [{:$ref "#/components/schemas/metabase.queries.schema..card.type"} {:type :null}]}
                 type-schema)))
       (testing 'result_metadata
-        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"} {:type :null}]}
+        (is (=? {:anyOf [{:$ref "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"} {:type :null}]}
                 result-metadata-schema))))))
 
 (deftest create-a-card
@@ -4295,7 +4295,12 @@
       (is (= {:has_more_values false,
               :values          [["African" "Af"]]}
              (mt/user-http-request :rasta :get 200
-                                   (param-values-url card (:static-list-label param-keys) "af")))))
+                                   (param-values-url card (:static-list-label param-keys) "af"))))
+      (testing "labeled values match the label, not the value"
+        (is (= {:has_more_values false,
+                :values          []}
+               (mt/user-http-request :rasta :get 200
+                                     (param-values-url card (:static-list-label param-keys) "ican"))))))
     (testing "we could edit the values list"
       (let [card (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
                                        {:parameters [{:name                  "Static Category",

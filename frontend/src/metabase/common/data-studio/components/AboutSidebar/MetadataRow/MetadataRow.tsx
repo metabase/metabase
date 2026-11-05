@@ -10,9 +10,16 @@ interface MetadataRowProps {
   children: ReactNode;
   /** Empty-state styling: muted icon and text. */
   muted?: boolean;
+  /** Shown at the right edge of the row, beside the value even when it wraps. */
+  rightSection?: ReactNode;
 }
 
-export function MetadataRow({ icon, children, muted }: MetadataRowProps) {
+export function MetadataRow({
+  icon,
+  children,
+  muted,
+  rightSection,
+}: MetadataRowProps) {
   const color = muted ? "text-secondary" : "text-primary";
   return (
     <Group gap={rem(10)} wrap="nowrap" align="center">
@@ -24,9 +31,10 @@ export function MetadataRow({ icon, children, muted }: MetadataRowProps) {
       >
         <Icon name={icon} size={12} c={color} />
       </Center>
-      <Text component="span" c={color}>
+      <Text component="span" c={color} flex={1}>
         {children}
       </Text>
+      {rightSection}
     </Group>
   );
 }

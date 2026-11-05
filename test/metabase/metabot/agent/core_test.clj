@@ -9,6 +9,7 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
@@ -390,6 +391,22 @@
                        :user_is_viewing viewing}
              :writer  writer))
 
+(defn- run-tool-call-turn!
+  "Run one `profile-id` turn with `context`, whose first LLM response calls `function` with `arguments`.
+  Every later response is text."
+  [profile-id context function arguments]
+  (run-turn! profile-id
+             "Go ahead"
+             [[{:type :tool-input :id "t1" :function function :arguments arguments}]]
+             :context context))
+
+(defn- turn-outcome
+  "The LLM call count, the finish reason and the text the user saw, for a turn that [[run-tool-call-turn!]] ran."
+  [{:keys [llm-calls parts]}]
+  {:llm-calls     llm-calls
+   :finish-reason (:finish-reason (last parts))
+   :text          (str/join (keep #(when (= :text (:type %)) (:text %)) parts))})
+
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
@@ -400,6 +417,35 @@
           (is (some #(and (= :text (:type %))
                           (str/includes? (:text %) "No active SQL editor was found"))
                     parts)))))))
+
+(def ^:private sql-drafts
+  "SQL queries with no database selected yet, by how each is built.
+  The legacy form checks that the shape a client can still send gets the same answer."
+  (let [query (lib/prepare-for-serialization (lib/native-query meta/metadata-provider "SELECT 1"))]
+    {"no database key" (dissoc query :database)
+     "nil database"    (assoc query :database nil)
+     "legacy form"     {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}}))
+
+(deftest sql-edit-without-a-database-ends-the-turn-test
+  (testing "an edit of a SQL query with no database ends the turn and asks the user to select one"
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[label draft] sql-drafts
+                profile       [:sql :internal :internal-sql]]
+          (testing (str label " " profile)
+            (is (= {:llm-calls     1
+                    :finish-reason :terminal-error
+                    :text          "No database is selected for this query. Select a database and try again."}
+                   (turn-outcome
+                    (run-tool-call-turn! profile
+                                         {:capabilities    ["permission:write_sql_queries"]
+                                          :user_is_viewing (conj sql-editor-viewing
+                                                                 {:type "adhoc" :id "draft" :query draft})}
+                                         "edit_sql_query"
+                                         {:query_id  "draft"
+                                          :checklist "Checked"
+                                          :title     "Results"
+                                          :edits     [{:old_string "1" :new_string "2"}]}))))))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
@@ -449,6 +495,44 @@
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest slack-dead-ends-end-the-turn-test
+  (mt/with-temp [:model/Card      {card-id :id} {}
+                 :model/Dashboard {dash-id :id} {}]
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [schedule    {:frequency "daily" :hour 9}
+              slack-calls [[:slackbot "create_alert"
+                            {:card_id card-id :send_condition "has_result" :schedule schedule}]
+                           [:slackbot "create_dashboard_subscription"
+                            {:dashboard_id dash-id :schedule schedule}]]
+              chat-calls  (for [profile [:internal :internal-sql]]
+                            [profile "create_dashboard_subscription"
+                             {:dashboard_id dash-id :slack_channel "data-team" :schedule schedule}])
+              outcome     (fn [[profile function arguments]]
+                            (turn-outcome
+                             (run-tool-call-turn! profile
+                                                  (if (= :slackbot profile) {:slack_channel_id "D0123"} {})
+                                                  function
+                                                  arguments)))]
+          (testing "every alert and subscription tool ends the turn when Slack isn't connected"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
+              (doseq [[profile function :as call] (concat slack-calls chat-calls)]
+                (is (= {:llm-calls     1
+                        :finish-reason :terminal-error
+                        :text          "Slack isn't connected to Metabase. An admin can connect it in Admin settings."}
+                       (outcome call))
+                    (str profile " " function)))))
+          (testing "the Slack tools end the turn in a conversation that Metabase can't post to, such as a DM"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                        channel.settings/slack-cached-channels-and-usernames
+                                        (constantly {:channels []})]
+              (doseq [[_ function :as call] slack-calls]
+                (is (=? {:llm-calls     1
+                         :finish-reason :terminal-error
+                         :text          #"Metabase can't send alerts or subscriptions to this conversation\..*"}
+                        (outcome call))
+                    function)))))))))
 
 (deftest a-turn-survives-one-undeclared-failure-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -569,6 +653,53 @@
               (is (nil? (:structured-output blank-result)))
               (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
               (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
+
+(deftest edit-viewed-saved-sql-question-test
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [card-id     157
+              context     {:capabilities    ["permission:write_sql_queries"]
+                           :user_is_viewing [{:type  "question"
+                                              :id    card-id
+                                              :query {:lib/type :mbql/query
+                                                      :database db-id
+                                                      :stages   [{:lib/type :mbql.stage/native
+                                                                  :native   "SELECT 1"}]}}]}
+              shown-id    (atom nil)
+              calls       (atom 0)
+              parts       (mt/with-dynamic-fn-redefs
+                            [openrouter/openrouter
+                             (fn [request]
+                               (if (= 1 (swap! calls inc))
+                                 ;; The model edits the query by the ID that the viewing context shows it.
+                                 (let [query-id (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request)))]
+                                   (reset! shown-id query-id)
+                                   (mut/mock-llm-response
+                                    [{:type      :tool-input
+                                      :id        "edit"
+                                      :function  "edit_sql_query"
+                                      :arguments {:query_id  query-id
+                                                  :checklist "Checked"
+                                                  :title     "Results"
+                                                  :edits     [{:old_string "1" :new_string "2"}]}}]))
+                                 (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                            (into [] (run-agent-loop {:messages   [{:role :user :content "Select 2 instead"}]
+                                                      :state      {}
+                                                      :profile-id :internal
+                                                      :context    context})))
+              edit-result (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %))) (:result %)) parts)
+              state       (some #(when (= "state" (:data-type %)) (:data %)) parts)]
+          (testing "the viewing context shows a query ID for the question's SQL"
+            (is (some? @shown-id)))
+          (testing "edit_sql_query edits the SQL of the question on screen"
+            (is (nil? (:error edit-result)) (:output edit-result))
+            (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries @shown-id])))))
+          (testing "the question's own ID is not a query ID, so run_query still runs the saved question"
+            (is (not= (str card-id) @shown-id))
+            (is (not (contains? (:queries state) (str card-id))))))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
@@ -1713,7 +1844,9 @@
                       :timeline_events []}
         memory (-> (#'agent/init-agent {:profile-id :internal
                                         :context {:user_is_viewing
-                                                  [{:chart_configs [chart-config]}]}})
+                                                  [{:type          "adhoc"
+                                                    :query         query
+                                                    :chart_configs [chart-config]}]}})
                    :memory-atom
                    deref)
 
@@ -1723,8 +1856,10 @@
         chart-key (first (keys charts))]
     (testing "Loaded charts from chart configs into memory"
       (is (string? chart-key))
-      ;; :query_id must match :chart_id — it's how edit_chart later carries a
-      ;; query-id through for this chart (see chart-config->chart, extract-charts).
+      ;; :query_id is the ID that seed-state stores the ad hoc item's query under, which is the item ID.
+      ;; It is how edit_chart later carries a query-id through for this chart (see chart-config->chart,
+      ;; extract-charts).
+      (is (contains? (get-in memory [:state :queries]) chart-key))
       (is (=? {chart-key {:chart_id chart-key
                           :query_id chart-key
                           :timeline_events []
@@ -1735,6 +1870,64 @@
       (is (every? string? (keys chart-configs)))
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
+
+(deftest edit-chart-of-viewed-saved-card-test
+  ;; A real user, not `mt/as-admin`: tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [card-id  157
+              query    {:lib/type :mbql/query
+                        :database db-id
+                        :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+              run-turn (fn [card-type]
+                         (let [shown-id (atom nil)
+                               calls    (atom 0)
+                               parts    (mt/with-dynamic-fn-redefs
+                                          [openrouter/openrouter
+                                           (fn [request]
+                                             (if (= 1 (swap! calls inc))
+                                               (do (reset! shown-id (second (re-find #"Query ID: ([^\s\\\"]+)"
+                                                                                     (pr-str request))))
+                                                   (mut/mock-llm-response
+                                                    [{:type      :tool-input
+                                                      :id        "edit"
+                                                      :function  "edit_chart"
+                                                      :arguments {:chart_id         (str card-id)
+                                                                  :new_viz_settings {:chart_type "table"}
+                                                                  :title            "Results"
+                                                                  :description      "All rows."}}]))
+                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                                          (into [] (run-agent-loop
+                                                    {:messages   [{:role :user :content "Show it as a table"}]
+                                                     :state      {}
+                                                     :profile-id :internal
+                                                     :context    {:user_is_viewing
+                                                                  [{:type          card-type
+                                                                    :id            card-id
+                                                                    :query         query
+                                                                    :chart_configs [{:title        "Results"
+                                                                                     :query        query
+                                                                                     :display_type "bar"}]}]}})))]
+                           {:shown-id @shown-id
+                            :result   (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %))) (:result %))
+                                            parts)
+                            :state    (some #(when (= "state" (:data-type %)) (:data %)) parts)}))]
+          (testing "a saved question's chart points at the query on screen"
+            (let [{:keys [shown-id result state]} (run-turn "question")]
+              (is (nil? (:error result)) (:output result))
+              (is (some? shown-id))
+              (is (= shown-id (get-in state [:charts (str card-id) :query_id])))
+              (testing "and the card ID stays free for run_query to run the saved question"
+                (is (not (contains? (:queries state) (str card-id)))))))
+          (testing "a saved model's query is not seeded, so its chart points at no query"
+            (let [{:keys [result state]} (run-turn "model")]
+              (is (nil? (:error result)) (:output result))
+              (is (nil? (get-in state [:charts (str card-id) :query_id])))
+              (is (not (contains? (:queries state) (str card-id))))
+              (testing "and the chart in the tool output has no query-id attribute"
+                (is (not (str/includes? (:output result) "query-id=")))))))))))
 
 (deftest viewing-context-item-id-persists-once-stored-test
   (let [query  {:database 1 :type :query :query {:source-table 1}}
