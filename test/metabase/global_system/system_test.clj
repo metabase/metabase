@@ -486,6 +486,9 @@
           (system/stop! handle)
           (mc/remove-root handle))))))
 
+;; halt! itself is never called in these tests: it stops every component this test JVM has started, such as the test
+;; web server, which later tests need. It is only (stop-all! (halt-order)), and this test drives both on throwaway
+;; components, so a regression in either fails here.
 (deftest ^:synchronized halt-order-test
   (testing "halt stops components in reverse start order, and one failing stop does not prevent the others"
     (let [stopped (atom [])
