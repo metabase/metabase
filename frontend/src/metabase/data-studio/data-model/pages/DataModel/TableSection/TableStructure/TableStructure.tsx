@@ -51,8 +51,7 @@ import {
   ReviewValue,
 } from "../InferenceReview";
 import {
-  CurrentRuleHint,
-  HistoryChecksSummary,
+  HistoryChecksStatus,
   HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
@@ -666,26 +665,15 @@ function HistoryBindingSection({
           label={t`Valid to`}
           fillValue
           value={
-            <Stack gap={0} w="100%">
-              <FieldSelect
-                label={t`Valid to`}
-                fields={fields}
-                value={binding.validToFieldId}
-                placeholder={t`No valid to`}
-                clearable
-                disabled={disabled}
-                onChange={(validToFieldId) => onChange({ validToFieldId })}
-              />
-              {!hasCurrentFlag && (
-                <Box px="lg" pb="sm">
-                  <CurrentRuleHint
-                    table={table}
-                    structure={structure}
-                    fields={fields}
-                  />
-                </Box>
-              )}
-            </Stack>
+            <FieldSelect
+              label={t`Valid to`}
+              fields={fields}
+              value={binding.validToFieldId}
+              placeholder={t`No valid to`}
+              clearable
+              disabled={disabled}
+              onChange={(validToFieldId) => onChange({ validToFieldId })}
+            />
           }
         />
         {hasCurrentFlag && (
@@ -693,21 +681,12 @@ function HistoryBindingSection({
             label={t`Current flag`}
             fillValue
             value={
-              <Stack gap={0} w="100%">
-                <CurrentFlagSelect
-                  fields={fields}
-                  binding={binding}
-                  disabled={disabled}
-                  onChange={onChange}
-                />
-                <Box px="lg" pb="sm">
-                  <CurrentRuleHint
-                    table={table}
-                    structure={structure}
-                    fields={fields}
-                  />
-                </Box>
-              </Stack>
+              <CurrentFlagSelect
+                fields={fields}
+                binding={binding}
+                disabled={disabled}
+                onChange={onChange}
+              />
             }
           />
         )}
@@ -717,7 +696,7 @@ function HistoryBindingSection({
         />
         <DetailsRow
           label={t`Checks`}
-          value={<HistoryChecksSummary table={table} />}
+          value={<HistoryChecksStatus table={table} readOnly={disabled} />}
         />
         <DetailsRow
           label={t`Advanced`}

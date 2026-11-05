@@ -1,8 +1,6 @@
 import Question from "metabase-lib/v1/Question";
-import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
-  DatabaseId,
   PythonTransformSourceDraft,
   QueryTransformSource,
 } from "metabase-types/api";
@@ -15,18 +13,8 @@ export function getInitialQuerySource(): QueryTransformSource {
   };
 }
 
-export function getInitialNativeSource({
-  databaseId,
-  sql,
-}: { databaseId?: DatabaseId; sql?: string } = {}): QueryTransformSource {
-  const question = Question.create({
-    DEPRECATED_RAW_MBQL_type: "native",
-    dataset_query: {
-      ...NATIVE_QUERY_TEMPLATE,
-      database: databaseId ?? null,
-      native: { query: sql ?? "", "template-tags": {} },
-    },
-  });
+export function getInitialNativeSource(): QueryTransformSource {
+  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
   return {
     type: "query",
     query: question.datasetQuery(),

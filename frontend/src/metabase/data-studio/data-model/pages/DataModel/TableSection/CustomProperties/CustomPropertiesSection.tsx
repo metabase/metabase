@@ -9,19 +9,18 @@ import {
 import { Link } from "metabase/common/components/Link";
 import {
   type EavBinding,
-  type EavDefinitionTable,
   type PropertyRegistry,
+  type PropertySignal,
+  type RegistryProperty,
   type ResolvedEavBinding,
   useEavBinding,
   usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { GeneratedChecksSummary } from "metabase/metadata/table-structure/generated-checks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Badge,
   Button,
-  Code,
   Group,
   Loader,
   Popover,
@@ -32,16 +31,14 @@ import {
 import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
+import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import {
   getCustomPropertiesTitle,
   getEntityNoun,
   getMissingBindingMessage,
   needsAttention,
 } from "../../PropertyDetailsPanel/property-labels";
-
-import { RecognitionPreview } from "./RecognitionPreview";
-import { SuggestTransformInput } from "./SuggestTransformInput";
-import { useCustomPropertyChecks } from "./use-custom-property-checks";
+import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
 type CustomPropertiesSectionProps = {
   table: Table;
@@ -58,82 +55,146 @@ export function CustomPropertiesSection({
   const state = usePropertyRegistry(table);
   const registry = state.status === "loaded" ? state.registry : undefined;
   const noun = getEntityNoun(resolved.entityTable);
+  const columns = useColumnsReview(table, resolved);
+  const definitions = useDefinitionsReview(resolved);
+  const attentionCount = registry?.properties.filter(needsAttention).length;
 
   return (
     <SidebarSection title={getCustomPropertiesTitle(resolved.entityTable)}>
       <Text size="sm" c="text-secondary">
         {t`Each row is one custom property value of a ${noun.singular}.`}
       </Text>
-      <RecognitionPreview table={table} resolved={resolved} />
       <DetailsTable>
         <DetailsRow
           label={t`Belongs to`}
+          labelAside={
+            <InferredIcon description={getEntityInference(resolved)} />
+          }
           value={<EntityTableValue table={table} resolved={resolved} />}
         />
-        <DetailsRow
-          label={t`Columns`}
-          value={
-            <ColumnsInput
-              table={table}
-              resolved={resolved}
-              disabled={disabled}
-              onChange={onChange}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Definitions`}
-          value={
-            <DefinitionsInput
-              resolved={resolved}
-              disabled={disabled}
-              onChange={onChange}
-            />
-          }
-        />
+        {columns.isEditing ? (
+          <ColumnsRows
+            table={table}
+            resolved={resolved}
+            disabled={disabled}
+            onChange={onChange}
+          />
+        ) : (
+          <DetailsRow
+            label={t`Columns`}
+            labelAside={<InferredIcon description={columns.inference} />}
+            value={
+              <PointersValue
+                names={columns.names}
+                disabled={disabled}
+                onChange={columns.startEditing}
+              />
+            }
+          />
+        )}
+        {definitions.isEditing ? (
+          <DefinitionsRows
+            resolved={resolved}
+            disabled={disabled}
+            onChange={onChange}
+          />
+        ) : (
+          <DetailsRow
+            label={t`Definitions`}
+            labelAside={<InferredIcon description={definitions.inference} />}
+            value={
+              <PointersValue
+                names={definitions.names}
+                disabled={disabled}
+                onChange={definitions.startEditing}
+              />
+            }
+          />
+        )}
         <DetailsRow
           label={t`Shape`}
           value={<ShapeValue resolved={resolved} />}
         />
         <DetailsRow
           label={t`Properties`}
+          labelAside={attentionCount ? <NeedsReviewBadge /> : null}
           value={
             <PropertyRegistrySummary
               table={table}
-              resolved={resolved}
               registry={registry}
               isUnbound={state.status === "unbound"}
             />
           }
         />
-        <DetailsRow label={t`Checks`} value={<ChecksValue table={table} />} />
-        <DetailsRow
-          label={t`Transform`}
-          value={
-            <SuggestTransformInput
-              table={table}
-              resolved={resolved}
-              disabled={disabled}
-            />
-          }
-        />
+        <ChecksRow registry={registry} />
       </DetailsTable>
     </SidebarSection>
   );
 }
 
-function ChecksValue({ table }: { table: Table }) {
-  const generated = useCustomPropertyChecks(table);
-  if (generated == null) {
-    return <Loader size="xs" />;
-  }
+const DATA_QUALITY_URL = "https://github.com/metabase/data-quality";
+
+const hasSignal = (
+  properties: RegistryProperty[],
+  type: PropertySignal["type"],
+) =>
+  properties.some(({ signals }) =>
+    signals.some((signal) => signal.type === type),
+  );
+
+function countFailingChecks({ properties }: PropertyRegistry) {
+  const driftCount = properties.filter(({ signals }) =>
+    signals.some(({ type }) => type === "type-drift"),
+  ).length;
+  const tableWideFailures = [
+    hasSignal(properties, "undefined"),
+    hasSignal(properties, "duplicate"),
+  ].filter(Boolean).length;
+  return driftCount + tableWideFailures;
+}
+
+function ChecksRow({ registry }: { registry: PropertyRegistry | undefined }) {
+  const failingCount = registry ? countFailingChecks(registry) : null;
   return (
-    <GeneratedChecksSummary
-      table={generated.tableRef}
-      checks={generated.checks}
-      results={generated.results}
+    <DetailsRow
+      label={t`Checks`}
+      value={
+        <Group gap="sm" justify="space-between" wrap="nowrap">
+          <Group gap="xs" miw={0}>
+            <Text>{t`In data quality`}</Text>
+            {failingCount == null && <Loader size="xs" />}
+            {failingCount != null && failingCount > 0 && (
+              <Badge color="warning" variant="light" flex="0 0 auto">
+                {t`${failingCount} failing`}
+              </Badge>
+            )}
+            {failingCount === 0 && (
+              <Text c="text-secondary">{t`all passing`}</Text>
+            )}
+          </Group>
+          <Button
+            component="a"
+            href={DATA_QUALITY_URL}
+            target="_blank"
+            rel="noreferrer"
+            size="compact-sm"
+            flex="0 0 auto"
+          >
+            {t`View in data quality`}
+          </Button>
+        </Group>
+      }
     />
   );
+}
+
+function getEntityInference({
+  entityTable,
+  entityKeyField,
+}: ResolvedEavBinding) {
+  return entityTable && entityKeyField
+    ? t`Inferred: ${entityKeyField.name} → ${entityTable.name}`
+    : null;
 }
 
 function EntityTableValue({
@@ -143,117 +204,59 @@ function EntityTableValue({
   table: Table;
   resolved: ResolvedEavBinding;
 }) {
-  const { entityTable, entityKeyField } = resolved;
-  if (!entityTable || !entityKeyField) {
+  const { entityTable } = resolved;
+  if (!entityTable) {
     return <Text c="text-secondary">{getMissingBindingMessage()}</Text>;
   }
   return (
-    <Stack gap="xs" py="xs">
-      <Link
-        to={Urls.dataStudioData({
-          databaseId: table.db_id,
-          schemaName: table.schema,
-          tableId: entityTable.id,
-        })}
-      >
-        <Text c="text-brand" fw="bold">
-          {entityTable.display_name}
-        </Text>
-      </Link>
-      <Text size="sm" c="text-secondary">
-        {t`Inferred: ${entityKeyField.name} → ${entityTable.name}`}
-      </Text>
-    </Stack>
+    <Link
+      to={Urls.dataStudioData({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: entityTable.id,
+      })}
+    >
+      <Text c="text-brand">{entityTable.display_name}</Text>
+    </Link>
   );
 }
 
 const fieldName = (fields: Field[], fieldId: FieldId | null) =>
   fields.find((field) => getRawTableFieldId(field) === fieldId)?.name;
 
-function ColumnsInput({
-  table,
-  resolved,
-  disabled,
-  onChange,
-}: {
-  table: Table;
-  resolved: ResolvedEavBinding;
-  disabled: boolean;
-  onChange: (binding: Partial<EavBinding>) => void;
-}) {
+function useColumnsReview(table: Table, resolved: ResolvedEavBinding) {
   const { getTableStructure } = useTableStructures();
   const { inference, eavOverrides } = getTableStructure(table);
   const { binding } = resolved;
   const fields = table.fields ?? [];
-  const columnNames = [
+  const names = [
     fieldName(fields, binding.entityKeyFieldId),
     fieldName(fields, binding.propertyFieldId),
     fieldName(fields, binding.valueFieldId),
   ];
   const isConfident =
     inference.confidence === "high" &&
-    columnNames.every((name) => name != null) &&
+    names.every((name) => name != null) &&
     eavOverrides.entityKeyFieldId === undefined &&
     eavOverrides.propertyFieldId === undefined &&
     eavOverrides.valueFieldId === undefined;
   const [isEditingByAdmin, { open: startEditing }] = useDisclosure(false);
-  const isEditing = isEditingByAdmin || !isConfident;
-
-  if (!isEditing) {
-    return (
-      <CollapsedPointers
-        names={columnNames}
-        hint={t`Inferred: ${inference.signal}`}
-        disabled={disabled}
-        onEdit={startEditing}
-      />
-    );
-  }
-
-  return (
-    <Stack gap="sm" py="xs">
-      <ColumnSelect
-        label={t`Entity key`}
-        fields={fields}
-        value={binding.entityKeyFieldId}
-        disabled={disabled}
-        onChange={(entityKeyFieldId) => onChange({ entityKeyFieldId })}
-      />
-      <ColumnSelect
-        label={t`Property`}
-        fields={fields}
-        value={binding.propertyFieldId}
-        disabled={disabled}
-        onChange={(propertyFieldId) => onChange({ propertyFieldId })}
-      />
-      <ColumnSelect
-        label={t`Value`}
-        fields={fields}
-        value={binding.valueFieldId}
-        disabled={disabled}
-        onChange={(valueFieldId) => onChange({ valueFieldId })}
-      />
-    </Stack>
-  );
+  return {
+    names,
+    inference: t`Inferred: ${inference.signal}`,
+    isEditing: isEditingByAdmin || !isConfident,
+    startEditing,
+  };
 }
 
-function DefinitionsInput({
-  resolved,
-  disabled,
-  onChange,
-}: {
-  resolved: ResolvedEavBinding;
-  disabled: boolean;
-  onChange: (binding: Partial<EavBinding>) => void;
-}) {
-  const {
-    binding,
-    definitionTable,
-    definitionInference,
-    isDefinitionOverridden,
-    isLabelOverridden,
-    isTypeOverridden,
-  } = resolved;
+function useDefinitionsReview({
+  binding,
+  definitionTable,
+  definitionInference,
+  isDefinitionOverridden,
+  isLabelOverridden,
+  isTypeOverridden,
+}: ResolvedEavBinding) {
   const definitionFields = definitionTable?.fields ?? [];
   const names = [
     definitionTable?.name,
@@ -267,19 +270,86 @@ function DefinitionsInput({
     !isTypeOverridden &&
     names.every((name) => name != null);
   const [isEditingByAdmin, { open: startEditing }] = useDisclosure(false);
-  const isEditing = isEditingByAdmin || !isConfident;
+  return {
+    names,
+    inference: t`Inferred: ${definitionInference.signal}. Labels from ${names[1] ?? ""}, types from ${names[2] ?? ""}.`,
+    isEditing: isEditingByAdmin || !isConfident,
+    startEditing,
+  };
+}
 
-  if (!isEditing) {
-    return (
-      <CollapsedPointers
-        names={names}
-        hint={t`Inferred: ${definitionInference.signal}. Labels from ${names[1] ?? ""}, types from ${names[2] ?? ""}.`}
-        disabled={disabled}
-        onEdit={startEditing}
-      />
-    );
-  }
+function PointersValue({
+  names,
+  disabled,
+  onChange,
+}: {
+  names: (string | undefined)[];
+  disabled: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <Group gap="sm" justify="space-between" wrap="nowrap">
+      <Text truncate>{names.filter(Boolean).join(" · ")}</Text>
+      {!disabled && (
+        <Button size="compact-sm" flex="0 0 auto" onClick={onChange}>
+          {t`Change`}
+        </Button>
+      )}
+    </Group>
+  );
+}
 
+function ColumnsRows({
+  table,
+  resolved,
+  disabled,
+  onChange,
+}: {
+  table: Table;
+  resolved: ResolvedEavBinding;
+  disabled: boolean;
+  onChange: (binding: Partial<EavBinding>) => void;
+}) {
+  const { binding } = resolved;
+  const fields = table.fields ?? [];
+  return [
+    <ColumnSelectRow
+      key="entity-key"
+      label={t`Entity key`}
+      fields={fields}
+      value={binding.entityKeyFieldId}
+      disabled={disabled}
+      onChange={(entityKeyFieldId) => onChange({ entityKeyFieldId })}
+    />,
+    <ColumnSelectRow
+      key="property"
+      label={t`Property`}
+      fields={fields}
+      value={binding.propertyFieldId}
+      disabled={disabled}
+      onChange={(propertyFieldId) => onChange({ propertyFieldId })}
+    />,
+    <ColumnSelectRow
+      key="value"
+      label={t`Value`}
+      fields={fields}
+      value={binding.valueFieldId}
+      disabled={disabled}
+      onChange={(valueFieldId) => onChange({ valueFieldId })}
+    />,
+  ];
+}
+
+function DefinitionsRows({
+  resolved,
+  disabled,
+  onChange,
+}: {
+  resolved: ResolvedEavBinding;
+  disabled: boolean;
+  onChange: (binding: Partial<EavBinding>) => void;
+}) {
+  const { binding, definitionTable, isDefinitionOverridden } = resolved;
   const selectDefinitionTable = (
     definitionTableId: EavBinding["definitionTableId"] | undefined,
   ) =>
@@ -289,99 +359,85 @@ function DefinitionsInput({
       typeFieldId: undefined,
     });
 
-  return (
-    <Stack gap="sm" py="xs">
-      <Select
-        label={t`Definitions table`}
-        data={resolved.schemaTables.map((schemaTable) => ({
-          value: String(schemaTable.id),
-          label: schemaTable.display_name,
-        }))}
-        value={definitionTable ? String(definitionTable.id) : null}
-        placeholder={t`No definitions table`}
-        searchable
+  return [
+    <DetailsRow
+      key="definitions"
+      label={t`Definitions`}
+      fillValue
+      labelAside={
+        <InferredIcon
+          description={
+            isDefinitionOverridden ? null : getDefinitionTableHint(resolved)
+          }
+        />
+      }
+      labelNote={
+        !disabled &&
+        isDefinitionOverridden && (
+          <Button
+            size="compact-sm"
+            onClick={() => selectDefinitionTable(undefined)}
+          >
+            {t`Use the inferred table`}
+          </Button>
+        )
+      }
+      value={
+        <Select
+          aria-label={t`Definitions table`}
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          data={resolved.schemaTables.map((schemaTable) => ({
+            value: String(schemaTable.id),
+            label: schemaTable.display_name,
+          }))}
+          value={definitionTable ? String(definitionTable.id) : null}
+          placeholder={t`No definitions table`}
+          searchable
+          clearable
+          disabled={disabled}
+          onChange={(value) =>
+            selectDefinitionTable(value != null ? Number(value) : null)
+          }
+        />
+      }
+    />,
+    definitionTable && (
+      <ColumnSelectRow
+        key="label"
+        label={t`Label column`}
+        fields={definitionTable.fields ?? []}
+        value={binding.labelFieldId}
+        placeholder={t`None`}
         clearable
         disabled={disabled}
-        onChange={(value) =>
-          selectDefinitionTable(value != null ? Number(value) : null)
-        }
+        onChange={(labelFieldId) => onChange({ labelFieldId })}
       />
-      <Text size="sm" c="text-secondary">
-        <DefinitionTableHint resolved={resolved} />
-      </Text>
-      {!disabled && isDefinitionOverridden && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => selectDefinitionTable(undefined)}
-        >
-          {t`Use the inferred definitions table`}
-        </Button>
-      )}
-      {definitionTable && (
-        <DefinitionColumnSelect
-          label={t`Label column`}
-          definitionTable={definitionTable}
-          value={binding.labelFieldId}
-          disabled={disabled}
-          onChange={(labelFieldId) => onChange({ labelFieldId })}
-        />
-      )}
-      {definitionTable && (
-        <DefinitionColumnSelect
-          label={t`Type column`}
-          definitionTable={definitionTable}
-          value={binding.typeFieldId}
-          disabled={disabled}
-          onChange={(typeFieldId) => onChange({ typeFieldId })}
-        />
-      )}
-    </Stack>
-  );
+    ),
+    definitionTable && (
+      <ColumnSelectRow
+        key="type"
+        label={t`Type column`}
+        fields={definitionTable.fields ?? []}
+        value={binding.typeFieldId}
+        placeholder={t`None`}
+        clearable
+        disabled={disabled}
+        onChange={(typeFieldId) => onChange({ typeFieldId })}
+      />
+    ),
+  ];
 }
 
-function DefinitionTableHint({ resolved }: { resolved: ResolvedEavBinding }) {
-  const { definitionTable, definitionInference, isDefinitionOverridden } =
-    resolved;
-  if (definitionTable) {
-    return isDefinitionOverridden
-      ? t`Set by an admin`
-      : t`Inferred: ${definitionInference.signal}`;
-  }
-  return t`None. Labels come from the property names and types from the values.`;
+function getDefinitionTableHint({
+  definitionTable,
+  definitionInference,
+}: ResolvedEavBinding) {
+  return definitionTable
+    ? t`Inferred: ${definitionInference.signal}`
+    : t`None. Labels come from the property names and types from the values.`;
 }
 
-function CollapsedPointers({
-  names,
-  hint,
-  disabled,
-  onEdit,
-}: {
-  names: (string | undefined)[];
-  hint: string;
-  disabled: boolean;
-  onEdit: () => void;
-}) {
-  return (
-    <Stack gap="xs" py="xs">
-      <Group gap="sm" justify="space-between" wrap="nowrap">
-        <Code>{names.filter(Boolean).join(" · ")}</Code>
-        {!disabled && (
-          <Button size="compact-sm" variant="subtle" px={0} onClick={onEdit}>
-            {t`Edit`}
-          </Button>
-        )}
-      </Group>
-      <Text size="sm" c="text-secondary">
-        {hint}
-      </Text>
-    </Stack>
-  );
-}
-
-function ColumnSelect({
+function ColumnSelectRow({
   label,
   fields,
   value,
@@ -399,45 +455,26 @@ function ColumnSelect({
   onChange: (fieldId: FieldId | null) => void;
 }) {
   return (
-    <Select
+    <DetailsRow
       label={label}
-      data={fields.map((field) => ({
-        value: String(getRawTableFieldId(field)),
-        label: field.display_name,
-      }))}
-      value={value != null ? String(value) : null}
-      placeholder={placeholder}
-      searchable
-      clearable={clearable}
-      allowDeselect={clearable}
-      disabled={disabled}
-      onChange={(value) => onChange(value != null ? Number(value) : null)}
-    />
-  );
-}
-
-function DefinitionColumnSelect({
-  label,
-  definitionTable,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  definitionTable: EavDefinitionTable;
-  value: FieldId | null;
-  disabled: boolean;
-  onChange: (fieldId: FieldId | null | undefined) => void;
-}) {
-  return (
-    <ColumnSelect
-      label={label}
-      fields={definitionTable.fields ?? []}
-      value={value}
-      placeholder={t`None`}
-      clearable
-      disabled={disabled}
-      onChange={onChange}
+      fillValue
+      value={
+        <Select
+          aria-label={label}
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          data={fields.map((field) => ({
+            value: String(getRawTableFieldId(field)),
+            label: field.display_name,
+          }))}
+          value={value != null ? String(value) : null}
+          placeholder={placeholder}
+          searchable
+          clearable={clearable}
+          allowDeselect={clearable}
+          disabled={disabled}
+          onChange={(value) => onChange(value != null ? Number(value) : null)}
+        />
+      }
     />
   );
 }
@@ -461,21 +498,15 @@ const getRecognisedShapes = (): RecognisedShape[] => [
 function ShapeValue({ resolved }: { resolved: ResolvedEavBinding }) {
   const [isOpen, { toggle, close }] = useDisclosure(false);
   return (
-    <Stack gap="xs" py="xs">
-      <Text c="text-primary">
+    <Group gap="sm" justify="space-between" wrap="nowrap">
+      <Text>
         {resolved.definitionTable
           ? t`Property rows with a definitions table`
           : t`Property rows without a definitions table`}
       </Text>
-      <Popover opened={isOpen} onChange={close} position="bottom-start">
+      <Popover opened={isOpen} onChange={close} position="bottom-end">
         <Popover.Target>
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            w="fit-content"
-            px={0}
-            onClick={toggle}
-          >
+          <Button size="compact-sm" flex="0 0 auto" onClick={toggle}>
             {t`Shapes we recognise`}
           </Button>
         </Popover.Target>
@@ -496,18 +527,16 @@ function ShapeValue({ resolved }: { resolved: ResolvedEavBinding }) {
           </Stack>
         </Popover.Dropdown>
       </Popover>
-    </Stack>
+    </Group>
   );
 }
 
 function PropertyRegistrySummary({
   table,
-  resolved,
   registry,
   isUnbound,
 }: {
   table: Table;
-  resolved: ResolvedEavBinding;
   registry: PropertyRegistry | undefined;
   isUnbound: boolean;
 }) {
@@ -518,27 +547,15 @@ function PropertyRegistrySummary({
     return <Loader size="xs" />;
   }
   const { properties } = registry;
-  const attentionCount = properties.filter(needsAttention).length;
-  const noun = getEntityNoun(resolved.entityTable);
 
   return (
-    <Stack gap="xs" py="xs">
-      <Group gap="sm">
-        <Text c="text-primary" fw="bold">
-          {ngettext(
-            msgid`${properties.length} property`,
-            `${properties.length} properties`,
-            properties.length,
-          )}
-        </Text>
-        {attentionCount > 0 && (
-          <Badge color="warning" variant="light">
-            {t`${attentionCount} need attention`}
-          </Badge>
+    <Group gap="sm" justify="space-between" wrap="nowrap">
+      <Text>
+        {ngettext(
+          msgid`${properties.length} property`,
+          `${properties.length} properties`,
+          properties.length,
         )}
-      </Group>
-      <Text size="sm" c="text-secondary">
-        {t`Coverage is out of all ${registry.entityCount.toLocaleString()} ${noun.plural}`}
       </Text>
       <Button
         component={Link}
@@ -549,12 +566,10 @@ function PropertyRegistrySummary({
           tab: "properties",
         })}
         size="compact-sm"
-        variant="subtle"
-        w="fit-content"
-        px={0}
+        flex="0 0 auto"
       >
-        {t`Review properties`}
+        {t`Review`}
       </Button>
-    </Stack>
+    </Group>
   );
 }

@@ -77,15 +77,19 @@ export function PropertySignalBadge({
 }) {
   return match(signal)
     .with({ type: "undefined" }, () => (
-      <Badge color="warning" variant="light" size="sm">
+      <Badge color="warning" variant="light" flex="0 0 auto">
         {t`Definition not found`}
       </Badge>
     ))
     .with({ type: "unused" }, () => (
-      <Badge color="neutral" variant="light" size="sm">{t`No values`}</Badge>
+      <Badge
+        color="neutral"
+        variant="light"
+        flex="0 0 auto"
+      >{t`No values`}</Badge>
     ))
     .with({ type: "duplicate" }, ({ propertyLabel }) => (
-      <Badge color="warning" variant="light" size="sm">
+      <Badge color="warning" variant="light" flex="0 0 auto">
         {t`Looks like ${propertyLabel}`}
       </Badge>
     ))

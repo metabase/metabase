@@ -32,7 +32,6 @@ import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
 import { TableFiltering } from "./TableFiltering";
-import { TableHistoryVersions } from "./TableHistory";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
@@ -63,8 +62,6 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
-  const isHistoryTable =
-    structure.role != null && isRoleA(structure.role, "role/HistoryDimension");
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -107,9 +104,6 @@ const TableSectionBase = ({
             {isCustomPropertyTable && (
               <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
             )}
-            {isHistoryTable && (
-              <Tabs.Tab value="versions">{t`Versions`}</Tabs.Tab>
-            )}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
@@ -150,11 +144,6 @@ const TableSectionBase = ({
           {isCustomPropertyTable && (
             <Tabs.Panel value="properties">
               <TablePropertyList table={table} />
-            </Tabs.Panel>
-          )}
-          {isHistoryTable && (
-            <Tabs.Panel value="versions">
-              <TableHistoryVersions table={table} readOnly={readOnly} />
             </Tabs.Panel>
           )}
 

@@ -23,7 +23,3 @@ declare module "@codemirror/legacy-modes/mode/pug" {
 declare module "@codemirror/legacy-modes/mode/ruby" {
   export { ruby } from "../../../node_modules/@codemirror/legacy-modes/mode/ruby";
 }
-
-declare module "@codemirror/legacy-modes/mode/yaml" {
-  export { yaml } from "../../../node_modules/@codemirror/legacy-modes/mode/yaml";
-}

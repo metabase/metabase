@@ -1,26 +1,20 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Link } from "metabase/common/components/Link";
 import {
-  type CurrentRule,
   type HistoryBinding,
   type HistoryKind,
   type TableStructure,
-  countsDurableKeys,
   getHistoryKind,
   getHistoryKindOptions,
   getHistorySignalLabel,
-  useHistoryReview,
   useHistoryReviewStatus,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Badge, Button, Group, Loader, Radio, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { Badge, Button, Loader, Radio, Stack, Text } from "metabase/ui";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { countOf, getCheckDescription, getEntityNoun } from "./history-labels";
+import { countOf, getEntityNoun } from "./history-labels";
 
 type PointerKey = keyof Omit<HistoryBinding, "currentRowsOnly">;
 
@@ -47,37 +41,6 @@ const findField = (fields: Field[], fieldId: FieldId | null) =>
 
 const displayNameOf = (fields: Field[], fieldId: FieldId | null) =>
   findField(fields, fieldId)?.display_name ?? t`a column`;
-
-export function getCurrentRule(
-  structure: Pick<TableStructure, "history">,
-): CurrentRule {
-  if (structure.history.currentFlagFieldId != null) {
-    return "current-flag";
-  }
-  return structure.history.validToFieldId != null
-    ? "valid-to-is-null"
-    : "latest-per-key";
-}
-
-export function describeCurrentRule(
-  structure: Pick<TableStructure, "history">,
-  fields: Field[],
-) {
-  const {
-    currentFlagFieldId,
-    validToFieldId,
-    durableKeyFieldId,
-    validFromFieldId,
-  } = structure.history;
-  switch (getCurrentRule(structure)) {
-    case "current-flag":
-      return t`where ${displayNameOf(fields, currentFlagFieldId)} is true`;
-    case "valid-to-is-null":
-      return t`where ${displayNameOf(fields, validToFieldId)} is empty`;
-    case "latest-per-key":
-      return t`the latest row per ${displayNameOf(fields, durableKeyFieldId)}, by ${displayNameOf(fields, validFromFieldId)}`;
-  }
-}
 
 export function getTableHistoryKind(structure: TableStructure) {
   return getHistoryKind(structure.history.validToFieldId != null);
@@ -135,7 +98,6 @@ export function HistoryKindInput({
               key={option.value}
               value={option.value}
               label={option.label}
-              description={option.description}
               disabled={disabled}
             />
           ))}
@@ -157,43 +119,6 @@ export function HistoryKindInput({
           {t`Yes, that's right`}
         </Button>
       )}
-    </Stack>
-  );
-}
-
-export function CurrentRuleHint({
-  table,
-  structure,
-  fields,
-}: {
-  table: Table;
-  structure: TableStructure;
-  fields: Field[];
-}) {
-  const { isConfirmed } = useHistoryReview(table);
-  const description = describeCurrentRule(structure, fields);
-  if (getCurrentRule(structure) !== "latest-per-key") {
-    return (
-      <Text size="sm" c="text-secondary">
-        {t`Current version: ${description}.`}
-      </Text>
-    );
-  }
-  return (
-    <Stack gap={4}>
-      <Group gap="xs" wrap="nowrap" align="flex-start">
-        {!isConfirmed(structure) && (
-          <Badge color="warning" variant="light" flex="0 0 auto">
-            {t`Proposed`}
-          </Badge>
-        )}
-        <Text size="sm" c="text-secondary">
-          {t`Current version: ${description}.`}
-        </Text>
-      </Group>
-      <Text size="sm" c="text-secondary">
-        {t`If two rows share the latest time, which one is current still needs a decision.`}
-      </Text>
     </Stack>
   );
 }
@@ -233,13 +158,6 @@ export function SharedPointerNote({
 
 export function HistoryVersionsSummary({ table }: { table: Table }) {
   const status = useHistoryReviewStatus(table);
-  const { scdType } = useTableStructures().getTableStructure(table);
-  const versionsUrl = Urls.dataStudioData({
-    databaseId: table.db_id,
-    schemaName: table.schema,
-    tableId: table.id,
-    tab: "versions",
-  });
 
   if (status == null) {
     return null;
@@ -256,35 +174,9 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
 
   const { profile } = profileState;
   const noun = getEntityNoun(profile.durableKeyField);
-  const durableKeyCheck = profile.checks.find(
-    (check) => check.id === "durable-key",
-  );
-
   return (
-    <Stack gap="xs" py="xs">
-      <Text c="text-primary" fw="bold">
-        {t`${countOf(profile.entityCount, noun)} · ${profile.rowCount.toLocaleString()} records`}
-      </Text>
-      {durableKeyCheck?.status === "failed" && (
-        <Text size="sm" c="feedback-negative">
-          {getCheckDescription(durableKeyCheck, profile, noun)}
-        </Text>
-      )}
-      <Text size="sm" c="text-secondary">
-        {countsDurableKeys(scdType)
-          ? t`Counting ${noun.other} counts each one once, not every record.`
-          : t`Counts stay plain row counts.`}
-      </Text>
-      <Button
-        component={Link}
-        to={versionsUrl}
-        size="compact-sm"
-        variant="subtle"
-        w="fit-content"
-        px={0}
-      >
-        {t`Review versions`}
-      </Button>
-    </Stack>
+    <Text>
+      {t`${countOf(profile.entityCount, noun)} · ${profile.rowCount.toLocaleString()} records`}
+    </Text>
   );
 }

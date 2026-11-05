@@ -33,7 +33,6 @@ export const DATA_STUDIO_TABLE_METADATA_TABS = [
   "details",
   "field",
   "properties",
-  "versions",
   "segments",
   "measures",
 ] as const;

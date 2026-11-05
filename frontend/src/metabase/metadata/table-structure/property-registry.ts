@@ -107,7 +107,6 @@ export type RegistryProperty = ObservedProperty & {
   mergedFrom: string[];
   coverage: number;
   quality: number;
-  isSuggestedForPivot: boolean;
   signals: PropertySignal[];
 };
 
@@ -134,7 +133,6 @@ const DEFINITIONS_LIMIT = 2000;
 const TYPE_CONFORMANCE_THRESHOLD = 0.9;
 const CATEGORY_MAX_DISTINCT_VALUES = 30;
 const DUPLICATE_VALUE_OVERLAP = 0.5;
-const PIVOT_MIN_COVERAGE = 0.3;
 const SAMPLE_ROWS_LIMIT = 60;
 
 type RegistryStorage = Record<string, Record<string, PropertyOverrides>>;
@@ -671,14 +669,6 @@ function buildRegistry(
       mergedFrom: [],
       coverage,
       quality: coverage * conformingShare,
-      isSuggestedForPivot:
-        !isHidden &&
-        mergedInto == null &&
-        coverage >= PIVOT_MIN_COVERAGE &&
-        signals.every(
-          (signal) =>
-            signal.type !== "undefined" && signal.type !== "duplicate",
-        ),
       signals,
     };
   });

@@ -506,7 +506,6 @@ export function createWarehouse(): Database {
     name: "Warehouse",
     engine: "postgres",
     tables,
-    transforms_permissions: "write",
   });
 }
 
