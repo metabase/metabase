@@ -40,8 +40,6 @@ import {
 } from "../../PropertyDetailsPanel/property-labels";
 import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
-import { RecognitionPreview } from "./RecognitionPreview";
-
 type CustomPropertiesSectionProps = {
   table: Table;
   disabled: boolean;
@@ -66,7 +64,6 @@ export function CustomPropertiesSection({
       <Text size="sm" c="text-secondary">
         {t`Each row is one custom property value of a ${noun.singular}.`}
       </Text>
-      <RecognitionPreview table={table} resolved={resolved} />
       <DetailsTable>
         <DetailsRow
           label={t`Belongs to`}
