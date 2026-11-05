@@ -34,6 +34,46 @@ describe("hasColumnSettingsWidgets", () => {
 });
 
 describe("ColumnSettings", () => {
+  it("shows currency position only when labels appear in every table cell", async () => {
+    const column = createMockField({
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+    const value: ApiColumnSettings = {
+      number_style: "currency",
+      currency_in_header: true,
+      currency_position: "after",
+    };
+    const onChange = jest.fn();
+    const { rerender } = renderWithProviders(
+      <ColumnSettings
+        column={column}
+        value={value}
+        onChange={onChange}
+        extraData={{ forAdminSettings: true }}
+      />,
+    );
+    expect(screen.queryByText("Currency label position")).not.toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("radio", { name: "In every table cell" }),
+    );
+    expect(onChange).toHaveBeenCalledWith({
+      ...value,
+      currency_in_header: false,
+    });
+    rerender(
+      <ColumnSettings
+        column={column}
+        value={{ ...value, currency_in_header: false }}
+        onChange={onChange}
+        extraData={{ forAdminSettings: true }}
+      />,
+    );
+    expect(screen.getByText("Currency label position")).toBeVisible();
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeChecked();
+  });
+
   it("should allow a column to override the inherited currency position", async () => {
     const onChange = jest.fn();
     renderWithProviders(

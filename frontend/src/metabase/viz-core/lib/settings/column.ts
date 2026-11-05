@@ -333,27 +333,6 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (_column, settings) => settings.number_style !== "currency",
     readDependencies: ["number_style"],
   },
-  currency_position: {
-    get title() {
-      return t`Currency label position`;
-    },
-    widget: "radio",
-    getProps: (_column, settings) => ({
-      options: getCurrencyPositionOptions(),
-      value: getEffectiveCurrencyPosition(
-        settings.currency_style,
-        settings.currency_position,
-      ),
-      disabled: settings.currency_style === "name",
-      description:
-        settings.currency_style === "name"
-          ? t`Currency names always appear after the amount.`
-          : undefined,
-    }),
-    getDefault: getDefaultCurrencyPosition,
-    getHidden: (_column, settings) => settings.number_style !== "currency",
-    readDependencies: ["number_style", "currency_style"],
-  },
   currency_in_header: {
     get title() {
       return t`Where to display the unit of currency`;
@@ -378,6 +357,31 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       );
     },
     readDependencies: ["number_style"],
+  },
+  currency_position: {
+    get title() {
+      return t`Currency label position`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: getCurrencyPositionOptions(),
+      value: getEffectiveCurrencyPosition(
+        settings.currency_style,
+        settings.currency_position,
+      ),
+      disabled: settings.currency_style === "name",
+      description:
+        settings.currency_style === "name"
+          ? t`Currency names always appear after the amount.`
+          : undefined,
+    }),
+    getDefault: getDefaultCurrencyPosition,
+    getHidden: (_column, settings, extra) =>
+      settings.number_style !== "currency" ||
+      ((extra?.forAdminSettings === true ||
+        extra?.series?.[0]?.card.display === "table") &&
+        settings.currency_in_header === true),
+    readDependencies: ["number_style", "currency_style", "currency_in_header"],
   },
   number_separators: {
     // uses 1-2 character string to represent decimal and thousands separators

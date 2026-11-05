@@ -1,4 +1,5 @@
 import { mockSettings } from "__support__/settings";
+import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DatasetColumn,
@@ -44,6 +45,58 @@ describe("column settings", () => {
   describe("currency position inheritance", () => {
     afterEach(() => {
       mockSettings();
+    });
+
+    it("should inherit currency position and override one column without affecting another", () => {
+      mockSettings({
+        "custom-formatting": {
+          "type/Currency": { currency_position: "after" },
+        },
+      });
+      const cols = ["Euros", "Dollars"].map((name) =>
+        createMockColumn({
+          name,
+          base_type: "type/Float",
+          semantic_type: "type/Currency",
+        }),
+      );
+      const series = [createMockSingleSeries({}, { data: { cols } })];
+      const stored: VisualizationSettings = {
+        column_settings: {
+          '["name","Euros"]': {
+            currency: "EUR",
+            currency_in_header: false,
+            decimals: 0,
+          },
+          '["name","Dollars"]': {
+            currency: "USD",
+            currency_in_header: false,
+            decimals: 0,
+          },
+        },
+      };
+      const formatColumns = (settings: VisualizationSettings) => {
+        const computed = getComputedSettings(
+          columnSettings(),
+          series,
+          settings,
+        );
+        return cols.map((column) => formatNumber(2, computed.column?.(column)));
+      };
+
+      expect(formatColumns(stored)).toEqual(["2\u00a0€", "2\u00a0$"]);
+      expect(
+        formatColumns({
+          ...stored,
+          column_settings: {
+            ...stored.column_settings,
+            '["name","Dollars"]': {
+              ...stored.column_settings?.['["name","Dollars"]'],
+              currency_position: "before",
+            },
+          },
+        }),
+      ).toEqual(["2\u00a0€", "$2"]);
     });
 
     it("should default to before the amount", () => {
@@ -245,8 +298,13 @@ describe("column settings", () => {
         expect(hiddenById.number_style).toBe(false);
         expect(hiddenById.currency).toBe(false);
         expect(hiddenById.currency_style).toBe(false);
-        expect(hiddenById.currency_position).toBe(false);
+        expect(hiddenById.currency_position).toBe(true);
         expect(hiddenById.currency_in_header).toBe(false);
+      });
+
+      it("should show currency position when the currency is in every table cell", () => {
+        const hiddenById = getWidgetHiddenById({ currency_in_header: false });
+        expect(hiddenById.currency_position).toBe(false);
       });
 
       it("should hide the currency widgets when the percent style is selected", () => {
