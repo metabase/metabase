@@ -1241,7 +1241,8 @@
                                         attribution
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         {:api-any 1, :uses-any 2}
-                                        {:ignore-counts [:new :void]}))
+                                        {:ignore-counts [:new :void]}
+                                        {}))
         "untouched budgets (:same, :cfg-same, :dv-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
          ignores left; the empty unlimited policy (:empty) is kept and warned about; per-symbol fields report
@@ -1254,7 +1255,18 @@
                                         {:actual {:discouraged-var {:dv-new 1}}}
                                         {}
                                         {}
-                                        {:discouraged-var-counts [:dv-new]})))))
+                                        {:discouraged-var-counts [:dv-new]}
+                                        {}))))
+  (testing "a key other keys count under names them"
+    (is (= ["WARNING: :dv-x (also counts :dv-y) is over budget (1 recorded, 2 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-x`"]
+           (kondo-ratchet/change-report {:ignore-counts {}, :discouraged-var-counts {:dv-x 1}, :config-counts {}, :comment-exempt #{}}
+                                        {}
+                                        []
+                                        {:actual {:discouraged-var {:dv-x 2}}}
+                                        {}
+                                        {}
+                                        {}
+                                        {:dv-y :dv-x})))))
 
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"
