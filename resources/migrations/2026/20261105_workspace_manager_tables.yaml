@@ -326,3 +326,27 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_provisioning_connection_updated_by
             onDelete: SET NULL
+
+  - changeSet:
+      id: xzi1oq
+      author: escherize
+      comment: Index workspace.creator_id
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: b1k0bp
+      author: escherize
+      comment: Index workspace_provisioning_connection.updated_by
+      changes:
+        - createIndex:
+            tableName: workspace_provisioning_connection
+            indexName: idx_workspace_provisioning_connection_updated_by
+            columns:
+              - column:
+                  name: updated_by
