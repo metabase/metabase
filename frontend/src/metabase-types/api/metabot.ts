@@ -10,6 +10,7 @@ import type {
   DatabaseId,
   DatasetQuery,
   DraftTransform,
+  OpaqueDatasetQuery,
   PaginationRequest,
   PaginationResponse,
   ResearchPlanContext,
@@ -246,6 +247,23 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 ] as const;
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
+
+export type SuggestSummaryFormulaRequest = {
+  /** `aggregation` for Values, `expression` for the custom columns Rows and Columns group by. */
+  mode: "aggregation" | "expression";
+  /** What was typed into the summary well, e.g. `average order total`. */
+  prompt: string;
+  /** The MBQL 5 query. The formula can reference what's available at its last stage. */
+  dataset_query: OpaqueDatasetQuery;
+};
+
+export type SuggestSummaryFormulaResponse = {
+  /** Custom expression source without the leading `=`; `null` when nothing fits. */
+  expression: string | null;
+  name: string | null;
+  /** Set only when nothing fits. Other failures are HTTP errors. */
+  error: string | null;
+};
 
 export type MetabotFeedback = {
   message_id: string;
