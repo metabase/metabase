@@ -124,7 +124,8 @@
    :title             (deferred-tru "Site URL uses HTTPS")
    :description       (deferred-tru "Links in emails and embeds use the site URL.")
    :remediation       (deferred-tru "Set a Site URL that starts with https:.")
-   :docs-page         "operations-guide/security"
+   :docs-page         "configuring-metabase/environment-variables"
+   :docs-anchor       "mb_site_url"
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
@@ -140,7 +141,8 @@
    :title             (deferred-tru "All requests are redirected to HTTPS")
    :description       (deferred-tru "Without the redirect, people can open Metabase over plain HTTP.")
    :remediation       (deferred-tru "Turn on Redirect to HTTPS in Admin settings.")
-   :docs-page         "operations-guide/security"
+   :docs-page         "configuring-metabase/environment-variables"
+   :docs-anchor       "mb_redirect_all_requests_to_https"
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
@@ -155,6 +157,7 @@
    :description       (deferred-tru "SSO lets your identity provider enforce MFA.")
    :remediation       (deferred-tru "Turn on SAML, OIDC or JWT.")
    :docs-page         "people-and-groups/start"
+   :docs-anchor       "sso-for-metabase-pro-and-enterprise-plans"
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
@@ -187,7 +190,7 @@
    :title             (deferred-tru "Two-factor authentication is required")
    :description       (deferred-tru "A stolen password alone is enough to sign in.")
    :remediation       (deferred-tru "Require 2FA for password and LDAP login.")
-   :docs-page         "operations-guide/security"
+   :docs-page         "people-and-groups/two-factor-authentication"
    :requires-restart? false
    ;; Metabase 2FA covers password and LDAP login only, so the check is hidden when both are off.
    :applicable?       (fn []
@@ -205,7 +208,8 @@
    :title             (deferred-tru "All Users have limited permissions")
    :description       (deferred-tru "Everyone who signs in gets the permissions of All Users.")
    :remediation       (deferred-tru "Remove Curate on Our analytics from All Users.")
-   :docs-page         "permissions/start"
+   :docs-page         "permissions/introduction"
+   :docs-anchor       "key-points-regarding-permissions"
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
