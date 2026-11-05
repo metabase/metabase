@@ -284,19 +284,28 @@
   "Fires one :snowplow/ai_service_event named `event` for the turn in `tracking-opts`, with the envelope every
   Metabot event shares: the hashed license token, the request id in its hex form, source, user, session, profile.
   Fires only when :source and :request-id are present. `event-fields` carries what is the event's own:
-  :result, :duration-ms, :event-details. One envelope keeps the events of a turn joinable on request_id."
+  :result, :duration-ms, :event-details. One envelope keeps the events of a turn joinable on request_id.
+
+  Never throws: a report must not change the outcome of the turn it reports. The envelope reads settings
+  before `track-event!` and its own guard run, so a failure there is caught here, logged, and returns false,
+  the same contract as `track-event!`."
   [{:keys [request-id session-id source profile-id]} event event-fields]
-  (when (and (some? source)
-             (some? request-id))
-    (analytics.core/track-event! :snowplow/ai_service_event
-                                 (merge {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
-                                         :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
-                                         :source                        source
-                                         :event                         event
-                                         :user-id                       api/*current-user-id*
-                                         :session-id                    session-id
-                                         :profile                       (some-> profile-id name)}
-                                        event-fields))))
+  (boolean
+   (when (and (some? source)
+              (some? request-id))
+     (try
+       (analytics.core/track-event! :snowplow/ai_service_event
+                                    (merge {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                            :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                            :source                        source
+                                            :event                         event
+                                            :user-id                       api/*current-user-id*
+                                            :session-id                    session-id
+                                            :profile                       (some-> profile-id name)}
+                                           event-fields))
+       (catch Throwable e
+         (log/warnf e "Error sending %s ai_service_event" event)
+         false)))))
 
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.

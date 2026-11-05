@@ -8,6 +8,7 @@
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
@@ -2144,6 +2145,38 @@
                       (:data (first turn-events))))
               (is (= {"finish_reason" "error" "steps" 1}
                      (get-in (first turn-events) [:data "event_details"]))))))))))
+
+(deftest agent-turn-finished-report-never-throws-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
+    (mt/with-dynamic-fn-redefs [analytics.core/hashed-metabase-token-or-uuid
+                                (fn [] (throw (ex-info "settings store down" {})))]
+      (mt/with-log-level [metabase.metabot :fatal]
+        (testing "a turn that fails still ends in its own error part when the report throws"
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
+            (snowplow-test/with-fake-snowplow-collector
+              (let [parts (mt/as-admin
+                            (into [] (run-agent-loop {:messages      [{:role :user :content "test"}]
+                                                      :state         {}
+                                                      :context       {}
+                                                      :profile-id    :internal
+                                                      :tracking-opts {:session-id "00000000-0000-0000-0000-000000000008"}})))]
+                (is (= [:error] (map :type parts)))
+                (is (= "boom" (-> parts first :error :message)))
+                (is (empty? (snowplow-test/pop-event-data-and-user-id!)))))))
+        (testing "a turn that succeeds still ends in its finish part when the report throws"
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response [{:type :start :id "msg-1"}
+                                                                                            {:type :text :text "Done"}]))]
+            (snowplow-test/with-fake-snowplow-collector
+              (let [parts (mt/as-admin
+                            (into [] (run-agent-loop {:messages      [{:role :user :content "test"}]
+                                                      :state         {}
+                                                      :context       {}
+                                                      :profile-id    :internal
+                                                      :tracking-opts {:session-id "00000000-0000-0000-0000-000000000009"}})))]
+                (is (= {:type :finish :finish-reason :stop} (last parts)))
+                (is (not-any? #(= :error (:type %)) parts))
+                (is (empty? (snowplow-test/pop-event-data-and-user-id!)))))))))))
 
 (deftest token-usage-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
