@@ -66,6 +66,11 @@ export type ExpressionBarProps = {
   /** Pressing this key anywhere outside a text field puts the caret at the end of the bar. */
   focusKey?: string;
   /**
+   * Like the app's filter panel: with nothing in it and no focus, the bar takes
+   * no space. The focus key or `openExpressionBar` opens it.
+   */
+  isCollapsedWhenEmpty?: boolean;
+  /**
    * A bar inside another bar's trailing slot, like the summary's filters: no
    * frame of its own, no chart series in its chooser, and every valid edit
    * goes straight to `onChange`.
@@ -120,6 +125,7 @@ export function ExpressionBar({
   rowsFromNesting = 1,
   hasRoundOps = false,
   focusKey,
+  isCollapsedWhenEmpty,
   isNested = false,
   draftQuery,
   onDraftChange,
@@ -194,6 +200,12 @@ export function ExpressionBar({
   }, [ownError, onErrorChange]);
   const parenDepths = useMemo(() => getParenDepths(tokens), [tokens]);
   const isExpanded = hasFocus || isOpen || openPillCount > 0;
+  const isCollapsed =
+    isCollapsedWhenEmpty === true &&
+    tokens.length === 0 &&
+    (trailing == null || trailing === false) &&
+    text === "" &&
+    !isExpanded;
   const nesting = Math.max(
     0,
     ...tokens.map((token, index) =>
@@ -809,6 +821,7 @@ export function ExpressionBar({
           [S.barNotebook]: isInNotebook,
           [S.barNested]: isNested,
           [S.barRoundOps]: hasRoundOps,
+          [S.barCollapsed]: isCollapsed,
         })}
         onClick={handleBarClick}
         onMouseDown={(event) => {
@@ -996,6 +1009,13 @@ const SLOT_ATTR = "data-caret-slot";
 const BAR_ATTR = "data-expression-bar";
 const ENTER_AT_START_EVENT = "expression-bar-enter-start";
 const ENTER_AT_END_EVENT = "expression-bar-enter-end";
+
+/** Puts the caret at the end of the first bar inside `container`, opening a collapsed one. */
+export function openExpressionBar(container: HTMLElement | null) {
+  container
+    ?.querySelector(`[${BAR_ATTR}]`)
+    ?.dispatchEvent(new CustomEvent(ENTER_AT_END_EVENT));
+}
 const MOVE_CARET_EVENT = "expression-bar-move-caret";
 const PILL_ATTR = "data-pill-index";
 

@@ -49,7 +49,10 @@ import {
 import { rowCountQuery, rowsOnly } from "../chart-filters/drillMenu";
 import { ExpressionBar } from "../expression-bar-unified/ExpressionBar";
 
-import { ExpressionBar as RowsExpressionBar } from "./ExpressionBar";
+import {
+  ExpressionBar as RowsExpressionBar,
+  openExpressionBar,
+} from "./ExpressionBar";
 import BarS from "./ExpressionBar.module.css";
 
 const ROWS_STAGE = 0;
@@ -94,6 +97,7 @@ export function DataViewCanvas({
   const isLegendFilteredOnly = Lib.aggregations(query, ROWS_STAGE).length === 1;
   const isLegendReplaced = Legend != null && !hasSeries;
   const chartRef = useRef<HTMLDivElement>(null);
+  const dataZoneRef = useRef<HTMLDivElement>(null);
   const chartInset = useFirstFilterInset(
     chartRef,
     Legend != null || LegendWrap != null,
@@ -109,7 +113,17 @@ export function DataViewCanvas({
         canGoBack={question.canGoBack}
         onBack={question.back}
         settings={
-          !isCompact && (
+          isCompact ? (
+            // Like the app's Filter button: opens the bar, which starts out collapsed.
+            <Button
+              size="compact-md"
+              variant="default"
+              leftSection={<Icon name="filter" />}
+              onClick={() => openExpressionBar(dataZoneRef.current)}
+            >
+              {t`Filter`}
+            </Button>
+          ) : (
             <Switch
               label={t`Metabot available`}
               checked={hasLlm}
@@ -119,9 +133,9 @@ export function DataViewCanvas({
         }
       >
         {isCompact ? (
-          <>
+          <Box ref={dataZoneRef}>
             <DataZone query={query} onChange={onChange} />
-          </>
+          </Box>
         ) : (
           <Box pos="relative" className={S.dataZone} px="xl" py="md">
             {question.landed === "rows" && (
@@ -409,6 +423,7 @@ export function SummaryInBarDataZone({
       rowsFromNesting={2}
       hasRoundOps
       focusKey={focusKey}
+      isCollapsedWhenEmpty
       trailing={
         showsSummaryBar && (
           // The summary's filters as a bar of their own, so they can be or-ed too.

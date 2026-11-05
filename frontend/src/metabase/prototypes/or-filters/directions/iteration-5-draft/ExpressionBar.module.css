@@ -11,6 +11,16 @@
   cursor: text;
 }
 
+/* Empty and idle: out of the way like the app's filter panel, but still focusable. */
+.barCollapsed {
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border: none;
+  row-gap: 0;
+  overflow: hidden;
+}
+
 .barInvalid {
   box-shadow: inset 0 -2px 0 var(--mb-color-feedback-negative);
 }
