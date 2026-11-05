@@ -37,7 +37,7 @@
         (mt/with-dynamic-fn-redefs [driver.conn/database-workspace-provisioning-details (constantly login)]
           (f spec (driver.u/lib-database db-id)))))))
 
-(defn- check [database]
+(defn- check! [database]
   (try
     (driver/check-workspace-provisioning! :postgres database)
     (catch clojure.lang.ExceptionInfo e
@@ -51,16 +51,16 @@
                 :message     #(and (str/includes? % (format "ALTER ROLE \"%s\" CREATEROLE" (:user login)))
                                    (str/includes? % (format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                             db-name (:user login))))}
-               (check database))))
+               (check! database))))
      (testing "CREATEROLE alone: the 412 names only CREATE on the database"
        (exec! spec (format "ALTER ROLE %s CREATEROLE" (:user login)))
        (is (=? {:status-code 412
                 :message     #(and (not (str/includes? % "CREATEROLE"))
                                    (str/includes? % "GRANT CREATE ON DATABASE"))}
-               (check database))))
+               (check! database))))
      (testing "both: nil"
        (exec! spec (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user login)))
-       (is (nil? (check database)))))))
+       (is (nil? (check! database)))))))
 
 (deftest check-workspace-provisioning-ignores-search-path-test
   (testing "a pg_roles planted ahead of pg_catalog on the login's search_path cannot vouch for it"
@@ -75,4 +75,4 @@
               (format "GRANT SELECT ON planted.pg_roles TO %s" (:user login))
               (format "ALTER ROLE %s SET search_path = planted, pg_catalog" (:user login)))
        (is (=? {:status-code 412, :message #(str/includes? % "CREATEROLE")}
-               (check database)))))))
+               (check! database)))))))

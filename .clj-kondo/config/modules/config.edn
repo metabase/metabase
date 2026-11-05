@@ -4705,6 +4705,7 @@
    :api  #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.core}
    :uses #{api
            app-db
+           driver
            lib.schema
            models
            premium-features
