@@ -4,8 +4,9 @@
    [hooks.common]))
 
 (def enterprise-ns-key
-  "Var metadata naming the enterprise namespace an OSS `defenterprise` dispatches to. The ratchet tooling reads it
-  from kondo's analysis to count the enterprise var's ignores under the OSS one."
+  "Var metadata naming the enterprise namespace an OSS `defenterprise` dispatches to."
+  ;; mage.kondo-ratchet reads it from kondo's analysis to count the enterprise var's ignores under the OSS one. It
+  ;; keeps its own copy of the key, since babashka can't load clj-kondo.hooks-api.
   :metabase/enterprise-ns)
 
 (defn- with-enterprise-ns

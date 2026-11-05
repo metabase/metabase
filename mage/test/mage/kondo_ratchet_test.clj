@@ -579,12 +579,17 @@
              (kondo-ratchet/source-aliases [{:ns "a", :name "f", :imported-ns "b"}
                                             {:ns "b", :name "f", :imported-ns "c"}]
                                            '#{a/f c/f}))))
+    (testing "a cycle stops instead of looping"
+      (is (= {} (kondo-ratchet/source-aliases [{:ns "a", :name "f", :imported-ns "b"}
+                                               {:ns "b", :name "f", :imported-ns "a"}]
+                                              '#{a/f}))))
     (testing "a var whose source isn't configured counts under itself"
       (is (= {} (kondo-ratchet/source-aliases definitions '#{lib.core/g}))))))
 
 (deftest attribute-discouraged-alias-test
-  (testing "an ignore on a re-exported var counts under the var it re-exports"
-    (is (= {:lib.convert/->legacy-MBQL 1}
+  (testing "an ignore on a re-exported var counts under its source, and the alias comes back as ratchet keys"
+    (is (= {:actual  {:lib.convert/->legacy-MBQL 1}
+            :aliases {:lib.core/->legacy-MBQL :lib.convert/->legacy-MBQL}}
            (-> (kondo-ratchet/attribute-discouraged
                 {"d.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(lib/->legacy-MBQL q)\n"}
                 {:findings [{:filename "d.clj", :row 2, :col 2, :type "discouraged-var"}]
@@ -593,7 +598,8 @@
                             :var-definitions  [{:ns "metabase.lib.core", :name "->legacy-MBQL", :imported-ns "metabase.lib.convert"}]}}
                 []
                 {:discouraged-var #{'metabase.lib.convert/->legacy-MBQL 'metabase.lib.core/->legacy-MBQL}})
-               (get-in [:actual :discouraged-var]))))))
+               (update :actual :discouraged-var)
+               (select-keys [:actual :aliases]))))))
 
 (deftest parse-kondo-output-test
   (testing "a run that reported findings still parses"

@@ -110,6 +110,7 @@
 (def ^:private enterprise-ns-key
   "Var metadata the `defenterprise` kondo hook puts on an OSS definition, naming the enterprise namespace it
   dispatches to."
+  ;; a copy of hooks.metabase.premium-features.defenterprise/enterprise-ns-key, whose namespace babashka can't load
   :metabase/enterprise-ns)
 
 (defn source-aliases
@@ -212,8 +213,8 @@
 (defn- lint-with-ignores-disabled!
   "Kondo's JSON output, as [[attribute-discouraged]] takes it, for `contents` (a map of file to text) with
   their [[kondo-ratchet/discouragement-linters]] ignores disabled, plus its findings for the files as they
-  are: `[output baseline]`. The output's `:var-definitions` also cover `defining`, more files to lint as they
-  are."
+  are: `[output baseline]`.
+  `defining` names more files to lint as they are, for their `:var-definitions`."
   [contents defining]
   ;; Lints the files and, in the same run, copies with the discouraged ignores disabled, under a temp
   ;; directory. Kondo configures a copy the same as the original because every ns-group matches on namespace
