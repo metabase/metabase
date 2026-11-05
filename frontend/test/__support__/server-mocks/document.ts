@@ -1,6 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import type { Document, GetPublicDocument } from "metabase-types/api";
+import type {
+  CardId,
+  Dataset,
+  Document,
+  DocumentId,
+  GetPublicDocument,
+} from "metabase-types/api";
 
 export function setupDocumentEndpoints(doc: Document) {
   fetchMock.get(`path:/api/document/${doc.id}`, doc);
@@ -20,4 +26,23 @@ export function setupListPublicDocumentsEndpoint(
   publicDocuments: GetPublicDocument[],
 ) {
   fetchMock.get("path:/api/document/public", publicDocuments);
+}
+
+export function setupPublicDocumentEndpoints(uuid: string, doc: Document) {
+  fetchMock.get(`path:/api/public/document/${uuid}`, doc);
+}
+
+export function setupPublicDocumentCardQueryEndpoint(
+  uuid: string,
+  cardId: CardId,
+  dataset: Dataset,
+) {
+  fetchMock.get(`path:/api/public/document/${uuid}/card/${cardId}`, dataset);
+}
+
+export function setupDocumentErrorEndpoint(
+  id: DocumentId,
+  { status }: { status: number },
+) {
+  fetchMock.get(`path:/api/document/${id}`, { status });
 }
