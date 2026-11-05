@@ -274,15 +274,16 @@
                (map str)
                (fs/glob "modules/drivers" "*/{src,test}"))))
 
-(defn- namespace-file
-  "The file defining the namespace `ns-name`, or nil for one outside [[source-dirs]]."
+(defn- namespace-files
+  "The files defining the namespace `ns-name` in [[source-dirs]]: more than one when it has separate `.clj` and
+  `.cljs` files, and none for a namespace outside them."
   [ns-name]
   (let [path (-> (str ns-name) (str/replace "-" "_") (str/replace "." "/"))]
-    (first (for [dir   @source-dirs
-                 ext   [".clj" ".cljc" ".cljs"]
-                 :let  [file (str dir "/" path ext)]
-                 :when (fs/exists? file)]
-             file))))
+    (for [dir   @source-dirs
+          ext   [".clj" ".cljc" ".cljs"]
+          :let  [file (str dir "/" path ext)]
+          :when (fs/exists? file)]
+      file)))
 
 (defn- analyze-for-aliases!
   "Kondo's analysis of `files`, as [[alias-edges]] takes it."
@@ -294,11 +295,11 @@
                          false)))
 
 (defn alias-edges!
-  "[[alias-edges]] for the namespaces on each of `vars`' [[chain]]s of re-exports, found with `ns-file` (default
-  [[namespace-file]]) and analyzed by `analyze` (default [[analyze-for-aliases!]]), a function of a file seq."
+  "[[alias-edges]] for the namespaces on each of `vars`' [[chain]]s of re-exports, found with `ns-files` (default
+  [[namespace-files]]) and analyzed by `analyze` (default [[analyze-for-aliases!]]), a function of a file seq."
   ([vars]
-   (alias-edges! vars namespace-file analyze-for-aliases!))
-  ([vars ns-file analyze]
+   (alias-edges! vars namespace-files analyze-for-aliases!))
+  ([vars ns-files analyze]
    ;; Each pass lints the namespaces where a chain ends so far, so a chain is followed through vars that aren't
    ;; configured. The passes are separate from the attribution run, so its findings don't depend on them.
    (loop [linted #{}, edges {}]
@@ -306,7 +307,7 @@
                          (comp (map #(namespace (peek (chain edges %))))
                                (remove linted))
                          vars)
-           files   (into (sorted-set) (keep ns-file) pending)]
+           files   (into (sorted-set) (mapcat ns-files) pending)]
        (if (empty? files)
          edges
          (recur (into linted pending)

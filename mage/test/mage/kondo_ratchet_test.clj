@@ -613,7 +613,7 @@
                      (swap! linted conj (vec files))
                      {:var-definitions (mapcat (comp :var-definitions analyses) files)})]
       (is (= '{a/f b/f, b/f c/f}
-             (kondo-ratchet/alias-edges! '#{a/f c/f} #(str % ".clj") analyze)))
+             (kondo-ratchet/alias-edges! '#{a/f c/f} #(vector (str % ".clj")) analyze)))
       (is (= [["a.clj" "c.clj"] ["b.clj"]] @linted)))))
 
 (deftest attribute-discouraged-alias-test
