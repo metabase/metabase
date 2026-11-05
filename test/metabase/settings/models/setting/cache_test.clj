@@ -176,10 +176,17 @@
       (let [before  (#'setting.cache/cache*)
             _       (mdb/increment-app-db-unique-indentifier!)
             seen    (promise)
-            unbound (Thread. ^Runnable (fn [] (deliver seen (#'setting.cache/cache*))))]
+            unbound (Thread. ^Runnable (fn []
+                                         (deliver seen (try
+                                                         (#'setting.cache/cache*)
+                                                         (catch Throwable e
+                                                           e)))))]
         (.start unbound)
-        (.join unbound)
-        (is (not (identical? before @seen)))))))
+        (let [seen-cache (deref seen 10000 ::timed-out)]
+          (testing "the thread finished, did not throw, and saw a new cache"
+            (is (not (or (= ::timed-out seen-cache)
+                         (instance? Throwable seen-cache)
+                         (identical? before seen-cache))))))))))
 
 (deftest held-cache-state-test
   (testing "reads and writes through one cache state stay on its cache when the app DB this thread sees changes"
