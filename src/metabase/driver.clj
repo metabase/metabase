@@ -2228,8 +2228,10 @@
 ;;; per main schema. In every method below, `database` is the Lib metadata of a Database and `wsd` is a
 ;;; `workspace_database` row: `:id`, `:isolation_id` (from [[metabase.driver.util/random-isolation-id]], which names the
 ;;; workspace's warehouse objects), plus `:database_details` (`:user`, `:password`) once
-;;; [[workspace-isolation-details]] has filled it. Callers run every method inside
-;;; [[metabase.driver.connection/with-workspace-provisioning-connection]].
+;;; [[workspace-isolation-details]] has filled it. Names in the warehouse come from `:isolation_id` alone, never from
+;;; `:database_details`. The warehouse methods bind
+;;; [[metabase.driver.connection/with-workspace-provisioning-connection]] themselves, so they never run as the
+;;; database's main login.
 ;;;
 ;;; The warehouse methods return nil or throw. A failed precondition, checked before any warehouse change, throws
 ;;; `ex-info` with `{:status-code 412, :schema <schema>}` and a message naming the SQL that fixes it. A warehouse error
@@ -2255,7 +2257,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti init-workspace-isolation!
-  "Create the workspace user named in the `wsd`'s `:database_details`, with its password.
+  "Create the workspace user for the `wsd`'s `:isolation_id`, with the password in its `:database_details`.
 
   When a user of that name already exists, throws `ex-info` with `{:status-code 409, :workspace/cleanup? false}`
   and changes nothing. That user may belong to another workspace, so the caller must not run
@@ -2266,14 +2268,19 @@
 
 (defmulti add-workspace-schema!
   "Give the workspace user read access to `main-schema`, including tables created there later, and create the
-  `scratch` namespace with write access for it."
+  `scratch` namespace with write access for it. Throws unless `scratch` is one of the `wsd`'s scratch namespaces.
+
+  A precondition refuses a main schema whose tables PUBLIC can write to. Functions marked SECURITY DEFINER that
+  PUBLIC can execute run with their owner's privileges; the workspace user can call them like any other login. Revoke
+  EXECUTE from PUBLIC on them if workspaces must not."
   {:added "0.66.0" :arglists '([driver database wsd main-schema scratch])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti remove-workspace-schema!
   "Drop the `scratch` namespace and revoke the workspace user's access to `main-schema`, then verify that no grant on
-  `main-schema` is left. Idempotent, and does not use the password."
+  `main-schema` is left. Idempotent, and does not use the password. Throws unless `scratch` is one of the `wsd`'s
+  scratch namespaces."
   {:added "0.66.0" :arglists '([driver database wsd main-schema scratch])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

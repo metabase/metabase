@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
@@ -30,7 +31,8 @@
   the provisioning login fails."
   [spec]
   (exec! spec ["DROP SCHEMA IF EXISTS sales, fresh, pubcreate, pubwrite, nogrant, noselect, foreignowner, managed, loose CASCADE"])
-  (doseq [role ["mb_ws_test_etl" "mb_ws_test_loader" "mb_ws_test_other" "mb_ws_test_super" (:user provisioner)]]
+  (doseq [role ["mb_ws_test_etl" "mb_ws_test_loader" "mb_ws_test_other" "mb_ws_test_super" "mb_ws_test_pubwriter"
+                (:user provisioner)]]
     (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))
       (exec! spec [(format "DROP OWNED BY %s" role) (format "DROP ROLE %s" role)])))
   (exec! spec
@@ -63,6 +65,18 @@
           "CREATE TABLE pubwrite.audit (id int)"
           "ALTER TABLE pubwrite.audit OWNER TO mb_ws_test_etl"
           "GRANT INSERT ON pubwrite.audit TO PUBLIC"
+          (str "SET ROLE mb_ws_test_etl; "
+               "CREATE TABLE pubwrite.upd (id int); GRANT UPDATE ON pubwrite.upd TO PUBLIC; "
+               "CREATE TABLE pubwrite.del (id int); GRANT DELETE ON pubwrite.del TO PUBLIC; "
+               "CREATE TABLE pubwrite.trunc (id int); GRANT TRUNCATE ON pubwrite.trunc TO PUBLIC; "
+               "CREATE TABLE pubwrite.trig (id int); GRANT TRIGGER ON pubwrite.trig TO PUBLIC; "
+               "CREATE TABLE pubwrite.refs (id int); GRANT REFERENCES ON pubwrite.refs TO PUBLIC; "
+               "CREATE TABLE pubwrite.col (id int); GRANT UPDATE (id) ON pubwrite.col TO PUBLIC; "
+               "ALTER DEFAULT PRIVILEGES IN SCHEMA pubwrite GRANT INSERT ON TABLES TO PUBLIC; RESET ROLE")
+          "CREATE ROLE mb_ws_test_pubwriter NOLOGIN"
+          "CREATE TABLE pubwrite.pw (id int)"
+          "ALTER TABLE pubwrite.pw OWNER TO mb_ws_test_pubwriter"
+          "ALTER DEFAULT PRIVILEGES FOR ROLE mb_ws_test_pubwriter GRANT DELETE ON TABLES TO PUBLIC"
           "CREATE ROLE mb_ws_test_super SUPERUSER NOLOGIN"
           "CREATE SCHEMA managed AUTHORIZATION mb_ws_test_etl"
           "CREATE TABLE managed.t (id int)"
@@ -189,8 +203,9 @@
        (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
        (doseq [[schema message extra]
                [["pubcreate"    #"Run `REVOKE CREATE ON SCHEMA \"pubcreate\" FROM PUBLIC`" {}]
-                ["pubwrite"     #"Run `REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE \"pubwrite\".\"audit\" FROM PUBLIC;`"
-                 {:objects ["audit"]}]
+                ["pubwrite"     #"Run `REVOKE UPDATE \(\"id\"\) ON TABLE \"pubwrite\".\"col\" FROM PUBLIC; ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_pubwriter\" REVOKE DELETE ON TABLES FROM PUBLIC; ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_etl\" IN SCHEMA \"pubwrite\" REVOKE INSERT ON TABLES FROM PUBLIC; REVOKE INSERT ON TABLE \"pubwrite\".\"audit\" FROM PUBLIC; REVOKE DELETE ON TABLE \"pubwrite\".\"del\" FROM PUBLIC; REVOKE REFERENCES ON TABLE \"pubwrite\".\"refs\" FROM PUBLIC; REVOKE TRIGGER ON TABLE \"pubwrite\".\"trig\" FROM PUBLIC; REVOKE TRUNCATE ON TABLE \"pubwrite\".\"trunc\" FROM PUBLIC; REVOKE UPDATE ON TABLE \"pubwrite\".\"upd\" FROM PUBLIC;`"
+                 {:objects ["col.id" "database-wide default privileges for mb_ws_test_pubwriter"
+                            "default privileges for mb_ws_test_etl" "audit" "del" "refs" "trig" "trunc" "upd"]}]
                 ["nogrant"      #"run `GRANT USAGE ON SCHEMA \"nogrant\" TO \"mb_ws_test_provisioner\" WITH GRANT OPTION`" {}]
                 ["noselect"     #"run `GRANT SELECT ON ALL TABLES IN SCHEMA \"noselect\" TO \"mb_ws_test_provisioner\" WITH GRANT OPTION`"
                  {:objects ["secret"]}]
@@ -377,3 +392,182 @@
            (exec! spec ["SET ROLE mb_ws_test_etl; CREATE TABLE public.by_database_owner (id int); RESET ROLE"])
            (is (= [{:count 0}] (as-workspace-user wsd "SELECT count(*) FROM public.by_database_owner"))))
          (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd)))))))
+
+(deftest names-come-from-the-isolation-id-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (exec! spec ["CREATE SCHEMA _sales_archive AUTHORIZATION mb_ws_test_etl"])
+     (let [wsd     (new-wsd database 1014)
+           scratch (scratch-name database wsd 1 "sales")]
+       (testing "destroy ignores a missing or blank user in :database_details"
+         (doseq [details [nil {:user nil} {:user ""}]]
+           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database
+                                                                         (assoc wsd :database_details details)))))
+           (is (= "mb_ws_test_etl" (schema-owner spec "_sales_archive")))))
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (testing "add and remove refuse a scratch namespace that is not the workspace's own"
+         (doseq [f [driver/add-workspace-schema! driver/remove-workspace-schema!]]
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a scratch namespace"
+                                 (provisioning #(f :postgres database wsd "sales" "sales"))))
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a scratch namespace"
+                                 (provisioning #(f :postgres database (assoc-in wsd [:database_details :user] "mb_ws_test_etl")
+                                                   "sales" "mb_ws_test_etl_s1_sales")))))
+         (is (= "mb_ws_test_etl" (schema-owner spec "sales"))))
+       (testing "add and remove still work with the right scratch namespace"
+         (is (nil? (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" scratch))))
+         (is (nil? (provisioning #(driver/remove-workspace-schema! :postgres database wsd "sales" scratch)))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
+
+(deftest methods-bind-the-provisioning-scope-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd     (new-wsd database 1015)
+           scratch (scratch-name database wsd 1 "sales")]
+       (testing "outside any scope, the methods still run as the provisioning login"
+         (driver/init-workspace-isolation! :postgres database wsd)
+         (driver/add-workspace-schema! :postgres database wsd "sales" scratch)
+         (is (= (:user provisioner) (schema-owner spec scratch)))
+         (driver/destroy-workspace-isolation! :postgres database wsd)
+         (is (not (role-exists? spec (-> wsd :database_details :user)))))
+       (testing "without a provisioning login they fail closed and change nothing"
+         (mt/with-dynamic-fn-redefs [driver.conn/database-workspace-provisioning-details (constantly nil)]
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no workspace provisioning connection"
+                                 (driver/init-workspace-isolation! :postgres database wsd))))
+         (is (not (role-exists? spec (-> wsd :database_details :user)))))))))
+
+(deftest destroy-when-the-user-cannot-log-in-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd (new-wsd database 1016)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
+       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" db-name)
+                    (format "GRANT CONNECT ON DATABASE %s TO %s" db-name (:user provisioner))])
+       (testing "destroy skips DROP OWNED when the user cannot log in, and still drops the user"
+         (dotimes [_ 2]
+           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+           (is (not (role-exists? spec (-> wsd :database_details :user))))))))))
+
+(deftest destroy-logs-in-only-with-the-workspace-password-test
+  (testing "the details the workspace user logs in with carry no other credential"
+    (is (= {:host "h", :port 5432, :ssl true, :ssl-mode "verify-full", :user "ws", :password "pw"}
+           (#'postgres/workspace-user-details
+            {:host "h", :port 5432, :ssl true, :ssl-mode "verify-full", :user "provisioner", :password "p"
+             :ssl-use-client-auth true, :ssl-client-cert-value "c", :ssl-key-value "k", :ssl-key-password-value "kp"
+             :use-auth-provider true, :auth-provider :aws-iam}
+            "ws" "pw")))))
+
+(deftest destroy-scrubs-a-failed-login-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd      (new-wsd database 1017)
+           password (-> wsd :database_details :password)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (mt/with-log-messages-for-level [messages [metabase.driver.postgres :warn]]
+         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+                                     (fn [_driver details _f]
+                                       (throw (ex-info (str "login failed for " (:password details)) {})))]
+           (testing "a login that fails before connecting is skipped, and its error is logged without the password"
+             (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+             (is (not (role-exists? spec (-> wsd :database_details :user))))
+             (is (seq (messages)))
+             (is (not-any? #(str/includes? (str (:message %) " " (ex-message (:e %))) password) (messages))))))))))
+
+(deftest drop-owned-names-the-workspace-user-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [[wsd other] (mapv #(new-wsd database %) [1018 1019])
+           kept        (scratch-name database other 1 "sales")]
+       (doseq [w [wsd other]]
+         (provisioning #(driver/init-workspace-isolation! :postgres database w)))
+       (provisioning #(driver/add-workspace-schema! :postgres database other "sales" kept))
+       (testing "a login that resolves to the provisioning login drops none of its objects"
+         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+                                     (fn [driver details f]
+                                       (f (sql-jdbc.conn/connection-details->spec driver (merge details provisioner))))]
+           (is (thrown-with-msg? java.sql.SQLException #"permission denied to drop objects"
+                                 (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd)))))
+         (is (= (:user provisioner) (schema-owner spec kept))))
+       (doseq [w [wsd other]]
+         (provisioning #(driver/destroy-workspace-isolation! :postgres database w)))))))
+
+(defn- advisory-lock-held?
+  "Whether a session other than `spec`'s holds the transaction advisory lock for `lock-key`."
+  [spec lock-key]
+  (boolean (seq (jdbc/query spec [(str "SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted "
+                                       "AND pid <> pg_backend_pid() "
+                                       "AND objid = (hashtext(?)::bigint & 4294967295)::oid")
+                                  lock-key]))))
+
+(defn- do-holding-advisory-lock!
+  "Holds the advisory lock `lock-key` in its own transaction while `(f)` runs."
+  [spec lock-key f]
+  (jdbc/with-db-transaction [conn spec]
+    (jdbc/query conn ["SELECT pg_advisory_xact_lock(hashtext(?)) AS locked" lock-key])
+    (f)))
+
+(deftest destroy-locks-main-schemas-in-sorted-order-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd  (new-wsd database 1020)
+           user (-> wsd :database_details :user)]
+       ;; `accounts` sorts before `sales`, but its grants are not default privileges, which the catalog lists first
+       (exec! spec [(format "SET ROLE %s; CREATE SCHEMA accounts; CREATE TABLE accounts.t (id int); RESET ROLE"
+                            (:user provisioner))])
+       ;; with the password, DROP OWNED takes the locks first; without it, the transaction that drops the user does
+       (doseq [[label w] [["with the password" wsd] ["without the password" (without-password wsd)]]]
+         (testing (str "destroy " label " waits for the lock on each main schema, taking them in sorted order")
+           (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+           (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
+           (exec! spec [(format "SET ROLE %s; GRANT USAGE ON SCHEMA accounts TO %s; GRANT SELECT ON accounts.t TO %s; RESET ROLE"
+                                (:user provisioner) user user)])
+           (when (= w wsd)
+             (is (= [0] (as-workspace-user wsd "CREATE TABLE loose.made_by_workspace (id int)"))))
+           (let [destroyed (atom nil)]
+             (do-holding-advisory-lock!
+              spec "mb__isolation:sales"
+              (fn []
+                (reset! destroyed (future (provisioning #(driver/destroy-workspace-isolation! :postgres database w))))
+                (Thread/sleep 1000)
+                (is (not (realized? @destroyed)))
+                (is (advisory-lock-held? spec "mb__isolation:accounts"))
+                (when (= w wsd)
+                  (testing "DROP OWNED waits too"
+                    (is (seq (jdbc/query spec ["SELECT 1 FROM pg_class WHERE relname = 'made_by_workspace'"])))))))
+             (is (nil? (deref @destroyed 30000 :timed-out)))
+             (is (not (role-exists? spec user))))))))))
+
+(deftest init-waits-for-the-role-lock-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd  (new-wsd database 1021)
+           user (-> wsd :database_details :user)]
+       (testing "init takes a lock on the role name, so a concurrent init sees the role and returns the 409"
+         (let [init (atom nil)]
+           (do-holding-advisory-lock!
+            spec (str "mb__isolation-role:" user)
+            (fn []
+              (reset! init (future (try (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+                                        (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+              (Thread/sleep 1000)
+              (is (not (realized? @init)))
+              (exec! spec [(format "CREATE ROLE %s" user)])))
+           (is (= {:status-code 409, :workspace/cleanup? false, :user user} (deref @init 30000 :timed-out)))))
+       (exec! spec [(format "DROP ROLE %s" user)])))))
+
+(deftest default-privilege-owners-grantable-and-not-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (exec! spec ["CREATE TABLE managed.u (id int)" "ALTER TABLE managed.u OWNER TO mb_ws_test_other"
+                  (format "GRANT SELECT ON managed.u TO %s WITH GRANT OPTION" (:user provisioner))])
+     (let [wsd (new-wsd database 1022)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (testing "a 412 with both kinds of owner gives the GRANT for one and no GRANT for the superuser"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/add-workspace-schema! :postgres database wsd "managed"
+                                                                           (scratch-name database wsd 1 "managed")))))]
+           (is (= ["mb_ws_test_other" "mb_ws_test_super"] (:owners (ex-data e))))
+           (is (str/includes? (ex-message e) "Run `GRANT \"mb_ws_test_other\" TO \"mb_ws_test_provisioner\";`"))
+           (is (str/includes? (ex-message e) "mb_ws_test_super: superuser role(s), which only a superuser can grant"))
+           (is (not (str/includes? (ex-message e) "GRANT \"mb_ws_test_super\"")))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
