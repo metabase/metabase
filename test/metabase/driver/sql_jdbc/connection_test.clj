@@ -990,10 +990,11 @@
 
 (deftest caching-a-pool-records-its-checkout-database-test
   (testing "the pool, its details hash and its checkout database are recorded in one write"
-    (let [cache-key [Integer/MAX_VALUE :default]
-          pool-spec {:datasource                          (reify com.mchange.v2.c3p0.PooledDataSource
-                                                            (getIdentityToken [_] "cached-pool-token"))
-                     ::sql-jdbc.conn/driver+database [:h2 {:id Integer/MAX_VALUE}]}]
+    (let [cache-key   [Integer/MAX_VALUE :default]
+          data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                        (getIdentityToken [_] "cached-pool-token"))
+          pool-spec   {:datasource                     data-source
+                       ::sql-jdbc.conn/driver+database [:h2 {:id Integer/MAX_VALUE}]}]
       (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [_id _spec] nil)]
         (try
           (#'sql-jdbc.conn/set-canonical-pool! cache-key 42 pool-spec)
