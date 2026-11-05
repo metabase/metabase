@@ -518,6 +518,7 @@
         model-id 101
         table-based-metric-id 102
         model-based-metric-id 103
+        native-metric-id 104
         base-card {:name        "Sum of Cans"
                    :database-id (meta/id)
                    :table-id    (meta/id :venues)
@@ -529,11 +530,18 @@
                        (lib/breakout (meta/field-metadata :venues :latitude))
                        (lib/breakout (meta/field-metadata :venues :longitude))
                        lib.convert/->legacy-MBQL)}
+        native-query (-> (lib/native-query meta/metadata-provider "SELECT * FROM venues")
+                         lib.convert/->legacy-MBQL)
         base-mp (lib.tu/mock-metadata-provider
                  meta/metadata-provider
                  {:cards [(assoc base-card :id question-id           :type :question)
                           (assoc base-card :id model-id              :type :model)
-                          (assoc base-card :id table-based-metric-id :type :metric)]})
+                          (assoc base-card :id table-based-metric-id :type :metric)
+                          {:id native-metric-id
+                           :name "Native metric"
+                           :database-id (meta/id)
+                           :dataset-query native-query
+                           :type :metric}]})
         mp (lib.tu/mock-metadata-provider
             base-mp
             {:cards [{:id          model-based-metric-id
@@ -556,6 +564,12 @@
                           [:field {} (meta/id :venues :latitude)]
                           [:field {} (meta/id :venues :longitude)]]}]}
             (lib/query base-mp (lib.metadata/card base-mp table-based-metric-id))))
+    (testing "native metric cards keep their native stage instead of receiving MBQL clauses"
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages [{:lib/type :mbql.stage/native
+                         :native "SELECT * FROM venues"}]}
+              (lib/query base-mp (lib.metadata/card base-mp native-metric-id)))))
     (is (=? {:lib/type :mbql/query
              :database (meta/id)
              :stages
