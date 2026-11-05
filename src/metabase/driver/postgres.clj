@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
    [metabase.driver.sql :as driver.sql]
@@ -29,7 +30,6 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1545,7 +1545,7 @@
 (defn- quote-role [s] (sql.u/quote-name :postgres :field s))
 
 (defn- workspace-user-name [wsd]
-  (driver.u/workspace-isolation-user-name (driver.u/instance-slug (system/site-uuid)) (:id wsd)))
+  (driver.u/workspace-isolation-user-name (:isolation_id wsd)))
 
 (defmethod driver/workspace-isolation-details :postgres
   [_driver _database wsd]
@@ -1589,7 +1589,14 @@
   (let [{:keys [user password]} (:database_details wsd)]
     (run-workspace-ddl!
      database [password]
-     (constantly [(format "CREATE USER %s" (quote-role user))])
+     (fn [conn]
+       (jdbc/query conn ["SELECT pg_advisory_xact_lock(hashtext(?)) AS locked" (str "mb__isolation-role:" user)])
+       (when (role-exists? conn user)
+         (throw (ex-info (format (str "The warehouse already has a role named %s. It may belong to another "
+                                      "workspace, so it was left unchanged.")
+                                 (quote-role user))
+                         {:status-code 409, :workspace/cleanup? false, :user user})))
+       [(format "CREATE USER %s" (quote-role user))])
      (fn [conn]
        ;; pgjdbc turns the password into a SCRAM verifier on the client, so the password itself never reaches the
        ;; server, where a failed statement, or any DDL under log_statement=ddl, is written to the log in full.
@@ -1614,6 +1621,26 @@
      (format "Schema %s grants CREATE to PUBLIC. Run `REVOKE CREATE ON SCHEMA %s FROM PUBLIC` and retry."
              (quote-schema schema) (quote-schema schema))
      {})))
+
+(defn- check-no-public-writes!
+  "The workspace user can write to a table that grants a write privilege to PUBLIC, and no REVOKE from the workspace
+  user takes that back."
+  [conn schema]
+  (when-let [tables (seq (map :object (jdbc/query conn [(str "SELECT DISTINCT c.relname AS object FROM pg_class c "
+                                                             "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                                                             "CROSS JOIN LATERAL aclexplode(c.relacl) a "
+                                                             "WHERE n.nspname = ? AND a.grantee = 0 AND a.privilege_type "
+                                                             "IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE') "
+                                                             "ORDER BY c.relname")
+                                                        schema])))]
+    (precondition-failed!
+     schema
+     (format "%d table(s) in schema %s grant a write privilege to PUBLIC: %s. Run `%s` and retry."
+             (count tables) (quote-schema schema) (str/join ", " tables)
+             (str/join " " (for [table tables]
+                             (format "REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE %s.%s FROM PUBLIC;"
+                                     (quote-schema schema) (sql.u/quote-name :postgres :table table)))))
+     {:objects (vec tables)})))
 
 (defn- check-usage-grant-option!
   "Without USAGE WITH GRANT OPTION, `GRANT USAGE ON SCHEMA` succeeds with a warning and grants nothing."
@@ -1659,7 +1686,8 @@
                          "d AS (SELECT DISTINCT CASE WHEN pg_get_userbyid(role) = 'pg_database_owner' "
                          "      THEN (SELECT datdba FROM pg_database WHERE datname = current_database()) "
                          "      ELSE role END AS role FROM r) "
-                         "SELECT pg_get_userbyid(role) AS owner, pg_has_role(current_user, role, 'MEMBER') AS member "
+                         "SELECT pg_get_userbyid(role) AS owner, pg_has_role(current_user, role, 'MEMBER') AS member, "
+                         "       (SELECT rolsuper FROM pg_roles WHERE oid = role) AS superuser "
                          "FROM d ORDER BY owner")
                     schema]))
 
@@ -1667,14 +1695,24 @@
   "`ALTER DEFAULT PRIVILEGES FOR ROLE` needs membership in the role, and without it the workspace user would not see
   tables that role creates later."
   [login schema owners]
-  (when-let [missing (seq (map :owner (remove :member owners)))]
-    (precondition-failed!
-     schema
-     (format (str "The provisioning login is not a member of %d role(s) that own or can create objects in schema %s: "
-                  "%s. Run `%s` and retry.")
-             (count missing) (quote-schema schema) (str/join ", " missing)
-             (str/join " " (map #(format "GRANT %s TO %s;" (quote-role %) (quote-role login)) missing)))
-     {:owners (vec missing)})))
+  (when-let [missing (seq (remove :member owners))]
+    (let [{grantable false, superusers true} (group-by (comp boolean :superuser) missing)]
+      (precondition-failed!
+       schema
+       (str (format "The provisioning login is not a member of %d role(s) that own or can create objects in schema %s: %s."
+                    (count missing) (quote-schema schema) (str/join ", " (map :owner missing)))
+            (when (seq grantable)
+              (format " Run `%s` and retry."
+                      (str/join " " (for [{:keys [owner]} grantable]
+                                      (format "GRANT %s TO %s;" (quote-role owner) (quote-role login))))))
+            (when (seq superusers)
+              ;; granting a superuser role takes a superuser, which managed services such as Amazon RDS reserve to
+              ;; themselves (rdsadmin): suggesting the GRANT there would name SQL that cannot run
+              (format (str " %s: superuser role(s), which only a superuser can grant, and which managed services "
+                           "reserve so that nobody can (such as rdsadmin on Amazon RDS). Have another role own the "
+                           "objects in schema %s, or use a provisioning login that is a member of these roles.")
+                      (str/join ", " (map :owner superusers)) (quote-schema schema))))
+       {:owners (mapv :owner missing)}))))
 
 (defn- add-workspace-schema-statements [user main-schema scratch default-privilege-roles]
   (let [user (quote-role user)
@@ -1698,6 +1736,7 @@
        (let [login  (:current_user (first (jdbc/query conn ["SELECT current_user"])))
              owners (table-creators conn main-schema)]
          (check-no-public-create! conn main-schema)
+         (check-no-public-writes! conn main-schema)
          (check-usage-grant-option! conn login main-schema)
          (check-select-grant-option! conn login main-schema)
          (check-default-privilege-owners! login main-schema owners)
@@ -1761,9 +1800,25 @@
                                  (str/join "; " (map #(revoke-statement user %) left)))
                          {:schema main-schema})))))))
 
+(defn- drop-owned-as-workspace-user!
+  "As the workspace user itself, drop everything it owns and every privilege granted to it in this database: tables it
+  made outside scratch through a PUBLIC grant (such as `public` before Postgres 15) would otherwise make `DROP USER`
+  fail. Runs only when the user exists and its password is known."
+  [database user password]
+  (when (and password (role-exists? (sql-jdbc.conn/db->pooled-connection-spec database) user))
+    (try
+      (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+       :postgres
+       (merge (driver.conn/effective-details database) {:user user, :password password})
+       ;; names the user rather than CURRENT_USER, so a connection that resolved to another login drops nothing
+       (fn [spec] (jdbc/execute! spec [(format "DROP OWNED BY %s" (quote-role user))])))
+      (catch Throwable t
+        (throw (driver.u/scrub-exceptions t [password]))))))
+
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database wsd]
-  (let [user (-> wsd :database_details :user)]
+  (let [{:keys [user password]} (:database_details wsd)]
+    (drop-owned-as-workspace-user! database user password)
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
      (fn [conn]

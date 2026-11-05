@@ -15,7 +15,8 @@ title: Driver interface changelog
   inside the new `:workspace-provisioning` connection type
   (`metabase.driver.connection/with-workspace-provisioning-connection`), which throws when the database has no
   provisioning login. A driver that implements them reports the new `:workspace` feature. Postgres implements them;
-  Redshift inherits the Postgres methods but reports `:workspace` false.
+  Redshift inherits the Postgres methods but reports `:workspace` false. Workspace users and scratch namespaces are named for
+  the `wsd`'s `:isolation_id`, from `metabase.driver.util/random-isolation-id`.
 
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,

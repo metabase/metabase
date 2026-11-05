@@ -2226,14 +2226,16 @@
 
 ;;; A workspace gives one warehouse user read access to some main schemas and write access to one scratch namespace
 ;;; per main schema. In every method below, `database` is the Lib metadata of a Database and `wsd` is a
-;;; `workspace_database` row: `:id`, plus `:database_details` (`:user`, `:password`) once
+;;; `workspace_database` row: `:id`, `:isolation_id` (from [[metabase.driver.util/random-isolation-id]], which names the
+;;; workspace's warehouse objects), plus `:database_details` (`:user`, `:password`) once
 ;;; [[workspace-isolation-details]] has filled it. Callers run every method inside
 ;;; [[metabase.driver.connection/with-workspace-provisioning-connection]].
 ;;;
 ;;; The warehouse methods return nil or throw. A failed precondition, checked before any warehouse change, throws
 ;;; `ex-info` with `{:status-code 412, :schema <schema>}` and a message naming the SQL that fixes it. A warehouse error
 ;;; is rethrown through [[metabase.driver.util/batch-exception]] and [[metabase.driver.util/scrub-exceptions]]. Drivers
-;;; do not clean up after a failure: the caller runs [[remove-workspace-schema!]] or [[destroy-workspace-isolation!]].
+;;; do not clean up after a failure: the caller runs [[remove-workspace-schema!]] or [[destroy-workspace-isolation!]],
+;;; unless the error's ex-data has `:workspace/cleanup? false`.
 ;;;
 ;;; A driver that implements them reports `(database-supports? driver :workspace database)`.
 
@@ -2253,7 +2255,11 @@
   :hierarchy #'hierarchy)
 
 (defmulti init-workspace-isolation!
-  "Create the workspace user named in the `wsd`'s `:database_details`, with its password."
+  "Create the workspace user named in the `wsd`'s `:database_details`, with its password.
+
+  When a user of that name already exists, throws `ex-info` with `{:status-code 409, :workspace/cleanup? false}`
+  and changes nothing. That user may belong to another workspace, so the caller must not run
+  [[destroy-workspace-isolation!]] after this error."
   {:added "0.66.0" :arglists '([driver database wsd])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -2273,8 +2279,9 @@
   :hierarchy #'hierarchy)
 
 (defmulti destroy-workspace-isolation!
-  "Drop every scratch namespace of `wsd`, revoke every grant left to the workspace user, and drop the user. Idempotent,
-  and does not use the password."
+  "Drop every scratch namespace of `wsd`, revoke every grant left to the workspace user, and drop the user. Idempotent.
+  With the password in the `wsd`'s `:database_details`, it also drops what the workspace user created outside its
+  scratch namespaces; without it (a crashed create), it still drops everything above."
   {:added "0.66.0" :arglists '([driver database wsd])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

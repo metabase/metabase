@@ -1089,22 +1089,24 @@
       {:exp "nope"})))
 
 (deftest ^:parallel workspace-isolation-names-test
-  (testing "the instance slug is the first character of each section of the site UUID"
-    (is (= "ab12c" (driver.u/instance-slug "a0000000-b000-1000-2000-c00000000000"))))
-  (testing "the user name is mb__isolation_<slug>_<wsd-id>"
-    (is (= "mb__isolation_ab12c_17" (driver.u/workspace-isolation-user-name "ab12c" 17))))
+  (testing "the user name is mb__isolation_<isolation-id>"
+    (is (= "mb__isolation_ab2c3d4e" (driver.u/workspace-isolation-user-name "ab2c3d4e"))))
+  (testing "anything but 8 lower-case base32 characters is refused"
+    (doseq [bad [nil "" "ab2c3d4" "ab2c3d4ef" "AB2C3D4E" "ab2c3d41" "ab2c3d4_" 17]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid workspace isolation id"
+                            (driver.u/workspace-isolation-user-name bad)))))
   (testing "the scratch namespace is <user>_s<schema-id>_<main>"
-    (is (= "mb__isolation_ab12c_17_s42_sales"
-           (driver.u/workspace-scratch-namespace-name "mb__isolation_ab12c_17" 42 "sales" 63))))
+    (is (= "mb__isolation_ab2c3d4e_s42_sales"
+           (driver.u/workspace-scratch-namespace-name "mb__isolation_ab2c3d4e" 42 "sales" 63))))
   (testing "characters outside [A-Za-z0-9] in the main schema become _"
-    (is (= "mb__isolation_ab12c_17_s42_Sales_EU_2024__"
-           (driver.u/workspace-scratch-namespace-name "mb__isolation_ab12c_17" 42 "Sales-EU.2024 ü" 63))))
+    (is (= "mb__isolation_ab2c3d4e_s42_Sales_EU_2024__"
+           (driver.u/workspace-scratch-namespace-name "mb__isolation_ab2c3d4e" 42 "Sales-EU.2024 ü" 63))))
   (testing "the main schema is cut to fit the length limit"
     (let [main (apply str (repeat 100 "m"))]
       (doseq [limit [63 64]]
-        (let [scratch (driver.u/workspace-scratch-namespace-name "mb__isolation_ab12c_17" 42 main limit)]
+        (let [scratch (driver.u/workspace-scratch-namespace-name "mb__isolation_ab2c3d4e" 42 main limit)]
           (is (= limit (count scratch)))
-          (is (str/starts-with? scratch "mb__isolation_ab12c_17_s42_mmm")))))))
+          (is (str/starts-with? scratch "mb__isolation_ab2c3d4e_s42_mmm")))))))
 
 (deftest ^:parallel random-workspace-password-test
   (let [passwords (repeatedly 200 driver.u/random-workspace-password)]
@@ -1116,6 +1118,26 @@
         (is (re-find #"[0-9]" password))))
     (testing "each call returns a new password"
       (is (= 200 (count (set passwords)))))))
+
+(deftest ^:parallel random-isolation-id-test
+  (let [ids (repeatedly 200 driver.u/random-isolation-id)]
+    (testing "8 lower-case base32 characters, accepted as a user name"
+      (doseq [id ids]
+        (is (re-matches #"[a-z2-7]{8}" id))
+        (is (= (str "mb__isolation_" id) (driver.u/workspace-isolation-user-name id)))))
+    (testing "each call returns a new id"
+      (is (= 200 (count (set ids)))))))
+
+(deftest random-isolation-id-uses-secure-random-test
+  (testing "characters come from the SecureRandom generator"
+    (let [indexes (atom (cycle [0 31 1 30]))
+          stub    (proxy [java.security.SecureRandom] []
+                    (nextInt [_bound]
+                      (let [[i] @indexes]
+                        (swap! indexes rest)
+                        (int i))))]
+      (with-redefs [driver.u/secure-random stub]
+        (is (= "a7b6a7b6" (driver.u/random-isolation-id)))))))
 
 (deftest random-workspace-password-uses-secure-random-test
   (testing "characters come from the SecureRandom generator"

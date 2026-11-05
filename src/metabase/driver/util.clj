@@ -1016,17 +1016,28 @@
 ;; Do not change this prefix: it is in the names of workspace users and scratch namespaces in customer warehouses.
 (def ^:private workspace-isolation-prefix "mb__isolation_")
 
-(defn instance-slug
-  "The first character of each `-`-separated section of `site-uuid`, which tells apart workspaces made by different
-  Metabase instances on one warehouse."
-  [site-uuid]
-  (apply str (map first (str/split site-uuid #"-"))))
+(defonce ^:private ^java.security.SecureRandom secure-random
+  (java.security.SecureRandom.))
+
+(def ^:private isolation-id-alphabet
+  "Lower-case base32 (RFC 4648), so an isolation id needs no quoting and folds to itself."
+  "abcdefghijklmnopqrstuvwxyz234567")
+
+(defn random-isolation-id
+  "A new isolation id: 8 random lower-case base32 characters (40 bits) from `SecureRandom`. The caller makes one when it
+  creates a `workspace_database` row and stores it there as `:isolation_id`; it names the row's workspace user and
+  scratch namespaces in the warehouse."
+  []
+  (apply str (repeatedly 8 #(.charAt ^String isolation-id-alphabet
+                                     (.nextInt secure-random (count isolation-id-alphabet))))))
 
 (defn workspace-isolation-user-name
-  "The workspace user name for the `workspace_database` row `wsd-id` on the instance with slug `slug`:
-  `mb__isolation_<slug>_<wsd-id>`."
-  [slug wsd-id]
-  (str workspace-isolation-prefix slug "_" wsd-id))
+  "The workspace user name for `isolation-id`, from [[random-isolation-id]]: `mb__isolation_<isolation-id>`. Throws
+  on anything else, since destroying a workspace drops every schema whose name starts with this user name."
+  [isolation-id]
+  (when-not (and (string? isolation-id) (re-matches #"[a-z2-7]{8}" isolation-id))
+    (throw (ex-info (str "Invalid workspace isolation id: " (pr-str isolation-id)) {:isolation-id isolation-id})))
+  (str workspace-isolation-prefix isolation-id))
 
 (defn workspace-scratch-namespace-name
   "The scratch namespace for main schema `main` in `workspace_schema` row `schema-id`:
@@ -1039,9 +1050,6 @@
 
 (def ^:private workspace-password-alphabet
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
-
-(defonce ^:private ^java.security.SecureRandom secure-random
-  (java.security.SecureRandom.))
 
 (defn random-workspace-password
   "A 32-character password drawn from `[A-Za-z0-9]` by `SecureRandom`, holding at least one upper-case letter, one
