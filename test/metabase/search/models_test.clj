@@ -163,6 +163,16 @@
         (is (= 0 (indexed-count "dataset" card-id)))
         (is (= 0 (indexed-count "action" action-id)))))))
 
+(deftest database-delete-reconciles-despite-a-failed-purge-test
+  (testing "when purging a deleted database's cards throws, its cascaded documents are still reconciled"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}     {}
+                     :model/Card     {card-id :id}   {:name "Db Failed Purge Model", :type :model, :database_id db-id}
+                     :model/Action   {action-id :id} {:name "Db Failed Purge Action", :model_id card-id, :type :query}]
+        (mt/with-dynamic-fn-redefs [search/delete! (fn [_model _ids] (throw (ex-info "purge failed" {})))]
+          (t2/delete! :model/Database :id db-id))
+        (is (= 0 (indexed-count "action" action-id)))))))
+
 (deftest unrelated-cascade-documents-are-not-purged-test
   (testing "deleting one model card purges its action and leaves another card's action alone"
     (search.tu/with-appdb-search-if-available-without-fallback
