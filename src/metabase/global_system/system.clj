@@ -13,6 +13,7 @@
   (:require
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc]
+   [metabase.util :as u]
    [weavejester.dependency :as dep])
   (:import
    (clojure.lang IDeref)
@@ -290,14 +291,7 @@
    Once all have run, throws an ex-info whose `:failures` holds each component key with its exception, and whose
    cause is the first failure, with the others attached to it as suppressed exceptions."
   [handles]
-  (let [failures (into []
-                       (keep (fn [handle]
-                               (try
-                                 (stop! handle)
-                                 nil
-                                 (catch Throwable e
-                                   [(handle-key handle) e]))))
-                       handles)]
+  (let [failures (u/run-each! (map (fn [handle] [(handle-key handle) #(stop! handle)]) handles))]
     (when (seq failures)
       (let [cause (second (first failures))]
         ;; so a log of the one exception shows every failure's stack trace
