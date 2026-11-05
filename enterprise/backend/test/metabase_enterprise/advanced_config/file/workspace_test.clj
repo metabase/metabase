@@ -1,9 +1,12 @@
 (ns metabase-enterprise.advanced-config.file.workspace-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -91,3 +94,188 @@
                                                                  :config  {:workspace (workspace-section db-name)}}))))
       (is (nil? (ws/instance-workspace)))
       (is (zero? (t2/count :model/TableRemapping))))))
+
+;;; ------------------------------------- POST /api/ee/workspace-instance/config -------------------------------------
+
+(def ^:private password "s3cr3t-workspace-password")
+
+(defn- config-yml
+  "A config.yml as `GET /api/ee/workspace-manager/:id/connection?format=yaml` serves it."
+  [database-name]
+  (str "version: 1\n"
+       "config:\n"
+       "  databases:\n"
+       "    - name: " database-name "\n"
+       "      engine: postgres\n"
+       "      details:\n"
+       "        host: warehouse.example.com\n"
+       "        port: 5432\n"
+       "        dbname: analytics\n"
+       "        user: mb__isolation_k3f9q2xa\n"
+       "        password: \"" password "\"\n"
+       "        schema-filters-type: inclusion\n"
+       "        schema-filters-patterns: \"sales,finance,mb__isolation_k3f9q2xa_*\"\n"
+       "  workspace:\n"
+       "    name: orders-cleanup\n"
+       "    databases:\n"
+       "      " database-name ":\n"
+       "        schemas:\n"
+       "          sales: mb__isolation_k3f9q2xa_s42_sales\n"
+       "          finance: mb__isolation_k3f9q2xa_s43_finance\n"))
+
+(defmacro ^:private with-fake-warehouse!
+  "No warehouse answers in these tests: the connection test passes, and nothing syncs."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (constantly true)]
+     (mt/with-temporary-setting-values [~'config-from-file-sync-databases false]
+       ~@body)))
+
+(defn- state
+  "What applying a config.yml leaves behind: the database, the installed workspace and whether the API may change it."
+  [database-name]
+  {:database  (t2/select-one [:model/Database :engine :details] :name database-name)
+   :workspace (ws/instance-workspace)
+   :current   (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")
+   :post      (mt/user-http-request :crowberto :post "ee/workspace-instance/current" (workspace-instance database-name))
+   :delete    (mt/user-http-request :crowberto :delete "ee/workspace-instance/current")})
+
+(defn- applied-at-boot! [database-name]
+  (try
+    (advanced-config.file/initialize! (yaml/parse-string (config-yml database-name)) {:expand-templates? true})
+    (state database-name)
+    (finally
+      (t2/delete! :model/Database :name database-name)
+      (ws/clear-instance-workspace!)
+      (unlock!))))
+
+(defn- applied-over-http! [database-name]
+  (try
+    (let [response (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
+                                         {:config (config-yml database-name)})]
+      (assoc (state database-name) :response response))
+    (finally
+      (t2/delete! :model/Database :name database-name)
+      (ws/clear-instance-workspace!)
+      (unlock!))))
+
+(deftest same-config-yml-through-both-paths-test
+  (with-clean-workspace!
+    (with-fake-warehouse!
+      (let [database-name (mt/random-name)
+            boot          (applied-at-boot! database-name)
+            http          (applied-over-http! database-name)]
+        (testing "the same database details"
+          (is (=? {:engine  :postgres
+                   :details {:host "warehouse.example.com", :user "mb__isolation_k3f9q2xa", :password password
+                             :schema-filters-patterns "sales,finance,mb__isolation_k3f9q2xa_*"}}
+                  (:database boot)))
+          (is (= (:database boot) (:database http))))
+        (testing "the same workspace map"
+          (is (= (workspace-instance database-name) (:workspace boot) (:workspace http))))
+        (testing "the same lock: POST and DELETE /current are refused after either path"
+          (is (false? (get-in boot [:current :can_write])))
+          (is (= "This instance's workspace is locked by config.yml and can't be changed through the API."
+                 (:post boot) (:delete boot)))
+          (is (= (select-keys boot [:current :post :delete])
+                 (select-keys http [:current :post :delete]))))
+        (testing "the response is the GET /current shape, without the password"
+          (is (= (:current http) (:response http)))
+          (is (not (re-find (re-pattern password) (pr-str (:response http))))))))))
+
+(deftest http-apply-errors-test
+  (with-clean-workspace!
+    (with-fake-warehouse!
+      (let [database-name (mt/random-name)
+            post!         (fn [config-yml]
+                            (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config" {:config config-yml}))]
+        (testing "YAML that does not parse"
+          (is (= "This config.yml is not valid YAML."
+                 (post! (str (config-yml database-name) "  bad: [\n")))))
+        (testing "a section the boot loader does not know"
+          (is (= "This config.yml has sections Metabase does not know: nonsense."
+                 (post! (str (config-yml database-name) "  nonsense: 1\n")))))
+        (testing "a section that fails its spec; the error names the path, not the values"
+          (let [message (post! (str/replace (config-yml database-name) "      engine: postgres\n"
+                                            "      engine: 1\n"))]
+            (is (re-find #"databases section .* not valid at \[0" message))
+            (is (not (re-find (re-pattern password) message)))))
+        (testing "a connection test that fails, with the password in its message, is scrubbed"
+          (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (fn [_ _ _] (throw (ex-info (str "bad login " password) {:password password})))]
+            (let [message (post! (config-yml database-name))]
+              (is (= "Could not apply the databases section of this config.yml: bad login ****" message))
+              (is (not (re-find (re-pattern password) message))))))
+        (testing "a workspace map that sends two main schemas to one scratch namespace"
+          (is (re-find #"its own scratch namespace"
+                       (post! (str/replace (config-yml database-name) "mb__isolation_k3f9q2xa_s43_finance"
+                                           "mb__isolation_k3f9q2xa_s42_sales")))))
+        (testing "nothing was applied"
+          (is (nil? (ws/instance-workspace)))
+          (is (zero? (t2/count :model/Database :name database-name))))
+        (testing "MB_INSTANCE_WORKSPACE locks this endpoint"
+          (mt/with-temp-env-var-value! [:mb-instance-workspace "{}"]
+            (is (re-find #"MB_INSTANCE_WORKSPACE" (post! (config-yml database-name))))))))))
+
+(deftest http-apply-replaces-a-config-yml-workspace-test
+  (testing "a workspace a config.yml set, at boot or here, may be replaced here, as a boot with the new file would"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (mt/with-temp [:model/Database {booted :name} {:name (mt/random-name), :engine :postgres}]
+          (let [database-name (mt/random-name)]
+            (try
+              (advanced-config.file/initialize! {:version 1, :config {:workspace (workspace-section booted)}})
+              (is (= (workspace-instance booted) (ws/instance-workspace)))
+              (doseq [schemas [{"sales" "mb__isolation_k3f9q2xa_s42_sales", "finance" "mb__isolation_k3f9q2xa_s43_finance"}
+                               {"sales" "mb__isolation_k3f9q2xa_s42_sales"}]]
+                (is (=? {:data      {:databases {(keyword database-name) {:schemas (update-keys schemas keyword)}}}
+                         :can_write false}
+                        (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
+                                              {:config (cond-> (config-yml database-name)
+                                                         (= 1 (count schemas))
+                                                         (str/replace "          finance: mb__isolation_k3f9q2xa_s43_finance\n" ""))}))))
+              (is (= {"sales" "mb__isolation_k3f9q2xa_s42_sales"}
+                     (get-in (ws/instance-workspace) [:databases database-name :schemas])))
+              (finally
+                (t2/delete! :model/Database :name database-name)))))))))
+
+(deftest http-apply-permissions-test
+  (with-clean-workspace!
+    (mt/user-http-request :rasta :post 403 "ee/workspace-instance/config" {:config "version: 1"})
+    (mt/with-premium-features #{}
+      (mt/user-http-request :crowberto :post 402 "ee/workspace-instance/config" {:config "version: 1"}))))
+
+(deftest http-apply-takes-every-boot-section-test
+  (testing "every section the boot loader takes is applied, through the boot loader's section code (MBCWS-43 revisits this)"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (let [database-name (mt/random-name)
+              email         (str (mt/random-name) "@example.com")]
+          (try
+            (let [response (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
+                                                 {:config (str (config-yml database-name)
+                                                               "  users:\n"
+                                                               "    - first_name: Ci\n"
+                                                               "      last_name: Bot\n"
+                                                               "      email: " email "\n"
+                                                               "      password: \"" password "-user\"\n")})]
+              (is (=? {:data {:name "orders-cleanup"}, :can_write false} response))
+              (is (not (re-find (re-pattern password) (pr-str response)))))
+            (is (t2/exists? :model/User :email email))
+            (is (t2/exists? :model/Database :name database-name))
+            (finally
+              (t2/delete! :model/User :email email)
+              (t2/delete! :model/Database :name database-name))))))))
+
+(deftest http-apply-does-not-expand-templates-test
+  (testing "{{env ...}} templates would read this instance's environment, so they are applied as written"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (let [database-name (mt/random-name)]
+          (try
+            (mt/with-temp-env-var-value! [:mbcws-24-template "expanded"]
+              (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
+                                    {:config (str/replace (config-yml database-name) "dbname: analytics"
+                                                          "dbname: \"{{env MBCWS_24_TEMPLATE}}\"")}))
+            (is (= "{{env MBCWS_24_TEMPLATE}}"
+                   (get-in (t2/select-one :model/Database :name database-name) [:details :dbname])))
+            (finally
+              (t2/delete! :model/Database :name database-name))))))))

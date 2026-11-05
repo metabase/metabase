@@ -255,7 +255,7 @@
      (s/assert* ::config parsed-config)
      (cond-> parsed-config expand-templates? expand-templates))))
 
-(defn- sort-by-initialization-order
+(defn sort-by-initialization-order
   "Sort the various config sections. The `:settings` section should always be applied first (important, since it can
   affect the other sections). The `:workspace` section goes last: it names databases the `:databases` section
   creates."

@@ -74,14 +74,14 @@
 (defonce ^:private locked-by-config-file? (atom false))
 
 (defn lock-by-config-file!
-  "Record that config.yml installed the workspace at boot, so the API refuses to change it until the next boot, which
-  reads config.yml again."
+  "Record that a config.yml installed the workspace, at boot or through `POST /api/ee/workspace-instance/config`, so
+  `POST` and `DELETE /current` refuse to change it. In memory: a boot reads config.yml again."
   []
   (reset! locked-by-config-file? true))
 
 (defn workspace-lock
   "Which deployment config sets the workspace, so the API must not change it: `:env-var` (`MB_INSTANCE_WORKSPACE`),
-  `:config-file` (a `workspace:` section in config.yml at boot), or nil."
+  `:config-file` (a config.yml `workspace:` section), or nil."
   []
   (cond
     (some? (setting/env-var-value :instance-workspace)) :env-var

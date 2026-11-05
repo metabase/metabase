@@ -2,6 +2,7 @@
   "`/api/ee/workspace-instance`: the workspace installed on this instance (the sidecar side of workspaces). Every route
   is superuser-only; the routes need the `:workspaces` feature."
   (:require
+   [metabase-enterprise.workspaces.config-file :as ws.config-file]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -63,6 +64,26 @@
   (api/check-superuser)
   (check-not-locked!)
   (ws/clear-instance-workspace!))
+
+(api.macros/defendpoint :post "/config" :- [:map {:closed true}
+                                           [:data      [:maybe ::ws/workspace-instance]]
+                                           [:can_write :boolean]]
+  "Apply `config`, the text of the config.yml a parent serves from `GET /api/ee/workspace-manager/:id/connection?format=yaml`,
+  as a boot with that config.yml would: create or update its databases by name, then install its workspace and lock
+  it, so `POST` and `DELETE /current` refuse to change it. A workspace a config.yml set may be replaced here; one
+  `MB_INSTANCE_WORKSPACE` sets may not. Unlike at boot, `{{env ...}}` templates are not expanded, and the
+  `:config-text-file` feature is not needed."
+  [_route-params
+   _query-params
+   {:keys [config]} :- [:map {:closed true}
+                        [:config [:string {:min 1}]]]]
+  (api/check-superuser)
+  ;; another config.yml may replace what a config.yml set, as a boot with it would
+  (when (= :env-var (ws/workspace-lock))
+    (check-not-locked!))
+  (ws.config-file/apply-config-yml! config)
+  {:data      (ws/instance-workspace)
+   :can_write (not (ws/workspace-locked?))})
 
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]
   "Every recorded remapping of a main table to the scratch table that backs it."
