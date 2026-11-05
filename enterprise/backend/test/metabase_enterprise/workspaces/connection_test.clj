@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.connection :as ws.connection]
    [metabase.driver :as driver]
+   [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.util.yaml :as yaml]))
 
@@ -219,3 +220,13 @@
                                     :databases {:analytics {:schemas {:sales   "mb__isolation_k3f9q2xa_s42_sales"
                                                                       :finance "mb__isolation_k3f9q2xa_s43_finance"}}}}}}
              (yaml/parse-string (ws.connection/config-yml connection)))))))
+
+(deftest schema-filter-matches-exactly-the-workspace-schemas-test
+  (testing "names with regex characters match only themselves under the sync filter the sidecar applies"
+    (let [schemas {"a.b"   "mb__isolation_k3f9q2xa_s1_a_b"
+                   "x(y)$" "mb__isolation_k3f9q2xa_s2_x_y__"
+                   "s*"    "mb__isolation_k3f9q2xa_s3_s_"}
+          {:keys [schema-filters-patterns]} (ws.connection/connection-details {} workspace-details schemas nil)
+          include? #(driver.s/include-schema? schema-filters-patterns nil %)]
+      (is (every? include? (concat (keys schemas) (vals schemas))))
+      (is (not-any? include? ["aXb" "x(y)$z" "sales" "s" "mb__isolation_k3f9q2xa_s9_other"])))))

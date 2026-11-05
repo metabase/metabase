@@ -73,6 +73,13 @@
   resolves on the sidecar, and a Secret id there could name an unrelated Secret the sidecar would then trust."
   [:ssl-root-cert-id :ssl-root-cert-path])
 
+(defn- schema-filter-pattern
+  "`schema-name` as an inclusion pattern that matches only itself: `metabase.driver.sync/schema-pattern->re-pattern`
+  reads a pattern as a regex with unescaped `*` as a wildcard, so every regex metacharacter is escaped. A comma cannot
+  be escaped there, so a schema whose name holds one is not matched."
+  [schema-name]
+  (str/replace schema-name #"[\\.^$|?*+()\[\]{}]" #(str "\\" %)))
+
 (defn connection-details
   "The `details` a sidecar connects to a workspace database with: the parent Database's `parent-details` without the
   parent's login (see [[parent-login-properties]]), with the workspace user's `workspace-details` (its user, password
@@ -88,7 +95,7 @@
                                :ssl-root-cert-value   root-cert))
       (merge workspace-details
              {:schema-filters-type         "inclusion"
-              :schema-filters-patterns     (str/join "," (concat (keys schemas) (vals schemas)))
+              :schema-filters-patterns     (str/join "," (map schema-filter-pattern (concat (keys schemas) (vals schemas))))
               :let-user-control-scheduling false})))
 
 (defn- ssl-root-cert
