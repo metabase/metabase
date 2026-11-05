@@ -798,17 +798,162 @@
 
 (deftest ^:parallel tool-executor-xf-stream-error-test
   (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
-    (let [running  (test-util/parts->aisdk-chunks
+    (let [started  (promise)
+          tools    (update-in test-util/TOOLS ["get-time" :fn]
+                              (fn [get-time]
+                                (fn [args]
+                                  (deliver started true)
+                                  (get-time args))))
+          running  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
           cut-off  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-2" :function "convert-currency"
                       :arguments {:amount 100, :from "EUR", :to "USD"}}])
-          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+          error    {:type :error :errorText "Overloaded"}
+          streamed (concat running (butlast cut-off) [error])]
       (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
-                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+                (into [] (self.core/tool-executor-xf tools)
+                      ;; A call that has not started when the error comes never starts
+                      (concat running (butlast cut-off) (lazy-seq (deref started 5000 nil) [error (last cut-off)])))))
         (testing "and a warning names the call that never ran"
           (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
+
+(defn- releasable-tool
+  "A tool entry named `tool-name` whose call delivers `started`, then waits until `release` is delivered."
+  [tool-name runs-alone? started release]
+  {:tool-name   tool-name
+   :doc         "Waits until the test releases it."
+   :schema      [:=> [:cat [:map {:closed true}]] :any]
+   :runs-alone? runs-alone?
+   :fn          (fn [_]
+                  (deliver started true)
+                  @release
+                  {:output "ok"})})
+
+(defn- response-chunks
+  "The chunks of one model response that calls each tool in `tool-names`, in order, with the call IDs `call-0`,
+   `call-1` and so on."
+  [tool-names]
+  (test-util/parts->aisdk-chunks
+   (map-indexed (fn [i tool-name]
+                  {:type :tool-input :id (str "call-" i) :function tool-name :arguments {}})
+                tool-names)))
+
+(defn- tool-output-count
+  "How many tool results `chunks` holds."
+  [chunks]
+  (count (filter #(= :tool-output-available (:type %)) chunks)))
+
+(deftest ^:parallel tool-executor-xf-runs-alone-test
+  (testing "a call that runs alone starts after the calls before it in the response, and the calls after it wait for it"
+    (let [calls    ["before" "alone" "after"]
+          started  (zipmap calls (repeatedly promise))
+          release  (zipmap calls (repeatedly promise))
+          tools    (into {} (for [tool-name calls]
+                              [tool-name (releasable-tool tool-name (= "alone" tool-name)
+                                                          (started tool-name) (release tool-name))]))
+          response (future (into [] (self.core/tool-executor-xf tools) (response-chunks calls)))
+          starts?  #(deref (started %) 5000 false)
+          waits?   #(not (deref (started %) 100 false))]
+      (try
+        (is (starts? "before"))
+        (is (waits? "alone"))
+        (deliver (release "before") true)
+        (is (starts? "alone"))
+        (is (waits? "after"))
+        (deliver (release "alone") true)
+        (is (starts? "after"))
+        (finally
+          (run! #(deliver % true) (vals release))))
+      (is (= 3 (tool-output-count (deref response 5000 nil)))))))
+
+(deftest tool-executor-xf-waiting-calls-leave-the-pool-free-test
+  (testing "calls that wait for a call that runs alone take no thread from the pool that every conversation shares"
+    (let [release   (promise)
+          done      (doto (promise) (deliver true))
+          tools     {"slow"  (releasable-tool "slow" false (promise) release)
+                     "alone" (releasable-tool "alone" true (promise) done)
+                     "after" (releasable-tool "after" false (promise) done)}
+          ;; If the waiting calls held threads, they and the slow call would take all 20 threads of the pool
+          calls     (concat ["slow" "alone"] (repeat 18 "after"))
+          scheduled (promise)
+          response  (future (into [] (comp (self.core/tool-executor-xf tools)
+                                           (map (fn [chunk]
+                                                  (when (= :text-delta (:type chunk))
+                                                    (deliver scheduled true))
+                                                  chunk)))
+                                  (concat (response-chunks calls) [{:type :text-delta :id "text" :delta "Done."}])))
+          unrelated (promise)]
+      (try
+        (is (deref scheduled 5000 false))
+        (.execute ^java.util.concurrent.Executor @#'self.core/tool-executor ^Runnable #(deliver unrelated true))
+        (is (deref unrelated 5000 false))
+        (finally
+          (deliver release true)))
+      (is (= 20 (tool-output-count (deref response 5000 nil)))))))
+
+(deftest ^:parallel tool-executor-xf-starts-no-waiting-call-after-an-error-test
+  (testing "after an :error chunk, the calls waiting behind a running call never start, and the running call finishes"
+    (let [started (promise)
+          release (promise)
+          ran     (atom [])
+          tool    (fn [tool-name runs-alone?]
+                    {:tool-name   tool-name
+                     :doc         "Records that it ran."
+                     :schema      [:=> [:cat [:map {:closed true}]] :any]
+                     :runs-alone? runs-alone?
+                     :fn          (fn [_]
+                                    (swap! ran conj tool-name)
+                                    {:output "ok"})})
+          tools   {"slow"  (releasable-tool "slow" false started release)
+                   "edit"  (tool "edit" true)
+                   "after" (tool "after" false)
+                   "late"  (tool "late" false)}
+          chunks  (concat (response-chunks ["slow" "edit" "after"])
+                          ;; The error comes once the slow call is running, as it would during a long query
+                          (lazy-seq
+                           (deref started 5000 nil)
+                           (cons {:type :error :errorText "Overloaded"}
+                                 (test-util/parts->aisdk-chunks
+                                  [{:type :tool-input :id "late" :function "late" :arguments {}}]))))
+          result  (into [] (comp (self.core/tool-executor-xf tools)
+                                 (map (fn [chunk]
+                                        (when (= :error (:type chunk))
+                                          (deliver release true))
+                                        chunk)))
+                        chunks)]
+      (is (= [] @ran))
+      (is (= ["call-0"] (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result)))
+      (testing "and the calls whose input comes after the error are dropped"
+        (is (not-any? #(= "late" (:toolCallId %)) result))))))
+
+(deftest tool-executor-xf-returns-results-in-call-order-test
+  (testing "calls that run at the same time and finish in reverse order return their results in call order"
+    (let [n        10
+          ids      (mapv #(str "call-" %) (range n))
+          all-in   (java.util.concurrent.CountDownLatch. n)
+          finished (vec (repeatedly n promise))
+          together (atom [])
+          order    (atom [])
+          tools    {"ordinary" {:tool-name "ordinary"
+                                :doc       "Waits until every call has started, then for the call after it to finish."
+                                :schema    [:=> [:cat [:map {:closed true} [:i :int]]] :any]
+                                :fn        (fn [{:keys [i]}]
+                                             (.countDown all-in)
+                                             (swap! together conj
+                                                    (.await all-in 5 java.util.concurrent.TimeUnit/SECONDS))
+                                             (some-> (get finished (inc i)) (deref 5000 nil))
+                                             (swap! order conj i)
+                                             (deliver (finished i) true)
+                                             {:output (str i)})}}
+          result   (into [] (self.core/tool-executor-xf tools)
+                         (test-util/parts->aisdk-chunks (for [i (range n)]
+                                                          {:type :tool-input :id (ids i) :function "ordinary"
+                                                           :arguments {:i i}})))]
+      (is (= (repeat n true) @together))
+      (is (= (reverse (range n)) @order))
+      (is (= ids (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result))))))
 
 ;;; tool argument validation tests
 
