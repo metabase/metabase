@@ -412,8 +412,17 @@
         (when (pos? deleted)
           (recur))))))
 
+(defenterprise check-no-workspaces!
+  "Throws a 409 when the Database with `database-id` has workspaces on it, whose warehouse users would be orphaned by
+  its deletion. OSS has no workspaces."
+  metabase-enterprise.workspaces.provisioning-connection
+  [_database-id]
+  nil)
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
+  ;; first, before anything below has changed
+  (check-no-workspaces! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)

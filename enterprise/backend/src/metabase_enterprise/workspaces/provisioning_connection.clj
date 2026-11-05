@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -92,3 +93,9 @@
   (ws.db/delete-provisioning-connection! database-id)
   nil)
 
+(defenterprise check-no-workspaces!
+  "Throws a 409 listing the workspaces on the Database with `database-id`, if any. Not gated on `:workspaces`: their
+  warehouse users outlive the feature."
+  :feature :none
+  [database-id]
+  (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before the database.")))

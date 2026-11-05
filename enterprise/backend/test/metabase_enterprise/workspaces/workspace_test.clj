@@ -89,3 +89,22 @@
                   ws))
           (is (not (contains? (first (:databases ws)) :database_details)))
           (is (not (str/includes? (pr-str (page 1000 0)) "SecretPassw0rd"))))))))
+
+(deftest delete-database-with-workspaces-test
+  (testing "a Database with workspaces on it, failed ones included, cannot be deleted: 409 naming them"
+    (mt/with-temp [:model/Database  {db-id :id} {:engine :postgres, :details {}}
+                   :model/Workspace {ws-id :id} {:name "keeps the database"}]
+      (ws.db/insert-workspace-database! {:workspace_id     ws-id
+                                         :database_id      db-id
+                                         :isolation_id     "deletedb"
+                                         :database_details {}
+                                         :status           :failed})
+      (is (= {:message    "Delete the workspaces on this database before the database."
+              :error-code "workspaces_exist"
+              :workspaces [{:id ws-id, :name "keeps the database"}]}
+             (mt/user-http-request :crowberto :delete 409 (str "database/" db-id))))
+      (is (t2/exists? :model/Database :id db-id))
+      (testing "once they are gone it can"
+        (t2/delete! :model/Workspace :id ws-id)
+        (mt/user-http-request :crowberto :delete 204 (str "database/" db-id))
+        (is (not (t2/exists? :model/Database :id db-id)))))))
