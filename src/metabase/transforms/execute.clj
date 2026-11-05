@@ -24,12 +24,19 @@
   `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
   [transform :- ::transforms.schema/transform]
   (let [requests (table-index/select-applicable-for-transform (:id transform))
-        db-id    (transforms-base.i/target-db-id transform)]
-    (-> (cond-> transform
-          db-id (update :target #(ws/resolve-transform-target db-id %)))
+        db-id    (transforms-base.i/target-db-id transform)
+        resolved (cond-> transform
+                   db-id (update :target #(ws/resolve-transform-target db-id %)))
+        ;; An incremental run appends to its target. When the workspace moved the target, that table can be missing
+        ;; though the watermark survives (a new scratch namespace, a dropped scratch table): start over with a full run.
+        moved?   (not= (:target resolved) (:target transform))]
+    (-> resolved
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
-        (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
+        (assoc :full-incremental-run? (or (transforms-base.u/full-incremental-run? transform)
+                                          (and moved?
+                                               (transforms-base.u/incremental-target? resolved)
+                                               (not (transforms-base.u/target-table-exists? resolved))))))))
 
 (mu/defn execute! :- :nil
   "Run `transform` and sync its target table.
