@@ -29,7 +29,12 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  ;; TODO (Chris 2026-11-05) -- Persist dashboard_saved once the frontend renders it (BOT-2573). Until then a
+  ;; reloaded conversation would hand it to the message renderer, whose exhaustive match throws on an unknown type.
+  #{dashboard-saved-type
+    search-results-type
+    state-type
+    tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are

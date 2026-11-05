@@ -9,6 +9,7 @@
    [metabase.metabot.skills :as skills]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
+   [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
@@ -284,6 +285,33 @@
                    (failure {:dashboard_id dash-id, :collection_id target-id}))))
          (testing "the dashboard stays where it was"
            (is (= coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))))))))
+
+(deftest parallel-edits-test
+  (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Parallel"}
+                 :model/Card      {card-a :id}  {:dataset_query (venues-query)}
+                 :model/Card      {card-b :id}  {:dataset_query (venues-query)}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [a-waiting (promise)
+            b-done    (promise)
+            write!    dashboard-write/write!
+            add-card  (fn [card-id]
+                        (future (call {:dashboard_id dash-id
+                                       :ops          [{:op "add_card", :id -1, :card_id card-id}]})))]
+        ;; The call adding card A has read the layout and waits to save it while the call adding card B saves.
+        ;; Without the lock, A then saves the layout it read, which deletes B's card. With the lock, B waits for A,
+        ;; so A saves once its wait times out, and B compiles against A's saved layout.
+        (mt/with-dynamic-fn-redefs [dashboard-write/write! (fn [opts]
+                                                             (when (some #(= card-a (:card_id %)) (:ops opts))
+                                                               (deliver a-waiting true)
+                                                               (deref b-done 2000 nil))
+                                                             (write! opts))]
+          (let [a (add-card card-a)]
+            (deref a-waiting 10000 nil)
+            @(add-card card-b)
+            (deliver b-done true)
+            @a))
+        (testing "parallel edits of one dashboard keep each other's cards"
+          (is (= #{card-a card-b} (set (map :card_id (dashcards dash-id))))))))))
 
 ;;; ------------------------------------------------ Trash ---------------------------------------------------------
 

@@ -24,6 +24,7 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -449,22 +450,46 @@
     (some #{"description"} clear)
     (assoc :description nil)))
 
-(defn- save!
-  "Saves the change and returns `{:dashboard :saved-charts}`.
-  The dashboard is hydrated as [[dashboard-write/write!]] returns it.
-  Everything is saved in one transaction, the charts' questions included."
+(def ^:private dashboard-locks
+  "The locks [[save!]] takes, striped by dashboard id."
+  (vec (repeatedly 64 #(Object.))))
+
+(defn- dashboard-lock
+  "The lock for the dashboard with `dashboard-id`, or one shared by creates when it is nil."
+  ^Object [dashboard-id]
+  (nth dashboard-locks (mod (or dashboard-id 0) (count dashboard-locks))))
+
+(defn- save-in-transaction!
+  "Saves the change as [[save!]] does, once it holds the dashboard's lock."
   [dashboard attrs ops charts]
   (t2/with-transaction [_conn]
-    (let [;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
-          created      (when (and (nil? dashboard) (seq charts))
+    (let [current      (when dashboard
+                         (-> (or (metabot.db/dashboard (:id dashboard))
+                                 (recoverable.common/not-found! {:kind :dashboard, :id (:id dashboard)}))
+                             (t2/hydrate [:dashcards :series :card] :tabs)))
+          ;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
+          created      (when (and (nil? current) (seq charts))
                          (dashboard-write/write! {:attrs attrs}))
-          target       (or dashboard created)
+          target       (or current created)
           saved-charts (mapv (partial save-chart! (:id target)) charts)
           ops          (with-card-ids ops (into {} (map (juxt :chart-id :card-id)) saved-charts))]
       {:dashboard    (dashboard-write/write! (cond-> {:ops ops}
                                                target        (assoc :dashboard target)
                                                (not created) (assoc :attrs attrs)))
        :saved-charts saved-charts})))
+
+(defn- save!
+  "Saves the change to `dashboard`, nil on a create, and returns `{:dashboard :saved-charts}`.
+  The dashboard is reread before it is changed.
+  The saved dashboard is hydrated as [[dashboard-write/write!]] returns it.
+  Everything is saved in one transaction, the charts' questions included."
+  [dashboard attrs ops charts]
+  ;; The tool calls of one model step run in parallel, and ops save a full-replacement layout. So an edit holds the
+  ;; dashboard's lock until it commits, and compiles against the dashboard as it is then. Otherwise a parallel edit's
+  ;; cards would be deleted, or one chart saved twice. The lock is per JVM, which covers one conversation's calls.
+  (let [lock (dashboard-lock (:id dashboard))]
+    (locking lock
+      (save-in-transaction! dashboard attrs ops charts))))
 
 ;;; -------------------------------------------------- Results -----------------------------------------------------
 
