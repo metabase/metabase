@@ -119,6 +119,11 @@
   A potemkin `import-vars` re-export points at the var it imports, and an enterprise `defenterprise` at the OSS
   var that dispatches to it."
   [{:keys [var-definitions]}]
+  ;; TODO (Chris 2026-11-05) -- `import-fn` and `import-def` re-exports aren't followed, so a configured var
+  ;; reached through one keeps a budget of its own. Following them needs the kondo macros to record the
+  ;; source var as metadata, a test that runs those macros through kondo, and resolving an unqualified source
+  ;; that the file refers from another namespace. The `[original new-name]` form of `import-fns` isn't
+  ;; followed either.
   (into {}
         (for [{:keys [ns imported-ns meta], var-name :name} var-definitions
               :let  [sym   (symbol (str ns) (str var-name))
@@ -245,6 +250,10 @@
       (finally
         (fs/delete-tree dir)))))
 
+;; TODO (Chris 2026-11-05) -- These roots leave out `modules/drivers` and `.cljs` files, so a configured var
+;; re-exported there keeps a budget of its own. Take the roots from `dev.kondo-ratchet/source-roots`, which
+;; the scan uses, instead of keeping a second list. Before adding `.cljs`, keep a var's clj and cljs
+;; definitions apart in [[alias-edges]], which keys edges by symbol only.
 (def ^:private source-dirs
   ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"])
 
@@ -285,35 +294,24 @@
          (recur (into linted pending)
                 (merge edges (alias-edges (analyze files)))))))))
 
-(def ^:private edges-cache
-  "[[alias-edges!]] results by the vars they were asked for, as delays."
-  (atom {}))
-
-(defn- cached-alias-edges!
-  "[[alias-edges!]] for `vars`, run once per process. Attribution and [[alias-keys!]] share the result, and a
-  caller that arrives while the passes run waits for them, then sees their result or their exception."
-  [vars]
-  (force (get (swap! edges-cache update vars #(or % (delay (alias-edges! vars)))) vars)))
-
 (defn- discouraged-vars
   "The symbols configured under :discouraged-var."
   []
   (kondo-ratchet/discouraged-symbols :discouraged-var (kondo-ratchet/kondo-config)))
 
-(defn alias-keys!
-  "The `:aliases` that [[dev.kondo-ratchet/check]] and `fix!` take: a map from the ratchet key of each configured
-  discouraged var that is another under a second name to the key its ignores count under."
-  []
-  (let [vars (discouraged-vars)]
-    (-> (source-aliases (cached-alias-edges! vars) vars)
-        (update-keys kondo-ratchet/discouraged-count-key)
-        (update-vals kondo-ratchet/discouraged-count-key))))
+(defn alias-keys
+  "A map from the ratchet key of each of the discouraged `vars` that is another under a second name, by `edges`
+  from [[alias-edges]], to the key its ignores count under."
+  [edges vars]
+  (-> (source-aliases edges vars)
+      (update-keys kondo-ratchet/discouraged-count-key)
+      (update-vals kondo-ratchet/discouraged-count-key)))
 
-(defn attribute-occurrences!
+(defn- attribute-occurrences!
   "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores in each of `groups`, a seq
-  of occurrence seqs, as [[attribute-discouraged]] returns it, in the same order; the `:attribute` that
-  [[dev.kondo-ratchet/check]] and `fix!` take."
-  [groups]
+  of occurrence seqs, as [[attribute-discouraged]] returns it, in the same order.
+  `edges` is a delay of [[alias-edges]] for the configured discouraged vars."
+  [groups edges]
   ;; One kondo run covers every group, since a JVM start and a lint pass dominate the cost.
   (let [discouraged-files (fn [occurrences]
                             (into (sorted-set)
@@ -326,15 +324,24 @@
         known             (into {}
                                 (for [linter kondo-ratchet/discouragement-linters]
                                   [linter (kondo-ratchet/discouraged-symbols linter config)]))
-        vars              (:discouraged-var known)
         ;; Started first so the alias passes run alongside the attribution run: each kondo run is mostly JVM
-        ;; startup. The cache's delay rethrows a failed pass's own exception below.
-        _                 (future (cached-alias-edges! vars))
+        ;; startup. Forcing the delay below waits for them and rethrows a failed pass's own exception.
+        _                 (future @edges)
         [output baseline] (if (empty? contents)
                             [{} []]
-                            (lint-with-ignores-disabled! contents))
-        edges             (cached-alias-edges! vars)]
-    (mapv #(attribute-discouraged (select-keys contents %) output baseline known edges) file-groups)))
+                            (lint-with-ignores-disabled! contents))]
+    (mapv #(attribute-discouraged (select-keys contents %) output baseline known @edges) file-groups)))
+
+(defn ratchet-options
+  "The `:attribute` and `:aliases` that [[dev.kondo-ratchet/check]] and `fix!` take.
+  They share one run of `find-edges` (default [[alias-edges!]]), a function of the configured discouraged vars."
+  ([]
+   (ratchet-options alias-edges!))
+  ([find-edges]
+   (let [vars  (delay (discouraged-vars))
+         edges (delay (find-edges @vars))]
+     {:attribute #(attribute-occurrences! % edges)
+      :aliases   #(alias-keys @edges @vars)})))
 
 (def keep-marker
   "Comment token marking an ignore as a verified `:redundant-ignore` false positive.
