@@ -15,6 +15,7 @@
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
@@ -1026,6 +1027,29 @@
                  (metabot.persistence/extract-usage parts)))
           (is (not-any? #(= :error (:type %)) parts))
           (is (= {:type :finish :finish-reason :max-iterations} (last parts))))))))
+
+(deftest step-limit-reply-history-failure-test
+  (testing "a failure while the last call's history is built leaves the fixed reply and the earlier usage"
+    (mt/as-admin
+      (let [build-history (mt/original-fn #'messages/build-message-history)
+            builds        (atom 0)
+            third-fails   (fn [& args]
+                            (if (= 3 (swap! builds inc))
+                              (throw (ex-info "The viewing context is gone" {}))
+                              (apply build-history args)))
+            {:keys [parts requests]}
+            (mt/with-dynamic-fn-redefs [messages/build-message-history third-fails]
+              (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                (step-limit-turn! :document-generate-content
+                                  #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))))]
+        (is (= [3 2] [@builds (count requests)]))
+        (is (=? [{:type :text :text step-limit-text}
+                 {:type :data :data-type "state"}
+                 {:type :finish :finish-reason :max-iterations}]
+                (take-last 3 parts)))
+        (is (= {test-provider {:prompt 200 :completion 40}}
+               (metabot.persistence/extract-usage parts)))
+        (is (not-any? #(= :error (:type %)) parts))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
