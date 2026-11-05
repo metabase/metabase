@@ -247,11 +247,12 @@
                           :user-id api/*current-user-id*})
   nil)
 
-(defn delete-transforms-folder!
+(mu/defn delete-transforms-folder! :- :nil
   "Delete the transforms folder `collection`, its subfolders and every Transform in them. With `delete-tables?`,
   drop the output table of each Transform first. Throws a 400 unless `collection` is in the transforms namespace,
   and a 403 unless the current user can write every Transform inside; nothing is deleted then. Returns nil."
-  [collection delete-tables?]
+  [collection     :- :metabase.collections.schema/collection
+   delete-tables? :- :boolean]
   (api/check-400 (= collections/transforms-ns (:namespace collection))
                  (deferred-tru "Only a transforms folder can be deleted this way."))
   (api/check-403 (remote-sync/transforms-editable?))
