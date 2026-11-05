@@ -56,6 +56,8 @@
     [:download? {:optional true} [:maybe :boolean]]
     ;; true for large results we want to *stream* (a server-side cursor) rather than buffer in memory
     [:stream? {:optional true} [:maybe :boolean]]
+    ;; run in a READ ONLY transaction the server enforces (a query on a workspace sidecar's database); Postgres only
+    [:read-only-transaction? {:optional true} [:maybe :boolean]]
     ;; don't autoclose the connection
     [:keep-open? {:optional true} [:maybe :boolean]]]])
 
@@ -421,11 +423,12 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (let [read-only? (not (or write?
-                              ;; we need to set autoCommit to false which causes postgresql
-                              ;; to enforce readOnly which will break queries that rely on
-                              ;; ddl statements, etc (#61892)
-                              (and (-> options :download?) (= driver :postgres))))]
+    (let [read-only? (or (:read-only-transaction? options)
+                         (not (or write?
+                                  ;; we need to set autoCommit to false which causes postgresql
+                                  ;; to enforce readOnly which will break queries that rely on
+                                  ;; ddl statements, etc (#61892)
+                                  (and (-> options :download?) (= driver :postgres)))))]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
         ;; to be a hint to the driver to enable database optimizations
@@ -442,7 +445,8 @@
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually. (metabase#40014)
     (cond (not (or write?
-                   (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))))
+                   (and (or (:stream? options) (:read-only-transaction? options))
+                        (isa? driver/hierarchy driver :postgres))))
           (try
             (log/trace (pr-str '(.setAutoCommit conn true)))
             (.setAutoCommit conn true)
@@ -451,8 +455,10 @@
 
           ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
           ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
-          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs.
-          (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))
+          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs. A read-only connection with
+          ;; autoCommit off runs in a READ ONLY transaction (PgJDBC sends BEGIN READ ONLY), which the server enforces.
+          (and (or (:stream? options) (:read-only-transaction? options))
+               (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
@@ -919,7 +925,9 @@
        {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
         :download? (download? (-> outer-query :info :context))
         :stream?   (or (download? (-> outer-query :info :context))
-                       (= :table-rows-sample (-> outer-query :info :context)))}
+                       (= :table-rows-sample (-> outer-query :info :context)))
+        ;; on a workspace sidecar's database the server, not only the SQL check, keeps the query read-only
+        :read-only-transaction? (driver-api/workspace-query?)}
        (fn [^Connection conn]
          ;; whether a cancelation was issued is only knowable inside the Statement's scope, but the Connection can
          ;; only be dealt with once the Statement and ResultSet are closed, so it is carried out past both

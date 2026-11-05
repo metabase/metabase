@@ -33,13 +33,22 @@
          (lib.metadata.cached-provider/cached-metadata-provider metadata-provider))
     (lib.metadata.protocols/cache-value! ::remappings remappings)))
 
+(defn- provider-remappings
+  [metadata-provider]
+  (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+    (lib.metadata.protocols/cached-value metadata-provider ::remappings nil)))
+
 (defn- query-remappings
   "The remappings QP setup read for `query`, or nil: setup reads them once per query and carries them on the metadata
   provider it binds, so every later step agrees on them."
   [query]
-  (let [metadata-provider (:lib/metadata query)]
-    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
-      (lib.metadata.protocols/cached-value metadata-provider ::remappings nil))))
+  (provider-remappings (:lib/metadata query)))
+
+(defn workspace-query?
+  "Whether the QP run whose metadata provider is `metadata-provider` is on a database the workspace covers. The driver
+  then runs it in a READ ONLY transaction, so the server refuses a write even if one got past the SQL check."
+  [metadata-provider]
+  (some? (provider-remappings metadata-provider)))
 
 (defn rewrite-query
   "`query` with every reference to a remapped table rewritten to the scratch table, in the SQL that will run: each

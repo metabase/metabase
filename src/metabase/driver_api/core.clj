@@ -37,6 +37,7 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.middleware.workspace-remapping :as qp.workspace-remapping]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -188,6 +189,13 @@
   "Fetch the user making the request."
   []
   api/*current-user*)
+
+(defn workspace-query?
+  "Whether the query being run is on a database a workspace sidecar covers: such a query must run in a READ ONLY
+  transaction."
+  []
+  (and (qp.store/initialized?)
+       (qp.workspace-remapping/workspace-query? (qp.store/metadata-provider))))
 
 (defn canceled-chan
   "If this channel is bound you can check if it has received a message
