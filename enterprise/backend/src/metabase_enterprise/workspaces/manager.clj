@@ -115,7 +115,9 @@
   [workspace-name creator-id databases]
   (t2/with-transaction [_conn]
     (let [workspace-id (ws.db/insert-workspace! workspace-name creator-id)]
-      [workspace-id (mapv #(insert-database-rows! workspace-id %) databases)])))
+      ;; in Database id order: each insert locks that Database's provisioning connection row, and two creates taking
+      ;; the same rows in opposite orders would deadlock
+      [workspace-id (mapv #(insert-database-rows! workspace-id %) (sort-by :database-id databases))])))
 
 (defn- provision-database!
   "Create the workspace user and scratch namespaces of `database` in the warehouse, moving each schema to `:active`
@@ -234,26 +236,38 @@
                           (ws.status/take-lock! :database id #{:provisioned :failed} :deprovisioning)
                           (catch Throwable e
                             (doseq [{taken-id :id, :keys [status lock_token]} taken]
-                              (ws.status/change-status! :database taken-id lock_token #{:deprovisioning} status))
+                              (try
+                                (ws.status/change-status! :database taken-id lock_token #{:deprovisioning} status)
+                                (catch Throwable give-back-e
+                                  ;; the row reads as failed once stale, so a later delete can still take it
+                                  (log/warnf "Giving back the lock of workspace database %d failed: %s"
+                                             taken-id (ex-message give-back-e)))))
                             (throw e)))]
               (conj taken (assoc wsd :lock_token token))))
           []
           wsds))
 
 (defn- tear-down-database!
-  "Tear down `wsd`, whose lock this request holds, in the warehouse and delete its row. Returns nil, or
-  `{:database_id, :message}` when the teardown fails; its row is then `:failed`."
+  "Tear down `wsd`, whose lock this request took, in the warehouse and delete its row. Refreshes the lock first, so
+  a delete of many databases keeps the ones it has not reached, and stops with a failure when another request has
+  taken it over since. Returns nil, or `{:database_id, :message}` when the teardown fails; its row is then `:failed`.
+  Never throws."
   [{:keys [id database_id lock_token] :as wsd}]
-  (let [engine (keyword (:engine (ws.db/database database_id)))]
-    (try
-      (driver/destroy-workspace-isolation! engine (driver.u/lib-database database_id) wsd)
-      (ws.db/delete-workspace-database! id)
-      nil
-      (catch Throwable e
-        (log/warnf "Deleting workspace database %d on Database %d failed: %s" id database_id (ex-message e))
+  (try
+    (ws.status/refresh-lock! :database id lock_token)
+    (driver/destroy-workspace-isolation! (keyword (:engine (ws.db/database database_id)))
+                                         (driver.u/lib-database database_id)
+                                         wsd)
+    (ws.db/delete-workspace-database! id)
+    nil
+    (catch Throwable e
+      (log/warnf "Deleting workspace database %d on Database %d failed: %s" id database_id (ex-message e))
+      (try
         (ws.status/change-status! :database id lock_token #{:deprovisioning} :failed)
-        {:database_id database_id
-         :message     (or (ex-message e) (tru "The warehouse returned an error."))}))))
+        (catch Throwable status-e
+          (log/warnf "Marking workspace database %d failed failed: %s" id (ex-message status-e))))
+      {:database_id database_id
+       :message     (or (ex-message e) (tru "The warehouse returned an error."))})))
 
 (mu/defn delete-workspace! :- :nil
   "Tear down every database of the Workspace with `id` in the warehouse, then delete it. Throws a 404 when there is
