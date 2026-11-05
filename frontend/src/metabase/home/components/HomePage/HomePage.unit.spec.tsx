@@ -90,9 +90,10 @@ describe("HomePage", () => {
     expect(loadingHeading).toBeInTheDocument();
     expect(homePage).not.toBeInTheDocument();
 
-    expect(await screen.findByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
+    // the home page must not show in the gap between the loader and the redirect
     expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
+    expect(screen.getByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
   });
 
   it("should show the homepage right away when no homepage dashboard is set (metabase#37089)", () => {
