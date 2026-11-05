@@ -316,7 +316,7 @@ describe("issue 49270", () => {
       request.reply({ statusCode: 500, delay: 1000 });
     });
 
-    cy.button("Done").click();
+    H.addSummaryValue("Count of rows");
     cy.title().should("equal", "Doing science... · Metabase");
     cy.title().should("equal", "Question · Metabase");
   });
