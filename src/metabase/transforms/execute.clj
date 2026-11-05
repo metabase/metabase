@@ -1,6 +1,7 @@
 (ns metabase.transforms.execute
   (:require
    [metabase.indexes.models.table-index :as table-index]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
@@ -8,17 +9,24 @@
    [metabase.transforms.query-impl]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as ws]))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn- resolve-target :- ::transforms-base.schema/transform
-  "Hydrates the declared indexes and their request ids onto the target so the base reads them off
+  "Moves the target to where this instance writes it: on a workspace sidecar, the scratch namespace mapped to its
+  schema (see [[ws/resolve-transform-target]]). Every transform type runs through here, and everything after reads
+  the target from the transform, so this is the one place that decides where a transform writes.
+
+  Also hydrates the declared indexes and their request ids onto the target so the base reads them off
   `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam, and stashes
   `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
   [transform :- ::transforms.schema/transform]
-  (let [requests (table-index/select-applicable-for-transform (:id transform))]
-    (-> transform
+  (let [requests (table-index/select-applicable-for-transform (:id transform))
+        db-id    (transforms-base.i/target-db-id transform)]
+    (-> (cond-> transform
+          db-id (update :target #(ws/resolve-transform-target db-id %)))
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))

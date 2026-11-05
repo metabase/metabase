@@ -14,7 +14,8 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.workspaces.core :as ws]))
 
 (set! *warn-on-reflection* true)
 
@@ -108,7 +109,11 @@
           effective-transform-type (if (transforms-base.u/full-incremental-run? transform)
                                      :table
                                      (keyword (:type target)))
-          compiled-query (transforms-base.u/compile-source transform source-range-params)
+          ;; transforms hand compiled SQL straight to the driver, bypassing the QP's execution middleware, so the
+          ;; workspace rewrite that middleware does for queries happens here
+          remappings     (ws/table-remappings db)
+          compiled-query (cond-> (transforms-base.u/compile-source transform source-range-params)
+                           remappings (update :query #(ws/rewrite-sql driver remappings %)))
           transform-details {:db-id db
                              :database database
                              :transform-id   id

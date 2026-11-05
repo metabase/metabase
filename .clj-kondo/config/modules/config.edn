@@ -3067,7 +3067,8 @@
            transforms.base
            transforms.feature-gating
            transforms.indexes
-           util}
+           util
+           workspaces}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
@@ -3113,7 +3114,8 @@
            query-processor
            sync
            transforms.indexes
-           util}}
+           util
+           workspaces}}
 
   transforms.feature-gating
   {:team "Graphy"

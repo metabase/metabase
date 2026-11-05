@@ -40,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as ws]
    [toucan2.core :as t2])
   (:import
    (clojure.lang Keyword)
@@ -568,10 +569,14 @@
             (t2/hydrate :db))))
 
 (mu/defn target-table-exists? :- :boolean
-  "Test if the target table of a transform already exists."
+  "Test if the target table of a transform already exists. On a workspace sidecar that is the table in the scratch
+  namespace the transform writes to, not the main table."
   [{:keys [target] :as transform} :- ::transforms-base.schema/transform]
   (let [db-id (transforms-base.i/target-db-id transform)
-        {driver :engine :as database} (driver.u/lib-database db-id)]
+        {driver :engine :as database} (driver.u/lib-database db-id)
+        target (if-let [schema-map (ws/workspace-schemas database)]
+                 (ws/scratch-target schema-map target)
+                 target)]
     (driver/table-exists? driver database target)))
 
 (mu/defn- sync-table!
@@ -581,20 +586,25 @@
   ([database          :- ::lib.schema.metadata/database
     target            :- ::transforms-base.schema/synced-target
     {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
-   (when-let [table (or (target-table (:id database) target)
-                        (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     ;; If the table has nil schema, check if the physical table actually lives under
-     ;; the driver's default schema. If so, fix the Table record before syncing.
-     (let [table (if (nil? (:schema table))
-                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                     (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
-                         (-> (transforms-base.db/table (:id table))
-                             (t2/hydrate :db)))
-                     table)
-                   table)]
-       (sync/sync-table! table)
-       table))))
+   ;; on a workspace sidecar the target names the scratch namespace it was written to, but the app DB keeps the table
+   ;; under its main name; sync reads its columns from the scratch table through the remapping
+   (let [target (if-let [schema-map (ws/workspace-schemas database)]
+                  (ws/canonical-target schema-map target)
+                  target)]
+     (when-let [table (or (target-table (:id database) target)
+                          (when create?
+                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+       ;; If the table has nil schema, check if the physical table actually lives under
+       ;; the driver's default schema. If so, fix the Table record before syncing.
+       (let [table (if (nil? (:schema table))
+                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                       (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
+                           (-> (transforms-base.db/table (:id table))
+                               (t2/hydrate :db)))
+                       table)
+                     table)]
+         (sync/sync-table! table)
+         table)))))
 
 (mu/defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
