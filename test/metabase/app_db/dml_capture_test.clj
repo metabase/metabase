@@ -275,6 +275,13 @@
     (let [id (t2/insert-returning-pk! ::bird (bird 65 "a"))]
       (is (=? [(re-pattern (str "(?is)\\s*DELETE\\b.*\\b" id))] (t2/compile (t2/delete! ::bird :id id))))
       (is (empty? (events)))
+      (is (true? (t2/exists? ::bird :id id)))))
+  (testing "the same holds for a delete whose rows come from its primary keys, with no snapshot query"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :delete [:id])
+    (let [id (t2/insert-returning-pk! ::bird (bird 66 "a"))]
+      (t2/compile (t2/delete! ::bird :id id))
+      (is (empty? (events)))
       (is (true? (t2/exists? ::bird :id id))))))
 
 (deftest pre-image-build-failure-skips-capture-test

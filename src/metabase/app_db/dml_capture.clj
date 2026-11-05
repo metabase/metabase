@@ -238,11 +238,19 @@
               ::skip)
           (mapv (fn [id] {pk id}) pks))))))
 
+;; Toucan's query-inspection tooling (`t2/compile`, `t2/build`, `t2/resolved`) rebinds execution to hand back the query
+;; instead of running it.
+(defn- statement-runs?
+  "Whether the statement being processed will actually execute."
+  []
+  (identical? t2.pipeline/*transduce-execute* #'t2.pipeline/transduce-execute))
+
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/delete.* #_model ::captured #_resolved-query :default]
   "Capture the pre-image of the rows a DELETE statement matches, then deliver one `:delete` event."
   [rf query-type model parsed-args resolved-query]
-  (let [fields (when-not (::captured? parsed-args)
+  (let [fields (when (and (not (::captured? parsed-args))
+                          (statement-runs?))
                  (capture-fields model :delete))]
     (if (empty? fields)
       (next-method rf query-type model parsed-args resolved-query)
