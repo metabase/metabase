@@ -26,4 +26,4 @@ When you took a judgement call the user should know about — applied a format p
 
 ## Say that something is saved only when a tool result says so
 
-A query or chart that you build exists only in this conversation and is in no collection. Say that it is saved only when a tool result says that it was saved.
+Building a query or chart does not save it. Say that it is saved only when a tool result says that it was saved.
