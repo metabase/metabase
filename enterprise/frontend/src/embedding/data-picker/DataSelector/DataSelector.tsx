@@ -105,6 +105,18 @@ const PARENT_STEP = {
   [METRIC_STEP]: DATA_BUCKET_STEP,
 } as const satisfies Record<DataSelectorStep, DataSelectorStep | null>;
 
+// The step a pick goes on to; none closes the picker
+const NEXT_STEP = {
+  [DATA_BUCKET_STEP]: DATABASE_STEP,
+  [DATABASE_STEP]: SCHEMA_STEP,
+  [SCHEMA_STEP]: TABLE_STEP,
+  [TABLE_STEP]: null,
+  [LIBRARY_STEP]: null,
+  [MODEL_STEP]: null,
+  [SAVED_QUESTION_STEP]: null,
+  [METRIC_STEP]: null,
+} as const satisfies Record<DataSelectorStep, DataSelectorStep | null>;
+
 const SAVED_ENTITY_TYPE_BY_STEP: Partial<
   Record<DataSelectorStep, SavedEntityType>
 > = {
@@ -124,7 +136,6 @@ const STEP_BY_CARD_TYPE = {
 type AvailableModelsResult = Omit<SearchResponse, "data">;
 
 interface DataSelectorOwnProps {
-  steps: DataSelectorStep[];
   triggerContentComponent: ComponentType<TriggerComponentProps>;
   triggerElement?: ReactNode;
   triggerIconSize?: number;
@@ -243,7 +254,6 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
 
   return (
     <DataSelector
-      steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
       triggerContentComponent={TableTrigger}
       {...props}
       libraryCollection={libraryCollection}
@@ -704,25 +714,20 @@ export class UnconnectedDataSelector extends Component<
   }
 
   getNextStep(): DataSelectorStep | null {
-    const { steps } = this.props;
-    const index = steps.findIndex((step) => step === this.state.activeStep);
-    return index < steps.length - 1 ? steps[index + 1] : null;
+    const { activeStep } = this.state;
+    return activeStep === null ? null : NEXT_STEP[activeStep];
   }
 
   getPreviousStep(): DataSelectorStep | null {
-    const { steps } = this.props;
     const { activeStep } = this.state;
     if (this.isSearchLoading() || activeStep === null) {
       return null;
     }
 
     // Back goes to the closest parent with something to pick: climb past parents
-    // that aren't in `steps` or have nothing to choose (`hasStepChoice`). None, no back link.
+    // that have nothing to choose (`hasStepChoice`). None, no back link.
     let step: DataSelectorStep | null = PARENT_STEP[activeStep];
-    while (
-      step !== null &&
-      !(steps.includes(step) && this.hasStepChoice(step))
-    ) {
+    while (step !== null && !this.hasStepChoice(step)) {
       step = PARENT_STEP[step];
     }
     return step;
