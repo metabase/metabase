@@ -1,26 +1,31 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { INTEGRATED_OR_FILTERS, usePrototypeSetting } from "metabase/prototype";
+import { IntegrationFilters } from "metabase/prototypes/IntegrationFilters";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
   QueryModalType,
 } from "metabase/redux/store";
-import { Flex } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { getQueryUpdateOptions } from "../FilterAutoApply/utils";
+import { FormulaBarSlotTarget } from "../FormulaBar";
 import { ViewSection } from "../ViewSection";
 
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
 import {
   AdHocQuestionLeftSide,
+  KeyboardFilterRow,
   QueryBuilderBackButton,
-  QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
 } from "./components";
@@ -72,7 +77,10 @@ interface ViewTitleHeaderProps {
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 
   className?: string;
   style?: React.CSSProperties;
@@ -113,10 +121,25 @@ export function ViewTitleHeader({
     areFiltersExpanded,
     { turnOn: expandFilters, turnOff: collapseFilters },
   ] = useToggle(!question?.isSaved());
+  const [draftFilterKey, setDraftFilterKey] = useState<number | null>(null);
+
+  const addDraftFilter = useCallback(() => {
+    expandFilters();
+    setDraftFilterKey((key) => (key ?? 0) + 1);
+  }, [expandFilters]);
+
+  const removeDraftFilter = useCallback(() => setDraftFilterKey(null), []);
+
+  const hideFilters = useCallback(() => {
+    collapseFilters();
+    setDraftFilterKey(null);
+  }, [collapseFilters]);
 
   const previousQuestion = usePrevious(question);
 
   const query = question.query();
+  const [useOrFilters] = usePrototypeSetting(INTEGRATED_OR_FILTERS);
+  const prototypeData = useSetting("prototype-data");
   const previousQuery = usePrevious(query);
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -206,20 +229,41 @@ export function ViewTitleHeader({
           isModelOrMetric={isModelOrMetric}
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
+          onCollapseFilters={hideFilters}
+          onAddFilter={addDraftFilter}
         />
       </ViewSection>
 
-      {QuestionFiltersHeader.shouldRender({
-        question,
-        queryBuilderMode,
-      }) && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
-          question={question}
-          updateQuestion={updateQuestion}
-        />
-      )}
+      <Box className={ViewTitleHeaderS.FormulaBarAndFilters}>
+        {KeyboardFilterRow.shouldRender({
+          question,
+          queryBuilderMode,
+        }) &&
+          (useOrFilters ? (
+            areFiltersExpanded && (
+              <IntegrationFilters
+                query={query}
+                onChange={(nextQuery) => {
+                  updateQuestion(
+                    question.setQuery(nextQuery),
+                    getQueryUpdateOptions(nextQuery, prototypeData),
+                  );
+                }}
+              />
+            )
+          ) : (
+            <KeyboardFilterRow
+              expanded={areFiltersExpanded}
+              question={question}
+              isDirty={isDirty}
+              draftKey={draftFilterKey}
+              onAddDraft={addDraftFilter}
+              onRemoveDraft={removeDraftFilter}
+              updateQuestion={updateQuestion}
+            />
+          ))}
+        <FormulaBarSlotTarget className={ViewTitleHeaderS.FormulaBarSlot} />
+      </Box>
     </>
   );
 }

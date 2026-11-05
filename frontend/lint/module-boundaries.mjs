@@ -249,6 +249,7 @@ const elements = [
     enforcePublicApi: true,
   }),
   createElement({ type: "shared", name: "plugins" }),
+  createElement({ type: "shared", name: "prototype", enforcePublicApi: true }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
@@ -361,6 +362,7 @@ const elements = [
   }),
   createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
+  createElement({ type: "feature", name: "prototypes" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
   createElement({
@@ -447,6 +449,12 @@ const elements = [
 ];
 
 const baseRules = [
+  // Integration prototype only: mount the OR editor alongside the summary sidebar.
+  // A production implementation should move the editor into shared/querying.
+  {
+    from: ["feature/query_builder"],
+    allow: ["feature/prototypes"],
+  },
   ...elements.map((element) => ({
     // always allow self-imports
     from: [element.type],

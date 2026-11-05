@@ -14,6 +14,7 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { useStringFilter } from "./hooks";
 import type { OperatorType } from "./types";
@@ -28,6 +29,7 @@ export function StringFilterPicker({
   withAddButton,
   withSubmitButton,
   onChange,
+  onDraftChange,
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -64,6 +66,10 @@ export function StringFilterPicker({
     column,
     filter,
   });
+
+  useReportDraftFilter(onDraftChange, { operator, values, options }, () =>
+    isValid ? getFilterClause(operator, values, options) : undefined,
+  );
 
   const handleOperatorChange = (newOperator: Lib.StringFilterOperator) => {
     setOperator(newOperator);
@@ -154,7 +160,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (type === "exact") {
     return (
-      <Box p="lg" pb={0} mah="25vh" style={{ overflow: "auto" }}>
+      <Box px="xl" pt="md">
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -164,14 +170,14 @@ function StringValueInput({
           autoFocus={autoFocus}
           onChange={onChange}
         />
-        <Box pt="lg" />
+        <Box pt="md" />
       </Box>
     );
   }
 
   if (type === "partial") {
     return (
-      <Box p="lg" pb={0} mah="40vh" style={{ overflow: "auto" }}>
+      <Box px="xl" pt="xl" mah="40vh" style={{ overflow: "auto" }}>
         <MultiAutocompleteWithTranslation
           value={values}
           placeholder={t`Enter some text`}

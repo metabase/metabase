@@ -1,0 +1,53 @@
+.panel {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+/* out of flow, so a long sidebar scrolls inside the panel instead of stretching the page */
+.content {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+}
+
+/* the panel's left border is the resize target: an invisible strip a few pixels either side of it,
+   lit in the brand color on hover (after a beat, so passing over it doesn't flash) and while dragging */
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* centered on the 1px border, which sits just outside the padding box */
+  left: calc(-0.25rem - 0.5px);
+  z-index: 1;
+  width: 0.5rem;
+  cursor: col-resize;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background-color: transparent;
+    translate: -50% 0;
+    transition: background-color 120ms ease-out;
+  }
+
+  &:hover::after {
+    transition-delay: 150ms;
+  }
+
+  &:hover::after,
+  &[data-resizing]::after {
+    background-color: var(--mb-color-core-brand);
+  }
+}
+
+/* dragging across the results shouldn't select their text */
+.isResizing {
+  user-select: none;
+  cursor: col-resize;
+}

@@ -93,6 +93,8 @@ const PATHS_WITHOUT_NAVBAR = [
   /\/model\/columns/,
   /\/model\/metadata/,
   /\/transform\/new\/.*\/query/,
+  // DSN-737 throwaway prototyping canvas has its own rail
+  /^\/prototypes/,
 ];
 
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [

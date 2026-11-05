@@ -5,6 +5,8 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { INTEGRATED_OR_FILTERS, usePrototypeSetting } from "metabase/prototype";
+import { IntegrationNotebookFilterStep } from "metabase/prototypes/IntegrationNotebookFilterStep";
 import {
   Notebook,
   type NotebookProps,
@@ -40,6 +42,7 @@ export const NotebookContainer = ({
   runQuestionQuery,
   setQueryBuilderMode,
 }: NotebookContainerProps) => {
+  const [useOrFilters] = usePrototypeSetting(INTEGRATED_OR_FILTERS);
   const [shouldShowNotebook, setShouldShowNotebook] = useState(isOpen);
   const { width: windowWidth } = useWindowSize();
 
@@ -135,6 +138,9 @@ export const NotebookContainer = ({
           style={{ flex: 1, overflowY: "auto" }}
         >
           <Notebook
+            filterStepComponent={
+              useOrFilters ? IntegrationNotebookFilterStep : undefined
+            }
             question={question.setType("question")}
             isDirty={isDirty}
             isRunnable={isRunnable}

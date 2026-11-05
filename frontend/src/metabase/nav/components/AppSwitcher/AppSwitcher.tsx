@@ -13,6 +13,10 @@ import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
 import { getUser } from "metabase/current-user";
+import {
+  PROTOTYPE_SETTINGS,
+  PrototypeSettingsMenuItem,
+} from "metabase/prototype";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -180,6 +184,24 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
+    // DSN-737 throwaway prototyping canvas; branch never merges
+    items.push(
+      <Menu.Item
+        key="prototypes-link"
+        component={ForwardRefLink}
+        to="/prototypes"
+        leftSection={
+          <Icon
+            name="palette"
+            {...(currentApp === "prototypes"
+              ? CURRENT_APP_ICON_OVERRIDES
+              : null)}
+          />
+        }
+      >
+        {t`Prototypes`}
+      </Menu.Item>,
+    );
 
     return (
       <>
@@ -248,6 +270,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
 
           {/* Apps */}
           {appsSection}
+
+          {/* Prototype */}
+          <Divider w="100%" my="sm" />
+          <Box px="lg">
+            <PrototypeSettingsMenuItem settings={PROTOTYPE_SETTINGS} />
+          </Box>
 
           {/* Logout and Help */}
           <Divider w="100%" my="sm" />

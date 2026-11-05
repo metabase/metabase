@@ -1,14 +1,21 @@
+import { INTEGRATED_OR_FILTERS, usePrototypeSetting } from "metabase/prototype";
+import { IntegrationFilters } from "metabase/prototypes/IntegrationFilters";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import type { QueryBuilderMode } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { getQueryUpdateOptions } from "../../../FilterAutoApply/utils";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
 interface FilterHeaderProps {
   question: Question;
   expanded: boolean;
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 }
 
 export function QuestionFiltersHeader({
@@ -17,6 +24,8 @@ export function QuestionFiltersHeader({
   updateQuestion,
 }: FilterHeaderProps) {
   const query = question.query();
+  const [useOrFilters] = usePrototypeSetting(INTEGRATED_OR_FILTERS);
+  const prototypeData = useSetting("prototype-data");
 
   const handleChange = (query: Lib.Query) => {
     updateQuestion(question.setQuery(query), { run: true });
@@ -24,6 +33,20 @@ export function QuestionFiltersHeader({
 
   if (!expanded) {
     return null;
+  }
+
+  if (useOrFilters) {
+    return (
+      <IntegrationFilters
+        query={query}
+        onChange={(nextQuery) =>
+          updateQuestion(
+            question.setQuery(nextQuery),
+            getQueryUpdateOptions(nextQuery, prototypeData),
+          )
+        }
+      />
+    );
   }
 
   return (

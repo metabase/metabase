@@ -362,7 +362,7 @@ describe("ViewTitleHeader", () => {
           setup({ card, database: null });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
           expect(
-            screen.queryByTestId("filters-visibility-control"),
+            screen.queryByTestId("question-filter-header"),
           ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
@@ -623,14 +623,14 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     it("can collapse and expand filters", async () => {
       setup({ card, queryBuilderMode: "view" });
 
-      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+      fireEvent.click(screen.getByTestId("question-filter-header"));
 
       expect(
         screen.queryByText("Total is less than 50"),
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+      fireEvent.click(screen.getByTestId("question-filter-header"));
 
       expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
       expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
@@ -640,7 +640,7 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
       setup({ card, queryBuilderMode: "notebook" });
 
       expect(
-        screen.queryByTestId("filters-visibility-control"),
+        screen.queryByTestId("question-filter-header"),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByText("Total is less than 50"),
@@ -665,9 +665,7 @@ describe("View Header | Saved GUI question", () => {
     it("shows filters collapsed by default", () => {
       setup({ card, queryBuilderMode: "view" });
 
-      expect(
-        screen.getByTestId("filters-visibility-control"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("question-filter-header")).toBeInTheDocument();
       expect(
         screen.queryByText("Total is less than 50"),
       ).not.toBeInTheDocument();
@@ -677,12 +675,12 @@ describe("View Header | Saved GUI question", () => {
     it("can collapse and expand filters", () => {
       setup({ card, queryBuilderMode: "view" });
 
-      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+      fireEvent.click(screen.getByTestId("question-filter-header"));
 
       expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
       expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId("filters-visibility-control"));
+      fireEvent.click(screen.getByTestId("question-filter-header"));
 
       expect(
         screen.queryByText("Total is less than 50"),
@@ -694,7 +692,7 @@ describe("View Header | Saved GUI question", () => {
       setup({ card, queryBuilderMode: "notebook" });
 
       expect(
-        screen.queryByTestId("filters-visibility-control"),
+        screen.queryByTestId("question-filter-header"),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByText("Total is less than 50"),
