@@ -148,10 +148,27 @@
 ;;; ------------------------------------------------ Lifecycle ------------------------------------------------
 
 ;; Entries are matched by component key, not handle, since reloading a namespace makes a new handle for the same key.
-(defonce ^{:doc "The components [[ensure-started!]] started, as `{:k key, :handle h, :stop f}` maps in start order."
+(defonce ^{:doc "The components [[start!]] started and that are still running, as `{:k key, :handle h, :stop f,
+             :value v}` maps."
            :private true}
   started-components
   (atom []))
+
+;; A component keeps the place of its first start, so one restarted after its dependents still halts after them.
+(defonce ^{:doc "Component keys in the order [[start!]] first started them."
+           :private true}
+  start-order
+  (atom []))
+
+(defonce ^{:doc "Component key -> the thread running that component's start function."
+           :private true}
+  starting
+  (atom {}))
+
+(defonce ^{:doc "The keys of the components whose stop function is running."
+           :private true}
+  stopping
+  (atom #{}))
 
 (defn- handle-key
   [^ComponentHandle handle]
@@ -162,10 +179,26 @@
   [handle]
   (contains? *bound-boxes* (handle-key handle)))
 
-(defn- registered-stop
-  "The stop function [[ensure-started!]] recorded for the component behind `handle`, or nil if it did not start it."
-  [handle]
-  (some #(when (= (handle-key handle) (:k %)) (:stop %)) @started-components))
+(defn- registered-entry
+  "The [[started-components]] entry for the component under `k`, or nil if it is not running."
+  [k]
+  (some #(when (= k (:k %)) %) @started-components))
+
+(defn- run-start
+  "Call `start` for the component under `k` and return its value, which must not be nil.
+  It runs with no bindings, so a root is made from roots even when the calling thread binds another component."
+  [k start]
+  (when (= (Thread/currentThread) (get @starting k))
+    (throw (ex-info (str "Starting component started itself: " k) {:component k})))
+  (swap! starting assoc k (Thread/currentThread))
+  (let [value (try
+                (clojure.core/binding [*bound-boxes* {}]
+                  (start))
+                (finally
+                  (swap! starting dissoc k)))]
+    (when (nil? value)
+      (throw (ex-info (str "Starting component returned nil: " k) {:component k})))
+    value))
 
 (defn start!
   "Like [[ensure-started!]], but returns `[value started?]`, where `started?` says whether this call started the
@@ -177,57 +210,66 @@
       (if (some? current)
         [current false]
         (mc/with-slot-lock handle
-          (let [current @handle]
-            (if (some? current)
+          (let [k       (handle-key handle)
+                current @handle]
+            (cond
+              (some? current)
               [current false]
-              (let [k       (handle-key handle)
-                    started (start)]
-                (when (nil? started)
-                  (throw (ex-info (str "Starting component returned nil: " k) {:component k})))
+
+              (contains? @stopping k)
+              (throw (ex-info (str "Component is stopping: " k) {:component k}))
+
+              :else
+              (let [started (run-start k start)]
                 ;; Registered before the root is published, so the root is never visible unregistered, and anything
-                ;; that starts after seeing it, and so may depend on it, registers after it and halts before it.
-                ;; Components `start` itself started registered first, for the same reason.
+                ;; that starts after seeing it, and so may depend on it, comes after it in [[start-order]].
+                ;; Components `start` itself started come before it, for the same reason.
+                (swap! start-order (fn [ks] (cond-> ks (not (some #{k} ks)) (conj k))))
                 (swap! started-components (fn [entries]
                                             (conj (filterv #(not= k (:k %)) entries)
-                                                  {:k k, :handle handle, :stop stop})))
+                                                  {:k k, :handle handle, :stop stop, :value started})))
                 (mc/reset! handle started)
                 [started true]))))))))
 
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
-   Starting calls `start` with no arguments, which must return a non-nil value, installs that as the root, and records
-   `stop`, a function of the value, for [[stop!]] and [[halt!]].
+   Starting calls `start` with no arguments and with no bindings in place, which must return a non-nil value,
+   installs that as the root, and records `stop`, a function of the value, for [[stop!]] and [[halt!]].
    Threads racing to start the component start it once.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
+   Throws if the component is being stopped, or if `start` tries to start the component it is starting.
    The component's root must already be installed, usually as nil by [[mutable-component-handle]].
    A component started while [[halt!]] runs may be left running."
   [handle start stop]
   (first (start! handle start stop)))
 
-(defn- unregister!
-  "Remove the [[started-components]] entry for the component behind `handle`."
-  [handle]
-  (let [k (handle-key handle)]
-    (swap! started-components (fn [entries] (filterv #(not= k (:k %)) entries)))))
-
 (defn stop!
-  "Stop the component behind `handle` if [[ensure-started!]] started it: set its root back to nil, then call the stop
-   function recorded at start on the value it held.
+  "Stop the component behind `handle` if [[start!]] started it: unregister it, set its root back to nil if it still
+   holds the started value, then call the stop function recorded at start on that value.
    Returns true if there was a running component to stop.
-   Leaves alone a component [[ensure-started!]] did not start, and any binding on this thread, since bindings are
-   never started."
+   The stop function runs without the component's lock, so it can wait for threads that use the system; any of them
+   that tries to start this component meanwhile gets an exception.
+   Leaves alone a component [[start!]] did not start, and any binding on this thread, since bindings are never
+   started."
   [handle]
-  (mc/without-binding
-   handle
-   (fn []
-     (mc/with-slot-lock handle
-       (if-let [stop (registered-stop handle)]
-         (let [[old _] (mc/reset-vals! handle nil)]
-           (unregister! handle)
-           (when (some? old)
-             (stop old))
-           (some? old))
-         false)))))
+  (let [k     (handle-key handle)
+        entry (mc/without-binding
+               handle
+               (fn []
+                 (mc/with-slot-lock handle
+                   (when-let [entry (registered-entry k)]
+                     (swap! started-components (fn [entries] (filterv #(not= k (:k %)) entries)))
+                     (when (identical? (:value entry) (some-> (mc/root-entry handle) val))
+                       (mc/reset! handle nil))
+                     (swap! stopping conj k)
+                     entry))))]
+    (if entry
+      (try
+        ((:stop entry) (:value entry))
+        true
+        (finally
+          (swap! stopping disj k)))
+      false)))
 
 (defn- stop-all!
   "Call [[stop!]] on each of `handles` in order.
@@ -248,12 +290,14 @@
                       (second (first failures)))))))
 
 (defn- halt-order
-  "The handles of the components [[ensure-started!]] started, in the order [[halt!]] stops them: last started first."
+  "The handles of the running components, in the order [[halt!]] stops them: the reverse of the order they first
+  started in."
   []
-  (map :handle (rseq @started-components)))
+  (let [handle-by-key (into {} (map (juxt :k :handle)) @started-components)]
+    (keep handle-by-key (rseq @start-order))))
 
 (defn halt!
-  "Stop every component [[ensure-started!]] started, in reverse start order.
+  "Stop every running component [[start!]] started, in the reverse of the order they first started in.
    Throws after trying them all if any stop threw; see [[stop-all!]]."
   []
   (stop-all! (halt-order)))
