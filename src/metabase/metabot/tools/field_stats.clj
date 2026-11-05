@@ -174,7 +174,7 @@
   The permission filter runs first, because it decides per FK path: the first path to a field can be hidden while a
   later path is visible."
   [columns]
-  (m/distinct-by metabot.tools.u/column-field-id (entity-details/permission-filter-columns columns)))
+  (m/distinct-by metabot.tools.u/column-field-id (metabot.perms/permission-filter-columns columns)))
 
 (defn- field-column
   "Return the column of the permission-filtered `columns` of `query` that `field-id` names, or throw
@@ -219,9 +219,9 @@
         all-returned (lib/returned-columns query)
         all-visible  (when-not (= entity-type "question")
                        (lib/visible-columns query))
-        returned     (entity-details/permission-filter-columns all-returned)
+        returned     (metabot.perms/permission-filter-columns all-returned)
         visible      (when all-visible
-                       (entity-details/permission-filter-columns all-visible))
+                       (metabot.perms/permission-filter-columns all-visible))
         ;; Result columns keep their own field IDs, see `column-field-ids`. A visible column adds a field ID only
         ;; when no result column has it, and only its first FK route does, as in `usable-columns`.
         columns      (if (= entity-type "question")

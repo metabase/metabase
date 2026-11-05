@@ -5,6 +5,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -131,3 +132,81 @@
                  metabot.db/field-table-ids
                  nil)
        (into {} (remove #(nil? (val %))))))
+
+(defn- column-table-id
+  "The table `column` belongs to: the canonical owner of its real Field ID (looked up in
+   `field-id->table-id`), or its own claimed `:table-id` for a virtual column with no Field ID."
+  [field-id->table-id column]
+  (let [field-id (u/id column)]
+    (if (pos-int? field-id)
+      (get field-id->table-id field-id)
+      (:table-id column))))
+
+(defn- field-visible?
+  [sandbox-restricted-ids visible-table-ids table-id field-id]
+  (and (contains? visible-table-ids table-id)
+       (if-let [allowed-field-ids (get sandbox-restricted-ids table-id)]
+         (contains? allowed-field-ids field-id)
+         true)))
+
+(defn- caller-joined?
+  [explicit-joins-caller-performed? column]
+  (or (= :source/implicitly-joinable (:lib/source column))
+      (and explicit-joins-caller-performed?
+           (= :source/joins (:lib/source column)))))
+
+(defn- referenced-field-visible?
+  [{:keys [field-id->table-id sandbox-restricted-ids]} visible-table-ids field-id]
+  (when-let [table-id (get field-id->table-id field-id)]
+    (field-visible? sandbox-restricted-ids visible-table-ids table-id field-id)))
+
+(defn- column-visible?
+  [{:keys [field-id->table-id sandbox-restricted-ids queryable-table-ids accessible-table-ids
+           explicit-joins-caller-performed?] :as ctx}
+   {:keys [fk-field-id] :as column}]
+  (let [field-id (u/id column)
+        table-id (column-table-id field-id->table-id column)]
+    (and (or (and (not (pos-int? field-id)) (not (pos-int? table-id)))
+             (and (pos-int? table-id)
+                  (field-visible? sandbox-restricted-ids
+                                  (if (caller-joined? explicit-joins-caller-performed? column)
+                                    queryable-table-ids
+                                    accessible-table-ids)
+                                  table-id
+                                  field-id)))
+         (or (nil? fk-field-id)
+             (referenced-field-visible? ctx accessible-table-ids fk-field-id)))))
+
+(defn permission-filter-columns
+  "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns."
+  ([columns] (permission-filter-columns columns nil))
+  ([columns {:keys [explicit-joins-caller-performed?]}]
+   (let [columns              (vec columns)
+         column-field-ids     (into #{} (comp (map u/id) (filter pos-int?)) columns)
+         referenced-field-ids (into #{}
+                                    (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
+                                          (filter some?))
+                                    columns)
+         field-id->table-id   (let [field-ids (into column-field-ids referenced-field-ids)]
+                                (when (seq field-ids)
+                                  (field-id->table-id field-ids)))
+         table-ids            (into #{}
+                                    (filter pos-int?)
+                                    (concat (map (partial column-table-id field-id->table-id) columns)
+                                            (vals field-id->table-id)))
+         queryable-table-ids  (queryable-table-ids table-ids)
+         accessible-table-ids (data-accessible-table-ids table-ids)
+         ctx {:field-id->table-id                field-id->table-id
+              :sandbox-restricted-ids            (sandbox-restricted-fields table-ids)
+              :queryable-table-ids               queryable-table-ids
+              :accessible-table-ids              accessible-table-ids
+              :explicit-joins-caller-performed?  explicit-joins-caller-performed?}]
+     (->> columns
+          (filter (partial column-visible? ctx))
+          (mapv (fn [{:keys [fk-target-field-id] :as column}]
+                  (cond-> (if-let [table-id (get field-id->table-id (u/id column))]
+                            (assoc column :table-id table-id)
+                            column)
+                    (and fk-target-field-id
+                         (not (referenced-field-visible? ctx queryable-table-ids fk-target-field-id)))
+                    (dissoc :fk-target-field-id))))))))

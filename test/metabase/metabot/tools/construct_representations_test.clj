@@ -26,6 +26,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.core :as tools]
@@ -1868,10 +1869,10 @@
                 ;; `:model/Table` rows, so those checks are stubbed open to keep this namespace
                 ;; app-DB-free (see the fixture note above). That the surfaced dimensions ARE
                 ;; permission-filtered is covered against real tables in entity-details-test.
-                mi/can-read?                             (constantly true)
-                mi/can-query?                            (constantly true)
-                entity-details/permission-filter-columns (fn [cols & _] cols)
-                entity-details/verified-review?          (constantly false)]
+                mi/can-read?                            (constantly true)
+                mi/can-query?                           (constantly true)
+                metabot.perms/permission-filter-columns (fn [cols & _] cols)
+                entity-details/verified-review?         (constantly false)]
     (f)))
 
 ;; The join clause the metric /dimensions resource hands the LLM (uuid-free), to paste into `joins:`.

@@ -25,7 +25,6 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -765,7 +764,7 @@
           fields          (->> fields
                                (filter #(contains? queryable-tables (:table-id %)))
                                (filter #(visible-field metadata-provider (:id %)))
-                               entity-details/permission-filter-columns
+                               metabot.perms/permission-filter-columns
                                (filter #(= table-id (foreign-key-target-table-id metadata-provider %))))]
       (when (seq fields)
         (format "Use `source-field` %s to reach %s directly."
@@ -777,7 +776,7 @@
   (let [fields (->> (serialization.protocol.mp/outbound-fks-from-table metadata-provider from-table-id)
                     (map :source-field)
                     (filter #(visible-field metadata-provider (:id %)))
-                    entity-details/permission-filter-columns
+                    metabot.perms/permission-filter-columns
                     (filter #(= to-table-id (foreign-key-target-table-id metadata-provider %))))]
     (when (= 1 (count fields))
       (first fields))))
@@ -850,7 +849,7 @@
     (let [[_ {:keys [source-field]} target] field-ref
           field-ids   (set [source-field target])
           fields      (->> (lib.metadata/bulk-metadata mp :metadata/column field-ids)
-                           entity-details/permission-filter-columns
+                           metabot.perms/permission-filter-columns
                            (u/index-by :id))
           _visible    (when-not (every? fields field-ids)
                         (throw (ex-info "The implicit field reference cannot be resolved with the fields available to you. Use a visible foreign key or an explicit join."

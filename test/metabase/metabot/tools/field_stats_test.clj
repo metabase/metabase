@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -204,7 +203,7 @@
   (testing "Two FK paths to one field: when the first path is hidden, the column of the visible path stays"
     (let [hidden  {:id 1 :fk-field-id 10}
           visible {:id 1 :fk-field-id 11}]
-      (mt/with-dynamic-fn-redefs [entity-details/permission-filter-columns
+      (mt/with-dynamic-fn-redefs [metabot.perms/permission-filter-columns
                                   (fn [columns] (remove #(= 10 (:fk-field-id %)) columns))]
         (is (= [visible]
                (#'metabot.tools.field-stats/usable-columns [hidden visible])))))))
