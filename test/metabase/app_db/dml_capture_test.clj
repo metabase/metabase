@@ -314,5 +314,7 @@
       (is (= 1 (count evs)))
       (testing "captured values are the raw stored column values: in-transformed on write, never out-transformed"
         (is (=? [{:group_id 250, :name "ABC"}] rows)))
+      (testing "rows are plain maps, not toucan2 instances"
+        (is (not-any? t2/instance? rows)))
       (testing "no decoration keys leak into the snapshot"
         (is (= #{:id :group_id :name} (set (keys (first rows)))))))))
