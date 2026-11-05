@@ -399,8 +399,14 @@
                                        :queue-size   queue-size
                                        :timeout-ms   timeout-ms
                                        :delay-ms     delay-ms})]
-             (otel/set-default-otel! otel)
-             (init-enabled-groups! groups-str log-level-str)
+             ;; the default only once the rest has worked, and the SDK closed if it has not, so a failed start leaves no
+             ;; running SDK behind
+             (try
+               (init-enabled-groups! groups-str log-level-str)
+               (otel/set-default-otel! otel)
+               (catch Throwable e
+                 (stop-otel-sdk! otel)
+                 (throw e)))
              (log/info "OpenTelemetry tracing initialized successfully")
              otel))
          stop-otel-sdk!))

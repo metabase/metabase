@@ -116,14 +116,15 @@
   (tracing/shutdown!)
   (analytics.core/shutdown!)
   (notification/shutdown!)
-  ;; whatever else the global system started, such as warehouse connection pools, last started first
+  ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
+  (let [timeout-seconds 20]
+    (mdb/release-migration-locks! timeout-seconds))
+  ;; whatever else the global system started, such as warehouse connection pools, last started first; after the
+  ;; migration locks are released, since a component this halts could be one that release needs
   (try
     (global-system/halt!)
     (catch Throwable e
       (log/warn e "Some components failed to stop")))
-  ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
-  (let [timeout-seconds 20]
-    (mdb/release-migration-locks! timeout-seconds))
   (perf/stop-monitoring!)
   (shutdown-agents)
   (log/info "Metabase Shutdown COMPLETE"))
