@@ -135,11 +135,13 @@
 
   Return the RFC 6749 token response. The token carries `scopes`, or every MCP scope when `scopes` is nil,
   and is bound to the MCP endpoint, which `resource` must name when it is given.
+  Once the token is issued, publish `:event/user-login`, and `:event/user-joined` when the user had never logged in.
   Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused; see [[verified-refusal?]]."
   [provider request {:keys [assertion scopes resource]}]
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)
-        user-id (:id (log-in! assertion request))
+        user    (log-in! assertion request)
+        user-id (:id user)
         _       (check-mcp-access! user-id)
         token   (oidc.token/generate-access-token)
         ttl     (oauth-settings/oauth-server-access-token-ttl)
@@ -148,6 +150,9 @@
     (oidc.store/save-access-token (:token-store provider) token (str user-id) client-id scopes
                                   (+ (System/currentTimeMillis) (* 1000 ttl)) bound)
     (events/publish-event! :event/mcp-jwt-token-issued {:user-id user-id, :details {:scope granted}})
+    (events/publish-event! :event/user-login {:user-id user-id})
+    (when-not (:last_login user)
+      (events/publish-event! :event/user-joined {:user-id user-id}))
     {:access_token token
      :token_type   "Bearer"
      :expires_in   ttl
