@@ -41,7 +41,9 @@ export function useDataAppPathNavigation({
     if (currentUrl.href !== targetUrl.href) {
       const route = normalizedPath.slice(name.length);
 
-      navigate(route.startsWith("/") ? route : `/${route}`);
+      navigate(route.startsWith("/") ? route : `/${route}`, {
+        replace: true,
+      });
     }
   }, [name, path, navigationRequest]);
 }

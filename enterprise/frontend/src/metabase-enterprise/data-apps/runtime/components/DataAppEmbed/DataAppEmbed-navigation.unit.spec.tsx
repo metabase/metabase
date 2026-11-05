@@ -106,6 +106,9 @@ describe("DataAppEmbed - router navigation", () => {
     // simulates in-app navigation
     window.history.replaceState(null, "", "/embed/embedded-apps/sales/orders");
 
+    const pushState = jest.spyOn(window.history, "pushState");
+    const replaceState = jest.spyOn(window.history, "replaceState");
+
     // host sets the same path again after in-app navigation
     rerender({
       navigationRequest: {
@@ -116,5 +119,15 @@ describe("DataAppEmbed - router navigation", () => {
     expect(window.location.href).toBe(
       `${window.location.origin}/embed/embedded-apps/sales/orders/details?tab=summary`,
     );
+
+    // the host owns the history entry, so the iframe must not
+    // add a second back-button step.
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      "/embed/embedded-apps/sales/orders/details?tab=summary",
+    );
+
+    expect(pushState).not.toHaveBeenCalled();
   });
 });
