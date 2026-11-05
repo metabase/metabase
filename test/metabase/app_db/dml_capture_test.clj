@@ -277,6 +277,8 @@
            :where [:in :id {:select [:id], :from [:doomed]}]}
           ;; a LIMIT, which picks arbitrary rows without an ORDER BY
           {:where [:= :group_id 112], :limit 1}
+          ;; a RETURNING clause, which a SELECT cannot carry
+          {:where [:= :group_id 112], :returning [:id]}
           ;; a raw SQL string
           (str "DELETE FROM " table-name " WHERE group_id = 112"))
         (is (zero? @build-calls))))))
