@@ -676,6 +676,20 @@ WORKSPACE_SIDE_EFFECT_PREFIXES = ("lo_", "pg_advisory", "pg_try_advisory", "pg_s
                                   "pg_logical_", "pg_replication_", "pg_stat_reset", "pg_promote")
 
 
+_STRING_TOKEN_TYPES = frozenset(
+    getattr(sqlglot.TokenType, name)
+    for name in ("STRING", "NATIONAL_STRING", "RAW_STRING", "BYTE_STRING", "HEX_STRING", "BIT_STRING",
+                 "UNICODE_STRING", "HEREDOC_STRING")
+    if hasattr(sqlglot.TokenType, name))
+
+
+def _literal_values(text: str, dialect: str):
+    """The values of the string literals sqlglot's tokenizer finds in `text`, in order, whatever their quoting, case
+    folded: sqlglot upper-cases unit literals it regenerates (date_trunc('month', ..) -> 'MONTH', INTERVAL '1 day'), and
+    a change of case alone can't move where a literal or a statement ends."""
+    return [tok.text.casefold() for tok in sqlglot.tokenize(text, read=dialect) if tok.token_type in _STRING_TOKEN_TYPES]
+
+
 def postgres_identifier(name: str, quoted: bool) -> str:
     """`name` as Postgres stores it: an unquoted name has its ASCII letters lower-cased (only A-Z), and every name is
     cut to 63 bytes on a UTF-8 character boundary."""
@@ -933,18 +947,36 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     raise ValueError(f"The SQL passes {name} SQL text that names a remapped table, which can't be "
                                      f"rewritten.")
 
-    # A backslash anywhere in the text, in strict mode: it is the one character whose meaning in a string depends on
-    # the string's kind (E'..', U&'..') and on the server (standard_conforming_strings off makes it an escape in a
-    # plain '..'), so the server could read the text differently from the AST checked here, and sqlglot regenerates
-    # E-strings with their backslashes collapsed. With no backslash, every kind of literal reads the same either way,
-    # so returning the text as written runs what was checked. Dollar-quoted text is included: refusing every
-    # backslash is simpler than proving where a $$ body ends.
+    # Strict mode refuses, anywhere in the text, the characters whose reading the server may not share with this
+    # parser, before parsing. A backslash: its meaning in a string depends on the string's kind (E'..') and on the
+    # server (standard_conforming_strings off makes it an escape in a plain '..'), and sqlglot regenerates E-strings
+    # with their backslashes collapsed; dollar-quoted text is included, since refusing every backslash is simpler than
+    # proving where a $$ body ends. Unicode escapes (U&'..', U&"..", UESCAPE), which change what a literal or name
+    # reads without any backslash. And a `$` outside a valid dollar quote (below).
     if strict_statements and "\\" in sql:
         raise ValueError("The SQL has a backslash, which a workspace refuses because the server could read it "
                          "differently from this check.")
+    if strict_statements and (re.search(r"(?<![\w\$])[uU]&['\"]", sql) or re.search(r"(?i)\buescape\b", sql)
+                              or _hidden_sql(sql, dialect, True)):
+        raise ValueError("The SQL has a Unicode escape (U&'..', U&\"..\" or UESCAPE), which a workspace refuses because "
+                         "the server could read it differently from this check.")
+    # `$` is the other character with a server-side reading this parser may not share: Postgres takes `$<digits>` as a
+    # parameter and accepts only `$tag$` dollar quotes whose tag is an identifier that doesn't start with a digit,
+    # while sqlglot also takes `$1a$` as a quote. PgJDBC uses `?` for parameters, so legitimate SQL has no `$<digit>`.
+    if strict_statements:
+        if re.search(r"\$[0-9]", sql):
+            raise ValueError("The SQL has a $ followed by a digit, which a workspace refuses because the server could "
+                             "read it differently from this check.")
+        if "$" in re.sub(r"\$(?:[A-Za-z_\u0080-\U0010ffff][A-Za-z_0-9\u0080-\U0010ffff]*)?\$", "", sql):
+            raise ValueError("The SQL has a $ that isn't part of a valid dollar quote, which a workspace refuses.")
     asts = statements(sql, dialect)
     rewritten = [rewrite(ast) for ast in asts]
     if strict_statements and not changed[0]:
+        # The text runs as written, so it must say what the checked AST says: every string literal, in order, must
+        # come back from the regenerated SQL with the same value, ignoring case. (Keyword case, casts and spacing may
+        # differ.)
+        if _literal_values(sql, dialect) != _literal_values("; ".join(rewritten), dialect):
+            raise ValueError("The SQL's string literals don't survive sqlglot's round trip, so a workspace refuses it.")
         return sql
     return "; ".join(rewritten) if rewritten else sql
 
