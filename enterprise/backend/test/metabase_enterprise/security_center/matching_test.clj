@@ -9,7 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
-  (:import org.semver4j.Semver))
+  (:import
+   (org.semver4j Semver)))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -19,15 +20,22 @@
   (testing "parses standard versions"
     (doseq [input ["v1.57.0" "1.57.0" "v0.50.2" "v1.57.16"]]
       (is (some? (matching/parse-version input)) (str "should parse: " input))))
-  (testing "edition prefix preserved — 0.57 and 1.57 are distinct for range matching"
-    (is (not= (matching/parse-version "v0.57.0")
-              (matching/parse-version "v1.57.0"))))
+  (testing "the segments after the edition become the Semver"
+    (are [input expected] (= expected (str (matching/parse-version input)))
+      "v1.63.21.1"      "63.21.1"
+      "v1.57.16"        "57.16.0"
+      "v0.65.0.14-beta" "65.0.14-beta"
+      "v0.58.0-beta"    "58.0.0-beta"
+      "1.57"            "57.0.0"))
   (testing "pre-release sorts before stable"
     (is (.isLowerThan ^Semver (matching/parse-version "v0.58.0-beta")
-                      ^Semver (matching/parse-version "v0.58.0"))))
+                      ^Semver (matching/parse-version "v0.58.0")))
+    (is (.isLowerThan ^Semver (matching/parse-version "v0.65.0.14-beta")
+                      ^Semver (matching/parse-version "v0.65.0.14"))))
   (testing "invalid formats return nil"
     (are [input] (nil? (matching/parse-version input))
       "vLOCAL_DEV"
+      "v2.57.0"
       nil
       "")))
 
@@ -47,7 +55,7 @@
         false "1.57.17"                 ; one patch after fixed
         false "1.56.0"                  ; before range
         false "1.59.0"                  ; past range
-        false "0.57.5"))                ; OSS doesn't match EE range
+        true  "0.57.5"))                ; edition is ignored
     (testing "multiple ranges — any range counts"
       (are [expected version] (= expected (in-range? (v version) multi-range))
         true  "1.57.5"                  ; in first range
@@ -63,7 +71,17 @@
         false "0.50.2"
         false "1.0.0"))
     (testing "pre-release of fixed version is still in range"
-      (is (true? (in-range? (v "1.57.16-beta") single-range))))
+      (is (true? (in-range? (v "1.57.16-beta") single-range)))
+      (is (true? (in-range? (v "1.65.0.14-beta") [{:min "1.65.0" :fixed "1.65.0.14"}]))))
+    (testing "4-segment patch builds are compared on every segment (#85923)"
+      (are [expected version] (= expected (in-range? (v version) [{:min "1.59.0" :fixed "1.63.21.1"}]))
+        true  "1.63.21"                 ; base release is not mitigated
+        true  "1.63.21.0"
+        false "1.63.21.1"               ; at fixed patch build
+        false "1.63.21.2"
+        false "1.63.22")
+      (is (true? (in-range? (v "1.63.21.1") [{:min "1.59.0" :fixed "1.63.22"}]))
+          "patch build before a 3-segment fixed version is still in range"))
     (testing "empty affected_versions → never in range"
       (is (false? (in-range? (v "1.57.5") []))))
     (testing "nil version (vLOCAL_DEV / vUNKNOWN parse to nil) → never in range"
