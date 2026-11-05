@@ -288,9 +288,9 @@
   (system/mutable-component-handle ::pools (constantly nil)))
 
 (defn- close-all-pools!
-  "Destroy every pool in the pools state `state`. Runs when the global system halts.
-  A pool that fails to close does not stop the rest; once all have been tried, throws an ex-info whose `:failures`
-  holds each database id with its exception."
+  "Destroy every pool in the pools state `state`, as the global system halts.
+  A pool that fails to close does not stop the rest.
+  Once all have been tried, throws an ex-info whose `:failures` holds each database id with its exception."
   [{:keys [pools]}]
   (let [failures (into []
                        (keep (fn [[[database-id _connection-type] pool-spec]]
@@ -314,8 +314,8 @@
 
 (defn- swap-pools-state!
   "Apply `f` and `args` to the pools state, and return `[old new]`.
-  Holds the root lock that [[system/stop!]] takes, so a write never lands between a halt clearing the state and the
-  next start, where it would bring back state the lifecycle no longer tracks."
+  Holds the component's slot lock, which [[system/stop!]] also takes, so no write lands between a halt clearing the
+  state and the next start, where it would bring back state the lifecycle no longer tracks."
   [f & args]
   (mc/with-slot-lock pools-component
     (pools-state)
