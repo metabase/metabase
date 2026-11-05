@@ -71,7 +71,8 @@ export type HealthCheckId =
   | "read-only-connections"
   | "all-users-permissions";
 
-export type HealthCheckStatus = "pass" | "fail" | "unknown";
+export const HEALTH_CHECK_STATUSES = ["pass", "fail", "unknown"] as const;
+export type HealthCheckStatus = (typeof HEALTH_CHECK_STATUSES)[number];
 
 type HealthCheckItemBase = {
   status: HealthCheckStatus;

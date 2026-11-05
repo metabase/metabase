@@ -4,14 +4,15 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Button, Group, Icon, Stack, Title } from "metabase/ui";
-import type { HealthCheck } from "metabase-types/api";
+import type { HealthCheck, HealthCheckStatus } from "metabase-types/api";
 
 import { trackHealthChecksPageViewed } from "../../analytics";
 import { HealthCheckGroup } from "../HealthCheckGroup/HealthCheckGroup";
 import { HealthChecksSummary } from "../HealthChecksSummary/HealthChecksSummary";
-import { HEALTH_CHECK_STATUSES } from "../constants";
 import { useHealthChecks } from "../hooks/use-health-checks";
 import { getChecksByStatus } from "../utils";
+
+const GROUP_ORDER: HealthCheckStatus[] = ["fail", "unknown", "pass"];
 
 type HealthChecksContentProps = {
   checks: HealthCheck[];
@@ -36,7 +37,7 @@ const HealthChecksContent = ({
     <Stack gap="xxl">
       <HealthChecksSummary checks={checks} />
       <Stack gap="lg">
-        {HEALTH_CHECK_STATUSES.map((status) => (
+        {GROUP_ORDER.map((status) => (
           <HealthCheckGroup
             key={status}
             status={status}
