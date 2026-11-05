@@ -1,5 +1,6 @@
 import { merge } from "icepick";
 
+import { recordPhase } from "embedding-sdk-bundle/analytics/phase-timestamps";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import {
   type OnBeforeRequestHandlerConfig,
@@ -15,6 +16,7 @@ import { getOrRefreshGuestSession } from "./auth";
 export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
   "sdk/token/INIT_GUEST_EMBED",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+    recordPhase("init_start");
     overrideRequestsForGuestEmbeds();
 
     if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
@@ -73,5 +75,6 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
     }
 
     await dispatch(refetchSiteSettings());
+    recordPhase("init_ready");
   },
 );
