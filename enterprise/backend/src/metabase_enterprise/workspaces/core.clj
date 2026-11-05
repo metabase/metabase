@@ -269,6 +269,22 @@
                     id)))
           rows)))
 
+(defonce ^:private instance-workspace-lock (Object.))
+
+(defn call-with-instance-workspace-lock
+  "Call `f` holding the lock that serializes changes to the installed workspace, so a check (e.g. that deployment
+  config does not lock it) and the change it guards happen together. Every path that installs or clears the workspace
+  takes it."
+  [f]
+  (locking instance-workspace-lock
+    (f)))
+
+(defn- write-instance-workspace!
+  "Write the read-only `instance-workspace` setting. Only [[set-instance-workspace!]] and [[clear-instance-workspace!]]
+  call this."
+  [value]
+  (setting/set! :instance-workspace value :bypass-read-only? true))
+
 (defn in-one-transaction!
   "Run `f`, which changes the remappings and the `instance-workspace` setting (and, applying a config.yml, whatever its
   sections write), in one app-DB transaction, so no query sees the new map with the old remappings or the other way
@@ -291,7 +307,7 @@
     (in-one-transaction!
      (fn []
        (ws.db/delete-table-remappings! (stale-remapping-ids instance name->id (ws.db/table-remappings)))
-       (ws.settings/instance-workspace! (json/encode instance))))
+       (write-instance-workspace! (json/encode instance))))
     (instance-workspace)))
 
 (defn clear-instance-workspace!
@@ -299,7 +315,7 @@
   []
   (in-one-transaction!
    (fn []
-     (ws.settings/instance-workspace! nil)
+     (write-instance-workspace! nil)
      (ws.db/delete-all-table-remappings!)))
   nil)
 
