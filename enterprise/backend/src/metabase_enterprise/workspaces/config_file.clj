@@ -149,7 +149,8 @@
   (let [deleted   (into #{} (comp (filter #(contains? % :delete)) (map :name)) databases)
         from-file (into {} (comp (remove #(contains? % :delete)) (map (juxt :name identity))) databases)]
     (doseq [database-name (keys (:databases workspace))]
-      (let [ids (ws.db/database-ids-named database-name)]
+      (let [ids   (ws.db/database-ids-named database-name)
+            entry (from-file database-name)]
         (cond
           (deleted database-name)
           (throw (ex-info (tru "This config.yml deletes database {0}, which its workspace section names."
@@ -160,8 +161,9 @@
           (throw (ex-info (tru "Several databases are named {0}: {1}." (pr-str database-name) (pr-str ids))
                           {:status-code 400}))
 
-          (from-file database-name)
-          (ws/check-supported-engine! (select-keys (from-file database-name) [:name :engine]))
+          ;; a stub entry never overwrites an existing database, so that one's engine is the one the workspace gets
+          (and entry (not (and (:is_stub entry) (seq ids))))
+          (ws/check-supported-engine! (select-keys entry [:name :engine]))
 
           (empty? ids)
           (throw (ex-info (tru "No database is named {0}, here or in this config.yml." (pr-str database-name))

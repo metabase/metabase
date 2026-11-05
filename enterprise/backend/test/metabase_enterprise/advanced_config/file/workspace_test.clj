@@ -403,3 +403,14 @@
           (is (= "Could not apply the databases section of this config.yml: user **** on port 5432 has password ****"
                  (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
                                        {:config (config-yml (mt/random-name))}))))))))
+
+
+(deftest stub-entry-checks-the-existing-database-engine-test
+  (testing "a stub entry never overwrites an existing database, so the check uses the existing one's engine"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (mt/with-temp [:model/Database {h2-name :name} {:name (mt/random-name), :engine :h2}]
+          (is (= (format "Database %s is a h2 database; workspaces support only Postgres databases so far." (pr-str h2-name))
+                 (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
+                                       {:config (str/replace (config-yml h2-name) "      engine: postgres\n"
+                                                             "      engine: postgres\n      is_stub: true\n")}))))))))
