@@ -435,22 +435,27 @@ function DataModelContent() {
       </Transition>
 
       {showFieldPreview && databaseId != null && fieldId != null && (
-        <Box
+        <Stack
           flex="0 0 auto"
           h="100%"
           p="xl"
+          gap="xl"
           w={panelWidths.preview}
           ref={scrollToPanel}
         >
-          <PreviewSection
-            className={S.preview}
-            field={field}
-            table={table}
-            previewType={previewType}
-            onPreviewTypeChange={setPreviewType}
-            onClose={closePreview}
-          />
-        </Box>
+          <DetailPanelHeader title={t`Field preview`} onClose={closePreview} />
+          <Box flex={1} mih={0}>
+            <PreviewSection
+              className={S.preview}
+              field={field}
+              table={table}
+              previewType={previewType}
+              withHeader={false}
+              onPreviewTypeChange={setPreviewType}
+              onClose={closePreview}
+            />
+          </Box>
+        </Stack>
       )}
     </Flex>
   ) : null;

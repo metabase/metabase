@@ -65,6 +65,8 @@ import {
   transformToTreeTableFormat,
 } from "../utils";
 
+import S from "./TablePickerTreeTable.module.css";
+
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 
 interface Props {
@@ -477,6 +479,7 @@ export function TablePickerTreeTable({
       isChildrenLoading={isChildrenLoading}
       isRowDisabled={isRowDisabled}
       getRowProps={getRowProps}
+      classNames={{ cell: S.cell }}
       ariaLabel={t`Tables`}
     />
   );
@@ -497,24 +500,23 @@ function TableRoleCell({ table }: { table: Table }) {
   });
 
   return (
-    <Group gap="xs" wrap="nowrap" data-testid="table-role">
+    <Box className={S.role} data-testid="table-role">
+      {needsReview && (
+        <Tooltip label={t`Needs review. ${inference.signal}`}>
+          <Icon
+            name="flag"
+            c="icon-secondary"
+            className={S.flag}
+            aria-label={t`Needs review`}
+          />
+        </Tooltip>
+      )}
       {role ? (
         <Text truncate>{getTableRoleLabel(role)}</Text>
       ) : (
         <Text c="text-secondary">{t`No role`}</Text>
       )}
-      {needsReview && (
-        <Tooltip label={t`Needs review. ${inference.signal}`}>
-          <Icon
-            name="warning"
-            size={12}
-            c="feedback-warning"
-            aria-label={t`Needs review`}
-            flex="0 0 auto"
-          />
-        </Tooltip>
-      )}
-    </Group>
+    </Box>
   );
 }
 

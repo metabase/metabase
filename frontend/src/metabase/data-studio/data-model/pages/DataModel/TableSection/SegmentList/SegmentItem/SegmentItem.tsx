@@ -1,5 +1,16 @@
+import { t } from "ttag";
+
 import { Link } from "metabase/common/components/Link";
-import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  Badge,
+  Card,
+  Ellipsified,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import S from "./SegmentItem.module.css";
@@ -7,9 +18,11 @@ import S from "./SegmentItem.module.css";
 type SegmentItemProps = {
   segment: Segment;
   href: string;
+  /** The table's questions start from this segment */
+  isDefault?: boolean;
 };
 
-export function SegmentItem({ segment, href }: SegmentItemProps) {
+export function SegmentItem({ segment, href, isDefault }: SegmentItemProps) {
   return (
     <Card
       className={S.card}
@@ -18,7 +31,9 @@ export function SegmentItem({ segment, href }: SegmentItemProps) {
       aria-label={segment.name}
       role="listitem"
       px="lg"
-      py="0.75rem"
+      py={rem(12)}
+      radius="lg"
+      shadow="none"
       withBorder
     >
       <Stack gap="xxs">
@@ -27,14 +42,24 @@ export function SegmentItem({ segment, href }: SegmentItemProps) {
           <Ellipsified lines={1} tooltip={segment.name}>
             <Text fw="bold">{segment.name}</Text>
           </Ellipsified>
+          {isDefault && <DefaultSegmentBadge />}
         </Flex>
 
         {segment.definition_description && (
-          <Text data-testid="list-item-description">
+          <Text lh="lg" data-testid="list-item-description">
             {segment.definition_description}
           </Text>
         )}
       </Stack>
     </Card>
+  );
+}
+
+/** Marks the segment a table's questions start from */
+export function DefaultSegmentBadge() {
+  return (
+    <Badge variant="light" flex="0 0 auto">
+      {t`Default`}
+    </Badge>
   );
 }

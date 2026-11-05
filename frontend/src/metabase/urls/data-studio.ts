@@ -210,6 +210,16 @@ export function dataStudioDataModelSegment({
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/${segmentId}`;
 }
 
+/** PROTOTYPE: a table's built-in segment, by role (e.g. `exclude_deleted`) */
+export function dataStudioDataModelSystemSegment({
+  databaseId,
+  schemaName,
+  tableId,
+  role,
+}: Omit<DataModelSegmentParams, "segmentId"> & { role: string }) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/system/${role}`;
+}
+
 export function dataStudioDataModelSegmentRevisions(
   params: DataModelSegmentParams,
 ) {

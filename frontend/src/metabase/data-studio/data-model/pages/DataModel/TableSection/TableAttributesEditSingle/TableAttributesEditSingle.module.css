@@ -1,0 +1,4 @@
+/* "No owner" reads as a placeholder, not a chosen value */
+.unset.unset {
+  color: var(--mb-color-text-secondary);
+}

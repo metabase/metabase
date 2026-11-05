@@ -118,8 +118,9 @@ function PanelEdgeHandle({
 const AVATAR_SIZE = 36;
 
 interface DetailPanelHeaderProps {
-  icon: IconName;
-  label: string;
+  icon?: IconName;
+  /** Without one, its line stays empty so the title keeps the same baseline */
+  label?: string;
   title: ReactNode;
   /** Replaces the title with a skeleton */
   isLoading?: boolean;
@@ -151,20 +152,26 @@ export function DetailPanelHeader({
       data-testid={dataTestId}
     >
       <Flex align="center" gap="sm" miw={0}>
-        <Flex
-          className={S.avatar}
-          align="center"
-          justify="center"
-          w={AVATAR_SIZE}
-          h={AVATAR_SIZE}
-          bdrs="50%"
-          bg="background_surface-brand-subtle"
-        >
-          <Icon name={icon} c="core-brand" />
-        </Flex>
+        {icon && (
+          <Flex
+            className={S.avatar}
+            align="center"
+            justify="center"
+            w={AVATAR_SIZE}
+            h={AVATAR_SIZE}
+            bdrs="50%"
+            bg="background_surface-brand-subtle"
+          >
+            <Icon name={icon} c="core-brand" />
+          </Flex>
+        )}
         <Stack gap={0} miw={0}>
-          <Text size="sm" c="text-secondary">
-            {label}
+          <Text
+            size="sm"
+            c="text-secondary"
+            aria-hidden={label ? undefined : true}
+          >
+            {label ?? "\u00a0"}
           </Text>
           {isLoading ? (
             <Skeleton h={24} w={200} mt={2} />

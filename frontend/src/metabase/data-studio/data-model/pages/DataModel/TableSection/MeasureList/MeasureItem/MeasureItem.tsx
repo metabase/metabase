@@ -1,5 +1,5 @@
 import { Link } from "metabase/common/components/Link";
-import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Card, Ellipsified, Flex, Icon, Stack, Text, rem } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
 
 import S from "./MeasureItem.module.css";
@@ -18,7 +18,9 @@ export function MeasureItem({ measure, href }: MeasureItemProps) {
       aria-label={measure.name}
       role="listitem"
       px="lg"
-      py="0.75rem"
+      py={rem(12)}
+      radius="lg"
+      shadow="none"
       withBorder
     >
       <Stack gap="xxs">
@@ -30,7 +32,7 @@ export function MeasureItem({ measure, href }: MeasureItemProps) {
         </Flex>
 
         {measure.definition_description && (
-          <Text data-testid="list-item-description">
+          <Text lh="lg" data-testid="list-item-description">
             {measure.definition_description}
           </Text>
         )}
