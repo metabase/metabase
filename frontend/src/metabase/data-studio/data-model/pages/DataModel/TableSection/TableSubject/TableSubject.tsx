@@ -14,55 +14,61 @@ import {
   DetailsEditableText,
 } from "../../DetailPanel";
 import { SubjectSelect } from "../../SemanticInputs";
-import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
+import { NeedsReviewButton } from "../../SemanticReview";
+import { InferredIcon } from "../InferenceReview";
 
 interface TableSubjectRowsProps {
   table: Table;
   disabled: boolean;
 }
 
-export function TableSubjectRows({ table, disabled }: TableSubjectRowsProps) {
-  const { subject, setTableSubject, setRowNouns } = useTableSemantics(table);
+export function TableSubjectRow({ table, disabled }: TableSubjectRowsProps) {
+  const { subject, setTableSubject } = useTableSemantics(table);
 
   return (
-    <>
-      <DetailsRow
-        label={t`Subject`}
-        fillValue
-        labelAside={
-          subject.needsReview ? (
-            <NeedsReviewBadge />
-          ) : (
-            <InferredIcon description={getSubjectInference(subject)} />
-          )
-        }
-        value={
-          <SubjectSelect
-            value={subject.subject}
-            markedValue={
-              subject.subject !== subject.inference.subject
-                ? subject.inference.subject
-                : null
-            }
-            classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-            disabled={disabled}
-            onChange={(value) => setTableSubject(table, value)}
-          />
-        }
-      />
-      <DetailsRow
-        label={t`Rows are called`}
-        fillValue
-        value={
-          <RowNounsInput
-            key={`${subject.rowNouns.singular}/${subject.rowNouns.plural}`}
-            rowNouns={subject.rowNouns}
-            disabled={disabled}
-            onChange={(rowNouns) => setRowNouns(table, rowNouns)}
-          />
-        }
-      />
-    </>
+    <DetailsRow
+      label={t`Subject`}
+      fillValue
+      labelAside={
+        subject.needsReview && !disabled ? (
+          <NeedsReviewButton table={table} />
+        ) : (
+          <InferredIcon description={getSubjectInference(subject)} />
+        )
+      }
+      value={
+        <SubjectSelect
+          value={subject.subject}
+          markedValue={
+            subject.subject !== subject.inference.subject
+              ? subject.inference.subject
+              : null
+          }
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          disabled={disabled}
+          onChange={(value) => setTableSubject(table, value)}
+        />
+      }
+    />
+  );
+}
+
+export function TableRowNounsRow({ table, disabled }: TableSubjectRowsProps) {
+  const { subject, setRowNouns } = useTableSemantics(table);
+
+  return (
+    <DetailsRow
+      label={t`Rows are called`}
+      fillValue
+      value={
+        <RowNounsInput
+          key={`${subject.rowNouns.singular}/${subject.rowNouns.plural}`}
+          rowNouns={subject.rowNouns}
+          disabled={disabled}
+          onChange={(rowNouns) => setRowNouns(table, rowNouns)}
+        />
+      }
+    />
   );
 }
 
