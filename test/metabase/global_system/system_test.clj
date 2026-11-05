@@ -408,3 +408,24 @@
                  {:calls @calls, :value @handle})))
         (finally
           (mc/remove-root handle))))))
+
+(deftest ^:synchronized writes-wait-for-slot-lock-test
+  (testing "a write to a slot waits until a with-slot-lock section on that slot ends"
+    (doseq [[slot run] {:root    (fn [f] (f))
+                        :binding (fn [f] (mc/binding db-handle :bound-db f))}]
+      (testing (name slot)
+        (mc/alter-root db-handle :root-db)
+        (run (fn []
+               (let [inside (promise)
+                     leave  (promise)
+                     holder (future (mc/with-slot-lock db-handle
+                                      (deliver inside true)
+                                      @leave
+                                      (mc/reset! db-handle :checked-value)))
+                     _      @inside
+                     writer (future (mc/reset! db-handle :plain-write))]
+                 (is (= ::still-waiting (deref writer 200 ::still-waiting)))
+                 (deliver leave true)
+                 @holder
+                 (is (= {:writer :plain-write, :value :plain-write}
+                        {:writer @writer, :value @db-handle})))))))))

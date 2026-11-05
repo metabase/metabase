@@ -32,10 +32,12 @@
   (slot-lock [handle]
     "An object to lock around a read-check-write of the slot this thread reads, when the check does work that
      cannot go in a [[swap!]] function, such as I/O.
+     Every write to the slot holds it too, so no write lands inside such a section.
      A [[binding]] has its own lock, shared with the threads that inherit it; the root has one lock per component.
      Use [[with-slot-lock]] rather than calling this directly."))
 
-;; Protocol methods can't take varargs, so these give callers the usual atom signatures over [[swap-vals!*]].
+;; Protocol methods can't take varargs, so these give callers the usual atom signatures over [[swap-vals!*]]. Unlike an
+;; atom, a component with no root and no binding has no value, so each of them throws for one.
 (defn swap-vals!
   "Like [[clojure.core/swap-vals!]]: applies `f` to the current value and any extra `args`, and returns `[old new]`.
    Visibility and the missing-component error are as for [[swap-vals!*]]."
