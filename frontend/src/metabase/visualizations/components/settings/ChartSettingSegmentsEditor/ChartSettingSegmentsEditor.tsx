@@ -38,8 +38,8 @@ export const ChartSettingSegmentsEditor = ({
             <tr>
               <th />
               <th>{t`Label`}</th>
-              <th className={S.MinMax}>{t`Min`}</th>
-              <th className={S.MinMax}>{t`Max`}</th>
+              <th>{t`Min`}</th>
+              <th>{t`Max`}</th>
             </tr>
           </thead>
           <tbody>
@@ -68,6 +68,7 @@ export const ChartSettingSegmentsEditor = ({
                 </td>
                 <td>
                   <ChartSettingInputNumeric
+                    className={S.MinMax}
                     value={segment.min ?? undefined}
                     onChange={(value) => {
                       const newValue = value ?? null;
@@ -80,6 +81,7 @@ export const ChartSettingSegmentsEditor = ({
                 </td>
                 <td>
                   <ChartSettingInputNumeric
+                    className={S.MinMax}
                     value={segment.max ?? undefined}
                     onChange={(value) => {
                       const newValue = value ?? null;
