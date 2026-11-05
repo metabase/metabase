@@ -182,15 +182,27 @@
           (sql-tools/referenced-tables-raw driver sql {:fail-on-parse-error? true}))))
 
 (defenterprise rewrite-sql
-  "EE implementation: rewrite with SQLGlot's `replace-names`, failing closed."
+  "EE implementation: rewrite with SQLGlot's `replace-names`, failing closed. Refuses SQL that can't be parsed, and SQL
+  that names a remapped table without its schema: a `replace-names` key without a schema matches that table name in
+  every schema, so the reference can't be rewritten safely, and leaving it alone would read the main table."
   :feature :none
   [driver remappings sql]
-  (try
-    (sql-tools/replace-names driver sql {:tables remappings} {:allow-unused? true})
-    (catch Exception e
-      (throw (ex-info (tru "This instance is a workspace, which must read remapped tables from their scratch copies, and it could not parse this SQL to find the tables it reads. Rewrite the query so it parses.")
-                      {:type qp.error-type/invalid-query}
-                      e)))))
+  (let [unqualified (try
+                      (unqualified-references-to-remapped-tables driver remappings sql)
+                      (catch Exception e
+                        (throw (ex-info (tru "This instance is a workspace, which must read remapped tables from their scratch copies, and it could not parse this SQL to find the tables it reads. Rewrite the query so it parses.")
+                                        {:type qp.error-type/invalid-query}
+                                        e))))]
+    (when (seq unqualified)
+      (throw (ex-info (tru "This instance is a workspace, and this SQL names {0} without a schema. Qualify it with its schema (for example public.{1}) so the workspace can read its scratch copy."
+                           (pr-str (:table (first unqualified))) (:table (first unqualified)))
+                      {:type qp.error-type/invalid-query})))
+    (try
+      (sql-tools/replace-names driver sql {:tables remappings} {:allow-unused? true})
+      (catch Exception e
+        (throw (ex-info (tru "This instance is a workspace, which must read remapped tables from their scratch copies, and it could not parse this SQL to find the tables it reads. Rewrite the query so it parses.")
+                        {:type qp.error-type/invalid-query}
+                        e))))))
 
 ;;; ---------------------------------------------- Install / remove -----------------------------------------------
 
