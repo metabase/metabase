@@ -122,6 +122,8 @@
       (call #(statements/simple-query sql dialect)))
     (add-into-clause [_ dialect sql table-name]
       (call #(rewrite/add-into-clause sql table-name dialect)))
+    (add-insert-clause [_ dialect sql table-name]
+      (call #(rewrite/add-insert-clause sql table-name dialect)))
     (field-references [_ dialect sql]
       (call #(field-references/field-references sql dialect)))
     (replace-names [_ dialect sql replacements]

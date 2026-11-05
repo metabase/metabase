@@ -38,13 +38,6 @@
     (when (and prefix (not= prefix (modules/default-ns-prefix module)))
       prefix)))
 
-(defn- ns-prefix->source-dir
-  "Repo-relative source directory for a namespace prefix: `metabase.lib-be` -> `src/metabase/lib_be`."
-  [ns-prefix]
-  (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-       "src/"
-       (-> ns-prefix (str/replace "." "/") (str/replace "-" "_"))))
-
 (defn- set->strings
   "Sort and stringify a set-valued config field."
   [x]
@@ -94,7 +87,7 @@
   "One module's config as the plain data the page consumes."
   [modules-config module->uses used-by module]
   (let [{:keys [api uses friends] :as entry} (get modules-config module)
-        source-dir (ns-prefix->source-dir (modules/module-ns-prefix modules-config module))]
+        source-dir (modules/module-dir modules-config module "src")]
     {:id                   (str module)
      :enterprise           (= (namespace module) "enterprise")
      :team                 (modules/module-team modules-config module)

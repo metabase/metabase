@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -19,7 +20,6 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -31,8 +31,6 @@
    (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections :row-lock))
 
@@ -1931,30 +1929,26 @@
 
 (deftest data-app-collection-items-test
   (testing "GET /api/collection/:id/items lists the actions and questions of a data app collection"
-    (mt/with-temp [:model/Collection  {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
-                   :model/Collection  {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
-                   :model/Action      {in-app :id}          {:type :query, :name "In app", :collection_id app-coll-id}
-                   :model/QueryAction _                     {:action_id     in-app
-                                                             :database_id   (mt/id)
-                                                             :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
-                   :model/Action      {in-folder :id}       {:type :query, :name "In folder", :collection_id actions-coll-id}
-                   :model/QueryAction _                     {:action_id     in-folder
-                                                             :database_id   (mt/id)
-                                                             :dataset_query (mt/native-query {:query "DELETE FROM venues"})}]
-      (binding [mi/*deserializing?* true]
-        (mt/with-temp [:model/Card _ {:name          "App question"
-                                      :collection_id app-coll-id
-                                      :dataset_query (mt/mbql-query venues)}]
-          (let [items (fn [coll-id model]
-                        (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
-                             :data
-                             (map #(select-keys % [:name :model :collection_namespace]))))]
-            (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
-                   (items app-coll-id "action")))
-            (is (= [{:name "App question", :model "card"}]
-                   (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
-            (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
-                   (items actions-coll-id "action")))))))))
+    (binding [mi/*deserializing?* true]
+      (mt/with-temp [:model/Collection     {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
+                     :model/Collection     {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
+                     :model/Action         {in-app :id}          {:type :implicit, :name "In app", :collection_id app-coll-id}
+                     :model/ImplicitAction _                     {:action_id in-app, :kind "row/update", :table_id (mt/id :venues)}
+                     :model/Action         {in-folder :id}       {:type :implicit, :name "In folder", :collection_id actions-coll-id}
+                     :model/ImplicitAction _                     {:action_id in-folder, :kind "row/update", :table_id (mt/id :venues)}
+                     :model/Card           _                     {:name          "App question"
+                                                                  :collection_id app-coll-id
+                                                                  :dataset_query (mt/mbql-query venues)}]
+        (let [items (fn [coll-id model]
+                      (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
+                           :data
+                           (map #(select-keys % [:name :model :collection_namespace]))))]
+          (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
+                 (items app-coll-id "action")))
+          (is (= [{:name "App question", :model "card"}]
+                 (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
+          (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
+                 (items actions-coll-id "action"))))))))
 
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
@@ -3513,6 +3507,46 @@
         (mt/user-http-request :crowberto :put 500 (str "collection/" (u/the-id a)) {:parent_id (u/the-id b)})
         (is (= location-before
                (t2/select-one-fn :location :model/Collection :id (u/the-id a))))))))
+
+(deftest move-collection-to-namespace-root-checks-that-root-test
+  (testing "PUT /api/collection/:id checks write perms on the root of the collection's own namespace"
+    ;; without EE, snippet collections have no-op perms
+    (when config/ee-available?
+      (mt/with-premium-features #{:snippet-collections}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (let [all-users     (perms/all-users-group)
+                  snippets-root (assoc collection/root-collection :namespace "snippets")]
+              (letfn [(location-after-move [user status archived?]
+                        (mt/with-temp [:model/Collection parent {:namespace "snippets"}
+                                       :model/Collection folder {:namespace "snippets"
+                                                                 :location  (collection/children-location parent)}]
+                          (doseq [coll [parent folder]]
+                            ;; a folder created under a granted root already inherited the grant
+                            (perms/revoke-collection-permissions! all-users coll)
+                            (perms/grant-collection-readwrite-permissions! all-users coll))
+                          (let [url (str "collection/" (u/the-id folder))]
+                            (when archived?
+                              (mt/user-http-request :crowberto :put 200 url {:archived true}))
+                            (mt/user-http-request user :put status url
+                                                  (cond-> {:parent_id nil} archived? (assoc :archived false))))
+                          (t2/select-one-fn :location :model/Collection :id (u/the-id folder))))
+                      (with-root-write [root f]
+                        (perms/grant-collection-readwrite-permissions! all-users root)
+                        (try
+                          (f)
+                          (finally
+                            (perms/revoke-collection-permissions! all-users root))))]
+                (doseq [archived? [false true]]
+                  (testing (if archived? "unarchive to root" "move to root")
+                    (testing "write on the default root but not the snippets root is not enough"
+                      (with-root-write collection/root-collection
+                        #(is (not= "/" (location-after-move :rasta 403 archived?)))))
+                    (testing "write on the snippets root is enough without write on the default root"
+                      (with-root-write snippets-root
+                        #(is (= "/" (location-after-move :rasta 200 archived?)))))
+                    (testing "an admin can do it"
+                      (is (= "/" (location-after-move :crowberto 200 archived?))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |

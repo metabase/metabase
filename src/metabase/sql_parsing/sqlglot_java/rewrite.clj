@@ -1,12 +1,12 @@
 (ns metabase.sql-parsing.sqlglot-java.rewrite
-  "Rewrites that return SQL: `add_into_clause` and `replace_names`."
+  "Rewrites that return SQL: `add_into_clause`, `add_insert_clause` and `replace_names`."
   (:require
    [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.references :as references])
   (:import
    (com.metabase.sqlglot.ast Expressions$Alias Expressions$Column Expressions$CTE Expressions$Identifier
-                             Expressions$Select Expressions$Subquery Expressions$Table)
+                             Expressions$Query Expressions$Select Expressions$Subquery Expressions$Table)
    (com.metabase.sqlglot.reference Scope)
    (java.util Collections IdentityHashMap Set)))
 
@@ -62,6 +62,16 @@
       (ast/replace! table (wrap-base-table table table-alias)))
     (ast/set-arg! stmt "into" (ast/create "Into" {"this" (ast/to-table table-name)}))
     (ast/sql stmt dialect)))
+
+;;; ------------------------------------------------ add-insert-clause ------------------------------------------------
+
+(defn add-insert-clause
+  "`sql`, a query, as `INSERT INTO table-name <query>`. Any WITH clause of the query goes before INSERT INTO."
+  [sql table-name dialect]
+  (let [stmt (ast/parse-one sql dialect)]
+    (when-not (instance? Expressions$Query stmt)
+      (throw (ast/python-error "ValueError" "SQL must be a SELECT statement")))
+    (ast/sql (ast/create "Insert" {"this" (ast/to-table table-name) "expression" stmt}) dialect)))
 
 ;;; -------------------------------------------------- replace-names --------------------------------------------------
 

@@ -39,6 +39,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
@@ -195,9 +197,11 @@
    (every? #(and
              (mi/can-read? :model/Card (u/the-id %))
              (can-read-attachments? %)) cards)
-   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-   ;; make sure we have write permissions for that collection
-   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
+   (cond
+     (some? collection-id) (mi/can-write? :model/Collection collection-id)
+     (some? dashboard-id)  true
+     :else                 (mi/can-write? collection/root-collection))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
    (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
 

@@ -121,6 +121,21 @@
                      :draft_card {:name "Orders by day"}}
                     response))))))))
 
+(defn- scripted-llm
+  "A stand-in for `openrouter/openrouter` that records each request in the `requests` atom and answers the nth request
+  with the nth entry of `responses`, then with a text reply."
+  [requests responses]
+  (fn [request]
+    (let [n (count (swap! requests conj request))]
+      (mut/mock-llm-response
+       (get responses (dec n) [{:type :text :text "Chart created"}])))))
+
+(defn- input-includes?
+  "Whether some string in the input of the LLM `request` includes `text`."
+  [request text]
+  (some #(and (string? %) (str/includes? % text))
+        (tree-seq coll? seq (:input request))))
+
 (deftest generate-content-model-chart-round-trip-test
   (testing "the model loads the query skills, then charts a model by its column names"
     (let [mp (mt/metadata-provider)]
@@ -146,18 +161,13 @@
                                                                                      "CREATED_AT"]]}]}
                                          :viz_settings {:chart_type "line"}}}]]]
             (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                        (fn [request]
-                                          (let [n (count (swap! requests conj request))]
-                                            (mut/mock-llm-response
-                                             (get responses (dec n) [{:type :text :text "Chart created"}]))))]
+                                        (scripted-llm requests responses)]
               (let [response (mt/user-http-request :crowberto
                                                    :post 200 "metabot/document/generate-content"
                                                    {:instructions "Chart orders by month"})
                     [first-request second-request] @requests]
                 (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
-                (is (some #(and (string? %)
-                                (str/includes? % "<skill id=\"construct-notebook-query-advanced\">"))
-                          (tree-seq coll? seq (:input second-request)))
+                (is (input-includes? second-request "<skill id=\"construct-notebook-query-advanced\">")
                     "the skill body reaches the model before it writes the query")
                 (is (=? {:error      nil
                          :draft_card {:name          "Orders by month"
@@ -166,30 +176,37 @@
                                       :dataset_query {:stages [{:source-card (:id model)}]}}}
                         response))))))))))
 
-(deftest generate-content-database-mention-test
-  (testing "a SQL chart without exactly one @-mentioned database stops after one call, with a message for the user"
-    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                       llm-metabot-provider test-provider]
-      (doseq [[references message] [[nil "Mention a database with @ to create this chart with SQL."]
-                                    [{"database:1" "Sample" "database:2" "Other"}
-                                     "Mention only one database with @ to create this chart with SQL."]]]
-        (testing (pr-str references)
-          (let [calls (atom 0)]
-            (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                        (fn [_]
-                                          (mut/mock-llm-response
-                                           [{:type      :tool-input
-                                             :id        (str "t" (swap! calls inc))
-                                             :function  "document_schema_collect"
-                                             :arguments {}}]))]
-              (is (= {:draft_card  nil
-                      :description nil
-                      :error       message}
-                     (mt/user-http-request :crowberto
-                                           :post 200 "metabot/document/generate-content"
-                                           (cond-> {:instructions "Chart revenue by month with SQL"}
-                                             references (assoc :references references)))))
-              (is (= 1 @calls)))))))))
+(deftest generate-content-sql-chart-without-mention-test
+  (testing "without an @-mentioned database, the model chooses the database for a SQL chart"
+    (let [db-id (mt/id)]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [requests  (atom [])
+              responses [[{:type      :tool-input
+                           :id        "t1"
+                           :function  "document_schema_collect"
+                           :arguments {:database_id db-id}}]
+                         [{:type      :tool-input
+                           :id        "t2"
+                           :function  "document_construct_sql_chart"
+                           :arguments {:database_id  db-id
+                                       :name         "Orders count"
+                                       :description  "Count of orders"
+                                       :analysis     "Simple count"
+                                       :approach     "Direct SQL"
+                                       :sql          "SELECT COUNT(*) FROM ORDERS"
+                                       :viz_settings {:chart_type "scalar"}}}]]]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (scripted-llm requests responses)]
+            (is (=? {:error      nil
+                     :draft_card {:name        "Orders count"
+                                  :database_id db-id}}
+                    (mt/user-http-request :crowberto
+                                          :post 200 "metabot/document/generate-content"
+                                          {:instructions "Chart the number of orders"})))
+            (is (= 2 (count @requests)))
+            (is (input-includes? (second @requests) "The database has this schema")
+                "the schema of the chosen database reaches the model before it writes the SQL")))))))
 
 (deftest generate-content-failed-calls-error-test
   (testing "when the model runs out of steps on failed calls, the error is not the text written for the model"

@@ -45,7 +45,6 @@
   (when (and (not (settings/remote-sync-enabled)) (collection/has-remote-synced-collection?))
     (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
     (collection/clear-remote-synced-collection!))
-  (settings/pin-remote-sync-custom-collections-enabled!)
   (events/convert-legacy-transforms-root!)
   (when (settings/remote-sync-enabled)
     (when (= :read-only (settings/remote-sync-type))
@@ -69,10 +68,7 @@
     (when (= :read-write (settings/remote-sync-type))
       (let [n (events/backfill-action-tracking!)]
         (when (pos? n)
-          (log/infof "Tracking %d existing actions for remote sync" n)))
-      (let [n (events/backfill-data-app-tracking!)]
-        (when (pos? n)
-          (log/infof "Tracking %d existing data apps for remote sync" n))))
+          (log/infof "Tracking %d existing actions for remote sync" n))))
     (when-not (collection/has-remote-synced-collection?)
       (if (nil? (settings/remote-sync-branch))
         (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")

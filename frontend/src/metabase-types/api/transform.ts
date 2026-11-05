@@ -43,7 +43,7 @@ export type Transform = {
   can_write?: boolean;
   can_execute?: boolean;
 
-  source_database_id?: DatabaseId | null;
+  source_database_id?: DatabaseId;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
@@ -326,6 +326,11 @@ export type UpdateTransformTagRequest = {
 
 export type RunTransformResponse = {
   run_id: TransformRunId;
+  message?: string;
+};
+
+export type RunTransformJobResponse = {
+  job_run_id: TransformJobRunId | null;
   message?: string;
 };
 

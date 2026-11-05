@@ -28,3 +28,9 @@
   background: var(--mb-color-border-neutral);
   pointer-events: none;
 }
+
+/* A single row has no circles to connect, and when its value wraps, the
+   line would show above and below its icon. */
+.rows:has(> :only-child)::before {
+  display: none;
+}

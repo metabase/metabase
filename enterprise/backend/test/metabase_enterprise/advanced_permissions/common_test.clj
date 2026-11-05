@@ -579,7 +579,7 @@
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
             update-target   (fn []
-                              (mt/user-http-request :rasta :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2))))]
+                              (mt/user-http-request :rasta :put 200 (format "field/%d" (:id field)) {:fk_target_field_id (:id fk-field-2)}))]
         (testing "target should be hydrated if a non-admin has data model perms for the DB"
           (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas :all}}}
             (is (= expected-target

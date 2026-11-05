@@ -6,13 +6,12 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn group-manager?
   "Whether the User with `user-id` manages the PermissionsGroup with `group-id`."
@@ -43,7 +42,7 @@
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select [[:t.db_id :db_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+             :join   [[(t2/table-name :model/Table) :t]
                       [:= :s.table_id :t.id]]
              :where  [:and
                       [:= :s.group_id group-id]
@@ -85,7 +84,7 @@
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:s.group_id :group_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+             :join   [[(t2/table-name :model/Table) :t]
                       [:= :t.id :s.table_id]]
              :where  [:and
                       [:in :s.group_id group-ids]

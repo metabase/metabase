@@ -1,10 +1,16 @@
 export MB_DIR="{{mb-dir}}"
+# the checkout you're in, else $MB_DIR:
+_mage_root() {
+    local root
+    root=$(git rev-parse --show-toplevel 2>/dev/null)
+    if [ -x "$root/bin/mage" ]; then echo "$root"; else echo "$MB_DIR"; fi
+}
 # alias:
 mage() {
-    cd $MB_DIR && ./bin/mage "$@"
+    "$(_mage_root)/bin/mage" "$@"
 }
 # autocomplete:
 _bb_tasks() {
-    COMPREPLY=( $(compgen -W "$(bb tasks |tail -n +3 |cut -f1 -d ' ')" -- ${COMP_WORDS[COMP_CWORD]}) );
+    COMPREPLY=( $(compgen -W "$(bb --config "$(_mage_root)/bb.edn" tasks |tail -n +3 |cut -f1 -d ' ')" -- ${COMP_WORDS[COMP_CWORD]}) );
 }
 complete -f -F _bb_tasks mage

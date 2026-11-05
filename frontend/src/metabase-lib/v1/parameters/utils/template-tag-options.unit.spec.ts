@@ -3,9 +3,14 @@ import _ from "underscore";
 import Field from "metabase-lib/v1/metadata/Field";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/v1/parameters/constants";
 import type { NormalizedField } from "metabase-types/api";
-import { createMockNormalizedField } from "metabase-types/api/mocks";
+import {
+  createMockField as createMockApiField,
+  createMockNormalizedField,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
 
 import {
+  getDefaultParameterWidgetType,
   getParameterOptions,
   getParameterOptionsForField,
 } from "./template-tag-options";
@@ -95,6 +100,36 @@ describe("parameters/utils/template-tag-options", () => {
         availableOptions.length > 0 &&
           availableOptions.every((option) => option.type.startsWith("string")),
       ).toBe(true);
+    });
+
+    it("should return only the boolean option for a boolean field", () => {
+      const booleanField = createMockField({ base_type: "type/Boolean" });
+      const availableOptions = getParameterOptionsForField(booleanField);
+      expect(availableOptions.map((option) => option.type)).toEqual([
+        "boolean/=",
+      ]);
+    });
+  });
+
+  describe("getDefaultParameterWidgetType", () => {
+    const tag = createMockTemplateTag({
+      type: "dimension",
+      "widget-type": undefined,
+    });
+
+    it("should default to id for a PK field", () => {
+      const idField = createMockApiField({ semantic_type: "type/PK" });
+      expect(getDefaultParameterWidgetType(tag, idField)).toBe("id");
+    });
+
+    it("should default to boolean/= for a boolean field", () => {
+      const booleanField = createMockApiField({
+        base_type: "type/Boolean",
+        semantic_type: null,
+      });
+      expect(getDefaultParameterWidgetType(tag, booleanField)).toBe(
+        "boolean/=",
+      );
     });
   });
 });
