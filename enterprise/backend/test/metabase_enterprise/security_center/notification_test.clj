@@ -230,6 +230,25 @@
           (is (= :event/security-advisory-match (:topic (first @published))))
           (is (= "SC-EVENT-001" (get-in (first @published) [:info :object :advisory_id]))))))))
 
+(deftest notify-advisory-audit-log-test
+  (testing "notify-advisory! records which advisory matched in the audit log"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-AUDIT-001"
+                                        :severity     "high"
+                                        :match_status "active"})]
+        (with-redefs [channel.settings/email-configured?   (constantly true)
+                      notification.send/send-notification! (constantly nil)]
+          (notification/notify-advisory! advisory)
+          (is (=? {:topic   :security-advisory-match
+                   :user_id nil
+                   :model   "SecurityAdvisory"
+                   :details {:advisory_id  "SC-AUDIT-001"
+                             :title        "Test Advisory"
+                             :severity     "high"
+                             :match_status "active"}}
+                  (mt/latest-audit-log-entry :security-advisory-match))))))))
+
 (deftest notify-advisory-updates-last-notified-at-test
   (testing "notify-advisory! sets last_notified_at on the advisory"
     (mt/with-temp [:model/SecurityAdvisory advisory
