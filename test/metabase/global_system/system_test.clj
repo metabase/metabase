@@ -650,7 +650,7 @@
           (cleanup! [a b]))))))
 
 (deftest ^:synchronized dependency-started-inside-start-halts-after-test
-  (testing "a component that start itself starts comes first in the start order, so it halts after"
+  (testing "a component started inside another's start comes first in the start order, so it halts after"
     (let [dep  (system/mutable-component-handle ::inner-dep (constantly nil))
           user (system/mutable-component-handle ::inner-user (constantly nil))]
       (try
