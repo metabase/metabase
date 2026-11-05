@@ -475,8 +475,8 @@
               racers  (mapv (fn [_] (future @go (system/ensure-started! handle start stop))) (range 16))
               _       (deliver go true)
               results (mapv deref racers)]
-          (is (= {:starts 1, :distinct-values 1}
-                 {:starts @starts, :distinct-values (count (into #{} (map System/identityHashCode) results))}))))
+          (is (= {:starts 1, :one-value? true}
+                 {:starts @starts, :one-value? (every? #(identical? (first results) %) results)}))))
       (testing "a thread that binds the component gets the binding and starts nothing, nil included"
         (mc/binding handle :bound
                     (fn [] (is (= :bound (system/ensure-started! handle start stop)))))
