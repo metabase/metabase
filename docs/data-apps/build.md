@@ -36,7 +36,11 @@ Your agent builds and ships each app from a Metabase that it logs in to. You can
 - **A development Metabase and a production Metabase (recommended).** Set up two Metabases: one for trying things out, and one for the content that people rely on. Your agent builds each app on the development Metabase, where it can also publish tables and create metrics for the app. You review the app before it reaches production. To set this up, connect both Metabases to the same Git repository with [Remote sync](../data-modeling/semantic-layer/remote-sync.md): your development Metabase in Read-write mode, and your production Metabase in Read-only mode.
 - **Only your production Metabase.** This setup has fewer steps, but each change that your agent ships goes to production without review. [Getting started with data apps](./getting-started.md) uses this setup.
 
-The rest of this page uses a development Metabase and a production Metabase.
+The rest of this page uses a development Metabase and a production Metabase. Here's how an app gets from your agent to the people who open it:
+
+![A flow diagram of the development to production workflow for a data app. An AI coding agent starts a local app preview, which reads and writes data through a development Metabase. The agent also pushes the app to a Git repository. If the development Metabase has changes to tables or metrics, it pushes those changes to the repository too. First, the development Metabase, in Read-write mode, pulls the app's branch, and you check the app. Then you merge the branch, and a production Metabase, in Read-only mode, pulls the app. You set permissions on the production Metabase, and people open the app.](./images/data-app-flow.png)
+
+To see how this works with only one Metabase, check out the [single Metabase workflow](./getting-started.md).
 
 ## Publish tables to your semantic layer
 
@@ -136,7 +140,7 @@ After you check the app on your development Metabase, do these steps yourself:
 
 1. Merge your branch into the branch that your production Metabase pulls from, for example with a [pull request](../data-modeling/semantic-layer/remote-sync.md#step-4-create-a-pull-request).
 2. On your production Metabase (in Read-only mode), [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). If your production Metabase uses [auto-sync](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-automatically), it pulls the changes on its own within five minutes.
-3. The first time that you move an app to production, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app on your production Metabase.
+3. The first time that you move an app to production, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app on your production Metabase. Then check the **Data access** column on the app's **Permissions** tab. If it says **Missing N tables**, [give the group access to those tables](./manage.md#check-that-groups-can-see-the-apps-data).
 
 Metabase doesn't sync an app's group access or its [status](./manage.md#make-an-app-live-or-a-draft) (live or draft), so each Metabase keeps its own. The first pull creates the app on your production Metabase as live, and only admins can open it until you add groups there. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
 

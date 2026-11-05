@@ -19,6 +19,10 @@ The basic workflow:
 - You can preview the app on your machine.
 - When you're happy with it, your agent saves the app to a Git repository, and your Metabase gets the app from that repository. A Git repository stores your app's code, and keeps each version of it.
 
+![A flow diagram of the single Metabase workflow for a data app. An AI coding agent starts a local app preview, which reads and writes data through your production Metabase. The agent also pushes the app to a Git repository. Your production Metabase, in Read-only mode, pulls the app from the repository. You set permissions on your production Metabase, and people open the app.](./images/data-app-flow-one-metabase.png)
+
+This guide uses a single Metabase. To review each app before it reaches production, check out the [development to production workflow](./build.md#choose-where-to-build-apps).
+
 The app we build in this guide only shows data, so it works with any database that Metabase connects to. If your data warehouse is PostgreSQL or MySQL, you can also add a [form that changes data](#add-a-form-that-changes-data).
 
 ## What you need
@@ -185,6 +189,7 @@ For others to view the app, you'll need to grant them permissions.
 1. In your Metabase, click the **grid** icon in the upper right, and select **Data studio**.
 2. Click **Data apps**, and click the app.
 3. On the **Permissions** tab, add the groups that can open the app.
+4. Check the **Data access** column. If it says **Missing N tables**, [give the group access to those tables](./manage.md#check-that-groups-can-see-the-apps-data).
 
 People in those groups can now open the app at `/apps/<slug>`. The app runs with each person's [data permissions](../permissions/data.md), so people see only the data that they're allowed to see. For more, see [Choose who can open an app](./manage.md#choose-who-can-open-an-app).
 
