@@ -7,4 +7,5 @@ export interface FormError<T> extends FormErrorData<T> {
 export interface FormErrorData<T> {
   errors?: FormikErrors<T>;
   message?: string;
+  "error-code"?: string;
 }
