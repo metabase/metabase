@@ -8,11 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (defn- venues-query
   "Build an MBQL 5 query over the venues table."

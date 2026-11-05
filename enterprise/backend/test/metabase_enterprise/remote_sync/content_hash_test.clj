@@ -24,13 +24,10 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db))
 

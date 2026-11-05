@@ -136,7 +136,6 @@ describe("scenarios > sidecar > tenant users", () => {
     // Setup git sync
     H.setupGitSync();
     H.copySyncedCollectionFixture();
-    H.updateSetting("remote-sync-custom-collections-enabled", true);
     H.commitToRepo();
 
     // Make shared tenant collections synced
