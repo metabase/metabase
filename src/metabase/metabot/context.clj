@@ -208,7 +208,9 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The open tab, sent with a dashboard
+   [:tab_id          {:optional true} [:maybe :int]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."

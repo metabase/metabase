@@ -31,10 +31,11 @@ import {
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getIsSharing } from "metabase/dashboard/selectors";
+import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockChannel,
@@ -467,5 +468,41 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+
+  describe("Metabot saves", () => {
+    const dashboardFetches = (dashboardId: DashboardId) =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`).length;
+
+    const metabotSaves = (dashboardId: DashboardId) =>
+      dashboardSaved({ dashboardId, saveId: "call-1" });
+
+    it("reloads the dashboard when Metabot saves it", async () => {
+      const { dashboardId, store } = await setup();
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+    });
+
+    it("doesn't reload a dashboard being edited", async () => {
+      const { dashboardId, store } = await setup();
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      expect(dashboardFetches(dashboardId)).toBe(fetchesBefore);
+      expect(
+        screen.getByText(/You're editing this dashboard/),
+      ).toBeInTheDocument();
+    });
   });
 });

@@ -12,6 +12,7 @@
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -341,3 +342,7 @@
                (context/host-app-request? {:headers (cond-> {} client (assoc "x-metabase-client" client))}))))))
   (testing "no request bound, e.g. a caller outside an HTTP handler"
     (is (false? (context/host-app-request? nil)))))
+
+(deftest viewing-dashboard-tab-test
+  (testing "a dashboard in view can name its open tab"
+    (is (mr/validate ::context/context {:user_is_viewing [{:type "dashboard", :id 42, :tab_id 101}]}))))

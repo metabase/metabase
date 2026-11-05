@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -22,6 +22,7 @@ import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPick
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   DashboardContextProvider,
+  type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
@@ -30,6 +31,7 @@ import {
   usePageTitle,
   usePageTitleWithLoadingTime,
 } from "metabase/hooks/use-page-title";
+import { useOnMetabotDashboardSave } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Location } from "metabase/router";
@@ -43,7 +45,7 @@ import {
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
-import { getDocumentTitle, getFavicon } from "../../selectors";
+import { getDocumentTitle, getFavicon, getIsEditing } from "../../selectors";
 
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
@@ -93,6 +95,18 @@ export const DashboardApp = () => {
   const dashboardId = Urls.extractEntityId(params.slug);
 
   useRegisterDashboardMetabotContext();
+
+  // Metabot saves dashboards on the server, so the page reloads to show them. An edit in progress
+  // isn't reloaded, since that would drop the user's unsaved changes.
+  const dashboardContextRef = useRef<DashboardContextProviderHandle>(undefined);
+  const isEditing = useSelector(getIsEditing);
+  const reloadDashboard = useCallback(() => {
+    if (!isEditing) {
+      dashboardContextRef.current?.refetchDashboard();
+    }
+  }, [isEditing]);
+  useOnMetabotDashboardSave(dashboardId, reloadDashboard);
+
   useDashboardUrlQuery(location);
 
   const extractHashOption = async (
@@ -189,6 +203,7 @@ export const DashboardApp = () => {
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
+        ref={dashboardContextRef}
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
         autoScrollToDashcardId={autoScrollToDashcardId}
