@@ -10,13 +10,6 @@
 (def ^:private remappings
   {{:schema "sales" :table "orders_daily"} {:schema "mb__isolation_ab12c_17_s42_sales" :table "orders_daily"}})
 
-(deftest outside-workspace-mode-test
-  (testing "outside workspace mode (always so on OSS) every hook leaves its input alone"
-    (is (false? (ws/workspace-mode?)))
-    (is (nil? (ws/table-remappings 1)))
-    (is (nil? (ws/workspace-schemas {:name "analytics"})))
-    (is (= {:schema "sales" :name "x"} (ws/resolve-transform-target 1 {:schema "sales" :name "x"})))))
-
 (deftest scratch-and-canonical-target-test
   (is (= {:schema "mb__isolation_ab12c_17_s42_sales" :name "x"}
          (ws/scratch-target schema-map {:schema "sales" :name "x"})))

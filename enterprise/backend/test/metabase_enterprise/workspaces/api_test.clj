@@ -29,7 +29,7 @@
 
 (deftest install-and-remove-workspace-test
   (with-clean-workspace!
-    (mt/with-temp [:model/Database {db-id :id, db-name :name} {:name (mt/random-name)}]
+    (mt/with-temp [:model/Database {db-id :id, db-name :name} {:name (mt/random-name), :engine :postgres}]
       (is (= {:data nil, :can_write true}
              (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))
       (testing "POST installs the workspace, keyed by database name"
@@ -51,7 +51,7 @@
 
 (deftest post-clears-stale-remappings-test
   (with-clean-workspace!
-    (mt/with-temp [:model/Database {db-id :id, db-name :name} {:name (mt/random-name)}]
+    (mt/with-temp [:model/Database {db-id :id, db-name :name} {:name (mt/random-name), :engine :postgres}]
       (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" (workspace-instance db-name))
       (t2/insert! :model/TableRemapping [(remapping db-id "sales" "mb__isolation_ab12c_17_s42_sales" "kept")
                                          (remapping db-id "finance" "mb__isolation_ab12c_17_s43_finance" "dropped")])
@@ -62,11 +62,26 @@
                                                               "finance" "mb__isolation_ab12c_17_s99_finance"}}}})
         (is (= ["kept"] (t2/select-fn-vec :from_table_name :model/TableRemapping)))))))
 
+(deftest post-dropping-a-database-clears-its-remappings-test
+  (with-clean-workspace!
+    (mt/with-temp [:model/Database {db-1 :id, name-1 :name} {:name (mt/random-name), :engine :postgres}
+                   :model/Database {db-2 :id, name-2 :name} {:name (mt/random-name), :engine :postgres}]
+      (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                            {:name      "w"
+                             :databases {name-1 {:schemas {"sales" "scratch_sales"}}
+                                         name-2 {:schemas {"sales" "scratch_sales"}}}})
+      (t2/insert! :model/TableRemapping [(remapping db-1 "sales" "scratch_sales" "t")
+                                         (remapping db-2 "sales" "scratch_sales" "t")])
+      (testing "a map without a database deletes every remapping of that database"
+        (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                              {:name "w", :databases {name-1 {:schemas {"sales" "scratch_sales"}}}})
+        (is (= [db-1] (t2/select-fn-vec :database_id :model/TableRemapping)))))))
+
 (deftest post-errors-test
   (with-clean-workspace!
-    (mt/with-temp [:model/Database {db-name :name} {:name (mt/random-name)}
-                   :model/Database {dup-1 :id}     {:name "duplicate name"}
-                   :model/Database {dup-2 :id}     {:name "duplicate name"}]
+    (mt/with-temp [:model/Database {db-name :name} {:name (mt/random-name), :engine :postgres}
+                   :model/Database {dup-1 :id}     {:name "duplicate name", :engine :postgres}
+                   :model/Database {dup-2 :id}     {:name "duplicate name", :engine :postgres}]
       (testing "a database name that matches no database"
         (is (= "No database is named \"no such database\"."
                (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
@@ -81,6 +96,11 @@
           (is (=? {:specific-errors some?}
                   (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
                                         {:name "w", :databases {db-name {:schemas schemas}}})))))
+      (testing "a database whose engine workspaces don't support yet"
+        (mt/with-temp [:model/Database {h2-name :name} {:name (mt/random-name), :engine :h2}]
+          (is (re-find #"support only Postgres-family"
+                       (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                             (workspace-instance h2-name))))))
       (testing "an empty map"
         (is (=? {:errors some?}
                 (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
@@ -91,7 +111,7 @@
 
 (deftest locked-by-env-var-test
   (with-clean-workspace!
-    (mt/with-temp [:model/Database {db-name :name} {:name (mt/random-name)}]
+    (mt/with-temp [:model/Database {db-name :name} {:name (mt/random-name), :engine :postgres}]
       (mt/with-temp-env-var-value! [:mb-instance-workspace (json/encode (workspace-instance db-name))]
         (is (= {:data (as-response (workspace-instance db-name)), :can_write false}
                (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))
