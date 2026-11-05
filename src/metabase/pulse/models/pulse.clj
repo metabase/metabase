@@ -311,7 +311,7 @@
    {:default []}))
 
 (mu/defn- cards* :- [:sequential HybridPulseCard]
-  "The active Cards of the Pulses with `pulse-ids`. Archived Cards are left out."
+  "The non-archived Cards of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ms/PositiveInt]]
   (pulse.db/pulse-cards-for-pulses pulse-ids))
 

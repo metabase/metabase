@@ -29,8 +29,7 @@
   nil)
 
 (def ^:private invalidate-select-batch-size
-  "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
-  clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  "Chunk size when fetching :model/Field rows for invalidation, so each app-DB `IN (…)` clause stays bounded."
   500)
 
 (defn- batch-invalidate-field-values!

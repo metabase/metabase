@@ -439,9 +439,8 @@
   (get-latest-field-values field-id :full nil))
 
 (def ^:private fv-select-batch-size
-  "Chunk size when fetching FieldValues by `field_id [:in …]`. Keeps a single SQL `IN (…)` clause
-  under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
-  have thousands of list-eligible fields, so we partition before issuing the select."
+  "Chunk size when fetching FieldValues by `field_id [:in …]`.
+  Wide tables can have thousands of list-eligible fields, and batching keeps each app-DB `IN (…)` clause bounded."
   500)
 
 (defn batched-get-latest-full-field-values

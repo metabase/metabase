@@ -448,10 +448,8 @@
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
 
 (def ^:private enable-response-validation
-  "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
-  for prod for performance purposes.
-
-  Note that encoding is still applied regardless of this value, i.e. even in prod."
+  "Whether [[defendpoint]] validates responses against their Malli schemas: on in dev and test, off in prod for speed.
+  Encoding runs either way, prod included."
   (not config/is-prod?))
 
 (mu/defn validate-and-encode-response :- any?

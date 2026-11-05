@@ -248,8 +248,7 @@
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
 (def ^:private on-demand-select-batch-size
-  "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
-  clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  "Chunk size when fetching :model/Field rows for on-demand updates, so each app-DB `IN (…)` clause stays bounded."
   500)
 
 (defn update-field-values-for-on-demand-dbs!
