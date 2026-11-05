@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type { HistoryBinding } from "metabase/metadata/table-structure";
 import { getHistoryCurrentCondition } from "metabase/metadata/table-structure/generated-checks";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -28,7 +30,7 @@ export function buildCurrentRowsSql(
   const versionName = nameOf(fields, binding.versionFieldId);
 
   const columns = fields.map((field) => `${INDENT}${field.name}`).join(",\n");
-  const orderBy = [validFromName, versionName]
+  const orderBy = _.uniq([validFromName, versionName])
     .filter((name) => name != null)
     .map((name) => `${name} DESC`)
     .join(", ");

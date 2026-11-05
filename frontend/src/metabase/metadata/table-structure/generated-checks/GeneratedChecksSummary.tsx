@@ -68,11 +68,11 @@ export function GeneratedChecksSummary({
         )}
         {" · "}
         {failingCount > 0 ? (
-          <Text span fw="bold" c="feedback-warning">
+          <Text component="span" fw="bold" c="feedback-warning">
             {t`${failingCount} failing`}
           </Text>
         ) : (
-          <Text span c="text-secondary">{t`all passing`}</Text>
+          <Text component="span" c="text-secondary">{t`all passing`}</Text>
         )}
       </Text>
       <Button

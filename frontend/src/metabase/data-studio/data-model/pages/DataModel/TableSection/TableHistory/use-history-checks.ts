@@ -5,6 +5,7 @@ import {
   type HistoryBinding,
   type HistoryCheckId,
   type HistoryProfile,
+  type HistoryVersion,
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -31,6 +32,13 @@ function isContiguous(profile: HistoryProfile) {
   const gapCount =
     profile.checks.find((check) => check.id === "gap")?.entityKeys.length ?? 0;
   return gapCount <= profile.entityCount * CONTIGUOUS_MAX_GAP_SHARE;
+}
+
+function hasTiedVersions(versions: HistoryVersion[]) {
+  const starts = versions.flatMap(({ validFrom }) =>
+    validFrom != null ? [validFrom] : [],
+  );
+  return new Set(starts).size < starts.length;
 }
 
 function getChecksInput(
@@ -72,6 +80,9 @@ function getResults(profile: HistoryProfile, input: HistoryChecksInput) {
     )
     .map((entity) => entity.key);
   const keyName = profile.durableKeyField.display_name;
+  const tiedKeys = profile.entities
+    .filter((entity) => hasTiedVersions(entity.versions))
+    .map((entity) => entity.key);
 
   return new Map<string, CheckResult>([
     [
@@ -109,6 +120,20 @@ function getResults(profile: HistoryProfile, input: HistoryChecksInput) {
       ),
     ],
     [HISTORY_CHECK_ID.versionOrder, failing(describe(["version-order"]))],
+    [
+      HISTORY_CHECK_ID.oneVersionPerTime,
+      failing(
+        tiedKeys.length > 0
+          ? [
+              ngettext(
+                msgid`${countOf(tiedKeys.length, noun)} has two versions with the same ${input.columns.validFrom}.`,
+                `${countOf(tiedKeys.length, noun)} have two versions with the same ${input.columns.validFrom}.`,
+                tiedKeys.length,
+              ),
+            ]
+          : [],
+      ),
+    ],
   ]);
 }
 

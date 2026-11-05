@@ -219,7 +219,7 @@ describe("history checks", () => {
     expect(checks[2].params.gaps).toBe("allowed");
   });
 
-  it("only checks the key when the latest row per key is current", () => {
+  it("checks the key and one version per time when the latest row per key is current", () => {
     const checks = getGeneratedChecks({
       structure: { role: "role/HistoryDimension" },
       history: {
@@ -233,7 +233,31 @@ describe("history checks", () => {
       },
     });
 
-    expect(checks.map(({ check }) => check)).toEqual(["not_null"]);
+    expect(checks.map(({ check }) => check)).toEqual([
+      "not_null",
+      "unique_combination",
+    ]);
+    expect(checks[1].params.columns).toEqual(["worker_id", "valid_from"]);
+  });
+
+  it("skips the version order check when the version column is valid from", () => {
+    const checks = getGeneratedChecks({
+      structure: { role: "role/HistoryDimension" },
+      history: {
+        ...HISTORY,
+        columns: {
+          ...HISTORY.columns,
+          validTo: null,
+          currentFlag: null,
+          version: HISTORY.columns.validFrom,
+        },
+      },
+    });
+
+    expect(checks.map(({ check }) => check)).toEqual([
+      "not_null",
+      "unique_combination",
+    ]);
   });
 
   it("returns no history checks for a table that isn't a history table", () => {

@@ -21,6 +21,7 @@ export const HISTORY_CHECK_ID = {
   validRange: "history:valid-range",
   currentIsOpen: "history:current-is-open",
   versionOrder: "history:version-order",
+  oneVersionPerTime: "history:one-version-per-time",
 } as const;
 
 export function getHistoryCurrentCondition({
@@ -142,7 +143,7 @@ function getVersionOrderCheck({
   table,
   columns,
 }: HistoryChecksInput): GeneratedCheck | null {
-  if (columns.version == null) {
+  if (columns.version == null || columns.version === columns.validFrom) {
     return null;
   }
   return {
@@ -162,6 +163,24 @@ function getVersionOrderCheck({
   };
 }
 
+function getOneVersionPerTimeCheck({
+  table,
+  columns,
+}: HistoryChecksInput): GeneratedCheck | null {
+  if (columns.validTo != null) {
+    return null;
+  }
+  return {
+    id: HISTORY_CHECK_ID.oneVersionPerTime,
+    check: "unique_combination",
+    table,
+    params: { columns: [columns.entityKey, columns.validFrom] },
+    name: t`One version per ${columns.entityKey} and ${columns.validFrom}`,
+    severity: "warn",
+    basis: t`Entity key and valid from`,
+  };
+}
+
 export function getHistoryChecks(input: HistoryChecksInput): GeneratedCheck[] {
   const checks = [
     getKeyNotNullCheck(input),
@@ -170,6 +189,7 @@ export function getHistoryChecks(input: HistoryChecksInput): GeneratedCheck[] {
     getValidRangeCheck(input),
     getCurrentIsOpenCheck(input),
     getVersionOrderCheck(input),
+    getOneVersionPerTimeCheck(input),
   ];
   return checks.filter((check): check is GeneratedCheck => check != null);
 }
