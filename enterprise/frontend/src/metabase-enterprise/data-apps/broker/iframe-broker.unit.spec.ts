@@ -187,6 +187,19 @@ describe("iframe broker, served from a separate isolated origin", () => {
     );
   });
 
+  it("sends requests outside the instance API, such as the app's allowed hosts and static files, to the network", async () => {
+    fetchMock.get("https://api.example.com/rates", { rates: [] });
+    fetchMock.get("path:/app/dist/chunk.js", "export {};");
+
+    const responses = await Promise.all([
+      window.fetch(new Request("https://api.example.com/rates")),
+      window.fetch("/app/dist/chunk.js"),
+    ]);
+
+    expect(responses.map(({ status }) => status)).toEqual([200, 200]);
+    expect(hostPort.postMessage).not.toHaveBeenCalled();
+  });
+
   it("rejects an aborted request with an AbortError, and tells the host to cancel it", async () => {
     const controller = new AbortController();
     const pendingResponse = window.fetch("/api/dataset", {
