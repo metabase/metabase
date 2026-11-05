@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.core :as ee.ws]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -26,6 +27,8 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.upload.core :as upload]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -220,7 +223,7 @@
   (do-with-postgres-workspace!
    (fn [scratch]
      (let [table-name (random-identifier "ws_shadow")]
-       (execute-sql! (format "CREATE TABLE public.%s (source text)" table-name))
+       (execute-sql! (format "CREATE TABLE public.%s (source text, main_only text)" table-name))
        (try
          (let [transform (native-transform! "SELECT 'scratch' AS source" table-name)]
            (testing "'does the target exist' asks about the scratch table, not the main one"
@@ -231,7 +234,11 @@
              (transforms-base.u/delete-target-table! (t2/select-one :model/Transform :id (:id transform)))
              (is (not (table-exists? scratch table-name)))
              (is (table-exists? "public" table-name))
-             (is (= [] (remappings)))))
+             (is (= [] (remappings))))
+           (testing "and the main table's app-DB row stays active, describing the main table again"
+             (let [table (t2/select-one :model/Table :db_id (mt/id) :schema "public" :name table-name)]
+               (is (true? (:active table)))
+               (is (= #{"source" "main_only"} (t2/select-fn-set :name :model/Field :table_id (:id table) :active true))))))
          (finally
            (execute-sql! (format "DROP TABLE public.%s" table-name))))))))
 
@@ -302,8 +309,7 @@
           (is (contains? @seen :cache-strategy)))))))
 
 (deftest rewrite-sql-strictness-test
-  (testing "anything but a query, INSERT, UPDATE, DELETE, MERGE or CREATE TABLE ... AS is refused, and so is a statement
-            with SQL the rewrite can't see into"
+  (testing "anything but a query, INSERT, UPDATE, DELETE, MERGE or CREATE TABLE ... AS is refused"
     (doseq [sql ["EXPLAIN SELECT * FROM public.orders"
                  "DECLARE c CURSOR FOR SELECT * FROM public.orders"
                  "PREPARE p AS SELECT * FROM public.orders; EXECUTE p"
@@ -312,11 +318,24 @@
                  "CREATE RULE r AS ON INSERT TO public.customers DO ALSO SELECT 1"
                  "COPY (SELECT * FROM public.orders) TO STDOUT"
                  "SET statement_timeout = 1000; SELECT * FROM public.orders"
-                 "CREATE TABLE public.x AS EXECUTE p"
-                 "SELECT query_to_xml('select * from public.customers', true, true, '')"
-                 "SELECT * FROM dblink('dbname=x', 'select 1') AS t(a int)"
-                 "SELECT upper('select src from public.orders')"]]
-      (is (thrown? clojure.lang.ExceptionInfo (ws/rewrite-sql :postgres remaps sql)) sql)))
+                 "CREATE TABLE public.x AS EXECUTE p"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only queries, INSERT, UPDATE, DELETE, MERGE and CREATE TABLE"
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql)))
+  (testing "a call to a function that runs SQL or reads a table named in text is refused, however its name is written"
+    (doseq [[sql function] [["SELECT query_to_xml('select 1', true, true, '')" "query_to_xml"]
+                            ["SELECT pg_catalog.\"query_to_xml\"('select 1', true, true, '')" "query_to_xml"]
+                            ["SELECT * FROM public.\"dblink\"('dbname=x', 'select 1') AS t(a int)" "dblink"]
+                            ["SELECT ts_stat('select 1')" "ts_stat"]
+                            ["SELECT * FROM crosstab('select 1')" "crosstab"]
+                            ["SELECT table_to_xml('public.orders', true, true, '')" "table_to_xml"]
+                            ["SELECT schema_to_xml('public', true, true, '')" "schema_to_xml"]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "calls " function ", which runs SQL"))
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql)))
+  (testing "a function argument that is SQL text naming a remapped table is refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"passes upper SQL text that names a remapped table"
+                          (ws/rewrite-sql :postgres remaps "SELECT upper('select src from public.orders')"))))
   (testing "allowed statements are rewritten"
     (doseq [sql ["WITH x AS (SELECT 1) SELECT * FROM public.orders"
                  "SELECT 1 UNION ALL SELECT id FROM public.orders"
@@ -332,13 +351,22 @@
     (is (= "SELECT QUERY_TO_XML('select * from public.orders', TRUE, TRUE, '')"
            (sql-tools/replace-names :postgres "SELECT query_to_xml('select * from public.orders', true, true, '')"
                                     {:tables remaps} {:allow-unused? true}))))
-  (testing "unquoted names fold to lower case, as on Postgres"
+  (testing "names match as Postgres stores them: unquoted ASCII letters lower-cased, every name cut to 63 bytes"
     (let [mixed {{:schema "public", :table "Mixed"} {:schema "mb__iso_public", :table "Mixed"}}]
       (is (str/includes? (ws/rewrite-sql :postgres mixed "SELECT * FROM public.\"Mixed\"") "mb__iso_public"))
       (is (= "SELECT * FROM public.mixed" (ws/rewrite-sql :postgres mixed "SELECT * FROM public.mixed")))
       (is (= "SELECT * FROM public.Mixed" (ws/rewrite-sql :postgres mixed "SELECT * FROM public.Mixed"))))
     (is (str/includes? (ws/rewrite-sql :postgres remaps "SELECT * FROM PUBLIC.ORDERS") "mb__iso_public"))
-    (is (= "SELECT * FROM \"PUBLIC\".\"ORDERS\"" (ws/rewrite-sql :postgres remaps "SELECT * FROM \"PUBLIC\".\"ORDERS\"")))))
+    (is (= "SELECT * FROM \"PUBLIC\".\"ORDERS\"" (ws/rewrite-sql :postgres remaps "SELECT * FROM \"PUBLIC\".\"ORDERS\"")))
+    (testing "only A-Z fold: an unquoted Ä stays as written"
+      (let [umlaut {{:schema "public", :table "Äbc"} {:schema "mb__iso_public", :table "Äbc"}}]
+        (is (str/includes? (ws/rewrite-sql :postgres umlaut "SELECT * FROM public.ÄBC") "mb__iso_public"))))
+    (testing "a name longer than 63 bytes names its first 63 bytes"
+      (let [stored (str "orders" (apply str (repeat 57 "x")))
+            long   {{:schema "public", :table stored} {:schema "mb__iso_public", :table stored}}]
+        (is (str/includes? (ws/rewrite-sql :postgres long (str "SELECT * FROM public." stored "yyyy")) "mb__iso_public"))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"without a schema"
+                              (ws/rewrite-sql :postgres long (str "SELECT * FROM " (u/upper-case-en stored) "yyyy"))))))))
 
 (deftest persisted-models-are-not-used-in-workspace-mode-test
   (mt/test-driver :postgres
@@ -433,3 +461,33 @@
         (is (= :ran (qp.setup/with-qp-setup [_query {:type :internal, :fn "x", :database 13371337}] :ran)))))
     (testing "forgetting the output of a target without a schema does nothing (no remapping can name it)"
       (is (nil? (ws/forget-transform-output! (mt/id) {:type "table", :schema nil, :name "T"}))))))
+
+(deftest stale-remappings-are-ignored-test
+  (do-with-postgres-workspace!
+   (fn [scratch]
+     (t2/insert! :model/TableRemapping [{:database_id (mt/id) :from_schema "public" :from_table_name "kept"
+                                         :to_schema scratch :to_table_name "kept"}
+                                        {:database_id (mt/id) :from_schema "public" :from_table_name "stale"
+                                         :to_schema "mb__isolation_old" :to_table_name "stale"}])
+     (testing "a remapping whose scratch namespace is no longer the one the map gives its schema is ignored"
+       (is (= {{:schema "public", :table "kept"} {:schema scratch, :table "kept"}}
+              (ws/table-remappings (mt/id))))))))
+
+(deftest writes-outside-transforms-are-refused-in-workspace-mode-test
+  (testing "an upload is refused on a workspace instance"
+    (mt/with-temporary-setting-values [instance-workspace (workspace-json "PUBLIC" "SCRATCH")]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uploads are not available on a workspace instance"
+                            (upload/create-csv-upload! {:collection-id nil, :filename "x.csv", :file (java.io.File. "x.csv")
+                                                        :db-id (mt/id), :schema-name "PUBLIC"})))))
+  (testing "a row action on a remapped table is refused"
+    (do-with-postgres-workspace!
+     (fn [_scratch]
+       (let [table-name (random-identifier "ws_rows")]
+         (run-transform! (native-transform! "SELECT 1 AS id" table-name))
+         (t2/update! :model/Database :id (mt/id) {:settings {:database-enable-actions true}})
+         (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "public" :name table-name)]
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"this action would write a table the workspace remaps"
+                                 (mt/with-current-user (mt/user->id :crowberto)
+                                   (actions/perform-action! :model.row/create
+                                                            {:database (mt/id), :type :query, :query {:source-table table-id}
+                                                             :create-row {"id" 2}}))))))))))
