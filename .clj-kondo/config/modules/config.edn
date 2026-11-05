@@ -4713,7 +4713,8 @@
            premium-features
            request
            util
-           warehouses}
+           warehouses
+           warehouses.secrets}
    :model-imports #{:model/Database :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

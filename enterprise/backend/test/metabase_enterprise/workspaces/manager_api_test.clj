@@ -13,6 +13,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -160,7 +162,7 @@
 (deftest superuser-only-test
   (mt/with-premium-features #{:workspaces}
     (doseq [[method path body] [[:get url] [:get (ws-url 1)] [:post url (create-body (mt/id) ["PUBLIC"])]
-                                [:put (ws-url 1) {:name "x"}] [:delete (ws-url 1)]]]
+                                [:put (ws-url 1) {:name "x"}] [:delete (ws-url 1)] [:get (str (ws-url 1) "/connection")]]]
       (testing (str method " " path)
         (is (= "You don't have permissions to do that."
                (apply mt/user-http-request :rasta method 403 path (when body [body]))))))))
@@ -302,7 +304,7 @@
        (mt/with-premium-features #{}
          (is (=? {:data [{:id ws-id}], :total 1} (mt/user-http-request :crowberto :get 200 url)))
          (doseq [[method path body] [[:get (ws-url ws-id)] [:put (ws-url ws-id) {:name "x"}]
-                                     [:post url (create-body db-id ["sales"])]]]
+                                     [:post url (create-body db-id ["sales"])] [:get (str (ws-url ws-id) "/connection")]]]
            (testing (str method " " path " needs the feature")
              (is (str/includes? (apply mt/user-http-request :crowberto method 402 path (when body [body])) "Workspaces"))))
          (mt/user-http-request :crowberto :delete 204 (ws-url ws-id))
@@ -426,3 +428,130 @@
                   (is (=? {:databases [{:status "provisioned"} {:status "provisioned"}]} (deref create 60000 nil))))
                 (mt/user-http-request :crowberto :delete 204 (ws-url ws-id))
                 (is (empty? (workspace-roles spec))))))))))))
+
+;;; ------------------------------------------------ Connection ------------------------------------------------
+
+(defn- connection-url [id] (str (ws-url id) "/connection"))
+
+(defn- as-workspace-user
+  "Run `sql` on the warehouse with the `details` of a WorkspaceConnection database, as a sidecar would connect."
+  [details sql]
+  (query (sql-jdbc.conn/connection-details->spec :postgres details) sql))
+
+(deftest connection-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (let [workspace               (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales" "finance"]))
+           ws-id                   (:id workspace)
+           {:keys [user password]} (:database_details (t2/select-one :model/WorkspaceDatabase :workspace_id ws-id))
+           scratch                 (into {} (map (juxt :main_schema :scratch_namespace))
+                                         (-> workspace :databases first :schemas))
+           db-name                 (t2/select-one-fn :name :model/Database :id db-id)
+           wsd-ids                 (t2/select-pks-set :model/WorkspaceDatabase :workspace_id ws-id)
+           parent                  (superuser-details)
+           ;; as JSON and YAML carry them: keyword values become strings
+           expected-details        (json/decode+kw
+                                    (json/encode
+                                     (merge (dissoc parent :user :password)
+                                            {:user                        user
+                                             :password                    password
+                                             :schema-filters-type         "inclusion"
+                                             :schema-filters-patterns     (str/join "," (concat (keys scratch) (vals scratch)))
+                                             :let-user-control-scheduling false})))
+           set-schema-status!      (fn [main-schema status]
+                                     (t2/update! :model/WorkspaceSchema {:workspace_database_id [:in wsd-ids]
+                                                                         :main_schema           main-schema}
+                                                 {:status status, :error (when (= :failed status) "failed for the test")}))]
+       (testing "JSON by default: the workspace user's details and the active schemas, main -> scratch"
+         (let [connection (mt/user-http-request :crowberto :get 200 (connection-url ws-id))]
+           (is (= {:workspace {:id ws-id, :name "orders-cleanup"}
+                   :databases [{:name    db-name
+                                :engine  "postgres"
+                                :details expected-details
+                                :schemas (update-keys scratch keyword)}]}
+                  connection))
+           (is (= connection (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format "json")))
+           (testing "never the parent's login or the provisioning login"
+             (is (not= (:user parent) user))
+             (is (not (str/includes? (pr-str connection) (:password provisioner)))))
+           (testing "the details log in as the workspace user, which reads main and cannot write it"
+             (let [details (-> connection :databases first :details)]
+               (is (= [{:u user}] (as-workspace-user details "SELECT current_user AS u")))
+               (is (= [] (as-workspace-user details "SELECT * FROM sales.orders")))
+               (is (thrown-with-msg? Exception #"permission denied"
+                                     (as-workspace-user details "CREATE TABLE sales.planted (id int)")))))))
+       (testing "format=yaml: the config.yml a sidecar applies, built from the same connection"
+         (is (= {:version 1
+                 :config  {:databases [{:name db-name, :engine "postgres", :details expected-details}]
+                           :workspace {:name      "orders-cleanup"
+                                       :databases {(keyword db-name) {:schemas (update-keys scratch keyword)}}}}}
+                (yaml/parse-string (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format "yaml")))))
+       (testing "only the creator: another admin and a non-admin get a 403"
+         (mt/with-temp [:model/User {other-admin :id} {:is_superuser true}]
+           (is (= "Only the creator of a workspace can fetch its connection."
+                  (mt/user-http-request other-admin :get 403 (connection-url ws-id)))))
+         (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (connection-url ws-id)))))
+       (testing "404 for an unknown workspace, 400 for an unknown format"
+         (is (= "Workspace 2147483647 not found." (mt/user-http-request :crowberto :get 404 (connection-url Integer/MAX_VALUE))))
+         (mt/user-http-request :crowberto :get 400 (connection-url ws-id) :format "xml"))
+       (testing "only active schemas, and only provisioned databases with one"
+         (set-schema-status! "finance" :failed)
+         (is (=? {:databases [{:schemas                          {:sales (scratch "sales")}
+                               :details {:schema-filters-patterns (str "sales," (scratch "sales"))}}]}
+                 (mt/user-http-request :crowberto :get 200 (connection-url ws-id))))
+         (set-schema-status! "sales" :failed)
+         (is (= [] (:databases (mt/user-http-request :crowberto :get 200 (connection-url ws-id)))))
+         (set-schema-status! "sales" :active)
+         (set-schema-status! "finance" :active)
+         (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :failed})
+         (is (= [] (:databases (mt/user-http-request :crowberto :get 200 (connection-url ws-id)))))
+         (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :provisioned}))
+       (testing "the password lives until DELETE"
+         (is (= password (-> (mt/user-http-request :crowberto :get 200 (connection-url ws-id)) :databases first :details :password)))
+         (mt/user-http-request :crowberto :delete 204 (ws-url ws-id))
+         (mt/user-http-request :crowberto :get 404 (connection-url ws-id)))))))
+
+(deftest connection-never-carries-the-parent-login-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))
+           root-cert   "-----BEGIN CERTIFICATE-----\nroot\n-----END CERTIFICATE-----\n"
+           secrets     {:use-auth-provider             true
+                        :auth-provider                 "oauth"
+                        :oauth-token-url               "https://idp.example/PARENT-token-url"
+                        :oauth-token-headers           "{\"client_secret\":\"PARENT-oauth-secret\"}"
+                        :tunnel-enabled                true
+                        :tunnel-host                   "bastion.example"
+                        :tunnel-auth-option            "ssh-key"
+                        :tunnel-pass                   "PARENT-tunnel-pass"
+                        :tunnel-private-key            "PARENT-tunnel-key"
+                        :tunnel-private-key-passphrase "PARENT-tunnel-passphrase"
+                        :ssl                           true
+                        :ssl-mode                      "verify-full"
+                        :ssl-use-client-auth           true
+                        :ssl-root-cert-options         "uploaded"
+                        :ssl-root-cert-value           root-cert
+                        :ssl-client-cert-options       "uploaded"
+                        :ssl-client-cert-value         "PARENT-client-cert"
+                        :ssl-key-options               "uploaded"
+                        :ssl-key-value                 "PARENT-client-key"
+                        :ssl-key-password-value        "PARENT-key-password"
+                        :additional-options            "sslpassword=PARENT-additional-options"}]
+       ;; stored through the model, as the database form stores them: the certificates and keys become Secrets
+       (t2/update! :model/Database :id db-id {:details (merge (superuser-details) secrets)})
+       (is (=? {:ssl-root-cert-id int?, :ssl-key-id int?} (t2/select-one-fn :details :model/Database :id db-id)))
+       (doseq [response-format ["json" "yaml"]]
+         (testing response-format
+           (let [response (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format response-format)
+                 body     (pr-str response)
+                 details  (if (= "yaml" response-format)
+                            (-> (yaml/parse-string response) :config :databases first :details)
+                            (-> response :databases first :details))]
+             (is (nil? (re-seq #"PARENT[-a-z]*" body)))
+             (is (= (-> (t2/select-one :model/WorkspaceDatabase :workspace_id ws-id) :database_details :password)
+                    (:password details)))
+             (when-let [parent-password (not-empty (:password (superuser-details)))]
+               (is (not-any? #{parent-password} (vals details))))
+             (is (not (re-find #"auth-provider|ssl-use-client-auth|ssl-key|ssl-client-cert|ssl-root-cert-id|tunnel-pass|tunnel-private-key|additional-options" body)))
+             (testing "the root certificate, which is public, goes as its value"
+               (is (str/includes? body "-----BEGIN CERTIFICATE-----"))))))))))

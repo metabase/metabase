@@ -4,6 +4,7 @@
   that scope is refused everywhere else. Listing and deleting workspaces work without the `:workspaces` feature, so
   workspaces can still be removed after it is gone."
   (:require
+   [metabase-enterprise.workspaces.connection :as ws.connection]
    [metabase-enterprise.workspaces.manager :as ws.manager]
    [metabase-enterprise.workspaces.provisioning-connection :as ws.provisioning-connection]
    [metabase-enterprise.workspaces.workspace :as ws.workspace]
@@ -125,6 +126,28 @@
   (api/check-superuser)
   (ws.manager/delete-workspace! id)
   api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/:id/connection" :- [:or
+                                                   ::ws.connection/workspace-connection
+                                                   [:map {:closed true}
+                                                    [:status  [:= 200]]
+                                                    [:headers [:map-of :string :string]]
+                                                    [:body    :string]]]
+  "What a sidecar needs to work in the workspace with `id`: for each of its provisioned databases, the connection
+  details of the workspace user, password included, and its active schemas, main -> scratch. The only endpoint that
+  returns a warehouse password, and never the parent's own login. JSON by default; with `format=yaml`, the config.yml
+  a sidecar applies. Only the workspace's creator may fetch it."
+  {:scope api-scope/workspace-manager}
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {response-format :format} :- [:map {:closed true} [:format {:optional true} [:enum "json" "yaml"]]]]
+  (check-workspaces-access)
+  (let [connection (ws.connection/workspace-connection id api/*current-user-id*)]
+    (if (= "yaml" response-format)
+      {:status  200
+       :headers {"Content-Type"        "application/x-yaml"
+                 "Content-Disposition" "attachment; filename=\"config.yml\""}
+       :body    (ws.connection/config-yml connection)}
+      connection)))
 
 (api.macros/defendpoint :get "/database/:db-id/provisioning-connection"
   :- [:map {:closed true}
