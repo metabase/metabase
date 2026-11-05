@@ -280,15 +280,14 @@
   [instances]
   (when (supports-index?)
     (not-empty
-     (into {}
-           (keep (fn [[search-model selectors]]
-                   (when-let [ids (not-empty (search.ingestion/doc-ids search-model (into [:or] selectors)))]
-                     [search-model ids])))
-           (cascading-selectors instances)))))
+     (into {} (for [[search-model selectors] (cascading-selectors instances)
+                    :let  [ids (search.ingestion/doc-ids search-model (into [:or] selectors))]
+                    :when (seq ids)]
+                [search-model ids])))))
 
-;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so an unbounded id list
-;; here becomes an unbounded bind-parameter count and the database rejects the statement, losing the entire
-;; batch, not just the oversized message.
+;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so an unbounded id list here
+;; makes an unbounded statement, and for string ids such as indexed entities' an unbounded bind-parameter count.
+;; A statement the database rejects loses the entire batch, not just the oversized message.
 (def ^:private reindex-batch-size
   "Ids per re-derivation message."
   100)

@@ -5,6 +5,7 @@
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -79,7 +80,7 @@
 (defn- sql-error?
   "Whether `e`, or anything in its cause chain, is a `java.sql.SQLException`."
   [e]
-  (some #(instance? java.sql.SQLException %) (take-while some? (iterate ex-cause e))))
+  (some #(instance? java.sql.SQLException %) (u/full-exception-chain e)))
 
 ;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything but
 ;; `:this.id` have to be enumerated while the delete's own rows are still there to point at them.

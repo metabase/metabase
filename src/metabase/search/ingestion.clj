@@ -293,8 +293,9 @@
                   (comp (map :id) (take (inc max-enumerated-documents)))
                   (search.db/spec-index-doc-ids-reducible search-model where-clause))]
     (if (< max-enumerated-documents (count ids))
-      (log/errorf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
-                  search-model max-enumerated-documents)
+      (do (log/errorf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
+                      search-model max-enumerated-documents)
+          nil)
       (set ids))))
 
 ;; TODO (Chris 2026-11-05) -- match a compound id on its component columns. Comparing the `concat_ws` expression
