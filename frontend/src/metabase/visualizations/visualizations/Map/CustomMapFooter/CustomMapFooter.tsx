@@ -2,13 +2,12 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Icon } from "metabase/ui";
-
-import { CustomMapContent } from "../Maps.styled";
+import { Flex, Icon } from "metabase/ui";
 
 export function CustomMapFooter() {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -18,10 +17,17 @@ export function CustomMapFooter() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const content = (
-    <CustomMapContent>
+    <Flex
+      className={CS.borderTop}
+      justify="space-between"
+      c="text-primary"
+      fw={700}
+      px="xl"
+      py="md"
+    >
       {t`Custom map`}
       <Icon name="share" />
-    </CustomMapContent>
+    </Flex>
   );
 
   if (isAdmin) {

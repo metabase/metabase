@@ -18,7 +18,7 @@ import _ from "underscore";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useMantineTheme } from "metabase/ui";
+import { Box, Flex, useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
@@ -29,15 +29,13 @@ import {
 } from "metabase/visualizations/lib/data_grid";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import {
-  PivotTableRoot,
-  PivotTableTopLeftCellsContainer,
-} from "./PivotTable.styled";
+import S from "./PivotTable.module.css";
 import {
   BodyCell,
   Cell,
   LeftHeaderCell,
   TopHeaderCell,
+  getCellBackgroundColor,
 } from "./PivotTableCell";
 import { RowToggleIcon } from "./RowToggleIcon";
 import {
@@ -389,13 +387,24 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         });
     }
 
+    const isEditingDashboard = isEditing && isDashboard;
+
     return (
       <DndContext modifiers={[restrictToHorizontalAxis]}>
-        <PivotTableRoot
+        <Box
           ref={ref}
-          shouldOverflow={shouldOverflow}
-          shouldHideScrollbars={isEditing && isDashboard}
-          isDashboard={isDashboard}
+          className={cx(S.root, {
+            [S.scrollX]: shouldOverflow,
+            [S.dashboard]: isDashboard,
+            [S.editing]: isEditingDashboard,
+            [CS.scrollHideAll]: isEditingDashboard,
+          })}
+          h="100%"
+          fz={fontSize}
+          style={
+            // the cells size their rows from this custom property, which CSSProperties does not type
+            { "--pivot-cell-height": `${CELL_HEIGHT}px` } as React.CSSProperties
+          }
           data-testid="pivot-table"
         >
           <ScrollSync>
@@ -403,9 +412,16 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
               <div className={cx(CS.fullHeight, CS.flex, CS.flexColumn)}>
                 <div className={CS.flex} style={{ height: topHeaderHeight }}>
                   {/* top left corner - displays left header columns */}
-                  <PivotTableTopLeftCellsContainer
+                  <Flex
+                    className={S.borderRight}
+                    align="flex-end"
+                    pos="relative"
                     style={{
                       width: leftHeaderWidth,
+                      backgroundColor: getCellBackgroundColor({
+                        theme,
+                        isEmphasized: true,
+                      }),
                     }}
                   >
                     {rowIndexes.map((rowIndex: number, index: number) => (
@@ -445,7 +461,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                         }
                       />
                     ))}
-                  </PivotTableTopLeftCellsContainer>
+                  </Flex>
                   {/* top header */}
                   <Collection
                     aria-label="pivot-table-top-header"
@@ -588,7 +604,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
               </div>
             )}
           </ScrollSync>
-        </PivotTableRoot>
+        </Box>
       </DndContext>
     );
   },
