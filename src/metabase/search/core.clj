@@ -265,12 +265,14 @@
 (defn- cascading-selectors
   "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
   [instances]
-  (->> (hook-selectors instances)
+  (->> (hook-selectors instances true)
        (remove (comp search.ingestion/purgeable-selector? second))
        (u/group-by first second)))
 
 ;; Ingestion recovers a document id only from a `:this.id` selector, so anything reached through a join on another
 ;; column, or keyed by a compound id, has to be enumerated while it still exists.
+;; TODO (Chris 2026-11-05) -- collapse same-shape `[:= v col]` selectors into one `[:in col vs]` per column. A wide
+;; delete ORs one selector per row into this query, inside the caller's transaction.
 (defn cascading-documents
   "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
   Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits."

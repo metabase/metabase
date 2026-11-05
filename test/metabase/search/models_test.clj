@@ -261,3 +261,25 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"query failed"
                                 (t2/delete! :model/Card :id card-id))))
         (is (true? (t2/exists? :model/Card :id card-id)))))))
+
+(deftest model-index-delete-purges-indexed-entities-test
+  (testing "deleting a model index purges the indexed-entity documents its cascade removed, by their compound ids"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Indexed Model", :type :model}]
+        (let [mi-id   (t2/insert-returning-pk! :model/ModelIndex {:model_id   card-id
+                                                                  :pk_ref     (mt/$ids $venues.id)
+                                                                  :value_ref  (mt/$ids $venues.name)
+                                                                  :schedule   "0 0 0 * * ? *"
+                                                                  :state      "indexed"
+                                                                  :creator_id (mt/user->id :rasta)})
+              doc-ids #{(str mi-id ":1") (str mi-id ":2")}
+              indexed #(t2/count (search.index/active-table) :model "indexed-entity" :model_id [:in doc-ids])]
+          (t2/insert! :model/ModelIndexValue [{:model_index_id mi-id, :model_pk 1, :name "Red Medicine"}
+                                              {:model_index_id mi-id, :model_pk 2, :name "Stout Burgers"}])
+          ;; ModelIndexValue carries no row-level search hook, so index its documents by hand.
+          (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
+          (is (= 2 (indexed)))
+          ;; model_index_value.model_index_id carries ON DELETE CASCADE, so the values go with no toucan statement.
+          (t2/delete! :model/ModelIndex :id mi-id)
+          (is (zero? (t2/count :model/ModelIndexValue :model_index_id mi-id)))
+          (is (zero? (indexed))))))))

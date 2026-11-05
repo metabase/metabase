@@ -297,6 +297,8 @@
                   search-model max-enumerated-documents)
       (set ids))))
 
+;; TODO (Chris 2026-11-05) -- match a compound id on its component columns. Comparing the `concat_ws` expression
+;; cannot use an index, so each indexed-entity check scans model_index_value.
 (defn doc-id-selector
   "A where-clause matching `search-model`'s documents by their own ids, whatever their relationships now are."
   [search-model ids]
