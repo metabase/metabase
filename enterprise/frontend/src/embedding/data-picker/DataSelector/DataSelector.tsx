@@ -675,9 +675,6 @@ export class UnconnectedDataSelector extends Component<
       freshPickStep,
       this.getClearedStateForStep(DATA_BUCKET_STEP),
     );
-    if (freshPickStep === DATABASE_STEP) {
-      await this.selectOnlyDatabase();
-    }
   }
 
   // The checks the buckets use
@@ -704,7 +701,7 @@ export class UnconnectedDataSelector extends Component<
       return;
     }
 
-    if (activeStep === DATABASE_STEP && this.props.selectedDatabaseId == null) {
+    if (activeStep === DATABASE_STEP) {
       this.selectOnlyDatabase();
     }
     if (activeStep === SCHEMA_STEP && this.props.selectedSchemaId == null) {
@@ -916,8 +913,7 @@ export class UnconnectedDataSelector extends Component<
     selectedDataBucketId: DataPickerDataType,
   ): Promise<void> => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
-      await this.switchToStep(DATABASE_STEP, {}, false);
-      await this.selectOnlyDatabase();
+      await this.switchToStep(DATABASE_STEP);
       return;
     }
 
@@ -935,10 +931,6 @@ export class UnconnectedDataSelector extends Component<
     }
   };
 
-  // The one place that picks the only database: from `skipSteps` going forward
-  // with none set, and on the paths `skipSteps` doesn't reach: a join or a
-  // reopened table, where one is already set, and a reopened saved card opening
-  // on the databases, which switches steps without skipping
   selectOnlyDatabase = async (): Promise<void> => {
     const databases = this.getDatabases();
     if (databases.length === 1) {
