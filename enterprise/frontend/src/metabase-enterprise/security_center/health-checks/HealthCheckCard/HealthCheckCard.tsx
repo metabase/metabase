@@ -9,7 +9,6 @@ import {
   Button,
   Card,
   Group,
-  Icon,
   Stack,
   Text,
   Title,
@@ -19,7 +18,6 @@ import type { HealthCheck } from "metabase-types/api";
 
 import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
 import { HealthCheckItems } from "../HealthCheckItems/HealthCheckItems";
-import { useHealthCheckRecheck } from "../hooks/use-health-checks";
 import { getHealthCheckSettingsUrl } from "../utils";
 
 type HealthCheckCardProps = {
@@ -27,9 +25,6 @@ type HealthCheckCardProps = {
 };
 
 export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
-  const { recheck, isRechecking, isRecheckingAll } = useHealthCheckRecheck(
-    check.id,
-  );
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
@@ -72,14 +67,6 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
               {t`Open settings`}
             </Button>
           )}
-          <Button
-            leftSection={<Icon name="sync" />}
-            loading={isRechecking}
-            disabled={isRecheckingAll}
-            onClick={recheck}
-          >
-            {t`Re-check`}
-          </Button>
           {showMetabaseLinks && (
             <Button component={ExternalLink} href={docsUrl} variant="subtle">
               {t`Read the docs`}

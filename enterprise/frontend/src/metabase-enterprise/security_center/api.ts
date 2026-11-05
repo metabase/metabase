@@ -5,22 +5,10 @@ import type {
   AcknowledgeAdvisoriesResponse,
   AcknowledgeAdvisoryResponse,
   AdvisoryId,
-  HealthCheck,
-  HealthCheckId,
   ListAdvisoriesResponse,
   ListHealthChecksResponse,
   SendTestNotificationRequest,
 } from "metabase-types/api";
-
-const mergeChecks = (cached: HealthCheck[], fresh: HealthCheck[]) =>
-  fresh.map((check) => {
-    const cachedCheck = cached.find(({ id }) => id === check.id);
-    const isCachedNewer =
-      cachedCheck &&
-      Date.parse(cachedCheck.checked_at) > Date.parse(check.checked_at);
-
-    return isCachedNewer ? cachedCheck : check;
-  });
 
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -76,45 +64,18 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: [listTag("security-health-check")],
     }),
-    recheckHealthCheck: builder.mutation<HealthCheck, HealthCheckId>({
-      query: (checkId) => ({
-        method: "POST",
-        url: `/api/ee/security-center/health-checks/${checkId}/recheck`,
-      }),
-      invalidatesTags: (_result, error) =>
-        error ? [listTag("security-health-check")] : [],
-      onQueryStarted: (checkId, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (recheckedCheck) =>
-          dispatch(
-            securityCenterApi.util.updateQueryData(
-              "listHealthChecks",
-              undefined,
-              (draft) => {
-                draft.checks = mergeChecks(
-                  draft.checks,
-                  draft.checks.map((check) =>
-                    check.id === checkId ? recheckedCheck : check,
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-    }),
     recheckHealthChecks: builder.mutation<ListHealthChecksResponse, void>({
       query: () => ({
         method: "POST",
         url: "/api/ee/security-center/health-checks/recheck",
       }),
       onQueryStarted: (_arg, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, ({ checks }) =>
+        handleQueryFulfilled(queryFulfilled, (response) =>
           dispatch(
-            securityCenterApi.util.updateQueryData(
+            securityCenterApi.util.upsertQueryData(
               "listHealthChecks",
               undefined,
-              (draft) => {
-                draft.checks = mergeChecks(draft.checks, checks);
-              },
+              response,
             ),
           ),
         ),
@@ -129,6 +90,5 @@ export const {
   useSyncSecurityAdvisoriesMutation,
   useSendTestNotificationMutation,
   useListHealthChecksQuery,
-  useRecheckHealthCheckMutation,
   useRecheckHealthChecksMutation,
 } = securityCenterApi;

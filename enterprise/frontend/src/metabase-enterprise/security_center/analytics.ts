@@ -1,5 +1,4 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { HealthCheckId } from "metabase-types/api";
 
 export const trackAdvisoriesPageViewed = () => {
   trackSimpleEvent({
@@ -19,11 +18,8 @@ export const trackHealthChecksPageViewed = () => {
   });
 };
 
-export const trackHealthCheckRecheckClicked = (
-  checkId: HealthCheckId | "all",
-) => {
+export const trackHealthChecksRecheckClicked = () => {
   trackSimpleEvent({
     event: "security_center_health_check_recheck_clicked",
-    event_detail: checkId,
   });
 };

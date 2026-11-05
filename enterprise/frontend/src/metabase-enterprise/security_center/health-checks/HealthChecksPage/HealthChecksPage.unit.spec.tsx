@@ -1,12 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupHealthChecksEndpoint,
   setupHealthChecksErrorEndpoint,
-  setupRecheckHealthCheckEndpoint,
-  setupRecheckHealthCheckErrorEndpoint,
   setupRecheckHealthChecksEndpoint,
   setupRecheckHealthChecksErrorEndpoint,
 } from "__support__/server-mocks";
@@ -14,18 +11,15 @@ import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
-  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
-import { defer } from "metabase/utils/promise";
 import type {
   HealthCheck,
   HealthCheckId,
   HealthCheckItem,
-  ListHealthChecksResponse,
 } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -410,28 +404,6 @@ describe("HealthChecksPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("re-checks one check and shows the returned result", async () => {
-    const track = jest.spyOn(analytics, "trackHealthCheckRecheckClicked");
-    setupRecheckHealthCheckEndpoint(FAILING_CHECK.id, {
-      ...FAILING_CHECK,
-      status: "pass",
-      items: [
-        createMockHealthCheckItem({ status: "pass", message: "Key is set" }),
-      ],
-    });
-    await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
-    );
-
-    expect(
-      await screen.findByText("All security checks pass"),
-    ).toBeInTheDocument();
-    expect(track).toHaveBeenCalledTimes(1);
-    expect(track).toHaveBeenCalledWith(FAILING_CHECK.id);
-  });
-
   it("lists every item even when several items name the same object", async () => {
     const createAllUsersItem = (message: string) =>
       createMockHealthCheckItem({
@@ -464,34 +436,8 @@ describe("HealthChecksPage", () => {
     ]);
   });
 
-  it("disables re-check on every card while all checks are re-checked", async () => {
-    const recheckAllResponse = defer<ListHealthChecksResponse>();
-    fetchMock.post(
-      "path:/api/ee/security-center/health-checks/recheck",
-      () => recheckAllResponse.promise,
-    );
-    await setup({ checks: [FAILING_CHECK] });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
-    );
-
-    expect(screen.getByRole("button", { name: /Re-check all/ })).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
-    ).toBeDisabled();
-
-    recheckAllResponse.resolve({ checks: [FAILING_CHECK] });
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "sync icon Re-check" }),
-      ).toBeEnabled(),
-    );
-  });
-
   it("re-checks all checks and shows the returned results", async () => {
-    const track = jest.spyOn(analytics, "trackHealthCheckRecheckClicked");
+    const track = jest.spyOn(analytics, "trackHealthChecksRecheckClicked");
     setupRecheckHealthChecksEndpoint([PASSING_CHECK]);
     await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
 
@@ -503,41 +449,6 @@ describe("HealthChecksPage", () => {
       await screen.findByText("All security checks pass"),
     ).toBeInTheDocument();
     expect(track).toHaveBeenCalledTimes(1);
-    expect(track).toHaveBeenCalledWith("all");
-  });
-
-  it("keeps the check and shows an error when a re-check fails", async () => {
-    setupRecheckHealthCheckErrorEndpoint(FAILING_CHECK.id);
-    await setup({ checks: [FAILING_CHECK] });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
-    );
-
-    expect(
-      await screen.findByText("Failed to re-check. Please try again."),
-    ).toBeInTheDocument();
-    expect(getCardTitles()).toEqual(["Encryption key"]);
-  });
-
-  it("removes a check that no longer applies when it is re-checked", async () => {
-    setupRecheckHealthCheckErrorEndpoint(FAILING_CHECK.id, 404);
-    await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
-    fetchMock.modifyRoute("health-checks-list", {
-      response: { checks: [PASSING_CHECK] },
-    });
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
-    );
-
-    await waitFor(() =>
-      expect(screen.queryByText("Encryption key")).not.toBeInTheDocument(),
-    );
-    expect(screen.getByText("All security checks pass")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Failed to re-check. Please try again."),
-    ).not.toBeInTheDocument();
   });
 
   it("shows an error when re-check all fails", async () => {
