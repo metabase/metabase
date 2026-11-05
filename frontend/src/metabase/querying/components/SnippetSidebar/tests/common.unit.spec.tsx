@@ -29,7 +29,7 @@ describe("SnippetSidebar (OSS)", () => {
   it("should open the snippet modal from the `New snippet` option when snippets exist (metabase#57441)", async () => {
     const { openSnippetModalWithSelectedText } = await setup();
 
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "add icon" }));
     await userEvent.click(await screen.findByText("New snippet"));
 
     expect(openSnippetModalWithSelectedText).toHaveBeenCalledTimes(1);
@@ -43,19 +43,17 @@ describe("SnippetSidebar (OSS)", () => {
     ];
     await setup({ snippets });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Search snippets" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "search icon" }));
     await userEvent.type(screen.getByRole("textbox"), "SNIPPET 1");
 
     expect(screen.getByText("snippet 14")).toBeInTheDocument();
     expect(screen.queryByText("snippet 2")).not.toBeInTheDocument();
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Add" }),
+      screen.queryByRole("button", { name: "add icon" }),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Close search" }));
+    await userEvent.click(screen.getByRole("button", { name: "close icon" }));
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByText("snippet 2")).toBeInTheDocument();

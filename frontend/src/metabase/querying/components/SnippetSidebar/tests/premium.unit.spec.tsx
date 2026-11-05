@@ -162,10 +162,10 @@ describe("SnippetSidebar (EE with token feature)", () => {
 
       expect(screen.getByText("My favorite snippets")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Search snippets" }),
+        screen.getByRole("button", { name: "search icon" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Add" }),
+        screen.queryByRole("button", { name: "add icon" }),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Snippet folder options" }),
@@ -182,7 +182,9 @@ describe("SnippetSidebar (EE with token feature)", () => {
     it("should let you create and edit snippets and snippet folders in read-write mode", async () => {
       await setupReadOnly({ remoteSyncType: "read-write" });
 
-      expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "add icon" }),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Snippet folder options" }),
       ).toBeInTheDocument();
