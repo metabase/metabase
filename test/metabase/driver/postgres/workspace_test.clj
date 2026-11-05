@@ -26,11 +26,12 @@
     (jdbc/execute! spec [sql])))
 
 (defn- create-warehouse!
-  "A fresh database holding: `sales`, owned by `mb_ws_test_etl` (of which the provisioning login is a member);
-  and one schema per precondition the provisioning login fails."
+  "A fresh database holding: `sales`, owned by `mb_ws_test_etl` and writable by `mb_ws_test_loader` (the provisioning
+  login is a member of both); `fresh`, owned by `mb_ws_test_etl` and still empty; and one schema per precondition
+  the provisioning login fails."
   [spec]
-  (exec! spec ["DROP SCHEMA IF EXISTS sales, pubcreate, nogrant, noselect, foreignowner CASCADE"])
-  (doseq [role ["mb_ws_test_etl" "mb_ws_test_other" (:user provisioner)]]
+  (exec! spec ["DROP SCHEMA IF EXISTS sales, fresh, pubcreate, nogrant, noselect, foreignowner CASCADE"])
+  (doseq [role ["mb_ws_test_etl" "mb_ws_test_loader" "mb_ws_test_other" (:user provisioner)]]
     (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))
       (exec! spec [(format "DROP OWNED BY %s" role) (format "DROP ROLE %s" role)])))
   (exec! spec
@@ -38,11 +39,14 @@
           (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user provisioner))
           "CREATE ROLE mb_ws_test_etl NOLOGIN"
           "CREATE ROLE mb_ws_test_other NOLOGIN"
-          (format "GRANT mb_ws_test_etl TO %s" (:user provisioner))
+          "CREATE ROLE mb_ws_test_loader NOLOGIN"
+          (format "GRANT mb_ws_test_etl, mb_ws_test_loader TO %s" (:user provisioner))
           "CREATE SCHEMA sales AUTHORIZATION mb_ws_test_etl"
+          "GRANT USAGE, CREATE ON SCHEMA sales TO mb_ws_test_loader"
           "CREATE TABLE sales.orders (id int)"
           "ALTER TABLE sales.orders OWNER TO mb_ws_test_etl"
           "INSERT INTO sales.orders VALUES (1), (2)"
+          "CREATE SCHEMA fresh AUTHORIZATION mb_ws_test_etl"
           "CREATE SCHEMA pubcreate"
           "GRANT CREATE ON SCHEMA pubcreate TO PUBLIC"
           (format "GRANT USAGE ON SCHEMA pubcreate TO %s WITH GRANT OPTION" (:user provisioner))
@@ -50,7 +54,7 @@
           "CREATE SCHEMA noselect"
           (format "GRANT USAGE ON SCHEMA noselect TO %s WITH GRANT OPTION" (:user provisioner))
           "CREATE TABLE noselect.secret (id int)"
-          "CREATE SCHEMA foreignowner"
+          "CREATE SCHEMA foreignowner AUTHORIZATION mb_ws_test_etl"
           (format "GRANT USAGE ON SCHEMA foreignowner TO %s WITH GRANT OPTION" (:user provisioner))
           "GRANT USAGE ON SCHEMA foreignowner TO mb_ws_test_other"
           "CREATE TABLE foreignowner.t (id int)"
@@ -207,7 +211,7 @@
 
 (deftest warehouse-errors-scrub-the-password-test
   (do-with-warehouse!
-   (fn [_spec database]
+   (fn [spec database]
      (let [wsd      (new-wsd! database 1004)
            password (-> wsd :database_details :password)
            messages (fn [^Throwable t]
@@ -217,12 +221,97 @@
                            (take-while some?)
                            (map ex-message)))]
        (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
-       (testing "a second init fails with the server's message"
+       (testing "a second init fails with the server's message, not pgjdbc's batch wrapper"
          (let [e (is (thrown? java.sql.SQLException (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
-           (is (re-find #"already exists" (ex-message e)))))
-       (testing "the raw batch exception, which echoes the CREATE USER statement, is scrubbed of the password"
+           (is (re-find #"already exists" (ex-message e)))
+           (is (not (instance? java.sql.BatchUpdateException e)))
+           (is (not (str/starts-with? (ex-message e) "Batch entry")))))
+       (testing "the statements sent to the server never carry the password, which a server would log"
          (mt/with-dynamic-fn-redefs [driver.u/batch-exception identity]
            (let [e (is (thrown? java.sql.SQLException (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
-             (is (some #(str/includes? % "PASSWORD '****'") (messages e)))
+             (is (some #(str/includes? % "CREATE USER") (messages e)))
+             (is (not-any? #(str/includes? % "PASSWORD") (messages e)))
              (is (not-any? #(str/includes? % password) (messages e))))))
+       (testing "the password is stored as a SCRAM verifier and logs in"
+         (is (str/starts-with? (:rolpassword (first (jdbc/query spec ["SELECT rolpassword FROM pg_authid WHERE rolname = ?"
+                                                                      (-> wsd :database_details :user)])))
+                               "SCRAM-SHA-256$"))
+         (is (= [{:one 1}] (as-workspace-user wsd "SELECT 1 AS one"))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
+
+(deftest workspace-feature-test
+  (testing "Postgres reports the :workspace feature; drivers without the methods do not"
+    (is (true? (driver/database-supports? :postgres :workspace nil)))
+    (is (false? (driver/database-supports? :h2 :workspace nil)))))
+
+(deftest default-privileges-cover-every-table-creator-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd (new-wsd! database 1006)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (doseq [[schema-id main] [[1 "sales"] [2 "fresh"]]]
+         (provisioning #(driver/add-workspace-schema! :postgres database wsd main (scratch-name database wsd schema-id main))))
+       (exec! spec [(str "SET ROLE mb_ws_test_etl; CREATE TABLE fresh.by_owner (id int); "
+                         "SET ROLE mb_ws_test_loader; CREATE TABLE sales.by_create_grantee (id int); "
+                         (format "SET ROLE %s; CREATE TABLE sales.by_login (id int); RESET ROLE" (:user provisioner)))])
+       (testing "the workspace user reads tables created after add by the schema owner, a CREATE grantee and the login"
+         (doseq [table ["fresh.by_owner" "sales.by_create_grantee" "sales.by_login"]]
+           (testing table
+             (is (= [{:count 0}] (as-workspace-user wsd (str "SELECT count(*) FROM " table)))))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
+
+(deftest concurrent-add-workspace-schema-test
+  (do-with-warehouse!
+   (fn [_spec database]
+     (let [wsds (mapv #(new-wsd! database %) [1007 1008])]
+       (doseq [wsd wsds]
+         (provisioning #(driver/init-workspace-isolation! :postgres database wsd)))
+       (testing "two workspaces adding and removing the same main schema at once both succeed"
+         (dotimes [i 5]
+           (let [scratches (mapv #(scratch-name database % (inc i) "sales") wsds)
+                 run-all   (fn [f]
+                             (let [latch   (java.util.concurrent.CountDownLatch. 1)
+                                   futures (mapv (fn [wsd scratch]
+                                                   (future
+                                                     (.await latch)
+                                                     (try
+                                                       (provisioning #(f wsd scratch))
+                                                       :ok
+                                                       (catch Throwable t (ex-message t)))))
+                                                 wsds scratches)]
+                               (.countDown latch)
+                               (mapv deref futures)))]
+             (is (= [:ok :ok] (run-all #(driver/add-workspace-schema! :postgres database %1 "sales" %2))))
+             (is (= [:ok :ok] (run-all #(driver/remove-workspace-schema! :postgres database %1 "sales" %2)))))))
+       (doseq [wsd wsds]
+         (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd)))))))
+
+(deftest destroy-leaves-other-workspaces-alone-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (testing "destroying workspace_database 1009 keeps 10090's scratch schema, whose name starts with 1009's user"
+       (let [[wsd other] (mapv #(new-wsd! database %) [1009 10090])
+             scratch     (scratch-name database other 1 "sales")]
+         (doseq [w [wsd other]]
+           (provisioning #(driver/init-workspace-isolation! :postgres database w)))
+         (provisioning #(driver/add-workspace-schema! :postgres database other "sales" scratch))
+         (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))
+         (is (= (:user provisioner) (schema-owner spec scratch)))
+         (provisioning #(driver/destroy-workspace-isolation! :postgres database other)))))))
+
+(deftest default-privileges-for-public-schema-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = 'pg_database_owner'"]))
+       (exec! spec [(format "ALTER DATABASE %s OWNER TO mb_ws_test_etl" db-name)
+                    "ALTER SCHEMA public OWNER TO pg_database_owner"
+                    "REVOKE CREATE ON SCHEMA public FROM PUBLIC"
+                    (format "GRANT USAGE ON SCHEMA public TO %s WITH GRANT OPTION" (:user provisioner))])
+       (let [wsd (new-wsd! database 1010)]
+         (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+         (testing "a schema owned by pg_database_owner takes default privileges for the database owner"
+           (is (nil? (provisioning #(driver/add-workspace-schema! :postgres database wsd "public"
+                                                                  (scratch-name database wsd 1 "public")))))
+           (exec! spec ["SET ROLE mb_ws_test_etl; CREATE TABLE public.by_database_owner (id int); RESET ROLE"])
+           (is (= [{:count 0}] (as-workspace-user wsd "SELECT count(*) FROM public.by_database_owner"))))
+         (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd)))))))

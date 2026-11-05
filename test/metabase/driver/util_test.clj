@@ -1117,6 +1117,18 @@
     (testing "each call returns a new password"
       (is (= 200 (count (set passwords)))))))
 
+(deftest random-workspace-password-uses-secure-random-test
+  (testing "characters come from the SecureRandom generator"
+    (is (instance? java.security.SecureRandom @#'driver.u/secure-random))
+    (let [indexes (atom (cycle [0 26 52]))
+          stub    (proxy [java.security.SecureRandom] []
+                    (nextInt [_bound]
+                      (let [[i] @indexes]
+                        (swap! indexes rest)
+                        (int i))))]
+      (with-redefs [driver.u/secure-random stub]
+        (is (= (apply str (take 32 (cycle "Aa0"))) (driver.u/random-workspace-password)))))))
+
 (deftest ^:parallel batch-exception-test
   (let [server-error (java.sql.SQLException. "ERROR: role \"x\" already exists" "42710")
         batch        (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER x was aborted" "42710" 0 (int-array 0))

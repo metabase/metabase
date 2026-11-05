@@ -45,6 +45,7 @@
    (java.sql Array Connection ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
+   (org.postgresql PGConnection)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)
    (org.postgresql.util PGobject)))
@@ -1558,8 +1559,8 @@
 
 (defn- run-workspace-ddl!
   "In one transaction on `database`, call `(statements-fn conn)` for the statements to run, then run them as one batch.
-  `statements-fn` runs the preconditions first, so a failed one throws before any change. `after-fn`, called with the
-  connection once the batch has run, may throw to roll it back. Errors are rethrown with each of `secrets` scrubbed."
+  `statements-fn` runs the preconditions first, so a failed one throws before any change. `after-fn` runs in the same
+  transaction once the batch has, and may throw to roll it back. Errors are rethrown with each of `secrets` scrubbed."
   [database secrets statements-fn after-fn]
   (try
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec database)]
@@ -1573,6 +1574,13 @@
       (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) secrets))))
   nil)
 
+(defn- lock-main-schemas!
+  "Take a transaction-scoped advisory lock per schema in `schemas`, in sorted order so two callers cannot deadlock.
+  Two workspaces granting on one main schema at once otherwise fail with `tuple concurrently updated`."
+  [conn schemas]
+  (doseq [schema (sort (distinct schemas))]
+    (jdbc/query conn ["SELECT pg_advisory_xact_lock(hashtext(?)) AS locked" (str "mb__isolation:" schema)])))
+
 (defn- role-exists? [conn role]
   (boolean (seq (jdbc/query conn ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))))
 
@@ -1581,8 +1589,12 @@
   (let [{:keys [user password]} (:database_details wsd)]
     (run-workspace-ddl!
      database [password]
-     (constantly [(format "CREATE USER %s WITH PASSWORD '%s'" (quote-role user) (sql.u/escape-sql password :ansi))])
-     (constantly nil))))
+     (constantly [(format "CREATE USER %s" (quote-role user))])
+     (fn [conn]
+       ;; pgjdbc turns the password into a SCRAM verifier on the client, so the password itself never reaches the
+       ;; server, where a failed statement, or any DDL under log_statement=ddl, is written to the log in full.
+       (.alterUserPassword ^PGConnection (.unwrap ^Connection (jdbc/db-connection conn) PGConnection)
+                           ^String user (char-array password) "scram-sha-256")))))
 
 ;;; Preconditions of [[driver/add-workspace-schema!]] on the main schema. Each catches a state in which the GRANTs would
 ;;; run without error yet leave the workspace user able to write to the main schema, or unable to read all of it.
@@ -1632,13 +1644,23 @@
              (count objects) (quote-schema schema) (str/join ", " objects) (quote-schema schema) (quote-role login))
      {:objects (vec objects)})))
 
-(defn- object-owners
-  "The roles owning relations in `schema`, with whether the provisioning login is a member of each."
+(defn- table-creators
+  "The roles that own a relation in `schema`, own `schema`, or hold CREATE on it: the roles whose future tables there
+  the workspace user must be able to read. Each comes with whether the provisioning login is a member of it."
   [conn schema]
-  (jdbc/query conn [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner, "
-                         "pg_has_role(current_user, c.relowner, 'MEMBER') AS member "
-                         "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-                         "WHERE n.nspname = ? AND c.relkind IN ('r','p','v','m','f') ORDER BY owner")
+  (jdbc/query conn [(str "WITH n AS (SELECT oid, nspowner, nspacl FROM pg_namespace WHERE nspname = ?), "
+                         "r AS (SELECT c.relowner AS role FROM pg_class c, n "
+                         "      WHERE c.relnamespace = n.oid AND c.relkind IN ('r','p','v','m','f') "
+                         "      UNION SELECT nspowner FROM n "
+                         "      UNION SELECT a.grantee FROM n, aclexplode(n.nspacl) a "
+                         "      WHERE a.privilege_type = 'CREATE' AND a.grantee <> 0), "
+                         ;; pg_database_owner (owner of `public` since Postgres 15) creates nothing itself and takes no
+                         ;; explicit members: the tables are created by the database owner
+                         "d AS (SELECT DISTINCT CASE WHEN pg_get_userbyid(role) = 'pg_database_owner' "
+                         "      THEN (SELECT datdba FROM pg_database WHERE datname = current_database()) "
+                         "      ELSE role END AS role FROM r) "
+                         "SELECT pg_get_userbyid(role) AS owner, pg_has_role(current_user, role, 'MEMBER') AS member "
+                         "FROM d ORDER BY owner")
                     schema]))
 
 (defn- check-default-privilege-owners!
@@ -1648,8 +1670,8 @@
   (when-let [missing (seq (map :owner (remove :member owners)))]
     (precondition-failed!
      schema
-     (format (str "The provisioning login is not a member of %d role(s) owning objects in schema %s: %s. Run `%s` "
-                  "and retry.")
+     (format (str "The provisioning login is not a member of %d role(s) that own or can create objects in schema %s: "
+                  "%s. Run `%s` and retry.")
              (count missing) (quote-schema schema) (str/join ", " missing)
              (str/join " " (map #(format "GRANT %s TO %s;" (quote-role %) (quote-role login)) missing)))
      {:owners (vec missing)})))
@@ -1672,8 +1694,9 @@
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
      (fn [conn]
+       (lock-main-schemas! conn [main-schema])
        (let [login  (:current_user (first (jdbc/query conn ["SELECT current_user"])))
-             owners (object-owners conn main-schema)]
+             owners (table-creators conn main-schema)]
          (check-no-public-create! conn main-schema)
          (check-usage-grant-option! conn login main-schema)
          (check-select-grant-option! conn login main-schema)
@@ -1727,6 +1750,7 @@
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
      (fn [conn]
+       (lock-main-schemas! conn [main-schema])
        (cons (format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch))
              (map #(revoke-statement user %) (main-grants conn))))
      (fn [conn]
@@ -1751,9 +1775,9 @@
           (for [scratch scratches]
             (format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch)))
           (when (role-exists? conn user)
-            (concat
-             (->> (grants-to-role conn user)
-                  (remove #(contains? (set scratches) (:schema %)))
-                  (map #(revoke-statement user %)))
-             [(format "DROP USER %s" (quote-role user))])))))
+            (let [grants #(remove (comp (set scratches) :schema) (grants-to-role conn user))]
+              (lock-main-schemas! conn (map :schema (grants)))
+              (concat
+               (map #(revoke-statement user %) (grants))
+               [(format "DROP USER %s" (quote-role user))]))))))
      (constantly nil))))
