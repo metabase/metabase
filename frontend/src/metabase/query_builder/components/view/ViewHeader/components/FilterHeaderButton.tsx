@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type { QueryBuilderMode } from "metabase/redux/store";
-import { Badge, Button, Icon, Tooltip } from "metabase/ui";
+import { Badge, Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -28,11 +28,7 @@ export function FilterHeaderButton({
   const query = question.query();
   const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
   const hasFilters = items.length > 0;
-  const label = !hasFilters
-    ? t`Add a filter`
-    : isExpanded
-      ? t`Hide filters`
-      : t`Show filters`;
+  const label = getButtonLabel(hasFilters, isExpanded);
 
   useRegisterShortcut([
     {
@@ -42,38 +38,47 @@ export function FilterHeaderButton({
   ]);
 
   return (
-    <Tooltip label={label}>
-      <Button
-        classNames={{
-          root: ViewTitleHeaderS.ActionButtonRoot,
-          label: ViewTitleHeaderS.ActionButtonLabel,
-          section: ViewTitleHeaderS.ActionButtonSection,
-        }}
-        leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
-        rightSection={
-          hasFilters && (
-            <Badge
-              size="xs"
-              variant="filled"
-              color="neutral"
-              bg={isExpanded ? "core-filter-strong" : undefined}
-              c={isExpanded ? "text-primary-inverse" : undefined}
-              style={{ cursor: "inherit" }}
-            >
-              {items.length}
-            </Badge>
-          )
-        }
-        // With no filters there is nothing to show: the click opens the bar
-        // with its caret, as the shortcut does.
-        onClick={!hasFilters ? onAddFilter : isExpanded ? onCollapse : onExpand}
-        aria-expanded={isExpanded}
-        data-testid="question-filter-header"
-      >
-        {t`Filter`}
-      </Button>
-    </Tooltip>
+    <Button
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
+      leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
+      rightSection={
+        hasFilters && (
+          <Badge
+            size="xs"
+            variant="filled"
+            color="neutral"
+            bg={isExpanded ? "core-filter-strong" : undefined}
+            c={isExpanded ? "text-primary-inverse" : undefined}
+            style={{ cursor: "inherit" }}
+          >
+            {items.length}
+          </Badge>
+        )
+      }
+      // With no filters there is nothing to show: the click opens the bar
+      // with its caret, as the shortcut does.
+      onClick={!hasFilters ? onAddFilter : isExpanded ? onCollapse : onExpand}
+      aria-expanded={isExpanded}
+      data-testid="question-filter-header"
+    >
+      {label}
+    </Button>
   );
+}
+
+/**
+ * Prototype: the button says what a click does. With no filters it adds one;
+ * with filters it shows or hides the filter bar.
+ */
+function getButtonLabel(hasFilters: boolean, isExpanded: boolean) {
+  if (!hasFilters) {
+    return t`Filter`;
+  }
+  return isExpanded ? t`Hide filters` : t`Show filters`;
 }
 
 interface RenderCheckOpts {
