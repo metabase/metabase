@@ -173,6 +173,16 @@
           (t2/delete! :model/Database :id db-id))
         (is (= 0 (indexed-count "action" action-id)))))))
 
+(deftest database-delete-survives-a-failed-cascade-enumeration-test
+  (testing "a search error while enumerating a deleted database's cascades is logged, and the delete still succeeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}   {}
+                     :model/Card     {card-id :id} {:name "Db Enumeration Failure Card", :database_id db-id}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
+          (is (= 1 (t2/delete! :model/Database :id db-id))))
+        (is (false? (t2/exists? :model/Card :id card-id)))
+        (is (= 0 (indexed-count "card" card-id)))))))
+
 (deftest unrelated-cascade-documents-are-not-purged-test
   (testing "deleting one model card purges its action and leaves another card's action alone"
     (search.tu/with-appdb-search-if-available-without-fallback

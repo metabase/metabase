@@ -427,7 +427,12 @@
         (warehouses.db/card-ids-for-database-reducible id))
        (run! (fn [batch]
                (let [ids       (mapv :id batch)
-                     cascading (search/cascading-documents (mapv #(t2/instance :model/Card %) batch))]
+                     ;; A search error must not fail the database delete; those documents are left to the reindex.
+                     cascading (try
+                                 (search/cascading-documents (mapv #(t2/instance :model/Card %) batch))
+                                 (catch Exception e
+                                   (log/errorf e "Skipping search cascade enumeration for database %s" id)
+                                   nil))]
                  (warehouses.db/delete-cards! ids)
                  ;; Index mutations must see committed state. The shared ingestion queue serializes these
                  ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
