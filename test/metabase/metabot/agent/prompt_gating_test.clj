@@ -331,6 +331,9 @@
     (testing "with run_query, a request to analyze or explain what the user is viewing is answered from that query"
       (is (re-find #"When the user asks you to analyze or explain what they are viewing" rendered))
       (is (re-find #"answer from the query on their screen and don't build another one" rendered)))
+    (testing "an answer from rows that were cut off says so and offers a query over all of them"
+      (is (re-find #"If only its first rows are shown, say that your answer covers only those rows" rendered))
+      (is (re-find #"offer a query that computes the answer over all of them" rendered)))
     (testing "a chart that needs a measure the query lacks still gets a query that computes it"
       (is (re-find #"a pie of a list with no numeric column, also gets a query that computes the measure" rendered))))
   (testing "without run_query it can't read that query, so it is not told to"
