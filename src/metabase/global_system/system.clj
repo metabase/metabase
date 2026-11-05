@@ -42,9 +42,9 @@
   (merge @roots (update-vals *bound-boxes* deref)))
 
 (defn component-bound-fn
-  "A function that calls `f` with its arguments under this thread's component bindings, and no other bindings, for
-   handing `f` to another thread.
-   That thread shares the bindings, so its writes are seen here too."
+  "Wrap `f` to run under the component bindings this thread has now, for handing to another thread.
+   Unlike [[bound-fn]], the wrapper carries no other bindings, so the thread that runs it keeps its own.
+   That thread shares the component bindings, so its writes are seen here too."
   [f]
   (let [boxes *bound-boxes*]
     (fn [& args]
