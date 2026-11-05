@@ -329,6 +329,12 @@
 
 ;;; -------------------------------------------------- Checks ------------------------------------------------------
 
+(defn- check-not-trashed!
+  "Throws when `dashboard` is in the trash and `archived`, the requested state, doesn't restore it."
+  [dashboard archived]
+  (when (and (:archived dashboard) (not (false? archived)))
+    (save-entity/destination-archived! {:kind :dashboard, :id (:id dashboard)})))
+
 (defn- target-dashboard
   "The dashboard `args` edit, hydrated for the compiler, or nil on a create.
   Throws unless the user can edit it, and when it is in the trash and `args` don't restore it."
@@ -339,8 +345,7 @@
                         (t2/hydrate [:dashcards :series :card] :tabs))]
       (when-not (mi/can-write? dashboard)
         (dashboard-not-writable! {:dashboard-id dashboard_id}))
-      (when (and (:archived dashboard) (not (false? archived)))
-        (save-entity/destination-archived! {:kind :dashboard, :id dashboard_id}))
+      (check-not-trashed! dashboard archived)
       dashboard)))
 
 (defn- check-collection-writable!
@@ -467,20 +472,23 @@
                          (-> (or (metabot.db/dashboard (:id dashboard))
                                  (recoverable.common/not-found! {:kind :dashboard, :id (:id dashboard)}))
                              (t2/hydrate [:dashcards :series :card] :tabs)))
+          ;; A parallel call may have trashed it since the first read.
+          _            (some-> current (check-not-trashed! (:archived attrs)))
           ;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
           created      (when (and (nil? current) (seq charts))
                          (dashboard-write/write! {:attrs attrs}))
           target       (or current created)
           saved-charts (mapv (partial save-chart! (:id target)) charts)
           ops          (with-card-ids ops (into {} (map (juxt :chart-id :card-id)) saved-charts))]
-      {:dashboard    (dashboard-write/write! (cond-> {:ops ops}
+      {:before       current
+       :dashboard    (dashboard-write/write! (cond-> {:ops ops}
                                                target        (assoc :dashboard target)
                                                (not created) (assoc :attrs attrs)))
        :saved-charts saved-charts})))
 
 (defn- save!
-  "Saves the change to `dashboard`, nil on a create, and returns `{:dashboard :saved-charts}`.
-  The dashboard is reread before it is changed.
+  "Saves the change to `dashboard`, nil on a create, and returns `{:before :dashboard :saved-charts}`.
+  The dashboard is reread before it is changed, and `:before` is that reread, nil on a create.
   The saved dashboard is hydrated as [[dashboard-write/write!]] returns it.
   Everything is saved in one transaction, the charts' questions included."
   [dashboard attrs ops charts]
@@ -554,14 +562,17 @@
     :else                                         "updated"))
 
 (def ^:private opening-profiles
-  "The profiles whose frontend opens a dashboard they created once the reply finishes.
+  "The profiles whose frontend opens the dashboard after a create, edit or restore.
   NLQ Metabot only links it."
   #{:internal :internal-sql})
 
 (defn- result
   "The tool result for the saved `dashboard`."
   [{:keys [id name collection_id] :as dashboard} action saved-charts profile-id]
-  (let [link        (str "metabase://dashboard/" id)
+  ;; Trashing doesn't navigate, so a trashed dashboard the user is viewing stays in view.
+  (let [open?       (and (not= "trashed" action) (contains? opening-profiles profile-id))
+        url         (str "/dashboard/" id)
+        link        (str "metabase://dashboard/" id)
         layout?     (contains? #{"created" "updated"} action)
         chart-pairs (for [{:keys [chart-id card-id]} saved-charts]
                       {:chart_id chart-id, :card_id card-id})
@@ -587,14 +598,16 @@
      :structured-output {:result-type  :dashboard-saved
                          :dashboard-id id
                          :action       action}
-     :data-parts        [(streaming/dashboard-saved-part
-                          {:dashboard_id  id
-                           :action        action
-                           :name          name
-                           :url           (str "/dashboard/" id)
-                           :collection_id collection_id
-                           :open          (and (= "created" action) (contains? opening-profiles profile-id))
-                           :saved_charts  (vec chart-pairs)})]}))
+     :data-parts        (cond-> [(streaming/dashboard-saved-part
+                                  {:dashboard_id  id
+                                   :action        action
+                                   :name          name
+                                   :url           url
+                                   :collection_id collection_id
+                                   :open          open?
+                                   :saved_charts  (vec chart-pairs)})]
+                          ;; The frontend navigates to a generated dashboard entity, the part X-rays use to open.
+                          open? (conj (streaming/dashboard-entity-part {:id id, :title name, :url url})))}))
 
 ;;; ---------------------------------------------------- Tool ------------------------------------------------------
 
@@ -636,13 +649,13 @@
       (check-request! args)
       (check-op-sources! dashboard_id ops)
       (let [charts (requested-charts ops)
-            {saved :dashboard :keys [saved-charts]}
+            {saved :dashboard :keys [before saved-charts]}
             (save-entity/do-with-save-rejections
              #(do-with-op-errors dashboard_id (fn [] (save! dashboard attrs ops charts))))]
         (doseq [{:keys [card]} saved-charts
                 :when card]
           (save-entity/publish-card-create! card))
-        (result saved (action dashboard attrs) saved-charts profile-id)))))
+        (result saved (action before attrs) saved-charts profile-id)))))
 
 (def write-dashboard-tool
   "Create, edit, trash or restore a dashboard, saving charts from this conversation onto it."
