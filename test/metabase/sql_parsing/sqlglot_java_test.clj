@@ -120,7 +120,7 @@
 
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"
-    (is (= 10 (count (interface-multimethods))))
+    (is (= 11 (count (interface-multimethods))))
     (doseq [[sym ^clojure.lang.MultiFn multimethod] (interface-multimethods)]
       (testing sym
         (is (some? (get-method multimethod :sqlglot)))
