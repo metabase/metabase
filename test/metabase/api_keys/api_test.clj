@@ -186,8 +186,8 @@
                                                                 :name     "full admin"})]
             (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" unscoped}}}))))))))
 
-(deftest only-unscoped-and-workspace-manager-keys-authenticate-test
-  (testing "a key with another scope, such as SCIM, never authenticates as its user on the REST API"
+(deftest api-keys-with-an-unknown-scope-fail-closed-test
+  (testing "a key whose scope the REST API does not know fails closed, even with a user (product SCIM keys have none)"
     (let [unhashed (api-key/generate-key)]
       (mt/with-temp [:model/ApiKey _ {::api-keys/unhashed-key unhashed
                                       :name                   "SCIM key with a user"
