@@ -284,17 +284,20 @@ function useConnectors({
 
 /**
  * The bar stays on one line until the toggle or Shift+Enter asks for rows. The
- * choice outlives the focus, and ends when the parentheses stop nesting. The
- * button shows for nested parentheses, and while the rows are on without them.
+ * choice outlives the focus, and ends when the parentheses stop nesting or the
+ * last filter goes. The button needs a filter, and shows for nested parentheses,
+ * and while the rows are on without them.
  */
 function useRowLayout({
   hasGroups,
+  hasFilters,
   trailingHasGroups = false,
   isRowLayoutOn,
   onRowLayoutChange,
   onHasGroupsChange,
 }: {
   hasGroups: boolean;
+  hasFilters: boolean;
   trailingHasGroups?: boolean;
   isRowLayoutOn?: boolean;
   onRowLayoutChange?: (isOn: boolean) => void;
@@ -314,10 +317,10 @@ function useRowLayout({
   // nested bar has no `onRowLayoutChange`, so only the bar with the toggle
   // turns the rows off.
   useEffect(() => {
-    if (isOn && wasNesting && !isNesting) {
+    if (isOn && ((wasNesting && !isNesting) || !hasFilters)) {
       setIsOn(false);
     }
-  }, [isOn, wasNesting, isNesting, setIsOn]);
+  }, [isOn, wasNesting, isNesting, hasFilters, setIsOn]);
 
   // In the capture phase, so that no input or popover in the bar, also those
   // in a portal or the summary's bar, takes it as a plain Enter.
@@ -325,12 +328,14 @@ function useRowLayout({
     if (event.key === "Enter" && event.shiftKey) {
       event.preventDefault();
       event.stopPropagation();
-      setIsOn(!isOn);
+      if (hasFilters) {
+        setIsOn(!isOn);
+      }
     }
   };
 
   return {
-    isAvailable: isNesting || isOn,
+    isAvailable: hasFilters && (isNesting || isOn),
     isOn,
     layout: isOn ? ("rows" as const) : ("line" as const),
     toggle: () => setIsOn(!isOn),
@@ -508,6 +513,8 @@ export function ExpressionBar({
   const hasGroups = nesting >= ROWS_FROM_NESTING;
   const rowLayout = useRowLayout({
     hasGroups,
+    hasFilters:
+      trailing != null || tokens.some((token) => token.type === "filter"),
     trailingHasGroups,
     isRowLayoutOn: isRowLayoutOnProp,
     onRowLayoutChange,
