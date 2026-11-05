@@ -367,12 +367,46 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   private _setup() {
-    this._validateEmbedSettings(this.properties);
+    const props = this.properties;
+    this._validateEmbedSettings(props);
 
-    const iframe = document.createElement("iframe");
-    this._iframe = iframe;
+    if (props.componentName === "metabase-data-app") {
+      this._setupDataAppIframe(props);
+      return;
+    }
+
+    this._setupIframe(props);
+  }
+
+  private _setupIframe({ instanceUrl }: { instanceUrl: string }) {
+    const iframe = this._createIframe(
+      new URL(`${instanceUrl}/${EMBEDDING_ROUTE}`),
+    );
+
+    this._authManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager
+      ? new PLUGIN_EMBED_JS_EE.EmbedAuthManager(this)
+      : null;
+
+    this._removeMessageListener = listenForEajsMessages({
+      messageSource: "iframe-content",
+      iframe,
+      handler: this._handleMessage,
+    });
+
+    this.appendChild(iframe);
+  }
+
+  private _setupDataAppIframe({
+    instanceUrl,
+    path,
+  }: {
+    instanceUrl: string;
+    path: string;
+  }) {
+    this._dataAppPath = path;
 
     const element = this;
+    const iframe = this._createIframe(getDataAppEmbedUrl(instanceUrl, path));
 
     const context: EmbedAuthManagerContext = {
       get properties() {
@@ -390,16 +424,17 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ? new PLUGIN_EMBED_JS_EE.EmbedAuthManager(context)
       : null;
 
-    const props = this.properties;
-    let url: URL;
+    this._removeMessageListener = listenForEajsMessages({
+      messageSource: "iframe-content",
+      iframe,
+      expectedOrigin: new URL(instanceUrl).origin,
+      handler: this._handleMessage,
+    });
 
-    if (props.componentName === "metabase-data-app") {
-      this._dataAppPath = props.path;
-      url = getDataAppEmbedUrl(props.instanceUrl, props.path);
-    } else {
-      url = new URL(`${props.instanceUrl}/${EMBEDDING_ROUTE}`);
-    }
+    this.appendChild(iframe);
+  }
 
+  private _createIframe(url: URL) {
     // Random query param is needed to allow parallel EmbedJS iframes loading.
     // Without it multiple EmbedJS iframes on a page loaded sequentially.
     // We don't cache the iframe content, so random query parameter does not break caching.
@@ -408,30 +443,22 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       String(_iframeCounter++),
     );
 
+    const iframe = document.createElement("iframe");
+    this._iframe = iframe;
+
     iframe.src = url.toString();
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.style.minHeight = "600px";
 
-    this._iframe.style.width = "100%";
-    this._iframe.style.height = "100%";
-    this._iframe.style.border = "none";
-    this._iframe.style.minHeight = "600px";
-
-    this._iframe.setAttribute("data-metabase-embed", "true");
+    iframe.setAttribute("data-metabase-embed", "true");
 
     // Chrome blocks the Clipboard API in cross-origin iframes unless the host
     // explicitly delegates the permission (e.g. copying a Metabot answer).
-    this._iframe.setAttribute("allow", "clipboard-write");
+    iframe.setAttribute("allow", "clipboard-write");
 
-    this._removeMessageListener = listenForEajsMessages({
-      messageSource: "iframe-content",
-      iframe: this._iframe,
-      expectedOrigin:
-        this._componentName === "metabase-data-app"
-          ? this._getMessageTargetOrigin()
-          : undefined,
-      handler: this._handleMessage,
-    });
-
-    this.appendChild(this._iframe);
+    return iframe;
   }
 
   private _getIsLocalhost() {
