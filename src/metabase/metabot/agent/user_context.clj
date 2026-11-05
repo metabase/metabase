@@ -176,7 +176,7 @@
 
 (defmethod format-entity "model"
   [entity]
-  ;; A model the user cannot read is omitted, together with its query ID.
+  ;; A model the user cannot read is omitted, together with its query ID and SQL.
   (some-> (fetch-and-format entity
                             "The user is currently looking at the rows of a model:"
                             #(do (resources-tools/check-card-resource-database (:id entity))
@@ -187,7 +187,8 @@
                                                                     :with-measures? true
                                                                     :with-segments? true}))
                             llm-shape/model->xml)
-          (te/lines (te/field "Query ID" (:query_id entity)))))
+          (te/lines (te/field "Query ID" (:query_id entity))
+                    (te/field "Current SQL query" (te/code (metabot.u/extract-sql-content (:query entity)) "sql")))))
 
 (defn- format-chart-config-ids
   "Format chart config IDs for a viewing context item.
