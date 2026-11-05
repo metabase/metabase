@@ -289,9 +289,11 @@
   [search-model where-clause]
   ;; Narrows the spec's indexing query to its `:id` attr, so enumerating documents costs an id scan rather than a
   ;; full document build.
-  (let [ids (into []
-                  (comp (map :id) (take (inc max-enumerated-documents)))
-                  (search.db/spec-index-doc-ids-reducible search-model where-clause))]
+  ;; The LIMIT stops the database sending ids past the ceiling; buffering JDBC drivers otherwise read them all first.
+  (let [fetch-limit (inc max-enumerated-documents)
+        ids         (into []
+                          (comp (map :id) (take fetch-limit))
+                          (search.db/spec-index-doc-ids-reducible search-model where-clause fetch-limit))]
     (if (< max-enumerated-documents (count ids))
       (do (log/errorf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
                       search-model max-enumerated-documents)

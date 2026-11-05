@@ -5,7 +5,6 @@
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -77,24 +76,17 @@
       (run)
       (future (run)))))
 
-(defn- sql-error?
-  "Whether `e`, or anything in its cause chain, is a `java.sql.SQLException`."
-  [e]
-  (some #(instance? java.sql.SQLException %) (u/full-exception-chain e)))
-
 ;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything but
 ;; `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
-;; This runs inside the user's delete, so a search bug must not fail it: other errors skip the enumeration and leave
+;; This runs inside the user's delete, so a search bug must not fail it: an error skips the enumeration and leaves
 ;; those documents to the scheduled reindex.
-;; A database error is rethrown, because it has already aborted a PostgreSQL transaction and swallowing it would only
-;; make the delete fail later and less clearly.
+;; Swallowing a database error here is safe, because the enumeration query runs in its own nested transaction.
+;; Its savepoint rollback leaves the caller's transaction usable, and a failed rollback marks it rollback-required.
 (defmethod dml-capture/dependents :hook/search-index-delete
   [model rows]
   (try
     (search/cascading-documents (rows->instances model rows))
     (catch Exception e
-      (when (sql-error? e)
-        (throw e))
       (log/errorf e "Skipping search cascade enumeration for %s" model)
       nil)))
 
