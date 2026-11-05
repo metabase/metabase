@@ -69,18 +69,19 @@
   [workspace-ids :- [:sequential ms/PositiveInt]]
   (t2/select workspace-database-columns :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
 
-(mu/defn update-workspace-database-status!
-  "Set the status of the WorkspaceDatabase with `id` to `to`, but only while its status is one of `from`, or one of
+(mu/defn update-status!
+  "Set the status of the row of `table` with `id` to `to`, but only while its status is one of `from`, or one of
   `stale-from` with an `updated_at` before `stale-before`. Returns the number of rows updated, 0 or 1. One UPDATE
   statement, so of two concurrent callers from the same status only one updates the row."
-  [id           :- ms/PositiveInt
+  [table        :- [:enum :workspace_database :workspace_schema]
+   id           :- ms/PositiveInt
    from         :- [:set {:min 1} :keyword]
    stale-from   :- [:set :keyword]
    stale-before :- (ms/InstanceOfClass java.time.OffsetDateTime)
    to           :- :keyword]
   ;; A raw UPDATE rather than t2/update! on the model: Toucan's before-update hook selects the matching rows first
   ;; and this must stay a single statement.
-  (t2/query-one {:update :workspace_database
+  (t2/query-one {:update table
                  :set    {:status [:auto/param (name to)], :updated_at (mi/now)}
                  :where  [:and
                           [:= :id [:auto/param id]]
@@ -116,6 +117,11 @@
   [id                :- ms/PositiveInt
    scratch-namespace :- :string]
   (t2/update! :model/WorkspaceSchema :id [:auto/param id] {:scratch_namespace scratch-namespace}))
+
+(mu/defn workspace-schema
+  "The WorkspaceSchema with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/WorkspaceSchema :id [:auto/param id]))
 
 (mu/defn workspace-schemas-of-workspace-databases
   "The WorkspaceSchemas of the WorkspaceDatabases with ids in `workspace-database-ids`, in id order."

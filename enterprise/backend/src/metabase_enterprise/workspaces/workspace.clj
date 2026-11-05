@@ -37,12 +37,14 @@
          (vec (for [wsd (databases-by-workspace (:id workspace))]
                 (assoc wsd
                        :status  (ws.status/database-status (:status wsd) (:updated_at wsd) now)
-                       :schemas (vec (schemas-by-database (:id wsd))))))))
+                       :schemas (mapv #(assoc % :status (ws.status/schema-status (:status %) (:updated_at %) now))
+                                      (schemas-by-database (:id wsd))))))))
 
 (mu/defn workspaces-page :- [:map [:data [:sequential :map]] [:total :int]]
   "One page of Workspaces, in id order, each with its `:databases` and their `:schemas`, never with a
   `:database_details`: `{:data <up to limit workspaces after offset>, :total <number of workspaces>}`. A database's
-  `:status` is the status it reads as (see [[ws.status/database-status]])."
+  `:status`, and each schema's, is the status it reads as (see [[ws.status/database-status]] and
+  [[ws.status/schema-status]])."
   [{:keys [limit offset]} :- [:map {:closed true}
                               [:limit  ms/PositiveInt]
                               [:offset ms/IntGreaterThanOrEqualToZero]]]

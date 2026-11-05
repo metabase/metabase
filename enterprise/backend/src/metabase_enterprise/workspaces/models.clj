@@ -23,7 +23,9 @@
 
 (methodical/defmethod t2/table-name :model/WorkspaceSchema [_model] :workspace_schema)
 
-(derive :model/WorkspaceSchema :metabase/model)
+(doto :model/WorkspaceSchema
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/WorkspaceSchema
   {:status mi/transform-keyword})

@@ -216,6 +216,20 @@ databaseChangeLog:
                   remarks: The scrubbed warehouse error, when status is failed
                   constraints:
                     nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row last changed; adding or removing older than 10 minutes reads as failed
+                  constraints:
+                    nullable: false
 
   # Before the foreign key on workspace_database_id, so MySQL uses this index for it rather than adding another.
   - changeSet:

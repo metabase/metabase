@@ -97,3 +97,38 @@
           (deliver start true)
           (is (= {:ok 1, 409 7} (frequencies (map deref results))))
           (is (= :deprovisioning (status-of wsd-id))))))))
+
+(deftest schema-status-test
+  (let [now (OffsetDateTime/now)]
+    (testing "adding and removing read as failed once older than 10 minutes; active and failed never go stale"
+      (doseq [status [:adding :removing]]
+        (is (= status (ws.status/schema-status status (.minusMinutes now 9) now)))
+        (is (= :failed (ws.status/schema-status status (.minusMinutes now 11) now))))
+      (doseq [status [:active :failed]]
+        (is (= status (ws.status/schema-status status (.minusMinutes now 600) now)))))))
+
+(deftest transition-schema-status-test
+  (do-with-workspace-database! :provisioned
+    (fn [wsd-id]
+      (let [schema-id (:id (ws.db/insert-workspace-schema! {:workspace_database_id wsd-id
+                                                            :main_schema           "sales"
+                                                            :scratch_namespace     "mb__isolation_statuste_s1_sales"
+                                                            :status                :adding}))
+            status-of (fn [] (t2/select-one-fn :status :model/WorkspaceSchema :id schema-id))
+            attempt   (fn [from to]
+                        (try (ws.status/transition-schema-status! schema-id from to) :ok
+                             (catch clojure.lang.ExceptionInfo e (select-keys (ex-data e) [:status-code :status]))))]
+        (testing "a fresh adding row is not failed, so a retry from failed is a 409"
+          (is (= {:status-code 409, :status :adding} (attempt #{:failed} :removing))))
+        (testing "11 minutes later it is taken over from failed"
+          (t2/query-one {:update :workspace_schema
+                         :set    {:updated_at (.minusMinutes ^OffsetDateTime (t2/select-one-fn :updated_at :model/WorkspaceSchema :id schema-id) 11)}
+                         :where  [:= :id schema-id]})
+          (is (= :ok (attempt #{:failed} :removing)))
+          (is (= :removing (status-of))))
+        (testing "of concurrent transitions exactly one succeeds"
+          (let [start   (promise)
+                results (doall (for [_ (range 8)]
+                                 (future @start (attempt #{:removing} :active))))]
+            (deliver start true)
+            (is (= {:ok 1, {:status-code 409, :status :active} 7} (frequencies (map deref results))))))))))
