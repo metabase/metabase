@@ -16,8 +16,9 @@ export const UNSCORED = 1;
 
 /**
  * Prototype: scores of the options that match the search, from 0 for the best
- * match. An option whose label or description has the search text gets 0.
- * Other options match with typos and missing letters, for searches of 3 or
+ * match. An option whose label or description has the search text gets a
+ * score below 0.1: an exact label first, then a label that starts with the
+ * text, then a word that starts with it, then other matches. Other options match with typos and missing letters, for searches of 3 or
  * more characters.
  */
 export function getOptionScores(
@@ -33,7 +34,7 @@ export function getOptionScores(
     if (aliasScore != null) {
       scores.set(option.value, aliasScore);
     } else if (hasText(option, searchText)) {
-      scores.set(option.value, 0);
+      scores.set(option.value, getTextScore(option.label, searchText));
     } else if (isAbbreviation(option.label, searchText)) {
       scores.set(option.value, ABBREVIATION_SCORE);
     }
@@ -72,6 +73,26 @@ function getAliasScore(option: SuggestionOption, searchText: string) {
     aliases.some((alias) => alias.startsWith(searchText))
     ? ALIAS_PREFIX_SCORE
     : undefined;
+}
+
+// Scores of the options that have the search text, below the abbreviations.
+const LABEL_PREFIX_SCORE = 0.01;
+const WORD_PREFIX_SCORE = 0.02;
+const TEXT_SCORE = 0.03;
+
+/** The score of an option that has the search text, like "Total" for "tot". */
+function getTextScore(label: string, searchText: string) {
+  const lowerLabel = label.toLowerCase();
+  if (lowerLabel === searchText) {
+    return 0;
+  }
+  if (lowerLabel.startsWith(searchText)) {
+    return LABEL_PREFIX_SCORE;
+  }
+  const hasWordPrefix = lowerLabel
+    .split(/[^a-z0-9]+/)
+    .some((word) => word.startsWith(searchText));
+  return hasWordPrefix ? WORD_PREFIX_SCORE : TEXT_SCORE;
 }
 
 function hasText(option: SuggestionOption, searchText: string) {
