@@ -1086,6 +1086,19 @@
              :active true
              {:where [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]}))
 
+(mu/defn database-table-names-like
+  "The schema and name of each active Table of `database-id` whose name case-insensitively starts with one of
+  `prefixes`, whatever its visibility. As in SQL `LIKE`, a `_` or `%` in a prefix matches any character, so the
+  result can hold Tables whose names do not start with the prefix."
+  [database-id :- ::lib.schema.id/database
+   prefixes    :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :schema :name]
+             :db_id [:auto/param database-id]
+             :active true
+             {:where (into [:or]
+                           (map (fn [prefix] [:like [:lower :name] [:auto/param (str (u/lower-case-en prefix) "%")]]))
+                           prefixes)}))
+
 (mu/defn dashboard-curation-rows
   "The ID, Collection ID, and archived flag of the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
