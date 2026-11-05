@@ -974,11 +974,32 @@
               :destroyed            (set @destroyed)})))))
 
 (deftest close-all-pools-survives-a-failed-close-test
-  (testing "a pool that fails to close does not stop the rest from closing"
-    (let [destroyed (atom [])]
+  (testing "a pool that fails to close does not stop the rest, and the failure is reported once all are tried"
+    (let [destroyed (atom [])
+          state     {:pools {[1 :default] ::pool-1, [2 :default] ::pool-2}}]
       (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [id spec]
                                                                 (when (= 1 id)
                                                                   (throw (ex-info "close failed" {})))
                                                                 (swap! destroyed conj [id spec]))]
-        (#'sql-jdbc.conn/close-all-pools! {:pools {[1 :default] ::pool-1, [2 :default] ::pool-2}}))
-      (is (= [[2 ::pool-2]] @destroyed)))))
+        (is (= {:failed [1], :destroyed [[2 ::pool-2]]}
+               {:failed    (try (#'sql-jdbc.conn/close-all-pools! state)
+                                []
+                                (catch clojure.lang.ExceptionInfo e
+                                  (mapv first (:failures (ex-data e)))))
+                :destroyed @destroyed}))))))
+
+(deftest caching-a-pool-records-its-checkout-database-test
+  (testing "the pool, its details hash and its checkout database are recorded in one write"
+    (let [cache-key [Integer/MAX_VALUE :default]
+          pool-spec {:datasource                          (reify com.mchange.v2.c3p0.PooledDataSource
+                                                            (getIdentityToken [_] "cached-pool-token"))
+                     ::sql-jdbc.conn/driver+database [:h2 {:id Integer/MAX_VALUE}]}]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [_id _spec] nil)]
+        (try
+          (#'sql-jdbc.conn/set-canonical-pool! cache-key 42 pool-spec)
+          (is (=? {:pools     {cache-key pool-spec}
+                   :hashes    {cache-key 42}
+                   :databases {"cached-pool-token" [:h2 {:id Integer/MAX_VALUE}]}}
+                  (#'sql-jdbc.conn/pools-state)))
+          (finally
+            (sql-jdbc.conn/invalidate-pool-for-db! Integer/MAX_VALUE)))))))

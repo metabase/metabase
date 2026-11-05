@@ -288,14 +288,22 @@
   (system/mutable-component-handle ::pools (constantly nil)))
 
 (defn- close-all-pools!
-  "Destroy every pool in the pools state `state`. Runs when the global system halts, so a pool that fails to close is
-  logged and the rest are still closed."
+  "Destroy every pool in the pools state `state`. Runs when the global system halts.
+  A pool that fails to close does not stop the rest; once all have been tried, throws an ex-info whose `:failures`
+  holds each database id with its exception."
   [{:keys [pools]}]
-  (doseq [[[database-id _connection-type] pool-spec] pools]
-    (try
-      (destroy-pool! database-id pool-spec)
-      (catch Throwable e
-        (log/warnf e "Failed to close the connection pool for database %s" database-id)))))
+  (let [failures (into []
+                       (keep (fn [[[database-id _connection-type] pool-spec]]
+                               (try
+                                 (destroy-pool! database-id pool-spec)
+                                 nil
+                                 (catch Throwable e
+                                   [database-id e]))))
+                       pools)]
+    (when (seq failures)
+      (throw (ex-info "Some connection pools failed to close"
+                      {:failures failures}
+                      (second (first failures)))))))
 
 (defn- pools-state
   "The current pools state, starting an empty one on first use."
@@ -404,9 +412,10 @@
         properties          (assoc (data-warehouse-connection-pool-properties driver database)
                                    "connectionCustomizerClassName" (.getName WarehouseConnectionCustomizer))
         pool-spec           (connection-pool-spec spec properties)]
-    (swap-pools-state! assoc-in [:databases (pool-token pool-spec)] [driver database])
     (merge
      pool-spec
+     ;; what [[set-canonical-pool!]] records for the pool's checkouts, in the same swap that caches the pool
+     {::driver+database [driver database]}
      ;; also capture entries related to ssh tunneling for later use
      (select-internal-keys-for-spec details-with-auth)
      (select-internal-keys-for-spec spec)
@@ -457,6 +466,9 @@
                                               (if pool-spec-or-nil
                                                 (assoc pools cache-key pool-spec-or-nil)
                                                 (dissoc pools cache-key))))
+                             (cond-> (pool-token pool-spec-or-nil)
+                               (assoc-in [:databases (pool-token pool-spec-or-nil)]
+                                         (::driver+database pool-spec-or-nil)))
                              (cond-> replaced? (update :databases dissoc (pool-token old-pool-spec)))))))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get-in old-state [:pools cache-key])]
