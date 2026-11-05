@@ -19,7 +19,8 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.workspaces.core :as ws]))
+   [metabase.workspaces.core :as ws]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -238,15 +239,18 @@
   the remappings the new schema maps no longer back. Returns the installed workspace."
   [instance :- ::workspace-instance]
   (let [name->id (into {} (map (juxt identity database-id-named)) (keys (:databases instance)))]
-    (ws.db/delete-table-remappings! (stale-remapping-ids instance name->id (ws.db/table-remappings)))
-    (ws.settings/instance-workspace! (json/encode instance))
+    ;; one transaction, so no reader sees the new map with the old remappings or the other way round
+    (t2/with-transaction [_conn]
+      (ws.db/delete-table-remappings! (stale-remapping-ids instance name->id (ws.db/table-remappings)))
+      (ws.settings/instance-workspace! (json/encode instance)))
     (instance-workspace)))
 
 (defn clear-instance-workspace!
   "Turn workspace mode off: remove the installed workspace and every remapping."
   []
-  (ws.settings/instance-workspace! nil)
-  (ws.db/delete-all-table-remappings!)
+  (t2/with-transaction [_conn]
+    (ws.settings/instance-workspace! nil)
+    (ws.db/delete-all-table-remappings!))
   nil)
 
 (defn table-remapping-rows
