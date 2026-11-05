@@ -63,7 +63,9 @@
               (is (str/includes? output "type=\"sql\""))
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
-              (is (str/includes? output (str "metabase://query/" query-id))))))))))
+              (is (str/includes? output (str "metabase://query/" query-id))))
+            (testing "instructions say that the query is not saved"
+              (is (str/includes? output "It is not saved")))))))))
 
 (deftest create-sql-query-says-whether-its-results-can-be-read-test
   (mt/test-drivers #{:h2}

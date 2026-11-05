@@ -228,6 +228,25 @@
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
+(deftest ^:parallel resolve-metabase-uri-question-link-test
+  (let [query {:database 1 :lib/type :mbql.stage/native}
+        chart {:queries [query] :visualization_settings {:chart_type "bar"}}]
+    (testing "a query ID under question/ opens the ad-hoc query, also when it starts with a digit"
+      (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0"]]
+        (is (str/starts-with? (links/resolve-metabase-uri (str "metabase://question/" id) {id query} {})
+                              "/question#"))))
+    (testing "a chart ID under question/ opens the chart's query"
+      (is (str/starts-with? (links/resolve-metabase-uri "metabase://question/12345678-aaaa" {} {"12345678-aaaa" chart})
+                            "/question#")))
+    (testing "a card ID stays a card link, also when a chart seeded from the viewed card has that ID"
+      (is (= "/question/157" (links/resolve-metabase-uri "metabase://question/157" {} {"157" chart}))))
+    (testing "an unknown ID that is no card ID does not resolve, so no dead or wrong link reaches the user"
+      (is (nil? (links/resolve-metabase-uri "metabase://question/TQVDPycvL8DIo3fryAgS0" {} {})))
+      (is (nil? (links/resolve-metabase-uri "metabase://question/3QVDPycvL8DIo3fryAgS0" {} {})))
+      (is (nil? (links/resolve-metabase-uri "metabase://question/12-VDPycvL8DIo3fryAg" {} {})))
+      (is (= "Failed charges"
+             (links/resolve-links "[Failed charges](metabase://question/TQVDPycvL8DIo3fryAgS0)" {} {} (atom {})))))))
+
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to the table page"
     (is (= (str "/table/" (mt/id :venues))
