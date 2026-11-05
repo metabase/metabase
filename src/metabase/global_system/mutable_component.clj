@@ -68,7 +68,9 @@
     (identical? old old-value)))
 
 (defmacro with-slot-lock
-  "Runs `body` holding the [[slot-lock]] of `handle`."
+  "Runs `body` holding the [[slot-lock]] of `handle`.
+   Every write to the slot waits until `body` returns, and the lock is reentrant only on the holding thread.
+   So `body` must not wait for another thread that writes this component or starts it."
   [handle & body]
   `(locking (slot-lock ~handle)
      ~@body))
