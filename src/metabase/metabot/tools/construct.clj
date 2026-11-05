@@ -1417,7 +1417,7 @@
    "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a\n"
    "short, human-friendly `title` shown above the resulting chart. Also provide a concise\n"
    "one- or two-sentence `description` of what the chart shows (the metric, the grouping, and\n"
-   "any notable filter); it is used as the saved question's description. See\n"
+   "any notable filter); if the chart is saved, it becomes the description of the saved question. See\n"
    "`resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."))
 
 (defn- chart-instructions
