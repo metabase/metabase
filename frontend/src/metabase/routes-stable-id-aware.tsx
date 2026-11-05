@@ -1,6 +1,6 @@
+import { omit } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -164,7 +164,7 @@ function handleResults({
       // don't want to show an error but just drop it
       const hashOptions = parseHashOptions(nextHash);
       const hashString = stringifyHashOptions(
-        id ? { ...hashOptions, [name]: String(id) } : _.omit(hashOptions, name),
+        id ? { ...hashOptions, [name]: String(id) } : omit(hashOptions, [name]),
       );
       nextHash = hashString ? `#${hashString}` : "";
     } else if (!id) {

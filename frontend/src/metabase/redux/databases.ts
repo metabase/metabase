@@ -1,11 +1,11 @@
-import _ from "underscore";
+import { flowRight } from "es-toolkit";
 
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
 import type { DatabaseData } from "metabase-types/api";
 
-export const editParamsForUserControlledScheduling = _.compose(
+export const editParamsForUserControlledScheduling = flowRight(
   editScheduleParamsForUserControlledScheduling,
   editSyncParamsForUserControlledScheduling,
 );

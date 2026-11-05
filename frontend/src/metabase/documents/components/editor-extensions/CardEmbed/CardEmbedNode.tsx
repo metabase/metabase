@@ -10,9 +10,9 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
+import { noop } from "es-toolkit";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";

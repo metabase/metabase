@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { difference, intersection, uniq } from "es-toolkit";
 
 import { color } from "metabase/ui/colors";
 import { getColorsForValues } from "metabase/ui/colors/charts";
@@ -315,7 +315,7 @@ export function getPieRows(
   const keyToSavedPieRow = new Map<PieRow["key"], PieRow>(
     savedPieRows.map((pieRow) => [pieRow.key, pieRow]),
   );
-  const removed = _.difference(savedPieKeys, currentDataKeys);
+  const removed = difference(savedPieKeys, currentDataKeys);
 
   let newPieRows: PieRow[] = [];
   // Case 1: Auto sorted, sort existing and new rows together
@@ -355,8 +355,8 @@ export function getPieRows(
     });
     // Case 2: Preserve manual sort for existing rows, sort `added` rows
   } else {
-    const added = _.difference(currentDataKeys, savedPieKeys);
-    const kept = _.intersection(savedPieKeys, currentDataKeys);
+    const added = difference(currentDataKeys, savedPieKeys);
+    const kept = uniq(intersection(savedPieKeys, currentDataKeys));
 
     newPieRows = kept.map((keptKey) => {
       const savedPieRow = keyToSavedPieRow.get(keptKey);

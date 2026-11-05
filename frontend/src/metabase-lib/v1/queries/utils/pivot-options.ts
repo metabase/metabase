@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { mapValues } from "es-toolkit";
 
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -29,7 +29,7 @@ function getColumnNamePivotOptions(
     .filter((columnInfo) => columnInfo.isBreakout)
     .map((columnInfo) => columnInfo.name);
 
-  const { rows, columns } = _.mapObject(setting, (columnNames) => {
+  const { rows, columns } = mapValues(setting, (columnNames) => {
     return columnNames
       .map((columnName) => breakoutColumnNames.indexOf(columnName))
       .filter((columnIndex) => columnIndex >= 0);
@@ -48,7 +48,7 @@ function getFieldRefPivotOptions(
     (column) => Lib.displayInfo(query, stageIndex, column).isBreakout,
   );
 
-  const { rows, columns } = _.mapObject(setting, (fieldRefs) => {
+  const { rows, columns } = mapValues(setting, (fieldRefs) => {
     if (breakoutColumns.length === 0) {
       return [];
     }

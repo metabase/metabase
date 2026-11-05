@@ -1,7 +1,7 @@
 import { arrayMove } from "@dnd-kit/sortable";
+import { partition } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
@@ -52,7 +52,7 @@ export const ChartSettingSeriesOrder = ({
 
   const [items, hiddenItems] = useMemo(
     () =>
-      _.partition(
+      partition(
         orderedItems.filter((item) => !item.hidden),
         (item) => item.enabled,
       ),
@@ -73,7 +73,7 @@ export const ChartSettingSeriesOrder = ({
 
   const [visibleItems, truncatedItems] = useMemo(
     () =>
-      _.partition(
+      partition(
         itemsAfterGrouping,
         (_item, index) => !isListTruncated || index < truncateAfter,
       ),

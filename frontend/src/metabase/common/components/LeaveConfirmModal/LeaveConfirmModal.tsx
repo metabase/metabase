@@ -1,5 +1,5 @@
+import { noop } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 
@@ -17,6 +17,6 @@ export const LeaveConfirmModal = ({ onConfirm, onClose, opened }: Props) => (
     message={t`Your changes haven't been saved, so you'll lose them if you navigate away.`}
     title={t`Discard your changes?`}
     onConfirm={onConfirm}
-    onClose={onClose ?? _.noop}
+    onClose={onClose ?? noop}
   />
 );

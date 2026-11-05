@@ -1,3 +1,4 @@
+import { compact } from "es-toolkit";
 import type React from "react";
 import {
   type RefObject,
@@ -9,7 +10,6 @@ import {
   useRef,
   useState,
 } from "react";
-import _ from "underscore";
 
 import {
   canUserCreateNativeQueries,
@@ -122,7 +122,7 @@ export const MetabotProvider = ({
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       // Unjustified type cast. FIXME
-      capabilities: _.compact([
+      capabilities: compact([
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
       ]) as string[],

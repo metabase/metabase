@@ -1,5 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { keyBy } from "es-toolkit";
 
 import { revisionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -62,7 +62,10 @@ export default function revisions(
     const { type, id, revisions } = action.payload;
     return {
       ...state,
-      [type]: { ...state[type], [id]: _.indexBy(revisions, "id") },
+      [type]: {
+        ...state[type],
+        [id]: keyBy(revisions, (item) => item.id),
+      },
     };
   }
   return state;

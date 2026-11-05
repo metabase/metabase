@@ -1,11 +1,10 @@
-import _ from "underscore";
-
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   CreateDestinationDatabaseRequest,
   Database,
   UpdateDatabaseRouterRequest,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { EnterpriseApi } from "./api";
 
@@ -39,9 +38,9 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
       transformErrorResponse: (response) => {
         // response shape from api should be:
         // Record<db_name, { message: string; errors: Record<string, string>; }>;
-        if (_.isObject(response) && _.isObject(response.data)) {
+        if (isObject(response) && isObject(response.data)) {
           const maybeDbEditErrorType = Object.values(response.data)?.[0];
-          if (_.isObject(maybeDbEditErrorType)) {
+          if (isObject(maybeDbEditErrorType)) {
             return maybeDbEditErrorType;
           }
         }

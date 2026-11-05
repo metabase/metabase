@@ -100,3 +100,22 @@ export function isSerializable(value: unknown): boolean {
 
   return false;
 }
+
+/**
+ * Returns true for null and undefined, for arrays, strings and `arguments`
+ * with no items, and for any other value without own enumerable keys.
+ * Matches underscore's `isEmpty`: a Map or a Set counts as empty, whatever its
+ * size, and so do numbers and booleans.
+ */
+export function isEmpty(value: unknown): boolean {
+  if (value == null) {
+    return true;
+  }
+  if (Array.isArray(value) || typeof value === "string") {
+    return value.length === 0;
+  }
+  if (typeof value !== "object" && typeof value !== "function") {
+    return true;
+  }
+  return Object.keys(value).length === 0;
+}

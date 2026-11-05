@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { keyBy } from "es-toolkit";
 
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -71,7 +71,7 @@ export function getTemplateTagParameters(
   tags: TemplateTag[],
   parameters: Parameter[] = [],
 ): ParameterWithTarget[] {
-  const parametersById = _.indexBy(parameters, "id");
+  const parametersById = keyBy(parameters, (item) => item.id);
 
   return tags
     .filter(
@@ -109,7 +109,7 @@ export function getParametersFromCard(
     return [];
   }
 
-  if (card.parameters && !_.isEmpty(card.parameters)) {
+  if (card.parameters && card.parameters.length > 0) {
     return card.parameters;
   }
 

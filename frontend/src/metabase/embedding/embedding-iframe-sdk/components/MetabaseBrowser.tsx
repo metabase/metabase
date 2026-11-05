@@ -1,8 +1,8 @@
+import { last } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
@@ -83,7 +83,7 @@ function MetabaseBrowserContent({ settings }: MetabaseBrowserProps) {
       (item) => item.type === "collection",
     );
 
-    const lastCollectionItem = _.last(collectionBreadcrumbs);
+    const lastCollectionItem = last(collectionBreadcrumbs);
 
     if (lastCollectionItem) {
       return lastCollectionItem.id;

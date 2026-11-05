@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { Icon } from "metabase/ui";
 import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
@@ -72,7 +72,7 @@ export function RowToggleIcon({
                       // equal length means they're in the same column
                       item.length === value.length &&
                       // but not exactly this item
-                      !_.isEqual(item, value),
+                      !isEqual(item, value),
                   )
                   // serialize those paths
                   .map((item) => JSON.stringify(item)),

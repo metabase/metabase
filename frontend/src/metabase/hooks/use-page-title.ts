@@ -1,5 +1,5 @@
+import { debounce } from "es-toolkit";
 import { useEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
 
@@ -12,7 +12,7 @@ type TitleEntry = {
 const titleMap = new Map<string, TitleEntry>();
 const SEPARATOR = " · ";
 
-const updateDocumentTitle = _.debounce(() => {
+const updateDocumentTitle = debounce(() => {
   document.title = Array.from(titleMap.values())
     .sort((a, b) => a.titleIndex - b.titleIndex)
     .map((entry) => entry.title)

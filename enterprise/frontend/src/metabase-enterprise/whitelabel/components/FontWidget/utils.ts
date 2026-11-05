@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useAdminSetting } from "metabase/settings";
 import type { FontFile, FontFormat } from "metabase-types/api";
@@ -20,10 +19,7 @@ export const useGetFontOptions = () => {
 };
 
 export const getFontUrls = (files: FontFile[]): Record<string, string> => {
-  return _.chain(files)
-    .indexBy((file) => file.fontWeight)
-    .mapObject((file) => file.src)
-    .value();
+  return Object.fromEntries(files.map((file) => [file.fontWeight, file.src]));
 };
 
 export const getFontOptions = (): FontFileOption[] => [

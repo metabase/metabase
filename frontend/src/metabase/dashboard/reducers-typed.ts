@@ -1,6 +1,6 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import {
   createDashboardPublicLink,
@@ -324,7 +324,7 @@ function newDashboard(
     ...before,
     // mimic the StoreDashboard type - this function is only made to update attributes
     // rather than deep values like dashcards or tabs
-    ..._.omit(after, "dashcards", "tabs"),
+    ...omit(after, ["dashcards", "tabs"]),
     embedding_params: syncParametersAndEmbeddingParams(before, after),
     isDirty,
   };

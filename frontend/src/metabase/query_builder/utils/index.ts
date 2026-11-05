@@ -1,12 +1,13 @@
 import querystring from "querystring";
 
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { isEmpty } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, Field, NormalizedField } from "metabase-types/api";
@@ -111,7 +112,7 @@ export function getTableUrlForPristineQuestion(
   const isPristine =
     Lib.areLegacyQueriesEqual(card.dataset_query, defaultCard.dataset_query) &&
     card.display === defaultCard.display &&
-    _.isEmpty(card.visualization_settings) &&
+    isEmpty(card.visualization_settings) &&
     question.parameters().length === 0;
 
   return isPristine
@@ -209,18 +210,18 @@ const WRITABLE_MBQL_COLUMN_PROPERTIES = [
   "fk_target_field_id",
   "visibility_type",
   "settings",
-];
+] as const;
 
 const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
   "id",
   ...WRITABLE_MBQL_COLUMN_PROPERTIES,
-];
+] as const;
 
 export function getWritableColumnProperties(
   column: NormalizedField | Field,
   isNative: boolean,
 ) {
-  return _.pick(
+  return pick(
     column,
     isNative
       ? WRITABLE_NATIVE_COLUMN_PROPERTIES

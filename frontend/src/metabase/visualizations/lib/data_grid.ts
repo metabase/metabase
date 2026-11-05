@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { mapValues } from "es-toolkit";
 
 import * as Pivot from "cljs/metabase.pivot.js";
 import { memoize } from "metabase/utils/memoize";
@@ -84,7 +84,7 @@ export function multiLevelPivot(
     columns: columnIndexes,
     rows: rowIndexes,
     values: valueIndexes,
-  } = _.mapObject(columnSplit, (columnNames) =>
+  } = mapValues(columnSplit, (columnNames) =>
     columnNames
       .map((columnName) => columns.findIndex((col) => col.name === columnName))
       .filter((index) => index !== -1),

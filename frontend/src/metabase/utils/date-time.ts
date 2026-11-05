@@ -1,7 +1,7 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
+import { times } from "metabase/utils/arrays";
 import type { DayOfWeekId } from "metabase-types/api";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6
@@ -102,12 +102,12 @@ export const getDayOfWeekOptions = (): DayOfWeekOption[] => {
   ];
 };
 
-export const HOUR_OPTIONS = _.times(12, (n) => ({
+export const HOUR_OPTIONS = times(12, (n) => ({
   name: (n === 0 ? 12 : n) + ":00",
   value: n,
 }));
 
-export const MINUTE_OPTIONS = _.times(60, (n) => ({
+export const MINUTE_OPTIONS = times(60, (n) => ({
   name: n.toString(),
   value: n,
 }));

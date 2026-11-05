@@ -1,6 +1,6 @@
 import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
-import _ from "underscore";
+import { compact } from "es-toolkit";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 
@@ -26,7 +26,7 @@ export function PythonEditor({
   readOnly?: boolean;
   extensions?: Extension[];
 }) {
-  const extensions = _.compact([
+  const extensions = compact([
     ...(externalExtensions ?? []),
     withPandasCompletions ? completion : undefined,
   ]);

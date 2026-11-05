@@ -1,5 +1,5 @@
+import { omit, pickBy } from "es-toolkit";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import {
@@ -96,15 +96,13 @@ export function getMetabaseConfigSnippet({
 }): string {
   const isGuestEmbed = !!settings.isGuest;
 
-  const config = _.pick(
-    settings,
-    isGuestEmbed
-      ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.base
-      : ALLOWED_EMBED_SETTING_KEYS_MAP.base,
-  );
+  const allowedKeys: readonly string[] = isGuestEmbed
+    ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.base
+    : ALLOWED_EMBED_SETTING_KEYS_MAP.base;
+  const config = pickBy(settings, (_value, key) => allowedKeys.includes(key));
 
   const cleanedConfig = {
-    ..._.omit(config, ["isGuest", "useExistingUserSession"]),
+    ...omit(config, ["isGuest", "useExistingUserSession"]),
 
     // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),

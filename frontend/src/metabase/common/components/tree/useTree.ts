@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import type { TreeProps } from "./Tree";
 import type { ITreeNodeItem } from "./types";
@@ -48,7 +48,7 @@ export function useTree<TData = unknown>({
     if (freezeAutoExpandOnManualToggle && hasManuallyToggledRef.current) {
       return;
     }
-    const dataHasChanged = !_.isEqual(data, prevData);
+    const dataHasChanged = !isEqual(data, prevData);
     const selectedItemChanged = previousSelectedId !== selectedId;
 
     if (selectedItemChanged || dataHasChanged) {

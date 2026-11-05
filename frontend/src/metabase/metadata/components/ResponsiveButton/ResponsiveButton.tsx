@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
+import { noop } from "es-toolkit";
 import { useLayoutEffect } from "react";
-import _ from "underscore";
 
 import { Button, type ButtonProps, Icon, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -17,7 +17,7 @@ export const ResponsiveButton = ({
   icon,
   showLabel,
   showIconWithLabel = true,
-  onRequestWidth = _.noop,
+  onRequestWidth = noop,
   ...props
 }: Props) => {
   const { ref: measureRef, width: desiredWidth } = useElementSize();

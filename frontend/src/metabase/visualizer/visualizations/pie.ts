@@ -1,7 +1,7 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import { isEmpty } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -177,7 +177,7 @@ export function combineWithPieChart(
     addColumnToPieChart(state, settings, data.cols, column, columnRef);
   }
 
-  if (_.isEmpty(settings["pie.dimension"]) && dimensions.length === 1) {
+  if (isEmpty(settings["pie.dimension"]) && dimensions.length === 1) {
     const [dimension] = dimensions;
     const columnRef = createVisualizerColumnReference(
       dataSource,

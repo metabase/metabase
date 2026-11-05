@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { debounce } from "es-toolkit";
 
 import {
   hashSearchTerm,
@@ -66,7 +66,7 @@ const DOCUMENT_SEARCH_TRACK_DEBOUNCE_MS = 300;
 
 let latestDocumentSearchRequestId: string | null = null;
 
-const trackSettledDocumentSearch = _.debounce(
+const trackSettledDocumentSearch = debounce(
   (
     ...[args, data, duration, requestId]: Parameters<typeof trackSearchRequest>
   ) => {

@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { findWhere } from "underscore";
 
 import { useDispatch, useSelector } from "metabase/redux";
 import { useSetting, useUpdateSettingMutation } from "metabase/settings";
@@ -23,7 +22,7 @@ export const LanguageSelector = () => {
   const languages = useMemo(() => locales.map(({ name }) => name), [locales]);
 
   const handleLocaleChange = async (language: string) => {
-    const locale = findWhere(locales, { name: language });
+    const locale = locales.find((item) => item.name === language);
 
     if (locale) {
       dispatch(updateLocale(locale));

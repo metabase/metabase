@@ -1,5 +1,5 @@
+import { countBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -488,7 +488,9 @@ export const removeCardFromDashboard = createThunkAction(
         });
       }
 
-      const dashcardCountByCardId = _.countBy(dashcards, "card_id");
+      const dashcardCountByCardId = countBy(dashcards, (item) =>
+        String(item.card_id),
+      );
       const isLastDashboardQuestionDashcard = Boolean(
         dashcard.card_id &&
         dashcard.card.dashboard_id !== null &&

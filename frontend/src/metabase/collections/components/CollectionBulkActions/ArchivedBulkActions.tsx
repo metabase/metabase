@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import {
   canDelete,
@@ -13,6 +12,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { canMoveItem } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { isEmpty } from "metabase/utils/objects";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
@@ -39,7 +39,7 @@ export const ArchivedBulkActions = ({
   const deleteItem = useDeleteItem();
 
   const hasSelectedItems = useMemo(
-    () => !!selectedItems && !_.isEmpty(selectedItems),
+    () => !!selectedItems && !isEmpty(selectedItems),
     [selectedItems],
   );
 

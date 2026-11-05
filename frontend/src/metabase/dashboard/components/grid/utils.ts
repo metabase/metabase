@@ -1,6 +1,5 @@
-import _ from "underscore";
-
 import { getActionDisplayType, isActionDashCard } from "metabase/actions/utils";
+import { times } from "metabase/utils/arrays";
 import { getMobileHeight } from "metabase/viz-core";
 import type { BaseDashboardCard } from "metabase-types/api";
 
@@ -66,7 +65,7 @@ export function generateGridBackground({
   const w = cellSize.width;
   const h = cellSize.height;
 
-  const rectangles = _(cols).times((i) => {
+  const rectangles = times(cols, (i) => {
     const x = i * (cellSize.width + horizontalMargin);
     return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
   });

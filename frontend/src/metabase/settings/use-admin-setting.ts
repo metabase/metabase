@@ -1,7 +1,7 @@
+import { pick } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks/use-toast";
@@ -175,7 +175,7 @@ export const useAdminSettings = <
   type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
   const values = useSelector(
     // Unjustified type cast. FIXME
-    (state) => _.pick(getSettings(state), ...settingNames) as Values,
+    (state) => pick(getSettings(state), settingNames) as Values,
     shallowEqual,
   );
 
@@ -183,7 +183,7 @@ export const useAdminSettings = <
   const details = useMemo(() => {
     // Unjustified type cast. FIXME
     return (
-      settingsDetails ? _.pick(settingsDetails, ...settingNames) : {}
+      settingsDetails ? pick(settingsDetails, settingNames) : {}
     ) as Details;
   }, [settingsDetails, settingNames]);
 

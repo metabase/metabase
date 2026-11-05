@@ -1,6 +1,6 @@
+import { uniq } from "es-toolkit";
 import { memo, useMemo, useRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   RTK_CACHE_KEY_PARAM,
@@ -138,7 +138,7 @@ function useDataSample({
       }),
       data: {
         ...data.data,
-        rows: _.uniq(data.data.rows).slice(0, PREVIEW_ROW_COUNT),
+        rows: uniq(data.data.rows).slice(0, PREVIEW_ROW_COUNT),
       },
     },
   ];

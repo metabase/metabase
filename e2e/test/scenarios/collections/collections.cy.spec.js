@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { produce } from "metabase/utils/immutable";
 
 const { H } = cy;
@@ -15,6 +13,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { times } from "metabase/utils/arrays";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -117,7 +116,7 @@ describe("scenarios > collection defaults", () => {
   describe("new collection modal", () => {
     it("should be usable on small screens", () => {
       const COLLECTIONS_COUNT = 5;
-      _.times(COLLECTIONS_COUNT, (index) => {
+      times(COLLECTIONS_COUNT, (index) => {
         cy.request("POST", "/api/collection", {
           name: `Collection ${index + 1}`,
           parent_id: null,
@@ -1267,7 +1266,7 @@ describe("scenarios > collection items listing", () => {
         name: "Quarterly revenue",
       });
       // Enough items to keep the search input and type filters visible.
-      _.times(10, (i) =>
+      times(10, (i) =>
         H.createQuestion({
           name: `Extra question ${i + 1}`,
           collection_position: null,
@@ -1366,7 +1365,7 @@ describe("scenarios > collection items listing", () => {
         query: TEST_QUESTION_QUERY,
       });
       // Enough items to keep the search input and type filters visible.
-      _.times(10, (i) =>
+      times(10, (i) =>
         H.createQuestion({
           name: `Extra question ${i + 1}`,
           collection_position: null,
@@ -1447,10 +1446,10 @@ describe("scenarios > collection items listing", () => {
       // so the test won't fail if we change the default database
       archiveAll();
 
-      _.times(ADDED_DASHBOARDS, (i) =>
+      times(ADDED_DASHBOARDS, (i) =>
         H.createDashboard({ name: `dashboard ${i}` }),
       );
-      _.times(ADDED_QUESTIONS, (i) =>
+      times(ADDED_QUESTIONS, (i) =>
         H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,

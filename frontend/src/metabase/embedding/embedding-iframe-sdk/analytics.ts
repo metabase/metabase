@@ -1,5 +1,5 @@
+import { debounce } from "es-toolkit";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { mergeDeep } from "metabase/utils/merge-deep";
 import type {
@@ -86,7 +86,7 @@ const SECOND = 1000;
 /**
  * Because the way it's designed to be consumed when each embed is being registered. There could be multiple embed in a page, so we want to debounce and only call this once.
  */
-export const debouncedReportAnalytics = _.debounce(
+export const debouncedReportAnalytics = debounce(
   reportAnalyticsOnce,
   1 * SECOND,
 );

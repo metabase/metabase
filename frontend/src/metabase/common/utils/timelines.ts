@@ -1,5 +1,5 @@
+import { sortBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   canonicalCollectionId,
@@ -85,12 +85,12 @@ export const getSortedTimelines = (
   timelines: Timeline[],
   collection?: Collection,
 ) => {
-  return _.chain(timelines)
-    .sortBy((timeline) => getTimelineName(timeline).toLowerCase())
-    .sortBy((timeline) => timeline.collection?.personal_owner_id != null) // personal collections last
-    .sortBy((timeline) => !timeline.default) // default timelines first
-    .sortBy((timeline) => timeline.collection?.id !== collection?.id) // timelines within the collection first
-    .value();
+  return sortBy(timelines, [
+    (timeline) => timeline.collection?.id !== collection?.id, // timelines within the collection first
+    (timeline) => !timeline.default, // default timelines first
+    (timeline) => timeline.collection?.personal_owner_id != null, // personal collections last
+    (timeline) => getTimelineName(timeline).toLowerCase(),
+  ]);
 };
 
 export const getEventCount = ({ events = [], archived }: Timeline) => {

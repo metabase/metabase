@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { Box } from "metabase/ui";
+import { times } from "metabase/utils/arrays";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
@@ -87,7 +87,7 @@ export function ParameterFieldWidget({
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
         )}
 
-        {_.times(numFields, (index) => {
+        {times(numFields, (index) => {
           const value = supportsMultipleValues
             ? unsavedValue
             : [unsavedValue[index]];

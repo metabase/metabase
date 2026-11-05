@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import { without } from "es-toolkit";
 
 import {
   setupDatabaseEndpoints,
@@ -67,7 +67,7 @@ describe("DatabaseDataActionsSection", () => {
     });
 
     it("isn't shown if database doesn't support actions", () => {
-      const features = _.without(COMMON_DATABASE_FEATURES, "actions");
+      const features = without(COMMON_DATABASE_FEATURES, "actions");
       setup({ database: createMockDatabase({ features }) });
 
       expect(screen.queryByText(/Data actions/i)).not.toBeInTheDocument();

@@ -160,7 +160,6 @@
     "ttag": "1.7.21",
     "typescript": "6.0.3",
     "typescript7": "npm:typescript@7.0.2",
-    "underscore": "^1.13.8",
     "url": "^0.11.4",
     "yup": "^0.32.11"
   },
@@ -244,7 +243,6 @@
     "@types/react-virtualized": "^9.22.2",
     "@types/redux-actions": "^2.6.5",
     "@types/semver": "^7.7.1",
-    "@types/underscore": "^1.13.0",
     "@typescript-eslint/eslint-plugin": "8.60.0",
     "@vitejs/plugin-react": "^6.0.2",
     "ajv": "^8.5.0",

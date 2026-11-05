@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -48,7 +48,7 @@ export const getIsTenantSpecificDirty = createSelector(
   (
     permissions: CollectionPermissions,
     originalPermissions: CollectionPermissions,
-  ) => !_.isEqual(permissions, originalPermissions),
+  ) => !isEqual(permissions, originalPermissions),
 );
 
 export const getCurrentTenantSpecificCollectionId = (
@@ -158,7 +158,7 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
       .map((group: GroupType) => {
         const isAdmin = isAdminGroup(group);
 
-        const defaultGroup = _.find(nonTenantGroups, isDefaultGroup);
+        const defaultGroup = nonTenantGroups.find(isDefaultGroup);
 
         const defaultGroupPermission = defaultGroup
           ? getTenantSpecificCollectionPermission(

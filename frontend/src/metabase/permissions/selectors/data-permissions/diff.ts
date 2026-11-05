@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -12,7 +12,7 @@ export const getIsDataPermissionsDirty = createSelector(
   (state: State) => state.admin.permissions.originalDataPermissions,
   (state: State) => state,
   (permissions, originalPermissions, state) =>
-    !_.isEqual(permissions, originalPermissions) ||
+    !isEqual(permissions, originalPermissions) ||
     PLUGIN_DATA_PERMISSIONS.hasChanges.some((hasChanges) => hasChanges(state)),
 );
 

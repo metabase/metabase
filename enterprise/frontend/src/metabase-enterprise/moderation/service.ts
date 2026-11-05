@@ -1,5 +1,4 @@
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
@@ -44,9 +43,7 @@ export function getRemovedReviewStatusIcon() {
 }
 
 export function getLatestModerationReview(reviews: ModerationReview[]) {
-  const maybeReview = _.findWhere(reviews, {
-    most_recent: true,
-  });
+  const maybeReview = reviews?.find((item) => item.most_recent === true);
   if (!maybeReview) {
     return undefined;
   }

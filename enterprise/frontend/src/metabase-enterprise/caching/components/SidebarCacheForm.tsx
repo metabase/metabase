@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
@@ -33,7 +32,7 @@ export const SidebarCacheForm = ({
   });
 
   const { savedStrategy } = useMemo(() => {
-    const targetConfig = _.findWhere(configs ?? [], { model_id: id });
+    const targetConfig = (configs ?? []).find((item) => item.model_id === id);
     const savedStrategy = targetConfig?.strategy;
     return { savedStrategy };
   }, [configs, id]);

@@ -1,9 +1,9 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { ComboboxItem } from "metabase/ui";
 import { isTransientId } from "metabase/utils/dashboard";
 import { stripId } from "metabase/utils/formatting";
+import { isEmpty } from "metabase/utils/objects";
 import { getSearchField } from "metabase-lib/v1/metadata/utils/remapping";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
@@ -149,9 +149,7 @@ export function hasList({
   disableSearch: boolean;
   options: FieldValue[];
 }) {
-  return (
-    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
-  );
+  return shouldList({ parameter, fields, disableSearch }) && !isEmpty(options);
 }
 
 // if this search is just an extension of the previous search, and the previous search

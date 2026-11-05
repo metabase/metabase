@@ -1,6 +1,6 @@
+import { noop } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";

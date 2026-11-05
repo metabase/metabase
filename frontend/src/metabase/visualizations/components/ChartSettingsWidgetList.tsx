@@ -1,11 +1,11 @@
-import _ from "underscore";
+import { sortBy } from "es-toolkit";
 
 import { Badge, Box } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 interface ChartSettingsWidgetListProps {
-  widgets: { id: string; group?: string }[];
+  widgets: { id: string; group?: string; index?: number }[];
   extraWidgetProps: Record<string, unknown>;
 }
 
@@ -20,14 +20,13 @@ const ChartSettingsWidgetList = ({
       <ChartSettingsWidget key={widget.id} {...widget} {...extraWidgetProps} />
     ));
   } else {
-    const groupedWidgets = widgets.reduce<Record<string, any[]>>(
-      (memo, widget) => {
-        const group = widget.group || "";
-        (memo[group] = memo[group] || []).push(widget);
-        return memo;
-      },
-      {},
-    );
+    const groupedWidgets = widgets.reduce<
+      Record<string, ChartSettingsWidgetListProps["widgets"]>
+    >((memo, widget) => {
+      const group = widget.group || "";
+      (memo[group] = memo[group] || []).push(widget);
+      return memo;
+    }, {});
 
     return Object.keys(groupedWidgets).map((group, groupIndex, groups) => {
       const lastGroup = groupIndex === groups.length - 1;
@@ -39,7 +38,7 @@ const ChartSettingsWidgetList = ({
             </Badge>
           )}
           <div>
-            {_.sortBy(groupedWidgets[group], "index").map((widget) => (
+            {sortBy(groupedWidgets[group], ["index"]).map((widget) => (
               <ChartSettingsWidget
                 key={widget.id}
                 {...widget}

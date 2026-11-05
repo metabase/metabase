@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import { once } from "es-toolkit";
 import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
-import { once } from "underscore";
 
 import { useToast } from "metabase/common/hooks";
 import {

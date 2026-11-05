@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   type VisualizationDefinition,
@@ -70,7 +69,7 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
         ],
         settings,
       ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
+        cols.find((col) => col.name === settings["scalar.field"]) || cols[0],
       ],
       readDependencies: ["scalar.field"],
     }),

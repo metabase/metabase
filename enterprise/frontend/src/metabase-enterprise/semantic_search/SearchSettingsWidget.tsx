@@ -1,6 +1,6 @@
+import { noop } from "es-toolkit";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
 import { getErrorMessage } from "metabase/api/utils";
@@ -91,7 +91,7 @@ export function SearchSettingsWidget({
                   inputType="boolean"
                   value={semanticSearchEnabled}
                   disabled
-                  onChange={_.noop}
+                  onChange={noop}
                 />
               </Box>
             </Tooltip>

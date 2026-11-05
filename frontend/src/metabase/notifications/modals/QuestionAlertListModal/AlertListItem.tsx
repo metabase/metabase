@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { keyBy } from "es-toolkit";
 import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { getUser } from "metabase/current-user";
 import {
@@ -164,7 +164,7 @@ const formatEmailHandlerInfo = (
     return null;
   }
 
-  const usersMap = _.indexBy(users, "id");
+  const usersMap = keyBy(users, (item) => item.id);
 
   const emailRecipients = emailHandler.recipients
     .map((recipient) => {

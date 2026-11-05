@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { pick } from "es-toolkit";
 import { useEffect } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Schedule } from "metabase/common/components/Schedule";
 import type { ScheduleValue } from "metabase/common/components/Schedule/domain";
@@ -172,13 +172,12 @@ export const AddEditEmailSidebar = ({
         />
         <Schedule
           mt="lg"
-          value={_.pick(
-            channel,
+          value={pick(channel, [
             "schedule_day",
             "schedule_frame",
             "schedule_hour",
             "schedule_type",
-          )}
+          ])}
           scheduleOptions={channelSpec.schedules}
           verb={t`Sent`}
           getDefaults={getScheduleDefaultsWithoutHour}

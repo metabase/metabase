@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import { sample } from "es-toolkit";
 import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
@@ -32,7 +32,7 @@ import S from "./MetabotGreeting.module.css";
 const SUGGESTED_PROMPTS_LIMIT = 4;
 
 const getTitleText = () => {
-  return _.sample([
+  return sample([
     t`What would you like to know?`,
     t`What do you want to explore?`,
     t`What are you looking to learn?`,

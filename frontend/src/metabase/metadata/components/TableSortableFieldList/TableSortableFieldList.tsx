@@ -1,5 +1,5 @@
+import { sortBy } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { SortableFieldList } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -16,7 +16,7 @@ export function TableSortableFieldList({
   onChange,
 }: TableSortableFieldListProps) {
   const fields = useMemo(() => {
-    return _.sortBy(table.fields ?? [], (item) => item.position);
+    return sortBy(table.fields ?? [], [(item) => item.position]);
   }, [table.fields]);
 
   return (

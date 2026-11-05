@@ -1,6 +1,6 @@
+import { uniq } from "es-toolkit";
 import type { JSX } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListPopularItemsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -46,7 +46,7 @@ export const HomePopularSection = (): JSX.Element => {
 };
 
 const getTitle = (popularItems: PopularItem[]) => {
-  const models = _.uniq(popularItems.map((item) => item.model));
+  const models = uniq(popularItems.map((item) => item.model));
 
   if (models.length !== 1) {
     return t`Here are some popular items`;

@@ -3,7 +3,7 @@ import {
   type UnknownAction,
   createReducer,
 } from "@reduxjs/toolkit";
-import { isBoolean } from "underscore";
+import { isBoolean } from "es-toolkit";
 
 import { collectionApi, databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";

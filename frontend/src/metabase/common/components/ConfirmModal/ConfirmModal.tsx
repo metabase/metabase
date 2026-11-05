@@ -1,6 +1,6 @@
+import { noop } from "es-toolkit";
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   Button,
@@ -28,7 +28,7 @@ export const ConfirmModal = ({
   content,
   message = t`Are you sure you want to do this?`,
   onClose,
-  onConfirm = _.noop,
+  onConfirm = noop,
   confirmButtonText = t`Yes`,
   confirmButtonProps = {},
   closeButtonText = t`Cancel`,

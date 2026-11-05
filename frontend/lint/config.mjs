@@ -295,7 +295,6 @@ const configs = [
         "error",
         {
           allowed: [
-            "underscore",
             "chalk",
             "node-fetch",
             "js-yaml",

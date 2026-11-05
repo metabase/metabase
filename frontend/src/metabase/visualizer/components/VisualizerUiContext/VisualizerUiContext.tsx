@@ -1,3 +1,4 @@
+import { noop } from "es-toolkit";
 import {
   type Dispatch,
   type ReactNode,
@@ -9,7 +10,6 @@ import {
   useState,
 } from "react";
 import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import { useSelector } from "metabase/redux";
 import { getDatasets } from "metabase/visualizer/selectors";
@@ -28,9 +28,9 @@ const VisualizerUiContext = createContext<VisualizerUiState>({
   isDataSidebarOpen: false,
   isVizSettingsSidebarOpen: false,
   isSwapAffordanceVisible: false,
-  setDataSidebarOpen: _.noop,
-  setVizSettingsSidebarOpen: _.noop,
-  setSwapAffordanceVisible: _.noop,
+  setDataSidebarOpen: noop,
+  setVizSettingsSidebarOpen: noop,
+  setSwapAffordanceVisible: noop,
 });
 
 interface VisualizerUiProviderProps {

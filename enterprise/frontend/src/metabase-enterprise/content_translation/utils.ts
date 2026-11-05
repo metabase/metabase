@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { useLocale } from "metabase/common/hooks";
 import type {
@@ -10,6 +9,7 @@ import type {
 import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type { DictionaryArray, RowValue } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -123,7 +123,7 @@ export const translateColumnDisplayName = ({
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
-  _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
+  isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
 
 /** Walk through obj and translate any display name fields */
 export const translateDisplayNames = <T>({

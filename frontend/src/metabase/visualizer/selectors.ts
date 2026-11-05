@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
@@ -264,7 +264,7 @@ export const getCurrentVisualizerState = getCurrentHistoryItem;
 export const getIsDirty = createSelector(
   [getFirstHistoryItem, getCurrentHistoryItem],
   (initialState, state) => {
-    return !!initialState && !_.isEqual(initialState, state);
+    return !!initialState && !isEqual(initialState, state);
   },
 );
 

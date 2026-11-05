@@ -1,5 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
+import { isEqual, pick } from "es-toolkit";
 import React, {
   type CSSProperties,
   type ComponentType,
@@ -12,7 +13,6 @@ import React, {
   forwardRef,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
@@ -77,6 +77,7 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
@@ -228,9 +229,8 @@ const isLoading = (series: Series | null) => {
   return !(
     series &&
     series.length > 0 &&
-    _.every(
-      series,
-      (s) => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
+    series.every(
+      (s) => !!s.data || isObject(s.card.visualization_settings.virtual_card),
     )
   );
 };
@@ -317,9 +317,9 @@ class Visualization extends PureComponent<
     // getDerivedStateFromProps does not have access to the last props, so
     if (
       !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
-      !_.isEqual(props.settings, state._lastProps?.settings) ||
-      !_.isEqual(props.timelineEvents, state._lastProps?.timelineEvents) ||
-      !_.isEqual(
+      !isEqual(props.settings, state._lastProps?.settings) ||
+      !isEqual(props.timelineEvents, state._lastProps?.timelineEvents) ||
+      !isEqual(
         props.selectedTimelineEventIds,
         state._lastProps?.selectedTimelineEventIds,
       ) ||
@@ -335,7 +335,7 @@ class Visualization extends PureComponent<
         warnings: [],
 
         // Store last properties to compare with the next call
-        _lastProps: _.pick(props, [
+        _lastProps: pick(props, [
           "rawSeries",
           "settings",
           "timelineEvents",
@@ -353,9 +353,7 @@ class Visualization extends PureComponent<
     prevProps: VisualizationProps,
     prevState: VisualizationState,
   ) {
-    if (
-      !_.isEqual(this.getWarnings(prevProps, prevState), this.getWarnings())
-    ) {
+    if (!isEqual(this.getWarnings(prevProps, prevState), this.getWarnings())) {
       this.updateWarnings();
     }
     if (prevState.visualization !== this.state.visualization) {
@@ -604,7 +602,7 @@ class Visualization extends PureComponent<
 
   onRender = ({ warnings = [] }: { warnings?: string[] } = {}) => {
     const currentWarnings = this.state.warnings;
-    if (!_.isEqual(currentWarnings, warnings)) {
+    if (!isEqual(currentWarnings, warnings)) {
       // using requestAnimationFrame to avoid setting state in render
       requestAnimationFrame(() => this.setState({ warnings }));
     }
@@ -791,7 +789,7 @@ class Visualization extends PureComponent<
     }
 
     if (!error && !genericError && series) {
-      noResults = _.every(series, (s) => s && s.data && hasNoResults(s.data));
+      noResults = series.every((s) => s && s.data && hasNoResults(s.data));
     }
 
     const extra = (
@@ -1055,39 +1053,42 @@ class Visualization extends PureComponent<
   }
 }
 
-// eslint-disable-next-line import/no-default-export
-export default _.compose(
-  connect(mapStateToProps),
-  ExplicitSize<VisualizationProps>({
+const ConnectedVisualization: ComponentType<VisualizationOwnProps> = connect(
+  mapStateToProps,
+)(
+  ExplicitSize<Omit<VisualizationProps, "forwardedRef">>({
     selector: ".CardVisualization",
     refreshMode: (props) => (props.isVisible ? "throttle" : "debounceLeading"),
-  }),
-)(
-  forwardRef<HTMLDivElement, VisualizationProps>(
-    function VisualizationForwardRef(props, ref) {
-      const display = props.rawSeries?.[0]?.card?.display;
-      const { loading: customVizLoading } =
-        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+  })(
+    forwardRef<HTMLDivElement, Omit<VisualizationProps, "forwardedRef">>(
+      function VisualizationForwardRef(props, ref) {
+        const display = props.rawSeries?.[0]?.card?.display;
+        const { loading: customVizLoading } =
+          PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
 
-      if (customVizLoading) {
-        if (props.customVizLoadingView) {
-          return <>{props.customVizLoadingView}</>;
+        if (customVizLoading) {
+          if (props.customVizLoadingView) {
+            return <>{props.customVizLoadingView}</>;
+          }
+
+          if (props.isDashboard) {
+            return (
+              <DashCardLoadingView
+                display="table"
+                expectedDuration={props.expectedDuration}
+                isSlow={props.isSlow}
+              />
+            );
+          }
+
+          return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
         }
 
-        if (props.isDashboard) {
-          return (
-            <DashCardLoadingView
-              display="table"
-              expectedDuration={props.expectedDuration}
-              isSlow={props.isSlow}
-            />
-          );
-        }
-
-        return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
-      }
-
-      return <Visualization {...props} forwardedRef={ref} />;
-    },
+        return <Visualization {...props} forwardedRef={ref} />;
+      },
+    ),
   ),
-) as ComponentType<VisualizationOwnProps>;
+);
+
+// eslint-disable-next-line import/no-default-export
+export default ConnectedVisualization;

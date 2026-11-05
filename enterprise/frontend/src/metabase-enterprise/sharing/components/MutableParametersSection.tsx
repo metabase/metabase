@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { getPulseParameters } from "metabase/pulse";
+import { isEmpty } from "metabase/utils/objects";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
@@ -83,7 +83,7 @@ export const MutableParametersSection = ({
     return getVisibleParameters(sortedParameters, hiddenParameters);
   }, [sortedParameters, hiddenParameters]);
 
-  return _.isEmpty(connectedParameters) ? null : (
+  return isEmpty(connectedParameters) ? null : (
     <CollapseSection
       header={<h4>{t`Set filter values for when this gets sent`}</h4>}
       className={cx(className)}

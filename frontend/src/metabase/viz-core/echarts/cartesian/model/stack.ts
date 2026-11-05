@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import { getObjectKeys } from "metabase/utils/objects";
 
@@ -18,16 +18,11 @@ export const getStackModels = (
     (seriesModel) => seriesModel.visible,
   );
 
-  const seriesModelsByDisplay = _.groupBy(
-    visibleSeriesModels,
-    (seriesModel) => {
-      const series = settings.series?.(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
+  const seriesModelsByDisplay = groupBy(visibleSeriesModels, (seriesModel) => {
+    const series = settings.series?.(seriesModel.legacySeriesSettingsObjectKey);
 
-      return series?.display ?? "no-display";
-    },
-  );
+    return series?.display ?? "no-display";
+  });
 
   return getObjectKeys(seriesModelsByDisplay)
     .filter((display) => display === "bar" || display === "area")

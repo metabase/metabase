@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { keyBy } from "es-toolkit";
 
 import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
 import type { CardQuestionBuilder } from "metabase/metadata-store";
@@ -105,10 +105,12 @@ export function getParametersMappedToCard(
 ): ParameterWithTarget[] {
   const { parameter_mappings } = dashcard;
   return (parameters || []).flatMap((parameter) => {
-    const mapping = _.findWhere(parameter_mappings || [], {
-      parameter_id: parameter.id,
-      card_id: card.id,
-    });
+    const mapping = (parameter_mappings || []).find(
+      (item) =>
+        item.parameter_id === parameter.id &&
+        "card_id" in item &&
+        item.card_id === card.id,
+    );
 
     if (!mapping) {
       return [];
@@ -132,7 +134,7 @@ export function remapParameterValuesToTemplateTags(
   parameterValuesByDashboardParameterId: Record<string, any>,
 ) {
   const parameterValues: Record<string, any> = {};
-  const templateTagParametersByName = _.indexBy(templateTags, "name");
+  const templateTagParametersByName = keyBy(templateTags, (item) => item.name);
 
   dashboardParameters.forEach((dashboardParameter) => {
     const { target } = dashboardParameter;

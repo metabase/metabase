@@ -4,6 +4,7 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import cx from "classnames";
+import { flowRight } from "es-toolkit";
 import type React from "react";
 import {
   type Ref,
@@ -15,7 +16,6 @@ import {
   useState,
 } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -897,7 +897,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 });
 
-export const TableInteractive = _.compose(
+export const TableInteractive = flowRight(
   withMantineTheme,
   ExplicitSize<TableProps>({
     refreshMode: "throttle",

@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -48,7 +47,7 @@ const SuggestionsList = ({
   suggestions: RelatedDashboardXRays;
 }) => (
   <Box component="ol" my="sm">
-    {_.keys(suggestions).map((s, index) => {
+    {Object.keys(suggestions).map((s, index) => {
       // Unjustified type cast. FIXME
       const suggestionKey = s as keyof RelatedDashboardXRays;
       const suggestionItem = suggestions[suggestionKey];

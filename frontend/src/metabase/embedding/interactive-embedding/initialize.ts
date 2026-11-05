@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
@@ -24,12 +24,12 @@ export function initializeInteractiveEmbedding(dispatch: Dispatch) {
         sendMessage({
           type: "location",
           // extract just the string properties from window.location
-          location: _.pick(location, (v) => typeof v === "string"),
+          location: getStringProperties(location),
         });
         currentHref = location.href;
       }
       const frame = getFrameSpec();
-      if (!_.isEqual(currentFrame, frame)) {
+      if (!isEqual(currentFrame, frame)) {
         sendMessage({ type: "frame", frame });
         currentFrame = frame;
       }
@@ -44,6 +44,18 @@ export function initializeInteractiveEmbedding(dispatch: Dispatch) {
     dispatch(setInitialUrlOptions(window.location));
   }
 }
+
+// we need inherited props too, like the old _.pick did
+const getStringProperties = (obj: Location): Record<string, string> => {
+  const result: Record<string, string> = {};
+  for (const key in obj) {
+    const value: unknown = Reflect.get(obj, key);
+    if (typeof value === "string") {
+      result[key] = value;
+    }
+  }
+  return result;
+};
 
 /**
  * The location synced from the parent frame is the iframe's `window.location`,

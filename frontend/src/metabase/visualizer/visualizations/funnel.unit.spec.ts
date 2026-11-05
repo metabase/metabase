@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { clone } from "es-toolkit";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import {
@@ -380,8 +380,8 @@ describe("funnel", () => {
       };
 
       it("should reset state when removing a metric column", () => {
-        const state = _.clone(initialState);
-        const settings = _.clone(initialState.settings);
+        const state = clone(initialState);
+        const settings = clone(initialState.settings);
 
         removeColumnFromFunnel(state, settings, "METRIC");
 
@@ -391,8 +391,8 @@ describe("funnel", () => {
       });
 
       it("should reset state when removing a dimension column", () => {
-        const state = _.clone(initialState);
-        const settings = _.clone(initialState.settings);
+        const state = clone(initialState);
+        const settings = clone(initialState.settings);
 
         removeColumnFromFunnel(state, settings, "DIMENSION");
 
@@ -402,8 +402,8 @@ describe("funnel", () => {
       });
 
       it("should remove a funnel step", () => {
-        const state = _.clone(initialState);
-        const settings = _.clone(initialState.settings);
+        const state = clone(initialState);
+        const settings = clone(initialState.settings);
 
         removeColumnFromFunnel(state, settings, "COLUMN_2");
 
@@ -681,7 +681,7 @@ describe("funnel", () => {
       });
 
       it("should add a scalar dataset to an existing scalar funnel", () => {
-        const state = _.clone(initialState);
+        const state = clone(initialState);
 
         combineWithFunnel(state, initialSettings, scalarDataset2, dataSource2);
 
@@ -707,7 +707,7 @@ describe("funnel", () => {
       });
 
       it("should do nothing if the dataset isn't compatible", () => {
-        const state = _.clone(initialState);
+        const state = clone(initialState);
 
         combineWithFunnel(
           state,

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { compact } from "es-toolkit";
 
 import { setupListDatabaseSchemasEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -54,7 +54,7 @@ const setup = async ({
     settings: mockSettings(createMockSettings()),
     entities: createMockEntitiesState({
       databases: [database],
-      questions: _.compact([card, sourceCard]),
+      questions: compact([card, sourceCard]),
     }),
   });
 

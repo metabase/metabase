@@ -1,8 +1,7 @@
-import _ from "underscore";
-
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { uniqueId } from "metabase/utils/unique-id";
 
 const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -259,7 +258,7 @@ function extractColumnAndCheck({
   example?: string;
   newColumn?: string;
 }) {
-  const requestAlias = _.uniqueId("dataset");
+  const requestAlias = uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   cy.findByLabelText("Add column").click();
 
@@ -303,7 +302,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
     newColumn: string;
     newValue?: string;
   }) {
-    const requestAlias = _.uniqueId("dataset");
+    const requestAlias = uniqueId("dataset");
     cy.intercept("POST", "/api/dataset").as(requestAlias);
     cy.findByLabelText("Add column").click();
 

@@ -3,7 +3,7 @@ import {
   asyncThunkCreator,
   buildCreateSlice,
 } from "@reduxjs/toolkit";
-import { compose, pick } from "underscore";
+import { flowRight, pick } from "es-toolkit";
 
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
@@ -86,9 +86,12 @@ const interactiveEmbedSlice = createSlice({
   }),
 });
 
-const normalizeProperties = compose(normalizeEntityTypes, normalizeDataPicker);
+const normalizeProperties = flowRight(
+  normalizeEntityTypes,
+  normalizeDataPicker,
+);
 
-const processSearch = compose(
+const processSearch = flowRight(
   normalizeProperties,
   excludeNonInteractiveEmbeddingOptions,
   parseSearchOptions,

@@ -1,4 +1,4 @@
-import { noop } from "underscore";
+import { noop } from "es-toolkit";
 
 import { delay as duration } from "metabase/utils/delay";
 

@@ -1,5 +1,4 @@
 import { type ComponentType, useState } from "react";
-import _ from "underscore";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { GenericError } from "metabase/common/components/ErrorPages";
@@ -24,6 +23,7 @@ import type {
   DatabaseEditErrorType,
   DatabaseId,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { saveDatabase } from "../database";
 
@@ -115,7 +115,7 @@ export const DatabaseEditConnectionForm = ({
 };
 
 const getSubmitError = (error: DatabaseEditErrorType) => {
-  if (_.isObject(error?.data?.errors)) {
+  if (isObject(error?.data?.errors)) {
     return {
       ...error,
       data: { ...error.data, errors: { details: error.data.errors } },

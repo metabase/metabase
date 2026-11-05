@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
@@ -25,5 +25,5 @@ export const editDashboardCard = (
  * @param card - "Old", or the existing dashboard card.
  */
 function sanitizeCard(card: DashboardCard) {
-  return _.omit(card, ["created_at", "updated_at"]);
+  return omit(card, ["created_at", "updated_at"]);
 }

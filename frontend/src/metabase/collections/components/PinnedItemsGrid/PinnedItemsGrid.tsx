@@ -1,5 +1,5 @@
+import { sortBy } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { PinnedItemSortDropTarget } from "metabase/collections/components/PinnedItemSortDropTarget";
@@ -71,7 +71,7 @@ export function PinnedItemsGrid({
 
   const sortedItems = useMemo(() => {
     const items = pinnedItemsData?.data ?? [];
-    return _.sortBy(items, (item) => item.collection_position);
+    return sortBy(items, [(item) => item.collection_position]);
   }, [pinnedItemsData]);
 
   if (sortedItems.length === 0) {

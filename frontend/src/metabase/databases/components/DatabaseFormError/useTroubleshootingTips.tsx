@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { identity } from "es-toolkit";
 import { useMemo } from "react";
 import { c, t } from "ttag";
-import { identity } from "underscore";
 
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";

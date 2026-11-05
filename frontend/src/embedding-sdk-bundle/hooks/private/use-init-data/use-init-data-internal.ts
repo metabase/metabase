@@ -1,6 +1,6 @@
+import { once } from "es-toolkit";
 import { useEffect, useSyncExternalStore } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import {
   isHostReactVersionSupported,
@@ -51,14 +51,14 @@ const sdkResponseErrorHandler = ({
     );
 };
 
-const registerVisualizationsOnce = _.once(registerVisualizations);
-const registerDashboardVisualizationsOnce = _.once(
+const registerVisualizationsOnce = once(registerVisualizations);
+const registerDashboardVisualizationsOnce = once(
   registerDashboardVisualizations,
 );
 
 // Install the SDK's request-client header strategy once; re-renders keep the
 // first-set client (matching the previous set-once-if-unset behaviour).
-const setSdkRequestClientHeadersOnce = _.once(
+const setSdkRequestClientHeadersOnce = once(
   (requestClient: RequestClientInfo) => {
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
       setRequestClientHeaders(requestClient);

@@ -1,4 +1,4 @@
-import { isSerializable, sortObject } from "./objects";
+import { isEmpty, isSerializable, sortObject } from "./objects";
 
 describe("isSerializable", () => {
   describe("primitive values", () => {
@@ -279,5 +279,55 @@ describe("sortObject", () => {
     expect(JSON.stringify(sortObject(o1))).toEqual(
       JSON.stringify(sortObject(o2)),
     );
+  });
+});
+
+describe("isEmpty", () => {
+  it("treats null and undefined as empty", () => {
+    expect(isEmpty(null)).toBe(true);
+    expect(isEmpty(undefined)).toBe(true);
+  });
+
+  it("checks the length of arrays and strings", () => {
+    expect(isEmpty([])).toBe(true);
+    expect(isEmpty([undefined])).toBe(false);
+    expect(isEmpty(new Array(3))).toBe(false);
+    expect(isEmpty("")).toBe(true);
+    expect(isEmpty("a")).toBe(false);
+  });
+
+  it("checks the length of arguments objects", () => {
+    function getArguments(..._args: unknown[]) {
+      return arguments;
+    }
+    expect(isEmpty(getArguments())).toBe(true);
+    expect(isEmpty(getArguments(1))).toBe(false);
+  });
+
+  it("checks own enumerable keys of objects", () => {
+    expect(isEmpty({})).toBe(true);
+    expect(isEmpty({ a: undefined })).toBe(false);
+    expect(isEmpty(Object.create({ inherited: 1 }))).toBe(true);
+  });
+
+  it("treats Maps and Sets as empty whatever their size", () => {
+    expect(isEmpty(new Map([["a", 1]]))).toBe(true);
+    expect(isEmpty(new Set([1]))).toBe(true);
+  });
+
+  it("checks own enumerable keys of functions and class instances", () => {
+    const fn = Object.assign(() => undefined, { a: 1 });
+    class Box {
+      value = 1;
+    }
+    expect(isEmpty(() => undefined)).toBe(true);
+    expect(isEmpty(fn)).toBe(false);
+    expect(isEmpty(new Box())).toBe(false);
+  });
+
+  it("treats numbers and booleans as empty", () => {
+    expect(isEmpty(0)).toBe(true);
+    expect(isEmpty(1)).toBe(true);
+    expect(isEmpty(true)).toBe(true);
   });
 });

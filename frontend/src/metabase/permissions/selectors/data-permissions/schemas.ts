@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { compact, isEqual } from "es-toolkit";
 
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -83,7 +83,7 @@ const buildAccessPermission = (
     DATA_PERMISSION_OPTIONS.controlled,
   ];
   const options = PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions(
-    _.compact([
+    compact([
       ...baseOptions,
       originalAccessPermissionValue ===
         DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
@@ -93,7 +93,7 @@ const buildAccessPermission = (
   );
 
   // remove granular in the cases we can't provide configurability for schemas/tables
-  const shouldRemoveGranularOption = _.isEqual(options, baseOptions);
+  const shouldRemoveGranularOption = isEqual(options, baseOptions);
   if (shouldRemoveGranularOption) {
     options.pop();
   }
@@ -242,7 +242,7 @@ export const buildSchemasPermissions = ({
   const shouldShowViewDataColumn =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn && hasAnyAccessOptions;
 
-  return _.compact([
+  return compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({

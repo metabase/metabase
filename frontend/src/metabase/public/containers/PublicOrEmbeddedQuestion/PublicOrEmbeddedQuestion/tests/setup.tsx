@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPublicCardQueryEndpoints,
@@ -14,6 +12,7 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
+import { isEmpty } from "metabase/utils/objects";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { PublicCard, TokenFeatures } from "metabase-types/api";
 import {
@@ -109,7 +108,7 @@ export async function setup(
     {
       storeInitialState: createMockState({ settings }),
       withRouter: true,
-      initialRoute: `public/question/${uuid}${_.isEmpty(search) ? "" : `?${new URLSearchParams(search)}`}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
+      initialRoute: `public/question/${uuid}${isEmpty(search) ? "" : `?${new URLSearchParams(search)}`}${isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
     },
   );
   expect(await screen.findByText(questionName)).toBeInTheDocument();

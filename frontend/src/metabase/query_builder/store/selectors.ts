@@ -1,7 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
+import { isEqual } from "es-toolkit";
 import { shallowEqual } from "react-redux";
-import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
@@ -509,7 +509,7 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableFieldIds,
   ) => {
-    const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
+    const haveParametersChanged = !isEqual(lastParameters, nextParameters);
     const isEditable =
       !!currentQuestion &&
       Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
@@ -715,7 +715,7 @@ function areRawSeriesEqual(a: Series | null, b: Series | null) {
     shallowEqual(cardRestA, cardRestB) &&
     shallowEqual(settingsA, settingsB) &&
     // applyTemplateTagParameters creates completely new parameters - we need deep equality here
-    _.isEqual(parametersA, parametersB)
+    isEqual(parametersA, parametersB)
   );
 }
 

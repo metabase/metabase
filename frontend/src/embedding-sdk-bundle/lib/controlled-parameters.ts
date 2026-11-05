@@ -1,4 +1,4 @@
-import { pick } from "underscore";
+import { pick } from "es-toolkit";
 
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";

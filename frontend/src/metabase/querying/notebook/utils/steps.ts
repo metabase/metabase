@@ -1,6 +1,5 @@
-import _ from "underscore";
-
 import { hasFeature, supportsJoins } from "metabase/databases";
+import { times } from "metabase/utils/arrays";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -301,8 +300,9 @@ function getStageSteps(
   const steps = STEPS.flatMap((STEP) => {
     if (STEP.subSteps) {
       // add 1 for the initial or next action button
-      const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
-      return itemIndexes.map((itemIndex) => getStep(STEP, itemIndex));
+      return times(STEP.subSteps(query, stageIndex) + 1, (itemIndex) =>
+        getStep(STEP, itemIndex),
+      );
     }
 
     return [getStep(STEP)];

@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
@@ -27,7 +26,9 @@ export const SidebarCacheSection = ({
 
   const targetConfig = useMemo(() => {
     const id = getItemId(model, item);
-    return _.findWhere(configs ?? [], { model, model_id: id });
+    return (configs ?? []).find(
+      (item) => item.model === model && item.model_id === id,
+    );
   }, [configs, model, item]);
   const savedStrategy = targetConfig?.strategy;
 

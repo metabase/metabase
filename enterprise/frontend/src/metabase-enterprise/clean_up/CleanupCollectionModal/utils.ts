@@ -1,5 +1,4 @@
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
 
@@ -74,7 +73,7 @@ export type DateFilterOption = {
 export type DateFilterOptions = DateFilterOption[];
 
 const getDateFiltersMap = () =>
-  _.object(
+  Object.fromEntries(
     getDateFilterOptions().map<[DateFilter, DateFilterOption]>((option) => [
       option.value,
       option,

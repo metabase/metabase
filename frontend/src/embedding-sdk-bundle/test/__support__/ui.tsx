@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import _ from "underscore";
+import { pickBy } from "es-toolkit";
 
 import { getStore } from "__support__/entities-store";
 import {
@@ -47,9 +47,9 @@ export function renderWithSDKProviders(
     createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
-  initialState = _.pick(
+  initialState = pickBy(
     { sdk: createMockSdkState(), ...initialState },
-    ...sdkReducerNames,
+    (_value, key) => sdkReducerNames.includes(key),
   );
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.

@@ -1,5 +1,4 @@
 import { Component, type ComponentType } from "react";
-import _ from "underscore";
 
 import {
   type ComputedVisualizationSettings,
@@ -161,8 +160,7 @@ export const chartSettingNestedSettings = <T,>(
         this.props;
       const editingObjectKey = this.getEditingObjectKey();
       if (editingObjectKey !== undefined) {
-        const editingObject = _.find(
-          objects,
+        const editingObject = objects.find(
           (o) => getObjectKey(o) === editingObjectKey,
         );
         if (editingObject) {

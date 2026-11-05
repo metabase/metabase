@@ -1,7 +1,7 @@
 import type { SortingState } from "@tanstack/react-table";
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { PerformancePageContent } from "metabase/admin/performance/components/PerformancePageContent";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
@@ -69,7 +69,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
   });
 
   const rootStrategy =
-    _.findWhere(configs ?? [], { model_id: rootId })?.strategy ??
+    (configs ?? []).find((item) => item.model_id === rootId)?.strategy ??
     defaultRootStrategy;
 
   const allRows: ItemRow[] = useMemo(() => {
@@ -85,7 +85,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
         }).name,
         collection: config.collection ?? null,
         policyLabel: getShortStrategyLabel(config.strategy) ?? null,
-        usesDefaultPolicy: _.isEqual(config.strategy, rootStrategy),
+        usesDefaultPolicy: isEqual(config.strategy, rootStrategy),
       }));
   }, [configs, rootStrategy, getIcon]);
 
@@ -143,10 +143,10 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
 
   const targetConfig =
     configs && targetModel
-      ? _.findWhere(configs, {
-          model_id: targetId ?? undefined,
-          model: targetModel,
-        })
+      ? configs.find(
+          (config) =>
+            config.model_id === targetId && config.model === targetModel,
+        )
       : undefined;
 
   const savedStrategy = targetConfig?.strategy;

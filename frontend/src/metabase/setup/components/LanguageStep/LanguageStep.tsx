@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { type JSX, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import CS from "metabase/css/core/index.css";
@@ -9,6 +8,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type { Locale } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Stack } from "metabase/ui";
+import { uniqueId } from "metabase/utils/unique-id";
 
 import { useStep } from "../..//useStep";
 import { goToNextStep, updateLocale } from "../../actions";
@@ -24,7 +24,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("language");
   const locale = useSelector(getLocale);
   const localeData = useSetting("available-locales");
-  const fieldId = useMemo(() => _.uniqueId(), []);
+  const fieldId = useMemo(() => uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
   const dispatch = useDispatch();
 

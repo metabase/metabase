@@ -6,7 +6,6 @@ import {
   type RefObject,
   createRef,
 } from "react";
-import _ from "underscore";
 
 import { Box } from "metabase/ui";
 
@@ -73,7 +72,7 @@ export class AccordionList<
     }
     // otherwise try to find the selected section, if any
     if (openSection === undefined) {
-      openSection = _.findIndex(props.sections, (section, index) =>
+      openSection = props.sections.findIndex((section, index) =>
         this.sectionIsSelected(section, index),
       );
       if (openSection === -1) {
@@ -149,7 +148,7 @@ export class AccordionList<
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
       if (
-        _.some(sections[i]?.items ?? [], (item) =>
+        (sections[i]?.items ?? []).some((item) =>
           Boolean(itemIsSelected?.(item, i)),
         )
       ) {

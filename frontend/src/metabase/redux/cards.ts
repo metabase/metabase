@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
@@ -63,12 +61,19 @@ const WRITABLE_CARD_PROPERTIES = [
 // it tells the backend the new card is a copy of an existing one.
 const CREATE_ONLY_CARD_PROPERTIES = ["source_card_id"] as const;
 
-const pickWritable = (card: object, extraProperties: readonly string[] = []) =>
-  // Unjustified type cast. FIXME
-  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES, ...extraProperties) as Record<
-    string,
-    unknown
-  >;
+const pickWritable = (
+  card: object,
+  extraProperties: readonly string[] = [],
+): Record<string, unknown> => {
+  const writableKeys = new Set<string>([
+    "id",
+    ...WRITABLE_CARD_PROPERTIES,
+    ...extraProperties,
+  ]);
+  return Object.fromEntries(
+    Object.entries(card).filter(([key]) => writableKeys.has(key)),
+  );
+};
 
 /**
  * Creates a card and notifies the retired-entity reducers. Replaces

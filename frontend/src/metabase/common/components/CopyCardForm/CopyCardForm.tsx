@@ -1,6 +1,6 @@
+import { isString } from "es-toolkit";
 import { useMemo } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { FormCollectionAndDashboardPicker } from "metabase/common/collections/containers/FormCollectionAndDashboardPicker";
@@ -85,7 +85,7 @@ export const CopyCardForm = ({
   }, [initialValues, model]);
 
   const handleDuplicate = async (vals: CopyCardProperties) => {
-    const dashboardTabId = _.isString(vals.dashboard_tab_id)
+    const dashboardTabId = isString(vals.dashboard_tab_id)
       ? parseInt(vals.dashboard_tab_id, 10)
       : vals.dashboard_tab_id;
 

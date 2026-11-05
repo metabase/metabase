@@ -3,7 +3,7 @@ import {
   createAsyncThunk,
   createSlice,
 } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
@@ -28,7 +28,7 @@ let nextDraftCardId = -1;
 export const loadMetadataForDocumentCard = createAsyncThunk(
   "documents/loadMetadataForDocumentCard",
   async (card: Card, { dispatch }) => {
-    const cardForMetadata = card.id < 0 ? _.omit(card, "id") : card;
+    const cardForMetadata = card.id < 0 ? omit(card, ["id"]) : card;
     await dispatch(loadMetadataForCard(cardForMetadata));
   },
 );

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
@@ -210,7 +210,7 @@ export function getParameterMappings<DC extends DashboardCard>(
       // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
       // can only be mapped to a single parameter.
       parameter_mappings = parameter_mappings.filter(
-        (m) => !_.isEqual(m.target, target),
+        (m) => !isEqual(m.target, target),
       );
     }
 

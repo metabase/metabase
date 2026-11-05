@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
@@ -28,11 +28,13 @@ export const ParameterTargetList = ({
   maxHeight,
   onChange,
 }: ParameterTargetListProps) => {
-  const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
+  const mappingOptionSections = groupBy(mappingOptions, (option) =>
+    isStructuredQuerySectionOption(option) ? option.sectionName : "",
+  );
 
-  const hasForeignOption = _.any(mappingOptions, (o) => !!o.isForeign);
+  const hasForeignOption = mappingOptions.some((o) => !!o.isForeign);
 
-  const sections = _.map(mappingOptionSections, (options) => {
+  const sections = Object.values(mappingOptionSections).map((options) => {
     let sectionName = "";
     const firstOption = options[0];
 

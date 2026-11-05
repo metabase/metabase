@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -12,6 +12,7 @@ import type {
   DashCardId,
   ParameterId,
   UpdateCardRequest,
+  UpdateDashboardRequest,
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
@@ -28,6 +29,12 @@ import {
 } from "./utils";
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
+
+// the store keeps dashcard ids, not dashcards, so we never send them from here
+type DashboardAttributeName = Exclude<
+  keyof UpdateDashboardRequest & keyof StoreDashboard,
+  "id" | "dashcards"
+>;
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
@@ -148,7 +155,7 @@ export const updateDashboardAndCards = createThunkAction(
 
             return (
               dc.card_id === mappedCardId ||
-              _.findWhere(dc.series ?? [], { id: mappedCardId })
+              (dc.series ?? []).find((item) => item.id === mappedCardId)
             );
           },
         );
@@ -256,7 +263,7 @@ export const updateDashboardAndCards = createThunkAction(
 
 export const updateDashboard = createThunkAction(
   UPDATE_DASHBOARD,
-  function ({ attributeNames }: { attributeNames: string[] }) {
+  function ({ attributeNames }: { attributeNames: DashboardAttributeName[] }) {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
@@ -273,7 +280,7 @@ export const updateDashboard = createThunkAction(
       }
 
       if (attributeNames.length > 0) {
-        const attributes = _.pick(dashboard, attributeNames);
+        const attributes = pick(dashboard, attributeNames);
 
         await runRtkEndpoint(
           { id: dashboardId, ...attributes },

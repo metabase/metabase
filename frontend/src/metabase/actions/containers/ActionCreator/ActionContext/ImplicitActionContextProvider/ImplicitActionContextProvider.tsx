@@ -1,6 +1,6 @@
+import { isEqual, noop } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
 import { Stack, Title } from "metabase/ui";
@@ -46,7 +46,7 @@ export function ImplicitActionContextProvider({
   );
 
   const canSave = useMemo(() => {
-    return !_.isEqual(
+    return !isEqual(
       getDefaultFormSettings(formSettings),
       getDefaultFormSettings(initialAction?.visualization_settings),
     );
@@ -64,7 +64,7 @@ export function ImplicitActionContextProvider({
         canChangeFieldSettings: false,
       },
       handleFormSettingsChange,
-      handleActionChange: _.noop,
+      handleActionChange: noop,
       renderEditorBody: EditorBody,
     }),
     [initialAction, formSettings, canSave, handleFormSettingsChange],

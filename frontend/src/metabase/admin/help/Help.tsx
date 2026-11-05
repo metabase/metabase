@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
@@ -24,7 +23,8 @@ import { getBasename } from "metabase/utils/basename";
 import S from "./help.module.css";
 
 function navigatorInfo() {
-  return _.pick(navigator, "language", "platform", "userAgent", "vendor");
+  const { language, platform, userAgent, vendor } = navigator;
+  return { language, platform, userAgent, vendor };
 }
 
 // Returns an external-link URL (not an API call) so it goes through `basename`

@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
-import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { Location } from "metabase/router";
@@ -121,7 +121,7 @@ export function useUrlState<State extends BaseState>(
     const nextState = parse(parseSearchQuery(location.search));
     // compare against the last state written to the URL rather than `state`, so
     // a patch still waiting out the debounce is not reverted.
-    if (!_.isEqual(serialize(nextState), serialize(urlStateRef.current))) {
+    if (!isEqual(serialize(nextState), serialize(urlStateRef.current))) {
       patchUrlState(nextState, { immediate: true });
     }
   }, [location.search, parse, serialize, urlStateRef, patchUrlState]);

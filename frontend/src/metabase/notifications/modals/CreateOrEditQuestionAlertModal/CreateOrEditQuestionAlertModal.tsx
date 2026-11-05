@@ -1,7 +1,7 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
-import { isEqual } from "underscore";
 
 import {
   useCreateNotificationMutation,

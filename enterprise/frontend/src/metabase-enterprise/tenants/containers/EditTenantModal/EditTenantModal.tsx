@@ -1,6 +1,6 @@
+import { omit, pick } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -25,14 +25,14 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
 
   const tenantId = params.tenantId ? parseInt(params.tenantId, 10) : undefined;
   const {
-    data: tenant = {},
+    data: tenant,
     isLoading,
     error,
   } = useGetTenantQuery(tenantId ?? skipToken);
   const [updateTenant] = useUpdateTenantMutation();
 
   const initialValues = useMemo(
-    () => _.pick(tenant, ["id", "name", "slug", "attributes"]),
+    () => (tenant ? pick(tenant, ["id", "name", "slug", "attributes"]) : {}),
     [tenant],
   );
 
@@ -40,7 +40,7 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
     if (typeof vals.id !== "number") {
       throw new Error("tenant should have an id");
     }
-    const tenant = _.omit({ ...vals, id: vals.id ?? 0 }, "slug");
+    const tenant = omit({ ...vals, id: vals.id ?? 0 }, ["slug"]);
 
     await updateTenant(tenant).unwrap();
     sendToast({ message: t`Tenant update successful` });

@@ -1,7 +1,7 @@
+import { isEqual } from "es-toolkit";
 import { type FormikErrors, useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListEnginesQuery, useValidateDatabaseMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -95,7 +95,7 @@ export const DatabaseTestConnectionButton = () => {
     () => getValidateRequest(engines, values),
     [engines, values],
   );
-  const result = _.isEqual(originalArgs, request)
+  const result = isEqual(originalArgs, request)
     ? getTestResult(data, error)
     : null;
 

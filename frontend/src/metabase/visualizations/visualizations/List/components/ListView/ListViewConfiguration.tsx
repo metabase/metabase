@@ -10,7 +10,6 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import { defaults } from "underscore";
 
 import {
   ReorderableTagsInput,
@@ -174,17 +173,20 @@ export const ListViewConfiguration = ({
       entityIconEnabled !== undefined ||
       useImageColumn !== undefined;
     if (hasIconConfigChange) {
-      setIconConfig((prev) =>
-        defaults(
-          {
-            selectedEntityIcon: entityIcon,
-            selectedIconColor: entityIconColor,
-            entityIconEnabled,
-            useImageColumn,
-          },
-          prev,
-        ),
-      );
+      setIconConfig((prev) => ({
+        selectedEntityIcon:
+          entityIcon === undefined ? prev.selectedEntityIcon : entityIcon,
+        selectedIconColor:
+          entityIconColor === undefined
+            ? prev.selectedIconColor
+            : entityIconColor,
+        entityIconEnabled:
+          entityIconEnabled === undefined
+            ? prev.entityIconEnabled
+            : entityIconEnabled,
+        useImageColumn:
+          useImageColumn === undefined ? prev.useImageColumn : useImageColumn,
+      }));
     }
     onChange({
       left,

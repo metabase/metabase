@@ -1,5 +1,5 @@
+import { noop } from "es-toolkit";
 import { createContext, useContext } from "react";
-import _ from "underscore";
 
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
@@ -31,8 +31,8 @@ export const ActionContext = createContext<ActionContextType>({
     canRename: true,
     canChangeFieldSettings: true,
   },
-  handleActionChange: _.noop,
-  handleFormSettingsChange: _.noop,
+  handleActionChange: noop,
+  handleFormSettingsChange: noop,
   renderEditorBody: () => null,
 });
 

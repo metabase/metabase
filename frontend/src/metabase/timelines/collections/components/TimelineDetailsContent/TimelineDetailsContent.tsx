@@ -1,7 +1,7 @@
+import { sortBy } from "es-toolkit";
 import { type ChangeEventHandler, type JSX, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -93,15 +93,14 @@ const getEvents = (
   searchText: string,
   isArchive: boolean,
 ) => {
-  const chain = searchText
-    ? _.chain(events).filter((e) => isEventMatch(e, searchText))
-    : _.chain(events);
+  const matchingEvents = searchText
+    ? events.filter((e) => isEventMatch(e, searchText))
+    : events;
 
-  return chain
-    .filter((e) => e.archived === isArchive)
-    .sortBy((e) => parseTimestamp(e.timestamp))
-    .reverse()
-    .value();
+  return sortBy(
+    matchingEvents.filter((e) => e.archived === isArchive),
+    [(e) => parseTimestamp(e.timestamp)],
+  ).reverse();
 };
 
 const isEventMatch = (event: TimelineEvent, searchText: string) => {

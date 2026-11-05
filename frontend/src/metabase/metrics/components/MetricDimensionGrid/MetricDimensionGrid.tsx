@@ -1,7 +1,7 @@
 import { useIntersection } from "@mantine/hooks";
+import { noop } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import {
@@ -181,7 +181,7 @@ function MetricDimensionCard({
               rawSeries={rawSeries}
               isQueryBuilder={false}
               hideLegend
-              onChangeCardAndRun={_.noop}
+              onChangeCardAndRun={noop}
               isMetricsViewer
             />
           ) : (

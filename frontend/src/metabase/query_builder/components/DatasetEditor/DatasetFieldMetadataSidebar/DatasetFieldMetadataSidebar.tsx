@@ -1,3 +1,4 @@
+import { debounce, noop } from "es-toolkit";
 import {
   type ChangeEvent,
   type KeyboardEventHandler,
@@ -9,7 +10,6 @@ import {
   useState,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
@@ -217,7 +217,7 @@ function DatasetFieldMetadataSidebarInner({
     );
 
   const onFieldMetadataChangeDebounced = useMemo(
-    () => _.debounce(onFieldMetadataChange, 500),
+    () => debounce(onFieldMetadataChange, 500),
     [onFieldMetadataChange],
   );
 
@@ -277,7 +277,7 @@ function DatasetFieldMetadataSidebarInner({
       <FormProvider<FieldMetadataFormValues>
         initialValues={initialValues}
         enableReinitialize
-        onSubmit={_.noop}
+        onSubmit={noop}
       >
         {({ values: formFieldValues }) => {
           return (

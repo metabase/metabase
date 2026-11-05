@@ -1,5 +1,5 @@
+import { groupBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -69,7 +69,7 @@ function LoginHistoryList({
   loginHistory?: UserLoginHistoryItem[];
 }) {
   const items = formatItems(loginHistory);
-  const groups = _.groupBy(items, (item) => item.date);
+  const groups = groupBy(items, (item) => item.date);
 
   if (!items || !items.length) {
     return (
@@ -82,7 +82,7 @@ function LoginHistoryList({
 
   return (
     <Stack gap="lg">
-      {_.map(groups, (items, date) => (
+      {Object.entries(groups).map(([date, items]) => (
         <LoginHistoryGroup items={items} date={date} key={date} />
       ))}
     </Stack>

@@ -1,4 +1,5 @@
 import type { Cell, Row, Table } from "@tanstack/react-table";
+import { isEqual, noop } from "es-toolkit";
 import {
   type RefObject,
   useCallback,
@@ -6,16 +7,15 @@ import {
   useMemo,
   useState,
 } from "react";
-import _ from "underscore";
 
 import type { CellId, DataGridSelection, ScrollToDestinations } from "../types";
 import { formatCellValueForCopy } from "../utils/formatting";
 
 const noopHandlers: DataGridSelection["handlers"] = {
-  handleCellMouseDown: _.noop,
-  handleCellMouseUp: _.noop,
-  handleCellMouseOver: _.noop,
-  handleCellDoubleClick: _.noop,
+  handleCellMouseDown: noop,
+  handleCellMouseUp: noop,
+  handleCellMouseOver: noop,
+  handleCellDoubleClick: noop,
 };
 
 type CellsMap = Record<string, CellId[]>;
@@ -248,7 +248,7 @@ export const useCellSelection = ({
 
   const handleCellMouseDown = useCallback(
     (e: React.MouseEvent<HTMLElement>, cell: Cell<any, any>) => {
-      if (!_.isEqual(focusedCell, getCellSelectionData(cell))) {
+      if (!isEqual(focusedCell, getCellSelectionData(cell))) {
         setFocusedCell(null);
       }
 

@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { useEffect, useMemo, useRef } from "react";
-import _ from "underscore";
 
 import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
@@ -25,7 +25,7 @@ export function useQueryMetadata(question: Question) {
       undefined,
       question.type(),
     );
-    if (!_.isEqual(dependencies, dependenciesRef.current)) {
+    if (!isEqual(dependencies, dependenciesRef.current)) {
       dependenciesRef.current = dependencies;
       loadMetadata(question.datasetQuery(), true);
     }

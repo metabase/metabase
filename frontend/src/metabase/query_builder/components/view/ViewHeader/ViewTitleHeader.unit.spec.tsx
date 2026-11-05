@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import { without } from "es-toolkit";
 import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
-import _ from "underscore";
 
 import { renderWithRegisterActionsSpy } from "__support__/kbar";
 import { createMockMetadataFromState } from "__support__/metadata";
@@ -815,7 +815,7 @@ describe("View Header | Saved native question", () => {
   it("doesn't offer to explore results if the database doesn't support nested queries (metabase#22822)", () => {
     setupSavedNative({
       database: createSampleDatabase({
-        features: _.without(COMMON_DATABASE_FEATURES, "nested-queries"),
+        features: without(COMMON_DATABASE_FEATURES, "nested-queries"),
       }),
     });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();

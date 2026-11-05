@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { range } from "es-toolkit";
 
 const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
@@ -910,7 +910,7 @@ function assertTableRowsCount(length) {
 }
 
 function generateUsers(count, groupIds) {
-  const users = _.range(count).map((index) => ({
+  const users = range(count).map((index) => ({
     first_name: `FirstName ${index}`,
     last_name: `LastName ${index}`,
     email: `user_${index}@metabase.com`,
@@ -924,7 +924,7 @@ function generateUsers(count, groupIds) {
 }
 
 function generateGroups(count) {
-  _.range(count).map((index) => {
+  range(count).map((index) => {
     cy.request("POST", "api/permissions/group", { name: "Group" + index });
   });
 }

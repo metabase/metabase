@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniq } from "es-toolkit";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
@@ -52,7 +52,7 @@ const isValidCollectionItemModel = (
 export const getValidCollectionItemModels = (
   models: OmniPickerItem["model"][],
 ): CollectionItemModel[] =>
-  _.uniq(models.filter(isValidCollectionItemModel).concat(["collection"]));
+  uniq(models.filter(isValidCollectionItemModel).concat(["collection"]));
 
 /** Shared options for collection item requests across EntityPicker and MiniPicker. */
 export const getCollectionItemsOptions = ({

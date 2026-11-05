@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { sample } from "es-toolkit";
 import { type JSX, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import animationStyles from "metabase/css/core/animation.module.css";
@@ -50,7 +50,7 @@ const getMessage = (name: string | null | undefined): string => {
     t`Good to see you${namePart}`,
   ];
 
-  return _.sample(options) ?? "";
+  return sample(options) ?? "";
 };
 
 export const MetabotGreeting = () => {

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import { createMockMetadataFromState } from "__support__/metadata";
 import {
@@ -84,9 +84,9 @@ const setup = async ({
       query={query}
       question={question}
       readOnly={readOnly}
-      onResizeStop={_.noop}
+      onResizeStop={noop}
       onSetDatabaseId={onSetDatabaseId}
-      setDatasetQuery={_.noop}
+      setDatasetQuery={noop}
       isNativeEditorOpen
     />,
   );
@@ -139,9 +139,9 @@ describe("DatasetQueryEditor", () => {
         query={query}
         question={question}
         readOnly={false}
-        onResizeStop={_.noop}
+        onResizeStop={noop}
         onSetDatabaseId={onSetDatabaseId}
-        setDatasetQuery={_.noop}
+        setDatasetQuery={noop}
         isNativeEditorOpen
       />,
     );

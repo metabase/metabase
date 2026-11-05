@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
@@ -27,6 +26,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
+import { uniqueId } from "metabase/utils/unique-id";
 
 import S from "../components/BrowseContainer.module.css";
 
@@ -47,7 +47,7 @@ export function BrowseMetrics() {
     useFilteredMetrics(metricFilters);
 
   const isEmpty = !isLoading && !error && !metrics?.length;
-  const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
+  const titleId = useMemo(() => uniqueId("browse-metrics"), []);
 
   const { data: libraryMetricCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({

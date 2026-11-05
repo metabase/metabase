@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
@@ -18,13 +18,13 @@ export const FileUploadStatus = () => {
   const dispatch = useDispatch();
   const resetUploads = () => dispatch(clearAllUploads());
 
-  const groupedTables = _.groupBy(
+  const groupedTables = groupBy(
     uploads.filter((upload) => upload.tableId),
-    "tableId",
+    (item) => String(item.tableId),
   );
-  const groupedCollections = _.groupBy(
+  const groupedCollections = groupBy(
     uploads.filter((upload) => upload.collectionId),
-    "collectionId",
+    (item) => String(item.collectionId),
   );
 
   // Unjustified type cast. FIXME

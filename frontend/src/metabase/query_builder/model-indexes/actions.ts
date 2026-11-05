@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { Dispatch } from "metabase/redux/store";
 import { produce } from "metabase/utils/immutable";
@@ -93,7 +93,7 @@ function getFieldsToIndex(
     (field) =>
       field.should_index &&
       !existingIndexes.some((index: ModelIndex) =>
-        _.isEqual(index.value_ref, field.field_ref),
+        isEqual(index.value_ref, field.field_ref),
       ),
   );
 
@@ -112,7 +112,7 @@ function getIndexIdsToRemove(
 
       // make sure we're only removing already-indexed fields
       const foundIndex = existingIndexes.find((index: ModelIndex) =>
-        _.isEqual(index.value_ref, field.field_ref),
+        isEqual(index.value_ref, field.field_ref),
       );
 
       if (foundIndex) {

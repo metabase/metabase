@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import {
   cardApi,
@@ -33,7 +33,6 @@ import {
 } from "metabase/timelines/panel/selectors";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
-import { isNotNull } from "metabase/utils/types";
 import {
   getCollectionTimelinesVisibility,
   getRecordedTimelineEventsVisibility,
@@ -488,12 +487,15 @@ async function reduxUpdateQuestion(
 ) {
   const fullCard = question.card();
 
-  const keysToOmit = [
-    excludeDatasetQuery ? "dataset_query" : null,
-    excludeVisualisationSettings ? "visualization_settings" : null,
-  ].filter(isNotNull);
+  const keysToOmit: (keyof Card)[] = [];
+  if (excludeDatasetQuery) {
+    keysToOmit.push("dataset_query");
+  }
+  if (excludeVisualisationSettings) {
+    keysToOmit.push("visualization_settings");
+  }
 
-  const card = _.omit(fullCard, ...keysToOmit);
+  const card = omit(fullCard, keysToOmit);
 
   // Unjustified type cast. FIXME
   const updatedCard = (await dispatch(

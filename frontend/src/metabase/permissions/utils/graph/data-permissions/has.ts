@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { compact } from "es-toolkit";
 
 import type {
   ConcreteTableId,
@@ -30,7 +30,7 @@ export function hasPermissionValueInSubgraph(
   permission: DataPermission,
   value: DataPermissionValue,
 ) {
-  const schemasToSearch = _.compact(
+  const schemasToSearch = compact(
     isSchemaEntityId(entityId)
       ? [getDatabaseSchema(database, entityId.schemaName)]
       : getDatabaseSchemas(database),

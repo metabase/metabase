@@ -1,6 +1,6 @@
 import type { EChartsType } from "echarts/core";
+import { isEqual } from "es-toolkit";
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
-import _ from "underscore";
 
 import {
   type NodeId,
@@ -64,7 +64,7 @@ function isMeasuredFor(measured: MeasurementKey, key: MeasurementKey): boolean {
     measured.showLeafLabels === key.showLeafLabels &&
     measured.showLeafValues === key.showLeafValues &&
     measured.showParentValues === key.showParentValues &&
-    _.isEqual(measured.gridSize, key.gridSize)
+    isEqual(measured.gridSize, key.gridSize)
   );
 }
 
@@ -123,8 +123,8 @@ export function useLabelMeasurement({
         return prev;
       }
       return isMeasuredFor(prev, key) &&
-        _.isEqual(prev.leafLabelLayout, leafLabelLayout) &&
-        _.isEqual(prev.parentLabelLayout, parentLabelLayout)
+        isEqual(prev.leafLabelLayout, leafLabelLayout) &&
+        isEqual(prev.parentLabelLayout, parentLabelLayout)
         ? prev
         : { ...key, leafLabelLayout: leafLabelLayout, parentLabelLayout };
     });

@@ -1,6 +1,6 @@
 import { c, msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
+import { times } from "metabase/utils/arrays";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
 
@@ -14,7 +14,7 @@ function intToOption(n: number) {
   };
 }
 
-export const minutes = _.times(60, intToOption);
+export const minutes = times(60, intToOption);
 
 // Specific recurring intervals (see WRK-213).
 export const byTheMinuteIntervals = [1, 2, 3, 4, 5, 6, 10, 15, 20, 30].map(
@@ -52,7 +52,7 @@ export const getHours = () => {
   const hourCount = isClock24Hour ? 24 : 12;
   const firstHourIndex = isClock24Hour ? 0 : 12;
   const firstHourValue = isClock24Hour ? 0 : 12;
-  return _.times(hourCount, (n) => ({
+  return times(hourCount, (n) => ({
     label: localizedHours[n === 0 ? firstHourIndex : n],
     value: `${n === 0 ? firstHourValue : n}`,
   }));

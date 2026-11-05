@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from "@mantine/hooks";
+import { isEqual } from "es-toolkit";
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useRef } from "react";
-import _ from "underscore";
 
 import { FormObserver } from "metabase/forms";
 
@@ -95,7 +95,7 @@ export const FormInlineUpdater = <T, TSuccess>({
     // Skip update if values haven't changed from initialValues (i.e., user hasn't made changes)
     // This ensures we only trigger updates for user actions, not for programmatic updates
     // from API responses or Redux state changes that update initialValues
-    if (_.isEqual(values, initialValues)) {
+    if (isEqual(values, initialValues)) {
       return;
     }
 

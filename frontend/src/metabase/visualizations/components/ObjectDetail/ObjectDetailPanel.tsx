@@ -2,7 +2,6 @@ import cx from "classnames";
 import { type JSX, useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
@@ -19,6 +18,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Box, Center, Flex, Loader } from "metabase/ui";
+import { isEmpty } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
@@ -99,7 +99,7 @@ export function ObjectDetailPanel({
   const isDeleteModalOpen = typeof deleteActionId === "number";
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
 
-  const hasFks = !_.isEmpty(tableForeignKeys);
+  const hasFks = !isEmpty(tableForeignKeys);
 
   const isDrillThroughDetail = question?.display() !== "object";
 
@@ -148,7 +148,7 @@ export function ObjectDetailPanel({
     if (
       isDrillThroughDetail &&
       table &&
-      _.isEmpty(table.fks) &&
+      isEmpty(table.fks) &&
       !isVirtualCardId(table.id)
     ) {
       // Unjustified type cast. FIXME
@@ -233,7 +233,7 @@ export function ObjectDetailPanel({
 
   useEffect(() => {
     // if the card changed or table metadata loaded then reload fk references
-    const tableFKsJustLoaded = _.isEmpty(prevTableForeignKeys) && hasFks;
+    const tableFKsJustLoaded = isEmpty(prevTableForeignKeys) && hasFks;
     const hasCardChanged = data !== prevData;
 
     if (hasCardChanged || tableFKsJustLoaded) {

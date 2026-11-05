@@ -1,6 +1,5 @@
 import Color from "color";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
 import {
@@ -42,7 +41,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
         ],
         settings,
       ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
+        cols.find((col) => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
     "gauge.range": {

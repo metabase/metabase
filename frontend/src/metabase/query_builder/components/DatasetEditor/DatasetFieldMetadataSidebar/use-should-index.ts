@@ -1,5 +1,5 @@
+import { omit } from "es-toolkit";
 import { useCallback, useEffect, useState } from "react";
-import _ from "underscore";
 
 import type { Field } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
@@ -34,7 +34,7 @@ export function useShouldIndex({
 
   useEffect(() => {
     if (pendingChoice === isIndexedOnServer) {
-      setPendingChoices((choices) => _.omit(choices, field.name));
+      setPendingChoices((choices) => omit(choices, [field.name]));
     }
   }, [field.name, pendingChoice, isIndexedOnServer]);
 

@@ -6,9 +6,9 @@ import type {
 } from "@dnd-kit/core";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
+import { keyBy } from "es-toolkit";
 import React, { type JSX, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import _ from "underscore";
 
 import { getPortalRootElement } from "metabase/common/utils/portal";
 import GrabberS from "metabase/css/components/grabber.module.css";
@@ -76,7 +76,7 @@ export const SortableList = <T,>({
   // layout effect to prevent layout shift on mount
   useLayoutEffect(() => {
     setItemIds(items.map(getId));
-    setIndexedItems(_.indexBy(items, getId));
+    setIndexedItems(keyBy(items, getId));
   }, [items, getId]);
 
   const sortableElements = useMemo(

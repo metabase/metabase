@@ -1,5 +1,4 @@
 import { c } from "ttag";
-import _ from "underscore";
 
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -29,7 +28,7 @@ export function HACK_getParentCollectionFromEntityUpdateAction(
   updateActionResult: any,
 ): Pick<Collection, "id" | "name"> | undefined {
   return item.model === "collection"
-    ? _.last(updateActionResult?.payload?.collection?.effective_ancestors)
+    ? updateActionResult?.payload?.collection?.effective_ancestors?.at(-1)
     : updateActionResult?.payload?.object?.collection;
 }
 

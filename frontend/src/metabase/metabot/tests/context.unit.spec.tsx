@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { P, isMatching } from "ts-pattern";
-import _ from "underscore";
 
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
@@ -84,9 +83,9 @@ describe("metabot > context", () => {
 
     await enterChatMessage("Who is your favorite?");
 
-    expect(
-      _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
-    ).toEqual({
+    expect({
+      capabilities: (await lastReqBody(agentSpy))?.context?.capabilities,
+    }).toEqual({
       capabilities: ["permission:save_questions"],
     });
   });

@@ -4,9 +4,9 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
+import { mapValues, omit, pick } from "es-toolkit";
 import { shallowEqual } from "react-redux";
 import undoable, { combineFilters, includeAction } from "redux-undo";
-import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -225,7 +225,7 @@ export const addDataSource = createAsyncThunk(
     const transformedSeries = getVisualizerTransformedSeries(getState());
     const settings = {
       ...transformedSeries[0].card.visualization_settings,
-      ..._.pick(computedSettings, dataSettings),
+      ...pick(computedSettings, dataSettings),
     };
 
     return maybeCombineDataset(
@@ -430,11 +430,7 @@ const visualizerSlice = createSlice({
         }
 
         if (isDimension && column.id) {
-          // Unjustified type cast. FIXME
-          const datasetMap = _.omit(state.datasets, dataSource.id) as Record<
-            string,
-            Dataset
-          >;
+          const datasetMap = omit(state.datasets, [dataSource.id]);
           maybeImportDimensionsFromOtherDataSources(
             state,
             settings,
@@ -538,7 +534,7 @@ const visualizerSlice = createSlice({
           ? getColumnVizSettings(state.display)
           : [];
 
-        state.columnValuesMapping = _.mapObject(
+        state.columnValuesMapping = mapValues(
           state.columnValuesMapping,
           (valueSources, columnName) => {
             const nextValueSources = valueSources.filter((valueSource) => {
@@ -738,8 +734,8 @@ export const reducer = undoable(visualizerSlice.reducer, {
         "hoveredItems",
       ];
       return !shallowEqual(
-        _.omit(nextState, keysToIgnore),
-        _.omit(present, keysToIgnore),
+        omit(nextState, keysToIgnore),
+        omit(present, keysToIgnore),
       );
     },
   ),

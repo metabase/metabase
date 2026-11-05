@@ -1,6 +1,6 @@
+import { keyBy } from "es-toolkit";
 import { Fragment, type ReactNode } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -27,7 +27,7 @@ export function getSemanticTypeError(
     return undefined;
   }
 
-  const fieldsByName = _.indexBy(table.fields ?? [], (field) => field.name);
+  const fieldsByName = keyBy(table.fields ?? [], (field) => field.name);
 
   return (
     <>

@@ -1,5 +1,5 @@
+import { noop } from "es-toolkit";
 import type { ComponentType, PropsWithChildren } from "react";
-import { noop } from "underscore";
 
 import {
   DashboardContext,

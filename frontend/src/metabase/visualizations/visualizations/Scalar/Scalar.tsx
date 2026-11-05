@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
@@ -35,12 +34,13 @@ import { scalarToBarTransform } from "./scalars-bar-transform";
 function legacyScalarSettingsToFormatOptions(
   settings: ComputedVisualizationSettings,
 ) {
-  return _.chain(settings)
-    .pairs()
-    .filter(([key, value]) => key.startsWith("scalar.") && value !== undefined)
-    .map(([key, value]) => [key.replace(/^scalar\./, ""), value])
-    .object()
-    .value();
+  return Object.fromEntries(
+    Object.entries(settings)
+      .filter(
+        ([key, value]) => key.startsWith("scalar.") && value !== undefined,
+      )
+      .map(([key, value]) => [key.replace(/^scalar\./, ""), value]),
+  );
 }
 
 // Scalar visualization shows a single number; multiseries is transformed to a bar chart

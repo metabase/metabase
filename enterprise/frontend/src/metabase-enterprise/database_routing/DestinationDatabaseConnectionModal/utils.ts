@@ -1,8 +1,8 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import type { Database } from "metabase-types/api";
 
-const FILTER_DB_KEYS = ["id", "name"];
+const FILTER_DB_KEYS: (keyof Database)[] = ["id", "name"];
 
 const FILTER_DB_DETAIL_KEYS = [
   "password",
@@ -29,9 +29,9 @@ export function pickPrefillFieldsFromPrimaryDb(
   ];
 
   return {
-    ..._.omit(primaryDatabase, FILTER_DB_KEYS),
+    ...omit(primaryDatabase, FILTER_DB_KEYS),
     details: {
-      ..._.omit(primaryDatabase.details, filterDetailKeys),
+      ...omit(primaryDatabase.details ?? {}, filterDetailKeys),
       "destination-database": true,
     },
   };

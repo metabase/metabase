@@ -1,3 +1,4 @@
+import { isEqual } from "es-toolkit";
 import { useFormikContext } from "formik";
 import {
   type PropsWithChildren,
@@ -9,7 +10,6 @@ import {
   useState,
 } from "react";
 import { usePrevious } from "react-use";
-import { isEqual } from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";

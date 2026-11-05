@@ -1,7 +1,7 @@
+import { identity } from "es-toolkit";
 import { useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import type * as Yup from "yup";
 
 import {
@@ -80,7 +80,7 @@ export function CreateTransformModal({
   } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
 
   const schemas = useMemo(() => {
-    return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);
+    return (fetchedSchemas ?? []).filter(schemasFilter || identity);
   }, [schemasFilter, fetchedSchemas]);
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;

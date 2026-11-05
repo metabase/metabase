@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import _ from "underscore";
+import { isEqual, partition, uniq } from "es-toolkit";
 
 import { dayjs } from "metabase/dayjs";
 import { getNullDisplayValue } from "metabase/utils/constants";
@@ -60,10 +60,10 @@ import { getFormattingOptionsWithoutScaling } from "./util";
 const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5;
 
 const uniqueCards = (seriesModels: SeriesModel[]) =>
-  _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
+  uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
 const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
-  return _.uniq(seriesModels.map((seriesModel) => seriesModel.column.name))
+  return uniq(seriesModels.map((seriesModel) => seriesModel.column.name))
     .length;
 };
 
@@ -99,7 +99,7 @@ export function shouldAutoSplitYAxis(
   );
 
   const hasDifferentYAxisColTypes =
-    _.uniq(allMetricsColumns.map((column) => column.semantic_type)).length > 1;
+    uniq(allMetricsColumns.map((column) => column.semantic_type)).length > 1;
 
   if (hasDifferentYAxisColTypes) {
     return true;
@@ -114,7 +114,7 @@ export function shouldAutoSplitYAxis(
   );
 
   const hasDifferentColumnSettings = columnSettings.some((s1) =>
-    columnSettings.some((s2) => !_.isEqual(s1, s2)),
+    columnSettings.some((s2) => !isEqual(s1, s2)),
   );
 
   if (hasDifferentColumnSettings) {
@@ -322,13 +322,13 @@ export const getYAxisSplit = (
   const [autoLeft, autoRight] = computeSplit(seriesExtents);
   return [
     new Set(
-      _.uniq([
+      uniq([
         ...left,
         ...autoLeft.filter((dataKey) => !axisBySeriesKey[dataKey]),
       ]),
     ),
     new Set(
-      _.uniq([
+      uniq([
         ...right,
         ...autoRight.filter((dataKey) => !axisBySeriesKey[dataKey]),
       ]),
@@ -623,7 +623,7 @@ export function getYAxesModels(
     }
   });
 
-  const [leftStackModels, rightStackModels] = _.partition(
+  const [leftStackModels, rightStackModels] = partition(
     stackModels,
     (stackModel) => stackModel.axis === "left",
   );

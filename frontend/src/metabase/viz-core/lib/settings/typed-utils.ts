@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit, pickBy } from "es-toolkit";
 
 import type {
   SeriesCard,
@@ -77,7 +77,7 @@ export function sanitizeDashcardSettings(
   settings: VisualizationSettings,
   vizSettingsDefs: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
-  return _.pick(settings, (_, key) => {
+  return pickBy(settings, (_, key) => {
     const settingDef = vizSettingsDefs[key];
     return !settingDef || !isSettingHiddenOnDashboards(settingDef);
   });
@@ -104,7 +104,7 @@ export function extendCardWithDashcardSettings<
       migrateStoredDashcardCustomVizSettings(
         card.display,
         cardSettings,
-        _.omit(dashcardSettings ?? {}, settingsToOmit),
+        omit(dashcardSettings ?? {}, settingsToOmit),
         () => getSettingDefinitionsForDisplay(card.display),
       ),
     ),

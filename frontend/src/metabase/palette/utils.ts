@@ -1,5 +1,5 @@
+import { groupBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -12,9 +12,9 @@ export const processResults = (
   results: (string | PaletteActionImpl)[],
   hasSearchTerm: boolean,
 ): (string | PaletteActionImpl)[] => {
-  const groupedResults = _.groupBy(
+  const groupedResults = groupBy(
     results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
-    "section",
+    (item) => String(item.section),
   );
 
   const actions = processSection(t`Actions`, groupedResults["basic"]);

@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -174,8 +173,9 @@ const CollectionPermissionsModalBody = ({
   );
 };
 
-const ConnectedCollectionPermissionsModalBody = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
+const ConnectedCollectionPermissionsModalBody = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(CollectionPermissionsModalBody);
 
 type CollectionPermissionsModalProps = {

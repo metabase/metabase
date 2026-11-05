@@ -1,6 +1,6 @@
 import type { Middleware, Reducer } from "@reduxjs/toolkit";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { type StoreSeedState, seedApiQueryCache } from "__support__/state";
 import { Api } from "metabase/api";
@@ -85,11 +85,10 @@ function getManifestStore(
   initialState: Partial<StoreSeedState> = {},
   middleware: Middleware[] = [Api.middleware],
 ) {
-  return getStore(
-    reducers,
-    _.pick(initialState, ...Object.keys(reducers), "settings"),
-    middleware,
+  const stateKeys = [...Object.keys(reducers), "settings"].filter(
+    (key): key is keyof StoreSeedState => key in initialState,
   );
+  return getStore(reducers, pick(initialState, stateKeys), middleware);
 }
 
 /**

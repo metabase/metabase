@@ -1,5 +1,5 @@
+import { last } from "es-toolkit";
 import type { SupportedUnit } from "types/dayjs";
-import _ from "underscore";
 
 import { type OpUnitType, dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -69,7 +69,7 @@ export const buildTimelineEventClusters = (
   const clusters: TimelineEventCluster[] = [];
 
   sortedGroups.forEach((group) => {
-    const lastCluster = _.last(clusters);
+    const lastCluster = last(clusters);
 
     if (lastCluster != null) {
       const lastGroupDate =

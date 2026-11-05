@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import type { JSX } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getEmbedServerCodeExampleOptions } from "metabase/embedding/lib/code";
 import type {
@@ -123,7 +123,7 @@ function getHighlightedText({
   shouldShowDownloadData: boolean;
 }) {
   const hasParametersCodeDiff =
-    !_.isEqual(initialPreviewParameters, params) &&
+    !isEqual(initialPreviewParameters, params) &&
     selectedServerCodeOption.parametersSource !==
       getEmbedServerCodeExampleOptions({
         siteUrl,
@@ -135,7 +135,7 @@ function getHighlightedText({
         withIframeSnippet: true,
       }).find(({ id }) => id === selectedServerCodeOptionId)?.parametersSource;
 
-  const hasAppearanceCodeDiff = !_.isEqual(
+  const hasAppearanceCodeDiff = !isEqual(
     getDefaultDisplayOptions(shouldShowDownloadData),
     displayOptions,
   );

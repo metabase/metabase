@@ -1,7 +1,7 @@
+import { sortBy } from "es-toolkit";
 import type { ChangeEvent, JSX, MouseEvent } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getTimelineName } from "metabase/common/utils/timelines";
 import { Box, Checkbox, Ellipsified, Flex, Icon } from "metabase/ui";
@@ -157,10 +157,7 @@ const TimelineCardInner = ({
 };
 
 const getEvents = (events: TimelineEvent[] = []) => {
-  return _.chain(events)
-    .sortBy((e) => parseTimestamp(e.timestamp))
-    .reverse()
-    .value();
+  return sortBy(events, [(e) => parseTimestamp(e.timestamp)]).reverse();
 };
 
 export const TimelineCard = memo(TimelineCardInner);

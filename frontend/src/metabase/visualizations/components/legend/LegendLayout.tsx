@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { isEqual } from "es-toolkit";
 import {
   type ReactNode,
   useLayoutEffect,
@@ -6,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";
@@ -243,9 +243,7 @@ function useChartRoom(width: number, height: number) {
       roomWidth > 0 && roomHeight > 0
         ? { width: roomWidth, height: roomHeight }
         : undefined;
-    setChartRoom((room) =>
-      _.isEqual(room, measuredRoom) ? room : measuredRoom,
-    );
+    setChartRoom((room) => (isEqual(room, measuredRoom) ? room : measuredRoom));
   }, [width, height]);
 
   return { rootRef, chartAreaRef, chartRoom };

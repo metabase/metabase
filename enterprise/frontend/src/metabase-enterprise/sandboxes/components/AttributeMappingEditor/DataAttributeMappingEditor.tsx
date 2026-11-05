@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -152,7 +151,7 @@ export const DataAttributeMappingEditor = ({
             </tr>
           );
         })}
-        {_.every(entries, (entry) => entry.value !== "" && entry.key !== "") &&
+        {entries.every((entry) => entry.value !== "" && entry.key !== "") &&
           attributesOptions.length > 0 && (
             <tr>
               <td colSpan={2}>

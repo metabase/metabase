@@ -1,6 +1,6 @@
+import { omit } from "es-toolkit";
 import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
-import { omit } from "underscore";
 
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
@@ -72,7 +72,7 @@ export const useLocationSync = <
       onChange(latestValue);
 
       const updatedOptions = isEmptyOrDefault(latestValue, key)
-        ? omit(hashOptions, key)
+        ? omit(hashOptions, [key])
         : {
             ...hashOptions,
             [key]: latestValue,

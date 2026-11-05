@@ -9,9 +9,9 @@ import {
   WidgetType,
   keymap,
 } from "@codemirror/view";
+import { once } from "es-toolkit";
 import { useMemo } from "react";
 import { useLatest } from "react-use";
-import { once } from "underscore";
 
 import { isMac, isWindows } from "metabase/utils/browser";
 

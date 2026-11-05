@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -1273,12 +1271,16 @@ describe("scenarios > dashboard > permissions", () => {
           // update the perms for the just-created collection
           cy.request("PUT", "/api/collection/graph", {
             revision,
-            groups: _.mapObject(groups, (groupPerms, groupId) => ({
-              ...groupPerms,
-              [collection_id]:
-                // 2 is admins, so leave that as "write"
-                groupId === "2" ? "write" : "none",
-            })),
+            groups: Object.fromEntries(
+              Object.entries(groups).map(([groupId, groupPerms]) => [
+                groupId,
+                {
+                  ...groupPerms,
+                  // 2 is admins, so leave that as "write"
+                  [collection_id]: groupId === "2" ? "write" : "none",
+                },
+              ]),
+            ),
           });
         },
       );

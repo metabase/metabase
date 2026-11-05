@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniq } from "es-toolkit";
 
 import { isNotNull } from "metabase/utils/types";
 import { getVisualizerSeriesCardId, isCartesianChart } from "metabase/viz-core";
@@ -13,7 +13,7 @@ export function shouldSplitVisualizerSeries(
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
 ) {
   const mappings = Object.values(columnValuesMapping).flat();
-  const uniqueDataSources = _.uniq(
+  const uniqueDataSources = uniq(
     mappings
       .map((mapping) =>
         !isDataSourceNameRef(mapping) ? mapping.sourceId : null,
@@ -37,7 +37,7 @@ export function splitVisualizerSeries(
     return series;
   }
 
-  const dataSourceIds = _.uniq(
+  const dataSourceIds = uniq(
     Object.values(columnValuesMapping)
       .map((valueSources) => {
         const [valueSource] = valueSources;

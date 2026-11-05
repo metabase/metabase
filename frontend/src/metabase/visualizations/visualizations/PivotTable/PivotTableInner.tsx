@@ -1,6 +1,7 @@
 import { DndContext } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import cx from "classnames";
+import { isEqual } from "es-toolkit";
 import type * as React from "react";
 import {
   forwardRef,
@@ -13,7 +14,6 @@ import {
 import { usePrevious } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
 import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
-import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useTranslateContent } from "metabase/content-translation/hooks";
@@ -180,7 +180,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const columnsChanged =
       !hasColumnWidths ||
       (previousRowIndexes &&
-        !_.isEqual(pivoted?.rowIndexes, previousRowIndexes)) ||
+        !isEqual(pivoted?.rowIndexes, previousRowIndexes)) ||
       leftHeaderWidths?.length !== pivoted?.rowIndexes?.length;
 
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
@@ -225,7 +225,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         const newColumnWidths = { ...newLeftHeaderWidths, valueHeaderWidths };
         setHeaderWidths(newColumnWidths);
 
-        if (!_.isEqual(newColumnWidths, columnWidthSettings)) {
+        if (!isEqual(newColumnWidths, columnWidthSettings)) {
           onUpdateVisualizationSettings({
             "pivot_table.column_widths": newColumnWidths,
           });

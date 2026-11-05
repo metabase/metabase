@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Divider, Group, Stack, type StackProps } from "metabase/ui";
@@ -137,9 +137,9 @@ const getDefaultColor = (
   colorMapping: Record<string, string[]>,
 ) => {
   return Object.entries(colorMapping).reduce((selection, [color, range]) => {
-    if (_.isEqual(value, range)) {
+    if (isEqual(value, range)) {
       return color;
-    } else if (_.isEqual(value, [...range].reverse())) {
+    } else if (isEqual(value, [...range].reverse())) {
       return color;
     } else {
       return selection;
@@ -159,6 +159,6 @@ const getDefaultIsInverted = (
   colorMapping: Record<string, string[]>,
 ) => {
   return Object.values(colorMapping).some((range) => {
-    return _.isEqual(value, [...range].reverse());
+    return isEqual(value, [...range].reverse());
   });
 };

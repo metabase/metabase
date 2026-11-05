@@ -1,5 +1,5 @@
+import { isEqual, union } from "es-toolkit";
 import { msgid, ngettext } from "ttag";
-import _ from "underscore";
 
 function isParameterValueEmpty(value: unknown): boolean {
   return value == null || (Array.isArray(value) && value.length === 0);
@@ -11,7 +11,7 @@ export function getFilterChangeDescription(
 ): string {
   let changedCount = 0;
 
-  const allParameterIds = _.union(
+  const allParameterIds = union(
     Object.keys(currentValues),
     Object.keys(draftValues),
   );
@@ -32,7 +32,7 @@ export function getFilterChangeDescription(
     } else if (
       !isCurrentEmpty &&
       !isDraftEmpty &&
-      !_.isEqual(currentValue, draftValue)
+      !isEqual(currentValue, draftValue)
     ) {
       // Filter was updated
       changedCount++;

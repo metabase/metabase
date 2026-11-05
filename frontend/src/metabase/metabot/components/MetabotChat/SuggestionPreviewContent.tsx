@@ -1,7 +1,7 @@
 import { unifiedMergeView } from "@codemirror/merge";
 import cx from "classnames";
+import { compact } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
@@ -19,7 +19,7 @@ export const SuggestionPreviewContent = ({
 }: SuggestionPreviewContentProps) => {
   const extensions = useMemo(
     () =>
-      _.compact([
+      compact([
         oldSource &&
           unifiedMergeView({
             original: oldSource,

@@ -1,8 +1,8 @@
+import { noop } from "es-toolkit";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import { explorationApi } from "metabase/api/exploration";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";

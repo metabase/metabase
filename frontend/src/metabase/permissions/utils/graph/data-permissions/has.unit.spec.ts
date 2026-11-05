@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { partial } from "es-toolkit";
 
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
@@ -42,7 +42,7 @@ describe("data permissions", () => {
         },
       };
 
-      const testFn1 = _.partial(
+      const testFn1 = partial(
         hasPermissionValueInSubgraph,
         testPermissions,
         1,
@@ -60,7 +60,7 @@ describe("data permissions", () => {
         ),
       ).toBe(true);
 
-      const testFn2 = _.partial(
+      const testFn2 = partial(
         hasPermissionValueInSubgraph,
         testPermissions,
         1,
@@ -94,7 +94,7 @@ describe("data permissions", () => {
         },
       };
 
-      const testFn = _.partial(
+      const testFn = partial(
         hasPermissionValueInSubgraph,
         testPermissions,
         1,

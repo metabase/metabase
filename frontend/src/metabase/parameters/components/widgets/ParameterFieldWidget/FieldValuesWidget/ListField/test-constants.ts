@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 
 export const translateToGerman: ContentTranslationFunction = (msgid) => {
@@ -8,14 +6,12 @@ export const translateToGerman: ContentTranslationFunction = (msgid) => {
     Gadget: "Gerät",
     Widget: "Apparat",
   };
-  // Unjustified type cast. FIXME
-  return _.get(dictionary, msgid as string, msgid);
+  return typeof msgid === "string" ? (dictionary[msgid] ?? msgid) : msgid;
 };
 
 export const translateToJapanese: ContentTranslationFunction = (msgid) => {
-  const dictionary = {
+  const dictionary: Record<string, string> = {
     Products: "グッズ",
   };
-  // Unjustified type cast. FIXME
-  return _.get(dictionary, msgid as string, msgid);
+  return typeof msgid === "string" ? (dictionary[msgid] ?? msgid) : msgid;
 };

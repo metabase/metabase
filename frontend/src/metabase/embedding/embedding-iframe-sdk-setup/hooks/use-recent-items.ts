@@ -1,6 +1,6 @@
+import { uniqBy } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
@@ -39,7 +39,7 @@ export const useRecentItems = () => {
   const recentDashboards = useMemo(() => {
     // Recently created dashboards are prioritized first,
     // then local selections, then recent views from the activity log.
-    const uniqueSuggestedDashboards = _.uniq(
+    const uniqueSuggestedDashboards = uniqBy(
       [...recentlyCreatedDashboards, ...localRecentDashboards],
       (recentItem) => recentItem.id,
     );

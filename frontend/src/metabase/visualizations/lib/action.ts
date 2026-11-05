@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type { Dispatch } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { navigate } from "metabase/router";
@@ -96,8 +94,7 @@ export function performDefaultAction(
   }
 
   // "defaultAlways" action even if there's more than one
-  const action = _.find(
-    actions,
+  const action = actions.find(
     (candidate) =>
       "defaultAlways" in candidate && candidate.defaultAlways === true,
   );

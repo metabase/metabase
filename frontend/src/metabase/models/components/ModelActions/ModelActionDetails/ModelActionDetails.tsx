@@ -1,6 +1,6 @@
+import { sortBy } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useDeleteActionMutation,
@@ -64,7 +64,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
-    () => _.sortBy(actions, mostRecentFirst),
+    () => sortBy(actions, [mostRecentFirst]),
     [actions],
   );
 

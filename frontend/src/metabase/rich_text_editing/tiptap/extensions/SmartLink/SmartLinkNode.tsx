@@ -6,7 +6,6 @@ import {
 } from "@tiptap/react";
 import { memo, useEffect } from "react";
 import { t } from "ttag";
-import { isObject } from "underscore";
 
 import { useDispatch } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -30,6 +29,7 @@ import type {
   Transform,
   WritebackAction,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import {
   isMentionableUser,

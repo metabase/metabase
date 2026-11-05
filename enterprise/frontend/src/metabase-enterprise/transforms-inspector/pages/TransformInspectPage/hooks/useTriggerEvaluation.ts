@@ -1,5 +1,5 @@
+import { groupBy } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { evaluateTriggers } from "metabase-enterprise/transforms-inspector/lib/transforms-inspector";
 import type {
@@ -55,12 +55,12 @@ export const useTriggerEvaluation = (
   }, [lens, cardsStats]);
 
   const alertsByCardId = useMemo(
-    () => _.groupBy(state.alerts, ({ condition }) => condition.card_id),
+    () => groupBy(state.alerts, ({ condition }) => condition.card_id),
     [state.alerts],
   );
 
   const drillLensesByCardId = useMemo(
-    () => _.groupBy(state.drillLenses, ({ condition }) => condition.card_id),
+    () => groupBy(state.drillLenses, ({ condition }) => condition.card_id),
     [state.drillLenses],
   );
 

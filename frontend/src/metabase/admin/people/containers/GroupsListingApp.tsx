@@ -1,6 +1,6 @@
+import { partition } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useCreatePermissionsGroupMutation,
@@ -35,7 +35,7 @@ export const GroupsListingApp = ({
 
   const { data, isLoading, error } = useListPermissionsGroupsQuery({});
   const groups = useMemo(() => {
-    const [externalGroups, internalGroups] = _.partition(
+    const [externalGroups, internalGroups] = partition(
       data ?? [],
       PLUGIN_TENANTS.isTenantGroup,
     );

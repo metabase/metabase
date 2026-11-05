@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isUndefined, mapValues, pickBy } from "es-toolkit";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
@@ -28,6 +28,7 @@ import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
 import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import { mergeDeep } from "metabase/utils/merge-deep";
 import type { ColorSettings } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { colorTuple } from "./color-tuple";
 
@@ -35,8 +36,8 @@ const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
 // Strip any key that has the value of "undefined"
 const stripUndefinedKeys = <T>(x: T): unknown =>
-  _.isObject(x)
-    ? _.pick(_.mapObject(x, stripUndefinedKeys), (v) => !_.isUndefined(v))
+  isObject(x)
+    ? pickBy(mapValues(x, stripUndefinedKeys), (v) => !isUndefined(v))
     : x;
 
 /**

@@ -1,6 +1,6 @@
+import { pick } from "es-toolkit";
 import { VisualState, useKBar } from "kbar";
 import { useEffect } from "react";
-import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -113,7 +113,7 @@ const dashboard = createMockCollectionItem({
 });
 
 const recents_1 = createMockRecentCollectionItem({
-  ..._.pick(model_1, "id", "name"),
+  ...pick(model_1, ["id", "name"]),
   model: "dataset",
   moderated_status: "verified",
   parent_collection: {
@@ -122,7 +122,7 @@ const recents_1 = createMockRecentCollectionItem({
   },
 });
 const recents_2 = createMockRecentCollectionItem({
-  ..._.pick(dashboard, "id", "name"),
+  ...pick(dashboard, ["id", "name"]),
   model: "dashboard",
   parent_collection: {
     // Unjustified type cast. FIXME

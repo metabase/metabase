@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isString } from "es-toolkit";
 
 import { isEqualsOperator } from "metabase-lib/v1/operators/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -33,7 +33,7 @@ export function getParameterIconName(
 export function buildHiddenParametersSlugSet(
   hiddenParameterSlugs: string | null | undefined,
 ) {
-  return _.isString(hiddenParameterSlugs)
+  return isString(hiddenParameterSlugs)
     ? new Set(hiddenParameterSlugs.split(","))
     : new Set();
 }

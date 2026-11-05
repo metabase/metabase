@@ -1,7 +1,7 @@
 import Color from "color";
+import { omit } from "es-toolkit";
 import type { ChangeEvent, FocusEvent, InputHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { TextInput } from "metabase/ui";
 
@@ -52,7 +52,7 @@ export const ColorInput = forwardRef(function ColorInput(
 
   return (
     <TextInput
-      {..._.omit(props, ["size", "fullWidth"])}
+      {...omit(props, ["size", "fullWidth"])}
       ref={ref}
       value={isFocused ? inputText : colorText}
       onFocus={handleFocus}

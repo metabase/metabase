@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { is403Error } from "metabase/utils/errors";
+import { isEmpty } from "metabase/utils/objects";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
@@ -38,7 +38,7 @@ export function getOptions(
 }
 
 export function getValue(field: Field): RemappingValue {
-  if (_.isEmpty(field.dimensions)) {
+  if (isEmpty(field.dimensions)) {
     return "original";
   }
 

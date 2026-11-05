@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { range } from "es-toolkit";
 
 import {
   QA_POSTGRES_PORT,
@@ -130,7 +130,7 @@ describe("admin > database > database routing", () => {
       cy.log("should be able to bulk create destination dbs via API");
       createDestinationDatabasesViaAPI({
         router_database_id: WRITABLE_DB_ID,
-        databases: _.range(2, 7).map((i) => ({
+        databases: range(2, 7).map((i) => ({
           ...BASE_POSTGRES_DESTINATION_DB_INFO,
           name: `Destination DB ${i}`,
         })),

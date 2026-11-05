@@ -1,14 +1,17 @@
+import { pickBy } from "es-toolkit";
 import { useCallback } from "react";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { EMBED_FALLBACK_QUESTION_ID } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
 import { getDefaultSdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useSetting } from "metabase/settings";
+
+type PersistedKey = (typeof ALLOWED_EMBED_SETTING_KEYS_MAP.base)[number];
 
 export const useHandleExperienceChange = () => {
   const {
@@ -26,10 +29,11 @@ export const useHandleExperienceChange = () => {
 
   const handleEmbedExperienceChange = useCallback(
     (experience: SdkIframeEmbedSetupExperience) => {
-      const persistedSettings = _.pick(
-        settings,
-        ALLOWED_EMBED_SETTING_KEYS_MAP.base,
-      );
+      const persistedKeys: readonly string[] =
+        ALLOWED_EMBED_SETTING_KEYS_MAP.base;
+      const persistedSettings: Partial<
+        Pick<SdkIframeEmbedSetupSettings, Exclude<PersistedKey, "instanceUrl">>
+      > = pickBy(settings, (_value, key) => persistedKeys.includes(key));
 
       // Use the most recent item for the selected type.
       // If the activity log is completely empty, use the fallback.

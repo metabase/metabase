@@ -5,8 +5,8 @@ import {
   isPending,
   isRejected,
 } from "@reduxjs/toolkit";
+import { mapValues, omit } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { datasetApi } from "metabase/api/dataset";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -33,6 +33,7 @@ import type {
   Dashboard,
   DashboardId,
   Dataset,
+  JsonQuery,
   VisualizationSettings,
 } from "metabase-types/api";
 import { exportFormatPng } from "metabase-types/api";
@@ -337,7 +338,7 @@ const getPublicQuestionParams = (
     url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
     params: new URLSearchParams({
       parameters: JSON.stringify(parameters),
-      ..._.mapObject(exportParams, (value) => String(value)),
+      ...mapValues(exportParams, (value) => String(value)),
     }),
   };
 };
@@ -354,7 +355,7 @@ const getEmbedDashcardParams = (
   url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
   params: new URLSearchParams({
     parameters: JSON.stringify(params),
-    ..._.mapObject(exportParams, (value) => String(value)),
+    ...mapValues(exportParams, (value) => String(value)),
   }),
 });
 
@@ -392,7 +393,7 @@ const getEmbedQuestionParams = (
     url: Urls.embedCard(token, type),
     params: new URLSearchParams({
       parameters: JSON.stringify(downloadParameters),
-      ..._.mapObject(exportParams, (value) => String(value)),
+      ...mapValues(exportParams, (value) => String(value)),
     }),
   };
 };
@@ -447,15 +448,20 @@ const getAdHocQuestionParams = (
   result: Dataset,
   visualizationSettings: VisualizationSettings | undefined,
   exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/dataset/${type}`,
-  body: {
-    query: _.omit(result?.json_query ?? {}, "constraints"),
-    visualization_settings: visualizationSettings ?? {},
-    ...exportParams,
-  },
-});
+): DownloadQueryResultsParams => {
+  // the backend adds `constraints` to json_query, which the types do not list
+  const jsonQuery: (JsonQuery & { constraints?: unknown }) | undefined =
+    result?.json_query;
+  return {
+    method: "POST",
+    url: `/api/dataset/${type}`,
+    body: {
+      query: jsonQuery ? omit(jsonQuery, ["constraints"]) : {},
+      visualization_settings: visualizationSettings ?? {},
+      ...exportParams,
+    },
+  };
+};
 
 export const getDatasetParams = ({
   type,

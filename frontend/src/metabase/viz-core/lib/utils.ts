@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import _ from "underscore";
+import { isEqual, minBy, zip } from "es-toolkit";
 
 import { data_image_uri_pattern } from "cljs/metabase.util.markdown.image";
 import { isNotNull } from "metabase/utils/types";
@@ -171,7 +171,7 @@ export function isSameSeries(
 
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
-    _.zip(seriesA, seriesB).reduce<boolean>((acc, [a, b]) => {
+    zip(seriesA, seriesB).reduce<boolean>((acc, [a, b]) => {
       const sameData = a.data === b.data;
       const sameDisplay =
         (a.card && a.card.display) === (b.card && b.card.display);
@@ -259,7 +259,7 @@ export const cardHasBecomeDirty = (
   nextCard: SeriesCard | VirtualCard,
   previousCard: SeriesCard | VirtualCard,
 ): boolean =>
-  !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) ||
+  !isEqual(previousCard.dataset_query, nextCard.dataset_query) ||
   previousCard.display !== nextCard.display;
 
 export function getCardAfterVisualizationClick<
@@ -484,12 +484,12 @@ export const getDefaultPivotColumn = (series: SingleSeries) => {
     })
     .filter(isNotNull);
 
-  const minCardinality = _.min(
+  const minCardinality = minBy(
     columnsWithCardinality,
     ({ cardinality }) => cardinality,
   );
 
-  return typeof minCardinality === "number" ? null : minCardinality.column;
+  return minCardinality === undefined ? null : minCardinality.column;
 };
 
 type DimensionColumn = {

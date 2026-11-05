@@ -1,5 +1,5 @@
+import { isNull } from "es-toolkit";
 import { t } from "ttag";
-import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";

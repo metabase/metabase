@@ -1,9 +1,9 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
+import { keyBy } from "es-toolkit";
 import { HttpResponse, http } from "msw";
 import { type ComponentType, useEffect, useMemo } from "react";
-import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
 import {
@@ -86,7 +86,7 @@ function ReduxDecorator(Story: ComponentType, context: StoryContext) {
           dashcards: dashboard.dashcards.map((dashcard) => dashcard.id),
         },
       },
-      dashcards: _.indexBy(dashboard.dashcards, "id"),
+      dashcards: keyBy(dashboard.dashcards, (item) => item.id),
       dashcardData: {
         [DASHCARD_BAR_ID]: {
           [CARD_BAR_ID]: createMockDataset({

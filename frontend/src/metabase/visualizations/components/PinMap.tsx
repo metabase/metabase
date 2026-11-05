@@ -1,9 +1,9 @@
 import cx from "classnames";
 import * as d3 from "d3";
+import { groupBy } from "es-toolkit";
 import L from "leaflet";
 import { type ComponentClass, useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -68,7 +68,7 @@ function aggregatePointsByCoordinates(
   rows: RowValues[],
 ) {
   const cells = Object.values(
-    _.groupBy(
+    groupBy(
       points.map((point, index) => ({ point, row: rows[index] })),
       ({ point: [latitude, longitude] }) => `${latitude},${longitude}`,
     ),

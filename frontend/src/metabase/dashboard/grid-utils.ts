@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { DEFAULT_CARD_SIZE } from "metabase/utils/dashboard_grid";
 import { getVisualizationRaw } from "metabase/viz-core";
@@ -77,7 +77,7 @@ export function getInitialCardSizes(
       const dashcardId = dashcardLayout.i;
       return {
         ...acc,
-        [dashcardId]: _.pick(dashcardLayout, ["w", "h"]),
+        [dashcardId]: pick(dashcardLayout, ["w", "h"]),
       };
     }, {});
 }

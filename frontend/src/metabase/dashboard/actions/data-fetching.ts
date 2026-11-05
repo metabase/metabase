@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
+import { isEqual } from "es-toolkit";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   automagicDashboardsApi,
@@ -282,7 +282,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
-        _.isEqual(
+        isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),
         )
@@ -303,7 +303,7 @@ export const fetchCardDataAction = createAsyncThunk<
       const inFlight = cardDataCancelControllers[`${dashcard.id},${card.id}`];
       if (
         inFlight &&
-        _.isEqual(inFlight.queryParams, getDatasetQueryParams(datasetQuery))
+        isEqual(inFlight.queryParams, getDatasetQueryParams(datasetQuery))
       ) {
         return;
       }
@@ -315,7 +315,7 @@ export const fetchCardDataAction = createAsyncThunk<
     // state so that the loader spinner shows as expected (#33767)
     const hasParametersChanged =
       !lastResult ||
-      !_.isEqual(
+      !isEqual(
         getDatasetQueryParams(lastResult.json_query),
         getDatasetQueryParams(datasetQuery),
       );

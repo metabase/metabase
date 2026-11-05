@@ -1,5 +1,5 @@
+import { uniq } from "es-toolkit";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { Box, Flex, Icon } from "metabase/ui";
 import type { NotificationHandler } from "metabase-types/api";
@@ -16,9 +16,7 @@ export const ChannelAvatarStack = ({
 }: {
   handlers: NotificationHandler[] | undefined;
 }) => {
-  const channels = _.uniq(
-    handlers?.map((handler) => handler.channel_type) ?? [],
-  );
+  const channels = uniq(handlers?.map((handler) => handler.channel_type) ?? []);
 
   return (
     <Flex align="center" className={S.avatarStack}>

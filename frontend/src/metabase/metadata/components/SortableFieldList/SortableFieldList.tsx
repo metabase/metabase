@@ -1,6 +1,6 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { keyBy } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import {
   type DragEndEvent,
@@ -28,7 +28,7 @@ export function SortableFieldList<T extends number | string>({
     activationConstraint: { distance: 15 },
   });
   const fieldsByName = useMemo(() => {
-    return _.indexBy(fields, (field) => field.name);
+    return keyBy(fields, (field) => field.name);
   }, [fields]);
   const isDragDisabled = fields.length <= 1;
 

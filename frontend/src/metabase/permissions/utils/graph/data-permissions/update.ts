@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import { getByPath, produce } from "metabase/utils/immutable";
@@ -355,15 +355,16 @@ function inferEntityPermissionValueFromChildTables(
   database: PermissionsDatabase,
   permission: DataPermission,
 ): DataPermissionValue {
-  const entityIdsForDescendantTables = _.chain(database.tables)
+  const entityIdsForDescendantTables = (database.tables ?? [])
     .filter((table) => isTableUnderEntityId(table, entityId))
-    .map(tableToTableEntityId)
-    .value();
+    .map(tableToTableEntityId);
 
-  const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
-    .map((id) => getFieldsPermission(permissions, groupId, id, permission))
-    .groupBy(_.identity)
-    .value();
+  const entityIdsByPermValue = groupBy(
+    entityIdsForDescendantTables.map((id) =>
+      getFieldsPermission(permissions, groupId, id, permission),
+    ),
+    (value) => value,
+  );
 
   // Unjustified type cast. FIXME
   const keys = Object.keys(entityIdsByPermValue) as DataPermissionValue[];

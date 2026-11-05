@@ -3,8 +3,8 @@ import {
   type UnknownAction,
   createSlice,
 } from "@reduxjs/toolkit";
+import { uniq } from "es-toolkit";
 import { type WritableDraft, castDraft } from "immer";
-import _ from "underscore";
 
 import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
@@ -151,7 +151,7 @@ export const metabot = createSlice({
     ) => {
       const { conversationId, isPollingForTitle } = action.payload;
       state.titlePollingConversationIds = isPollingForTitle
-        ? _.uniq([...state.titlePollingConversationIds, conversationId])
+        ? uniq([...state.titlePollingConversationIds, conversationId])
         : state.titlePollingConversationIds.filter(
             (id) => id !== conversationId,
           );

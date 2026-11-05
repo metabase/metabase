@@ -1,5 +1,6 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
+import { noop } from "es-toolkit";
 import {
   type ComponentPropsWithoutRef,
   useEffect,
@@ -8,7 +9,6 @@ import {
 } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import {
   useCreateCommentMutation,

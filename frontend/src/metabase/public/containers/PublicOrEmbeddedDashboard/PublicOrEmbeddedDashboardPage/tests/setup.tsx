@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
@@ -9,6 +8,8 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
+import { times } from "metabase/utils/arrays";
+import { isEmpty } from "metabase/utils/objects";
 import { defer } from "metabase/utils/promise";
 import type {
   DashboardCard,
@@ -65,7 +66,7 @@ export async function setup(
   const tabs: DashboardTab[] = [];
   const dashcards: DashboardCard[] = [];
 
-  _.times(numberOfTabs, (i) => {
+  times(numberOfTabs, (i) => {
     const tabId = i + 1;
 
     tabs.push(createMockDashboardTab({ id: tabId, name: `Tab ${tabId}` }));
@@ -103,7 +104,7 @@ export async function setup(
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
   const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
-  const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;
+  const hashString = isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;
   const href = `${pathname}${queryString}${hashString}`;
 
   // Setting initial window.location state,

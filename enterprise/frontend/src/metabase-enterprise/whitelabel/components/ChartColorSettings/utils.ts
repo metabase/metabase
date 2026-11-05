@@ -1,6 +1,6 @@
 import type { ColorInstance } from "color";
 import Color from "color";
-import _ from "underscore";
+import { flattenDeep, omit } from "es-toolkit";
 
 import { WHITELABEL_ACCENT_KEYS } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorPalette } from "metabase/ui/colors/types";
@@ -18,14 +18,14 @@ export const getDefaultChartColors = (
   values: ColorSettings,
   groups: ColorSettingsAccentKey[][],
 ): ColorSettings => {
-  return _.omit(values, _.flatten(groups));
+  return omit(values, flattenDeep(groups));
 };
 
 export const hasCustomChartColors = (
   values: ColorSettings,
   groups: ColorSettingsAccentKey[][],
 ) => {
-  return _.flatten(groups).some((name) => values[name] != null);
+  return flattenDeep(groups).some((name) => values[name] != null);
 };
 
 export const getAutoChartColors = (

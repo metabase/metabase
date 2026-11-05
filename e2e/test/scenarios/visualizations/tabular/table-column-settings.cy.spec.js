@@ -1,8 +1,7 @@
-import _ from "underscore";
-
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { times } from "metabase/utils/arrays";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -227,7 +226,7 @@ describe("scenarios > visualizations > table column settings", () => {
   }) => {
     const scroll = () => {
       if (needsScroll) {
-        _.times(scrollTimes, () => {
+        times(scrollTimes, () => {
           scrollVisualization();
           cy.wait(200);
         });
@@ -264,7 +263,7 @@ describe("scenarios > visualizations > table column settings", () => {
       assertColumnEnabled(getColumn(sanityCheck));
     }
     if (needsScroll) {
-      _.times(scrollTimes, () => {
+      times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });
@@ -289,7 +288,7 @@ describe("scenarios > visualizations > table column settings", () => {
     cy.wait("@dataset");
     cy.findByText("Doing science...").should("not.exist");
     if (needsScroll) {
-      _.times(scrollTimes, () => {
+      times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });
@@ -319,7 +318,7 @@ describe("scenarios > visualizations > table column settings", () => {
     cy.wait("@dataset");
     cy.findByText("Doing science...").should("not.exist");
     if (needsScroll) {
-      _.times(scrollTimes, () => {
+      times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });
@@ -560,7 +559,7 @@ describe("scenarios > visualizations > table column settings", () => {
         H.openVizSettingsSidebar();
 
         // The duplicate shows on the second cycle
-        _.times(2, () => {
+        times(2, () => {
           cy.findByTestId("sidebar-content")
             .findByTestId("draggable-item-Subtotal")
             .icon("eye_outline")

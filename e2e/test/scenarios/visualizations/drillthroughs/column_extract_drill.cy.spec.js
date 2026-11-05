@@ -1,9 +1,8 @@
-import _ from "underscore";
-
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { uniqueId } from "metabase/utils/unique-id";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -192,7 +191,7 @@ function extractColumnAndCheck({
   value,
   example,
 }) {
-  const requestAlias = _.uniqueId("dataset");
+  const requestAlias = uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   H.tableHeaderClick(column);
 

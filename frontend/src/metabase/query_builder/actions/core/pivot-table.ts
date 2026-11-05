@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -107,6 +107,6 @@ function checkShouldRerunPivotTableQuestion({
 
   return (
     isValidPivotTable &&
-    (!_.isEqual(currentPivotSettings, newPivotSettings) || shouldRerunForTotals)
+    (!isEqual(currentPivotSettings, newPivotSettings) || shouldRerunForTotals)
   );
 }

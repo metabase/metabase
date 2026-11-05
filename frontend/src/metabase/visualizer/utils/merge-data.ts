@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { zip } from "es-toolkit";
 
 import type {
   Dataset,
@@ -101,7 +101,7 @@ export function mergeVisualizerData({
 
   return {
     cols: columns,
-    rows: _.zip(...unzippedRows),
+    rows: zip(...unzippedRows),
     insights,
     results_timezone: sourceData?.results_timezone,
     requested_timezone: sourceData?.requested_timezone,

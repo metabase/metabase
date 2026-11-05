@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { keyBy, range } from "es-toolkit";
 
 import { getMainStore } from "__support__/entities-store";
 import {
@@ -497,12 +497,12 @@ function createDashboardState({
         id: 1,
         dashcards: dashcards.map((dc) => dc.id),
         parameters,
-        tabs: _.range(1, tabCount + 1).map((id) =>
+        tabs: range(1, tabCount + 1).map((id) =>
           createMockDashboardTab({ id, name: `Tab ${id}` }),
         ),
       }),
     },
-    dashcards: _.indexBy(dashcards, "id"),
+    dashcards: keyBy(dashcards, (item) => item.id),
     dashcardData,
   });
 }

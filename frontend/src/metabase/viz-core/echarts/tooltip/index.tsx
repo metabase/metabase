@@ -1,7 +1,7 @@
 import type { EChartsType } from "echarts/core";
+import { throttle } from "es-toolkit";
 import type React from "react";
 import { useEffect, useMemo } from "react";
-import _ from "underscore";
 
 import { getCspNonce } from "metabase/utils/csp";
 import { isNotNull } from "metabase/utils/types";
@@ -199,7 +199,7 @@ export const useCloseTooltipOnScroll = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
 ) => {
   useEffect(() => {
-    const handleScroll = _.throttle(() => {
+    const handleScroll = throttle(() => {
       if (chartRef.current?.isDisposed()) {
         return;
       }

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { SearchFilterKeys } from "metabase/common/search/constants";
 import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
@@ -20,7 +20,7 @@ export function getFiltersFromLocation(
   location: Location,
 ): URLSearchFilterQueryParams {
   if (isSearchPageLocation(location)) {
-    return _.pick(
+    return pick(
       parseSearchQuery(location.search),
       Object.values(SearchFilterKeys),
     );

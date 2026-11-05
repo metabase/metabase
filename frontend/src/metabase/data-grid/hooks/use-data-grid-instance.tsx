@@ -8,6 +8,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { isEqual, omit, pick, uniq } from "es-toolkit";
 import {
   useCallback,
   useEffect,
@@ -17,7 +18,6 @@ import {
   useState,
 } from "react";
 import { usePrevious, useUpdateEffect } from "react-use";
-import _ from "underscore";
 
 import {
   DATASET_INDEX_ATTRIBUTE_NAME,
@@ -63,7 +63,7 @@ const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 const getColumnOrder = (
   dataColumnsOrder: string[],
   utilityColumnIds: string[],
-) => _.uniq([...utilityColumnIds, ...dataColumnsOrder]);
+) => uniq([...utilityColumnIds, ...dataColumnsOrder]);
 
 /**
  * Main hook for creating and managing a data grid instance.
@@ -391,12 +391,12 @@ export const useDataGridInstance = <TData, TValue>({
   useEffect(() => {
     const didColumnSizingChange =
       prevColumnSizing.current != null &&
-      !_.isEqual(prevColumnSizing.current, columnSizingMap);
+      !isEqual(prevColumnSizing.current, columnSizingMap);
 
     const wrappedColumnIds = wrappedColumnsOptions.map((column) => column.id);
     const didColumnWrappingChange =
       prevWrappedColumns.current != null &&
-      !_.isEqual(wrappedColumnIds, prevWrappedColumns.current);
+      !isEqual(wrappedColumnIds, prevWrappedColumns.current);
 
     if (didColumnSizingChange || didColumnWrappingChange) {
       measureGrid();
@@ -575,11 +575,11 @@ export const useDataGridInstance = <TData, TValue>({
         prevControlledColumnSizingMap ?? {},
       ).filter((columnId) => !(columnId in controlledSizing));
       const releasedColumnSizing = getTruncatedColumnSizing(
-        _.pick(measuredColumnSizingMap, releasedColumnIds),
+        pick(measuredColumnSizingMap, releasedColumnIds),
         truncateLongCellWidth,
       );
       setColumnSizingMap((prev) => ({
-        ..._.omit(prev, releasedColumnIds),
+        ...omit(prev, releasedColumnIds),
         ...releasedColumnSizing,
         ...controlledSizing,
       }));

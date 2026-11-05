@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import { omit } from "es-toolkit";
 import { type JSX, memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -42,7 +42,7 @@ export const ChartColorSettings = ({
       if (color) {
         onChange({ ...colorsRef.current, [colorName]: color });
       } else {
-        onChange(_.omit(colorsRef.current, colorName));
+        onChange(omit(colorsRef.current, [colorName]));
       }
     },
     [colorsRef, onChange],

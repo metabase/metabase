@@ -1,6 +1,5 @@
-import { omit } from "es-toolkit";
+import { isEqual, omit, once } from "es-toolkit";
 import slugg from "slugg";
-import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -147,7 +146,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
+  _legacyNativeQuery = once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
     if (this.isNative()) {
@@ -570,17 +569,17 @@ class Question {
     const card = this.card();
     const otherCard = other.card();
     const areCardsEqual = compareResultsMetadata
-      ? _.isEqual(card, otherCard)
-      : _.isEqual(
-          _.omit(card, "result_metadata"),
-          _.omit(otherCard, "result_metadata"),
+      ? isEqual(card, otherCard)
+      : isEqual(
+          omit(card, ["result_metadata"]),
+          omit(otherCard, ["result_metadata"]),
         );
 
     if (!areCardsEqual) {
       return false;
     }
 
-    if (!_.isEqual(this.parameters(), other.parameters())) {
+    if (!isEqual(this.parameters(), other.parameters())) {
       return false;
     }
 
@@ -625,7 +624,7 @@ class Question {
       const originalCard = originalQuestion?._getValueForComparison();
       const currentCard = this._getValueForComparison();
 
-      if (!_.isEqual(originalCard, currentCard)) {
+      if (!isEqual(originalCard, currentCard)) {
         return true;
       }
 

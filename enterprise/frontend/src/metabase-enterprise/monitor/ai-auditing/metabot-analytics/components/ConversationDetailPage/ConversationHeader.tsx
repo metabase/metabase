@@ -1,6 +1,6 @@
+import { compact } from "es-toolkit";
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -59,7 +59,7 @@ export function ConversationHeader({
 
   const crumbs = useMemo<Crumb[]>(
     () =>
-      _.compact([
+      compact([
         [t`Conversations`, Urls.monitorAiAuditingConversations()],
         conversation.user && [
           userName,

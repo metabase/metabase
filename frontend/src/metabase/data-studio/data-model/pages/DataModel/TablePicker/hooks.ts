@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -213,7 +213,7 @@ export function useTableLoader() {
 
       if (
         tablesRef.current.isError &&
-        _.isEqual(tablesRef.current.originalArgs, newArgs)
+        isEqual(tablesRef.current.originalArgs, newArgs)
       ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -254,7 +254,7 @@ export function useTableLoader() {
 
       if (
         schemasRef.current.isError &&
-        _.isEqual(schemasRef.current.originalArgs, newArgs)
+        isEqual(schemasRef.current.originalArgs, newArgs)
       ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -323,7 +323,7 @@ export function useTableLoader() {
       try {
         setTree((current) => {
           const merged = merge(current, newTree);
-          return _.isEqual(current, merged) ? current : merged;
+          return isEqual(current, merged) ? current : merged;
         });
         setIsInitialLoading(false);
       } finally {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
-import { findWhere } from "underscore";
 
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -38,9 +37,10 @@ const RootCachingStrategyEditor = () => {
   } = useCacheConfigs({ model: ["root"] });
 
   /** The config for the model currently being edited */
-  const targetConfig = findWhere(configs ?? [], {
-    model_id: targetId ?? undefined,
-  });
+  const targetConfig = (configs ?? []).find(
+    (config) =>
+      "model_id" in config && config.model_id === (targetId ?? undefined),
+  );
 
   const savedStrategy = targetConfig?.strategy;
 

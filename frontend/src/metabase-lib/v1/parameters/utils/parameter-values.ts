@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import type {
@@ -81,7 +81,7 @@ export function getDefaultValuePopulatedParameters<P extends Parameter>(
 // Needed because parameter values might be arrays
 // in which case order of elements isn't guaranteed
 export function areParameterValuesIdentical(a: unknown, b: unknown): boolean {
-  return _.isEqual(
+  return isEqual(
     Array.isArray(a) ? a.slice().sort() : a,
     Array.isArray(b) ? b.slice().sort() : b,
   );
@@ -105,7 +105,7 @@ export function normalizeParameters(
   parameters: Parameter[],
 ): NormalizedQueryParameter[] {
   return parameters
-    .filter((parameter) => _.has(parameter, "value"))
+    .filter((parameter) => Object.hasOwn(parameter, "value"))
     .map(({ id, type, value, target, options }) => ({
       id,
       type,

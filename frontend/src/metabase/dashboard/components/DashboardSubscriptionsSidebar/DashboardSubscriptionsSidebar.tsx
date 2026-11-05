@@ -1,5 +1,5 @@
+import { partial } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import _ from "underscore";
 
 import { skipToken, useListSubscriptionsQuery, userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -530,8 +530,8 @@ function DashboardSubscriptionsSidebarInner({
         channelSpec={channelSpec}
         handleSave={handleSave}
         onCancel={handleCancel}
-        onChannelPropertyChange={_.partial(onChannelPropertyChange, index)}
-        onChannelScheduleChange={_.partial(onChannelScheduleChange, index)}
+        onChannelPropertyChange={partial(onChannelPropertyChange, index)}
+        onChannelScheduleChange={partial(onChannelScheduleChange, index)}
         testPulse={testPulseFn}
         toggleSkipIfEmpty={toggleSkipIfEmpty}
         handleArchive={handleArchive}
@@ -620,12 +620,12 @@ function AddEditEmailSidebarWithHooks({
    * Memoized because it's used in `AddEditEmailSidebar.tsx` as a dependency
    */
   const handleChannelPropertyChange = useMemo(
-    () => _.partial(onChannelPropertyChange, index),
+    () => partial(onChannelPropertyChange, index),
     [index, onChannelPropertyChange],
   );
 
   const handleChannelScheduleChange = useMemo(
-    () => _.partial(onChannelScheduleChange, index),
+    () => partial(onChannelScheduleChange, index),
     [index, onChannelScheduleChange],
   );
 

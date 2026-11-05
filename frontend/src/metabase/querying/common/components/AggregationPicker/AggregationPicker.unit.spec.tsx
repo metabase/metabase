@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import { without } from "es-toolkit";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
@@ -120,7 +120,7 @@ function createMetadata({
         ],
         features: allowCustomExpressions
           ? COMMON_DATABASE_FEATURES
-          : _.without(COMMON_DATABASE_FEATURES, "expression-aggregations"),
+          : without(COMMON_DATABASE_FEATURES, "expression-aggregations"),
       }),
     ],
   });
@@ -377,7 +377,7 @@ describe("AggregationPicker", () => {
     it("shouldn't be available if database doesn't support custom expressions", async () => {
       setup({
         database: createSampleDatabase({
-          features: _.without(
+          features: without(
             COMMON_DATABASE_FEATURES,
             "expression-aggregations",
           ),

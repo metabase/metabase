@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { head } from "es-toolkit";
 
 import {
   type QueryParam,
@@ -66,7 +66,7 @@ export function mergeLogs(logArrays: Log[][]) {
 }
 
 export function maybeMergeLogs(logs: Log[], newLogs: Log[]) {
-  const newestLog = _.first(newLogs);
+  const newestLog = head(newLogs);
   const hasFetchedNewLogs = newestLog && !hasLog(logs, newestLog);
   if (hasFetchedNewLogs) {
     return mergeLogs([logs, newLogs.toReversed()]);
@@ -76,7 +76,17 @@ export function maybeMergeLogs(logs: Log[], newLogs: Log[]) {
 
 export function hasLog(logs: Log[], targetLog: Log): boolean {
   // search from back as newer logs are last
-  return _.findLastIndex(logs, targetLog) > -1;
+  return (
+    logs.findLastIndex(
+      (log) =>
+        log.timestamp === targetLog.timestamp &&
+        log.process_uuid === targetLog.process_uuid &&
+        log.fqns === targetLog.fqns &&
+        log.msg === targetLog.msg &&
+        log.level === targetLog.level &&
+        log.exception === targetLog.exception,
+    ) > -1
+  );
 }
 
 export function filterLogs(

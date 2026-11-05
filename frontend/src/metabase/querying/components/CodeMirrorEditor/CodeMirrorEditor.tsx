@@ -1,5 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import type { ViewUpdate } from "@uiw/react-codemirror";
+import { isEqual } from "es-toolkit";
 import {
   forwardRef,
   useCallback,
@@ -8,7 +9,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import _ from "underscore";
 
 import {
   CodeMirror,
@@ -125,7 +125,7 @@ export const CodeMirrorEditor = forwardRef<
         const beforeRanges = getSelectedRanges(update.startState);
         const afterRanges = getSelectedRanges(update.state);
 
-        if (!_.isEqual(beforeRanges, afterRanges)) {
+        if (!isEqual(beforeRanges, afterRanges)) {
           onSelectionChange(afterRanges);
         }
       }

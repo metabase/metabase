@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
@@ -115,7 +113,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const viewing = getUserIsViewing(result)!;
-    expect(_.get(viewing, "id")).toEqual(undefined);
+    expect(Reflect.get(viewing, "id")).toEqual(undefined);
     expect(viewing.type).toEqual("adhoc");
   });
 

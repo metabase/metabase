@@ -1,7 +1,3 @@
-import _ from "underscore";
-
-import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
-
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
@@ -11,14 +7,14 @@ describe("parameters/utils/dashboard-options", () => {
   describe("getDashboardParameterSections", () => {
     it("should have a number section", () => {
       expect(
-        _.findWhere(getDashboardParameterSections(), { id: "number" }),
+        getDashboardParameterSections().find((item) => item.id === "number"),
       ).toBeDefined();
     });
 
     it("should have location options that map to string/* parameters", () => {
-      const locationSection = _.findWhere(getDashboardParameterSections(), {
-        id: "location",
-      });
+      const locationSection = getDashboardParameterSections().find(
+        (item) => item.id === "location",
+      );
       expect(
         locationSection?.options.every((option) =>
           option.type.startsWith("string"),
@@ -27,22 +23,22 @@ describe("parameters/utils/dashboard-options", () => {
     });
 
     it("should have a string section", () => {
+      const badSectionId: string = "bad-section-id";
       expect(
-        _.findWhere(getDashboardParameterSections(), {
-          // Unjustified type cast. FIXME
-          id: "bad-section-id" as ParameterSectionId,
-        }),
+        getDashboardParameterSections().find(
+          (item) => item.id === badSectionId,
+        ),
       ).not.toBeDefined();
 
       expect(
-        _.findWhere(getDashboardParameterSections(), { id: "string" }),
+        getDashboardParameterSections().find((item) => item.id === "string"),
       ).toBeDefined();
     });
 
     it("should have an id section with numeric and text subtypes", () => {
-      const idSection = _.findWhere(getDashboardParameterSections(), {
-        id: "id",
-      });
+      const idSection = getDashboardParameterSections().find(
+        (item) => item.id === "id",
+      );
       expect(idSection).toBeDefined();
       expect(idSection?.options).toHaveLength(2);
       expect(idSection?.options.map((o) => o.type)).toEqual([

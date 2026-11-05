@@ -1,6 +1,6 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 /**
  * This slice is only used in full-app embedding. As in modular embeddings, we'd pass the `entityTypes`
@@ -32,7 +32,7 @@ const embeddingDataPickerSlice = createSlice({
     ) => {
       if (action.payload) {
         const entityTypes = normalizeEntityTypes(action.payload);
-        if (!_.isEqual(state.entityTypes, entityTypes)) {
+        if (!isEqual(state.entityTypes, entityTypes)) {
           state.entityTypes = entityTypes;
         }
       }

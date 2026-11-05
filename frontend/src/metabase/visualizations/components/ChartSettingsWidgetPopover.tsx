@@ -1,5 +1,5 @@
+import { uniq } from "es-toolkit";
 import { useEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -33,7 +33,7 @@ export const ChartSettingsWidgetPopover = ({
   } = useWidgetPopoverPortal();
 
   useEffect(() => {
-    sections.current = _.chain(widgets).pluck("section").unique().value();
+    sections.current = uniq(widgets.map((widget) => widget.section));
   }, [widgets]);
 
   const [currentSection, setCurrentSection] = useState<string | undefined>("");

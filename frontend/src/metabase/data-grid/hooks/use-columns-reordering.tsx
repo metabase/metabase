@@ -13,8 +13,8 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { Table as ReactTable } from "@tanstack/react-table";
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import _ from "underscore";
 
 export type ColumnsReordering = {
   sensors: SensorDescriptor<SensorOptions>[];
@@ -106,7 +106,7 @@ export const useColumnsReordering = <TData,>(
     }
 
     const newColumnOrder = table.getState().columnOrder;
-    if (!_.isEqual(newColumnOrder, prevOrder.current)) {
+    if (!isEqual(newColumnOrder, prevOrder.current)) {
       const dataColumns = newColumnOrder.filter(
         (columnName) =>
           table.getColumn(columnName)?.columnDef.meta?.isUtilityColumn !== true,

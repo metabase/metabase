@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useCreateTransformJobMutation,
@@ -19,7 +19,7 @@ import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 export function NewJobPage() {
   const initialJob = useMemo(() => getNewJobInfo(), []);
   const [job, setJob] = useState(initialJob);
-  const isDirty = useMemo(() => !_.isEqual(job, initialJob), [job, initialJob]);
+  const isDirty = useMemo(() => !isEqual(job, initialJob), [job, initialJob]);
   const [createJob, { isLoading: isCreating }] =
     useCreateTransformJobMutation();
   const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();

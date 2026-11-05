@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { selectQuestionFromCard } from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -54,7 +54,7 @@ export const CreateStructuredQuestionModal = ({
       newQuestion.type(),
     );
 
-    if (!_.isEqual(currentDependencies, nextDependencies)) {
+    if (!isEqual(currentDependencies, nextDependencies)) {
       await dispatch(
         host.actions.loadMetadataForDocumentCard(newQuestion.card()),
       );

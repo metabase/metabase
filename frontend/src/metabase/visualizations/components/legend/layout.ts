@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { range } from "es-toolkit";
 
 import type { Padding } from "metabase/viz-core";
 import type { LegendPosition } from "metabase-types/api";
@@ -183,7 +183,7 @@ function getRowVisibleCount(
     rowWidthInsideIndent;
 
   return (
-    _.range(itemWidths.length - 1, MIN_VISIBLE_COUNT, -1).find(
+    range(itemWidths.length - 1, MIN_VISIBLE_COUNT, -1).find(
       fitsWithOverflowLabel,
     ) ?? MIN_VISIBLE_COUNT
   );

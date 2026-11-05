@@ -1,6 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -330,8 +329,7 @@ export const getCollectionsPermissionEditor = createSelector(
         const isExternal = isExternalUsersGroup || isTenantGroup;
         const groupType = getSpecialGroupType(group, isExternal);
         const isLibrary = isLibraryCollection(collection);
-        const defaultGroup = _.find(
-          groups,
+        const defaultGroup = groups.find(
           isExternalUsersGroup
             ? PLUGIN_TENANTS.isExternalUsersGroup
             : isDefaultGroup,

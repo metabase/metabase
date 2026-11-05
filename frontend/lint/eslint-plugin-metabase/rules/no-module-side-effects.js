@@ -73,6 +73,7 @@ const DEFAULT_PURE_CALLEES = [
   },
   { module: "react-redux", names: ["connect"] },
   { module: "underscore", names: ["compose", "memoize", "once"] },
+  { module: "es-toolkit", names: ["flowRight", "once"] },
 ];
 
 // `Object.assign` and these others change their first argument, so we report on the argument rather than the call.

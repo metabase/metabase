@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import _ from "underscore";
 
 import {
   useDeleteCacheConfigsMutation,
@@ -52,7 +51,9 @@ export const useSaveStrategy = (
         // so let's remove these fields
         const validFields = getFieldsForStrategyType(values.type);
         // Unjustified type cast. FIXME
-        const newStrategy = _.pick(values, validFields) as CacheStrategy;
+        const newStrategy = Object.fromEntries(
+          Object.entries(values).filter(([key]) => validFields.includes(key)),
+        ) as CacheStrategy;
 
         const strategyData = strategies[values.type];
         const strategySchema = getStrategyValidationSchema(strategyData);

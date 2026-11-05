@@ -1,5 +1,5 @@
+import { debounce } from "es-toolkit";
 import { useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import resizeObserver from "metabase/utils/resize-observer";
 
@@ -81,7 +81,7 @@ export const useAreAnyTruncated = <E extends Element>({
           return newStatuses;
         });
       };
-      const handleResizeDebounced = _.debounce(handleResize, 200);
+      const handleResizeDebounced = debounce(handleResize, 200);
       resizeObserver.subscribe(element, handleResizeDebounced);
       unsubscribeFns.push(() =>
         resizeObserver.unsubscribe(element, handleResizeDebounced),

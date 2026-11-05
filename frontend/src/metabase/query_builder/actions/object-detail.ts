@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -201,7 +201,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       // detail id changed. If so, these fk reference are stale and we shouldn't
       // put them in state. The detail id is used in the query so we check that.
       const updatedQueryResult = getFirstQueryResult(getState());
-      if (!_.isEqual(queryResult?.json_query, updatedQueryResult?.json_query)) {
+      if (!isEqual(queryResult?.json_query, updatedQueryResult?.json_query)) {
         return null;
       }
       return fkReferences;

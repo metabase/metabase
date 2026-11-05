@@ -1,6 +1,6 @@
+import { sortBy } from "es-toolkit";
 import { type JSX, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
@@ -128,10 +128,13 @@ const UserProfileForm = ({
 };
 
 const getLocaleOptions = (locales: LocaleData[] | null) => {
-  const options = _.chain(locales ?? [["en", "English"]])
-    .map(([value, label]) => ({ label, value }))
-    .sortBy(({ label }) => label)
-    .value();
+  const options = sortBy(
+    (locales ?? [["en", "English"]]).map(([value, label]) => ({
+      label,
+      value,
+    })),
+    [({ label }) => label],
+  );
 
   return [{ label: t`Use site default`, value: "" }, ...options];
 };

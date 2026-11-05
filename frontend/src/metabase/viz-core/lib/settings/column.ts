@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getNullDisplayValue } from "metabase/utils/constants";
 import {
@@ -162,9 +161,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit ?? "default");
-      return !!_.findWhere(options, {
-        value: settings.date_style ?? undefined,
-      });
+      return options.some((option) => option.value === settings.date_style);
     },
     getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
@@ -231,7 +228,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "radio",
     isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
-      return !!_.findWhere(options, { value: settings.time_enabled });
+      return !!options.find(
+        (item) => "value" in item && item.value === settings.time_enabled,
+      );
     },
     getProps: ({ unit }) => {
       const options = getTimeEnabledOptionsForUnit(unit);
@@ -515,16 +514,13 @@ export function isPivoted(
     return false;
   }
 
-  const pivotIndex = _.findIndex(
-    data.cols,
+  const pivotIndex = data.cols.findIndex(
     (col) => col.name === settings["table.pivot_column"],
   );
-  const cellIndex = _.findIndex(
-    data.cols,
+  const cellIndex = data.cols.findIndex(
     (col) => col.name === settings["table.cell_column"],
   );
-  const normalIndex = _.findIndex(
-    data.cols,
+  const normalIndex = data.cols.findIndex(
     (_col, index) => index !== pivotIndex && index !== cellIndex,
   );
 

@@ -3,7 +3,6 @@ import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
 import L from "leaflet";
 import { Component, createRef } from "react";
-import _ from "underscore";
 
 import type { CardQuestionBuilder } from "metabase/metadata-store";
 import MetabaseSettings from "metabase/utils/settings";
@@ -289,12 +288,12 @@ export class LeafletMap<
       buildQuestion,
     } = this.props;
 
-    const latitudeColumn = _.findWhere(cols, {
-      name: settings["map.latitude_column"],
-    });
-    const longitudeColumn = _.findWhere(cols, {
-      name: settings["map.longitude_column"],
-    });
+    const latitudeColumn = cols.find(
+      (col) => col.name === settings["map.latitude_column"],
+    );
+    const longitudeColumn = cols.find(
+      (col) => col.name === settings["map.longitude_column"],
+    );
 
     const question = buildQuestion(card);
     if (this.supportsFilter() && latitudeColumn && longitudeColumn) {
@@ -345,12 +344,10 @@ export class LeafletMap<
       ],
     } = this.props;
     return {
-      latitudeIndex: _.findIndex(
-        cols,
+      latitudeIndex: cols.findIndex(
         (col) => col.name === settings["map.latitude_column"],
       ),
-      longitudeIndex: _.findIndex(
-        cols,
+      longitudeIndex: cols.findIndex(
         (col) => col.name === settings["map.longitude_column"],
       ),
     };
@@ -380,9 +377,7 @@ export class LeafletMap<
         },
       ],
     } = this.props;
-    return _.findWhere(cols, {
-      name: settings["map.metric_column"],
-    });
+    return cols.find((col) => col.name === settings["map.metric_column"]);
   }
 }
 

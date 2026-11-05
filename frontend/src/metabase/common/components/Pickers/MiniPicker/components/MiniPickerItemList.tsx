@@ -1,6 +1,6 @@
+import { intersection } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   searchApi,
@@ -116,7 +116,7 @@ function RootItemList() {
 
   if (
     libraryCollection &&
-    _.intersection(models, [
+    intersection(models, [
       ...(libraryCollection.below || []),
       ...(libraryCollection.here || []),
     ]).length &&

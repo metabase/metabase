@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { compact } from "es-toolkit";
 
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
@@ -93,7 +93,7 @@ const buildAccessPermission = (
   ];
 
   const options = PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
-    _.compact([
+    compact([
       DATA_PERMISSION_OPTIONS.unrestricted,
       DATA_PERMISSION_OPTIONS.controlled,
       originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
@@ -160,7 +160,7 @@ const buildNativePermission = (
     disabledTooltip,
     isHighlighted: isAdmin,
     value,
-    options: _.compact([
+    options: compact([
       dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
         DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
       DATA_PERMISSION_OPTIONS.queryBuilder,
@@ -227,7 +227,7 @@ export const buildTablesPermissions = ({
   const shouldShowViewDataColumn =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn && hasAnyAccessOptions;
 
-  return _.compact([
+  return compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({

@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { type RefObject, useLayoutEffect, useRef } from "react";
-import _ from "underscore";
 
 type UseScrollToTopProps = {
   ref: RefObject<HTMLElement | null>;
@@ -22,7 +22,7 @@ export function useScrollToTop({
   const keysVersionRef = useRef(0);
   const isResetPendingRef = useRef(false);
 
-  if (!_.isEqual(previousKeysRef.current, keys)) {
+  if (!isEqual(previousKeysRef.current, keys)) {
     previousKeysRef.current = keys;
     keysVersionRef.current += 1;
     isResetPendingRef.current = true;

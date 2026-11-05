@@ -1,7 +1,7 @@
 /* eslint-disable testing-library/no-node-access */
 
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import { keyBy } from "es-toolkit";
 
 import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -62,8 +62,8 @@ async function setup({ tabs = [], dashcards }: SetupOpts) {
           },
         },
         dashcards: {
-          ..._.indexBy(dashcards, "id"),
-          ..._.indexBy(otherDashboardDashcards, "id"),
+          ...keyBy(dashcards, (item) => item.id),
+          ...keyBy(otherDashboardDashcards, (item) => item.id),
         },
       }),
     }),

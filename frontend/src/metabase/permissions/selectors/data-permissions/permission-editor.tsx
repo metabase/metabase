@@ -1,7 +1,7 @@
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
+import { compact } from "es-toolkit";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
@@ -259,11 +259,8 @@ export const getDatabasesPermissionEditor = createSelector(
       return null;
     }
 
-    const defaultGroup = _.find(groups, isDefaultGroup);
-    const externalUsersGroup = _.find(
-      groups,
-      PLUGIN_TENANTS.isExternalUsersGroup,
-    );
+    const defaultGroup = groups.find(isDefaultGroup);
+    const externalUsersGroup = groups.find(PLUGIN_TENANTS.isExternalUsersGroup);
 
     if (!defaultGroup) {
       throw new Error("No default group found");
@@ -366,7 +363,7 @@ export const getDatabasesPermissionEditor = createSelector(
 
     const showViewDataColumn = hasViewDataOptions(entities);
 
-    const columns = _.compact([
+    const columns = compact([
       { name: getEditorEntityName(params, hasSingleSchema) },
       showViewDataColumn && { name: t`View data` },
       { name: t`Create queries` },
@@ -447,9 +444,8 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
 
       const sortedGroups = groups.flat();
 
-      const defaultGroup = _.find(sortedGroups, isDefaultGroup);
-      const allTenantUsersGroup = _.find(
-        sortedGroups,
+      const defaultGroup = sortedGroups.find(isDefaultGroup);
+      const allTenantUsersGroup = sortedGroups.find(
         PLUGIN_TENANTS.isExternalUsersGroup,
       );
 
@@ -541,7 +537,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
 
       const showViewDataColumn = hasViewDataOptions(entities);
 
-      const columns = _.compact([
+      const columns = compact([
         { name: t`Group name` },
         showViewDataColumn && { name: t`View data` },
         { name: t`Create queries` },

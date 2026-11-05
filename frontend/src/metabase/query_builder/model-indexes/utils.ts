@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type Question from "metabase-lib/v1/Question";
 import type { FieldTypeInfo } from "metabase-lib/v1/types/utils/isa";
@@ -31,5 +31,4 @@ export const getPkRef = (fields?: Field[]) => fields?.find(isPK)?.field_ref;
 export const fieldHasIndex = (
   modelIndexes: ModelIndex[] | undefined,
   field: Pick<Field, "field_ref">,
-) =>
-  !!modelIndexes?.some((index) => _.isEqual(index.value_ref, field.field_ref));
+) => !!modelIndexes?.some((index) => isEqual(index.value_ref, field.field_ref));

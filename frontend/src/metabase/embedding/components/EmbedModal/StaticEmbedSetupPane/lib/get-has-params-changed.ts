@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { EmbeddingParameters } from "metabase-types/api";
 
@@ -28,7 +28,7 @@ export function getHasParamsChanged({
   const nonDisabledEmbeddingParams =
     getNonDisabledEmbeddingParams(embeddingParams);
 
-  return !_.isEqual(
+  return !isEqual(
     nonDisabledInitialEmbeddingParams,
     nonDisabledEmbeddingParams,
   );

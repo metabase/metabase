@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual, omit } from "es-toolkit";
 
 import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
@@ -23,7 +23,7 @@ type QueryHandlers = {
 };
 
 function getQueryClauses(dynamicQuery: DynamicQueryInput | undefined) {
-  return _.omit(dynamicQuery ?? {}, "enabled");
+  return omit(dynamicQuery ?? {}, ["enabled"]);
 }
 
 function isSameRequest(
@@ -32,8 +32,8 @@ function isSameRequest(
   dynamicQuery: DynamicQueryInput | undefined,
 ) {
   return (
-    _.isEqual(mock.query, query) &&
-    _.isEqual(getQueryClauses(mock.dynamicQuery), getQueryClauses(dynamicQuery))
+    isEqual(mock.query, query) &&
+    isEqual(getQueryClauses(mock.dynamicQuery), getQueryClauses(dynamicQuery))
   );
 }
 
@@ -54,9 +54,10 @@ function createNoQueryMockError(
   dynamicQuery: DynamicQueryInput | undefined,
 ) {
   const clauses = getQueryClauses(dynamicQuery);
-  const dynamicPart = _.isEmpty(clauses)
-    ? ""
-    : ` with dynamic part ${JSON.stringify(clauses)}`;
+  const dynamicPart =
+    Object.keys(clauses).length === 0
+      ? ""
+      : ` with dynamic part ${JSON.stringify(clauses)}`;
 
   return new Error(
     `No mock for query "${getQueryLabel(query)}"${dynamicPart}. Pass mockDataAppQuery for it in ${TEST_PROVIDER_NAME} dataAppQueries.`,

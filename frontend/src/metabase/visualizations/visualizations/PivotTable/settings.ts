@@ -1,5 +1,5 @@
+import { isEqual, mapValues, partition, sortBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { displayNameForColumn } from "metabase/value-formatting";
 import {
@@ -68,7 +68,7 @@ export const settings = {
       // `rows` is value we check against the current setting to see if we should use `value`
       const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
       const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
-      if (!_.isEqual(rows, currentRows)) {
+      if (!isEqual(rows, currentRows)) {
         return { value: [], rows: currentRows };
       }
       return { rows, value };
@@ -109,20 +109,16 @@ export const settings = {
       );
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
-        const [dimensions, values] = _.partition(
-          columnsToPartition,
-          isDimension,
-        );
+        const [dimensions, values] = partition(columnsToPartition, isDimension);
         // The cols of a run whose rows are restricted by a sandbox, an
         // impersonation role or database routing carry no fingerprint, since
         // it describes rows the user cannot see. The sort then keeps the
         // breakout order, so a card saved with `pivot_table.column_split`
         // (which the query builder persists on save) keeps its layout for
         // every viewer, while an unsaved split can differ between viewers.
-        const [first, second, ...rest] = _.sortBy(
-          dimensions,
+        const [first, second, ...rest] = sortBy(dimensions, [
           (col) => col.fingerprint?.global?.["distinct-count"],
-        );
+        ]);
 
         let rows;
         let columns: DatasetColumn[];
@@ -138,7 +134,7 @@ export const settings = {
           columns = [first, second];
           rows = rest;
         }
-        setting = _.mapObject({ rows, columns, values }, (cols) =>
+        setting = mapValues({ rows, columns, values }, (cols) =>
           cols.map((col) => col.name),
         );
       } else {
@@ -303,10 +299,10 @@ export const _columnSettings = {
         .slice(0, -1)
         .some(
           (row) =>
-            _.isEqual(row, column.name) ||
+            isEqual(row, column.name) ||
             (Array.isArray(row) &&
               column.field_ref != null &&
-              _.isEqual(
+              isEqual(
                 getFieldRefForComparison(row),
                 getFieldRefForComparison(column.field_ref),
               )),
@@ -321,7 +317,7 @@ export const _columnSettings = {
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
+      return !rows.slice(0, -1).some((row) => isEqual(row, column.name));
     },
   },
   column_title: {

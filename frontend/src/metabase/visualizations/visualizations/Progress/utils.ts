@@ -1,6 +1,5 @@
 import Color from "color";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
@@ -72,7 +71,7 @@ export const findProgressColumn = (
   valueField?: string,
 ): DatasetColumn | undefined => {
   if (valueField) {
-    return _.find(cols, (col) => col.name === valueField);
+    return cols.find((col) => col.name === valueField);
   }
   return cols.find(isNumeric) || cols[0];
 };

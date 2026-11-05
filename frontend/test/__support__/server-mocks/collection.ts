@@ -1,5 +1,5 @@
+import { partition } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
@@ -139,10 +139,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 ) {
   const urls = getCollectionVirtualSchemaURLs(collection);
 
-  const [models, questions] = _.partition(
-    cards,
-    (card) => card.type === "model",
-  );
+  const [models, questions] = partition(cards, (card) => card.type === "model");
   const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
   const questionVirtualTables = questions.map(
     convertSavedQuestionToVirtualTable,

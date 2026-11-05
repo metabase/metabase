@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
 import {
@@ -112,7 +111,7 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
           }));
         if (
           !rowsOrder ||
-          !_.isArray(rowsOrder) ||
+          !Array.isArray(rowsOrder) ||
           !rowsOrder.every((setting) => setting.key !== undefined) ||
           orderDimension !== dimension
         ) {

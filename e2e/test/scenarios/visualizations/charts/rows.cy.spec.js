@@ -1,7 +1,6 @@
-import _ from "underscore";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { times } from "metabase/utils/arrays";
 
 const { H } = cy;
 
@@ -114,7 +113,7 @@ describe("scenarios > visualizations > rows", () => {
           expressions: {
             LongName: [
               "concat",
-              ..._.times(10, () => {
+              ...times(10, () => {
                 return [
                   "field",
                   PRODUCTS.TITLE,

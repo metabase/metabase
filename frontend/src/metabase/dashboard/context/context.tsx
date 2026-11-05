@@ -1,3 +1,4 @@
+import { isEqual, noop } from "es-toolkit";
 import {
   type PropsWithChildren,
   createContext,
@@ -10,7 +11,6 @@ import {
   useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
-import { isEqual, noop } from "underscore";
 
 import { isAbortError } from "metabase/api/client";
 import { isEmbedding } from "metabase/embedding/config";

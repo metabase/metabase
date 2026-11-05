@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { range } from "es-toolkit";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -73,7 +73,7 @@ describe("scenarios > search", () => {
 });
 
 const generateQuestions = (count) => {
-  _.range(count).map((i) =>
+  range(count).map((i) =>
     H.createQuestion({
       name: `generated_question ${i}`,
       query: {

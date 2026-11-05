@@ -1,6 +1,6 @@
+import { compact } from "es-toolkit";
 import { type ComponentType, useEffect, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetDatabaseQuery,
@@ -97,7 +97,7 @@ function DatabaseEditAppInner({
     [database?.initial_sync_status, fromEmbeddingSetupGuide],
   );
 
-  const crumbs = _.compact([
+  const crumbs = compact([
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
   ]);

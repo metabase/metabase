@@ -1,6 +1,6 @@
+import { shuffle } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import { Flex, Loader, Skeleton, Stack, Text } from "metabase/ui";
 
@@ -51,7 +51,7 @@ const SKELETON_ROW_WIDTHS = [
 
 export const DelayedSkeleton = ({ delay = 300 }: { delay?: number }) => {
   const [show, setShow] = useState(false);
-  const widths = useMemo(() => _.shuffle(SKELETON_ROW_WIDTHS), []);
+  const widths = useMemo(() => shuffle(SKELETON_ROW_WIDTHS), []);
 
   useMount(() => {
     const timeout = setTimeout(() => setShow(true), delay);

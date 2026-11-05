@@ -1,5 +1,5 @@
+import { difference, mapValues } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
@@ -38,11 +38,8 @@ export function updateValueWithCurrentColumns(
   const currentSettingColumnNames = Object.values(migratedValue).flatMap(
     (columnNames) => columnNames ?? [],
   );
-  const toAdd = _.difference(
-    currentQueryColumnNames,
-    currentSettingColumnNames,
-  );
-  const toRemove = _.difference(
+  const toAdd = difference(currentQueryColumnNames, currentSettingColumnNames);
+  const toRemove = difference(
     currentSettingColumnNames,
     currentQueryColumnNames,
   );
@@ -55,7 +52,7 @@ export function updateValueWithCurrentColumns(
   }
 
   // remove toRemove
-  const value: ColumnNameColumnSplitSetting = _.mapObject(
+  const value: ColumnNameColumnSplitSetting = mapValues(
     migratedValue,
     (columnNames) =>
       columnNames?.filter((columnName) => !toRemove.includes(columnName)),

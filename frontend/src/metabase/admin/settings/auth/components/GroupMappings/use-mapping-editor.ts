@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { GroupId, GroupMappings } from "metabase-types/api";
 
@@ -51,7 +51,7 @@ export function useMappingEditor({
     draft != null &&
     (draft.originalName == null ||
       !Object.hasOwn(mappings, draft.originalName));
-  const hasUnsavedChanges = draft != null && !_.isEqual(draft, openedDraft);
+  const hasUnsavedChanges = draft != null && !isEqual(draft, openedDraft);
   const isDuplicateName =
     draft != null &&
     Object.hasOwn(mappings, trimmedName) &&

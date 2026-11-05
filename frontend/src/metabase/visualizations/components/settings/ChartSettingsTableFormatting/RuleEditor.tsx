@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
@@ -15,6 +14,7 @@ import {
   TextInputBlurChange,
 } from "metabase/ui";
 import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
+import { getObjectKeys } from "metabase/utils/objects";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnFormattingOperator,
@@ -56,7 +56,7 @@ export const RuleEditor = ({
   canHighlightRow = true,
 }: RuleEditorProps) => {
   const selectedColumns = useMemo(
-    () => rule.columns.map((name) => _.findWhere(cols, { name })),
+    () => rule.columns.map((name) => cols.find((item) => item.name === name)),
     [rule.columns, cols],
   );
   const { operators, isNumericRule, isKeyRule, isFieldDisabled } = useMemo(
@@ -79,7 +79,7 @@ export const RuleEditor = ({
         | ConditionalFormattingComparisonOperator;
     } = isFirstColumnAdd
       ? {
-          operator: isBoolean(_.findWhere(cols, { name: columns[0] }))
+          operator: isBoolean(cols.find((col) => col.name === columns[0]))
             ? "is-true"
             : "=",
         }
@@ -144,10 +144,10 @@ export const RuleEditor = ({
                 }}
                 value={rule.operator}
                 onChange={(operator) => onChange({ ...rule, operator })}
-                data={_.pairs(operators).map(([value, label]) => ({
-                  value,
-                  label,
-                }))}
+                data={getObjectKeys(operators).flatMap((value) => {
+                  const label = operators[value];
+                  return label === undefined ? [] : [{ value, label }];
+                })}
                 data-testid="conditional-formatting-value-operator-button"
               />
               <RuleEditorValueInput

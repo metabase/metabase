@@ -1,6 +1,6 @@
+import { isNumber } from "es-toolkit";
 import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
@@ -70,9 +70,8 @@ export const QuestionMoreActionsMenu = ({
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
 
-  const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
-  const isStandaloneQuestion =
-    isQuestion && !_.isNumber(question.dashboardId());
+  const isDashboardQuestion = isQuestion && isNumber(question.dashboardId());
+  const isStandaloneQuestion = isQuestion && !isNumber(question.dashboardId());
 
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { debounce } from "es-toolkit";
+import { debounce, throttle } from "es-toolkit";
 import type {
   CSSProperties,
   ComponentType,
@@ -9,7 +9,6 @@ import type {
 } from "react";
 import React, { Component, createContext, createRef } from "react";
 import { flushSync } from "react-dom";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
@@ -23,7 +22,7 @@ export const ExplicitSizeRefreshModeContext = createContext<
 >(undefined);
 
 const REFRESH_MODE = {
-  throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
+  throttle: (fn: () => void) => throttle(fn, WAIT_TIME),
   debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
   debounceLeading: (fn: () => void) =>
     debounce(fn, WAIT_TIME, { edges: ["leading", "trailing"] }),

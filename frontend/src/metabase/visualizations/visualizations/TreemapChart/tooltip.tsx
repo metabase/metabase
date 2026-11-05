@@ -1,6 +1,5 @@
 import type { EChartsType } from "echarts/core";
 import type { TooltipOption } from "echarts/types/dist/shared";
-import _ from "underscore";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import {
@@ -18,9 +17,10 @@ import {
   isPointerBelowGroupHeader,
   isTreemapTooltipSuppressed,
 } from "metabase/viz-core";
+import { isObject } from "metabase-types/guards";
 
 const hasId = (value: unknown): value is { id: unknown } =>
-  _.isObject(value) && "id" in value;
+  isObject(value) && "id" in value;
 
 export function getTreemapTooltipOption(
   tree: TreemapTree,

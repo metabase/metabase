@@ -14,6 +14,7 @@ import {
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
+import { pick } from "es-toolkit";
 import {
   Children,
   Fragment,
@@ -26,7 +27,6 @@ import {
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
-import _ from "underscore";
 
 import "metabase/auth/plugins";
 import { type StoreSeedState, createMockState } from "__support__/state";
@@ -215,8 +215,10 @@ export function getTestStoreAndWrapper({
   }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
-    const publicReducerNames = Object.keys(publicReducers);
-    initialState = _.pick(initialState, ...publicReducerNames);
+    const publicStateKeys = Object.keys(publicReducers).filter(
+      (key): key is keyof typeof initialState => key in initialState,
+    );
+    initialState = pick(initialState, publicStateKeys);
   }
 
   // The router can only be built once the route tree is known, which is at

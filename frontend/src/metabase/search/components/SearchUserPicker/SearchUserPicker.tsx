@@ -1,6 +1,6 @@
+import { without } from "es-toolkit";
 import { useState } from "react";
 import { t } from "ttag";
-import { without } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";

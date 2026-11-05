@@ -1,6 +1,6 @@
+import { uniqBy } from "es-toolkit";
 import { P, match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
@@ -12,6 +12,7 @@ import {
   deserializeTemporalUnitParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { conjunct } from "metabase/utils/formatting";
+import { isEmpty } from "metabase/utils/objects";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
@@ -231,11 +232,7 @@ export function getChannelRecipients(
     (recipient) =>
       recipient.type === "user" || !userEmails.has(recipient.email),
   );
-  return _.uniq(
-    withoutShadowedExternals,
-    false,
-    (recipient) => recipient.email,
-  );
+  return uniqBy(withoutShadowedExternals, (recipient) => recipient.email);
 }
 
 function getRecipient(recipient: ChannelRecipient): SubscriptionRecipient {
@@ -337,7 +334,7 @@ export function buildFilterText(
 ): string {
   const activeParameters = getActiveFilters(pulse, parameters);
 
-  if (_.isEmpty(activeParameters)) {
+  if (isEmpty(activeParameters)) {
     return "";
   }
 
@@ -348,7 +345,7 @@ export function buildFilterText(
       ? `${firstParameter.name}: ${renderNumberOfSelections(firstValueCount)}`
       : formatFilter(firstParameter);
 
-  return _.isEmpty(otherParameters)
+  return isEmpty(otherParameters)
     ? firstFilterText
     : `${firstFilterText} ${ngettext(
         msgid`and ${otherParameters.length} more filter`,

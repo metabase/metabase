@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import { isActionDashCard } from "metabase/utils/dashboard";
@@ -40,7 +40,7 @@ export function hasDashboardChanged(
   dashboard: Dashboard | { dashcards: DashboardCard[] },
   dashboardBeforeEditing: Dashboard | { dashcards: DashboardCard[] },
 ) {
-  return !_.isEqual(
+  return !isEqual(
     { ...dashboard, dashcards: dashboard.dashcards.length },
     {
       ...dashboardBeforeEditing,
@@ -58,7 +58,7 @@ export function haveDashboardCardsChanged(
   return (
     newCards.length !== oldCards.length ||
     !newCards.every((newCard) =>
-      oldCards.some((oldCard) => _.isEqual(oldCard, newCard)),
+      oldCards.some((oldCard) => isEqual(oldCard, newCard)),
     )
   );
 }

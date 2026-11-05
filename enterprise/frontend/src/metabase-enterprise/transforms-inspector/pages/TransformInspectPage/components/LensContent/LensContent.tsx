@@ -1,6 +1,6 @@
+import { groupBy } from "es-toolkit";
 import { useCallback, useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { useGetInspectorLensQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -84,7 +84,7 @@ export const LensContent = ({
     useCardLoadingTracker(onAllCardsLoadedCallback);
 
   const cardsBySection = useMemo(
-    () => _.groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
+    () => groupBy(lens?.cards ?? [], (c) => c.section_id ?? "default"),
     [lens],
   );
 

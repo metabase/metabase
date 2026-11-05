@@ -1,9 +1,9 @@
 import { type ReactNode, useMemo, useRef } from "react";
-import _ from "underscore";
 
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { Box, Portal, Tooltip } from "metabase/ui";
 import { getEventTarget } from "metabase/utils/dom";
+import { isEmpty } from "metabase/utils/objects";
 import type { HoveredObject } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -64,8 +64,8 @@ const ChartTooltip = ({
     }
     return (
       hovered.value !== undefined ||
-      !_.isEmpty(hovered.data) ||
-      !_.isEmpty(hovered.dimensions)
+      !isEmpty(hovered.data) ||
+      !isEmpty(hovered.dimensions)
     );
   }, [hovered]);
 

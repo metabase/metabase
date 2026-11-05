@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { without } from "es-toolkit";
 
 import {
   setupDatabaseEndpoints,
@@ -72,7 +72,7 @@ describe("DatabaseModelPersistenceSection", () => {
       setup({
         isModelPersistenceEnabled: true,
         database: createMockDatabase({
-          features: _.without(COMMON_DATABASE_FEATURES, "persist-models"),
+          features: without(COMMON_DATABASE_FEATURES, "persist-models"),
         }),
       });
       expect(

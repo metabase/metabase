@@ -1,5 +1,5 @@
+import { pickBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
@@ -78,7 +78,7 @@ export function nestedSettings<
       extra,
     );
     // remove undefined settings since they override other settings when merging object
-    return _.pick(computedSettings, (value) => value !== undefined);
+    return pickBy(computedSettings, (value) => value !== undefined);
   }
 
   function getComputedSettingsForAllObjects(

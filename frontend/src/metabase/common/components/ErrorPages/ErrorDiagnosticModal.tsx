@@ -1,6 +1,6 @@
+import { pick } from "es-toolkit";
 import { useEffect, useState } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
@@ -72,10 +72,11 @@ export const ErrorDiagnosticModal = ({
     const { description, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      (key) => diagnosticSelections[key],
+      (key): key is keyof ErrorPayload =>
+        Boolean(diagnosticSelections[key]) && key in errorInfo,
     );
     const selectedInfo = {
-      ..._.pick(errorInfo, ...selectedKeys),
+      ...pick(errorInfo, selectedKeys),
       description,
     };
 
@@ -92,10 +93,11 @@ export const ErrorDiagnosticModal = ({
     const { description, reporter, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      (key) => diagnosticSelections[key],
+      (key): key is keyof ErrorPayload =>
+        Boolean(diagnosticSelections[key]) && key in errorInfo,
     );
     const selectedInfo = {
-      ..._.pick(errorInfo, ...selectedKeys),
+      ...pick(errorInfo, selectedKeys),
       description,
       reporter: Boolean(reporter),
     };

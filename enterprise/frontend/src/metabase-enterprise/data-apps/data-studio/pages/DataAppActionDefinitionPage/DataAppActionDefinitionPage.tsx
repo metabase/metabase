@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -28,8 +28,8 @@ export function DataAppActionDefinitionPage() {
           tableId={action.table_id}
           kind={action.kind}
           readOnly
-          onChangeTable={_.noop}
-          onChangeKind={_.noop}
+          onChangeTable={noop}
+          onChangeKind={noop}
         />
       ) : (
         <QueryActionDefinitionContent action={action} databases={databases} />

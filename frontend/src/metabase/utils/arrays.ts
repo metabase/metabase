@@ -22,3 +22,16 @@ export const findWithIndex = <T>(
     item: undefined,
   };
 };
+
+/**
+ * Calls `fn` with each index from 0 to `count - 1` and returns the results.
+ * A negative `count` returns an empty array.
+ */
+export function times<T>(count: number, fn: (index: number) => T): T[] {
+  // we keep underscore's RangeError for a fractional or NaN count
+  const result = new Array<T>(Math.max(0, count));
+  for (let index = 0; index < count; index++) {
+    result[index] = fn(index);
+  }
+  return result;
+}

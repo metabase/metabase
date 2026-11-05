@@ -1,7 +1,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { noop } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import type {
@@ -33,7 +33,7 @@ import { FormFieldEditor } from "./FormFieldEditor";
 import { reorderFields } from "./utils";
 
 // FormEditor's can't be submitted as it serves as a form preview
-const ON_SUBMIT_NOOP = _.noop;
+const ON_SUBMIT_NOOP = noop;
 
 interface FormCreatorProps {
   parameters: Parameter[];
