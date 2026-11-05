@@ -371,7 +371,7 @@
                                                  :visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
-               (t2/update! :model/DashboardCard (:id dc)
+               (t2/update! :model/DashboardCard :id (:id dc)
                            {:visualization_settings
                             {:link {:entity {:id {:raw "x"} :model "card"}}}})))))
       (testing "a legitimate integer id still works"
@@ -406,7 +406,7 @@
                                                  :visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
-               (t2/update! :model/DashboardCard (:id dc)
+               (t2/update! :model/DashboardCard :id (:id dc)
                            {:visualization_settings
                             {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}})))))
       (testing "a legitimate integer target id still works"
@@ -418,3 +418,16 @@
                                    :column_settings
                                    {"[\"name\",\"abc\"]"
                                     {:click_behavior {:type "link" :linkType "question" :targetId card-id}}}}}))))))))
+
+(deftest linkcard-info-document-test
+  (mt/with-temp [:model/Document      {doc-id :id}  {:name     "Linked document"
+                                                     :document {}}
+                 :model/Dashboard     {dash-id :id} {}
+                 :model/DashboardCard dashcard      {:dashboard_id           dash-id
+                                                     :visualization_settings {:virtual_card {:display "link"}
+                                                                              :link         {:entity {:id    doc-id
+                                                                                                      :model "document"}}}}]
+    (mt/with-test-user :rasta
+      (is (=? {:id doc-id, :model "document", :name "Linked document"}
+              (-> (t2/hydrate dashcard :dashcard/linkcard-info)
+                  (get-in [:visualization_settings :link :entity])))))))

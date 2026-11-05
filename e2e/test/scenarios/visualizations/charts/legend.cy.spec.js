@@ -269,7 +269,7 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().findByText("500").should("exist"); // max y-axis value
       cy.findByText(/\+ \d+ more/).click();
     });
-    H.popover().within(() => hideSeries(29)); // TX (Texas);
+    H.popover().within(() => hideSeriesByName("TX"));
     H.getDashboardCard(1).click(); // click outside of popover to close it
     H.getDashboardCard(1).within(() =>
       H.echartsContainer().findByText("500").should("not.exist"),
@@ -465,6 +465,8 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility in the query builder", () => {
+    // Stop the first-chart PUT and its settings refetch during the hovers.
+    H.updateSetting("non-table-chart-generated", true);
     H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
@@ -472,7 +474,10 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    // trigger() waits until the DebouncedFrame accepts pointer events, then
+    // sends the event at once. realHover() sends one mouse move that the
+    // frame can drop.
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -505,7 +510,7 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -565,7 +570,7 @@ describe("scenarios > visualizations > legend", () => {
 
     cy.wait(1000);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -581,7 +586,7 @@ describe("scenarios > visualizations > legend", () => {
     hideSeries(2); // Gizmo
     hideSeries(3); // Widget
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -675,6 +680,17 @@ function showSeries(legendItemIndex) {
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Show series")
+    .click({ scrollBehavior: "nearest" });
+}
+
+function firstDoohickeyBar() {
+  return H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first();
+}
+
+function hideSeriesByName(name) {
+  cy.findByText(name)
+    .closest("[data-testid=legend-item]")
+    .findByLabelText("Hide series")
     .click({ scrollBehavior: "nearest" });
 }
 

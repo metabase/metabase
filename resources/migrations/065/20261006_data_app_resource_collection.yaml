@@ -3,25 +3,8 @@
 ## was deleted has none: give the first the namespace and the second a collection.
 
 databaseChangeLog:
-  ## MySQL, MariaDB, and H2 index a foreign key's column themselves; Postgres doesn't. On MySQL a second index
-  ## would take over the constraint and refuse to be dropped on rollback, so this one is Postgres-only.
-  - changeSet:
-      id: v65.2026-10-06T00:00:00
-      author: timofei
-      comment: Index data apps by their resource collection (PostgreSQL)
-      dbms: postgresql
-      changes:
-        - createIndex:
-            tableName: data_app
-            indexName: idx_data_app_resource_collection_id
-            columns:
-              - column:
-                  name: resource_collection_id
-      rollback:
-        - dropIndex:
-            tableName: data_app
-            indexName: idx_data_app_resource_collection_id
-
+  ## The Postgres index on data_app.resource_collection_id moved to 2026/20261023_data_app_resource_collection_index,
+  ## which retires its old v65.2026-10-06T00:00:00 row.
   - changeSet:
       id: v65.2026-10-06T00:00:01
       author: timofei

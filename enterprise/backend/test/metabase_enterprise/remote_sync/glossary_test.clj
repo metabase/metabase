@@ -121,11 +121,11 @@
                                                   {:object  (t2/select-one :model/Collection :id (:id library))
                                                    :user-id (mt/user->id :rasta)}))]
             (testing "the Library becoming remote-synced tracks existing entries"
-              (t2/update! :model/Collection (:id library) {:is_remote_synced true})
+              (t2/update! :model/Collection :id (:id library) {:is_remote_synced true})
               (publish!)
               (is (=? {:status "create"} (rso entry))))
             (testing "the Library ceasing to be remote-synced removes their tracking rows"
-              (t2/update! :model/Collection (:id library) {:is_remote_synced false})
+              (t2/update! :model/Collection :id (:id library) {:is_remote_synced false})
               (publish!)
               (is (nil? (rso entry))))))))))
 

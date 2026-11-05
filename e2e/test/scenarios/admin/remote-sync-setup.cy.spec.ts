@@ -85,8 +85,10 @@ describe("Remote Sync first-time setup", () => {
 
   it("opens branch picker after push while collections to sync are hidden", () => {
     H.updateSetting("remote-sync-custom-collections-enabled", false);
-    H.createLibrary().then(({ body: library }) => {
-      H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+    H.createLibrary().then(({ libraryCollectionId }) => {
+      H.configureGit("read-write", LOCAL_GIT_URL, {
+        [libraryCollectionId]: true,
+      });
     });
     H.createBranchViaSettings("first-branch");
 

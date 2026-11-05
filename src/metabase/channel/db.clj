@@ -36,13 +36,13 @@
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Channel id))
+  (t2/select-one :model/Channel :id [:auto/param id]))
 
 (mu/defn update-channel!
   "Apply `changes` to the Channel with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ChannelRow]
-  (t2/update! :model/Channel id changes))
+  (t2/update! :model/Channel :id id changes))
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."

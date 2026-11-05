@@ -10,6 +10,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest transform-test-revision-serialization-test
   (let [transform-test (t2/instance :model/TransformTest
                                     {:id           1
@@ -41,7 +43,7 @@
           (is (= "Original" (get-in creation [:object :name])))
           (is (= (mt/user->id :crowberto) (:user_id creation)))))
       (testing "an update records the changed editable fields"
-        (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+        (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
         (let [[updated creation] (revisions/revisions :model/TransformTest transform-test-id)]
           (is (= "Renamed" (get-in updated [:object :name])))
           (is (false? (:is_creation updated)))
@@ -54,7 +56,7 @@
         (mt/with-temp [:model/Transform     {transform-id :id} {}
                        :model/TransformTest {transform-test-id :id} {:transform_id transform-id
                                                                      :name         "Original"}]
-          (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+          (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
           (let [creation (last (revisions/revisions :model/TransformTest transform-test-id))]
             (mt/user-http-request :crowberto :post 200 "revision/revert"
                                   {:entity      "transform-test"
@@ -92,7 +94,7 @@
           (mt/with-temp [:model/Transform     {transform-id :id} {}
                          :model/TransformTest {transform-test-id :id} {:transform_id transform-id
                                                                        :name         "Original"}]
-            (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+            (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
             (is (=? [{:is_creation false
                       :description "renamed this Transform test from \"Original\" to \"Renamed\"."}
                      {:is_creation true
@@ -107,7 +109,7 @@
           (mt/with-temp [:model/Transform     {transform-id :id} {}
                          :model/TransformTest {transform-test-id :id} {:transform_id transform-id
                                                                        :name         "Original"}]
-            (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+            (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
             (mt/with-dynamic-fn-redefs [revision.diff/model-str->i18n-str
                                         (fn [model-str]
                                           (throw (IllegalArgumentException. (str "No matching clause: " model-str))))]

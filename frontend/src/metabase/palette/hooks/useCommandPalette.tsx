@@ -365,6 +365,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
         <SubtitleText>{wrappedSearchResult.dashboard.name}</SubtitleText>
       </>
     );
+  } else if (wrappedSearchResult.model === "data-app") {
+    // A data app is in no collection, which getCollection would name as the root one.
+    return <SubtitleText>{t`Data app`}</SubtitleText>;
   } else {
     return (
       <SubtitleText>{getCollection(wrappedSearchResult)?.name}</SubtitleText>

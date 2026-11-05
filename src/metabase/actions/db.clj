@@ -7,18 +7,20 @@
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- action-database-joins
-  "The joins from `action` to the Database `db` of its query, or of its model Card for an implicit action."
+  "The joins from `action` to the Database `db` of its query, or for an implicit action of its model Card or its table."
   []
-  [[(t2/table-name :model/QueryAction) :qa] [:= :qa.action_id :action.id]
-   [(t2/table-name :model/Card) :card]      [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
-   [(t2/table-name :model/Database) :db]    [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
+  [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
+   [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
+   [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
+   [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
 
 (mu/defn database-for-action
-  "The Database the Action with `action-id` runs against: its query's, or its model's for an implicit action, or nil."
+  "The Database the Action with `action-id` runs against: its query's, or its model's or table's for an implicit action,
+  or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select    [:db.*]
                                   :from      [[(t2/table-name :model/Action) :action]]
@@ -28,7 +30,7 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -60,14 +62,6 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
-(mu/defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
-  [card-ids      :- [:set ::lib.schema.id/card]
-   collection-id :- ::lib.schema.id/collection]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
-
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
@@ -88,6 +82,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
 
+(mu/defn action-collection-id
+  "The Collection id of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
+
 (mu/defn action-model-id
   "The model Card id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
@@ -96,12 +95,12 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -117,7 +116,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -143,7 +142,7 @@
   "Apply `changes` to the Action with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action action-id changes))
+  (t2/update! :model/Action :id action-id changes))
 
 (mu/defn insert-query-action!
   "Insert the QueryAction `action`, returning the number inserted."
@@ -159,13 +158,13 @@
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction action-id changes))
+  (t2/update! :model/QueryAction :action_id action-id changes))
 
 (mu/defn update-implicit-action!
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction action-id changes))
+  (t2/update! :model/ImplicitAction :action_id action-id changes))
 
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
@@ -186,6 +185,16 @@
   "The QueryAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
+
+(mu/defn implicit-action-table-id
+  "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
+
+(mu/defn tables-with-fields
+  "The Tables with `table-ids`, with their Fields hydrated."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/hydrate (tables table-ids) :fields))
 
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
@@ -215,7 +224,7 @@
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
 
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
@@ -236,7 +245,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."
@@ -246,9 +255,9 @@
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id database-id :is_writable true))
 
 (mu/defn table-with-unknown-writability-exists?
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable nil {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id database-id :is_writable nil))

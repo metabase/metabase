@@ -20,7 +20,7 @@
 (defn- query-transform-payload
   [table-name]
   {:name   "Test Transform"
-   :source {:type  "query"
+   :source {:type  :query
             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
    :target {:type   "table"
             :schema (get-test-schema)
@@ -29,7 +29,7 @@
 (defn- python-transform-map
   [table-name]
   {:name   "Python Transform"
-   :source {:type            "python"
+   :source {:type            :python
             :body            "print('hello world')"
             :source-tables   []
             :source-database (mt/id)}

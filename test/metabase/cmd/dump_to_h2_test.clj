@@ -86,7 +86,7 @@
                   ;; the update and dump below trigger
                   (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
                   (t2/insert! :model/Setting {:key "dump-to-h2-test-setting", :value "baz"})
-                  (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
+                  (t2/update! :model/Database :id 1 {:details {:db "/tmp/test.db"}})
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                   (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                   (dump-to-h2/dump-to-h2! h2-file-default-enc)))

@@ -52,7 +52,8 @@ export const glossaryApi = Api.injectEndpoints({
       }),
       // Optimistically add the new item to the list cache
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        const tempId = Date.now();
+        // A negative id marks the entry as pending until the server's row replaces it
+        const tempId = -Date.now();
         const patchResult = dispatch(
           glossaryApi.util.updateQueryData(
             "listGlossary",

@@ -25,7 +25,7 @@
   (let [mp                            (mt/metadata-provider)
         {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
     (mt/with-temp [:model/Transform {transform-id :id}
-                   {:source {:type  "query"
+                   {:source {:type  :query
                              :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
                     :target {:type     "table"
                              :schema   schema
@@ -72,7 +72,7 @@
                            :name         "End to end"}
                           created)))
                 (testing "GET returns what POST created"
-                  (is (= created (mt/user-http-request :crowberto :get 200 path))))
+                  (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
                 (testing "running a passing test"
                   (let [result (mt/user-http-request :crowberto :post 200 (str path "/run"))]
                     (is (= #{:status :expectations :tables} (set (keys result))))
@@ -97,10 +97,47 @@
                       (is (nil? (:cell-mismatches pass))))))
                 (testing "DELETE removes the test"
                   (mt/user-http-request :crowberto :delete 204 path)
-                  (is (not (t2/exists? :model/TransformTest (:id created))))
+                  (is (not (t2/exists? :model/TransformTest :id (:id created))))
                   (mt/user-http-request :crowberto :get 404 path))
                 (finally
                   (t2/delete! :model/TransformTest :id (:id created)))))))))))
+
+(deftest adhoc-run-test
+  (testing "POST /run runs an unsaved test of an unsaved transform and records a run owned by no test"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+      (with-transforms-enabled #{:transforms-basic :transforms-testing}
+        (let [mp                            (mt/metadata-provider)
+              {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
+              transform-count               (t2/count :model/Transform)
+              result                        (mt/user-http-request
+                                             :crowberto :post 200 "ee/transform-test/run"
+                                             {:transform {:name   "Adhoc"
+                                                          :source {:type  "query"
+                                                                   :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                                                          :target {:type   "table"
+                                                                   :schema schema
+                                                                   :name   "adhoc_people_summary"}}
+                                              :test      {:name         "Adhoc"
+                                                          :inputs       [{:table  {:schema schema :name table}
+                                                                          :format "sql"
+                                                                          :sql    "SELECT 1 AS id, 'abc' AS name"}]
+                                                          :expectations [{:type "empty"
+                                                                          :name "no null ids"
+                                                                          :sql  (str "SELECT * FROM " schema ".adhoc_people_summary WHERE id IS NULL")}]}})
+              run                           (t2/select-one :model/TransformTestRun {:order-by [[:id :desc]]})]
+          (try
+            (is (= "passed" (:status result)))
+            (is (= [{:name "no null ids" :type "empty" :status "passed"}]
+                   (outcomes result)))
+            (testing "saves no transform"
+              (is (= transform-count (t2/count :model/Transform))))
+            (testing "records run by caller under no test"
+              (is (=? {:transform_test_id nil
+                       :initiated_by      (mt/user->id :crowberto)
+                       :status            :passed}
+                      run)))
+            (finally
+              (t2/delete! :model/TransformTestRun :id (:id run)))))))))
 
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
@@ -108,7 +145,10 @@
       (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
-                         {:source {:type "python" :source-database (mt/id)}}
+                         {:source {:type            :python
+                                   :source-database (mt/id)
+                                   :source-tables   [{:alias "people" :table_id (mt/id :people)}]
+                                   :body            "def transform(people):\n    return people"}}
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
                                                  (format "ee/transform-test/%d/run" test-id))]
@@ -146,4 +186,4 @@
           (is (= "Unauthenticated" (mt/client :post 401 run-path))))
         (testing "a user with no transform access cannot run someone else's test"
           (mt/user-http-request :rasta :post 403 run-path)
-          (is (t2/exists? :model/TransformTest test-id)))))))
+          (is (t2/exists? :model/TransformTest :id test-id)))))))

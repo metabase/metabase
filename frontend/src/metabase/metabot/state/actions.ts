@@ -40,6 +40,7 @@ import {
   isHistoryEnabledProfile,
 } from "../constants";
 import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
+import { isReasoningVisible } from "../utils/reasoning-visibility";
 
 import { metabot } from "./reducer";
 import {
@@ -524,6 +525,7 @@ export const sendAgentRequest = createAsyncThunk<
           sourceId: conversationId,
         },
         {
+          shouldPaceReasoning: () => isReasoningVisible(conversationId),
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
               message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
@@ -759,6 +761,9 @@ export const sendAgentRequest = createAsyncThunk<
         error,
         getSetting(getState(), "metabot-name"),
       );
+      if (handled.error.type === "unknown") {
+        console.error(error);
+      }
       return rejectWithValue({
         type: "error" as const,
         conversation_id: request.conversation_id,

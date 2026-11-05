@@ -62,6 +62,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -287,11 +288,14 @@
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
   - `:defaults`: a map like `{:field-name value}`; fields whose exported values match their defaults are omitted
     from the output. All fields are assumed to default to `nil`; only specify non-nil defaults here.
+  - `:schema`: required, the schema of the serialized entity, usually the module's `::external-xxx` schema. Dev and
+    test check every extracted entity against it, see [[validate-external!]].
 
   Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
-    {:copy [:name :description :archived]
+    {:schema ::model-name.schema/external-model-name
+     :copy [:name :description :archived]
      :skip [;; please leave a comment why a field is skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}
@@ -306,6 +310,17 @@
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
   (make-spec model-name opts))
+
+(defn validate-external!
+  "In dev and test, throws when the extracted `entity` does not match the `:schema` of `model-name`'s `spec`."
+  [model-name spec entity]
+  (when (or config/is-dev? config/is-test?)
+    (let [schema (or (:schema spec)
+                     (throw (ex-info (format "No :schema in the serialization spec of %s" model-name)
+                                     {:model model-name})))]
+      (when-let [error (mr/explain schema entity)]
+        (throw (ex-info (format "Invalid export of %s: %s" model-name (pr-str (mu.humanize/humanize error)))
+                        {:model model-name :error (mu.humanize/humanize error)}))))))
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -357,29 +372,31 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec (*make-spec* model-name opts)]
-      (assert spec (str "No serialization spec defined for model " model-name))
-      (-> (into {}
-                (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
-                (select-keys instance (:copy spec)))
-          ;; won't assoc if `generate-path` returned `nil`
-          (m/assoc-some :serdes/meta (generate-path model-name instance))
-          (into (for [[k transform] (:transform spec)
-                      :let [_         (assert-one-defined transform :export :export-with-context)
-                            export-k  (:as transform k)
-                            input     (get instance k)
-                            f         (:export transform)
-                            f-context (:export-with-context transform)
-                            res       (if f (f input) (f-context instance k input))]
-                      :when (and (not= res ::skip)
-                                 (not= res (get-in spec [:defaults export-k])))]
-                  (do
-                    (when-not (contains? instance k)
-                      (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
-                                      {:model    model-name
-                                       :key      k
-                                       :instance instance})))
-                    [export-k res])))))
+    (let [spec      (*make-spec* model-name opts)
+          _         (assert spec (str "No serialization spec defined for model " model-name))
+          extracted (-> (into {}
+                              (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
+                              (select-keys instance (:copy spec)))
+                        ;; won't assoc if `generate-path` returned `nil`
+                        (m/assoc-some :serdes/meta (generate-path model-name instance))
+                        (into (for [[k transform] (:transform spec)
+                                    :let [_         (assert-one-defined transform :export :export-with-context)
+                                          export-k  (:as transform k)
+                                          input     (get instance k)
+                                          f         (:export transform)
+                                          f-context (:export-with-context transform)
+                                          res       (if f (f input) (f-context instance k input))]
+                                    :when (and (not= res ::skip)
+                                               (not= res (get-in spec [:defaults export-k])))]
+                                (do
+                                  (when-not (contains? instance k)
+                                    (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
+                                                    {:model    model-name
+                                                     :key      k
+                                                     :instance instance})))
+                                  [export-k res]))))]
+      (validate-external! model-name spec extracted)
+      extracted)
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))
@@ -667,13 +684,18 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
-(defmethod load-update! :default [model-name ingested local]
+(defn default-load-update!
+  "Default implementation of `load-update!`."
+  [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
     (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
     (models.db/entity-by-pk model pk id)))
+
+(defmethod load-update! :default [model-name ingested local]
+  (default-load-update! model-name ingested local))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -776,12 +798,12 @@
 
 (defn collection-namespace-folder
   "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
-  The `data-apps` namespace is the `data_apps` folder, spelled like the top-level directory of the apps themselves."
+  A dashed namespace is spelled with an underscore, like the top-level `data_apps` directory of the apps themselves."
   [collection-namespace]
   (case (some-> collection-namespace keyword)
     :snippets     "snippets"
     :transforms   "transforms"
-    :data-actions "data-actions"
+    :data-actions "data_actions"
     :data-apps    "data_apps"
     "main"))
 
@@ -1102,7 +1124,7 @@
   [x :- MBQLNode]
   (set
    (match/match-many x
-     [:aggregation (_opts :guard map?) (uuid :guard string?)]
+     [:aggregation #'map? (uuid :guard string?)]
      uuid)))
 
 (declare export-mbql)
@@ -1411,7 +1433,7 @@
     ;; --- serialized (portable) refs, walked at load time ---
     ;; A serialized `:field` clause has no dependencies: its Database, Table and Field are synthesized on import, and
     ;; a field clause never nests metric/segment/card refs, so we don't descend.
-    [#{:field "field"} (_opts :guard map?) (_ref :guard vector?)]
+    [#{:field "field"} #'map? #'vector?]
     nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
@@ -1430,7 +1452,7 @@
     ;; --- raw (numeric) refs, walked at export time before serialization ---
     ;; The referenced Field/Table are real appdb ids, existence-checked so a deleted row can't produce a malformed
     ;; portable reference. `allow-int-ids?` gates these so a stray numeric in serialized data isn't mistaken for a ref.
-    [#{:field "field"} (_opts :guard map?) (id :guard (raw-ref-id? allow-int-ids? id))]
+    [#{:field "field"} #'map? (id :guard (raw-ref-id? allow-int-ids? id))]
     #{[{:model "Field" :id id}]}
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
@@ -1575,6 +1597,7 @@
    "collection" :model/Collection
    "database"   :model/Database
    "dashboard"  :model/Dashboard
+   "document"   :model/Document
    "question"   :model/Card
    "table"      :model/Table})
 

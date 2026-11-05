@@ -171,6 +171,16 @@ const logDataset: Dataset = createMockDataset({
   running_time: 1,
 });
 
+/** At most `total` of the log's records, so the rows agree with the count. */
+const createLogDataset = (total: number): Dataset => {
+  const rows = logDataset.data.rows.slice(0, total);
+  return {
+    ...logDataset,
+    data: { ...logDataset.data, rows },
+    row_count: rows.length,
+  };
+};
+
 const createCountDataset = (total: number): Dataset =>
   createMockDataset({
     data: createMockDatasetData({
@@ -264,7 +274,7 @@ function setup({
       }
       return failingRequest === "rows"
         ? createFailure("Rows failed")
-        : logDataset;
+        : createLogDataset(total);
     },
     { name: "dataset" },
   );
@@ -683,15 +693,15 @@ describe("DataAppsAnalyticsPage", () => {
     });
   });
 
-  it("shows an empty state, keeping the filters, when there is no data app activity", async () => {
+  it("shows an empty list, keeping the filters, when there is no data app activity", async () => {
     setup({ total: 0 });
 
-    expect(await screen.findByText("No data app activity")).toBeInTheDocument();
+    const table = await screen.findByTestId("data-app-log-table");
+    expect(
+      await within(table).findByText("No activity found"),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("data-app-filter-select")).toBeInTheDocument();
     expect(screen.getByTestId("entity-type-filter-select")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("treegrid", { name: "Data app activity" }),
-    ).not.toBeInTheDocument();
   });
 
   it("shows the error when counting the records fails", async () => {

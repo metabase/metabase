@@ -33,6 +33,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -66,8 +68,8 @@
     ;; cool, now we should be ok to update the model
     (when values-to-set
       (case (mi/model original-model)
-        :model/Field (sync.db/update-field! (u/the-id original-model) values-to-set)
-        :model/Table (sync.db/update-table! (u/the-id original-model) values-to-set))
+        :model/Field (sync-util/update-field-unless-user-set! (u/the-id original-model) values-to-set)
+        :model/Table (sync-util/update-table-unless-user-set! (u/the-id original-model) values-to-set))
       true)))
 
 (def ^:private ClassifyOpts

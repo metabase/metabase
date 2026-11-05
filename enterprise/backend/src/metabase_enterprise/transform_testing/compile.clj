@@ -130,7 +130,8 @@
 
 (defn- compiled
   "`honeysql` formatted for `driver` as a compiled query."
-  [driver honeysql]
+  [driver
+   honeysql]
   (let [[query & params] (sql.qp/format-honeysql driver honeysql)]
     {:query query :params (vec params)}))
 
@@ -148,7 +149,8 @@
   "`alias-name` as a column or table alias, also the shape a bare expression takes as a `:select` entry."
   ([alias-name]
    [alias-name])
-  ([identifier-type alias-name]
+  ([identifier-type
+    alias-name]
    [(h2x/identifier identifier-type alias-name)]))
 
 (def ^:private no-rows

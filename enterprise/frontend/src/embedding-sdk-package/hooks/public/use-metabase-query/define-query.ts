@@ -7,14 +7,10 @@ import type {
   RequireGroupedOrderByNames,
 } from "./types";
 
-type SavedQuestionBinding = {
-  savedQuestionEntityId?: string;
-};
-
 /**
- * Defines a source-controlled data app query. `savedQuestionEntityId` is the
- * entity ID of its saved question in the app's collection under `collections/data_apps/`, which a
- * production build runs.
+ * Defines a data app query: a question over a table of the app's schema, which
+ * the dev preview runs from its definition. A production build runs the
+ * question its `entityId` names.
  */
 export function defineQuery<
   TEntity extends TableSchema | undefined = undefined,
@@ -22,7 +18,6 @@ export function defineQuery<
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
 >(
   query: TQuery &
-    (TQuery extends SavedQuestionBinding ? unknown : SavedQuestionBinding) &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
         ? RequireAggregationsForBreakouts<TQuery> &

@@ -163,7 +163,7 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help-premium
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
@@ -268,7 +268,7 @@ config:
     metabot-limit-unit: tokens
     metabot-name: Metabot
     metabot-nlq-system-prompt: ''
-    metabot-query-execution-enabled: false
+    metabot-query-execution-enabled: true
     metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
     metabot-show-illustrations: true

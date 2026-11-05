@@ -57,7 +57,7 @@
   "Apply `changes` to the CustomVizPlugin with `plugin-id`, returning the number updated."
   [plugin-id :- ms/PositiveInt
    changes   :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/update! :model/CustomVizPlugin plugin-id changes))
+  (t2/update! :model/CustomVizPlugin :id plugin-id changes))
 
 (mu/defn delete-plugin!
   "Delete the CustomVizPlugin with `plugin-id`, returning the number deleted."

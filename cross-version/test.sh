@@ -21,6 +21,9 @@ METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 GRACE_PERIOD="${GRACE_PERIOD:-3}"
+CYPRESS_FAILURES_RECORDED=0
+HEAD_IMAGE=""
+HEAD_JAR="/tmp/metabase-head-jar/metabase.jar"
 
 # Colors for output
 RED='\033[0;31m'
@@ -101,8 +104,23 @@ run_e2e() {
   fi
 
   log "Running @${phase} e2e tests for ${version} from: e2e/cross-version/${specs_dir##*/}/"
-  CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
-    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
+  local recorded_before
+  recorded_before=$(count_recorded_failures)
+  if ! CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
+    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"; then
+    if (( $(count_recorded_failures) > recorded_before )); then
+      CYPRESS_FAILURES_RECORDED=1
+    fi
+    return 1
+  fi
+}
+
+count_recorded_failures() {
+  if [[ -n "${QUARANTINE_FAILURES_FILE:-}" && -f "$QUARANTINE_FAILURES_FILE" ]]; then
+    wc -l < "$QUARANTINE_FAILURES_FILE" | tr -d ' '
+  else
+    echo 0
+  fi
 }
 
 
@@ -133,13 +151,61 @@ wait_for_health() {
   done
 }
 
+# The HEAD Docker image has version "vUNKNOWN" in its version.properties,
+# which causes `migrate down` to fail with a NullPointerException when trying
+# to determine the current major version. To work around this, we extract the
+# JAR, replace version.properties with the upcoming version, and mount the
+# modified JAR.
+#
+# HEAD is the next major version (CURRENT_VERSION + 1).
+#
+# See DEV-1636 for a potential backend fix that would make this unnecessary.
+patch_head_jar() {
+  local image="$1"
+  if [[ -z "${CURRENT_VERSION:-}" ]]; then
+    error "CURRENT_VERSION must be set when testing HEAD"
+    exit 1
+  fi
+  local next_version=$((CURRENT_VERSION + 1))
+  local upcoming_version="v1.${next_version}.0"
+  local work_dir="/tmp/metabase-head-jar"
+
+  log "HEAD JAR needs patching (version.properties says 'vUNKNOWN', setting to $upcoming_version)"
+  rm -rf "$work_dir"
+  mkdir -p "$work_dir"
+
+  # Extract JAR from container (copy to host with proper permissions)
+  docker create --name metabase-jar-extract "$image" >/dev/null
+  docker cp metabase-jar-extract:/app/metabase.jar "$HEAD_JAR"
+  docker rm metabase-jar-extract >/dev/null
+
+  # Create version.properties with upcoming version and update the JAR
+  echo "tag=$upcoming_version" > "$work_dir/version.properties"
+  echo "hash=HEAD" >> "$work_dir/version.properties"
+  echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
+  (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
+
+  log "HEAD JAR patched"
+}
+
+compose_files_for() {
+  local image="$1"
+  COMPOSE_FILES=(-f docker-compose.yml)
+  if [[ -n "$HEAD_IMAGE" && "$image" == "$HEAD_IMAGE" ]]; then
+    COMPOSE_FILES+=(-f docker-compose.head.yml)
+  fi
+}
+
 # Start Metabase with a specific image
 start_metabase() {
   local image="$1"
   log "Starting Metabase with image: $image"
 
+  local COMPOSE_FILES
+  compose_files_for "$image"
+
   METABASE_IMAGE="$image" METABASE_PORT="$METABASE_PORT" \
-    docker compose up -d --quiet-pull
+    docker compose "${COMPOSE_FILES[@]}" up -d --quiet-pull
 }
 
 # Docker deletes a container's logs when the container is removed, and both
@@ -183,59 +249,19 @@ get_edition_prefix() {
 # This function is idempotent - it takes a version string and handles everything internally.
 migrate_down_step() {
   local version="$1"
-  local image is_head="false"
+  local image COMPOSE_FILES
 
   # Resolve image from version
   image=$(cli image "$version") || return 1
-  [[ "$version" == "HEAD" ]] && is_head="true"
+  compose_files_for "$image"
 
   log "Running 'migrate down' for version: $version (image: $image)"
 
   local output
   local exit_code=0
 
-  # The HEAD Docker image has version "vUNKNOWN" in its version.properties,
-  # which causes `migrate down` to fail with a NullPointerException when trying
-  # to determine the current major version. To work around this, we extract the
-  # JAR, replace version.properties with the upcoming version, and mount the
-  # modified JAR.
-  #
-  # HEAD is the next major version (CURRENT_VERSION + 1).
-  #
-  # See DEV-1636 for a potential backend fix that would make this unnecessary.
-  if [[ "$is_head" == "true" ]]; then
-    if [[ -z "$CURRENT_VERSION" ]]; then
-      error "CURRENT_VERSION must be set when testing HEAD downgrades"
-      return 1
-    fi
-    local next_version=$((CURRENT_VERSION + 1))
-    local upcoming_version="v1.${next_version}.0"
-    local work_dir="/tmp/metabase-head-jar"
-    local modified_jar="$work_dir/metabase.jar"
-
-    log "HEAD JAR needs patching (version.properties says 'vUNKNOWN', setting to $upcoming_version)"
-    rm -rf "$work_dir"
-    mkdir -p "$work_dir"
-
-    # Extract JAR from container (copy to host with proper permissions)
-    docker create --name metabase-jar-extract "$image" >/dev/null
-    docker cp metabase-jar-extract:/app/metabase.jar "$modified_jar"
-    docker rm metabase-jar-extract >/dev/null
-
-    # Create version.properties with upcoming version and update the JAR
-    echo "tag=$upcoming_version" > "$work_dir/version.properties"
-    echo "hash=HEAD" >> "$work_dir/version.properties"
-    echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
-    (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
-
-    log "HEAD JAR patched - proceeding with migrate down"
-
-    output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull \
-      -v "$modified_jar:/app/metabase.jar:ro" \
-      metabase "migrate down" 2>&1) || exit_code=$?
-  else
-    output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull metabase "migrate down" 2>&1) || exit_code=$?
-  fi
+  output=$(METABASE_IMAGE="$image" docker compose "${COMPOSE_FILES[@]}" run --rm --quiet-pull \
+    metabase "migrate down" 2>&1) || exit_code=$?
 
   # Always print output for visibility
   echo "$output"
@@ -338,15 +364,18 @@ cascading_migrate_down() {
   edition_prefix=$(get_edition_prefix "$source_version") || return 1
 
   local steps=$((source_major - target_major))
-  log "Cascading migrate down: v$source_major → v$target_major ($steps step(s))"
-
-  # Build version sequence: source version first, then intermediate rolling versions
   local versions=("$source_version")
-  local current=$((source_major - 1))
-  while (( current > target_major )); do
-    versions+=("v${edition_prefix}.${current}.x")
-    ((current--))
-  done
+  if [[ "$source_version" == "HEAD" ]]; then
+    steps=1
+  else
+    # Build version sequence: source version first, then intermediate rolling versions
+    local current=$((source_major - 1))
+    while (( current > target_major )); do
+      versions+=("v${edition_prefix}.${current}.x")
+      ((current--))
+    done
+  fi
+  log "Cascading migrate down: v$source_major → v$target_major ($steps step(s))"
 
   # Simple loop - each step handles its own image resolution
   local step=1
@@ -385,18 +414,24 @@ check_downgrade_refused() {
       return 1
     fi
 
+    local status=$(docker compose ps -a metabase --format '{{.Status}}' 2>/dev/null || echo "")
+
     # Check container logs for downgrade error
     local logs=$(docker compose logs metabase 2>&1 || true)
 
-    if grep -qi "migrate.*down\|downgrade\|database.*newer" <<<"$logs"; then
+    if grep -q "Downgrade detected" <<<"$logs"; then
       log "Metabase correctly detected downgrade scenario"
       return 0
     fi
 
-    local status=$(docker compose ps metabase --format '{{.Status}}' 2>/dev/null || echo "")
     if [[ "$status" =~ [Ee]xit ]]; then
-      log "Metabase container exited (expected for downgrade)"
-      return 0
+      error "Metabase container exited without a downgrade error"
+      return 1
+    fi
+
+    if [[ "$(curl -sf "http://localhost:${METABASE_PORT}/api/health" 2>/dev/null)" == '{"status":"ok"}' ]]; then
+      error "Metabase started on a newer app DB instead of refusing the downgrade"
+      return 1
     fi
 
     sleep 2
@@ -420,6 +455,44 @@ cleanup() {
   teardown
 }
 
+xml_escape() {
+  local value="$1"
+  value="${value//&/&amp;}"
+  value="${value//</&lt;}"
+  value="${value//>/&gt;}"
+  value="${value//\"/&quot;}"
+  printf '%s' "$value"
+}
+
+write_junit_result() {
+  local code="$1"
+  local name="$2"
+  local result="/>"
+  if (( code != 0 )); then
+    result="><failure message=\"test.sh exited with code ${code}\">test.sh exited with code ${code}</failure></testcase>"
+  fi
+  mkdir -p "$(dirname "$CROSS_VERSION_JUNIT_FILE")"
+  printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="cross-version">\n  <testcase name="%s" classname="cross-version" file="cross-version/test.sh"%s\n</testsuite>\n' \
+    "$(xml_escape "$name")" "$result" > "$CROSS_VERSION_JUNIT_FILE"
+}
+
+# Writes a small xml file recording pass/fail that is uploaded to CI Conductor so we can quarantine these tests if required.
+record_result() {
+  local code="$1"
+  local name="$SOURCE_VERSION -> $TARGET_VERSION"
+  if (( CYPRESS_FAILURES_RECORDED == 1 )); then
+    code=0
+  fi
+  if [[ -n "${CROSS_VERSION_JUNIT_FILE:-}" ]]; then
+    write_junit_result "$code" "$name"
+  fi
+  (( code == 0 )) && return 0
+  [[ -n "${QUARANTINE_FAILURES_FILE:-}" ]] || return 0
+  mkdir -p "$(dirname "$QUARANTINE_FAILURES_FILE")"
+  printf '{"test_name":"%s","test_path":"cross-version","file_path":"cross-version/test.sh"}\n' \
+    "$name" >> "$QUARANTINE_FAILURES_FILE"
+}
+
 check_image_exists() {
   local image="$1"
   if ! docker manifest inspect "$image" > /dev/null 2>&1; then
@@ -430,6 +503,8 @@ check_image_exists() {
 
 main() {
   local direction source_image target_image
+
+  trap 'code=$?; record_result "$code"; exit "$code"' EXIT
 
   direction=$(cli compare "$SOURCE_VERSION" "$TARGET_VERSION") || exit 1
   source_image=$(cli image "$SOURCE_VERSION") || exit 1
@@ -444,6 +519,13 @@ main() {
   check_image_exists "$source_image"
   check_image_exists "$target_image"
 
+  if [[ "$SOURCE_VERSION" == "HEAD" ]]; then
+    HEAD_IMAGE="$source_image"
+  elif [[ "$TARGET_VERSION" == "HEAD" ]]; then
+    HEAD_IMAGE="$target_image"
+  fi
+  [[ -n "$HEAD_IMAGE" ]] && patch_head_jar "$HEAD_IMAGE"
+
   log "============================================"
   log "Cross-Version Migration Test"
   log "============================================"
@@ -456,7 +538,21 @@ main() {
   teardown
   init_logs
 
-  trap cleanup EXIT
+  trap 'code=$?; cleanup; record_result "$code"; exit "$code"' EXIT
+
+  if [[ "$direction" == "downgrade" ]]; then
+    log ""
+    log "Step 0: Seeding app DB with TARGET version ($TARGET_VERSION)..."
+    start_metabase "$target_image"
+
+    if ! wait_for_health "$HEALTH_TIMEOUT"; then
+      error "❌ TARGET version ($TARGET_VERSION) failed health check on an empty app DB"
+      docker compose logs metabase
+      exit 1
+    fi
+
+    stop_metabase "seed target $TARGET_VERSION"
+  fi
 
   log ""
   log "Step 1: Starting SOURCE version ($SOURCE_VERSION)..."

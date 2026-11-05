@@ -44,7 +44,10 @@ export function validateDataAppManifest(
   appRoot: string,
   initialAllowedHosts: string[],
 ): DataAppManifestStatus {
+  const manifestPath = path.join(appRoot, DATA_APP_MANIFEST_FILE_NAME);
+
   const status: DataAppManifestStatus = {
+    exists: fs.existsSync(manifestPath),
     name: null,
     bundlePath: null,
     bundlePathExists: false,
@@ -54,13 +57,7 @@ export function validateDataAppManifest(
     restartRequired: false,
   };
 
-  const manifestPath = path.join(appRoot, DATA_APP_MANIFEST_FILE_NAME);
-
-  if (!fs.existsSync(manifestPath)) {
-    status.errors.push(
-      `No ${DATA_APP_MANIFEST_FILE_NAME} found — this app will not sync.`,
-    );
-
+  if (!status.exists) {
     return status;
   }
 

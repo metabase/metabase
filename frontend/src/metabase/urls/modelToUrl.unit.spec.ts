@@ -116,4 +116,25 @@ describe("urls > modelToUrl", () => {
       }),
     ).toBe("/404");
   });
+
+  it("should return a data app URL for a data app search result, from its slug", () => {
+    expect(
+      modelToUrl({
+        model: "data-app",
+        name: "Bird Sightings",
+        id: 7,
+        data_app_slug: "bird-sightings",
+      }),
+    ).toBe("/apps/bird-sightings");
+  });
+
+  it("should return 404 for a data app without a slug", () => {
+    expect(
+      modelToUrl({
+        model: "data-app",
+        name: "Bird Sightings",
+        id: 7,
+      }),
+    ).toBe("/404");
+  });
 });
