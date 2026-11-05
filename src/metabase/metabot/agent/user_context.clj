@@ -274,7 +274,8 @@
 (def ^:private columns-header
   "The text before the column list. It tells the LLM how to refer to each column."
   (str "Columns the query can use (name, display name, type, and the portable FK of a table column). "
-       "Refer to a column by its portable FK when its line has one, and by its name otherwise. "
+       "Refer to an `[expression]` column, a custom column of this stage, as `[\"expression\", {}, name]`. "
+       "Refer to any other column by its portable FK when its line has one, and by its name otherwise. "
        "A joined column also needs its `join-alias`:"))
 
 (defn- column-portable-fk
@@ -297,9 +298,14 @@
 (defn- column-line
   "One column of `query` as a list line.
 
-    - [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK [\"DB\",\"PUBLIC\",\"CATEGORIES\",\"NAME\"]"
+    - [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK [\"DB\",\"PUBLIC\",\"CATEGORIES\",\"NAME\"]
+    - [expression] \"Double\", display name \"Double\", type/Float"
   [query column]
   (str "- "
+       ;; Only a custom column of the last stage takes an `expression` ref. A card's or an earlier
+       ;; stage's custom column is a `field` ref by name, like any other column.
+       (when (= :source/expressions (:lib/source column))
+         "[expression] ")
        (when-let [join-alias (lib/current-join-alias column)]
          (str "[join " (quoting/quoted join-alias) "] "))
        (quoting/quoted (column-ref-name column))

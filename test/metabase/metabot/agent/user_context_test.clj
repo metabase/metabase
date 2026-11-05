@@ -804,6 +804,52 @@
                   :lib/original-join-alias "Cat"}]
                 (lib/breakouts-metadata query)))))))
 
+(defn- venues-price-double-query
+  "A query on VENUES whose stage 0 defines the custom column \"Double\", followed by `stages-after` more stages."
+  [stages-after]
+  (let [mp    (mt/metadata-provider)
+        query (lib/expression (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                              "Double"
+                              (lib/* (lib.metadata/field mp (mt/id :venues :price)) 2))]
+    (nth (iterate lib/append-stage query) stages-after)))
+
+(deftest adhoc-viewing-context-lists-last-stage-expression-as-expression-test
+  (testing "a custom column of the last stage is marked as an expression, and the header says how to refer to it"
+    (mt/with-test-user :crowberto
+      (let [out (user-context/format-viewing-context
+                 {:user_is_viewing [{:type "adhoc" :query (venues-price-double-query 0)}]})]
+        (is (str/includes? out "- [expression] \"Double\", display name \"Double\", type/Integer\n"))
+        (is (str/includes? out "`[\"expression\", {}, name]`")))))
+  (testing "a custom column of an earlier stage is a column like any other, referred to by its name"
+    (mt/with-test-user :crowberto
+      (let [out (user-context/format-viewing-context
+                 {:user_is_viewing [{:type "adhoc" :query (venues-price-double-query 1)}]})]
+        (is (str/includes? out "- \"Double\", display name \"Double\", type/Integer\n"))
+        (is (not (str/includes? out "[expression] \"Double\"")))))))
+
+(deftest adhoc-viewing-context-expression-ref-forms-test
+  (testing "the construct tool takes a custom column of the same stage only as an `expression` ref"
+    (mt/with-test-user :crowberto
+      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+            stage   (fn [ref-clause]
+                      (cond-> {"lib/type"     "mbql.stage/mbql"
+                               "source-table" [db-name "PUBLIC" "VENUES"]
+                               "expressions"  {"Double" ["*" {} ["field" {} [db-name "PUBLIC" "VENUES" "PRICE"]] 2]}}
+                        ref-clause (assoc "aggregation" [["count" {}]] "breakout" [ref-clause])))
+            build   (fn [stages]
+                      (construct/execute-representations-query
+                       (walk/keywordize-keys {"lib/type" "mbql/query" "stages" stages})))]
+        (testing "a `field` ref by name is rejected"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing `base-type`"
+                                (build [(stage ["field" {} "Double"])]))))
+        (testing "an `expression` ref builds"
+          (is (some? (build [(stage ["expression" {} "Double"])]))))
+        (testing "in a later stage, the same column takes a `field` ref by name"
+          (is (some? (build [(stage nil)
+                             {"lib/type"    "mbql.stage/mbql"
+                              "aggregation" [["count" {}]]
+                              "breakout"    [["field" {} "Double"]]}]))))))))
+
 (deftest adhoc-viewing-context-omits-implicitly-joinable-columns-test
   (testing "columns reachable only through a foreign key are not listed"
     (mt/with-test-user :crowberto
@@ -874,7 +920,12 @@
   (testing "a joined column starts with its quoted join alias, and its display name has the alias"
     (is (= "- [join \"Cat \\\"1\\\"\"] \"A\", display name \"Cat \\\"1\\\" → A\", type/Text"
            (#'user-context/column-line fake-query (assoc (fake-column "A" "A" :type/Text)
-                                                         :lib/join-alias "Cat \"1\""))))))
+                                                         :lib/join-alias "Cat \"1\"")))))
+  (testing "a custom column of the last stage starts with `[expression]`"
+    (is (= "- [expression] \"A\", display name \"A\", type/Float"
+           (#'user-context/column-line fake-query (assoc (fake-column "A" "A" :type/Float)
+                                                         :lib/source          :source/expressions
+                                                         :lib/expression-name "A"))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
