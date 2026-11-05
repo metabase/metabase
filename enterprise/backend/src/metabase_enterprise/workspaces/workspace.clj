@@ -75,7 +75,7 @@
                      (ws.db/workspace-databases-of-workspaces (mapv :id workspaces) (ws.status/staleness :database)))
         schemas    (when (seq databases)
                      (ws.db/workspace-schemas-of-workspace-databases (mapv :id databases)
-                                                               (ws.status/staleness :schema)))
+                                                                     (ws.status/staleness :schema)))
         by-ws      (group-by :workspace_id databases)
         by-wsd     (group-by :workspace_database_id schemas)]
     {:data  (mapv #(workspace-with-databases % by-ws by-wsd) workspaces)

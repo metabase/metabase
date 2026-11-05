@@ -123,8 +123,10 @@
      (testing "nothing configured"
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "a login that cannot connect is a 400 and stores nothing"
+       ;; a role that does not exist, not a wrong password: CI's Postgres trusts local connections and ignores passwords
        (is (=? {:message string?, :error-code "connection_failed"}
-               (mt/user-http-request :crowberto :put 400 (url db-id) {:details (assoc login-a :password "wrong")})))
+               (mt/user-http-request :crowberto :put 400 (url db-id)
+                                     {:details {:user "mb_wsm_test_no_such_role", :password "x"}})))
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "a login without CREATEROLE and CREATE on the database is a 412 naming both, and stores nothing"
        (let [message (mt/user-http-request :crowberto :put 412 (url db-id) {:details login-weak})]
