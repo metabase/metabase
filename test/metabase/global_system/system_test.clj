@@ -778,11 +778,11 @@
       (let [first-value @derived]
         (mc/reset! db-handle (String. "same"))
         (is (not (identical? first-value @derived)))))
-    (testing "only the most recent dependency values are remembered, besides the root's"
+    (testing "a value is remembered for as long as its dependency value is in use, however many others are made"
       (let [oldest (mc/binding db-handle :oldest (fn [] @derived))]
-        (doseq [i (range 8)]
+        (doseq [i (range 20)]
           (mc/binding db-handle i (fn [] @derived)))
-        (is (not (identical? oldest (mc/binding db-handle :oldest (fn [] @derived)))))))
+        (is (identical? oldest (mc/binding db-handle :oldest (fn [] @derived))))))
     (testing "threads racing on a new dependency value all get one derived value"
       (mc/reset! db-handle :raced)
       (let [go      (promise)
@@ -799,15 +799,6 @@
       (is (= {:values [nil nil nil], :makes 1}
              {:values [@derived @derived @derived], :makes @makes})))))
 
-(deftest ^:synchronized derived-keeps-root-value-test
-  (testing "the value made from the dependencies' roots survives any number of other dependency values"
-    (mc/alter-root db-handle :root-db)
-    (let [derived    (system/derived-component-handle ::derived-root [db-handle] (fn [db] {:for db, :id (Object.)}))
-          root-value @derived]
-      (doseq [i (range 20)]
-        (mc/binding db-handle i (fn [] @derived)))
-      (is (identical? root-value @derived)))))
-
 (deftest ^:synchronized derived-drops-collected-values-test
   (testing "an entry whose dependency value was collected is dropped when a new entry is added"
     (mc/alter-root db-handle :root-db)
@@ -816,7 +807,7 @@
           entries   [[[collected] :made-for-collected]
                      [[(#'system/weak live)] :made-for-live]]]
       (is (= [:made-for-new :made-for-live]
-             (mapv second (#'system/add-entry entries [db-handle] (constantly :made-for-new) [:new-dep])))))))
+             (mapv second (#'system/add-entry entries (constantly :made-for-new) [:new-dep])))))))
 
 (deftest ^:synchronized collected-reference-matches-nothing-test
   (testing "an entry whose dependency value was collected does not match a dependency that is now nil"

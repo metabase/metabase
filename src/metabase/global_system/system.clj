@@ -377,11 +377,6 @@
 
 ;;; -------------------------------------------- Derived components --------------------------------------------
 
-(def ^:private max-derived-values
-  "How many dependency values a derived component remembers a value for, besides the ones made from its dependencies'
-  current roots, which it always keeps."
-  8)
-
 ;; Entries hold their dependency values weakly, so a dependency value nothing else refers to, such as a finished test's
 ;; temporary app DB, can be collected, and its entry goes at the next write. A nil value is stored as itself.
 (defn- weak
@@ -417,22 +412,14 @@
   [entries deps]
   (some #(when (made-for? % deps) %) entries))
 
-(defn- root-values
-  "The root value of each of `dep-handles`, or `::no-root` for one with none."
-  [dep-handles]
-  (mapv #(if-let [entry (mc/root-entry %)] (val entry) ::no-root) dep-handles))
-
 (defn- add-entry
-  "`entries` with a new entry for `deps` put first.
-  The entry made from the dependencies' current roots is always kept.
-  Entries whose dependency values have been collected are dropped.
-  Of the rest, the newest [[max-derived-values]] minus one are kept."
-  [entries dep-handles make deps]
-  (let [from-roots? #(made-for? % (root-values dep-handles))
-        live        (remove collected? entries)]
-    (-> [[(mapv weak deps) (apply make deps)]]
-        (into (filter from-roots?) live)
-        (into (comp (remove from-roots?) (take (dec max-derived-values))) live))))
+  "`entries` with a new entry for `deps` put first, and without the entries whose dependency values were collected.
+  Every other entry is kept: its dependency values are still in use, so evicting it would only rebuild it, and a
+  caller midway through a series of reads would switch to the rebuilt value."
+  [entries make deps]
+  (into [[(mapv weak deps) (apply make deps)]]
+        (remove collected?)
+        entries))
 
 (deftype DerivedHandle [k dep-handles make entries]
   IDeref
@@ -444,7 +431,7 @@
            (derived-entry (swap! entries (fn [es]
                                            (if (derived-entry es deps)
                                              es
-                                             (add-entry es dep-handles make deps))))
+                                             (add-entry es make deps))))
                           deps))))))
 
 (defmethod print-method DerivedHandle
@@ -461,10 +448,8 @@
    those values, calling `(make dep-value ...)` the first time this combination is seen.
    Values are told apart by identity, so a binding of a dependency, or a write that replaces its value, gets a
    fresh derived value, and the derived value follows bindings of its dependencies with no binding of its own.
-   The value made from the dependencies' current roots is always kept; beyond it only the last few combinations are
-   remembered, and none whose dependency values have been garbage-collected.
-   So `make` must build something that is safe to rebuild, such as a cache, and it can run more than once for the
-   same values when threads race, keeping one result.
-   Every one of `dep-handles` must be a component handle, since its root is read."
+   A value is kept while its dependency values are in use, and dropped once they have been garbage-collected, so the
+   value `make` returns must not hold its dependency values, or they are never collected.
+   When threads race on new values, `make` can run more than once for them, and one result is kept."
   [k dep-handles make]
   (DerivedHandle. k (vec dep-handles) make (atom [])))

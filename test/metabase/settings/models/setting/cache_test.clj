@@ -180,3 +180,15 @@
         (.start unbound)
         (.join unbound)
         (is (not (identical? before @seen)))))))
+
+(deftest held-cache-state-test
+  (testing "reads and writes through one cache state stay on its cache when the app DB this thread sees changes"
+    (let [state (setting.cache/current-state)]
+      (try
+        (mdb/with-application-db (assoc (mdb/app-db) ::other true)
+          (setting.cache/update-cache! state "held-cache-test-key" "held")
+          (is (= {:through-state "held", :current nil}
+                 {:through-state (get (setting.cache/cache state) "held-cache-test-key")
+                  :current       (get (setting.cache/cache) "held-cache-test-key")})))
+        (finally
+          (setting.cache/update-cache! state "held-cache-test-key" nil))))))
