@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
@@ -37,10 +36,9 @@ export function CachePolicyStat({ dashboard }: CachePolicyStatProps) {
     );
   }
 
-  const config = _.findWhere(configs ?? [], {
-    model: "dashboard",
-    model_id: dashboard.id,
-  });
+  const config = (configs ?? []).find(
+    (item) => item.model === "dashboard" && item.model_id === dashboard.id,
+  );
   const strategyLabel =
     getShortStrategyLabel(config?.strategy, "dashboard") ?? t`Default`;
 

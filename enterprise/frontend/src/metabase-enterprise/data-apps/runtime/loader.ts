@@ -1,9 +1,9 @@
+import { pick } from "es-toolkit";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as ReactDOMServer from "react-dom/server";
 import * as ReactJsxRuntime from "react/jsx-runtime";
-import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
@@ -138,10 +138,9 @@ export const instantiateDataAppBundle = async (
     );
   }
 
-  const providerProps = pick(
-    def.providerProps ?? {},
+  const providerProps = pick(def.providerProps ?? {}, [
     ...DATA_APP_PROVIDER_PROP_KEYS,
-  );
+  ]);
 
   return { component: def.component, providerProps };
 };

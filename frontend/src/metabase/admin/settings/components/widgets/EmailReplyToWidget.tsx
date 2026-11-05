@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
@@ -27,7 +27,7 @@ export function EmailReplyToWidget() {
   }
 
   const handleChange = (newValue: any) => {
-    if (_.isEqual([newValue], initialValue)) {
+    if (isEqual([newValue], initialValue)) {
       return;
     }
     updateSetting({

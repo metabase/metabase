@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken, useListRecentsQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -29,6 +28,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
+import { uniqueId } from "metabase/utils/unique-id";
 
 import S from "../components/BrowseContainer.module.css";
 
@@ -55,7 +55,7 @@ export const BrowseModels = () => {
   const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models/models");
 
   const isEmpty = !isLoading && !error && models.length === 0;
-  const titleId = useMemo(() => _.uniqueId("browse-models"), []);
+  const titleId = useMemo(() => uniqueId("browse-models"), []);
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);

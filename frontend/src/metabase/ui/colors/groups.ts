@@ -1,5 +1,5 @@
 import Color from "color";
-import _ from "underscore";
+import { unzip } from "es-toolkit";
 
 import { ACCENT_COLOR_NAMES_MAP } from "./constants/accents";
 import { ACCENT_COUNT, color } from "./palette";
@@ -30,7 +30,7 @@ export const getNamedAccentColors = (
     ranges.push(getNamedAccentVariant("shade", palette, gray));
   }
 
-  return harmony ? _.unzip(ranges).flat() : ranges.flat();
+  return harmony ? unzip(ranges).flat() : ranges.flat();
 };
 
 export const getAccentColors = (

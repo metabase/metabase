@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import { groupBy, keyBy } from "es-toolkit";
 import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -47,11 +47,14 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
   const dispatch = useDispatch();
 
   const dashcardsByTab = useMemo(
-    () => _.groupBy(dashcards, "dashboard_tab_id"),
+    () => groupBy(dashcards, (item) => String(item.dashboard_tab_id)),
     [dashcards],
   );
 
-  const dashcardMap = useMemo(() => _.indexBy(dashcards, "id"), [dashcards]);
+  const dashcardMap = useMemo(
+    () => keyBy(dashcards, (item) => String(item.id)),
+    [dashcards],
+  );
 
   const _tabs = useSelector(getTabs);
   const tabsWithDashcards = useMemo(

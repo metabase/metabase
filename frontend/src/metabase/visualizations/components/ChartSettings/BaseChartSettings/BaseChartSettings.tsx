@@ -1,6 +1,6 @@
 import cx from "classnames";
+import { noop } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Tabs } from "metabase/ui";
@@ -66,7 +66,7 @@ export const BaseChartSettings = ({
         settings,
         getComputedSettingsResult,
         col,
-        _.noop,
+        noop,
         {
           series: series,
         },

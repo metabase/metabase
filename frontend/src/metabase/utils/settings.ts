@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type {
   ColorSettings,
   EnterpriseSettingKey,
@@ -219,7 +217,7 @@ class MetabaseSettings {
 
 // window is not defined for static charts SSR
 const initValues =
-  typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
+  typeof window !== "undefined" ? { ...window.MetabaseBootstrap } : null;
 
 const settings = new MetabaseSettings(initValues);
 

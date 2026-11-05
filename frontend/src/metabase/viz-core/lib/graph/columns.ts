@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniq } from "es-toolkit";
 
 import { isNotNull } from "metabase/utils/types";
 import type {
@@ -106,7 +106,7 @@ export const getCartesianChartColumns = (
   );
 
   const metrics = getColumnDescriptors(
-    _.uniq((settings["graph.metrics"] ?? []).filter(isNotNull)),
+    uniq((settings["graph.metrics"] ?? []).filter(isNotNull)),
     columns,
   );
 

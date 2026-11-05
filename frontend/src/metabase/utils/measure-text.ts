@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 export type FontStyle = {
   size: string | number;
   family: string;
@@ -61,8 +59,14 @@ const styleDefaults = {
   weight: "normal",
 };
 
+const withStyleDefaults = ({
+  size = styleDefaults.size,
+  family = styleDefaults.family,
+  weight = styleDefaults.weight,
+}: Partial<FontStyle> = {}): FontStyle => ({ size, family, weight });
+
 export const measureTextWidth = (text: string, style?: Partial<FontStyle>) =>
-  measureText(text, _.defaults(style, styleDefaults)).width;
+  measureText(text, withStyleDefaults(style)).width;
 
 export const measureTextHeight = (text: string, style?: Partial<FontStyle>) =>
-  measureText(text, _.defaults(style, styleDefaults)).height;
+  measureText(text, withStyleDefaults(style)).height;

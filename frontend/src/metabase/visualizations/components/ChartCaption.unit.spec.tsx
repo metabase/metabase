@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import { noop } from "es-toolkit";
 import type { ComponentPropsWithoutRef } from "react";
-import _ from "underscore";
 
 import {
   getIcon,
@@ -51,7 +51,7 @@ const getSeries = ({ card }: { card?: Card } = {}): Series => {
 const setup = (props: Partial<Props> = {}) => {
   const {
     series = getSeries(),
-    onChangeCardAndRun = _.noop,
+    onChangeCardAndRun = noop,
     settings = {},
     width = 200,
   } = props;

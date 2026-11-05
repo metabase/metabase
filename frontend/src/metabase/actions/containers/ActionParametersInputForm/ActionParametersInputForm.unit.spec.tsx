@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import { setupPrefetchDashcardValuesEndpoint } from "__support__/server-mocks";
 import { getIcon, render, screen, waitFor } from "__support__/ui";
@@ -47,8 +47,8 @@ const defaultProps: ActionParametersInputFormProps = {
   action: mockAction,
   mappedParameters: [],
   initialValues: {},
-  onCancel: _.noop,
-  onSubmitSuccess: _.noop,
+  onCancel: noop,
+  onSubmitSuccess: noop,
   onSubmit: jest.fn().mockResolvedValue({ success: true }),
 };
 
@@ -62,7 +62,7 @@ async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
       opened
       showEmptyState={false}
       title="Test Modal"
-      onClose={_.noop}
+      onClose={noop}
       {...defaultProps}
       {...options}
     />,

@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useState } from "react";
 import { useDeepCompareEffect, useLatest } from "react-use";
-import _ from "underscore";
 
 import {
   useLazyListDatabaseSchemaTablesQuery,
@@ -83,7 +83,7 @@ export function useTableLoader(path: TreePath) {
 
       if (
         tablesRef.current.isError &&
-        _.isEqual(tablesRef.current.originalArgs, newArgs)
+        isEqual(tablesRef.current.originalArgs, newArgs)
       ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -121,7 +121,7 @@ export function useTableLoader(path: TreePath) {
 
       if (
         schemasRef.current.isError &&
-        _.isEqual(schemasRef.current.originalArgs, newArgs)
+        isEqual(schemasRef.current.originalArgs, newArgs)
       ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -181,7 +181,7 @@ export function useTableLoader(path: TreePath) {
       );
       setTree((current) => {
         const merged = merge(current, newTree);
-        return _.isEqual(current, merged) ? current : merged;
+        return isEqual(current, merged) ? current : merged;
       });
     },
     [getDatabases, getSchemas, getTables],

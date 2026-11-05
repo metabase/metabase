@@ -1,7 +1,6 @@
 import cx from "classnames";
 import * as React from "react";
 import type { CSSProperties } from "react";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -125,7 +124,7 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     const { name, icon } = item;
 
-    const iconProps = _.isObject(icon) ? icon : { name: icon };
+    const iconProps = typeof icon === "object" ? icon : { name: icon };
 
     function onClick() {
       onSelect?.();

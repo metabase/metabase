@@ -1,5 +1,3 @@
-import { chain } from "icepick";
-
 import {
   createMockDashboardState,
   createMockSettingsState,
@@ -25,6 +23,7 @@ import {
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
+import { produce } from "metabase/utils/immutable";
 import Field from "metabase-lib/v1/metadata/Field";
 import type { Card } from "metabase-types/api";
 import {
@@ -98,37 +97,35 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a parameter", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "foo",
-        })
-        .value();
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [
+          createMockParameter({ id: "1", type: "foo" }),
+        ];
+      });
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "foo",
+          ...createMockParameter({ id: "1", type: "foo" }),
         },
       ]);
     });
 
     it("should return a FieldFilterUiParameter mapped to a variable template tag", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["variable", ["template-tag", "foo"]],
-        })
-        .value();
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [
+          createMockParameter({ id: "1", type: "string/=" }),
+        ];
+        draft.dashboard.dashcards[0].parameter_mappings = [
+          {
+            card_id: 0,
+            parameter_id: "1",
+            target: ["variable", ["template-tag", "foo"]],
+          },
+        ];
+      });
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...createMockParameter({ id: "1", type: "string/=" }),
           hasVariableTemplateTagTarget: true,
           fields: [],
         },
@@ -136,22 +133,22 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a FieldFilterUiParameter mapped to a field", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .value();
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [
+          createMockParameter({ id: "1", type: "string/=" }),
+        ];
+        draft.dashboard.dashcards[0].parameter_mappings = [
+          {
+            card_id: 0,
+            parameter_id: "1",
+            target: ["dimension", ["field", 1, null]],
+          },
+        ];
+      });
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...createMockParameter({ id: "1", type: "string/=" }),
           hasVariableTemplateTagTarget: false,
           fields: [expect.any(Field)],
         },
@@ -159,27 +156,29 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a FieldFilterUiParameter with two mappings to the same field", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .assocIn(["dashboard", "dashcards", 1, "parameter_mappings", 0], {
-          card_id: 1,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .value();
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [
+          createMockParameter({ id: "1", type: "string/=" }),
+        ];
+        draft.dashboard.dashcards[0].parameter_mappings = [
+          {
+            card_id: 0,
+            parameter_id: "1",
+            target: ["dimension", ["field", 1, null]],
+          },
+        ];
+        draft.dashboard.dashcards[1].parameter_mappings = [
+          {
+            card_id: 1,
+            parameter_id: "1",
+            target: ["dimension", ["field", 1, null]],
+          },
+        ];
+      });
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...createMockParameter({ id: "1", type: "string/=" }),
           fields: [expect.any(Field)],
           hasVariableTemplateTagTarget: false,
         },
@@ -187,27 +186,29 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a FieldFilterUiParameter that has mappings to a field and a template tag variable", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .assocIn(["dashboard", "dashcards", 1, "parameter_mappings", 0], {
-          card_id: 1,
-          parameter_id: 1,
-          target: ["variable", ["template-tag", "foo"]],
-        })
-        .value();
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [
+          createMockParameter({ id: "1", type: "string/=" }),
+        ];
+        draft.dashboard.dashcards[0].parameter_mappings = [
+          {
+            card_id: 0,
+            parameter_id: "1",
+            target: ["dimension", ["field", 1, null]],
+          },
+        ];
+        draft.dashboard.dashcards[1].parameter_mappings = [
+          {
+            card_id: 1,
+            parameter_id: "1",
+            target: ["variable", ["template-tag", "foo"]],
+          },
+        ];
+      });
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...createMockParameter({ id: "1", type: "string/=" }),
           fields: [expect.any(Field)],
           hasVariableTemplateTagTarget: true,
         },
@@ -215,27 +216,29 @@ describe("dashboard/selectors", () => {
     });
 
     it("should return a FieldFilterUiParameter with two mappings to two different fields", () => {
-      const state = chain(STATE)
-        .assocIn(["dashboard", "dashboards", 0, "parameters", 0], {
-          id: 1,
-          type: "string/=",
-        })
-        .assocIn(["dashboard", "dashcards", 0, "parameter_mappings", 0], {
-          card_id: 0,
-          parameter_id: 1,
-          target: ["dimension", ["field", 1, null]],
-        })
-        .assocIn(["dashboard", "dashcards", 1, "parameter_mappings", 0], {
-          card_id: 1,
-          parameter_id: 1,
-          target: ["dimension", ["field", 2, null]],
-        })
-        .value();
+      const state = produce(STATE, (draft) => {
+        draft.dashboard.dashboards[0].parameters = [
+          createMockParameter({ id: "1", type: "string/=" }),
+        ];
+        draft.dashboard.dashcards[0].parameter_mappings = [
+          {
+            card_id: 0,
+            parameter_id: "1",
+            target: ["dimension", ["field", 1, null]],
+          },
+        ];
+        draft.dashboard.dashcards[1].parameter_mappings = [
+          {
+            card_id: 1,
+            parameter_id: "1",
+            target: ["dimension", ["field", 2, null]],
+          },
+        ];
+      });
 
       expect(getParameters(state)).toEqual([
         {
-          id: 1,
-          type: "string/=",
+          ...createMockParameter({ id: "1", type: "string/=" }),
           fields: [expect.any(Field), expect.any(Field)],
           hasVariableTemplateTagTarget: false,
         },
@@ -409,34 +412,30 @@ describe("dashboard/selectors", () => {
   });
 
   describe("getDashboardComplete", () => {
-    const multiCardState = chain(STATE)
-      .assocIn(["dashboard", "dashboards", 0, "dashcards"], [0, 1, 2])
-      .assocIn(["dashboard", "dashcards", 2], {
+    const multiCardState = produce(STATE, (draft) => {
+      draft.dashboard.dashboards[0].dashcards = [0, 1, 2];
+      draft.dashboard.dashcards[2] = createMockDashboardCard({
         card: createMockCard({
           id: 2,
           dataset_query: createMockStructuredDatasetQuery({ query: {} }),
         }),
         parameter_mappings: [],
-      })
-      .value();
+      });
+    });
 
-    const setup = (positions: Array<{ row: number; col: number }>) => {
-      const newStateChain = chain(multiCardState);
-
-      positions.forEach((position, index) => {
-        newStateChain
-          .assocIn(["dashboard", "dashcards", index, "row"], position.row)
-          .assocIn(["dashboard", "dashcards", index, "col"], position.col);
+    const setup = (positions: Array<{ row: number; col: number }>) =>
+      produce(multiCardState, (draft) => {
+        positions.forEach((position, index) => {
+          draft.dashboard.dashcards[index].row = position.row;
+          draft.dashboard.dashcards[index].col = position.col;
+        });
       });
 
-      return newStateChain.value();
-    };
-
     it("should filter out removed dashcards", () => {
-      const state: State = chain(multiCardState)
-        .assocIn(["dashboard", "dashcards", 0, "isRemoved"], true)
-        .assocIn(["dashboard", "dashcards", 2, "isRemoved"], true)
-        .value();
+      const state = produce(multiCardState, (draft) => {
+        draft.dashboard.dashcards[0].isRemoved = true;
+        draft.dashboard.dashcards[2].isRemoved = true;
+      });
 
       const dashboardComplete = getDashboardComplete(state);
       expect(dashboardComplete?.dashcards).toEqual([

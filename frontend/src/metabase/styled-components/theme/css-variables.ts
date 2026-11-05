@@ -3,7 +3,6 @@
 
 // eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-import { getIn } from "icepick";
 
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import {
@@ -20,6 +19,7 @@ import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getFontFamilyValue } from "metabase/utils/fonts";
+import { getByPath } from "metabase/utils/immutable";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = ({
@@ -147,9 +147,9 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
 export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
   ${Object.entries(CSS_VARIABLES_TO_SDK_THEME_MAP)
     .map(([cssVar, themeKey]) => {
-      const value = getIn(theme.other, themeKey.split("."));
+      const value = getByPath(theme.other, themeKey.split("."));
 
-      return value ? `${cssVar}: ${value};` : "";
+      return value ? `${cssVar}: ${String(value)};` : "";
     })
     .join("\n")}
 `;

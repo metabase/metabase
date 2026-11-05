@@ -1,6 +1,5 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import CS from "metabase/css/core/index.css";
@@ -12,6 +11,7 @@ import {
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Box, type ComboboxItem } from "metabase/ui";
+import { times } from "metabase/utils/arrays";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -115,7 +115,7 @@ export function NumberInputWidget({
           />
         </TokenFieldWrapper>
       ) : (
-        _.times(arity, (i) => (
+        times(arity, (i) => (
           <div key={i}>
             <BigIntNumberInput
               w="100%"

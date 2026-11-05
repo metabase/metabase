@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import {
   MAX_SERIES,
@@ -21,7 +21,7 @@ export function transformSeries(series: RawSeries): RawSeries {
     transformSingleSeries(s, series, seriesIndex),
   );
 
-  if (newSeries.length === 0 || _.isEqual(series, newSeries)) {
+  if (newSeries.length === 0 || isEqual(series, newSeries)) {
     return series;
   }
 
@@ -58,13 +58,13 @@ function transformSingleSeries(
   );
   const metrics = (settings["graph.metrics"] || []).filter((d) => d != null);
   const dimensionColumnIndexes = dimensions.map((dimensionName) =>
-    _.findIndex(cols, (col) => col.name === dimensionName),
+    cols.findIndex((col) => col.name === dimensionName),
   );
   const metricColumnIndexes = metrics.map((metricName) =>
-    _.findIndex(cols, (col) => col.name === metricName),
+    cols.findIndex((col) => col.name === metricName),
   );
   const bubbleColumnIndex = settings["scatter.bubble"]
-    ? _.findIndex(cols, (col) => col.name === settings["scatter.bubble"])
+    ? cols.findIndex((col) => col.name === settings["scatter.bubble"])
     : -1;
   const extraColumnIndexes =
     bubbleColumnIndex != null && bubbleColumnIndex >= 0

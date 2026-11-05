@@ -1,8 +1,8 @@
 import type { StoryFn } from "@storybook/react";
 import type { JSONContent } from "@tiptap/react";
+import { pick } from "es-toolkit";
 import { HttpResponse, http } from "msw";
 import { type ReactNode, useMemo } from "react";
-import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -18,7 +18,6 @@ import { Api } from "metabase/api";
 import { Editor } from "metabase/documents/components/Editor/Editor";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -78,13 +77,11 @@ function DocumentProviders({
       settings: mockSettings(),
       entities: createMockEntitiesState({}),
     });
-    const commonReducerNames = Object.keys(commonReducers);
-    // Unjustified type cast. FIXME
-    const initialState = _.pick(
-      storeInitialState,
-      ...commonReducerNames,
-      "settings", // `getStore` uses settings to seed the `getSessionProperties` cache entry
-    ) as State;
+    // `getStore` uses settings to seed the `getSessionProperties` cache entry
+    const stateKeys = [...Object.keys(commonReducers), "settings"].filter(
+      (key): key is keyof typeof storeInitialState => key in storeInitialState,
+    );
+    const initialState = pick(storeInitialState, stateKeys);
     return getStore(commonReducers, initialState, [Api.middleware]);
   }, []);
 

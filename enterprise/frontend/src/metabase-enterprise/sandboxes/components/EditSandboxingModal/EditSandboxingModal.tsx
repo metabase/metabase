@@ -1,8 +1,8 @@
 import cx from "classnames";
+import { isEqual, pickBy } from "es-toolkit";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -35,6 +35,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
+import { uniqueId } from "metabase/utils/unique-id";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -64,7 +65,7 @@ const getNormalizedPolicy = (
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,
-    attribute_remappings: _.pick(
+    attribute_remappings: pickBy(
       policy.attribute_remappings,
       (value, key) => value != null && key != null,
     ),
@@ -142,8 +143,7 @@ const EditSandboxingModal = ({
 
   const canSave =
     isValid &&
-    (!_.isEqual(originalPolicy, normalizedPolicy) ||
-      normalizedPolicy.id == null);
+    (!isEqual(originalPolicy, normalizedPolicy) || normalizedPolicy.id == null);
 
   const { data: policyCard, isFetching: loadingCard } = useGetCardQuery(
     policy.card_id != null ? { id: policy.card_id } : skipToken,
@@ -375,7 +375,7 @@ interface PolicySummaryProps {
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
   const tc = useTranslateContent();
-  const headingId = _.uniqueId();
+  const headingId = uniqueId();
   return (
     <div aria-labelledby={headingId}>
       <div

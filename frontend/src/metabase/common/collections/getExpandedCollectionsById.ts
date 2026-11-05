@@ -1,5 +1,5 @@
+import { omit } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { ExpandedCollection } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -118,7 +118,7 @@ function getExpandedCollectionsById(
     root.children = root.children.filter(
       (c) => c.id !== PERSONAL_COLLECTIONS.id,
     );
-    return _.omit(collectionsById, PERSONAL_COLLECTIONS.id);
+    return omit(collectionsById, [PERSONAL_COLLECTIONS.id]);
   }
 
   return collectionsById;

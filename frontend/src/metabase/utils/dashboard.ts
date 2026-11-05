@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type {
@@ -10,6 +8,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 export function isQuestionCard(
   card: SeriesCard | VirtualCard,
@@ -29,7 +28,7 @@ export function isActionDashCard(
 export function isVirtualDashCard(
   dashcard: Pick<BaseDashboardCard, "visualization_settings">,
 ): dashcard is VirtualDashboardCard {
-  return _.isObject(dashcard?.visualization_settings?.virtual_card);
+  return isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
 export function isQuestionDashCard(

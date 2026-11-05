@@ -1,6 +1,6 @@
+import { groupBy } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
@@ -85,7 +85,7 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
       },
     ]);
 
-  const data = Object.entries(_.groupBy(options, "section")).map(
+  const data = Object.entries(groupBy(options, (item) => item.section)).map(
     ([group, items]) => ({ group, items }),
   );
 

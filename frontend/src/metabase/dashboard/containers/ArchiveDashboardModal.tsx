@@ -1,6 +1,6 @@
+import { isNumber } from "es-toolkit";
 import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
@@ -38,7 +38,7 @@ export const ArchiveDashboardModal = ({
 
   const hasDashboardQuestions = dashboard.dashcards
     .filter((dc) => dc.card) // card might be null for virtual cards
-    .some((dc) => _.isNumber(dc.card.dashboard_id));
+    .some((dc) => isNumber(dc.card.dashboard_id));
 
   const message = hasDashboardQuestions
     ? t`This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?`

@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import { getForm, getFormValidationSchema } from "metabase/actions/utils";
 import type {
@@ -47,11 +46,13 @@ function useActionForm({
   const cleanedInitialValues = useMemo(() => {
     const values = validationSchema.cast(initialValues);
 
-    return _.mapObject(values, (value, fieldId) => {
-      const formField = fieldSettings[fieldId];
+    return Object.fromEntries(
+      Object.entries(values).map(([fieldId, value]) => {
+        const formField = fieldSettings[fieldId];
 
-      return formatInitialValue(value, formField?.inputType);
-    });
+        return [fieldId, formatInitialValue(value, formField?.inputType)];
+      }),
+    );
   }, [initialValues, fieldSettings, validationSchema]);
 
   const getCleanValues = useCallback(

@@ -1,9 +1,9 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
+import { noop } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
-import { noop } from "underscore";
 
 import {
   skipToken,

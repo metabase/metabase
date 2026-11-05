@@ -1,5 +1,5 @@
+import { debounce } from "es-toolkit";
 import { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import { useSelector } from "metabase/redux";
 import type { EnterpriseSettingKey, UserSettings } from "metabase-types/api";
@@ -48,7 +48,10 @@ export const useUserSetting = <T extends keyof UserSettings>(
     [updateSetting, updateUserSetting, key, shouldRefresh],
   );
   const debouncedSetter = useMemo(
-    () => _.debounce(setter, debounceTimeout, debounceOnLeadingEdge),
+    () =>
+      debounce(setter, debounceTimeout, {
+        edges: debounceOnLeadingEdge ? ["leading"] : ["trailing"],
+      }),
     [setter, debounceTimeout, debounceOnLeadingEdge],
   );
   return [currentValue, shouldDebounce ? debouncedSetter : setter];

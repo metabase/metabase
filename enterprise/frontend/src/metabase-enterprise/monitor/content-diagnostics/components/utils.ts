@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -251,7 +251,7 @@ export function getChangedFilterDimension<
     return BASE_FILTER_DIMENSIONS.includePersonalCollections;
   }
 
-  const hasThresholdChange = !_.isEqual(
+  const hasThresholdChange = !isEqual(
     getThresholds(previousOptions),
     getThresholds(nextOptions),
   );

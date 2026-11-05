@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { useEffect, useRef } from "react";
-import _ from "underscore";
 
 import type {
   DatasetColumn,
@@ -48,9 +48,9 @@ export function useSyncColumnWidths(
 
     const isColumnListChange =
       previousCols != null &&
-      !_.isEqual(getColumnNames(previousCols), getColumnNames(data.cols));
+      !isEqual(getColumnNames(previousCols), getColumnNames(data.cols));
     const areWidthsAlignedWithPreviousCols =
-      previousWidths != null && _.isEqual(columnWidths, previousWidths);
+      previousWidths != null && isEqual(columnWidths, previousWidths);
     if (!isColumnListChange || !areWidthsAlignedWithPreviousCols) {
       return;
     }

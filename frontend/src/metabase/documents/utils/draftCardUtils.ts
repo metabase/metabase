@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { getNonBlankNameAndDescription } from "metabase/common/utils/card";
 import type { Card, CardId, DocumentCardToCreate } from "metabase-types/api";
@@ -11,8 +11,7 @@ export function getDocumentCardToCreate(
   sourceCardId?: CardId,
 ): DocumentCardToCreate {
   return {
-    ..._.pick(
-      draftCard,
+    ...pick(draftCard, [
       "dataset_query",
       "display",
       "visualization_settings",
@@ -20,7 +19,7 @@ export function getDocumentCardToCreate(
       "parameter_mappings",
       "result_metadata",
       "cache_ttl",
-    ),
+    ]),
     ...getNonBlankNameAndDescription(draftCard),
     source_card_id: sourceCardId,
   };

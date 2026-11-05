@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { formatField, stripId } from "metabase/utils/formatting";
 import {
   getFieldValues,
@@ -241,7 +239,7 @@ class Field {
   }
 
   hasFieldValues() {
-    return !_.isEmpty(this.fieldValues());
+    return this.fieldValues().length > 0;
   }
 
   remappedValues() {

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { debounce } from "es-toolkit";
 import {
   type JSX,
   type StyleHTMLAttributes,
@@ -9,7 +10,6 @@ import {
 } from "react";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -284,7 +284,7 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const search = useRef(
-    _.debounce(async (value: string) => {
+    debounce(async (value: string) => {
       if (!value) {
         setOptions([]);
         setLoadingState("LOADED");

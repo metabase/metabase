@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
@@ -81,7 +81,7 @@ export function FormattingWidget() {
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
 
   const handleChange = (newValue: FormattingSettings) => {
-    if (_.isEqual(newValue, localValue)) {
+    if (isEqual(newValue, localValue)) {
       return;
     }
     setLocalValue(newValue);

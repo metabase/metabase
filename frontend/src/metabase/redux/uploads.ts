@@ -1,4 +1,4 @@
-import { assocIn, dissocIn, updateIn } from "icepick";
+import type { Action } from "redux-actions";
 import { t } from "ttag";
 
 import { Api, cardApi, tableApi } from "metabase/api";
@@ -192,30 +192,42 @@ const upload = handleActions<
 >(
   {
     [UPLOAD_FILE_START]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id], {
+      next: (state, { payload }: Action<UploadStartPayload>) => ({
+        ...state,
+        [payload.id]: {
           ...payload,
           status: "in-progress",
-        }),
+        },
+      }),
     },
     [UPLOAD_FILE_END]: {
-      next: (state, { payload }) =>
-        updateIn(state, [payload.id], (val) => ({
-          ...val,
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
+          ...state[payload.id],
           ...payload,
           status: "complete",
-        })),
+        },
+      }),
     },
     [UPLOAD_FILE_ERROR]: {
-      next: (state, { payload }) =>
-        updateIn(state, [payload.id], (val) => ({
-          ...val,
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
+          ...state[payload.id],
           ...payload,
           status: "error",
-        })),
+        },
+      }),
     },
     [UPLOAD_FILE_CLEAR]: {
-      next: (state, { payload: { id } }) => dissocIn(state, [id]),
+      next: (state, { payload: { id } }) => {
+        if (!Object.hasOwn(state, id)) {
+          return state;
+        }
+        const { [id]: _clearedUpload, ...otherUploads } = state;
+        return otherUploads;
+      },
     },
     [UPLOAD_FILE_CLEAR_ALL]: {
       next: () => ({}),

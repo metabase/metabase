@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { keyBy, mapValues, sortBy } from "es-toolkit";
 
 import { moveElement } from "metabase/utils/arrays";
 import type { FieldSettingsMap, InputSettingType } from "metabase-types/api";
@@ -26,11 +26,13 @@ export const reorderFields = (
 ) => {
   // we have to jump through some hoops here because fields settings are an unordered map
   // with order properties
-  const fieldsWithIds = _.mapObject(fields, (field, key) => ({
+  const fieldsWithIds = mapValues(fields, (field, key) => ({
     ...field,
     id: key,
   }));
-  const orderedFields = _.sortBy(Object.values(fieldsWithIds), "order");
+  const orderedFields = sortBy(Object.values(fieldsWithIds), [
+    (item) => item.order,
+  ]);
   const reorderedFields = moveElement(orderedFields, oldIndex, newIndex);
 
   const fieldsWithUpdatedOrderProperty = reorderedFields.map(
@@ -40,5 +42,5 @@ export const reorderFields = (
     }),
   );
 
-  return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
+  return keyBy(fieldsWithUpdatedOrderProperty, (item) => item.id);
 };

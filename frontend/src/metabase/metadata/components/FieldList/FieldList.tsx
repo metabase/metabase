@@ -1,5 +1,5 @@
+import { keyBy } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { Stack, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
@@ -28,7 +28,7 @@ export function FieldList<T extends number | string>({
   onDescriptionChange,
 }: Props<T>) {
   const fieldsByName = useMemo(() => {
-    return _.indexBy(fields, (field) => field.name);
+    return keyBy(fields, (field) => field.name);
   }, [fields]);
 
   return (

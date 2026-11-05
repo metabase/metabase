@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniq } from "es-toolkit";
 
 import type { RowValue } from "embedding-sdk-package/hooks/public/data-schema";
 import type {
@@ -39,7 +39,7 @@ function getResultColumns(
 ): DatasetColumn[] {
   const queryNames = getQueryResultColumnNames(query, dynamicQuery);
   const names =
-    queryNames.length > 0 ? queryNames : _.uniq(rows.flatMap(Object.keys));
+    queryNames.length > 0 ? queryNames : uniq(rows.flatMap(Object.keys));
 
   return names.map((name) => ({ name, display_name: name, source: "fields" }));
 }

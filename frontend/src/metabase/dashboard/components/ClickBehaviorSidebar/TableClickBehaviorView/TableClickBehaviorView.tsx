@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { groupBy, sortBy } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import type {
@@ -64,17 +64,17 @@ export function TableClickBehaviorView({
       column,
       clickBehavior: getClickBehaviorForColumn(column),
     }));
-    const groupedByClickBehavior = _.groupBy(
+    const groupedByClickBehavior = groupBy(
       withClickBehaviors,
       ({ clickBehavior }) => {
         return clickBehavior?.type || "actionMenu";
       },
     );
 
-    const pairs = _.pairs(groupedByClickBehavior);
-    return _.sortBy(pairs, ([type]) =>
-      COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
-    );
+    const pairs = Object.entries(groupedByClickBehavior);
+    return sortBy(pairs, [
+      ([type]) => COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
+    ]);
   }, [columns, getClickBehaviorForColumn]) as unknown as ColumnGroup[]; // _.groupby swallows the ClickAction type
 
   const renderColumn = useCallback(

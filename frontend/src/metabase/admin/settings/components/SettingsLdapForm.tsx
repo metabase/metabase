@@ -1,7 +1,7 @@
+import { omit } from "es-toolkit";
 import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
@@ -141,7 +141,7 @@ export const SettingsLdapForm = () => {
       // hidden group fields stay out of the save, so they cannot fail the connection test unseen
       const valuesToSave = isGroupMappingOn
         ? values
-        : _.omit(values, GROUP_MAPPING_FIELD_KEYS);
+        : omit(values, GROUP_MAPPING_FIELD_KEYS);
       await updateLdapSettings({
         ...valuesToSave,
         "ldap-port": Number(values["ldap-port"] ?? defaultPort),

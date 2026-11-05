@@ -1,6 +1,6 @@
+import { sortBy } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -24,7 +24,7 @@ export const TableFieldList = ({
     useMetadataToasts();
 
   const fields = useMemo(() => {
-    return _.sortBy(table.fields ?? [], (item) => item.position);
+    return sortBy(table.fields ?? [], [(item) => item.position]);
   }, [table.fields]);
 
   const handleGetFieldHref = useCallback(

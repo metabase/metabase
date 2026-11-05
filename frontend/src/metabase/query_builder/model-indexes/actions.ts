@@ -1,7 +1,7 @@
-import { dissocIn } from "icepick";
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { Dispatch } from "metabase/redux/store";
+import { produce } from "metabase/utils/immutable";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
@@ -93,7 +93,7 @@ function getFieldsToIndex(
     (field) =>
       field.should_index &&
       !existingIndexes.some((index: ModelIndex) =>
-        _.isEqual(index.value_ref, field.field_ref),
+        isEqual(index.value_ref, field.field_ref),
       ),
   );
 
@@ -112,7 +112,7 @@ function getIndexIdsToRemove(
 
       // make sure we're only removing already-indexed fields
       const foundIndex = existingIndexes.find((index: ModelIndex) =>
-        _.isEqual(index.value_ref, field.field_ref),
+        isEqual(index.value_ref, field.field_ref),
       );
 
       if (foundIndex) {
@@ -146,9 +146,11 @@ export function cleanIndexFlags<T extends DatasetColumn | Field>(
 
   const newResultMetadata = [...fields];
   for (const index of indexesToClean) {
-    newResultMetadata[index] = dissocIn(newResultMetadata[index], [
-      "should_index",
-    ]);
+    newResultMetadata[index] = produce(newResultMetadata[index], (field) => {
+      if ("should_index" in field) {
+        delete field.should_index;
+      }
+    });
   }
   return newResultMetadata;
 }

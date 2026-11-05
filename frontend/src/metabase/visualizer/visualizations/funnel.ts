@@ -1,6 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import { pick } from "es-toolkit";
 import type { Draft } from "immer";
-import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
@@ -233,7 +233,7 @@ export function removeColumnFromFunnel(
     if (columnName === "METRIC" || columnName === "DIMENSION") {
       state.columns = [];
       state.columnValuesMapping = {};
-      state.settings = _.pick(state.settings, "card.title");
+      state.settings = pick(state.settings, ["card.title"]);
     } else {
       const index = state.columnValuesMapping.METRIC.findIndex(
         (mapping) => typeof mapping !== "string" && mapping.name === columnName,

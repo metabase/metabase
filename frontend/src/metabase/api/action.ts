@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import type {
   ActionExecutionResult,
@@ -56,7 +56,7 @@ export const actionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "PUT",
         url: `/api/action/${body.id}`,
-        body: _.pick(body, [
+        body: pick(body, [
           "id",
           "archived",
           "collection_id",

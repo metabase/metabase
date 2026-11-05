@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getErrorMessage } from "metabase/api/utils";
 import {
@@ -40,7 +40,7 @@ export const GitTestConnectionButton = ({
     [URL_KEY]: url,
     [TOKEN_KEY]: token,
   };
-  const result = _.isEqual(originalArgs, request)
+  const result = isEqual(originalArgs, request)
     ? getTestResult(isSuccess, error)
     : null;
 

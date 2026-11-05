@@ -1,5 +1,5 @@
+import { pick } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { formatValue } from "metabase/value-formatting";
 import {
@@ -115,12 +115,11 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       getValue: (series, settings) => {
         const [{ data }] = series;
         const settingsKey = JSON.stringify(
-          _.pick(
-            settings,
+          pick(settings, [
             ...pieRowsReadDeps,
             "pie.rows",
             "pie.sort_rows_dimension",
-          ),
+          ]),
         );
 
         let rowsBySettings = pieRowsByData.get(data);

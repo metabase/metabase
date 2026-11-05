@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { zip } from "es-toolkit";
 
 import type { FieldValue, RowValue } from "metabase-types/api";
 
@@ -37,7 +37,7 @@ export function getFieldValues(field?: RawField | null): FieldValue[] {
 
   if (values && Array.isArray(values.values)) {
     if (Array.isArray(values.human_readable_values)) {
-      return _.zip(values.values, values.human_readable_values || {});
+      return zip(values.values, values.human_readable_values || {});
     }
 
     // TODO Atte Keinänen 7/12/17: I don't honestly know why we can have a field in `values` property.

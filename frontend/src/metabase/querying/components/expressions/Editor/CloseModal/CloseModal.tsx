@@ -1,5 +1,5 @@
+import { noop } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
@@ -18,7 +18,7 @@ export function CloseModal({
       content={t`You have changes that haven't been saved to your custom expression. You can continue editing it or discard the changes.`}
       message=""
       onConfirm={onDiscardChanges}
-      onClose={onKeepEditing || _.noop}
+      onClose={onKeepEditing || noop}
       confirmButtonText={t`Discard changes`}
       confirmButtonProps={{ color: "brand", variant: "filled" }}
       closeButtonText={t`Keep editing`}

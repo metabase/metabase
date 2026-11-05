@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import {
   getEntityPermission,
@@ -59,8 +59,8 @@ export function upgradeViewPermissionsIfNeeded(
   // get permission for item up one level or db if we're already at the top most entity:
   // table -> schema, schema -> database, database -> database
   const parentOrDbEntityId = isTableEntityId(entityId)
-    ? _.pick(entityId, ["databaseId", "schemaName"])
-    : _.pick(entityId, ["databaseId"]);
+    ? pick(entityId, ["databaseId", "schemaName"])
+    : pick(entityId, ["databaseId"]);
 
   const parentOrDbPermission = getEntityPermission(
     permissions,

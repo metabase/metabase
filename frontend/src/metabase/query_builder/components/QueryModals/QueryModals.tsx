@@ -1,7 +1,7 @@
+import { isNumber } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
@@ -131,7 +131,7 @@ export function QueryModals({
     async (question: Question, options?: OnCreateOptions) => {
       const newQuestion = await onCreate(question, options);
       const type = question.type();
-      const isDashboardQuestion = _.isNumber(question.dashboardId());
+      const isDashboardQuestion = isNumber(question.dashboardId());
 
       if (type === "model" || type === "metric") {
         onCloseModal();
@@ -168,7 +168,7 @@ export function QueryModals({
       },
     ) => {
       const newQuestion = question.setCard(newCard);
-      const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+      const isDashboardQuestion = isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 
       if (isDashboardQuestion) {

@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
-import { times } from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDeleteBookmarkEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { times } from "metabase/utils/arrays";
 import {
   createMockBookmark,
   createMockTokenFeatures,

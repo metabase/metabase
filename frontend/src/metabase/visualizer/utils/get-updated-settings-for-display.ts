@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { isNotNull } from "metabase/utils/types";
 import { getMaxDimensionsSupported, isCartesianChart } from "metabase/viz-core";
@@ -65,7 +65,7 @@ export function getUpdatedSettingsForDisplay(
   if (sourceDisplay === "funnel") {
     if (isScalarFunnel({ display: "funnel", settings })) {
       return {
-        settings: _.pick(settings, "card.title"),
+        settings: pick(settings, ["card.title"]),
         columns: [],
         columnValuesMapping: {},
       };
@@ -81,7 +81,7 @@ export function getUpdatedSettingsForDisplay(
   return {
     columns,
     columnValuesMapping,
-    settings: _.pick(settings, "card.title"),
+    settings: pick(settings, ["card.title"]),
   };
 }
 

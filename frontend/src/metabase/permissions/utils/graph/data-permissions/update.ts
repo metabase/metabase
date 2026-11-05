@@ -1,7 +1,7 @@
-import { getIn, setIn } from "icepick";
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import { getByPath, produce } from "metabase/utils/immutable";
 import {
   DataPermission,
   DataPermissionValue,
@@ -12,6 +12,7 @@ import {
   type SchemaEntityId,
   type TableEntityId,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { isSchemaEntityId, isTableEntityId } from "../../data-entity-id";
 import {
@@ -35,10 +36,10 @@ export function updatePermission(
   permission: DataPermission,
   path: Array<number | string>,
   value: string | undefined,
-  entityIds?: any[],
+  entityIds?: Array<string | number>,
 ) {
   const fullPath = getPermissionPath(groupId, databaseId, permission, path);
-  const current = getIn(permissions, fullPath);
+  const current = getByPath(permissions, fullPath);
 
   if (
     current === value ||
@@ -48,23 +49,42 @@ export function updatePermission(
   ) {
     return permissions;
   }
-  let newValue: any;
+  let newValue: unknown;
   if (value === DataPermissionValue.CONTROLLED) {
-    newValue = {};
+    const controlledValue: Record<string | number, unknown> = {};
     if (entityIds) {
       for (const entityId of entityIds) {
-        newValue[entityId] = current;
+        controlledValue[entityId] = current;
       }
     }
+    newValue = controlledValue;
   } else {
     newValue = value;
   }
-  for (let i = 0; i < fullPath.length; i++) {
-    if (typeof getIn(permissions, fullPath.slice(0, i)) === "string") {
-      permissions = setIn(permissions, fullPath.slice(0, i), {});
-    }
+  return produce(permissions, (draft) => {
+    setGraphValue(draft, fullPath, newValue);
+  });
+}
+
+// Missing levels and string leaves on the way become objects, as the path goes deeper than them.
+function setGraphValue(
+  graph: Record<string | number, unknown>,
+  path: Array<string | number>,
+  value: unknown,
+) {
+  const [key, ...restPath] = path;
+  if (restPath.length === 0) {
+    graph[key] = value;
+    return;
   }
-  return setIn(permissions, fullPath, newValue);
+  const child = graph[key];
+  if (isObject(child)) {
+    setGraphValue(child, restPath, value);
+  } else {
+    const newChild: Record<string | number, unknown> = {};
+    graph[key] = newChild;
+    setGraphValue(newChild, restPath, value);
+  }
 }
 
 export function updateFieldsPermission(
@@ -335,15 +355,16 @@ function inferEntityPermissionValueFromChildTables(
   database: PermissionsDatabase,
   permission: DataPermission,
 ): DataPermissionValue {
-  const entityIdsForDescendantTables = _.chain(database.tables)
+  const entityIdsForDescendantTables = (database.tables ?? [])
     .filter((table) => isTableUnderEntityId(table, entityId))
-    .map(tableToTableEntityId)
-    .value();
+    .map(tableToTableEntityId);
 
-  const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
-    .map((id) => getFieldsPermission(permissions, groupId, id, permission))
-    .groupBy(_.identity)
-    .value();
+  const entityIdsByPermValue = groupBy(
+    entityIdsForDescendantTables.map((id) =>
+      getFieldsPermission(permissions, groupId, id, permission),
+    ),
+    (value) => value,
+  );
 
   // Unjustified type cast. FIXME
   const keys = Object.keys(entityIdsByPermValue) as DataPermissionValue[];

@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { SetMultipleDashCardAttributesOpts } from "metabase/dashboard/actions";
 import {
@@ -8,6 +7,7 @@ import {
 } from "metabase/dashboard/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { uniqueId } from "metabase/utils/unique-id";
 import type {
   DashCardId,
   DashboardParameterMapping,
@@ -109,7 +109,7 @@ export const showAddedCardAutoWireParametersToast =
       ? t`Auto-connect “${targetDashcard.card.name}” to “${parametersToMap[0].name}”?`
       : t`Auto-connect “${targetDashcard.card.name}” to ${parametersMappingsToApply.length} filters with the same field?`;
 
-    const toastId = _.uniqueId();
+    const toastId = uniqueId();
 
     dispatch(
       addUndo({

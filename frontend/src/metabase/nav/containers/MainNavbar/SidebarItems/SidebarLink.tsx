@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { MouseEvent, ReactNode } from "react";
 import { isValidElement } from "react";
-import _ from "underscore";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -10,6 +9,7 @@ import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon, type IconProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { LongItemNameTooltip, SidebarItemName } from "./SidebarItemName";
 import S from "./SidebarItems.module.css";
@@ -30,7 +30,7 @@ export interface SidebarLinkProps {
 function isIconPropsObject(
   icon: string | IconProps | IconData,
 ): icon is IconProps | IconData {
-  return _.isObject(icon);
+  return isObject(icon);
 }
 
 function disableImageDragging(e: MouseEvent) {

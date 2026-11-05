@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { range } from "es-toolkit";
 
 import type {
   ComputedVisualizationSettings,
@@ -39,7 +39,7 @@ const getEvenlySpacedIndices = (
   }
 
   if (length < indicesCount) {
-    return _.range(length);
+    return range(length);
   }
 
   const result = new Set([0]);

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import { checkNotNull } from "metabase/utils/types";
 import type { SeriesSettings, VisualizationDisplay } from "metabase-types/api";
@@ -451,7 +451,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
         const { onChange } = getProps(
           series,
           settings,
-          _.noop,
+          noop,
           undefined,
           onChangeSettings,
         );
@@ -517,7 +517,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
         const { onChange } = getProps(
           series,
           settings,
-          _.noop,
+          noop,
           undefined,
           onChangeSettings,
         );

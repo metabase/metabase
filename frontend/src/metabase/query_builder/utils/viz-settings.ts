@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import {
@@ -31,7 +31,7 @@ export function getQuestionWithDefaultVisualizationSettings(
 
   // Don't update the question unnecessarily
   // (even if fields values haven't changed, updating the settings will make the question appear dirty)
-  if (!_.isEqual(oldVizSettings, newVizSettings)) {
+  if (!isEqual(oldVizSettings, newVizSettings)) {
     return question.setSettings(newVizSettings);
   } else {
     return question;

@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import _ from "underscore";
 
 import type {
   ActionContextProviderProps,
@@ -140,7 +140,7 @@ export function QueryActionContextProvider({
 
   const isDirty = useMemo(() => {
     const isQuestionDirty = question.isDirtyComparedTo(initialQuestion);
-    const areFormSettingsDirty = !_.isEqual(formSettings, initialFormSettings);
+    const areFormSettingsDirty = !isEqual(formSettings, initialFormSettings);
     return isQuestionDirty || areFormSettingsDirty;
   }, [question, initialQuestion, formSettings, initialFormSettings]);
 

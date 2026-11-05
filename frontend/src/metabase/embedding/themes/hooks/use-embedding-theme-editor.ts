@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import { isEqual } from "underscore";
 
 import { skipToken } from "metabase/api";
 import {

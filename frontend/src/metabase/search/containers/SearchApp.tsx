@@ -1,6 +1,6 @@
+import { omit } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -56,7 +56,7 @@ export function SearchApp() {
   // Unjustified type cast. FIXME
   const query = {
     q: searchText,
-    ..._.omit(searchFilters, SearchFilterKeys.Type),
+    ...omit(searchFilters, [SearchFilterKeys.Type]),
     models: !models
       ? undefined
       : filterEnabledSearchTypes(Array.isArray(models) ? models : [models]),

@@ -1,4 +1,4 @@
-import { assoc } from "icepick";
+import { isEqual, noop } from "es-toolkit";
 import {
   type PropsWithChildren,
   createContext,
@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
-import { isEqual, noop } from "underscore";
 
 import { isAbortError } from "metabase/api/client";
 import { isEmbedding } from "metabase/embedding/config";
@@ -401,11 +400,10 @@ const DashboardContextProviderInner = forwardRef(
     // functionality in the SDK in the future, which is why it's a generic prop
     const dashboardWithFilteredCards = useMemo(() => {
       if (dashboard && isDashcardVisible) {
-        return assoc(
-          dashboard,
-          "dashcards",
-          dashboard.dashcards.filter(isDashcardVisible),
-        );
+        return {
+          ...dashboard,
+          dashcards: dashboard.dashcards.filter(isDashcardVisible),
+        };
       }
       return dashboard;
     }, [dashboard, isDashcardVisible]);

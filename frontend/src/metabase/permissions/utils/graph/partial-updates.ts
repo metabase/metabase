@@ -1,5 +1,6 @@
-import _ from "underscore";
+import { isEqual, pick, uniq } from "es-toolkit";
 
+import { isEmpty } from "metabase/utils/objects";
 import type {
   CollectionPermissions,
   GroupsPermissions,
@@ -23,7 +24,7 @@ export function getModifiedGroupsPermissionsGraphParts(
     const groupPermissions = dataPermissions[groupId];
 
     if (externallyModifiedGroupIdsSet.has(groupId)) {
-      if (!_.isEmpty(groupPermissions)) {
+      if (!isEmpty(groupPermissions)) {
         dataPermissionsModifiedGroups[groupId] = groupPermissions;
       }
 
@@ -38,12 +39,12 @@ export function getModifiedGroupsPermissionsGraphParts(
     )) {
       const databaseId = Number(databaseIdString);
 
-      if (!_.isEqual(value, originalGroupPermissions?.[databaseId])) {
+      if (!isEqual(value, originalGroupPermissions?.[databaseId])) {
         modifiedDatabasePermissions[databaseId] = value;
       }
     }
 
-    if (!_.isEmpty(modifiedDatabasePermissions)) {
+    if (!isEmpty(modifiedDatabasePermissions)) {
       dataPermissionsModifiedGroups[groupId] = modifiedDatabasePermissions;
     }
   }
@@ -62,7 +63,7 @@ export function mergeGroupsPermissionsUpdates(
 
   const modifiedGroupIdsSet = new Set(modifiedGroupIds);
 
-  const allGroupIds = _.uniq([
+  const allGroupIds = uniq([
     ...Object.keys(originalDataPermissions),
     ...Object.keys(newDataPermissions),
   ]);
@@ -89,7 +90,7 @@ export function getModifiedCollectionPermissionsGraphParts(
   const modifiedGroupIds = groupIds.filter((groupId) => {
     const originalPerms = originalCollectionPermissions[groupId];
     const currPerms = collectionPermissions[groupId];
-    return !_.isEqual(currPerms, originalPerms);
+    return !isEqual(currPerms, originalPerms);
   });
-  return _.pick(collectionPermissions, modifiedGroupIds);
+  return pick(collectionPermissions, modifiedGroupIds);
 }

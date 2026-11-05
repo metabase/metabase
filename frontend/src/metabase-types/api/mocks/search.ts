@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniq } from "es-toolkit";
 
 import type {
   ModelResult,
@@ -65,7 +65,7 @@ export const createMockSearchResults = ({
   items?: SearchResult[];
   options?: Partial<SearchResponse>;
 } = {}): SearchResponse => {
-  const uniqueModels = _.uniq(items.map((item) => item.model));
+  const uniqueModels = uniq(items.map((item) => item.model));
 
   return {
     available_models: uniqueModels,

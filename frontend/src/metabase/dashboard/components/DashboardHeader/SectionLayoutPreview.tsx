@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { Box, Flex } from "metabase/ui";
@@ -28,7 +27,7 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
   }, [layout]);
 
   const height = useMemo(() => {
-    const maxY = _.max(layoutItems.map((item) => item.row + item.size_y));
+    const maxY = Math.max(...layoutItems.map((item) => item.row + item.size_y));
     return maxY * (CELL_HEIGHT + SPACING);
   }, [layoutItems]);
 

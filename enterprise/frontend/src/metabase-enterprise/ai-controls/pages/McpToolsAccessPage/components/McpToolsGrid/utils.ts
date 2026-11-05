@@ -1,5 +1,5 @@
+import { omit, partition } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   getGroupNameLocalized,
@@ -76,12 +76,12 @@ function withToolsAllowed(
   tools: McpTool[],
   allowed: boolean,
 ): Record<string, McpToolAccess> {
-  const [atDefault, overridden] = _.partition(
+  const [atDefault, overridden] = partition(
     tools,
     (tool) => (tool.default_access === "allowed") === allowed,
   );
   return {
-    ..._.omit(
+    ...omit(
       toolAccess,
       atDefault.map((tool) => tool.name),
     ),

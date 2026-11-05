@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type { DatasetData, Series } from "metabase-types/api";
 
 import type {
@@ -26,7 +24,7 @@ export const extractRemappedColumns = (
     ...col,
     remapped_from_index:
       col.remapped_from != null
-        ? _.findIndex(data.cols, (c) => c.name === col.remapped_from)
+        ? data.cols.findIndex((c) => c.name === col.remapped_from)
         : undefined,
     remapping: getRemapping(col),
   }));

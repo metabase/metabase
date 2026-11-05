@@ -1,5 +1,5 @@
+import { range } from "es-toolkit";
 import { useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import type { LegendTitle } from "metabase/visualizations/components/types";
 
@@ -77,7 +77,7 @@ export function useLegendOverflow({
       return;
     }
 
-    const measuredOverflowCount = _.range(itemCount).filter((index) => {
+    const measuredOverflowCount = range(itemCount).filter((index) => {
       const itemRect = itemRefs.current[index]?.getBoundingClientRect();
       return (
         itemRect != null &&

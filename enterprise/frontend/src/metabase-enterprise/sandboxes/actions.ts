@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import {
   LOAD_DATA_PERMISSIONS,
@@ -98,7 +98,7 @@ const groupTableAccessPolicies = handleActions<
             value !== DataPermissionValue.SANDBOXED;
 
           if (isUnsandboxingTable) {
-            return _.omit(state, key);
+            return omit(state, [key]);
           } else {
             return state;
           }
@@ -116,7 +116,7 @@ const groupTableAccessPolicies = handleActions<
           const policyKeys = entityTables.map((table) =>
             getPolicyKeyFromParams({ groupId, tableId: table.id }),
           );
-          return _.omit(state, policyKeys);
+          return omit(state, policyKeys);
         }
 
         return state;

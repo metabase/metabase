@@ -4,6 +4,19 @@ export const isObject = (
   return typeof value === "object" && value !== null;
 };
 
+/**
+ * Whether the value is an object literal or `Object.create(null)`, not an array, a class instance or a built-in like `Date`.
+ */
+export const isPlainObject = (
+  value: unknown,
+): value is Record<string, unknown> => {
+  if (!isObject(value)) {
+    return false;
+  }
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
 export const isFunction = (
   value: unknown,
 ): value is (...args: unknown[]) => unknown => {

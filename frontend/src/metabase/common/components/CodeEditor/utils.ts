@@ -16,8 +16,8 @@ import { ruby } from "@codemirror/legacy-modes/mode/ruby";
 import { unifiedMergeView } from "@codemirror/merge";
 import type { Extension } from "@codemirror/state";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
+import { compact } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { markdownMarkHighlighting } from "metabase/ui/syntax";
 
@@ -37,7 +37,7 @@ export function useExtensions({
   return useMemo(() => {
     const hasProposed = !!originalValue && !!proposedValue;
 
-    return _.compact([
+    return compact([
       ...(extensions ?? []),
       language && getLanguageExtension(language),
       hasProposed &&

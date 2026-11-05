@@ -1,9 +1,9 @@
 import cx from "classnames";
-import type { ComponentType, ForwardedRef } from "react";
+import { countBy, isEqual, pick } from "es-toolkit";
+import type { ComponentProps, ComponentType, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import {
@@ -242,10 +242,7 @@ class DashboardGridInner extends Component<
         )
       : [];
 
-    const hasVisibleDashcardsChanged = !_.isEqual(
-      visibleCards,
-      lastVisibleCards,
-    );
+    const hasVisibleDashcardsChanged = !isEqual(visibleCards, lastVisibleCards);
 
     const initialCardSizes =
       !isEditing || hasVisibleDashcardsChanged
@@ -287,10 +284,10 @@ class DashboardGridInner extends Component<
         (card) => String(card.id) === layoutItem.i,
       );
       if (dashboardCard) {
-        const keys = ["h", "w", "x", "y"];
-        const changed = !_.isEqual(
-          _.pick(layoutItem, keys),
-          _.pick(this.getLayoutForDashCard(dashboardCard), keys),
+        const keys = ["h", "w", "x", "y"] as const;
+        const changed = !isEqual(
+          pick(layoutItem, keys),
+          pick(this.getLayoutForDashCard(dashboardCard), keys),
         );
 
         if (changed) {
@@ -332,7 +329,7 @@ class DashboardGridInner extends Component<
   };
 
   getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
-    _.countBy(cards, "card_id");
+    countBy(cards, (item) => String(item.card_id));
 
   getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
     return Boolean(
@@ -747,8 +744,9 @@ const DashboardGrid = forwardRef<
   );
 });
 
+const DashboardGridWithRedux = connector(DashboardGrid);
+
 // Unjustified type cast. FIXME
-export const DashboardGridConnected = _.compose(
-  ExplicitSize(),
-  connector,
-)(DashboardGrid) as ComponentType<DashboardGridProps>;
+export const DashboardGridConnected = ExplicitSize<
+  ComponentProps<typeof DashboardGridWithRedux>
+>()(DashboardGridWithRedux) as ComponentType<DashboardGridProps>;

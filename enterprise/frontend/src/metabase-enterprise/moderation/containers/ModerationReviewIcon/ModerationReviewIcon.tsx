@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getUser } from "metabase/current-user";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -13,4 +11,4 @@ const mapStateToProps = (state: State) => ({
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(connect(mapStateToProps))(ModerationReviewIcon);
+export default connect(mapStateToProps)(ModerationReviewIcon);

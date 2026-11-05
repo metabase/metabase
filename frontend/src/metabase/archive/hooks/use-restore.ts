@@ -1,7 +1,7 @@
+import { last } from "es-toolkit";
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   Api,
@@ -107,7 +107,7 @@ export function useRestore() {
           }).unwrap();
           return {
             entity,
-            parentCollection: _.last(entity.effective_ancestors ?? []),
+            parentCollection: last(entity.effective_ancestors ?? []),
           };
         })
         .with({ model: "document" }, async ({ id }) => {

@@ -1,6 +1,6 @@
+import { intersection } from "es-toolkit";
 import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type {
   MoveCollectionDestination,
@@ -257,7 +257,7 @@ export const BulkMoveModal = ({
             .map(String)
             .concat(String(item.id)) ?? [];
         if (
-          _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
+          intersection(collectionItemFullPath, movingCollectionIds).length > 0
         ) {
           return true;
         }

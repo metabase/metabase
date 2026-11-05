@@ -1,8 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
-import { merge } from "icepick";
+import { isEqual } from "es-toolkit";
 import { shallowEqual } from "react-redux";
-import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
@@ -20,6 +19,7 @@ import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
+import { mergeDeep } from "metabase/utils/merge-deep";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import {
   getCollectionTimelinesVisibility,
@@ -52,6 +52,7 @@ import type {
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
@@ -248,7 +249,11 @@ export const getQueryResults = createSelector(
 
     function applyMetadataDiff<T extends DatasetColumn | Field>(column: T): T {
       const columnDiff = metadataDiff[column.name];
-      return columnDiff ? merge(column, columnDiff) : column;
+      if (!columnDiff) {
+        return column;
+      }
+      // We only merge editable column properties, which fields and columns type the same way.
+      return mergeDeep(column, columnDiff as DeepPartial<T>);
     }
 
     return [
@@ -504,7 +509,7 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableFieldIds,
   ) => {
-    const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
+    const haveParametersChanged = !isEqual(lastParameters, nextParameters);
     const isEditable =
       !!currentQuestion &&
       Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
@@ -710,7 +715,7 @@ function areRawSeriesEqual(a: Series | null, b: Series | null) {
     shallowEqual(cardRestA, cardRestB) &&
     shallowEqual(settingsA, settingsB) &&
     // applyTemplateTagParameters creates completely new parameters - we need deep equality here
-    _.isEqual(parametersA, parametersB)
+    isEqual(parametersA, parametersB)
   );
 }
 

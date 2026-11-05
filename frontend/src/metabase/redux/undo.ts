@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { createRef } from "react";
 import type { Action } from "redux-actions";
-import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -100,7 +99,7 @@ export const resumeUndo = createThunkAction(
 );
 
 function getUndo(state: State, undoId: Undo["id"]) {
-  return _.findWhere(state.undo, { id: undoId });
+  return state.undo.find((item) => item.id === undoId);
 }
 
 const getAutoConnectedUndos = createSelector(

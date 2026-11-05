@@ -1,7 +1,7 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
+import { keyBy } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetTableQueryMetadataQuery,
@@ -59,7 +59,7 @@ export const DataModelV1 = () => {
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
   const fieldsByName = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => field.name);
+    return keyBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
   const parentName = field?.nfc_path?.[0] ?? "";

@@ -2,10 +2,10 @@ import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
+import { debounce } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
@@ -311,7 +311,7 @@ function useExpression({
   );
 
   const debouncedOnChange = useMemo(
-    () => _.debounce(handleChange, DEBOUNCE_VALIDATION_MS, false),
+    () => debounce(handleChange, DEBOUNCE_VALIDATION_MS),
     [handleChange],
   );
 

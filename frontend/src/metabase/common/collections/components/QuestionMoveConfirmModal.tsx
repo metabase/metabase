@@ -1,7 +1,7 @@
+import { head } from "es-toolkit";
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 import { jt, msgid, ngettext, t } from "ttag";
-import { first } from "underscore";
 
 import { useGetMultipleCardsDashboardsQuery } from "metabase/api";
 import {
@@ -68,7 +68,7 @@ export const QuestionMoveConfirmModal = ({
           return true;
         }
 
-        return first(cd.dashboards)?.id !== destination?.id;
+        return head(cd.dashboards)?.id !== destination?.id;
       }),
     [destination, cardDashboards],
   );

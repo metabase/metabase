@@ -1,12 +1,12 @@
+import { omit } from "es-toolkit";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
-import _ from "underscore";
 
 import { Box, Flex, rem } from "metabase/ui";
 
 import S from "./ResizableBoxHandle.module.css";
 
 export const ResizableBoxHandle = forwardRef(function ResizableBoxHandle(
-  props: HTMLAttributes<HTMLDivElement>,
+  props: HTMLAttributes<HTMLDivElement> & { handleAxis?: string },
   ref: Ref<HTMLDivElement>,
 ) {
   return (
@@ -19,7 +19,7 @@ export const ResizableBoxHandle = forwardRef(function ResizableBoxHandle(
       h="sm"
       pos="absolute"
       bottom={rem(-4)}
-      {..._.omit(props, "handleAxis")}
+      {...omit(props, ["handleAxis"])}
     >
       <Box w="6.25rem" h="xxs" bg="border-neutral" />
     </Flex>

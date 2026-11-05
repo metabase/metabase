@@ -1,5 +1,5 @@
 import { pie } from "d3";
-import _ from "underscore";
+import { partition } from "es-toolkit";
 
 import { findWithIndex } from "metabase/utils/arrays";
 import { checkNotNull } from "metabase/utils/types";
@@ -364,7 +364,7 @@ export function getPieChartModel(
   // Create sliceTree, fill out the innermost slice ring
   const sliceTree: SliceTree = new Map();
   let i = 0;
-  const [sliceTreeNodes, others] = _.chain(pieRowsWithValues)
+  const innerSlices = pieRowsWithValues
     .map(({ value, color, color_name, key, name, isOther }) => {
       const visible = isOther
         ? !hiddenSlices.includes(OTHER_SLICE_KEY)
@@ -408,9 +408,11 @@ export function getPieChartModel(
     })
     .filter(
       (slice) => slice.rawValue !== 0 && (areAllNegative || slice.rawValue > 0),
-    )
-    .partition((slice) => slice != null && !slice.isOther)
-    .value();
+    );
+  const [sliceTreeNodes, others] = partition(
+    innerSlices,
+    (slice) => slice != null && !slice.isOther,
+  );
 
   // We don't show the grey other slice if there isn't more than one slice to
   // group into it

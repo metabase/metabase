@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -97,9 +95,9 @@ const VISUALIZATION_SIZES = {
 };
 
 const getMinSize = (visualizationType) =>
-  _.get(VISUALIZATION_SIZES, [visualizationType, "min"], undefined);
+  VISUALIZATION_SIZES[visualizationType]?.min;
 const getDefaultSize = (visualizationType) =>
-  _.get(VISUALIZATION_SIZES, [visualizationType, "default"], undefined);
+  VISUALIZATION_SIZES[visualizationType]?.default;
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 

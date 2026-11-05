@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { partition, sortBy } from "es-toolkit";
 
 import { permissionApi } from "metabase/api";
 import {
@@ -32,11 +32,11 @@ export const selectGroupById = (state: State, id: GroupId): Group | undefined =>
 export const getOrderedGroups = createSelector(
   selectGroupList,
   (groups: Group[]) => {
-    const [pinnedGroups, unpinnedGroups] = _.partition(groups, isPinnedGroup);
-    const sortedPinnedGroups = _.sortBy(pinnedGroups, getGroupSortOrder);
+    const [pinnedGroups, unpinnedGroups] = partition(groups, isPinnedGroup);
+    const sortedPinnedGroups = sortBy(pinnedGroups, [getGroupSortOrder]);
     return [
       sortedPinnedGroups,
-      ..._.partition(unpinnedGroups, PLUGIN_TENANTS.isTenantGroup),
+      ...partition(unpinnedGroups, PLUGIN_TENANTS.isTenantGroup),
     ];
   },
 );

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { isEqual } from "es-toolkit";
 import {
   useCallback,
   useEffect,
@@ -8,7 +9,6 @@ import {
   useState,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import CS from "metabase/css/core/index.css";
@@ -212,7 +212,7 @@ export function EmailAttachmentPicker({
             : newState.selectedAttachmentType,
         );
         setSelectedCardIds((prevIds) =>
-          _.isEqual(newState.selectedCardIds, prevIds)
+          isEqual(newState.selectedCardIds, prevIds)
             ? prevIds
             : newState.selectedCardIds,
         );
@@ -239,7 +239,7 @@ export function EmailAttachmentPicker({
       prev &&
       (prev.isEnabled || !newState.isEnabled) &&
       prev.selectedAttachmentType === newState.selectedAttachmentType &&
-      _.isEqual(prev.selectedCardIds, newState.selectedCardIds) &&
+      isEqual(prev.selectedCardIds, newState.selectedCardIds) &&
       prev.isFormattingEnabled === newState.isFormattingEnabled &&
       prev.isPivotingEnabled === newState.isPivotingEnabled &&
       prev.isAttachmentOnly === newState.isAttachmentOnly;

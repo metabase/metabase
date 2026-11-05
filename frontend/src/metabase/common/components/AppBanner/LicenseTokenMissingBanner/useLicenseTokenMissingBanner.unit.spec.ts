@@ -15,11 +15,11 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 // Tests fail without this mock, even with jest.useFakeTimers()
 // Probably same/similar issue https://github.com/jestjs/jest/issues/3465
-jest.mock("underscore", () => {
-  const original = jest.requireActual("underscore");
+jest.mock("es-toolkit", () => {
+  const original = jest.requireActual("es-toolkit");
   return {
     ...original,
-    debounce: jest.fn((fn) => fn),
+    debounce: jest.fn((fn: unknown) => fn),
   };
 });
 

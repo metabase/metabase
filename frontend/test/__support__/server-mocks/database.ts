@@ -1,5 +1,5 @@
+import { groupBy } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
@@ -154,7 +154,7 @@ export function setupDatabasesEndpoints(
 }
 
 export const setupSchemaEndpoints = (db: Database) => {
-  const schemas = _.groupBy(db.tables ?? [], (table) => table.schema);
+  const schemas = groupBy(db.tables ?? [], (table) => table.schema);
   const schemaNames = Object.keys(schemas);
   fetchMock.get(`path:/api/database/${db.id}/schemas`, schemaNames);
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);

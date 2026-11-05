@@ -1,6 +1,6 @@
+import { isEqual, mapValues, omit, pick } from "es-toolkit";
 import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -105,7 +105,7 @@ export function useDashboardUrlQuery(location: Location) {
 
     if (
       !hasDeferredSyncRef.current &&
-      _.isEqual(previousQueryParams, queryParams)
+      isEqual(previousQueryParams, queryParams)
     ) {
       return;
     }
@@ -114,10 +114,10 @@ export function useDashboardUrlQuery(location: Location) {
     const currentQuery = parseSearchQuery(location.search);
 
     const nextQueryParams = toLocationQuery(queryParams);
-    const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
+    const currentQueryParams = omit(currentQuery, [...QUERY_PARAMS_ALLOW_LIST]);
 
-    if (!_.isEqual(nextQueryParams, currentQueryParams)) {
-      const otherQueryParams = _.pick(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
+    if (!isEqual(nextQueryParams, currentQueryParams)) {
+      const otherQueryParams = pick(currentQuery, [...QUERY_PARAMS_ALLOW_LIST]);
       const nextQuery = { ...otherQueryParams, ...nextQueryParams };
 
       const isDashboardTabChange =
@@ -161,5 +161,5 @@ export function useDashboardUrlQuery(location: Location) {
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
 
 function toLocationQuery(object: Record<string, any>) {
-  return _.mapObject(object, (value) => (value == null ? "" : value));
+  return mapValues(object, (value) => (value == null ? "" : value));
 }

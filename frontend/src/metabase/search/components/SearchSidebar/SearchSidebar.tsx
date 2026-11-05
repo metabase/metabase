@@ -1,5 +1,5 @@
+import { omit } from "es-toolkit";
 import { useState } from "react";
-import _ from "underscore";
 
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { SearchFilterKeys } from "metabase/common/search/constants";
@@ -46,7 +46,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
     if (!val) {
-      onChange(_.omit(value, key));
+      onChange(omit(value, [key]));
     } else {
       onChange({
         ...value,

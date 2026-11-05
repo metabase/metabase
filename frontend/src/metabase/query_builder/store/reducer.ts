@@ -1,5 +1,4 @@
 import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
-import { assoc, merge } from "icepick";
 
 import {
   createCardPublicLink,
@@ -26,12 +25,15 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
+import { mergeDeep } from "metabase/utils/merge-deep";
 import type {
   Card,
   CollectionItemModel,
   Dataset,
   Field,
   NativeQuerySnippet,
+  ParameterId,
+  ParameterValueOrArray,
   ParameterValuesMap,
   TimelineEvent,
 } from "metabase-types/api";
@@ -476,10 +478,8 @@ const metadataDiff = createReducer<Record<string, Partial<Field>>>(
         { type: string; payload: { name: string; changes: Partial<Field> } }
       >(SET_METADATA_DIFF, (state, action) => {
         const { name, changes } = action.payload;
-        return {
-          ...state,
-          [name]: state[name] ? merge(state[name], changes) : changes,
-        };
+        const fieldDiff = state[name];
+        state[name] = fieldDiff ? mergeDeep(fieldDiff, changes) : changes;
       })
       .addCase(CANCEL_QUESTION_CHANGES, () => ({}));
   },
@@ -514,10 +514,18 @@ const parameterValues = createReducer<ParameterValuesMap>({}, (builder) => {
       string,
       { type: string; payload: { parameterValues: ParameterValuesMap } }
     >(INITIALIZE_QB, (_state, action) => action.payload.parameterValues)
-    .addCase<string, { type: string; payload: { id: string; value: unknown } }>(
-      SET_PARAMETER_VALUE,
-      (state, action) => assoc(state, action.payload.id, action.payload.value),
-    );
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: { id: ParameterId; value: ParameterValueOrArray | null };
+      }
+    >(SET_PARAMETER_VALUE, (state, action) => {
+      const { id, value } = action.payload;
+      if (state[id] !== value) {
+        state[id] = value;
+      }
+    });
 });
 
 const currentState = createReducer<{

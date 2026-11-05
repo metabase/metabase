@@ -1,6 +1,6 @@
+import { compact, sortBy } from "es-toolkit";
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import {
   Card,
@@ -47,10 +47,9 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
   );
 
   const treeData = useMemo<JoinTableRow[]>(() => {
-    const sortedCards = _.sortBy(
-      joinStepCards,
+    const sortedCards = sortBy(joinStepCards, [
       (card) => card.metadata?.join_step,
-    );
+    ]);
     return sortedCards.map((card) => {
       const tableCard = tableCountCards.find(
         ({ metadata }) => metadata?.join_step === card.metadata?.join_step,
@@ -83,7 +82,7 @@ export const JoinAnalysisSection = ({ cards }: JoinAnalysisSectionProps) => {
 
   const columns = useMemo(
     () =>
-      _.compact<(TreeTableColumnDef<JoinTableRow> | false)[]>([
+      compact<TreeTableColumnDef<JoinTableRow> | false>([
         {
           id: "alert",
           width: 42,

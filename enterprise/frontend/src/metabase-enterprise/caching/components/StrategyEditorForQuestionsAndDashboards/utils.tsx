@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { getCollectionPathAsString } from "metabase/common/collections/utils";
@@ -30,6 +29,6 @@ export const formatValueForSorting = (
   if (columnName === "collection") {
     return row.collection ? getCollectionPathAsString(row.collection) : "";
   } else {
-    return _.get(row, columnName);
+    return Reflect.get(row, columnName);
   }
 };

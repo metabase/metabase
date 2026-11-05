@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { zip } from "es-toolkit";
 
 import { type Dayjs, dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -158,7 +158,7 @@ export function computeTimeseriesDataInterval(
   });
 
   // count the number of different values for each interval
-  const intervalCounts = _.zip(...valueLists).map((l) => new Set(l).size);
+  const intervalCounts = zip(...valueLists).map((l) => new Set(l).size);
 
   // find the first interval that has multiple values. we'll subtract 1 to get the previous item later
   let index = intervalCounts.findIndex((size) => size !== 1);
@@ -332,12 +332,9 @@ export function computeTimeseriesTicksInterval(
   const minTickCount = 2;
   // first we want to find out where in TIMESERIES_INTERVALS we should start looking for a good match. Find the
   // interval with a matching interval and count (e.g. `hour` and `1`) and we'll start there.
-  let initialIndex = _.findIndex(
-    TICKS_TIMESERIES_INTERVALS,
-    ({ unit, count }) => {
-      return unit === xInterval.unit && count === xInterval.count;
-    },
-  );
+  let initialIndex = TICKS_TIMESERIES_INTERVALS.findIndex(({ unit, count }) => {
+    return unit === xInterval.unit && count === xInterval.count;
+  });
   // if we weren't able to find something matching then we'll start from the beginning and try everything
   if (initialIndex === -1) {
     initialIndex = 0;

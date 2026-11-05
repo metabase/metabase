@@ -3,9 +3,9 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { mapValues } from "es-toolkit";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   MultiContainerDraggableContext,
@@ -77,7 +77,7 @@ const ChartSettingFieldsPartitionInternal = ({
 
   const columnsByPartitionName = useMemo(
     () =>
-      _.mapObject(items || {}, (columnNames) =>
+      mapValues(items || {}, (columnNames) =>
         columnNames
           .map((columnName) => columns.find((col) => col.name === columnName))
           .filter((col): col is RemappingHydratedDatasetColumn => col != null),

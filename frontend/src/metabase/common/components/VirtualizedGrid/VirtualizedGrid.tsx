@@ -1,10 +1,11 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { chunk, range } from "es-toolkit";
 import type { Key, ReactNode } from "react";
 import { useMemo, useRef } from "react";
-import _ from "underscore";
 
 import { Box, type BoxProps, SimpleGrid, useMatches } from "metabase/ui";
 import type { BreakpointName } from "metabase/ui/theme";
+import { times } from "metabase/utils/arrays";
 
 export type GridItemOrder = "row" | "column";
 
@@ -45,12 +46,12 @@ export const VirtualizedGrid = <T,>({
   // Group items into rows based on current columns
   const rows = useMemo(() => {
     if (itemOrder === "row") {
-      return _.chunk(items, currentColumns);
+      return currentColumns < 1 ? [] : chunk(items, currentColumns);
     }
 
     const rowCount = Math.ceil(items.length / currentColumns);
-    return _.range(rowCount).map((rowIndex) =>
-      _.range(rowIndex, items.length, rowCount).map((index) => items[index]),
+    return times(rowCount, (rowIndex) =>
+      range(rowIndex, items.length, rowCount).map((index) => items[index]),
     );
   }, [items, currentColumns, itemOrder]);
 

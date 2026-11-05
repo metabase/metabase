@@ -1,7 +1,5 @@
-import * as I from "icepick";
 import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
-import _ from "underscore";
 
 import { useLocale } from "metabase/common/hooks";
 import type {
@@ -10,11 +8,8 @@ import type {
 } from "metabase/content-translation/types";
 import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import type {
-  DictionaryArray,
-  RowValue,
-  SeriesSettings,
-} from "metabase-types/api";
+import type { DictionaryArray, RowValue } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -128,7 +123,7 @@ export const translateColumnDisplayName = ({
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
-  _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
+  isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
 
 /** Walk through obj and translate any display name fields */
 export const translateDisplayNames = <T>({
@@ -171,7 +166,7 @@ export const translateDisplayNames = <T>({
           : // Unjustified type cast. FIXME
             traverse(value as T);
 
-        return I.assoc(acc, key, newValue);
+        return acc[key] === newValue ? acc : { ...acc, [key]: newValue };
       }, element);
     }
 
@@ -298,9 +293,13 @@ export const translateCardNames = (
     return (series) => series;
   }
   return (series) =>
-    series.map((s) =>
-      s.card?.name ? I.setIn(s, ["card", "name"], tc(s.card.name)) : s,
-    );
+    series.map((s) => {
+      const name = s.card?.name;
+      const translatedName = name ? tc(name) : name;
+      return translatedName === name
+        ? s
+        : { ...s, card: { ...s.card, name: translatedName } };
+    });
 };
 
 /** Translate the `title` in each metric's `series_settings` entry.
@@ -341,14 +340,16 @@ export const translateSeriesNames = (tc: ContentTranslationFunction) => {
           ]),
       );
 
-      return I.updateIn(
-        singleSeries,
-        ["card", "visualization_settings", "series_settings"],
-        (settings: Record<string, SeriesSettings>) => ({
-          ...settings,
-          ...translated,
-        }),
-      );
+      return {
+        ...singleSeries,
+        card: {
+          ...singleSeries.card,
+          visualization_settings: {
+            ...singleSeries.card?.visualization_settings,
+            series_settings: { ...seriesSettings, ...translated },
+          },
+        },
+      };
     });
   };
 };

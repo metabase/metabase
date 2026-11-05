@@ -1,4 +1,4 @@
-import { pick } from "underscore";
+import { pickBy } from "es-toolkit";
 
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
@@ -81,7 +81,7 @@ export const useSdkDashboardParams = ({
 
   const displayOptions: EmbedDisplayParams = {
     ...DEFAULT_DASHBOARD_DISPLAY_OPTIONS,
-    ...pick(
+    ...pickBy(
       {
         titled: withTitle,
         cardTitled: withCardTitle,

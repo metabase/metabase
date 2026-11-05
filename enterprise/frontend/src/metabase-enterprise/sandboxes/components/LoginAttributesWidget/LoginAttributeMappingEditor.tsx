@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   ActionIcon,
@@ -183,8 +182,7 @@ export const LoginAttributeMappingEditor = ({
           handleChange(addEntry(entries));
         }}
         mt="lg"
-        disabled={_.some(
-          entries,
+        disabled={entries.some(
           (entry) => entry.value === "" || entry.key === "",
         )}
       >

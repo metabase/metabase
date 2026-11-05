@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pickBy } from "es-toolkit";
 
 import type {
   ColumnSettings,
@@ -222,7 +222,7 @@ const KEYS_TO_COMPARE = new Set([
 export function getLineAreaBarComparisonSettings(
   columnSettings: ColumnSettings,
 ): Partial<ColumnSettings> {
-  return _.pick(columnSettings, (value, key) => {
+  return pickBy(columnSettings, (value, key) => {
     if (!KEYS_TO_COMPARE.has(key)) {
       return false;
     }

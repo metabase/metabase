@@ -1,5 +1,4 @@
-import icepick from "icepick";
-
+import { deepFreeze } from "__support__/deep-freeze";
 import {
   DateTimeColumn,
   NumberColumn,
@@ -194,9 +193,7 @@ describe("computed settings for series", () => {
         },
       });
       const data = createMockDatasetData({ rows: [] });
-      const settings = getStoredSettingsForSeries(
-        icepick.freeze([{ card, data }]),
-      );
+      const settings = getStoredSettingsForSeries(deepFreeze([{ card, data }]));
       expect(settings).toEqual({
         column_settings: {
           '["name","A"]': {

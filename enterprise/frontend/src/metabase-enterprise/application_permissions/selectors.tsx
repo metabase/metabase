@@ -1,7 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
+import { isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   getGroupNameLocalized,
@@ -52,7 +51,7 @@ const getApplicationPermission = (
   permissions: ApplicationPermissions,
   groupId: number,
   permissionKey: ApplicationPermissionKey,
-) => getIn(permissions, [groupId, permissionKey]) ?? "no";
+) => permissions[groupId]?.[permissionKey] ?? "no";
 
 export const getIsDirty = createSelector(
   (state: ApplicationPermissionsState) =>
@@ -60,7 +59,7 @@ export const getIsDirty = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.originalApplicationPermissions,
   (permissions, originalPermissions) =>
-    !_.isEqual(permissions, originalPermissions),
+    !isEqual(permissions, originalPermissions),
 );
 
 const getPermission = (
@@ -108,8 +107,7 @@ export const getApplicationPermissionEditor = createSelector(
 
     const allGroups = groups.flat();
 
-    const externalUsersGroup = _.find(
-      allGroups,
+    const externalUsersGroup = allGroups.find(
       PLUGIN_TENANTS.isExternalUsersGroup,
     );
 

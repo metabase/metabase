@@ -1,6 +1,6 @@
+import { shuffle } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -22,6 +22,7 @@ import {
   useCombobox,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { times } from "metabase/utils/arrays";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
 import type { Database, DatabaseXray } from "metabase-types/api";
@@ -221,9 +222,5 @@ const getMessages = (count: number) => {
     t`Some insights about`,
   ];
 
-  return _.chain(count)
-    .range()
-    .map((index) => options[index % options.length])
-    .sample(count)
-    .value();
+  return shuffle(times(count, (index) => options[index % options.length]));
 };

@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { ComponentPropsWithoutRef, Ref } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Group, Icon } from "metabase/ui";
@@ -73,7 +72,7 @@ export const ChartSettingFieldPicker = ({
 }: ChartSettingFieldPickerProps) => {
   let columnKey: string | undefined;
   if (typeof value === "string" && showColumnSetting && columns) {
-    const column = _.findWhere(columns, { name: value });
+    const column = columns.find((item) => item.name === value);
     if (column && columnHasSettings?.(column)) {
       columnKey = getColumnKey(column);
     }

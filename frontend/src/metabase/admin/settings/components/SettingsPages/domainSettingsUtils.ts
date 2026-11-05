@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { EnterpriseSettings } from "metabase-types/api";
 
@@ -14,7 +14,7 @@ export function isDomainSettingsDirty(
   initialValues: DomainsSettings,
   values: DomainsSettings,
 ) {
-  return !_.isEqual(
+  return !isEqual(
     normalizeDomainSettings(initialValues),
     normalizeDomainSettings(values),
   );

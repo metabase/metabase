@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { sortBy } from "es-toolkit";
 
 import type { Locale } from "metabase/redux/store";
 import type { LocaleData } from "metabase-types/api";
@@ -8,10 +8,10 @@ import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "./constants";
 export const getLocales = (
   localeData: LocaleData[] = [["en", "English"]],
 ): Locale[] => {
-  return _.chain(localeData)
-    .map(([code, name]) => ({ code, name }))
-    .sortBy((locale) => locale.name)
-    .value();
+  return sortBy(
+    localeData.map(([code, name]) => ({ code, name })),
+    [(locale) => locale.name],
+  );
 };
 
 export const getDefaultLocale = (

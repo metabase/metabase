@@ -1,6 +1,7 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import { mergeLazily } from "metabase/utils/merge-lazily";
+import { isEmpty } from "metabase/utils/objects";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_COLORS_SETTINGS,
@@ -81,22 +82,22 @@ const cartesianChartAdditions: CartesianChartAdditions = {
       return settings;
     }
 
-    const newSettings = _.omit(settings, SERIES_SETTING_KEY);
+    const newSettings = omit(settings, [SERIES_SETTING_KEY]);
     const newSeriesSettings: VisualizationSettings["series_settings"] = {};
 
     Object.entries(settings[SERIES_SETTING_KEY]).forEach(
       ([key, seriesSettings]) => {
         const newSingleSeriesSettings = seriesSettings
-          ? _.omit(seriesSettings, "display")
+          ? omit(seriesSettings, ["display"])
           : seriesSettings;
 
-        if (!_.isEmpty(newSingleSeriesSettings)) {
+        if (!isEmpty(newSingleSeriesSettings)) {
           newSeriesSettings[key] = newSingleSeriesSettings;
         }
       },
     );
 
-    if (!_.isEmpty(newSeriesSettings)) {
+    if (!isEmpty(newSeriesSettings)) {
       newSettings[SERIES_SETTING_KEY] = newSeriesSettings;
     }
 

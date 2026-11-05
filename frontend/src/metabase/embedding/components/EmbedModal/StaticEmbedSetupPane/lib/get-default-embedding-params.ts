@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import type {
   EmbedResource,
@@ -23,7 +23,7 @@ export function getDefaultEmbeddingParams(
     ...(resource.embedding_params || {}),
   };
   // We first pick only dashboard parameters with valid slugs
-  const defaultParams = _.pick(resourceEmbeddingParams, validSlugs);
+  const defaultParams = pick(resourceEmbeddingParams, validSlugs);
   // Then pick valid required dashboard parameters
   const validRequiredParams = resourceParameters.filter(
     (param) => param.slug && param.required,

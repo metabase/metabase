@@ -1,5 +1,5 @@
+import { pick } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
 import { getUserId } from "metabase/current-user";
@@ -39,7 +39,7 @@ export const useRecentlyCreatedDashboards = () => {
       return searchResults.data
         .filter((result) => result.id !== undefined)
         .sort(sortSearchResultByCreationTime)
-        .map((result) => _.pick(result, ["id", "name", "description"]));
+        .map((result) => pick(result, ["id", "name", "description"]));
     }, [searchResults?.data]);
 
   return {

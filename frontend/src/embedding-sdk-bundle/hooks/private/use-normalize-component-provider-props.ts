@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type { ComponentProviderInternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getHasTokenFeature } from "embedding-sdk-bundle/store/selectors";
@@ -18,7 +16,8 @@ export const useNormalizeComponentProviderProps = (
 
     // We allow only defining a theme preset
     if (normalizedProps.theme) {
-      normalizedProps.theme = _.pick(normalizedProps.theme, "preset");
+      const { theme } = normalizedProps;
+      normalizedProps.theme = "preset" in theme ? { preset: theme.preset } : {};
     }
   }
 

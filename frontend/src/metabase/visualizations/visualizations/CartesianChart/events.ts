@@ -1,5 +1,5 @@
+import { keyBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
@@ -203,7 +203,10 @@ const getEventColumnsData = (
   seriesModel: SeriesModel,
   datum: Datum,
 ): DataPoint[] => {
-  const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
+  const seriesModelsByDataKey = keyBy(
+    chartModel.seriesModels,
+    (item) => item.dataKey,
+  );
 
   const dataPoints: DataPoint[] = getSameCardDataKeys(datum, seriesModel)
     .map((dataKey) => {

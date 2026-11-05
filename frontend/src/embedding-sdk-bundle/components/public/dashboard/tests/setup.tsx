@@ -1,5 +1,5 @@
+import { keyBy } from "es-toolkit";
 import type { ComponentType } from "react";
-import { indexBy } from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
@@ -234,7 +234,7 @@ export const setupSdkDashboard = async ({
           dashcards: dashcards.map((dc) => dc.id),
         },
       },
-      dashcards: indexBy(dashcards, "id"),
+      dashcards: keyBy(dashcards, (item) => item.id),
     }),
     tokenFeatures,
   });

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniqBy } from "es-toolkit";
 
 import * as Urls from "metabase/urls";
 import type { Card, Collection, UnreadableCard } from "metabase-types/api";
@@ -14,7 +14,7 @@ import { isLibraryCollectionType } from "../../../utils";
 export function getDashboardContentItems(
   cards: readonly (Card | UnreadableCard)[],
 ): Card[] {
-  return _.uniq(cards.filter(isReadableCard), (card) => card.id);
+  return uniqBy(cards.filter(isReadableCard), (card) => card.id);
 }
 
 export function filterDashboardContentItems(

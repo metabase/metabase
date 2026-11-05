@@ -1,6 +1,5 @@
-import { times } from "underscore";
-
 import { PRODUCTS_AVERAGE_BY_CATEGORY } from "e2e/support/test-visualizer-data";
+import { times } from "metabase/utils/arrays";
 
 const { H } = cy;
 

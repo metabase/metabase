@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import {
   AIToolKey,
@@ -245,10 +245,9 @@ export const createMockMcpAppsBootstrapUser = (
 export const createMockMcpAppsBootstrapSettings = (
   opts?: Partial<EnterpriseSettings>,
 ): EnterpriseSettings => {
-  const projected = _.pick(
-    createMockSettings(opts),
+  const projected = pick(createMockSettings(opts), [
     ...MCP_APPS_BOOTSTRAP_SETTING_KEYS,
-  );
+  ]);
 
   // The endpoint answers a visibility-filtered subset while the client types the
   // payload as the whole `EnterpriseSettings`. Reproducing that gap is the point of

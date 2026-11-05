@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import { t } from "ttag";
 
 import {
@@ -48,7 +47,7 @@ const getTransformsPermission = (
   groupId: number,
   databaseId: number,
 ) =>
-  getIn(permissions, [groupId, databaseId, DataPermission.TRANSFORMS]) ??
+  permissions[groupId]?.[databaseId]?.[DataPermission.TRANSFORMS] ??
   TRANSFORMS_PERMISSION_OPTIONS.no.value;
 
 const hasFullViewDataAccess = (viewDataValue: DataPermissionValue): boolean => {

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { without } from "es-toolkit";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -106,7 +106,7 @@ function setup({
 }: { cards?: Card[]; hasNestedQueriesSupport?: boolean } = {}) {
   const features = hasNestedQueriesSupport
     ? COMMON_DATABASE_FEATURES
-    : _.without(COMMON_DATABASE_FEATURES, "nested-queries");
+    : without(COMMON_DATABASE_FEATURES, "nested-queries");
 
   const metadata = createMockMetadata({
     databases: [createSampleDatabase({ features })],

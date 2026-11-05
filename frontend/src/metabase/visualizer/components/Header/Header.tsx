@@ -1,6 +1,6 @@
+import { pick } from "es-toolkit";
 import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -53,7 +53,7 @@ export function Header({
     trackVisualizerSaveClicked();
 
     onSave(
-      _.pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
+      pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
     );
   };
 

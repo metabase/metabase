@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import Field from "metabase-lib/v1/metadata/Field";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/v1/parameters/constants";
@@ -45,7 +45,7 @@ describe("parameters/utils/template-tag-options", () => {
     });
 
     it("should add a `combinedName` property to options", () => {
-      const optionsByType = _.groupBy(getParameterOptions(), "type");
+      const optionsByType = groupBy(getParameterOptions(), (item) => item.type);
 
       expect(optionsByType["string/="][0]).toMatchObject({
         combinedName: "String",

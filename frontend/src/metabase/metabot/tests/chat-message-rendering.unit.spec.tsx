@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 import type { ComponentProps } from "react";
 
 import {
@@ -21,7 +20,10 @@ import type {
   MetabotMessage,
   MetabotMessageStatus,
 } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import {
+  createConversation,
+  getMetabotInitialState,
+} from "metabase/metabot/state/reducer-utils";
 import {
   assertConversation,
   continueResponseButton,
@@ -33,6 +35,7 @@ import {
   thumbsDown,
   thumbsUp,
 } from "metabase/metabot/tests/utils";
+import { produce } from "metabase/utils/immutable";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -453,18 +456,19 @@ describe("AgentMessage", () => {
 describe("UserMessage chart mentions", () => {
   it("renders a chart mention as an icon chip using conversation state", async () => {
     const datasetQuery = createMockStructuredDatasetQuery();
-    const metabotState = assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "state"],
-      {
-        charts: {
-          "chart-1": {
-            queries: [datasetQuery],
-            visualization_settings: { chart_type: "bar" },
+    const metabotState = produce(getMetabotInitialState(), (state) => {
+      state.conversations.omnibot = createConversation({
+        conversationId: "omnibot",
+        state: {
+          charts: {
+            "chart-1": {
+              queries: [datasetQuery],
+              visualization_settings: { chart_type: "bar" },
+            },
           },
         },
-      },
-    );
+      });
+    });
 
     renderWithProviders(
       <Messages

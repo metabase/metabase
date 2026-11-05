@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual, sortBy } from "es-toolkit";
 
 import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
@@ -44,7 +44,7 @@ const fromSets = ({
 export const isSameTimelineEventsVisibility = (
   a: TimelineEventsVisibility | undefined,
   b: TimelineEventsVisibility | undefined,
-) => _.isEqual(fromSets(toSets(a)), fromSets(toSets(b)));
+) => isEqual(fromSets(toSets(a)), fromSets(toSets(b)));
 
 export const isTimelineEventsEnabled = (
   settings: VisualizationSettings | undefined,
@@ -59,7 +59,7 @@ const getActiveEvents = (timeline: Timeline) =>
   (timeline.events ?? []).filter((event) => !event.archived);
 
 const sortByTimestamp = (events: TimelineEvent[]) =>
-  _.sortBy(events, (event) => dayjs(event.timestamp).valueOf());
+  sortBy(events, [(event) => dayjs(event.timestamp).valueOf()]);
 
 export const resolveVisibleTimelineEvents = ({
   timelines,

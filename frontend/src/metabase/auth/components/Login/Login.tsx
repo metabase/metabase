@@ -1,7 +1,7 @@
+import { partition } from "es-toolkit";
 import { Fragment, type JSX } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import type { AuthProvider } from "metabase/plugins/types";
@@ -36,7 +36,7 @@ export const Login = (): JSX.Element => {
     }
   });
 
-  const [passwordProvider, otherProviders] = _.partition(
+  const [passwordProvider, otherProviders] = partition(
     providers,
     (provider) => provider.name === "password",
   );

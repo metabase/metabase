@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { useSelector } from "metabase/redux";
 import type { VisualizerDataSource } from "metabase-types/api";
@@ -43,15 +43,15 @@ export function useIsCardPristine(options: UseIsCardPristineOptions): boolean {
       return false;
     }
 
-    if (!_.isEqual(columns, newState.columns)) {
+    if (!isEqual(columns, newState.columns)) {
       return false;
     }
 
-    if (!_.isEqual(columnValuesMapping, newState.columnValuesMapping)) {
+    if (!isEqual(columnValuesMapping, newState.columnValuesMapping)) {
       return false;
     }
 
-    if (!_.isEqual(settings, newState.settings)) {
+    if (!isEqual(settings, newState.settings)) {
       return false;
     }
 

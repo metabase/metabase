@@ -1,4 +1,4 @@
-import debounce from "lodash.debounce";
+import { debounce } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 

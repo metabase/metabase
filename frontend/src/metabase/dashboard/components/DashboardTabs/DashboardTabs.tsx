@@ -1,6 +1,6 @@
 import cx from "classnames";
+import { uniqBy } from "es-toolkit";
 import { t } from "ttag";
-import { uniq } from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import { Sortable } from "metabase/common/components/Sortable";
@@ -102,7 +102,7 @@ export function DashboardTabs({
             <>
               {t`This will also delete any questions saved in it. If you'd like to keep any of these, move them to a different tab, dashboard, or collection.`}
               <List ml="lg" mt="sm">
-                {uniq(tabDashboardQuestions, (dc) => dc.card.id).map(
+                {uniqBy(tabDashboardQuestions, (dc) => dc.card.id).map(
                   (dashcard) => (
                     <List.Item key={dashcard.card.id}>
                       <Link

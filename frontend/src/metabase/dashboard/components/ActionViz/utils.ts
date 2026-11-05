@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { isImplicitDeleteAction } from "metabase/actions/utils";
 import { isNotNull } from "metabase/utils/types";
@@ -34,7 +34,7 @@ function prepareParameter(
 
   const parameterValue = parameterValues[sourceParameterId];
   const actionParameter = action.parameters.find((parameter) =>
-    _.isEqual(parameter.target, actionParameterTarget),
+    isEqual(parameter.target, actionParameterTarget),
   );
 
   // don't return unmapped or empty values

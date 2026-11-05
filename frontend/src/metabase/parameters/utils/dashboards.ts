@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual, keyBy, uniqBy } from "es-toolkit";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import type { CardQuestionBuilder } from "metabase/metadata-store";
@@ -115,7 +115,9 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
     const cards = [card, ...(series || [])];
     const extendedParameterMappings = (parameter_mappings || [])
       .map((parameter_mapping) => {
-        const card = _.findWhere(cards, { id: parameter_mapping.card_id });
+        const card = cards.find(
+          (item) => item.id === parameter_mapping.card_id,
+        );
         return card
           ? {
               ...parameter_mapping,
@@ -207,7 +209,7 @@ function buildSavedDashboardParameter(
   const hasVariableTemplateTagTarget = parameterMappings.some((mapping) =>
     isParameterVariableTarget(mapping.target),
   );
-  const uniqueParameterFields = _.uniq(
+  const uniqueParameterFields = uniqBy(
     fields?.[parameter.id] ?? [],
     (field) => field.id,
   );
@@ -231,7 +233,7 @@ function buildUnsavedDashboardParameter(
   const uniqueTargets: ParameterTarget[] = [];
   const uniqueMappingsForParameters = mappingsForParameter.filter((mapping) => {
     const isTargetUnique = uniqueTargets.every(
-      (target) => _.isEqual(target, mapping.target) === false,
+      (target) => isEqual(target, mapping.target) === false,
     );
 
     if (isTargetUnique) {
@@ -264,7 +266,7 @@ function buildUnsavedDashboardParameter(
 
   return {
     ...parameter,
-    fields: _.uniq(fields, (field) => field.id),
+    fields: uniqBy(fields, (field) => field.id),
     hasVariableTemplateTagTarget,
   };
 }
@@ -280,10 +282,9 @@ export function hasMatchingParameters({
   cardId: number;
   parameters: Parameter[];
 }) {
-  const dashcard = _.findWhere(dashboard.dashcards, {
-    id: dashcardId,
-    card_id: cardId,
-  });
+  const dashcard = dashboard.dashcards.find(
+    (item) => item.id === dashcardId && item.card_id === cardId,
+  );
   if (!dashcard) {
     return false;
   }
@@ -294,9 +295,9 @@ export function hasMatchingParameters({
     (mapping) => mapping.dashcard_id === dashcardId,
   );
 
-  const dashcardMappingsByParameterId = _.indexBy(
+  const dashcardMappingsByParameterId = keyBy(
     mappingsForDashcard,
-    "parameter_id",
+    (item) => item.parameter_id,
   );
 
   return parameters.every((parameter) => {

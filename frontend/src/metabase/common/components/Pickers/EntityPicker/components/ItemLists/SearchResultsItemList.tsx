@@ -1,5 +1,5 @@
+import { pick } from "es-toolkit";
 import { useCallback, useMemo } from "react";
-import { pick } from "underscore";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { trackSearchClick } from "metabase/common/search/analytics";

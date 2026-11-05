@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
@@ -108,11 +107,10 @@ export function getStoredSettingsForSeries(
 
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings = assocIn(
-      storedSettings,
-      ["column_settings"],
-      normalizeColumnSettings(storedSettings.column_settings),
-    );
+    storedSettings = {
+      ...storedSettings,
+      column_settings: normalizeColumnSettings(storedSettings.column_settings),
+    };
   }
 
   return migrateStoredCustomVizSettings(

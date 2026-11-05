@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
@@ -409,7 +409,7 @@ export const getIsAutoApplyFilters = createSelector(
 export const getHasUnappliedParameterValues = createSelector(
   [getParameterValues, getDraftParameterValues],
   (parameterValues, draftParameterValues) => {
-    return !_.isEqual(draftParameterValues, parameterValues);
+    return !isEqual(draftParameterValues, parameterValues);
   },
 );
 
@@ -510,7 +510,7 @@ export const getEditingParameter = createSelector(
   (dashboard, editingParameterId) => {
     const parameters = dashboard?.parameters || [];
     return editingParameterId != null
-      ? _.findWhere(parameters, { id: editingParameterId })
+      ? parameters.find((item) => item.id === editingParameterId)
       : null;
   },
 );
@@ -544,11 +544,12 @@ export const getParameterTarget = createSelector(
 
     const parameterMappings = dashcard.parameter_mappings || [];
 
-    const lookupProperties = card?.id
-      ? { parameter_id: parameter.id, card_id: card.id }
-      : { parameter_id: parameter.id };
-
-    const mapping = _.findWhere(parameterMappings, lookupProperties);
+    const cardId = card?.id;
+    const mapping = parameterMappings.find(
+      (item) =>
+        item.parameter_id === parameter.id &&
+        (!cardId || ("card_id" in item && item.card_id === cardId)),
+    );
     return mapping?.target;
   },
 );

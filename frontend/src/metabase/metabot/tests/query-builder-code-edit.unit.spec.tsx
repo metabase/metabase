@@ -1,7 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
@@ -17,6 +16,7 @@ import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMes
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
+import { produce } from "metabase/utils/immutable";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -150,11 +150,12 @@ describe("query builder code edits from omnibot", () => {
         databases: [TEST_DB],
         questions: [TEST_NATIVE_CARD],
       }),
-      metabot: assocIn(
-        createTestMetabotState(),
-        ["conversations", testConversationId("omnibot"), "title"],
-        "SQL edit",
-      ),
+      metabot: produce(createTestMetabotState(), (state) => {
+        const conversation = state.conversations[testConversationId("omnibot")];
+        if (conversation) {
+          conversation.title = "SQL edit";
+        }
+      }),
     } as any);
 
     const metadata = createMockMetadataFromState(storeInitialState);

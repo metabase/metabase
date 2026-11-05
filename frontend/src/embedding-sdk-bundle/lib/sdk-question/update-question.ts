@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import { selectQuestionFromCard } from "metabase/metadata-store";
@@ -114,7 +114,7 @@ export const updateQuestionSdk =
       nextQuestion.type(),
     );
 
-    if (!_.isEqual(currentDependencies, nextDependencies)) {
+    if (!isEqual(currentDependencies, nextDependencies)) {
       await dispatch(loadMetadataForCard(nextQuestion.card(), { token }));
     }
 

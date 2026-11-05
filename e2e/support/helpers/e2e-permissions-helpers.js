@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isFunction } from "es-toolkit";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { modal, popover } from "e2e/support/helpers";
@@ -147,7 +147,7 @@ export function assertDatasetReqIsSandboxed(options = {}) {
 
       const values = data.rows.map((row) => row[colIndex]);
 
-      const assertionFn = _.isFunction(columnAssertion)
+      const assertionFn = isFunction(columnAssertion)
         ? columnAssertion
         : (val) => val === columnAssertion;
       const errMsg = `Expected every result in column to be equal to: ${columnAssertion}`;

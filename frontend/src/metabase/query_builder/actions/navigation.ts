@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
@@ -48,7 +48,7 @@ export const popState = createThunkAction(
 
     const card = getCard(getState());
     if (location.state && location.state.card) {
-      if (!_.isEqual(card, location.state.card)) {
+      if (!isEqual(card, location.state.card)) {
         const isEmptyQuery = !location.state.card.dataset_query.database;
 
         if (isEmptyQuery) {

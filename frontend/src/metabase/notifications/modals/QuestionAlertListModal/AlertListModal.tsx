@@ -1,5 +1,5 @@
+import { partition } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
 import {
@@ -46,7 +46,7 @@ export const AlertListModal = ({
     return user ? alert.creator.id === user.id : false;
   };
 
-  const [ownAlerts, othersAlerts] = _.partition(
+  const [ownAlerts, othersAlerts] = partition(
     questionAlerts,
     isCreatedByCurrentUser,
   );

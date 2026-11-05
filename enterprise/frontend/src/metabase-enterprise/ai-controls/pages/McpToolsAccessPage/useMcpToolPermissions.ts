@@ -1,6 +1,6 @@
+import { isEqual, keyBy } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
@@ -50,7 +50,7 @@ export function useMcpToolPermissions(): McpToolPermissionsState {
     () =>
       Object.values(edits).filter(
         (permission) =>
-          !_.isEqual(
+          !isEqual(
             permission,
             saved.find((p) => p.group_id === permission.group_id),
           ),
@@ -59,7 +59,7 @@ export function useMcpToolPermissions(): McpToolPermissionsState {
   );
 
   const permissionsByGroup = useMemo(
-    () => ({ ..._.indexBy(saved, "group_id"), ...edits }),
+    () => ({ ...keyBy(saved, (item) => item.group_id), ...edits }),
     [saved, edits],
   );
 

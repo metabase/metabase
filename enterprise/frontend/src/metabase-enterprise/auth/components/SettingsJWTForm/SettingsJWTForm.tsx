@@ -1,5 +1,5 @@
+import { omit } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import {
@@ -113,7 +113,7 @@ export const SettingsJWTForm = ({
     const envLockedKeys = JWT_TEXT_KEYS.filter(
       (key) => settingDetails?.[key]?.is_env_setting,
     );
-    const settingsToUpdate: Partial<EnterpriseSettings> = _.omit(
+    const settingsToUpdate: Partial<EnterpriseSettings> = omit(
       rest,
       envLockedKeys,
     );

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { partition, union, uniq } from "es-toolkit";
 
 import {
   hasLatitudeAndLongitudeColumns,
@@ -100,9 +100,7 @@ export function groupVisualizationsBySensibility({
     }
   }
 
-  const recommended = _.uniq(
-    getRecommendedVisualizations(data, groups.sensible),
-  ); //uniq just in case
+  const recommended = uniq(getRecommendedVisualizations(data, groups.sensible)); //uniq just in case
   const sensibleRecommendations = recommended.filter((vizType) =>
     groups.sensible.includes(vizType),
   );
@@ -235,7 +233,7 @@ export const getSensibleVisualizations = ({
     return types;
   }, []);
 
-  const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
+  const orderedVizTypes = union(DEFAULT_VIZ_ORDER, availableVizTypes);
 
   if (result?.data) {
     const sanitizedData = sanitizeResultData(result.data);
@@ -252,7 +250,7 @@ export const getSensibleVisualizations = ({
     };
   }
 
-  const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
+  const [sensibleVisualizations, nonSensibleVisualizations] = partition(
     orderedVizTypes,
     (vizType) => {
       const viz = visualizations.get(vizType);

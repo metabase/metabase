@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
@@ -69,7 +68,7 @@ export function ClickBehaviorSidebarInner({
     if (hasSelectedColumn) {
       return getClickBehaviorForColumn(dashcard, selectedColumn);
     } else {
-      return getIn(dashcard, ["visualization_settings", "click_behavior"]);
+      return dashcard.visualization_settings?.click_behavior;
     }
   }, [dashcard, selectedColumn, hasSelectedColumn]);
 
@@ -97,7 +96,9 @@ export function ClickBehaviorSidebarInner({
 
       if (selectedColumn == null) {
         onUpdateDashCardVisualizationSettings(id, {
-          click_behavior: nextClickBehavior,
+          // We store the click behavior while it is still being built, so it can be partial;
+          // saving the dashboard replaces an invalid one with its previous value.
+          click_behavior: nextClickBehavior as ClickBehavior | undefined,
         });
       } else {
         onUpdateDashCardColumnSettings(id, getColumnKey(selectedColumn), {

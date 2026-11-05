@@ -27,6 +27,14 @@ ruleTester.run("no-direct-memoize-import", rule, {
       `,
     },
     {
+      name: "other es-toolkit exports",
+      filename: FILE,
+      code: `
+        import { debounce } from "es-toolkit";
+        export const f = debounce(() => {}, 100);
+      `,
+    },
+    {
       name: "other toolkit exports",
       filename: FILE,
       code: `
@@ -73,6 +81,24 @@ ruleTester.run("no-direct-memoize-import", rule, {
       code: `
         import { memoize as underscoreMemoize } from "underscore";
         export const f = underscoreMemoize((x) => x);
+      `,
+      errors: [error],
+    },
+    {
+      name: "memoize from es-toolkit",
+      filename: FILE,
+      code: `
+        import { memoize } from "es-toolkit";
+        export const f = memoize((x) => x);
+      `,
+      errors: [error],
+    },
+    {
+      name: "memoize from es-toolkit/compat",
+      filename: FILE,
+      code: `
+        import { memoize } from "es-toolkit/compat";
+        export const f = memoize((x) => x);
       `,
       errors: [error],
     },

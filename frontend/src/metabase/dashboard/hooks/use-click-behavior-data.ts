@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { getUserAttributes } from "metabase/current-user";
 import {
@@ -24,6 +23,7 @@ import type {
   EntityCustomDestinationClickBehavior,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 type EntityObject = {
   id: number | string;
@@ -34,7 +34,7 @@ type LinkedEntityTarget =
   | { entityType: "dashboard"; entityId: DashboardId | undefined };
 
 function isEntityObject(value: unknown): value is EntityObject {
-  return _.isObject(value) && "id" in value;
+  return isObject(value) && "id" in value;
 }
 
 function resolveLinkedObject(target: LinkedEntityTarget, state: State) {

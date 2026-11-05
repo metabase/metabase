@@ -1,7 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
-import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -14,6 +13,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { isEmpty } from "metabase/utils/objects";
 import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
 

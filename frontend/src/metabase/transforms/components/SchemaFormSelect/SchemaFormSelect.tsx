@@ -1,7 +1,7 @@
+import { uniq } from "es-toolkit";
 import { useField } from "formik";
 import { useState } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { FormSelect, type FormSelectProps } from "metabase/forms";
 import { SelectItem, Stack, Text } from "metabase/ui";
@@ -11,7 +11,7 @@ export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
   const [{ value }] = useField<string | null>(name);
 
   const [searchValue, setSearchValue] = useState(value ?? "");
-  const dataWithNewItem = _.uniq([
+  const dataWithNewItem = uniq([
     ...data,
     ...(searchValue !== "" ? [searchValue] : []),
   ]);

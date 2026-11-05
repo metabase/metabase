@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
 import { formatNumber } from "metabase/utils/formatting";
@@ -272,8 +271,7 @@ function getMaxPeriodsAgo({
     return null;
   }
 
-  const latestNonEmptyRowIndex = _.findLastIndex(
-    rows,
+  const latestNonEmptyRowIndex = rows.findLastIndex(
     (row) => !isEmpty(row[dimensionIndex]),
   );
   const latestNonEmptyRow =

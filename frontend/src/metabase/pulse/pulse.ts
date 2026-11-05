@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { getEmailDomain } from "metabase/utils/email";
+import { isEmpty } from "metabase/utils/objects";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
 import {
@@ -127,7 +127,7 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
   const recipientDomain = getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
   return (
-    _.isEmpty(allowedDomains) ||
+    isEmpty(allowedDomains) ||
     !!(recipientDomain && allowedDomains.includes(recipientDomain))
   );
 }
@@ -346,15 +346,14 @@ export const getHasConfiguredAnyChannel = (
   formInput: ChannelApiResponse | undefined,
 ) =>
   (formInput?.channels &&
-    _.some(Object.values(formInput.channels), (c) => c.configured)) ||
+    Object.values(formInput.channels).some((c) => c.configured)) ||
   false;
 
 export const getHasConfiguredEmailOrSlackChannel = (
   formInput: ChannelApiResponse | undefined,
 ) =>
   (formInput?.channels &&
-    _.some(
-      Object.values(formInput.channels),
+    Object.values(formInput.channels).some(
       (c) => ["email", "slack"].includes(c.type) && c.configured,
     )) ||
   false;

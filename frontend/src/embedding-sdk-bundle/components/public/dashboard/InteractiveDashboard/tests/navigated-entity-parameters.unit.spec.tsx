@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import { isEqual } from "es-toolkit";
 import fetchMock from "fetch-mock";
 import { type ReactElement, useState } from "react";
-import _ from "underscore";
 
 import {
   setupAdhocQueryMetadataEndpoint,
@@ -368,7 +368,7 @@ const getSqlQuestionCategoryValues = () =>
   getQueryRequestParameters(SQL_QUESTION_QUERY_PATH).map(
     (parameters) =>
       parameters.find((parameter) =>
-        _.isEqual(parameter.target, ["variable", ["template-tag", "category"]]),
+        isEqual(parameter.target, ["variable", ["template-tag", "category"]]),
       )?.value,
   );
 

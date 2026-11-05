@@ -1,4 +1,4 @@
-import { sample } from "underscore";
+import { sample } from "es-toolkit";
 
 import { HARDCODED_JWT_SHARED_SECRET } from "../constants/config";
 import { HARDCODED_USERS } from "../constants/hardcoded-users";

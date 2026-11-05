@@ -1,5 +1,5 @@
+import { groupBy, keyBy, once } from "es-toolkit";
 import slugg from "slugg";
-import _ from "underscore";
 
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -61,7 +61,7 @@ export function updateCardTemplateTagNames(
   query: NativeQuery,
   cards: Card[],
 ): NativeQuery {
-  const cardById = _.indexBy(cards, "id");
+  const cardById = keyBy(cards, (item) => item.id);
   const tags = query
     .templateTags()
     // only tags for cards
@@ -104,7 +104,7 @@ export default class NativeQuery {
    * Returns a question updated with the current dataset query.
    * Can only be applied to query that is a direct child of the question.
    */
-  question = _.once((): Question => {
+  question = once((): Question => {
     return this._question.setLegacyQuery(this);
   });
 
@@ -201,7 +201,7 @@ export default class NativeQuery {
     return (
       database != null &&
       database.features != null &&
-      _.contains(database.features, "native-parameters")
+      database.features.includes("native-parameters")
     );
   }
 
@@ -330,7 +330,7 @@ export default class NativeQuery {
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilter = _.constant(true),
+    dimensionFilter: DimensionFilter = () => true,
   ): DimensionOptions {
     const dimensions = this.templateTags()
       .filter((tag) => tag.type === "dimension")
@@ -378,10 +378,12 @@ export default class NativeQuery {
   }
 
   updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {
-    const tagsBySnippetId = _.chain(this.templateTags())
-      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] != null)
-      .groupBy((tag) => Number(tag["snippet-id"]))
-      .value();
+    const tagsBySnippetId = groupBy(
+      this.templateTags().filter(
+        (tag) => tag.type === "snippet" && tag["snippet-id"] != null,
+      ),
+      (tag) => Number(tag["snippet-id"]),
+    );
 
     if (Object.keys(tagsBySnippetId).length === 0) {
       // no need to check if there are no tags

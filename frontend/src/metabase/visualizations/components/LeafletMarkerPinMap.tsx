@@ -1,5 +1,4 @@
 import L from "leaflet";
-import _ from "underscore";
 
 import { getSubpathSafeUrl } from "metabase/urls";
 import type { HoveredObject } from "metabase/viz-core";
@@ -178,7 +177,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
         ],
       } = this.props;
       // if there is a primary key then associate a pin with it
-      const pkIndex = _.findIndex(cols, isPK);
+      const pkIndex = cols.findIndex(isPK);
       const hasPk = pkIndex >= 0;
 
       const data = cols.map((col, index) => ({

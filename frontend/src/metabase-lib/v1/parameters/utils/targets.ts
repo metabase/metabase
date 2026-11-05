@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniq } from "es-toolkit";
 
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -115,7 +115,7 @@ function getParameterTargetFieldFromFieldRef(
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
-  const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
+  const stageIndexes = uniq(columns.map(({ stageIndex }) => stageIndex));
 
   for (const stageIndex of stageIndexes) {
     const stageColumns = columns

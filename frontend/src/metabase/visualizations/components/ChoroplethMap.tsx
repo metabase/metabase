@@ -1,10 +1,10 @@
 import cx from "classnames";
 import * as d3 from "d3";
+import { groupBy, mapValues } from "es-toolkit";
 import type { Feature, FeatureCollection } from "geojson";
 import type L from "leaflet";
 import { useEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -277,19 +277,17 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     },
   ] = series;
   const region = settings["map.region"];
-  const dimensionIndex = _.findIndex(
-    cols,
+  const dimensionIndex = cols.findIndex(
     (col) => col.name === settings["map.dimension"],
   );
-  const metricIndex = _.findIndex(
-    cols,
+  const metricIndex = cols.findIndex(
     (col) => col.name === settings["map.metric"],
   );
   const dimensionColumn = cols[dimensionIndex];
 
   const rowsByFeatureKey = useMemo(
     () =>
-      _.groupBy(rows, (row) => getCanonicalRowKey(row[dimensionIndex], region)),
+      groupBy(rows, (row) => getCanonicalRowKey(row[dimensionIndex], region)),
     [rows, dimensionIndex, region],
   );
 
@@ -338,7 +336,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return lowerCase ? key.toLowerCase() : key;
   };
 
-  const valuesMap = _.mapObject(rowsByFeatureKey, (featureRows) =>
+  const valuesMap = mapValues(rowsByFeatureKey, (featureRows) =>
     featureRows.reduce((sum, row) => sum + getRowValue(row), 0),
   );
   const getFeatureValue = (feature: Feature): number | undefined =>

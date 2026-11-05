@@ -1,6 +1,4 @@
-import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
@@ -10,6 +8,7 @@ import {
 } from "metabase/utils/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { uniqueId } from "metabase/utils/unique-id";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   getDatasetPermissionError,
@@ -47,12 +46,14 @@ import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
-      const slugParam = _.find(before.parameters, (param) => {
+      const slugParam = before.parameters?.find((param: Parameter) => {
         return param.slug === embedSlug;
       });
       if (slugParam) {
         const slugParamId = slugParam && slugParam.id;
-        const newParam = _.findWhere(after.parameters, { id: slugParamId });
+        const newParam = after.parameters.find(
+          (param: Parameter) => param.id === slugParamId,
+        );
         if (newParam) {
           memo[newParam.slug] = before.embedding_params[embedSlug];
         }
@@ -75,7 +76,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       visualization_settings: {},
       parameter_mappings: [],
       ...dashcard,
-      id: _.uniqueId("dashcard"),
+      id: uniqueId("dashcard"),
       card: expandInlineCard(dashcard?.card),
       // Unjustified type cast. FIXME
       series: ((dashcard as any).series || []).map((card: Card) =>
@@ -90,7 +91,7 @@ export function expandInlineCard(card?: Card | VirtualCard) {
     name: "",
     visualization_settings: {},
     ...card,
-    id: _.uniqueId("card"),
+    id: uniqueId("card"),
   };
 }
 
@@ -523,7 +524,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     : t`Do nothing`;
   if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
-      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
+      dashcard.visualization_settings?.column_settings || {};
 
     const count = Object.values(columnSettings).filter(
       (settings) => settings.click_behavior != null,

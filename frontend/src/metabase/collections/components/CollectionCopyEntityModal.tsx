@@ -1,4 +1,4 @@
-import { dissoc } from "icepick";
+import { omit } from "es-toolkit";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -42,7 +42,7 @@ function CollectionCopyEntityModal({
   };
 
   const handleCopy = async (values: Record<string, any>) => {
-    const overrides = dissoc(values, "id");
+    const overrides = omit(values, ["id"]);
 
     if (entityObject.model === "dashboard") {
       const { is_shallow_copy, ...rest } = overrides;

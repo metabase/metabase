@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import type {
@@ -19,7 +18,7 @@ export const validateDatasetRows = (series: Series) => {
     return rows.length === 0;
   };
 
-  if (_.every(series, singleSeriesHasNoRows)) {
+  if (series.every(singleSeriesHasNoRows)) {
     throw new MinRowsError(0);
   }
 };

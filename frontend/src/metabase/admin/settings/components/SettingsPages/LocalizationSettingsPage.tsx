@@ -1,5 +1,5 @@
+import { sortBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSelector } from "metabase/redux";
@@ -26,7 +26,7 @@ export function LocalizationSettingsPage() {
           name="site-locale"
           title={t`Instance language`}
           searchable
-          options={_.sortBy(availableLocales || [], ([, label]) => label).map(
+          options={sortBy(availableLocales || [], [([, label]) => label]).map(
             ([code, label]) => ({ label, value: code }),
           )}
           inputType="select"

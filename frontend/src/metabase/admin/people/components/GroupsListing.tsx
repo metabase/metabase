@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
@@ -459,7 +458,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
       throw new Error("There is currently no group being edited");
     }
 
-    const originalGroup = _.findWhere(groups, { id: group.id });
+    const originalGroup = groups.find((item) => item.id === group.id);
 
     if (!originalGroup) {
       throw new Error("Original group not found");

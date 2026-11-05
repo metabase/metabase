@@ -1,7 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -28,10 +26,14 @@ import type {
   Collection,
   CollectionId,
   CollectionPermissions,
-  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
-import { DataPermission, DataPermissionType } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase-types/api";
+import { isDataPermissionValue } from "metabase-types/guards";
 
 export const tenantCollectionsQuery = {
   "exclude-other-user-collections": true,
@@ -157,7 +159,12 @@ const getTenantCollectionPermission = (
   permissions: CollectionPermissions,
   groupId: number,
   collectionId: CollectionId,
-) => getIn(permissions, [groupId, collectionId]) || "none";
+) => {
+  const permission = permissions[groupId]?.[collectionId];
+  return isDataPermissionValue(permission)
+    ? permission
+    : DataPermissionValue.NONE;
+};
 
 export const getTenantCollectionsPermissionEditor = createSelector(
   getTenantCollectionsPermissions,
@@ -176,8 +183,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
         const isAdmin = isAdminGroup(group);
         const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
 
-        const defaultGroup = _.find(
-          groups,
+        const defaultGroup = groups.find(
           isTenantGroup ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
         );
 
@@ -288,11 +294,15 @@ function getTenantCollectionWarning(
     ),
   );
   if (
-    collectionPerm === "none" &&
-    (descendentPerms.has("read") || descendentPerms.has("write"))
+    collectionPerm === DataPermissionValue.NONE &&
+    (descendentPerms.has(DataPermissionValue.READ) ||
+      descendentPerms.has(DataPermissionValue.WRITE))
   ) {
     return t`This group has permission to view at least one subcollection of this collection.`;
-  } else if (collectionPerm === "read" && descendentPerms.has("write")) {
+  } else if (
+    collectionPerm === DataPermissionValue.READ &&
+    descendentPerms.has(DataPermissionValue.WRITE)
+  ) {
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
 }

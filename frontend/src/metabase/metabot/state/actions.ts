@@ -3,9 +3,9 @@ import {
   type UnknownAction,
   isRejected,
 } from "@reduxjs/toolkit";
+import { omit } from "es-toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   aiStreamingQuery,
@@ -395,7 +395,7 @@ export const submitInput = createAsyncThunk<
         addUserMessage({
           id: messageId,
           externalId: userMessageId,
-          ..._.omit(data, ["context", "metabot_id"]),
+          ...omit(data, ["context", "metabot_id"]),
           message: prompt,
           conversationId,
         }),

@@ -1,6 +1,3 @@
-import { getIn } from "icepick";
-import _ from "underscore";
-
 import type { Dayjs } from "metabase/dayjs";
 import { formatNullable } from "metabase/utils/formatting";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -118,6 +115,10 @@ function canDisplayNull(settings: VisualizationSettings): boolean {
   return !isOrdinal(settings) || isHistogram(settings);
 }
 
+type XValue = Exclude<RowValue, null | undefined> | Dayjs;
+
+const compareXValues = (a: XValue, b: XValue) => (a < b ? -1 : a > b ? 1 : 0);
+
 export function getXValues({
   series,
   settings,
@@ -130,7 +131,7 @@ export function getXValues({
     isObjectWithRaw(series) && series._raw ? series._raw : series;
   // warnings are handled by getDatas, so they are dropped here
   const parsedXValues: ParsedXValueCache = new Map();
-  const uniqueValues = new Set<Exclude<RowValue, null | undefined> | Dayjs>();
+  const uniqueValues = new Set<XValue>();
   let isAscending = true;
   let isDescending = true;
   for (const { data } of rawSeries) {
@@ -166,11 +167,10 @@ export function getXValues({
   let xValues = Array.from(uniqueValues);
   if (isDescending) {
     // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
-    // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
-    xValues = _.sortBy(xValues, (x) => x).reverse();
+    xValues = xValues.sort(compareXValues).reverse();
   } else if (isAscending) {
     // default line/area charts to ascending since otherwise lines could be wonky
-    xValues = _.sortBy(xValues, (x) => x);
+    xValues = xValues.sort(compareXValues);
   }
   return xValues;
 }
@@ -234,7 +234,7 @@ export const isNormalized = (settings: VisualizationSettings) =>
 export const getFirstNonEmptySeries = (
   series: RawSeries,
 ): SingleSeries | undefined =>
-  _.find(series, (s) => !datasetContainsNoResults(s.data));
+  series.find((s) => !datasetContainsNoResults(s.data));
 
 function hasRemappingAndValuesAreStrings(
   { cols }: DatasetData,
@@ -260,5 +260,4 @@ export const isRemappedToString = (series: RawSeries): boolean => {
 };
 
 export const hasClickBehavior = (series: Series): boolean =>
-  getIn(series, [0, "card", "visualization_settings", "click_behavior"]) !=
-  null;
+  series[0]?.card?.visualization_settings?.click_behavior != null;

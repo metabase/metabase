@@ -2,10 +2,10 @@ import cx from "classnames";
 import type React from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
-import { uniqueId } from "underscore";
 
 import Animation from "metabase/css/core/animation.module.css";
 import { Modal, type ModalOverlayProps, Stack } from "metabase/ui";
+import { uniqueId } from "metabase/utils/unique-id";
 
 import Styles from "./sidesheet.module.css";
 

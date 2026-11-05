@@ -1,6 +1,6 @@
+import { isNumber } from "es-toolkit";
 import { useState } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -125,7 +125,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   };
 
   const handleChooseMoveLocation = async (destination: MoveDestination) => {
-    const wasDq = _.isNumber(card.dashboard_id);
+    const wasDq = isNumber(card.dashboard_id);
     const isDq = destination.model === "dashboard";
     const dashCount = card.dashboard_count ?? 0;
 

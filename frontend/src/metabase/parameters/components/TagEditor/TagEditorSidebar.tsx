@@ -1,6 +1,6 @@
+import { keyBy } from "es-toolkit";
 import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -66,7 +66,7 @@ export function TagEditorSidebar({
   const tags = query.variableTemplateTags();
   const database = question.database();
   const parameters = question.parameters();
-  const parametersById = _.indexBy(parameters, "id");
+  const parametersById = keyBy(parameters, (item) => item.id);
 
   const handleTabChange = (tab: TabId | null) => {
     if (tab) {

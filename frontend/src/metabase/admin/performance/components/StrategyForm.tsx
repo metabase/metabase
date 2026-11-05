@@ -1,9 +1,9 @@
 import cx from "classnames";
+import { isEqual, omit } from "es-toolkit";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, msgid, t } from "ttag";
-import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
@@ -148,7 +148,7 @@ const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
         : value,
     ]),
   );
-  return !_.isEqual(initialValuesWithDefaults, coercedValuesWithDefaults);
+  return !isEqual(initialValuesWithDefaults, coercedValuesWithDefaults);
 };
 
 const StrategyFormBody = ({
@@ -533,7 +533,7 @@ const StrategySelector = ({
   const { values, setFieldValue } = useFormikContext<CacheStrategy>();
 
   const availableStrategies = useMemo(
-    () => (targetId === rootId ? _.omit(strategies, "inherit") : strategies),
+    () => (targetId === rootId ? omit(strategies, ["inherit"]) : strategies),
     [targetId, strategies],
   );
 

@@ -1,5 +1,3 @@
-import { assoc } from "icepick";
-
 import { createAction, handleActions } from "metabase/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils";
@@ -146,28 +144,38 @@ const initialState: ReferenceState = {
   isFormulaExpanded: false,
   isDashboardModalOpen: false,
 };
+function setFlag(
+  state: ReferenceState,
+  flag: keyof ReferenceState,
+  value: boolean,
+): ReferenceState {
+  return state[flag] === value ? state : { ...state, [flag]: value };
+}
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default handleActions(
   {
     [START_EDITING]: {
-      next: (state: ReferenceState) => assoc(state, "isEditing", true),
+      next: (state: ReferenceState) => setFlag(state, "isEditing", true),
     },
     [END_EDITING]: {
-      next: (state: ReferenceState) => assoc(state, "isEditing", false),
+      next: (state: ReferenceState) => setFlag(state, "isEditing", false),
     },
     [EXPAND_FORMULA]: {
-      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", true),
+      next: (state: ReferenceState) =>
+        setFlag(state, "isFormulaExpanded", true),
     },
     [COLLAPSE_FORMULA]: {
-      next: (state: ReferenceState) => assoc(state, "isFormulaExpanded", false),
+      next: (state: ReferenceState) =>
+        setFlag(state, "isFormulaExpanded", false),
     },
     [SHOW_DASHBOARD_MODAL]: {
       next: (state: ReferenceState) =>
-        assoc(state, "isDashboardModalOpen", true),
+        setFlag(state, "isDashboardModalOpen", true),
     },
     [HIDE_DASHBOARD_MODAL]: {
       next: (state: ReferenceState) =>
-        assoc(state, "isDashboardModalOpen", false),
+        setFlag(state, "isDashboardModalOpen", false),
     },
   },
   initialState,

@@ -1,6 +1,6 @@
+import { keyBy, sortBy } from "es-toolkit";
 import { Component, createRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetCollectionQuery,
@@ -122,8 +122,8 @@ class SnippetSidebarInner extends Component<
       );
     }
 
-    const collectionsById = _.indexBy(snippetCollections, "id");
-    const snippetsById = _.indexBy(snippets, "id");
+    const collectionsById = keyBy(snippetCollections, (item) => item.id);
+    const snippetsById = keyBy(snippets, (item) => item.id);
     const hydrateSearchItem = (item: CollectionItem): RowItem => {
       const model = item.model || "snippet";
       const full =
@@ -137,7 +137,7 @@ class SnippetSidebarInner extends Component<
       ? snippets.filter((snippet) =>
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
-      : _.sortBy(search, "model").map(hydrateSearchItem); // relies on "collection" sorting before "snippet";
+      : sortBy(search, [(item) => item.model]).map(hydrateSearchItem); // relies on "collection" sorting before "snippet";
 
     const onSnippetCollectionBack = () => {
       const parentCollectionId = snippetCollection.parent_id ?? "root";
@@ -366,7 +366,7 @@ function ArchivedSnippetsInner({
   archivedSnippetCollections,
   isRemoteSyncReadOnly,
 }: ArchivedSnippetsInnerProps) {
-  const collectionsById = _.indexBy(
+  const collectionsById = keyBy(
     snippetCollections.concat(archivedSnippetCollections),
     (c) => String(canonicalCollectionId(c.id)),
   );

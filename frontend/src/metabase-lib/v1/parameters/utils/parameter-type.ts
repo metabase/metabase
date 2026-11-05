@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isString } from "es-toolkit";
 
 import { FIELD_FILTER_PARAMETER_TYPES } from "metabase-lib/v1/parameters/constants";
 import type { Parameter, ParameterType } from "metabase-types/api";
@@ -15,7 +15,7 @@ export function getParameterSubType(parameter: Parameter | string) {
 }
 
 function splitType(parameterOrType: Parameter | string) {
-  const parameterType = _.isString(parameterOrType)
+  const parameterType = isString(parameterOrType)
     ? parameterOrType
     : parameterOrType?.type || "";
 

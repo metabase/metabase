@@ -1,5 +1,5 @@
+import { difference } from "es-toolkit";
 import { useCallback, useMemo } from "react";
-import _ from "underscore";
 type Options = {
   preventDefault?: boolean;
 };
@@ -108,7 +108,7 @@ export function EventSandbox({
       .concat(enableMouseEvents ? allOnMouseEvents : [])
       .concat(enableKeyEvents ? allOnKeyEvents : []);
 
-    const sandboxedEventNames = _.difference(
+    const sandboxedEventNames = difference(
       sandboxedEvents,
       allUnsandboxedEvents,
     );

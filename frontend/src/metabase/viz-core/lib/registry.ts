@@ -1,7 +1,6 @@
 import { type ComponentType, lazy } from "react";
 import { isValidElementType } from "react-is";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
 import { retry } from "metabase/utils/retry";
@@ -286,8 +285,8 @@ export function getVisualizationTransformed(
 ) {
   // don't transform if we don't have the data
   if (
-    _.any(series, (s) => s.data == null) ||
-    _.any(series, (s) => s.error != null)
+    series.some((s) => s.data == null) ||
+    series.some((s) => s.error != null)
   ) {
     return {
       series,

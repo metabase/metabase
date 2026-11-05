@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { mapValues, pick, range } from "es-toolkit";
 
 import {
   type LocaleDataWithLanguage,
@@ -286,9 +286,9 @@ describe("data_grid", () => {
   });
 
   describe("multiLevelPivot", () => {
-    const getValues = (items: HeaderItem[]) => _.pluck(items, "value");
+    const getValues = (items: HeaderItem[]) => items.map((item) => item.value);
     const getPathsAndValues = (items: HeaderItem[]) =>
-      items.map((item) => _.pick(item, "path", "value"));
+      items.map((item) => pick(item, ["path", "value"]));
 
     type MultiLevelPivotOptions = {
       collapsedRows?: string[];
@@ -328,7 +328,7 @@ describe("data_grid", () => {
             [COLUMN_SORT_ORDER]: columnSorts[columnIndex],
           };
         },
-        [COLUMN_SPLIT_SETTING]: _.mapObject(
+        [COLUMN_SPLIT_SETTING]: mapValues(
           { columns, rows, values },
           (indexes) => indexes.map((index) => data.cols[index].name),
         ),
@@ -636,9 +636,15 @@ describe("data_grid", () => {
         multiLevelPivotForIndexes(data, [], [0, 1], [2]);
       expect(rowCount).toEqual(7);
       expect(columnCount).toEqual(1);
-      expect(
-        _.range(rowCount).map((i) => getRowSection(0, i)[0].value),
-      ).toEqual(["1", "2", "3", "3", "4", "7", "10"]);
+      expect(range(rowCount).map((i) => getRowSection(0, i)[0].value)).toEqual([
+        "1",
+        "2",
+        "3",
+        "3",
+        "4",
+        "7",
+        "10",
+      ]);
     });
 
     describe("sorting", () => {
@@ -935,13 +941,11 @@ describe("data_grid", () => {
         multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4]);
       const firstColumn = ["1", "2", "3", "3", "4", "7", "10"];
       const lastColumn = ["1", "2", "3", "3", "4", "7", "10"];
+      expect(range(rowCount).map((i) => getRowSection(0, i)[0].value)).toEqual(
+        firstColumn,
+      );
       expect(
-        _.range(rowCount).map((i) => getRowSection(0, i)[0].value),
-      ).toEqual(firstColumn);
-      expect(
-        _.range(rowCount).map(
-          (i) => getRowSection(columnCount - 1, i)[0].value,
-        ),
+        range(rowCount).map((i) => getRowSection(columnCount - 1, i)[0].value),
       ).toEqual(lastColumn);
     });
 

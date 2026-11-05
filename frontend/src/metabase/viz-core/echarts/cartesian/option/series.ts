@@ -5,7 +5,7 @@ import type {
   LabelOption,
   SeriesLabelOption,
 } from "echarts/types/src/util/types";
-import _ from "underscore";
+import { groupBy } from "es-toolkit";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
 import { isNotNull } from "metabase/utils/types";
@@ -1020,9 +1020,12 @@ export const getStackTotalsSeries = (
   renderingContext: RenderingContext,
   isRowChart = false,
 ) => {
-  const seriesByStackName = _.groupBy(
-    seriesOptions.filter((s) => s.stack != null),
-    "stack",
+  const seriesByStackName = groupBy(
+    seriesOptions.filter(
+      (s): s is (LineSeriesOption | BarSeriesOption) & { stack: string } =>
+        s.stack != null,
+    ),
+    (item) => item.stack,
   );
 
   return Object.values(seriesByStackName).flatMap((seriesOptions) => {

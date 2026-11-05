@@ -1,5 +1,4 @@
 import cx from "classnames";
-import _ from "underscore";
 
 import {
   EntityIcon,
@@ -30,7 +29,7 @@ export interface SelectListItemProps extends Omit<
 
 const getIconProps = (icon?: string | IconProps): IconProps =>
   // Unjustified type cast. FIXME
-  _.isObject(icon) ? icon : ({ name: icon } as IconProps);
+  typeof icon === "object" ? icon : ({ name: icon } as IconProps);
 
 export function SelectListItem({
   name,
@@ -43,7 +42,7 @@ export function SelectListItem({
   const iconProps = getIconProps(icon);
   const rightIconProps = getIconProps(rightIcon);
   const iconUrl =
-    _.isObject(icon) && "iconUrl" in icon ? icon.iconUrl : undefined;
+    typeof icon === "object" && "iconUrl" in icon ? icon.iconUrl : undefined;
 
   return (
     <BaseSelectListItem

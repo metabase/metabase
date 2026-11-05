@@ -1,9 +1,9 @@
 import { useHotkeys } from "@mantine/hooks";
+import { debounce } from "es-toolkit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useCreateBookmarkMutation,
@@ -372,7 +372,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(
-    () => _.debounce(forceUpdate, 400),
+    () => debounce(forceUpdate, 400),
     [forceUpdate],
   );
   const timeout = useRef<number>(undefined);

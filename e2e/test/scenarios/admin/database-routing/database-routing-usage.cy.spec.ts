@@ -1,7 +1,7 @@
 const { H } = cy;
-import _ from "underscore";
 
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import type { Field, Table } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api/permissions";
 
 import {
@@ -61,13 +61,13 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         "GET",
         `/api/database/${this.leadDbId}/metadata?include_hidden=true`,
       ).then(({ body }) => {
-        const dbIdentifierTable = _.findWhere(body.tables, {
-          name: "db_identifier",
-        });
+        const dbIdentifierTable = body.tables.find(
+          (table: Table) => table.name === "db_identifier",
+        );
         cy.wrap(dbIdentifierTable.id).as("leadDb_db_identifier_table_ID");
-        const colorField = _.findWhere(dbIdentifierTable.fields, {
-          name: "color",
-        });
+        const colorField = dbIdentifierTable.fields.find(
+          (field: Field) => field.name === "color",
+        );
         cy.wrap(colorField.id).as("leadDb_color_field_ID");
       });
     });
@@ -82,15 +82,15 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         "GET",
         `/api/database/${this.destinationOneDbId}/metadata?include_hidden=true`,
       ).then(({ body }) => {
-        const dbIdentifierTable = _.findWhere(body.tables, {
-          name: "db_identifier",
-        });
+        const dbIdentifierTable = body.tables.find(
+          (table: Table) => table.name === "db_identifier",
+        );
         cy.wrap(dbIdentifierTable.id).as(
           "destinationOneDb_db_identifier_table_ID",
         );
-        const colorField = _.findWhere(dbIdentifierTable.fields, {
-          name: "color",
-        });
+        const colorField = dbIdentifierTable.fields.find(
+          (field: Field) => field.name === "color",
+        );
         cy.wrap(colorField.id).as("destinationOneDb_color_field_ID");
       });
     });

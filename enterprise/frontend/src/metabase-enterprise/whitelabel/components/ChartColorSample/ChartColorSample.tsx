@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
-import _ from "underscore";
 
 import { Box, Flex } from "metabase/ui";
+import { times } from "metabase/utils/arrays";
 
 import S from "./ChartColorSample.module.css";
 
@@ -23,7 +23,7 @@ export const ChartColorSample = memo(function ChartColorSample({
   return (
     <Box pos="relative" h="100%">
       <Flex direction="column" justify="space-between" pos="absolute" inset={0}>
-        {_.times(TICK_COUNT, (index) => (
+        {times(TICK_COUNT, (index) => (
           <Box key={index} className={S.tick} />
         ))}
         <Box className={S.axis} />

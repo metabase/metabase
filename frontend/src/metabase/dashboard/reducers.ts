@@ -1,5 +1,4 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
-import { chain, merge, updateIn } from "icepick";
 
 import { actionApi } from "metabase/api";
 import { combineReducers } from "metabase/redux";
@@ -100,39 +99,42 @@ const dashcards = createReducer(
       )
       .addCase(
         onUpdateDashCardVisualizationSettings,
-        (state, { payload: { id, settings } }) =>
-          chain(state)
-            .updateIn([id, "visualization_settings"], (value = {}) => ({
-              ...value,
-              ...settings,
-            }))
-            .assocIn([id, "isDirty"], true)
-            .value(),
+        (state, { payload: { id, settings } }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          Object.assign((dashcard.visualization_settings ??= {}), settings);
+          dashcard.isDirty = true;
+        },
       )
       .addCase(
         onUpdateDashCardColumnSettings,
-        (state, { payload: { column, id, settings } }) =>
-          chain(state)
-            .updateIn([id, "visualization_settings"], (value = {}) =>
-              updateIn(
-                merge({ column_settings: {} }, value),
-                ["column_settings", column],
-                (columnSettings) => ({
-                  ...columnSettings,
-                  ...settings,
-                }),
-              ),
-            )
-            .assocIn([id, "isDirty"], true)
-            .value(),
+        (state, { payload: { column, id, settings } }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          const visualizationSettings = (dashcard.visualization_settings ??=
+            {});
+          const columnSettings = (visualizationSettings.column_settings ??= {});
+          columnSettings[column] = { ...columnSettings[column], ...settings };
+          dashcard.isDirty = true;
+        },
       )
       .addCase(
         onReplaceAllDashCardVisualizationSettings,
-        (state, { payload: { id, settings } }) =>
-          chain(state)
-            .assocIn([id, "visualization_settings"], settings)
-            .assocIn([id, "isDirty"], true)
-            .value(),
+        (state, { payload: { id, settings } }) => {
+          const dashcard = state[id];
+          if (!dashcard) {
+            return;
+          }
+          // An equal value is a no-op, so `undefined` adds no key.
+          if (dashcard.visualization_settings !== settings) {
+            Object.assign(dashcard, { visualization_settings: settings });
+          }
+          dashcard.isDirty = true;
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         // @ts-expect-error -- NewDashboardCard is a partial StoreDashcard, safe to assign here
@@ -236,7 +238,7 @@ const draftParameterValues = createReducer(
           payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
         }
       >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) => {
-        // Like icepick `assoc`: skip equal values, so `undefined` for a missing filter
+        // We skip equal values, so `undefined` for a missing filter
         // doesn't add a key and show a fake unapplied change
         if (state[id] !== value) {
           state[id] = value;

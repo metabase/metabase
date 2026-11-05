@@ -1,7 +1,6 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn } from "icepick";
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import {
   createDashboardPublicLink,
@@ -325,7 +324,7 @@ function newDashboard(
     ...before,
     // mimic the StoreDashboard type - this function is only made to update attributes
     // rather than deep values like dashcards or tabs
-    ..._.omit(after, "dashcards", "tabs"),
+    ...omit(after, ["dashcards", "tabs"]),
     embedding_params: syncParametersAndEmbeddingParams(before, after),
     isDirty,
   };
@@ -383,13 +382,21 @@ export const dashboards = createReducer(
       })
       .addMatcher(
         createDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], payload.uuid),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          if (dashboard) {
+            dashboard.public_uuid = payload.uuid;
+          }
+        },
       )
       .addMatcher(
         deleteDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], null),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          if (dashboard) {
+            dashboard.public_uuid = null;
+          }
+        },
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
@@ -480,8 +487,6 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          // Mutates the draft: icepick would copy child drafts into a frozen
-          // object Immer skips when finalizing, leaving revoked proxies behind.
           // Object.assign because DashCardDataMap does not model { error } results.
           Object.assign((state[dashcard_id] ??= {}), { [card_id]: result });
         }

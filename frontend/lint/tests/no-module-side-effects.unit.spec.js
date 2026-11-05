@@ -266,6 +266,15 @@ const VALID_CASES = [
     `,
   },
   {
+    name: "es-toolkit composition helpers",
+    code: `
+      import { flowRight, once } from "es-toolkit";
+      import { connect } from "react-redux";
+      export const Connected = flowRight(connect(() => ({})))(function View() {});
+      export const init = once(() => ({}));
+    `,
+  },
+  {
     name: "same-file call in an initializer",
     code: `
       function buildTheme() { return {}; }
@@ -403,6 +412,14 @@ const INVALID_CASES = [
       import dayjs from "dayjs";
       import utc from "dayjs/plugin/utc";
       dayjs.extend(utc);
+    `,
+    errors: [{ messageId: "callOnImport" }],
+  },
+  {
+    name: "es-toolkit call outside the pure helpers",
+    code: `
+      import { shuffle } from "es-toolkit";
+      export const values = shuffle([1, 2]);
     `,
     errors: [{ messageId: "callOnImport" }],
   },

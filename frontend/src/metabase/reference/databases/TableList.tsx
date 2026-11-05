@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { sortBy } from "es-toolkit";
 import { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -49,10 +49,10 @@ export const separateTablesBySchema = <T extends TableLike, S, I>(
   createSchemaSeparator: (table: T) => S,
   createListItem: (table: T) => I,
 ): Array<I | [S, I] | undefined> => {
-  const sortedTables = _.chain(tables)
-    .sortBy((table) => table.name)
-    .sortBy((table) => table.schema)
-    .value();
+  const tableList = Array.isArray(tables) ? tables : Object.values(tables);
+  const sortedTables = sortBy(sortBy(tableList, [(table) => table.name]), [
+    (table) => table.schema,
+  ]);
 
   return sortedTables.map((table, index, sortedTables) => {
     if (!table || !table.id || !table.name) {
@@ -100,7 +100,7 @@ class TableList extends Component<TableListProps> {
                         createSchemaSeparator,
                         createListItem,
                       )
-                    : _.sortBy(tables, "name").map(
+                    : sortBy(tables, [(item) => item.name]).map(
                         (table) =>
                           table &&
                           table.id &&

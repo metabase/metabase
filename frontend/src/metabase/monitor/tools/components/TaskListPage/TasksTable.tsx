@@ -1,7 +1,7 @@
 import type { Row } from "@tanstack/react-table";
+import { keyBy } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
@@ -55,7 +55,7 @@ export const TasksTable = ({
   const navigate = useNavigate();
 
   const databaseByID: Record<number, Database> = useMemo(
-    () => _.indexBy(databases, "id"),
+    () => keyBy(databases, (item) => item.id),
     [databases],
   );
 

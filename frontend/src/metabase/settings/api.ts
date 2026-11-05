@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { keyBy } from "es-toolkit";
 
 import { Api } from "metabase/api/api";
 import { invalidateTags, listTag, tag } from "metabase/api/tags";
@@ -75,7 +75,7 @@ export const settingsApi = Api.injectEndpoints({
       }),
       transformResponse: (response: SettingDefinition[]) =>
         // Unjustified type cast. FIXME
-        _.indexBy(response, "key") as SettingDefinitionMap,
+        keyBy(response, (item) => item.key) as SettingDefinitionMap,
       providesTags: ["session-properties"],
     }),
     getSetting: builder.query<

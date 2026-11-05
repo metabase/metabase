@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
+import { noop } from "es-toolkit";
 import { useFormikContext } from "formik";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -107,7 +107,7 @@ export function UpdateIncrementalSettings({
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
-      onSubmit={_.noop}
+      onSubmit={noop}
       enableReinitialize
     >
       <Form>

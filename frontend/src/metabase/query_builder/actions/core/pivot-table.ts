@@ -1,5 +1,4 @@
-import { assocIn } from "icepick";
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -33,7 +32,10 @@ export function computeQuestionPivotTable(options: Options) {
       const key = "pivot_table.column_split";
 
       if (rawSeries) {
-        const series = assocIn(rawSeries, [0, "card"], question.card());
+        const series = [
+          { ...rawSeries[0], card: question.card() },
+          ...rawSeries.slice(1),
+        ];
         const setting = getQuestionWithDefaultVisualizationSettings(
           question,
           series,
@@ -105,6 +107,6 @@ function checkShouldRerunPivotTableQuestion({
 
   return (
     isValidPivotTable &&
-    (!_.isEqual(currentPivotSettings, newPivotSettings) || shouldRerunForTotals)
+    (!isEqual(currentPivotSettings, newPivotSettings) || shouldRerunForTotals)
   );
 }

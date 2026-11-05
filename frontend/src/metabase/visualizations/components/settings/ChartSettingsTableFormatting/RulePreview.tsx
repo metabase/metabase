@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -44,7 +43,10 @@ export const RulePreview = ({
       <Text flex="1" fw="bold" fz="md">
         {rule.columns.length > 0 ? (
           rule.columns
-            .map((name) => _.findWhere(cols, { name })?.display_name ?? name)
+            .map(
+              (name) =>
+                cols.find((item) => item.name === name)?.display_name ?? name,
+            )
             .join(", ")
         ) : (
           <Text fs="oblique">{t`No columns selected`}</Text>

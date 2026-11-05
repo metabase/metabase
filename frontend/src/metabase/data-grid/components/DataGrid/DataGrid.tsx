@@ -5,9 +5,9 @@ import {
 } from "@dnd-kit/sortable";
 import type { HeaderGroup } from "@tanstack/react-table";
 import cx from "classnames";
+import { debounce } from "es-toolkit";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { getScrollBarSize } from "metabase/utils/dom";
 import { useForceUpdate } from "metabase/utils/use-force-update";
@@ -88,7 +88,7 @@ export const DataGrid = function DataGrid<TData>({
 
   const forceUpdate = useForceUpdate();
   useEffect(() => {
-    const handleResize = _.debounce(forceUpdate, 100);
+    const handleResize = debounce(forceUpdate, 100);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [forceUpdate]);

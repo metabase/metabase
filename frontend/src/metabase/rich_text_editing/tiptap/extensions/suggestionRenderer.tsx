@@ -12,8 +12,9 @@ import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
-import { merge } from "icepick";
 import type React from "react";
+
+import { mergeDeep } from "metabase/utils/merge-deep";
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
@@ -37,7 +38,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
   SuggestionComponent: React.ComponentType<SuggestionProps<I, TSelected>>,
   options?: DeepPartial<SuggestionRendererOptions>,
 ) => {
-  const config = merge(defaultRendererOptions, options);
+  const config = mergeDeep(defaultRendererOptions, options);
 
   return () => {
     let component: ReactRenderer | undefined;

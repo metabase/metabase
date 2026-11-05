@@ -1,6 +1,5 @@
-import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import { isEqual, omit, once } from "es-toolkit";
 import slugg from "slugg";
-import _ from "underscore";
 
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -137,13 +136,7 @@ class Question {
   }
 
   withoutNameAndId() {
-    return this.setCard(
-      chain(this.card())
-        .dissoc("id")
-        .dissoc("name")
-        .dissoc("description")
-        .value(),
-    );
+    return this.setCard(dissocCard(this.card(), ["id", "name", "description"]));
   }
 
   /**
@@ -153,7 +146,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
+  _legacyNativeQuery = once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
     if (this.isNative()) {
@@ -182,7 +175,7 @@ class Question {
   setLegacyQuery(newQuery: NativeQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
-        assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
+        assocCard(this.card(), "dataset_query", newQuery.datasetQuery()),
       );
     }
 
@@ -194,7 +187,9 @@ class Question {
   }
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
-    return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
+    return this.setCard(
+      assocCard(this.card(), "dataset_query", newDatasetQuery),
+    );
   }
 
   isNative() {
@@ -220,7 +215,7 @@ class Question {
   }
 
   setDisplay(display: VisualizationDisplay) {
-    return this.setCard(assoc(this.card(), "display", display));
+    return this.setCard(assocCard(this.card(), "display", display));
   }
 
   type(): CardType {
@@ -228,7 +223,7 @@ class Question {
   }
 
   setType(type: CardType) {
-    return this.setCard(assoc(this.card(), "type", type));
+    return this.setCard(assocCard(this.card(), "type", type));
   }
 
   isPersisted() {
@@ -236,17 +231,17 @@ class Question {
   }
 
   setPersisted(isPersisted: boolean) {
-    return this.setCard(assoc(this.card(), "persisted", isPersisted));
+    return this.setCard(assocCard(this.card(), "persisted", isPersisted));
   }
 
   setPinned(pinned: boolean) {
     return this.setCard(
-      assoc(this.card(), "collection_position", pinned ? 1 : null),
+      assocCard(this.card(), "collection_position", pinned ? 1 : null),
     );
   }
 
   setArchived(archived: boolean) {
-    return this.setCard(assoc(this.card(), "archived", archived));
+    return this.setCard(assocCard(this.card(), "archived", archived));
   }
 
   // locking the display prevents auto-selection
@@ -255,7 +250,7 @@ class Question {
   }
 
   setDisplayIsLocked(locked: boolean): Question {
-    return this.setCard(assoc(this.card(), "displayIsLocked", locked));
+    return this.setCard(assocCard(this.card(), "displayIsLocked", locked));
   }
 
   displayIsLocked(): boolean {
@@ -318,7 +313,9 @@ class Question {
   }
 
   setSettings(settings: VisualizationSettings) {
-    return this.setCard(assoc(this.card(), "visualization_settings", settings));
+    return this.setCard(
+      assocCard(this.card(), "visualization_settings", settings),
+    );
   }
 
   updateSettings(settings: Partial<VisualizationSettings>) {
@@ -427,7 +424,7 @@ class Question {
   }
 
   setDisplayName(name: string | null | undefined) {
-    return this.setCard(assoc(this.card(), "name", name));
+    return this.setCard(assocCard(this.card(), "name", name));
   }
 
   collection(): Collection | null | undefined {
@@ -439,7 +436,7 @@ class Question {
   }
 
   setCollectionId(collectionId: CollectionId | null | undefined) {
-    return this.setCard(assoc(this.card(), "collection_id", collectionId));
+    return this.setCard(assocCard(this.card(), "collection_id", collectionId));
   }
 
   dashboard(): CardDashboardInfo | null {
@@ -459,7 +456,7 @@ class Question {
   }
 
   setDashboardId(dashboardId: DashboardId | null | undefined) {
-    return this.setCard(assoc(this.card(), "dashboard_id", dashboardId));
+    return this.setCard(assocCard(this.card(), "dashboard_id", dashboardId));
   }
 
   id(): number {
@@ -467,12 +464,12 @@ class Question {
   }
 
   setId(id: number | undefined): Question {
-    return this.setCard(assoc(this.card(), "id", id));
+    return this.setCard(assocCard(this.card(), "id", id));
   }
 
   markDirty(): Question {
     return this.setCard(
-      dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
+      dissocCard(assocCard(this.card(), "original_card_id", this.id()), ["id"]),
     );
   }
 
@@ -485,10 +482,11 @@ class Question {
     dashboardId,
     dashcardId,
   }: QuestionDashboardProps): Question {
-    const card = chain(this.card())
-      .assoc("dashboardId", dashboardId)
-      .assoc("dashcardId", dashcardId)
-      .value();
+    const card = assocCard(
+      assocCard(this.card(), "dashboardId", dashboardId),
+      "dashcardId",
+      dashcardId,
+    );
 
     return this.setCard(card);
   }
@@ -498,7 +496,7 @@ class Question {
   }
 
   setDescription(description: string | null) {
-    return this.setCard(assoc(this.card(), "description", description));
+    return this.setCard(assocCard(this.card(), "description", description));
   }
 
   lastEditInfo(): LastEditInfo | undefined {
@@ -571,17 +569,17 @@ class Question {
     const card = this.card();
     const otherCard = other.card();
     const areCardsEqual = compareResultsMetadata
-      ? _.isEqual(card, otherCard)
-      : _.isEqual(
-          _.omit(card, "result_metadata"),
-          _.omit(otherCard, "result_metadata"),
+      ? isEqual(card, otherCard)
+      : isEqual(
+          omit(card, ["result_metadata"]),
+          omit(otherCard, ["result_metadata"]),
         );
 
     if (!areCardsEqual) {
       return false;
     }
 
-    if (!_.isEqual(this.parameters(), other.parameters())) {
+    if (!isEqual(this.parameters(), other.parameters())) {
       return false;
     }
 
@@ -597,7 +595,7 @@ class Question {
   }
 
   setParameters(parameters: ParameterObject[] | undefined) {
-    return this.setCard(assoc(this.card(), "parameters", parameters));
+    return this.setCard(assocCard(this.card(), "parameters", parameters));
   }
 
   setParameterValues(parameterValues: ParameterValuesMap = {}) {
@@ -626,7 +624,7 @@ class Question {
       const originalCard = originalQuestion?._getValueForComparison();
       const currentCard = this._getValueForComparison();
 
-      if (!_.isEqual(originalCard, currentCard)) {
+      if (!isEqual(originalCard, currentCard)) {
         return true;
       }
 
@@ -725,15 +723,15 @@ class Question {
   }
 
   getModerationReviews() {
-    return getIn(this, ["_card", "moderation_reviews"]) || [];
+    return this._card?.moderation_reviews || [];
   }
 
-  getCreator(): UserInfo {
-    return getIn(this, ["_card", "creator"]) || "";
+  getCreator(): UserInfo | undefined {
+    return this._card?.creator;
   }
 
   getCreatedAt(): string {
-    return getIn(this, ["_card", "created_at"]) || "";
+    return this._card?.created_at || "";
   }
 
   canManageDB(): boolean {
@@ -787,19 +785,43 @@ class Question {
     } as Card;
 
     if (type === "native") {
-      card = assocIn(card, ["parameters"], []);
+      card = { ...card, parameters: [] };
     }
 
-    if (tableId != null) {
-      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
+    const datasetQuery = card.dataset_query;
+    if (tableId != null && "query" in datasetQuery) {
+      card = {
+        ...card,
+        dataset_query: {
+          ...datasetQuery,
+          query: { ...datasetQuery.query, "source-table": tableId },
+        },
+      };
     }
 
     if (databaseId != null) {
-      card = assocIn(card, ["dataset_query", "database"], databaseId);
+      card = {
+        ...card,
+        dataset_query: { ...card.dataset_query, database: databaseId },
+      };
     }
 
     return new Question(card, metadata, parameterValues);
   }
+}
+
+// An equal value keeps the same card, so `undefined` adds no key.
+function assocCard<K extends keyof Card>(
+  card: Card,
+  key: K,
+  value: Card[K] | null | undefined,
+): Card {
+  return card[key] === value ? card : { ...card, [key]: value };
+}
+
+function dissocCard(card: Card, keys: (keyof Card)[]): Card {
+  // We drop keys the Card type requires; unsaved cards lack them too, as `create` already asserts.
+  return omit(card, keys) as Card;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

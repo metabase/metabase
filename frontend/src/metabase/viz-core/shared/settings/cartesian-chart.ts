@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import _ from "underscore";
 
+import { isEmpty } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
@@ -218,7 +218,7 @@ export const getSeriesOrderVisibilitySettings = (
 
   if (
     !seriesOrder ||
-    !_.isArray(seriesOrder) ||
+    !Array.isArray(seriesOrder) ||
     !seriesOrder.every(
       (order) =>
         order.key !== undefined &&
@@ -554,8 +554,8 @@ export function getAvailableAdditionalColumns(
   settings: ComputedVisualizationSettings,
 ): DatasetColumn[] {
   if (
-    _.isEmpty(settings["graph.dimensions"]?.filter(isNotNull)) ||
-    _.isEmpty(settings["graph.metrics"]?.filter(isNotNull))
+    isEmpty(settings["graph.dimensions"]?.filter(isNotNull)) ||
+    isEmpty(settings["graph.metrics"]?.filter(isNotNull))
   ) {
     return [];
   }

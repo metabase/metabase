@@ -1,9 +1,9 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
+import { keyBy } from "es-toolkit";
 import { HttpResponse, http } from "msw";
 import { type ReactNode, useEffect, useMemo } from "react";
-import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import {
@@ -84,7 +84,7 @@ function DashboardProviders({
             dashcards: dashboard.dashcards.map((dc) => dc.id),
           },
         },
-        dashcards: _.indexBy(dashboard.dashcards, "id"),
+        dashcards: keyBy(dashboard.dashcards, (item) => item.id),
         dashcardData: {
           [DASHCARD_ID]: { [CARD_ID]: DATASET },
         },

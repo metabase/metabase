@@ -1,3 +1,4 @@
+import { isEqual } from "es-toolkit";
 import {
   type CSSProperties,
   type PropsWithChildren,
@@ -12,7 +13,6 @@ import {
 import { useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import { isEqual } from "underscore";
 
 import {
   DashboardNotFoundError,

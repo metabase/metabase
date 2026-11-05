@@ -1,6 +1,5 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
-import { assocIn } from "icepick";
-import _ from "underscore";
+import { keyBy } from "es-toolkit";
 
 import { revisionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -61,7 +60,13 @@ export default function revisions(
     isFetchRevisionsPayload(action.payload)
   ) {
     const { type, id, revisions } = action.payload;
-    return assocIn(state, [type, id], _.indexBy(revisions, "id"));
+    return {
+      ...state,
+      [type]: {
+        ...state[type],
+        [id]: keyBy(revisions, (item) => item.id),
+      },
+    };
   }
   return state;
 }

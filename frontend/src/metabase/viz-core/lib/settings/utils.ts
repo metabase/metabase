@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniqBy } from "es-toolkit";
 
 import { mergeLazily, omitLazily } from "metabase/utils/merge-lazily";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -110,7 +110,7 @@ export function fieldSetting(
 export function getDeduplicatedTableColumnSettings(
   tableColumnsSettings: TableColumnOrderSetting[],
 ): TableColumnOrderSetting[] {
-  return _.uniq(tableColumnsSettings, false, (item) => item.name);
+  return uniqBy(tableColumnsSettings, (item) => item.name);
 }
 
 type InsertNewColumnSettingsOpts<TSetting, TColumn extends { name: string }> = {

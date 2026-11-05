@@ -1,6 +1,6 @@
+import { compact, partition } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { Link } from "metabase/common/components/Link";
@@ -48,7 +48,7 @@ export function GroupMembersTable({
   const offset = page * pageSize;
 
   const members = useMemo(() => {
-    return _.partition(group.members, isApiKeyGroupMember).flat();
+    return partition(group.members, isApiKeyGroupMember).flat();
   }, [group.members]);
   const groupsPage = members.slice(offset, offset + pageSize);
   const hasMembers = members.length > 0;
@@ -65,7 +65,7 @@ export function GroupMembersTable({
   return (
     <>
       <AdminContentTable
-        columnTitles={_.compact([
+        columnTitles={compact([
           t`Name`,
           canEditMembership(group) ? t`Type` : null,
           t`Email`,

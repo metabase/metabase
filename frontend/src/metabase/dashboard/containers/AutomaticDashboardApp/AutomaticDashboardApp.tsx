@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { dissoc } from "icepick";
+import { omit } from "es-toolkit";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -55,7 +55,7 @@ const AutomaticDashboardAppInner = () => {
     if (dashboard) {
       // remove the transient id before trying to save
       const { data: newDashboard } = await saveDashboard(
-        dissoc(dashboard, "id"),
+        omit(dashboard, ["id"]),
       );
 
       if (!newDashboard) {

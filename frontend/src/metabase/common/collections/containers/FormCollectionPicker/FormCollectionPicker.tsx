@@ -1,7 +1,7 @@
+import { omit } from "es-toolkit";
 import { useField } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import {
@@ -197,7 +197,7 @@ function FormCollectionPicker({
           onClose={() => setIsPickerOpen(false)}
           options={collectionPickerModalProps?.options || defaultOptions}
           entityType={entityType}
-          {..._.omit(collectionPickerModalProps, ["options"])}
+          {...omit(collectionPickerModalProps ?? {}, ["options"])}
         />
       )}
     </>

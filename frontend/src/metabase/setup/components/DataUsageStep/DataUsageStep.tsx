@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import { type JSX, useState } from "react";
 import { jt, t } from "ttag";
 
@@ -7,6 +6,8 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Switch } from "metabase/ui";
+import { getByPath } from "metabase/utils/immutable";
+import { isObject } from "metabase-types/guards";
 
 import { goToNextStep, updateTracking } from "../../actions";
 import { getIsTrackingAllowed } from "../../selectors";
@@ -133,12 +134,12 @@ const getStepTitle = (
 };
 
 const getSubmitError = (error: unknown): string => {
-  const message = getIn(error, ["data", "message"]);
-  const errors = getIn(error, ["data", "errors"]);
+  const message = getByPath(error, ["data", "message"]);
+  const errors = getByPath(error, ["data", "errors"]);
 
   if (message) {
     return String(message);
-  } else if (errors) {
+  } else if (isObject(errors)) {
     return String(Object.values(errors)[0]);
   } else {
     return t`An error occurred`;

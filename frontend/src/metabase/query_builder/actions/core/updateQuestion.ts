@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
@@ -165,7 +165,7 @@ export const updateQuestion = (
       newQuestion.id(),
       newQuestion.type(),
     );
-    if (!_.isEqual(currentDependencies, nextDependencies)) {
+    if (!isEqual(currentDependencies, nextDependencies)) {
       await dispatch(loadMetadataForCard(newQuestion.card()));
     }
 

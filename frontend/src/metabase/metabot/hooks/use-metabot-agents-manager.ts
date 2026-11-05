@@ -1,6 +1,6 @@
+import { difference } from "es-toolkit";
 import { useCallback } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/redux";
 
@@ -23,7 +23,7 @@ export const useMetabotAgentsManager = (
   const activeAgentIds = useSelector(getActiveMetabotAgentIds);
 
   useMount(() => {
-    const agentIdsToStart = _.difference(autoStartAgentIds, activeAgentIds);
+    const agentIdsToStart = difference(autoStartAgentIds, activeAgentIds);
     agentIdsToStart.forEach((agentId) =>
       dispatch(createAgentAction({ agentId, visible: false })),
     );

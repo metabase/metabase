@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
@@ -54,7 +53,7 @@ export const AboutModal = ({
         </Text>
         {tag &&
           !/^v\d+\.\d+\.\d+$/.test(tag) &&
-          _.map(versionExtra, (value, key) => (
+          Object.entries(versionExtra).map(([key, value]) => (
             <Text key={key} c="text-secondary" fw="bold">
               {capitalize(key)}: {String(value)}
             </Text>

@@ -1,6 +1,7 @@
+import { sortBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { getObjectKeys } from "metabase/utils/objects";
 import type {
   ClickActionSection,
   RegularClickAction,
@@ -57,10 +58,16 @@ export const getGroupedAndSortedActions = (
     delete groupedClickActions["sum"];
   }
 
-  return _.chain(groupedClickActions)
-    .pairs()
-    .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
-    .value();
+  const sections = getObjectKeys(groupedClickActions).flatMap(
+    (key): [ClickActionSection, RegularClickAction[]][] => {
+      const actions = groupedClickActions[key];
+      return actions ? [[key, actions]] : [];
+    },
+  );
+
+  return sortBy(sections, [
+    ([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99),
+  ]);
 };
 
 export const getSectionTitle = (

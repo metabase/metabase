@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
 import { mergeLazily } from "metabase/utils/merge-lazily";
@@ -867,8 +866,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       const graphDimensions = vizSettings["graph.dimensions"] ?? [];
       return dimensionIsTimeseries(
         data,
-        _.findIndex(
-          data.cols,
+        data.cols.findIndex(
           (c) => c.name === graphDimensions.filter((d) => d)[0],
         ),
       );
@@ -880,8 +878,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       const graphDimensions = vizSettings["graph.dimensions"] ?? [];
       return dimensionIsNumeric(
         data,
-        _.findIndex(
-          data.cols,
+        data.cols.findIndex(
           (c) => c.name === graphDimensions.filter((d) => d)[0],
         ),
       );

@@ -1,6 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
+import { keyBy } from "es-toolkit";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
 import {
@@ -172,7 +172,7 @@ function setup({
       [dashboard.id]: { ...dashboard, dashcards: dashcards.map((dc) => dc.id) },
     },
     editingDashboard: DASHBOARD,
-    dashcards: _.indexBy(dashcards, "id"),
+    dashcards: keyBy(dashcards, (item) => item.id),
   });
 
   // Unjustified type cast. FIXME

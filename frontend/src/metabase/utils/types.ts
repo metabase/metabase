@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pickBy } from "es-toolkit";
 
 export const isNotNull = <T>(value: T | null | undefined): value is T => {
   return value != null;
@@ -32,8 +32,9 @@ export const checkNotNull = <T>(value: T | null | undefined): T => {
 export const isNullOrUndefined = (value: any): value is null | undefined =>
   value === undefined || value === null;
 
-export const removeNullAndUndefinedValues = (obj: any) =>
-  _.pick(obj, (val) => !isNullOrUndefined(val));
+export const removeNullAndUndefinedValues = <T extends Record<string, unknown>>(
+  obj: T,
+) => pickBy(obj, (val) => !isNullOrUndefined(val));
 
 export const checkNumber = (value: any) => {
   if (typeof value !== "number" || Number.isNaN(value)) {

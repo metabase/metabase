@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { isNotNull } from "metabase/utils/types";
 
@@ -164,7 +164,7 @@ const pickCarriedOver = (
       field in nextVariables &&
       previousVariables[field]?.unit === nextVariables[field]?.unit,
   );
-  return _.pick(previousValue, carriedFields);
+  return pick(previousValue, carriedFields);
 };
 
 export const changeScheduleType = (

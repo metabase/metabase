@@ -1,6 +1,6 @@
+import { keyBy, mapValues, omit } from "es-toolkit";
 import { useContext } from "react";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import type { DatabaseFormValues } from "metabase/databases/types";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
@@ -76,12 +76,12 @@ export const mergeRetainedValues = (
   defaultValues: DatabaseData,
   engine: Engine | undefined,
 ): DatabaseData => {
-  const fields: Record<string, EngineField | undefined> = _.indexBy(
+  const fields: Record<string, EngineField | undefined> = keyBy(
     getFlattenedFields(engine?.["details-fields"] ?? []),
-    "name",
+    (item) => item.name,
   );
 
-  const details = _.mapObject(
+  const details = mapValues(
     defaultValues.details ?? {},
     (defaultValue, name) => {
       const value = previousValues.details?.[name];
@@ -91,7 +91,10 @@ export const mergeRetainedValues = (
 
   return {
     ...defaultValues,
-    ..._.omit(previousValues, ENGINE_SPECIFIC_KEYS),
+    ...omit<DatabaseFormValues, keyof DatabaseFormValues>(
+      previousValues,
+      ENGINE_SPECIFIC_KEYS,
+    ),
     details,
   };
 };

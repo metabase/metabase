@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import type {
   AdminNotificationCountsResponse,
@@ -97,13 +97,16 @@ export const notificationApi = Api.injectEndpoints({
       void,
       CreateNotificationRequest | UpdateNotificationRequest
     >({
-      query: (body) => ({
-        method: "POST",
-        url: `/api/notification/send`,
+      query: (body) => {
         // In edit mode the alert modal passes the full Notification it fetched,
         // including the server-managed `creator`, which the endpoint ignores.
-        body: _.omit(body, "creator"),
-      }),
+        const bodyWithCreator: typeof body & { creator?: unknown } = body;
+        return {
+          method: "POST",
+          url: `/api/notification/send`,
+          body: omit(bodyWithCreator, ["creator"]),
+        };
+      },
     }),
     getAdminNotificationCounts: builder.query<
       AdminNotificationCountsResponse,

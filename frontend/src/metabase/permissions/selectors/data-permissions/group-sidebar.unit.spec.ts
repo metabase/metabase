@@ -1,7 +1,6 @@
-import { assocIn } from "icepick";
-
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import { produce } from "metabase/utils/immutable";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import { state as mockState } from "./data-permissions.unit.spec.fixtures";
@@ -13,18 +12,11 @@ const stateWithoutLegacyValues = mockState as unknown as State;
 
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor
 // from omitting the view data permission options in the case there's only one option
-const stateWithLegacyValues = assocIn(
-  mockState,
-  [
-    "admin",
-    "permissions",
-    "originalDataPermissions",
-    "1",
-    "3",
-    DataPermission.VIEW_DATA,
-  ],
-  DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-) as unknown as State;
+const stateWithLegacyValues = produce(mockState, (state) => {
+  state.admin.permissions.originalDataPermissions[1][3][
+    DataPermission.VIEW_DATA
+  ] = DataPermissionValue.LEGACY_NO_SELF_SERVICE;
+}) as unknown as State;
 
 describe("getGroupsDataPermissionEditor", () => {
   // The selector memoizes on its inputs, and the plugin flag is not one of

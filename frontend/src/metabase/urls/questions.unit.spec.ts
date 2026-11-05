@@ -1,4 +1,4 @@
-import { assoc, dissoc } from "icepick";
+import { omit } from "es-toolkit";
 
 import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -38,12 +38,12 @@ describe("urls > questions", () => {
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
     describe("question(originalQuestion?)", () => {
       it("returns URL with ID for saved question", () => {
-        const q = new Question(assoc(orders_raw_card, "id", 1), metadata);
+        const q = new Question({ ...orders_raw_card, id: 1 }, metadata);
         expect(question(q)).toBe("/question/1-raw-orders-data");
       });
 
       it("returns a URL with hash for an unsaved question", () => {
-        const q = new Question(dissoc(orders_raw_card, "id"), metadata);
+        const q = new Question(omit(orders_raw_card, ["id"]), metadata);
         expect(question(q)).toBe(adhocUrl);
       });
     });

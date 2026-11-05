@@ -1,6 +1,6 @@
 import { skipToken } from "@reduxjs/toolkit/query";
+import { isEqual } from "es-toolkit";
 import { useCallback, useEffect, useRef } from "react";
-import _ from "underscore";
 
 import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { isAbortError } from "metabase/api/client";
@@ -58,7 +58,7 @@ export function useAbortableQuery<
   const skip = skipOption || arg === skipToken;
 
   const argRef = useRef(arg);
-  if (arg !== skipToken && !_.isEqual(argRef.current, arg)) {
+  if (arg !== skipToken && !isEqual(argRef.current, arg)) {
     argRef.current = arg;
   }
   const stableArg = argRef.current;

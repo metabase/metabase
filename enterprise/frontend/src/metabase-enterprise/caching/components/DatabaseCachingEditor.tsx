@@ -1,7 +1,6 @@
 import type { SortingState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { findWhere } from "underscore";
 
 import { PerformancePageContent } from "metabase/admin/performance/components/PerformancePageContent";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
@@ -67,16 +66,16 @@ export const DatabaseCachingEditor = () => {
   const databases = databasesResult.data?.data ?? emptyDatabaseList;
 
   const rootStrategy =
-    findWhere(configs ?? [], { model_id: rootId })?.strategy ??
+    (configs ?? []).find((config) => config.model_id === rootId)?.strategy ??
     defaultRootStrategy;
 
   const allRows: DatabaseRow[] = useMemo(() => {
     const rootPolicyLabel = getShortStrategyLabel(rootStrategy);
     const databaseRows = databases.map((database) => {
-      const config = findWhere(configs ?? [], {
-        model: "database",
-        model_id: database.id,
-      });
+      const config = (configs ?? []).find(
+        (config) =>
+          config.model === "database" && config.model_id === database.id,
+      );
       const policyLabel =
         getShortStrategyLabel(config?.strategy ?? rootStrategy) ?? null;
       return {
@@ -144,9 +143,9 @@ export const DatabaseCachingEditor = () => {
   );
 
   const targetDatabase = databases.find((db) => db.id === targetId);
-  const targetConfig = findWhere(configs ?? [], {
-    model_id: targetId ?? undefined,
-  });
+  const targetConfig = (configs ?? []).find(
+    (config) => config.model_id === targetId,
+  );
   const savedStrategy = targetConfig?.strategy;
 
   const shouldAllowInvalidation = useMemo(() => {
@@ -160,7 +159,9 @@ export const DatabaseCachingEditor = () => {
     const inheritingRootStrategy = ["inherit", undefined].includes(
       savedStrategy?.type,
     );
-    const rootConfig = findWhere(configs ?? [], { model_id: rootId });
+    const rootConfig = (configs ?? []).find(
+      (config) => config.model_id === rootId,
+    );
     const inheritingDoNotCache =
       inheritingRootStrategy && !rootConfig?.strategy;
     return !inheritingDoNotCache;

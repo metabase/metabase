@@ -1,6 +1,6 @@
+import { groupBy } from "es-toolkit";
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
@@ -41,9 +41,9 @@ import type {
 } from "./types";
 
 const groupModelsByCollection = (models: SearchResult[]) => {
-  const grouped = _.groupBy(models, (model) => model.collection?.id ?? "root");
+  const grouped = groupBy(models, (model) => model.collection?.id ?? "root");
 
-  return _.pairs(grouped).map(
+  return Object.entries(grouped).map(
     ([id, models = []]): ITreeNodeItem => ({
       id: id,
       name: getCollectionName(models[0]?.collection),
@@ -59,9 +59,9 @@ const groupModelsByCollection = (models: SearchResult[]) => {
 };
 
 const groupTablesBySchema = (tables: SearchResult[]) => {
-  const grouped = _.groupBy(tables, (table) => table.table_schema ?? "");
+  const grouped = groupBy(tables, (table) => table.table_schema ?? "");
 
-  return _.pairs(grouped).map(
+  return Object.entries(grouped).map(
     ([id, tables = []]): ITreeNodeItem => ({
       id,
       name: id,

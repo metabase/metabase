@@ -1,5 +1,5 @@
+import { uniq } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
@@ -114,9 +114,7 @@ export function initializePlugin() {
 
     PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
       const sandboxes = getDraftPolicies(state);
-      const modifiedGroupIds = _.uniq(
-        sandboxes.map((sb) => String(sb.group_id)),
-      );
+      const modifiedGroupIds = uniq(sandboxes.map((sb) => String(sb.group_id)));
       return [{ sandboxes }, modifiedGroupIds];
     });
 

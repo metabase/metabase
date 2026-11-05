@@ -1,7 +1,6 @@
 import cx from "classnames";
-import { assoc } from "icepick";
+import { isEqual, omit } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { fieldApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -28,6 +27,7 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { uniqueId } from "metabase/utils/unique-id";
 import * as Lib from "metabase-lib";
 import {
   PULSE_PARAM_EMPTY,
@@ -109,13 +109,16 @@ function updateParameter(
     return;
   }
 
-  const index = _.findIndex(dashboard.parameters, (p) => p.id === id);
+  const index = dashboard.parameters.findIndex((p) => p.id === id);
   if (index >= 0) {
-    const parameters = assoc(
-      dashboard.parameters,
-      index,
-      parameterUpdater(dashboard.parameters[index]),
-    );
+    const parameter = dashboard.parameters[index];
+    const updatedParameter = parameterUpdater(parameter);
+    const parameters =
+      updatedParameter === parameter
+        ? dashboard.parameters
+        : dashboard.parameters.map((p, i) =>
+            i === index ? updatedParameter : p,
+          );
     dispatch(
       setDashboardAttributes({ id: dashboard.id, attributes: { parameters } }),
     );
@@ -153,7 +156,7 @@ export function duplicateParameters(
     if (!parameter) {
       throw new Error(`Parameter ${parameterId} not found`);
     }
-    const options = _.omit(parameter, "id");
+    const options = omit(parameter, ["id"]);
     return createParameter(options, parameters);
   });
 
@@ -1166,7 +1169,7 @@ export const setOrUnsetParameterValues =
   (dispatch: Dispatch, getState: GetState) => {
     const parameterValues = getParameterValues(getState());
     const areAllSet = parameterIdValuePairs.every(([id, value]) =>
-      _.isEqual(value, parameterValues[id]),
+      isEqual(value, parameterValues[id]),
     );
     parameterIdValuePairs
       .map(([id, value]) => {
@@ -1245,7 +1248,7 @@ export const showAutoApplyFiltersToast = createThunkAction(
     const action = () => {
       dispatch(toggleAutoApplyFilters(false));
     };
-    const toastId = _.uniqueId();
+    const toastId = uniqueId();
     const dashboardId = getDashboardId(getState());
 
     dispatch(

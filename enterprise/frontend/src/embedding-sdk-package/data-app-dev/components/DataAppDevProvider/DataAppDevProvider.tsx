@@ -1,4 +1,4 @@
-import { once } from "underscore";
+import { once } from "es-toolkit";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider";

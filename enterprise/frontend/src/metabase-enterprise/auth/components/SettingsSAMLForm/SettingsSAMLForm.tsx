@@ -1,7 +1,7 @@
+import { mapValues, pick } from "es-toolkit";
 import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { SettingsGroupMappingSection } from "metabase/admin/settings/auth/components/GroupMappings";
@@ -330,7 +330,7 @@ const getFormValues = (
   settingDetails: SettingDefinitionMap,
   settingValues: Partial<EnterpriseSettings>,
 ): SAMLFormSettings => {
-  const samlSettings = _.pick(settingValues, [
+  const samlSettings = pick(settingValues, [
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
@@ -346,7 +346,7 @@ const getFormValues = (
 
   // mapObject widens every value to one union
   return {
-    ..._.mapObject(samlSettings, (val) => val ?? null),
+    ...mapValues(samlSettings, (val) => val ?? null),
     "saml-application-name": getStoredFieldValue(
       settingDetails["saml-application-name"],
       settingValues["saml-application-name"],

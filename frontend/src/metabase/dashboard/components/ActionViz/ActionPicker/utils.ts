@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy, sortBy } from "es-toolkit";
 
 import type { WritebackAction } from "metabase-types/api";
 
@@ -11,10 +11,12 @@ export const sortAndGroupActions = (
     return {};
   }
 
-  const sortedActions = _.sortBy(actions, (a: WritebackAction) =>
-    a.name.toLowerCase(),
+  const sortedActions = sortBy(actions, [
+    (a: WritebackAction) => a.name.toLowerCase(),
+  ]);
+  const sortedGroupedActions = groupBy(sortedActions, (item) =>
+    String(item.model_id),
   );
-  const sortedGroupedActions = _.groupBy(sortedActions, "model_id");
 
   return sortedGroupedActions;
 };

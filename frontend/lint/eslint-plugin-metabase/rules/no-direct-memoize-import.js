@@ -17,6 +17,8 @@ const MESSAGE = [
 // Library exports that are memoize helpers in their own right.
 const RESTRICTED = new Map([
   ["underscore", ["memoize"]],
+  ["es-toolkit", ["memoize"]],
+  ["es-toolkit/compat", ["memoize"]],
   ["@reduxjs/toolkit", ["weakMapMemoize", "lruMemoize"]],
   ["reselect", ["weakMapMemoize", "lruMemoize"]],
 ]);

@@ -1,5 +1,6 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
+
+import { getByPath } from "metabase/utils/immutable";
 
 import { tablesReducer } from "./tables-reducer";
 
@@ -92,9 +93,9 @@ function makeSliceReducer(
 ): SliceReducer {
   return (state = {}, action: SliceAction) => {
     let nextState = state;
-    // `getIn` walks an untyped action payload, so it can only return
+    // `getByPath` walks an untyped action payload, so it can only return
     // `unknown`. The shape is the normalizr output for this slice.
-    const entities = getIn(action, ["payload", "entities", sliceName]) as
+    const entities = getByPath(action, ["payload", "entities", sliceName]) as
       | Record<string, Entity | null>
       | undefined;
     if (ACTION_PATTERN.test(action.type) && entities) {

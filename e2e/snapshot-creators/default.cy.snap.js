@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import { loginCache } from "e2e/support/commands/user/authentication";
 import {
@@ -145,7 +145,7 @@ describe("snapshots", () => {
     );
 
     // Create all users except admin, who was already created in one of the previous steps
-    Object.keys(_.omit(USERS, "admin")).forEach((user) => {
+    Object.keys(omit(USERS, ["admin"])).forEach((user) => {
       cy.createUser(user);
     });
 

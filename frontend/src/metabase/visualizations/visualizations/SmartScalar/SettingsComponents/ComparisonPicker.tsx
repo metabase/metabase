@@ -1,8 +1,8 @@
 import cx from "classnames";
+import { isEqual } from "es-toolkit";
 import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
@@ -80,7 +80,7 @@ export function ComparisonPicker({
     if (isOpen) {
       setEditedValue(selectedValue);
       setTab(getTabForComparisonType(selectedValue.type));
-    } else if (!_.isEqual(selectedValue, editedValue)) {
+    } else if (!isEqual(selectedValue, editedValue)) {
       onChange(editedValue);
     }
     setOpen(isOpen);

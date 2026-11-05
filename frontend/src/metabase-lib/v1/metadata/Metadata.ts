@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { sortBy } from "es-toolkit";
 
 import { MetadataSymbol } from "metabase-lib";
 import type {
@@ -66,11 +66,12 @@ class Metadata {
    * @deprecated load data via RTK Query - useListDatabasesQuery
    */
   databasesList({ savedQuestions = true } = {}): Database[] {
-    return _.chain(this.databases)
-      .values()
-      .filter((db) => savedQuestions || !db.is_saved_questions)
-      .sortBy((db) => db.name)
-      .value();
+    return sortBy(
+      Object.values(this.databases).filter(
+        (db) => savedQuestions || !db.is_saved_questions,
+      ),
+      [(db) => db.name],
+    );
   }
 
   /**

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omitBy } from "es-toolkit";
 
 import type {
   AggregateFieldReference,
@@ -59,6 +59,18 @@ export const isDimensionReferenceWithOptions = (
   );
 };
 
+const normalizeOptionsMap = (map: object): Record<string, unknown> | null => {
+  // recursively normalize maps inside options and drop null/undefined values
+  const entries = Object.entries(map).flatMap(([key, value]) => {
+    const normalized =
+      typeof value === "object" && value !== null
+        ? normalizeOptionsMap(value)
+        : value;
+    return normalized == null ? [] : [[key, normalized]];
+  });
+  return entries.length === 0 ? null : Object.fromEntries(entries);
+};
+
 export const normalizeReferenceOptions = (
   options?: ReferenceOptions | null,
 ): ReferenceOptions | null => {
@@ -66,13 +78,8 @@ export const normalizeReferenceOptions = (
     return null;
   }
 
-  // recursively normalize maps inside options.
-  options = _.mapObject(options, (val) =>
-    typeof val === "object" ? normalizeReferenceOptions(val) : val,
-  );
-  // remove null/undefined options from map.
-  options = _.omit(options, (value) => value == null);
-  return _.isEmpty(options) ? null : options;
+  // we only drop keys and normalize nested maps, so the shape is still ReferenceOptions
+  return normalizeOptionsMap(options) as ReferenceOptions | null;
 };
 
 export const getNormalizedDimensionReference = (
@@ -113,12 +120,11 @@ const getDimensionReferenceWithoutOptions = (
     return newReference;
   }
 
+  const remainingOptions = omitBy(options, (_value, key) =>
+    optionsKeysToOmit.includes(key),
+  );
   newReference[2] =
-    options == null ? null : _.omit(options, ...optionsKeysToOmit);
-
-  if (_.isEmpty(newReference[2])) {
-    newReference[2] = null;
-  }
+    Object.keys(remainingOptions).length === 0 ? null : remainingOptions;
 
   return newReference;
 };

@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { merge } from "icepick";
 import {
   type ReactNode,
   useCallback,
@@ -33,7 +32,11 @@ import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -127,7 +130,7 @@ export type DatasetEditorInnerProps = {
   handleResize: (...args: any[]) => void;
   updateQuestion: (q: Question, opts?: unknown) => Promise<void> | void;
   runQuestionQuery: () => void;
-  onOpenModal: (type: string) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
@@ -437,9 +440,13 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     (changes: { id: FieldId | null } & Partial<Omit<DatasetColumn, "id">>) => {
       const mappedField =
         changes.id != null ? storeFields[changes.id] : undefined;
-      const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField, isNative);
-      return mappedField ? merge(inheritedProperties, changes) : changes;
+      if (!mappedField) {
+        return changes;
+      }
+      return {
+        ...getWritableColumnProperties(mappedField, isNative),
+        ...changes,
+      };
     },
     [storeFields, isNative],
   );

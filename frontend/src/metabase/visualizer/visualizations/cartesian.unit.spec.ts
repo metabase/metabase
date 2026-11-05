@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { clone } from "es-toolkit";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import {
@@ -843,7 +843,7 @@ describe("cartesian", () => {
         display_name: "Date",
       });
 
-      const nextState = _.clone(state);
+      const nextState = clone(state);
       combineWithCartesianChart(
         nextState,
         settings,
@@ -932,7 +932,7 @@ describe("cartesian", () => {
         display_name: "Category",
       });
 
-      const nextState = _.clone(state);
+      const nextState = clone(state);
       combineWithCartesianChart(
         nextState,
         settings,
@@ -1046,7 +1046,7 @@ describe("cartesian", () => {
         display_name: "Count",
       });
 
-      const nextState = _.clone(state);
+      const nextState = clone(state);
       combineWithCartesianChart(
         nextState,
         settings,
@@ -1127,7 +1127,7 @@ describe("cartesian", () => {
           display_name: "Another String",
         });
 
-        const nextState = _.clone(state);
+        const nextState = clone(state);
         combineWithCartesianChart(
           nextState,
           settings,
@@ -1196,7 +1196,7 @@ describe("cartesian", () => {
           semantic_type: "type/PK", // Primary keys are not metrics
         });
 
-        const nextState = _.clone(state);
+        const nextState = clone(state);
         combineWithCartesianChart(
           nextState,
           settings,
@@ -1263,7 +1263,7 @@ describe("cartesian", () => {
           display_name: "Another Date",
         });
 
-        const nextState = _.clone(state);
+        const nextState = clone(state);
         combineWithCartesianChart(
           nextState,
           settings,
@@ -1329,7 +1329,7 @@ describe("cartesian", () => {
           display_name: "Another String",
         });
 
-        const nextState = _.clone(state);
+        const nextState = clone(state);
         combineWithCartesianChart(
           nextState,
           settings,

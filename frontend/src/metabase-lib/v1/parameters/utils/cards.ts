@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { uniqBy } from "es-toolkit";
 
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -57,7 +57,7 @@ function getSavedCardUiParameters(
 ): UiParameter[] {
   return parameters.map((parameter) => {
     const target = getParameterTarget(parameter);
-    const fields = _.uniq(
+    const fields = uniqBy(
       card.param_fields?.[parameter.id] ?? [],
       (field) => field.id,
     );

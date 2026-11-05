@@ -1,6 +1,6 @@
+import { keyBy } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -48,7 +48,10 @@ export const TaskDetailsPage = () => {
   }
   const hasLogs = Boolean(task.logs?.length);
   const databases = databasesData?.data ?? [];
-  const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
+  const databaseByID: Record<number, Database> = keyBy(
+    databases,
+    (item) => item.id,
+  );
   const db = task.db_id ? databaseByID[task.db_id] : null;
   const dbName = db?.name ?? t`Unknown name`;
   const dbEngine = db?.engine ?? t`Unknown engine`;

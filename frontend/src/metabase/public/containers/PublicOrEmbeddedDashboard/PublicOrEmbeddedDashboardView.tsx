@@ -1,5 +1,5 @@
 import cx from "classnames";
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -40,7 +40,7 @@ export function PublicOrEmbeddedDashboardView() {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
-      onResetFilters={_.noop}
+      onResetFilters={noop}
       isPublic={true}
     />
   ) : null;

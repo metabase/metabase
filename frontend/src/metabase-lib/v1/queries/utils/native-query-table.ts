@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import type NativeQuery from "../NativeQuery";
@@ -10,9 +8,7 @@ export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const collection = nativeQuery.collection();
   if (database && collection) {
     return (
-      _.findWhere(database.getTables(), {
-        name: collection,
-      }) || null
+      database.getTables().find((item) => item.name === collection) || null
     );
   }
 

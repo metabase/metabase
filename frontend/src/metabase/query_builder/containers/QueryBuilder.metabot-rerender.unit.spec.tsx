@@ -1,5 +1,4 @@
 import type * as React from "react";
-import _ from "underscore";
 
 import { act, waitFor } from "__support__/ui";
 import {
@@ -8,6 +7,7 @@ import {
   getMetabotConversationId,
 } from "metabase/metabot/state";
 import { startRequestlessAgentTurn } from "metabase/metabot/tests/utils";
+import { times } from "metabase/utils/arrays";
 import { registerVisualizations } from "metabase/visualizations/register";
 
 import { TEST_CARD, setup, waitForFaviconReady } from "./test-utils";
@@ -57,7 +57,7 @@ describe("QueryBuilder > Metabot stream rerenders", () => {
     expect(baseline).toBeGreaterThan(0);
 
     // One sync `act` per update, so React cannot batch them into one render.
-    _.times(STREAM_UPDATE_COUNT, () =>
+    times(STREAM_UPDATE_COUNT, () =>
       act(() => {
         store.dispatch(addAgentTextDelta({ conversationId, text: "word " }));
       }),

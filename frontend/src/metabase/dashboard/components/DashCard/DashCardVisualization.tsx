@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { omit } from "es-toolkit";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getActionDisplayType, isActionDashCard } from "metabase/actions/utils";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
@@ -309,10 +309,10 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
-        visualization_settings: _.omit(settings, "click_behavior"),
+        visualization_settings: omit(settings, ["click_behavior"]),
         dataset_query: STRUCTURED_QUERY_TEMPLATE,
       },
-      _.omit(dashcard.visualization_settings, "visualization"),
+      omit(dashcard.visualization_settings, ["visualization"]),
     );
 
     if (!everyDatasetLoaded) {

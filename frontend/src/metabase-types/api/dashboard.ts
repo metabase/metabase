@@ -152,6 +152,7 @@ export type DashCardVisualizationSettings = {
   virtual_card?: VirtualCard;
   iframe?: string;
   column_settings?: Record<string, ColumnSettings>;
+  click_behavior?: ClickBehavior;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {

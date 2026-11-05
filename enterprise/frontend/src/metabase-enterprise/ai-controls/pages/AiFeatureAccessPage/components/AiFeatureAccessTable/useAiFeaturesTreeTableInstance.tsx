@@ -1,6 +1,6 @@
+import { groupBy, keyBy } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { type TreeTableColumnDef, useTreeTableInstance } from "metabase/ui";
 import {
@@ -19,7 +19,7 @@ export function useAiFeaturesTreeTableInstance(
   onPermissionChange: AiFeatureAccessTableProps["onPermissionChange"],
 ) {
   const permissionsByGroup = useMemo(
-    () => _.groupBy(groupPermissions, "group_id"),
+    () => groupBy(groupPermissions, (item) => item.group_id),
     [groupPermissions],
   );
 
@@ -28,7 +28,10 @@ export function useAiFeaturesTreeTableInstance(
       visibleGroups.map((group) => ({
         id: group.id,
         group,
-        permissions: _.indexBy(permissionsByGroup[group.id] ?? [], "perm_type"),
+        permissions: keyBy(
+          permissionsByGroup[group.id] ?? [],
+          (item) => item.perm_type,
+        ),
         isAdminGroup: group.magic_group_type === "admin",
       })),
     [visibleGroups, permissionsByGroup],

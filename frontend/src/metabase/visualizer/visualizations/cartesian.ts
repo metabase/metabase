@@ -1,6 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
+import { omit } from "es-toolkit";
 import type { Draft } from "immer";
-import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
@@ -98,7 +98,7 @@ export const cartesianDropHandler = (
         state,
         settings,
         column,
-        _.omit(datasetMap, dataSource.id),
+        omit(datasetMap, [dataSource.id]),
         dataSourceMap,
       );
     }

@@ -1,5 +1,5 @@
+import { pick } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -85,7 +85,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
     );
   }
 
-  const vizSpecificProps = _.pick(props, ...ALLOWED_VISUALIZATION_PROPS);
+  const vizSpecificProps = pick(props, [...ALLOWED_VISUALIZATION_PROPS]);
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hasDrills = isEditable;
   return (

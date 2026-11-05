@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { checkNotNull } from "metabase/utils/types";
@@ -120,7 +120,7 @@ const getSeriesSettingDefinitions = (
 ): VisualizationSettingsDefinitions => {
   const getProps = checkNotNull(seriesSetting()[SERIES_SETTING_KEY]?.getProps);
   const { getSettingDefinitionsForObject }: SeriesSettingsWidgetProps =
-    getProps(series, { [SERIES_SETTING_KEY]: {}, ...settings }, _.noop, {
+    getProps(series, { [SERIES_SETTING_KEY]: {}, ...settings }, noop, {
       series,
       settings,
     });

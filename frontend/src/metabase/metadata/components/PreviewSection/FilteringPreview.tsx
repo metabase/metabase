@@ -1,5 +1,5 @@
+import { noop } from "es-toolkit";
 import { memo, useMemo } from "react";
-import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
@@ -49,7 +49,7 @@ const FilteringPreviewBase = ({ databaseId, field, fieldId, table }: Props) => {
       query={query}
       stageIndex={STAGE_INDEX}
       withSubmitButton={false}
-      onChange={_.noop}
+      onChange={noop}
     />
   );
 };

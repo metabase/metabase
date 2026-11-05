@@ -1,7 +1,6 @@
-import _ from "underscore";
-
 import { substitute_tags } from "cljs/metabase.parameters.shared";
 import { siteLocale, withInstanceLanguage } from "metabase/utils/i18n";
+import { isEmpty } from "metabase/utils/objects";
 import { isTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Dashboard,
@@ -56,7 +55,7 @@ export function fillParametersInText({
     {},
   );
 
-  if (!_.isEmpty(parametersByTag)) {
+  if (!isEmpty(parametersByTag)) {
     // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
     // translated the same way.
     return withInstanceLanguage(() =>

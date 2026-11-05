@@ -1,6 +1,6 @@
 import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { getIn } from "icepick";
+import { isString } from "es-toolkit";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -12,6 +12,8 @@ import { useSetting } from "metabase/settings";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
+import { getByPath } from "metabase/utils/immutable";
+import { isObject } from "metabase-types/guards";
 
 import S from "./GoogleButton.module.css";
 
@@ -105,6 +107,6 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
 };
 
 const getErrors = (error: unknown): string[] => {
-  const errors = getIn(error, ["data", "errors"]);
-  return errors ? Object.values(errors) : [];
+  const errors = getByPath(error, ["data", "errors"]);
+  return isObject(errors) ? Object.values(errors).filter(isString) : [];
 };

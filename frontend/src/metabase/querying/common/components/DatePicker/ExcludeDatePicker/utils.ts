@@ -1,5 +1,5 @@
+import { range } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
 import type {
@@ -55,15 +55,15 @@ export function getExcludeValueOptionGroups(
   switch (unit) {
     case "hour-of-day":
       return [
-        _.range(0, 12).map((value) => getExcludeHourOption(value, format)),
-        _.range(12, 24).map((value) => getExcludeHourOption(value, format)),
+        range(0, 12).map((value) => getExcludeHourOption(value, format)),
+        range(12, 24).map((value) => getExcludeHourOption(value, format)),
       ];
     case "day-of-week":
-      return [_.range(1, 8).map(getExcludeDayOption)];
+      return [range(1, 8).map(getExcludeDayOption)];
     case "month-of-year":
       return [
-        _.range(1, 7).map(getExcludeMonthOption),
-        _.range(7, 13).map(getExcludeMonthOption),
+        range(1, 7).map(getExcludeMonthOption),
+        range(7, 13).map(getExcludeMonthOption),
       ];
     case "quarter-of-year":
       return [getExcludeQuarterOptions()];

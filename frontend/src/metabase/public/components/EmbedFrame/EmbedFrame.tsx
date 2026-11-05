@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { type ReactNode, useRef, useState } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import { TitleAndDescription } from "metabase/common/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
@@ -27,6 +26,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { Box, Stack } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
+import { isEmpty } from "metabase/utils/objects";
 import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
@@ -153,7 +153,7 @@ export const EmbedFrame = ({
   const valuePopulatedParameters = parameters
     ? getValuePopulatedParameters({
         parameters,
-        values: _.isEmpty(draftParameterValues)
+        values: isEmpty(draftParameterValues)
           ? parameterValues
           : draftParameterValues,
       })

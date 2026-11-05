@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual } from "es-toolkit";
 
 import type { ExecuteActionResult } from "embedding-sdk-bundle/lib/execute-action";
 import type { SdkActionInput } from "embedding-sdk-bundle/types/action";
@@ -38,7 +38,7 @@ export function createActionHandlers(
       () =>
       async ({ actionId, parameters = {} }) => {
         const mock = actions.find(({ definition }) =>
-          _.isEqual(definition, actionId),
+          isEqual(definition, actionId),
         );
 
         if (!mock) {

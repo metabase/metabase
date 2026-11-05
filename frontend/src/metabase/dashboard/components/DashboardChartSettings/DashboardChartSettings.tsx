@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
 
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Divider, Flex } from "metabase/ui";
@@ -70,7 +70,7 @@ export const DashboardChartSettings = ({
 
   const onResetToDefault =
     // resetting virtual cards wipes the text and broke the UI (metabase#14644)
-    !_.isEqual(chartSettings, {}) && (chartSettings || {}).virtual_card == null
+    !isEqual(chartSettings, {}) && (chartSettings || {}).virtual_card == null
       ? handleResetSettings
       : null;
 

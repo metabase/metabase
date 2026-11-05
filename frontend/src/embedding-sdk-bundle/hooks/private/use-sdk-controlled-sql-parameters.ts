@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { type MutableRefObject, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
-import { isEqual } from "underscore";
 
 import {
   buildClickParameters,

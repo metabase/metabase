@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { fieldApi, skipToken, useGetFieldQuery } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -271,7 +271,7 @@ class TagEditorParamInner extends Component<
     // TODO Fix raw MBQL usage
     const dimension: DimensionReference = ["field", fieldId, null];
 
-    if (!_.isEqual(tag.dimension, dimension)) {
+    if (!isEqual(tag.dimension, dimension)) {
       const field = await fetchField(fieldId);
       if (!field) {
         return;

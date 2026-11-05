@@ -1,6 +1,5 @@
 import type { JSX } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
@@ -30,7 +29,9 @@ const DatabaseEngineWarning = ({
   const newEngineName = newEngine?.["driver-name"];
   const handleChangeToNew = () => newEngineKey && onChange?.(newEngineKey);
 
-  const oldEngineKey = _.findKey(engines, { "superseded-by": engineKey });
+  const oldEngineKey = Object.keys(engines).find(
+    (key) => engines[key]["superseded-by"] === engineKey,
+  );
   const oldEngine = oldEngineKey ? engines[oldEngineKey] : undefined;
   const handleChangeToOld = () => oldEngineKey && onChange?.(oldEngineKey);
 

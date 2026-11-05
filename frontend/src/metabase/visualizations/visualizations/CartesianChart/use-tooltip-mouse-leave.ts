@@ -1,6 +1,6 @@
 import type { EChartsType } from "echarts/core";
+import { throttle } from "es-toolkit";
 import { useEffect, useRef } from "react";
-import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/viz-core";
@@ -20,7 +20,7 @@ export const useTooltipMouseLeave = (
       return;
     }
 
-    const handleGlobalMouseMove = _.throttle((e: MouseEvent) => {
+    const handleGlobalMouseMove = throttle((e: MouseEvent) => {
       try {
         // Unjustified type cast. FIXME
         const target = e.target as HTMLElement;

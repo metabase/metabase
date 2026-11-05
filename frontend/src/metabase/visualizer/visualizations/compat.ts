@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { groupBy, mapValues } from "es-toolkit";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import {
@@ -92,8 +92,8 @@ export function groupColumnsBySuitableVizSettings(
       }))
       .filter((mapping) => !!mapping.slot);
     // Unjustified type cast. FIXME
-    const groupedMappings = _.groupBy(mapping, (m) => m.slot as string);
-    return _.mapObject(groupedMappings, (mappings) =>
+    const groupedMappings = groupBy(mapping, (m) => m.slot as string);
+    return mapValues(groupedMappings, (mappings) =>
       mappings.map((m) => m.column),
     );
   } else {

@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 import { Component, useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   cardApi,
@@ -265,11 +264,13 @@ export class UnconnectedDataSelector extends Component<
       selectedTable: DataSelectorTable | null = null;
 
     const getDatabase = (id: DatabaseId) =>
-      _.findWhere(databases ?? [], { id }) || entityLookups.database(id);
+      (databases ?? []).find((item) => item.id === id) ||
+      entityLookups.database(id);
     const getSchema = (id: SchemaId) =>
-      _.findWhere(schemas ?? [], { id }) || entityLookups.schema(id);
+      (schemas ?? []).find((item) => item.id === id) ||
+      entityLookups.schema(id);
     const getTable = (id: TableId) =>
-      _.findWhere(tables ?? [], { id }) || entityLookups.table(id);
+      (tables ?? []).find((item) => item.id === id) || entityLookups.table(id);
 
     const deriveFromDatabase = (database: DataSelectorDatabase | null) => {
       if (!schemas && database) {

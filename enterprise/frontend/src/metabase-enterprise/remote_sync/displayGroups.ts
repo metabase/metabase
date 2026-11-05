@@ -1,5 +1,5 @@
+import { groupBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isLibraryCollection } from "metabase/common/collections/utils";
 import { dataStudioDataApps, transformList } from "metabase/urls";
@@ -412,7 +412,7 @@ const sortEntitiesByStatus = (
 const buildTableGroups = (items: RemoteSyncEntity[]): TableGroup[] => {
   const tables = items.filter((item) => item.model === "tableusersettings");
   const tableChildren = items.filter((item) => isTableChildModel(item.model));
-  const childrenByTableId = _.groupBy(tableChildren, (e) => e.table_id || 0);
+  const childrenByTableId = groupBy(tableChildren, (e) => e.table_id || 0);
   const tableIds = new Set(tables.map((tbl) => tbl.id));
 
   const dirtyTableGroups: TableGroup[] = tables.map((table) => ({
@@ -556,7 +556,7 @@ export const groupEntitiesByCollection = ({
   getCollectionPathSegments,
 }: GroupEntitiesParams): CollectionGroup[] => {
   const transformsRootExists = transformsRootEntity != null;
-  const byCollection = _.groupBy(entities, (e) => {
+  const byCollection = groupBy(entities, (e) => {
     const spec = getSpecForEntity(e, namespaceCollectionMap);
     const { groupKey } = getGroupKeyInfo(
       e,

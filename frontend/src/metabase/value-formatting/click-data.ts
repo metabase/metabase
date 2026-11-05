@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { mapValues } from "es-toolkit";
 
 import type { ClickObjectDimension } from "metabase-lib";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
@@ -88,7 +88,7 @@ export function getDataFromClicked({
     ]),
   );
 
-  const parameterBySlug = _.mapObject(parameterValuesBySlug, (value) => ({
+  const parameterBySlug = mapValues(parameterValuesBySlug, (value) => ({
     value,
   }));
 

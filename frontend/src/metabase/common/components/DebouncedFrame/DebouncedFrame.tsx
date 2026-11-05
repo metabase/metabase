@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { debounce } from "es-toolkit";
 import type { ReactNode, Ref } from "react";
 import { Component, forwardRef } from "react";
-import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
@@ -69,7 +69,7 @@ class DebouncedFrameInner extends Component<
     }
   };
 
-  updateSizeDebounced = _.debounce(this.updateSize, DEBOUNCE_PERIOD);
+  updateSizeDebounced = debounce(this.updateSize, DEBOUNCE_PERIOD);
 
   UNSAFE_componentWillReceiveProps(nextProps: DebouncedFrameInnerProps) {
     if (!nextProps.enabled) {

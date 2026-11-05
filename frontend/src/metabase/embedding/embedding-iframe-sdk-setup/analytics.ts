@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { isEqual, omitBy } from "es-toolkit";
 
 import { trackSimpleEvent } from "metabase/analytics";
 import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
@@ -104,8 +104,15 @@ export const trackEmbedWizardResourceSelectionCompleted = ({
   });
 };
 
-const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
-  _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
+const getEmbedSettingsToCompare = (
+  settings: Partial<SdkIframeEmbedSettings>,
+) => {
+  const ignoredKeys: readonly string[] = EMBED_SETTINGS_TO_IGNORE;
+  return omitBy(
+    settings,
+    (value, key) => value === undefined || ignoredKeys.includes(key),
+  );
+};
 
 export const trackEmbedWizardOptionsCompleted = ({
   experience,
@@ -137,7 +144,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   });
 
   // Does the embed settings diverge from the experience defaults?
-  const hasCustomOptions = !_.isEqual(
+  const hasCustomOptions = !isEqual(
     getEmbedSettingsToCompare(settings),
     getEmbedSettingsToCompare(defaultSettings),
   );

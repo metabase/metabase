@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
-import { isEmpty } from "underscore";
 
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { FieldSet } from "metabase/common/components/FieldSet";
@@ -26,6 +25,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { isEmpty } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
 

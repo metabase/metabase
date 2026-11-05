@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import { noop } from "es-toolkit";
 
 import { getIcon, render, screen } from "__support__/ui";
 
@@ -9,8 +9,8 @@ describe("Components > SelectList", () => {
   it("renders a list of items", () => {
     render(
       <SelectList color="core-brand">
-        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />
-        <SelectList.Item id="2" name="Item 2" icon="check" onSelect={_.noop} />
+        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={noop} />
+        <SelectList.Item id="2" name="Item 2" icon="check" onSelect={noop} />
       </SelectList>,
     );
 
@@ -21,13 +21,13 @@ describe("Components > SelectList", () => {
   it("shows the currently selected item", () => {
     render(
       <SelectList>
-        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />
+        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={noop} />
         <SelectList.Item
           id="2"
           name="Item 2"
           icon="check"
           isSelected
-          onSelect={_.noop}
+          onSelect={noop}
         />
       </SelectList>,
     );
@@ -43,7 +43,7 @@ describe("Components > SelectList", () => {
 
     render(
       <SelectList color="core-brand">
-        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />
+        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={noop} />
         <SelectList.Item
           id="2"
           name="Item 2"
@@ -61,7 +61,7 @@ describe("Components > SelectList", () => {
   describe("SelectList.Item", () => {
     it("renders the name of the item", () => {
       render(
-        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />,
+        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={noop} />,
       );
 
       expect(screen.getByText("Item 1")).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe("Components > SelectList", () => {
 
     it("renders the icon of the item", () => {
       render(
-        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={_.noop} />,
+        <SelectList.Item id="1" name="Item 1" icon="check" onSelect={noop} />,
       );
 
       expect(getIcon("check")).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("Components > SelectList", () => {
           id="1"
           name="Item 1"
           icon="check"
-          onSelect={_.noop}
+          onSelect={noop}
           rightIcon="warning"
         />,
       );
@@ -95,7 +95,7 @@ describe("Components > SelectList", () => {
           id="1"
           name="Item 1"
           icon="check"
-          onSelect={_.noop}
+          onSelect={noop}
           rightIcon="warning"
           isSelected
         />,

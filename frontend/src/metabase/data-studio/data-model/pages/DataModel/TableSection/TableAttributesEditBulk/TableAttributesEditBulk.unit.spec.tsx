@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import { noop } from "es-toolkit";
 import fetchMock from "fetch-mock";
 import { useEffect, useState } from "react";
-import _ from "underscore";
 
 import {
   setupTableEndpoints,
@@ -60,7 +60,7 @@ function TestWrapper({
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk hasLibrary canPublish onUpdate={_.noop} />
+      <TableAttributesEditBulk hasLibrary canPublish onUpdate={noop} />
       <SelectionController
         initialTables={initialTables}
         nextTables={nextTables}

@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { c, t } from "ttag";
-import _ from "underscore";
 
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Alert, Flex, Icon, Text } from "metabase/ui";
@@ -291,15 +291,14 @@ export function getRevokingAccessToAllTablesWarningModal(
     const allTableEntityIds = (database.tables ?? []).map(tableToTableEntityId);
 
     // Show the warning only if user tries to revoke access to the very last table of all schemas
-    const afterChangesNoAccessToAnyTable = _.every(
-      allTableEntityIds,
+    const afterChangesNoAccessToAnyTable = allTableEntityIds.every(
       (id) =>
         getFieldsPermission(
           permissions,
           groupId,
           id,
           DataPermission.VIEW_DATA,
-        ) === DataPermissionValue.NO || _.isEqual(id, entityId),
+        ) === DataPermissionValue.NO || isEqual(id, entityId),
     );
     if (afterChangesNoAccessToAnyTable) {
       return {

@@ -1,5 +1,6 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
+import { isEqual } from "es-toolkit";
 import {
   type Dispatch,
   type RefObject,
@@ -11,7 +12,6 @@ import {
 } from "react";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import {
@@ -304,7 +304,7 @@ export function useDocumentEditor({
 
       const baseline = settledContentRef.current;
       if (baseline) {
-        dispatch(setHasUnsavedChanges(!_.isEqual(content, baseline)));
+        dispatch(setHasUnsavedChanges(!isEqual(content, baseline)));
       }
     },
     [dispatch, editorInstance, isNewDocument, documentNeedsMigration],

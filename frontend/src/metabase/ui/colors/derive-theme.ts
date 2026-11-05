@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { omit } from "es-toolkit";
 
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
@@ -36,9 +36,12 @@ export function deriveFullMetabaseTheme({
 }): MetabaseDerivedThemeV2 {
   // Filter out protected colors from embedding theme overrides.
   // Some colors (such as the Metabase brand color) should not be modifiable.
-  const filteredEmbeddingColors = _.omit(
-    embeddingThemeOverride?.colors,
-    ...PROTECTED_COLORS,
+  // we widen the type because callers can still pass protected keys at runtime
+  const embeddingColorOverrides: Partial<Record<MetabaseColorKey, string>> =
+    embeddingThemeOverride?.colors ?? {};
+  const filteredEmbeddingColors = omit(
+    embeddingColorOverrides,
+    PROTECTED_COLORS,
   );
 
   const embeddingColors = embeddingThemeOverride?.colors;

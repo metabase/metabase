@@ -1,5 +1,5 @@
+import { sortBy } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
 import MetabaseSettings from "metabase/utils/settings";
@@ -76,12 +76,12 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
             return "pin";
           default:
             if (hasLatitudeAndLongitudeColumns(data.cols)) {
-              const latitudeColumn = _.findWhere(data.cols, {
-                name: settings["map.latitude_column"],
-              });
-              const longitudeColumn = _.findWhere(data.cols, {
-                name: settings["map.longitude_column"],
-              });
+              const latitudeColumn = data.cols.find(
+                (col) => col.name === settings["map.latitude_column"],
+              );
+              const longitudeColumn = data.cols.find(
+                (col) => col.name === settings["map.longitude_column"],
+              );
 
               if (
                 latitudeColumn &&
@@ -142,7 +142,7 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Latitude field`;
       },
       fieldFilter: isNumeric,
-      getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
+      getDefault: ([{ data }]) => (data.cols.find(isLatitude) || {}).name,
       getHidden: (_series, vizSettings) =>
         !isPinMapType(vizSettings["map.type"]),
     }),
@@ -151,7 +151,7 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Longitude field`;
       },
       fieldFilter: isNumeric,
-      getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
+      getDefault: ([{ data }]) => (data.cols.find(isLongitude) || {}).name,
       getHidden: (_series, vizSettings) =>
         !isPinMapType(vizSettings["map.type"]),
     }),
@@ -172,22 +172,23 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       widget: "select",
       getDefault: ([{ card, data }]) => {
         const display: string = card.display;
-        if (display === "state" || _.any(data.cols, isState)) {
+        if (display === "state" || data.cols.some(isState)) {
           return "us_states";
-        } else if (display === "country" || _.any(data.cols, isCountry)) {
+        } else if (display === "country" || data.cols.some(isCountry)) {
           return "world_countries";
         }
         return null;
       },
       getProps: () => ({
-        options: _.chain(MetabaseSettings.get("custom-geojson") ?? {})
-          .pairs()
-          .map(([key, value]: [string, CustomGeoJSONMap]) => ({
-            name: value.name || "",
-            value: key,
-          }))
-          .sortBy((x) => x.name.toLowerCase())
-          .value(),
+        options: sortBy(
+          Object.entries(MetabaseSettings.get("custom-geojson") ?? {}).map(
+            ([key, value]: [string, CustomGeoJSONMap]) => ({
+              name: value.name || "",
+              value: key,
+            }),
+          ),
+          [(option) => option.name.toLowerCase()],
+        ),
         placeholder: t`Select a region`,
         footer: <CustomMapFooter />,
         hiddenIcons: true,

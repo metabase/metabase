@@ -1,8 +1,8 @@
 import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
+import { groupBy } from "es-toolkit";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import Styles from "metabase/css/core/index.css";
 import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
@@ -23,9 +23,9 @@ import { ELLIPSIS, GROUP_LABELS } from "../../constants";
 // `keywords` are getters so they translate when read, and spreading them at
 // module scope would freeze whatever language was loaded at import.
 const groupShortcuts = () =>
-  _.groupBy(
-    _.mapObject(ALL_SHORTCUTS, (val, id) => ({ id, ...val })),
-    "shortcutGroup",
+  groupBy(
+    Object.entries(ALL_SHORTCUTS).map(([id, val]) => ({ id, ...val })),
+    (shortcut) => shortcut.shortcutGroup,
   );
 
 export const PaletteShortcutsModal = ({
@@ -35,7 +35,7 @@ export const PaletteShortcutsModal = ({
   onClose: ModalProps["onClose"];
   open: boolean;
 }) => {
-  const groupedShortcuts = useMemo(
+  const groupedShortcuts = useMemo<Record<string, ShortcutDef[]>>(
     () => (open ? groupShortcuts() : {}),
     [open],
   );
@@ -92,9 +92,9 @@ export const PaletteShortcutsModal = ({
                   (shortcut: ShortcutDef) => !shortcut.hide,
                 );
 
-                const shortcutContexts = _.groupBy(
-                  shortcuts,
-                  "shortcutContext",
+                // shortcuts without a context end up in the "undefined" group
+                const shortcutContexts = groupBy(shortcuts, (shortcut) =>
+                  String(shortcut.shortcutContext),
                 );
 
                 return Object.keys(shortcutContexts).map((context) => [

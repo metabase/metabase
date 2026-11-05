@@ -1,13 +1,16 @@
 import Color from "color";
+import { omit } from "es-toolkit";
 import { type JSX, memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { Box, Flex } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { WHITELABEL_KEY_TO_COLOR_KEY } from "metabase/ui/colors/constants/whitelabel-colors";
+import {
+  WHITELABEL_KEY_TO_COLOR_KEY,
+  type WhitelabelSettingKey,
+} from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorPalette } from "metabase/ui/colors/types";
 import type { ColorSettings } from "metabase-types/api";
 
@@ -30,11 +33,11 @@ export const BrandColorSettings = ({
   const options = useMemo(getBrandColorOptions, []);
 
   const handleChange = useCallback(
-    (colorName: string, color?: string) => {
+    (colorName: WhitelabelSettingKey, color?: string) => {
       if (color) {
         onChange({ ...colorsRef.current, [colorName]: color });
       } else {
-        onChange(_.omit(colorsRef.current, colorName));
+        onChange(omit(colorsRef.current, [colorName]));
       }
     },
     [colorsRef, onChange],
@@ -54,7 +57,7 @@ interface BrandColorTableProps {
   colors: ColorSettings;
   colorPalette: ColorPalette;
   options: ColorOption[];
-  onChange: (colorName: string, color?: string) => void;
+  onChange: (colorName: WhitelabelSettingKey, color?: string) => void;
 }
 
 const BrandColorTable = ({
@@ -101,7 +104,7 @@ interface BrandColorRowProps {
   color?: string;
   originalColor: string;
   option: ColorOption;
-  onChange: (colorName: string, color?: string) => void;
+  onChange: (colorName: WhitelabelSettingKey, color?: string) => void;
 }
 
 const BrandColorRow = memo(function BrandColorRow({

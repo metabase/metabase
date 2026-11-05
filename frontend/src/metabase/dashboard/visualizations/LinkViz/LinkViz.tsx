@@ -1,6 +1,6 @@
+import { debounce } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
@@ -162,7 +162,7 @@ function LinkVizInner({
               onChange={(e) => handleLinkChange(e.target.value)}
               onFocus={onFocusInput}
               // we need to debounce this or it may close the popover before the click event can fire
-              onBlur={_.debounce(onBlurInput, 100)}
+              onBlur={debounce(onBlurInput, 100)}
               // the dashcard really wants to turn all mouse events into drag events
               onMouseDown={(e) => e.stopPropagation()}
               size="sm"

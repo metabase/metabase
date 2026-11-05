@@ -1,5 +1,4 @@
-import { assocIn, dissocIn, getIn } from "icepick";
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -8,10 +7,12 @@ import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
+import { produce } from "metabase/utils/immutable";
 import type {
   DashCardId,
   ParameterId,
   UpdateCardRequest,
+  UpdateDashboardRequest,
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
@@ -28,6 +29,12 @@ import {
 } from "./utils";
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
+
+// the store keeps dashcard ids, not dashcards, so we never send them from here
+type DashboardAttributeName = Exclude<
+  keyof UpdateDashboardRequest & keyof StoreDashboard,
+  "id" | "dashcards"
+>;
 
 export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
@@ -78,16 +85,21 @@ export const updateDashboardAndCards = createThunkAction(
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.dashcards = dashboard.dashcards.map((card, index) => {
-        if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
-          const startingValue = getIn(dashboardBeforeEditing?.dashcards ?? [], [
-            index,
-            ...clickBehaviorPath,
-          ]);
-          return startingValue == null
-            ? dissocIn(card, clickBehaviorPath)
-            : assocIn(card, clickBehaviorPath, startingValue);
+        if (
+          !clickBehaviorIsValid(card.visualization_settings?.click_behavior)
+        ) {
+          const startingValue =
+            dashboardBeforeEditing?.dashcards?.[index]?.visualization_settings
+              ?.click_behavior;
+          return produce(card, (draft) => {
+            if (startingValue == null) {
+              delete draft.visualization_settings?.click_behavior;
+            } else {
+              (draft.visualization_settings ??= {}).click_behavior =
+                startingValue;
+            }
+          });
         }
         return card;
       });
@@ -143,7 +155,7 @@ export const updateDashboardAndCards = createThunkAction(
 
             return (
               dc.card_id === mappedCardId ||
-              _.findWhere(dc.series ?? [], { id: mappedCardId })
+              (dc.series ?? []).find((item) => item.id === mappedCardId)
             );
           },
         );
@@ -251,7 +263,7 @@ export const updateDashboardAndCards = createThunkAction(
 
 export const updateDashboard = createThunkAction(
   UPDATE_DASHBOARD,
-  function ({ attributeNames }: { attributeNames: string[] }) {
+  function ({ attributeNames }: { attributeNames: DashboardAttributeName[] }) {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
@@ -268,7 +280,7 @@ export const updateDashboard = createThunkAction(
       }
 
       if (attributeNames.length > 0) {
-        const attributes = _.pick(dashboard, attributeNames);
+        const attributes = pick(dashboard, attributeNames);
 
         await runRtkEndpoint(
           { id: dashboardId, ...attributes },

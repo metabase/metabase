@@ -1,7 +1,7 @@
 import cx from "classnames";
+import { range } from "es-toolkit";
 import type { MouseEvent, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, type FlexProps } from "metabase/ui";
@@ -51,7 +51,7 @@ export const ColorRange = forwardRef(function ColorRange(
         props.className,
       )}
     >
-      {_.range(0, sections).map((section) => (
+      {range(0, sections).map((section) => (
         // @ts-expect-error color range needs access to arbitrary color values
         <Box key={section} flex="1" bg={scale(section)} />
       ))}

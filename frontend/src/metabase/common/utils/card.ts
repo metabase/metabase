@@ -1,7 +1,7 @@
 import querystring from "querystring";
 
+import { isEqual, pick } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { clone } from "metabase/utils/clone";
 import {
@@ -105,7 +105,7 @@ function getCleanCard(
 
 export function isEqualCard(card1?: Card | null, card2?: Card | null) {
   if (card1 && card2) {
-    return _.isEqual(getCleanCard(card1), getCleanCard(card2));
+    return isEqual(getCleanCard(card1), getCleanCard(card2));
   } else {
     return false;
   }
@@ -209,9 +209,9 @@ export function isNative(card?: UnsavedCard | null | undefined) {
 }
 
 function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
-  return _.isEqual(
-    _.pick(cardA, "display", "visualization_settings"),
-    _.pick(cardB, "display", "visualization_settings"),
+  return isEqual(
+    pick(cardA, ["display", "visualization_settings"]),
+    pick(cardB, ["display", "visualization_settings"]),
   );
 }
 
@@ -241,7 +241,7 @@ export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
 }
 
 export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
-  return _.isEqual(cardA.parameters || [], cardB.parameters || []);
+  return isEqual(cardA.parameters || [], cardB.parameters || []);
 }
 
 export function cardIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
@@ -270,19 +270,13 @@ export function applyParameters(
     const value = parameterValues[parameter.id];
 
     const cardId = card.id || card.original_card_id;
-    const mapping = _.findWhere(
-      parameterMappings,
-      cardId != null
-        ? {
-            card_id: cardId,
-            parameter_id: parameter.id,
-          }
-        : // NOTE: this supports transient dashboards where cards don't have ids
-          // BUT will not work correctly with multiseries dashcards since
-          // there's no way to identify which card the mapping applies to.
-          {
-            parameter_id: parameter.id,
-          },
+    const mapping = parameterMappings.find(
+      (item) =>
+        item.parameter_id === parameter.id &&
+        // NOTE: a null cardId supports transient dashboards where cards don't have ids
+        // BUT will not work correctly with multiseries dashcards since
+        // there's no way to identify which card the mapping applies to.
+        (cardId == null || ("card_id" in item && item.card_id === cardId)),
     );
 
     const queryParameter: Partial<UiParameter> = {

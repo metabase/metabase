@@ -1,6 +1,5 @@
 import Color from "color";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
@@ -152,7 +151,7 @@ function newSegment(segments: ScalarSegment[]) {
       ? lastSegment.max
       : null;
   const lastColorIndex = lastSegment
-    ? _.findIndex(palette, (color) => color === lastSegment.color)
+    ? palette.findIndex((color) => color === lastSegment.color)
     : -1;
   const nextColor =
     lastColorIndex >= 0

@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   selectQuestionFromCard,
@@ -74,7 +74,7 @@ export const ModifyQuestionModal = ({
       newQuestion.type(),
     );
 
-    if (!_.isEqual(currentDependencies, nextDependencies)) {
+    if (!isEqual(currentDependencies, nextDependencies)) {
       await dispatch(
         host.actions.loadMetadataForDocumentCard(newQuestion.card()),
       );

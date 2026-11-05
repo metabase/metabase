@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { pick } from "es-toolkit";
 
 import type {
   CardId,
@@ -321,14 +321,13 @@ export type CommonRunListParams = {
 export function pickCommonRunListParams(
   params: CommonRunListParams,
 ): CommonRunListParams {
-  return _.pick(
-    params,
+  return pick(params, [
     "statuses",
     "transformIds",
     "startTime",
     "endTime",
     "runMethods",
-  );
+  ]);
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {

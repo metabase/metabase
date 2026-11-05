@@ -1,5 +1,5 @@
+import { flowRight, identity } from "es-toolkit";
 import type { ComponentType } from "react";
-import _ from "underscore";
 
 import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
@@ -235,9 +235,9 @@ function transformComputedSettingsForSdk(
 
   const shouldKeepInternalClickBehavior = extra.enableEntityNavigation;
 
-  return _.compose(
+  return flowRight(
     // remove internal click behaviors unless internal navigation is enabled
-    shouldKeepInternalClickBehavior ? _.identity : removeInternalClickBehaviors,
+    shouldKeepInternalClickBehavior ? identity : removeInternalClickBehaviors,
     convertLinkColumnToClickBehavior,
   )(computedSettings);
 }

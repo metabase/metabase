@@ -1,4 +1,4 @@
-import _ from "underscore";
+import { clone, range } from "es-toolkit";
 
 import type { Breakout, Card, CardId, DatasetQuery } from "metabase-types/api";
 import {
@@ -66,7 +66,7 @@ const savedCard = createMockCard({
 });
 const clonedSavedCard = createMockCard({
   id: 3,
-  dataset_query: _.clone(baseQuery),
+  dataset_query: clone(baseQuery),
   display: "line",
 });
 const dirtyCardOnlyOriginalId = createMockCard({
@@ -272,7 +272,7 @@ describe("metabase/visualization/lib/utils", () => {
           {
             card: createMockCard(),
             data: createMockDatasetData({
-              rows: _.range(0, 100).map((v) => [0, 0, v]),
+              rows: range(0, 100).map((v) => [0, 0, v]),
               cols: [
                 createMockColumn({
                   name: "count",
@@ -302,7 +302,7 @@ describe("metabase/visualization/lib/utils", () => {
           {
             card: createMockCard(),
             data: createMockDatasetData({
-              rows: _.range(0, 101).map((v) => [0, v, v]),
+              rows: range(0, 101).map((v) => [0, v, v]),
               cols: [
                 createMockColumn({
                   name: "count",
@@ -429,7 +429,7 @@ describe("metabase/visualization/lib/utils", () => {
 
     it("returns null if all columns has cardinality > 16", () => {
       const cols = [highestCardinalityColumn, highCardinalityColumn];
-      const rows = _.range(highestCardinality).map((n) => [
+      const rows = range(highestCardinality).map((n) => [
         n,
         n % highCardinality,
       ]);
@@ -448,7 +448,7 @@ describe("metabase/visualization/lib/utils", () => {
         lowCardinalityColumn,
         lowestCardinalityColumn,
       ];
-      const rows = _.range(highestCardinality).map((n) => [
+      const rows = range(highestCardinality).map((n) => [
         n,
         n % highCardinality,
         n % lowCardinality,
@@ -470,7 +470,7 @@ describe("metabase/visualization/lib/utils", () => {
           source: "aggregation",
         }),
       ];
-      const rows = _.range(lowCardinality).map((n) => [n, 1]);
+      const rows = range(lowCardinality).map((n) => [n, 1]);
 
       expect(
         getDefaultPivotColumn(

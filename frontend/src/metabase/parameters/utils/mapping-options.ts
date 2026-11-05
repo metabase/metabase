@@ -1,5 +1,5 @@
+import { groupBy, isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -229,7 +229,7 @@ export function getParameterMappingOptions(
       opts,
     );
 
-    const columnsByStageIndex = _.groupBy(columns, "stageIndex");
+    const columnsByStageIndex = groupBy(columns, (item) => item.stageIndex);
     const options = Object.entries(columnsByStageIndex).flatMap(
       ([stageIndexString, columns]) => {
         const groups = Lib.groupColumns(columns.map(({ column }) => column));
@@ -287,7 +287,7 @@ export function getMappingOptionByTarget(
   }
 
   const matchedMappingOptions = mappingOptions.filter((mappingOption) =>
-    _.isEqual(mappingOption.target, target),
+    isEqual(mappingOption.target, target),
   );
   // Native queries - targets CAN be tested for equality
   // MBQL queries - targets generally CANNOT be tested for equality, but if there is an exact match, we use it to

@@ -1,8 +1,7 @@
 import cx from "classnames";
-import { type ComponentProps, forwardRef } from "react";
+import { type ComponentProps, type ComponentType, forwardRef } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
@@ -26,7 +25,13 @@ import type { Dispatch, QueryModalType } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, CardId, DatabaseId, Dataset } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  DatabaseId,
+  Dataset,
+  Series,
+} from "metabase-types/api";
 
 import {
   rememberLastUsedDatabase,
@@ -76,7 +81,9 @@ type ViewProps = Omit<
   closeQbNewbModal: () => void;
   onDismissToast: () => void;
   onConfirmToast: () => void;
-  modal: QueryModalType;
+  modal: QueryModalType | null;
+  recentlySaved?: boolean;
+  onVisualizationRendered?: (series: Series) => void;
   card: Card;
   originalQuestion: Question;
   reportTimezone: string;
@@ -359,7 +366,18 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
-export const View = _.compose(
-  ExplicitSize({ refreshMode: "debounceLeading" }),
-  connect(null, mapDispatchToProps, null, { forwardRef: true }),
-)(ViewInner);
+const ConnectedView = connect(null, mapDispatchToProps, null, {
+  forwardRef: true,
+})(ViewInner);
+
+const SizedView = ExplicitSize<ComponentProps<typeof ConnectedView>>({
+  refreshMode: "debounceLeading",
+})(ConnectedView);
+
+type LooseProps<T> = { [K in keyof T]?: unknown };
+
+// compose() used to return any here, which hid that QueryBuilder omits props the
+// sub components mark as required and passes values that are looser than theirs
+export const View = SizedView as ComponentType<
+  LooseProps<ComponentProps<typeof SizedView>>
+>;

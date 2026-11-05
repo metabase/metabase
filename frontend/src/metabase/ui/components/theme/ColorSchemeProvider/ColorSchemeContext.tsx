@@ -1,5 +1,5 @@
+import { noop } from "es-toolkit";
 import { createContext, useContext } from "react";
-import { noop } from "underscore";
 
 import type {
   ColorScheme,

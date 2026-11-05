@@ -1,5 +1,5 @@
+import { isEqual } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { hasFeature } from "metabase/databases";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -174,7 +174,7 @@ export function isSameSource(
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
   }
   if (source1.type === "python" && source2.type === "python") {
-    return _.isEqual(source1, source2);
+    return isEqual(source1, source2);
   }
   return false;
 }

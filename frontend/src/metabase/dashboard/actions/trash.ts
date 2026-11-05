@@ -1,5 +1,5 @@
+import { isNumber, uniq } from "es-toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -50,14 +50,14 @@ export const setArchivedDashboard = createThunkAction(
       );
 
       const dashboardQuestionIds = Object.values(dashcards)
-        .filter((dc) => _.isNumber(dc.card.dashboard_id))
+        .filter((dc) => isNumber(dc.card.dashboard_id))
         .map((dc) => dc.card_id);
 
       // HACK: workaround for entity system as it has stale values for dashboard questions
       // that are now archived due to the dashboard itself being archived
       try {
         await Promise.all(
-          _.uniq(dashboardQuestionIds).map((id) =>
+          uniq(dashboardQuestionIds).map((id) =>
             runRtkEndpoint({ id }, dispatch, cardApi.endpoints.getCard),
           ),
         );

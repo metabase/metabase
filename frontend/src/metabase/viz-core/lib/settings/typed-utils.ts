@@ -1,5 +1,4 @@
-import { getIn } from "icepick";
-import _ from "underscore";
+import { omit, pickBy } from "es-toolkit";
 
 import type {
   SeriesCard,
@@ -33,8 +32,8 @@ export function mergeSettings(
       merged[key] = {};
       for (const nestedKey of Object.keys({ ...first[key], ...second[key] })) {
         merged[key][nestedKey] = mergeSettings(
-          getIn(first, [key, nestedKey]) || {},
-          getIn(second, [key, nestedKey]) || {},
+          first[key]?.[nestedKey] || {},
+          second[key]?.[nestedKey] || {},
         );
       }
     }
@@ -78,7 +77,7 @@ export function sanitizeDashcardSettings(
   settings: VisualizationSettings,
   vizSettingsDefs: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
-  return _.pick(settings, (_, key) => {
+  return pickBy(settings, (_, key) => {
     const settingDef = vizSettingsDefs[key];
     return !settingDef || !isSettingHiddenOnDashboards(settingDef);
   });
@@ -105,7 +104,7 @@ export function extendCardWithDashcardSettings<
       migrateStoredDashcardCustomVizSettings(
         card.display,
         cardSettings,
-        _.omit(dashcardSettings ?? {}, settingsToOmit),
+        omit(dashcardSettings ?? {}, settingsToOmit),
         () => getSettingDefinitionsForDisplay(card.display),
       ),
     ),

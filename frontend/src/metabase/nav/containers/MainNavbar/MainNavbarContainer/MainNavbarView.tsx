@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
+import { keyBy } from "es-toolkit";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -109,7 +109,7 @@ export function MainNavbarView({
     collection: collectionItem,
     dashboard: dashboardItem,
     "non-entity": nonEntityItem,
-  } = _.indexBy(selectedItems, (item) => item.type);
+  } = keyBy(selectedItems, (item) => item.type);
 
   const onItemSelect = useCallback(() => {
     if (isSmallScreen()) {
