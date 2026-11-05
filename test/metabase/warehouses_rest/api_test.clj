@@ -12,6 +12,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
@@ -3062,7 +3063,14 @@
           (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=write-data"))))))
     (testing "invalid connection-type value returns 400"
       (mt/with-temp [:model/Database {id :id} {}]
-        (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
+        (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))
+    (testing "the workspace provisioning login is not offered, even when configured"
+      (mt/with-temp [:model/Database {id :id} {}]
+        (with-redefs [driver/available?   (constantly true)
+                      driver/can-connect? (constantly true)]
+          (mt/with-dynamic-fn-redefs [driver.conn/database-workspace-provisioning-details (constantly {:user "provisioner"})]
+            (is (mt/user-http-request :crowberto :get 400
+                                      (str "database/" id "/healthcheck?connection-type=workspace-provisioning")))))))))
 
 (defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
