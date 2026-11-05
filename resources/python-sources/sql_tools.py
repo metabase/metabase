@@ -668,6 +668,12 @@ WORKSPACE_TABLE_READING_FUNCTIONS = frozenset(
 )
 
 
+# Functions with a side effect a workspace query must not have, beyond `_SESSION_EFFECT_FUNCTIONS`: sequences, plus
+# whole families refused by prefix (large objects, advisory locks, sleeps).
+WORKSPACE_SIDE_EFFECT_FUNCTIONS = frozenset({"nextval", "setval"})
+WORKSPACE_SIDE_EFFECT_PREFIXES = ("lo_", "pg_advisory", "pg_try_advisory", "pg_sleep")
+
+
 def postgres_identifier(name: str, quoted: bool) -> str:
     """`name` as Postgres stores it: an unquoted name has its ASCII letters lower-cased (only A-Z), and every name is
     cut to 63 bytes on a UTF-8 character boundary."""
@@ -705,8 +711,8 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     replacements = json.loads(replacements_json)
     # Opt-in strictness, off unless a caller asks for it, so no other caller's behaviour changes:
-    # - strict_statements: rewrite only statements whose every table reference sqlglot can see (see
-    #   `check_strict_statement`), and raise on anything else.
+    # - strict_statements: rewrite only read-only queries whose every table reference sqlglot can see and that call
+    #   no side-effect function (see `check_strict_statement`), and raise on anything else.
     # - postgres_identifiers: a reference names the identifier Postgres would (`postgres_identifier`), so
     #   `public.mixed` does not match a key for the table `"Mixed"`.
     options = replacements.get("options") or {}
@@ -871,20 +877,25 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                    for key in table_map)
 
     def check_strict_statement(ast):
-        """Raise unless every table `ast` reads is one sqlglot can see, so the rewrite can't miss one:
-        - the statement is a query, an INSERT, UPDATE, DELETE or MERGE, or a CREATE TABLE ... AS query (WITH-wrapped
-          versions included, since sqlglot keeps WITH on the statement);
+        """Raise unless `ast` is a read-only query whose every table sqlglot can see, so the rewrite can't miss one and
+        the query changes nothing:
+        - the statement is a query (SELECT, WITH ... SELECT, UNION and the other set operations), with no write
+          (INSERT, UPDATE, DELETE, MERGE, CREATE, DROP, ALTER, TRUNCATE, COPY) and no SELECT ... INTO anywhere in it;
         - nothing in it is an unstructured command, whose text sqlglot does not look into;
-        - it calls no function that runs SQL handed to it as text (query_to_xml, dblink, ...), and passes no function
-          a string literal that parses as SQL naming a replaced table.
+        - it calls no function with a side effect (WORKSPACE_SIDE_EFFECT_FUNCTIONS and the shared session-effect
+          list), none that runs SQL handed to it as text (query_to_xml, dblink, ...), and passes no function a string
+          literal that parses as SQL naming a replaced table.
         SQL inside other string literals is not looked at."""
-        allowed = isinstance(ast, (exp.Query, exp.Insert, exp.Update, exp.Delete, exp.Merge)) or (
-            isinstance(ast, exp.Create)
-            and str(ast.args.get("kind") or "").upper() == "TABLE"
-            and isinstance(ast.expression, exp.Query))
-        if not allowed:
-            raise ValueError(f"Only queries, INSERT, UPDATE, DELETE, MERGE and CREATE TABLE ... AS can be rewritten, "
+        if not isinstance(ast, exp.Query):
+            raise ValueError(f"Only read-only queries (SELECT, WITH ... SELECT, UNION) can run on a workspace, "
                              f"not {type(ast).__name__.upper()}.")
+        write = ast.find(exp.Insert, exp.Update, exp.Delete, exp.Merge, exp.Create, exp.Drop, exp.Alter,
+                         exp.TruncateTable, exp.Copy)
+        if write:
+            raise ValueError(f"Only read-only queries can run on a workspace; this one contains "
+                             f"{type(write).__name__.upper()}.")
+        if any(select.args.get("into") for select in ast.find_all(exp.Select)):
+            raise ValueError("Only read-only queries can run on a workspace; SELECT ... INTO creates a table.")
         # Defense in depth: no allowed statement we have found parses with a command inside it.
         if ast.find(exp.Command):
             raise ValueError("The SQL contains a statement sqlglot can't read into (for example EXPLAIN, DECLARE, "
@@ -896,6 +907,12 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
         if executor:
             raise ValueError(f"The SQL calls {executor}, which runs SQL or reads a table named in text, so its "
                              f"tables can't be rewritten.")
+        side_effect = _session_effect_function(ast) or next(
+            (name for name in map(_function_name, ast.walk())
+             if name in WORKSPACE_SIDE_EFFECT_FUNCTIONS or (name or "").startswith(WORKSPACE_SIDE_EFFECT_PREFIXES)),
+            None)
+        if side_effect:
+            raise ValueError(f"The SQL calls {side_effect}, which has a side effect, so it can't run on a workspace.")
         for node in ast.walk():
             name = _function_name(node)
             if name is None:

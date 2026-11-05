@@ -234,7 +234,8 @@
                                                                 :strict-statements?    true
                                                                 :postgres-identifiers? true})
       (catch Exception e
-        (throw (ex-info (tru "This instance is a workspace, which must read remapped tables from their scratch copies, and it could not read which tables this SQL uses: {0}" (ex-message e))
+        (throw (ex-info (tru "This instance is a workspace, and it won''t run this SQL: {0}"
+                             (str/replace (ex-message e) #"^sqlglot call failed: (ValueError: )?" ""))
                         {:type qp.error-type/invalid-query}
                         e))))))
 

@@ -53,8 +53,9 @@
   ;; `rff` and `context` are not currently used by the writeback QP stuff, so these parameters can be ignored; we pass
   ;; in `nil` for these below.
   (letfn [(qp* [query _rff]
-            ;; on a workspace sidecar, write to scratch copies of remapped tables (failing closed like reads)
-            (let [query (qp.workspace-remapping/rewrite-query (substitute-params query))]
+            (let [query (substitute-params query)]
+              ;; on a workspace sidecar, native SQL is read-only: a write goes through a transform
+              (qp.workspace-remapping/check-not-workspace-write! query)
               ;; ok, now execute the query.
               (log/debug "Executing write query")
               (driver/execute-write-query! driver/*driver* (lib/->legacy-MBQL query))))]

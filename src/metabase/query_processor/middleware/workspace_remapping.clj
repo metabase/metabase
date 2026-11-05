@@ -17,6 +17,7 @@
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.performance :refer [mapv]]
    [metabase.workspaces.core :as ws]))
 
@@ -58,6 +59,14 @@
         (:qp/compiled query)
         (update-in [:qp/compiled :query] rewrite)))
     query))
+
+(defn check-not-workspace-write!
+  "Throw a 400 when `query`, a write query from an action, runs on a database the workspace covers: native SQL there
+  is read-only, and a write goes through a transform."
+  [query]
+  (when (query-remappings query)
+    (throw (ex-info (tru "This instance is a workspace, where native SQL is read-only. Write tables with a transform.")
+                    {:status-code 400}))))
 
 (defn apply-workspace-sql-remapping
   "Execution middleware: [[rewrite-query]] the query about to run."
