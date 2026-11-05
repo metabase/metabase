@@ -2367,6 +2367,7 @@ function TokenView({
         onRemove={isAnd ? onRemove : () => onReplace(opToken("and"))}
         onToggle={() => onReplace(opToken(isAnd ? "or" : "and"))}
         onLeave={onLeave}
+        onExtendSelection={onExtendSelection}
       />
     );
   }
@@ -2381,6 +2382,7 @@ function TokenView({
         style={{ opacity: Math.max(1 - depth * 0.25, 0.5) }}
         onRemove={onRemove}
         onLeave={onLeave}
+        onExtendSelection={onExtendSelection}
       />
     );
   }
@@ -2471,6 +2473,8 @@ type ConnectorProps = {
   onToggle?: () => void;
   /** Left or Right pressed on the focused connector. */
   onLeave: (isLeft: boolean) => void;
+  /** Prototype: Shift and an arrow key on the connector start a selection. */
+  onExtendSelection: (isLeft: boolean) => void;
 };
 
 /**
@@ -2486,6 +2490,7 @@ function Connector({
   onRemove,
   onToggle,
   onLeave,
+  onExtendSelection,
 }: ConnectorProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
     if (event.key === "Enter" && onToggle) {
@@ -2497,6 +2502,12 @@ function Connector({
     ) {
       event.preventDefault();
       onRemove();
+    } else if (
+      event.shiftKey &&
+      (event.key === "ArrowLeft" || event.key === "ArrowRight")
+    ) {
+      event.preventDefault();
+      onExtendSelection(event.key === "ArrowLeft");
     } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       onLeave(event.key === "ArrowLeft");

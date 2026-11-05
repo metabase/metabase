@@ -838,4 +838,53 @@ describe("ExpressionBar", () => {
       expect(Lib.filters(onChange.mock.calls[0][0], 0)).toHaveLength(0);
     });
   });
+
+  describe("selection from a connector", () => {
+    const setup = () => {
+      fetchMock.get("path:/api/prototype/field-categories", []);
+      fetchMock.get("path:/api/prototype/filter-usage", []);
+      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+      const findColumn = columnFinder(query, Lib.filterableColumns(query, 0));
+      const numberFilter = (columnName: string, value: number) =>
+        Lib.numberFilterClause({
+          operator: ">",
+          column: findColumn("ORDERS", columnName),
+          values: [value],
+        });
+      const queryWithOr = Lib.filter(
+        query,
+        0,
+        Lib.expressionClause("or", [
+          numberFilter("TOTAL", 10),
+          numberFilter("TAX", 5),
+        ]),
+      );
+      const onChange = jest.fn<void, [Lib.Query]>();
+      renderWithProviders(
+        <ExpressionBar
+          query={queryWithOr}
+          stageIndex={0}
+          isAutoApply
+          onChange={onChange}
+        />,
+      );
+      return { onChange };
+    };
+
+    it("Shift and an arrow key on a focused OR select it with the pill beside it", async () => {
+      const { onChange } = setup();
+      await act(async () =>
+        screen.getByRole("button", { name: "Remove OR" }).focus(),
+      );
+
+      await userEvent.keyboard("{Shift>}{ArrowLeft}{/Shift}");
+      await userEvent.keyboard("{Backspace}");
+
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(1);
+      expect(screen.getByRole("button", { name: "Tax" })).toBeInTheDocument();
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(Lib.filters(onChange.mock.calls[0][0], 0)).toHaveLength(1);
+    });
+  });
 });
