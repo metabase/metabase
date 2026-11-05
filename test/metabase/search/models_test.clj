@@ -67,7 +67,7 @@
                                                          :status              "verified"
                                                          :most_recent         true}]
           (reset! calls [])
-          (t2/delete! :model/Card id)
+          (t2/delete! :model/Card :id id)
           (is (= 1 (count @calls))))))))
 
 (deftest capture-fields-disabled-without-engine-test

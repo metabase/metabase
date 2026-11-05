@@ -181,7 +181,7 @@
   [args-fn]
   (reset-capture!)
   (swap! bird-capture-fields assoc :delete [:id])
-  (let [ids (t2/insert-returning-pks! ::bird [(bird 90 0 "a") (bird 90 0 "b")])]
+  (let [ids (t2/insert-returning-pks! ::bird [(bird 90 "a") (bird 90 "b")])]
     (reset! captured [])
     (try
       (t2/with-call-count [call-count]
@@ -216,12 +216,12 @@
             (pk-delete-statements! (fn [ids] [:id [:in ids] :group_id 90])))))
   (testing "a pk with a transform still takes the snapshot query"
     (reset-capture!)
-    (let [id (first (t2/insert-returning-pks! ::bird [(bird 91 0 "a")]))]
+    (let [id (first (t2/insert-returning-pks! ::bird [(bird 91 "a")]))]
       (reset! captured [])
       (derive ::pk-transformed-bird dml-capture/hook)
       (try
         (t2/with-call-count [call-count]
-          (t2/delete! ::pk-transformed-bird id)
+          (t2/delete! ::pk-transformed-bird :id id)
           (is (= 2 (call-count))))
         (finally
           (underive ::pk-transformed-bird dml-capture/hook)))
