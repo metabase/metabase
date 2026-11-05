@@ -353,7 +353,7 @@ describe("CodemirrorEditor", () => {
       databaseId: 1,
       suggestions: [["SEATS", "ACCOUNTS :type/Integer"]],
     });
-    setup();
+    setup({ engine: "h2" });
 
     await waitForRequestsToSettle();
     await userEvent.click(screen.getByRole("textbox"));
@@ -399,6 +399,7 @@ describe("CodemirrorEditor", () => {
       suggestions: [["order_mode", "ORDERS :type/Text"]],
     });
     setup({
+      engine: "h2",
       text: "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY ",
     });
 
