@@ -83,6 +83,7 @@ export function AnotherColumnForm({
             onChange={handleChangeColumnKey}
             styles={{ dropdown: { width: "100%" } }}
             comboboxProps={{
+              keepMounted: false,
               withinPortal: false,
               floatingStrategy: "fixed",
             }}
