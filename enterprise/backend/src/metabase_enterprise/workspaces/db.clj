@@ -68,6 +68,13 @@
   [database-name :- :string]
   (t2/select-pks-vec :model/Database :name [:auto/param database-name] {:order-by [[:id :asc]]}))
 
+(mu/defn databases-named :- [:sequential :map]
+  "The Databases named any of `database-names`."
+  [database-names :- [:sequential :string]]
+  (if (seq database-names)
+    (t2/select :model/Database :name [:in database-names])
+    []))
+
 (mu/defn database-name-and-engine :- [:maybe [:map [:name :string] [:engine :keyword]]]
   "The `:name` and `:engine` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]

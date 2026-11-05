@@ -5,7 +5,9 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.quick-task :as quick-task]
@@ -395,6 +397,56 @@
                 (ws/clear-instance-workspace!)))))))))
 
 ;;; ------------------------------------------------ Review round 2 ------------------------------------------------
+(def ^:private failing-api-keys
+  "An `api-keys:` section that passes its spec and fails while applying: its creator does not exist."
+  (str "  api-keys:\n"
+       "    - name: k\n"
+       "      key: mb_" (apply str (repeat 40 "a")) "\n"
+       "      creator: nobody@example.com\n"
+       "      group: admin\n"))
+
+
+(defn- sync-triggers
+  "The keys of the scheduled sync triggers of the database with `database-id`."
+  [database-id]
+  (->> (tu/scheduler-current-tasks)
+       (mapcat :triggers)
+       (map :key)
+       (filter #(str/ends-with? % (str ".trigger." database-id)))
+       sort
+       vec))
+
+
+(deftest rollback-reschedules-surviving-databases-test
+  (testing "a deletion the rollback undoes gets its database's sync triggers back: Quartz is outside the transaction"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (tu/with-temp-scheduler!
+          (#'task.sync-databases/job-init)
+          (let [workspace-name (mt/random-name)
+                victim-name    (mt/random-name)
+                workspace-id   (t2/insert-returning-pk! :model/Database {:name workspace-name, :engine :postgres, :details {}})
+                victim-id      (t2/insert-returning-pk! :model/Database {:name victim-name, :engine :postgres, :details {}})]
+            (try
+              (let [before (sync-triggers victim-id)]
+                (is (seq before))
+                (is (re-find #"Could not apply the api-keys section"
+                             (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
+                                                   {:config (str "version: 1\nconfig:\n  databases:\n"
+                                                                 "    - name: " victim-name "\n"
+                                                                 "      engine: postgres\n"
+                                                                 "      details: {}\n"
+                                                                 "      delete: DELETE_WITH_DEPENDENTS:" victim-name "\n"
+                                                                 "  workspace:\n    name: w\n    databases:\n"
+                                                                 "      " workspace-name ":\n        schemas:\n"
+                                                                 "          sales: mb__isolation_x_sales\n"
+                                                                 failing-api-keys)})))
+                (is (t2/exists? :model/Database :id victim-id))
+                (is (= before (sync-triggers victim-id))))
+              (finally
+                (t2/delete! :model/Database :id [:in [workspace-id victim-id]])))))))))
+
+
 (deftest scrub-leaves-short-values-test
   (testing "strings shorter than 4 characters stay in the message, so it stays readable; the password does not"
     (with-clean-workspace!

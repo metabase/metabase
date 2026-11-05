@@ -27,11 +27,13 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [metabase.warehouses.models.database :as warehouses.database]))
 
 (set! *warn-on-reflection* true)
 
@@ -207,6 +209,19 @@
       (catch Exception e
         (refuse! :databases databases e)))))
 
+(defn- reschedule-surviving-databases!
+  "After a rollback, re-schedule the sync triggers of each database `databases` (the `databases:` section) names that
+  is still there. Quartz keeps its triggers outside the app-DB transaction, so a deletion or update the rollback undid
+  may have removed or changed them. A failure is logged: the original error is the one the caller needs."
+  [databases]
+  (doseq [database (ws.db/databases-named (into [] (keep :name) databases))]
+    (try
+      (when (warehouses.database/should-auto-sync? (:id database))
+        (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
+      (catch Exception e
+        (log/warnf "Could not re-schedule the sync of database %d after a config.yml rolled back: %s"
+                   (:id database) (.getName (class e)))))))
+
 (defn apply-config-yml!
   "Apply `config-yml`, the text of a config.yml with a `workspace:` section, as a boot with it would: every section
   through the boot loader's section code, in the boot order, so the workspace is installed and locked last. First
@@ -218,15 +233,19 @@
   (let [{sections :config, :as parsed} (parse-config-yml config-yml)]
     (check-config! parsed)
     (test-connections! (:databases sections))
-    (ws/in-one-transaction!
-     (fn []
-       ;; every section the boot loader takes, for now; MBCWS-43 revisits which sections this endpoint should accept
-       (doseq [[section-name section] (advanced-config/sort-by-initialization-order sections)]
-         (try
-           (if (= :databases section-name)
-             ;; tested above, outside the transaction
-             (advanced-config/initialize-tested-databases! section)
-             (advanced-config/initialize-section! section-name section))
-           (catch Exception e
-             (refuse! section-name section e))))))
+    (try
+      (ws/in-one-transaction!
+       (fn []
+         ;; every section the boot loader takes, for now; MBCWS-43 revisits which sections this endpoint should accept
+         (doseq [[section-name section] (advanced-config/sort-by-initialization-order sections)]
+           (try
+             (if (= :databases section-name)
+               ;; tested above, outside the transaction
+               (advanced-config/initialize-tested-databases! section)
+               (advanced-config/initialize-section! section-name section))
+             (catch Exception e
+               (refuse! section-name section e))))))
+      (catch Throwable e
+        (reschedule-surviving-databases! (:databases sections))
+        (throw e)))
     (ws/instance-workspace)))
