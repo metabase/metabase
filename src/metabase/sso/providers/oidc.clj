@@ -142,6 +142,11 @@
                  (and (nil? verified) (true? (:assume-email-verified config)))))
         (trusted-email-domain? email (:trusted-email-domains config)))))
 
+(def ^:private linking-config-keys
+  "The keys of the OIDC config `login!` reads, which [[auth-identity/authenticate]] passes on as `:oidc-config`."
+  [:identity-provider-name :legacy-provider-name :auto-link-verified-email :trusted-email-domains
+   :assume-email-verified])
+
 (def ^:private identity-already-linked-failure
   {:success? false
    :error :identity-already-linked
@@ -326,7 +331,7 @@
                           {:success? true
                            :claims claims
                            :user-data user-data
-                           :oidc-config config
+                           :oidc-config (select-keys config linking-config-keys)
                            :provider-id (:provider-id user-data)}))))))))))
 
       ;; Initiate authorization flow

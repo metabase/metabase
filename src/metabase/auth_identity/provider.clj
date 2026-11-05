@@ -286,7 +286,7 @@
    [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
    [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
    [:provider-id {:optional true} [:maybe :string]]
-   [:provider-metadata {:optional true} [:maybe :map]]
+   [:provider-metadata {:optional true} [:maybe ::auth-identity.schema/auth-identity.metadata.oidc]]
    [:identity-provider-name {:optional true} [:maybe :string]]
    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
    [:groups {:optional true} [:maybe [:sequential :string]]]])
@@ -306,7 +306,13 @@
    [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]
-   [:oidc-config {:optional true} [:maybe :map]]
+   ;; the linking policy of an OIDC login; see metabase.sso.providers.oidc/linking-config-keys
+   [:oidc-config {:optional true} [:maybe [:map {:closed true}
+                                           [:identity-provider-name   {:optional true} [:maybe :string]]
+                                           [:legacy-provider-name     {:optional true} [:maybe :string]]
+                                           [:auto-link-verified-email {:optional true} [:maybe :boolean]]
+                                           [:trusted-email-domains    {:optional true} [:maybe [:sequential :string]]]
+                                           [:assume-email-verified    {:optional true} [:maybe :boolean]]]]]
    [:oidc-provider {:optional true} [:maybe :keyword]]
    [:oidc-provider-key {:optional true} [:maybe :string]]
    [:password {:optional true} [:maybe :string]]

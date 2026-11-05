@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -148,10 +149,11 @@
 
 (mu/defn merge-metadata!
   "Merge `metadata` into `auth-identity`'s existing `:metadata` JSON, optionally updating other `columns` too."
-  ([auth-identity metadata]
+  ([auth-identity :- ::auth-identity.schema/auth-identity
+    metadata      :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
    (merge-metadata! auth-identity metadata nil))
-  ([auth-identity :- [:map [:id ms/PositiveInt]]
-    metadata      :- [:maybe :map]
-    columns       :- [:maybe :map]]
+  ([auth-identity :- ::auth-identity.schema/auth-identity
+    metadata      :- [:maybe ::auth-identity.schema/auth-identity.metadata]
+    columns       :- [:maybe ::auth-identity.schema/auth-identity.update]]
    (auth-identity.db/update-auth-identity! (:id auth-identity)
                                            (assoc columns :metadata (merge (:metadata auth-identity) metadata)))))
