@@ -239,25 +239,31 @@
                aggregation-system-prompt)}
    {:role "user" :content (user-message request)}])
 
+(def ^:private no-match
+  {:expression nil :name nil :error "Nothing in this data matches that."})
+
+(defn- draft-formula
+  [request]
+  (let [{:keys [expression name]} (call-llm (llm-messages request))]
+    (if-let [expression (clean-expression expression)]
+      {:expression expression :name (clean-name name) :error nil}
+      no-match)))
+
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
   `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. The formula can
   reference what's available at the last stage of `dataset_query`, an MBQL 5 query without a metadata provider.
 
   Returns `{:expression <source or nil> :name <name or nil> :error <message or nil>}`; `:expression` is nil, with an
-  `:error`, when nothing in the query fits. Throws an HTTP error when the suggestion can't be made."
+  `:error`, when nothing in the query fits, including when it has no columns or metrics to offer. Throws an HTTP error when the suggestion can't be made."
   [{:keys [mode prompt dataset_query]}]
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
-  (let [query                     (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
-                                             dataset_query)
-        _                         (check-can-run-query! query)
-        _                         (check-mbql-last-stage! query)
-        {:keys [expression name]} (call-llm (llm-messages (assoc (formula-context query mode)
-                                                                 :mode   mode
-                                                                 :prompt prompt)))
-        expression                (clean-expression expression)]
-    {:expression expression
-     :name       (when expression (clean-name name))
-     :error      (when-not expression "Nothing in this data matches that.")}))
+  (let [query (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query)]
+    (check-can-run-query! query)
+    (check-mbql-last-stage! query)
+    (let [{:keys [columns metrics] :as context} (formula-context query mode)]
+      (if (or (seq columns) (seq metrics))
+        (draft-formula (assoc context :mode mode :prompt prompt))
+        no-match))))

@@ -241,6 +241,35 @@
       (is (column-listed? user "Product ID"))
       (is (not (column-listed? user "Total"))))))
 
+(deftest summary-formula-native-model-test
+  (testing "POST /api/metabot/summary-formula lists the columns of a query on a native model"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {model-id :id} {:type            :model
+                                                 :dataset_query   (lib/native-query mp "SELECT ID, TOTAL FROM ORDERS")
+                                                 :result_metadata [{:name         "ID"
+                                                                    :display_name "ID"
+                                                                    :base_type    :type/Integer}
+                                                                   {:name         "TOTAL"
+                                                                    :display_name "Total"
+                                                                    :base_type    :type/Float}]}]
+        (let [query (lib/query mp (lib.metadata/card mp model-id))
+              user  (sent-to-llm {:dataset_query (lib/prepare-for-serialization query)})]
+          (is (str/includes? user "[ID] (number)\n"))
+          (is (str/includes? user "[Total] (number)\n")))))))
+
+(deftest summary-formula-no-columns-test
+  (testing "POST /api/metabot/summary-formula doesn't call the LLM when the query has no columns or metrics"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}]
+        (let [query (lib/query mp (lib.metadata/card mp card-id))]
+          (do-with-llm
+           {:expression "Count" :name "Count"}
+           (fn [calls]
+             (is (= {:expression nil :name nil :error "Nothing in this data matches that."}
+                    (mt/user-http-request :rasta :post 200 endpoint
+                                          (request-body {:dataset_query (lib/prepare-for-serialization query)}))))
+             (is (empty? @calls)))))))))
+
 ;;; ------------------------------------------------- Permissions -----------------------------------------------
 
 (deftest summary-formula-query-permission-test
