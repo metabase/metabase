@@ -6,10 +6,13 @@
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase-enterprise.workspaces.workspace :as ws.workspace]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- raw-column
   "The stored text of `column` in the row of `table` where `key-column` is `id`, read through the table rather than
@@ -121,3 +124,83 @@
         (t2/delete! :model/Workspace :id ws-id)
         (mt/user-http-request :crowberto :delete 204 (str "database/" db-id))
         (is (not (t2/exists? :model/Database :id db-id)))))))
+
+(defn- new-workspace-database [ws-id db-id]
+  {:workspace_id     ws-id
+   :database_id      db-id
+   :isolation_id     (subs (str (random-uuid)) 0 8)
+   :database_details {}
+   :status           :provisioning
+   :lock_token       (ws.status/new-lock-token)})
+
+(deftest workspace-database-creation-waits-for-the-provisioning-login-test
+  (testing "creating a workspace database waits for a transaction holding the provisioning login's row"
+    (mt/with-temp [:model/Database  {db-id :id} {:engine :postgres, :details {}}
+                   :model/Workspace {ws-id :id} {:name "racing"}]
+      (testing "and finds no login when that transaction deleted it: a 409, and no orphan row"
+        (ws.db/save-provisioning-connection! db-id {} nil)
+        (let [locked  (promise)
+              deleter (future
+                        (t2/with-transaction [_conn]
+                          (ws.db/provisioning-connection-for-update db-id)
+                          (deliver locked true)
+                          (Thread/sleep 1000)
+                          (ws.db/delete-provisioning-connection! db-id)
+                          (System/nanoTime)))
+              _       @locked
+              creator (future
+                        [(try
+                           (ws.workspace/insert-workspace-database! (new-workspace-database ws-id db-id))
+                           :inserted
+                           (catch clojure.lang.ExceptionInfo e
+                             (select-keys (ex-data e) [:status-code :error-code])))
+                         (System/nanoTime)])
+              deleted-at          @deleter
+              [result created-at] @creator]
+          (is (= {:status-code 409, :error-code "provisioning_connection_missing"} result))
+          (is (< deleted-at created-at))
+          (is (zero? (t2/count :model/WorkspaceDatabase :database_id db-id)))))
+      (testing "and inserts once that transaction committed without deleting it"
+        (ws.db/save-provisioning-connection! db-id {} nil)
+        (let [locked  (promise)
+              holder  (future
+                        (t2/with-transaction [_conn]
+                          (ws.db/provisioning-connection-for-update db-id)
+                          (deliver locked true)
+                          (Thread/sleep 1000)
+                          (System/nanoTime)))
+              _       @locked
+              creator (future
+                        (ws.workspace/insert-workspace-database! (new-workspace-database ws-id db-id))
+                        (System/nanoTime))]
+          (is (< @holder @creator))
+          (is (= 1 (t2/count :model/WorkspaceDatabase :database_id db-id)))
+          (t2/delete! :model/WorkspaceDatabase :database_id db-id)
+          (ws.db/delete-provisioning-connection! db-id))))))
+
+(deftest delete-database-waits-for-a-workspace-being-created-test
+  (testing "deleting a Database while a workspace database is being created on it is a 409 naming it, not a 500"
+    ;; plain inserts rather than mt/with-temp, which leaves rows of its own that make the delete wait for the creator
+    ;; for other reasons and so hide the race
+    (let [db-id    (t2/insert-returning-pk! :model/Database {:name (mt/random-name), :engine :postgres, :details {}})
+          ws-id    (ws.db/insert-workspace! "being created" nil)
+          _        (ws.db/save-provisioning-connection! db-id {} nil)
+          inserted (promise)
+          creator  (future
+                     (t2/with-transaction [_conn]
+                       (ws.workspace/insert-workspace-database! (new-workspace-database ws-id db-id))
+                       (deliver inserted true)
+                       (Thread/sleep 2000)))]
+      (try
+        @inserted
+        (is (=? {:status-code 409, :error-code "workspaces_exist", :workspaces [{:id ws-id}]}
+                (try
+                  (t2/delete! :model/Database :id db-id)
+                  :deleted
+                  (catch Exception e
+                    (ex-data e)))))
+        @creator
+        (is (t2/exists? :model/Database :id db-id))
+        (finally
+          (t2/delete! :model/Workspace :id ws-id)
+          (t2/delete! :model/Database :id db-id))))))

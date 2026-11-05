@@ -82,8 +82,9 @@
     (when-not (driver.u/supports? engine :workspace lib-db)
       (throw (ex-info (tru "Workspaces are not supported on {0} databases." (name engine))
                       {:status-code 400, :error-code "workspaces_unsupported"})))
-    ;; The row lock is held until commit. Creating a workspace database inserts a row that references this one, which
-    ;; waits for the lock, so no workspace can appear between the check below and the write.
+    ;; The row lock is held until commit. Creating a workspace database takes the same lock first (see
+    ;; [[metabase-enterprise.workspaces.workspace/insert-workspace-database!]]), so no workspace can appear between the
+    ;; check below and the write. The foreign key alone would not do: H2 does not lock the parent row for it.
     (t2/with-transaction [_conn]
       (let [existing (:details (ws.db/provisioning-connection-for-update database-id))]
         (when-not (and existing (same-login? existing))
@@ -123,4 +124,7 @@
   warehouse users outlive the feature."
   :feature :none
   [database-id]
+  ;; Runs in the Database delete's transaction (Toucan runs before-delete hooks in it), so the lock is held through the
+  ;; delete: a workspace database created meanwhile waits for it, then finds no provisioning login.
+  (ws.db/provisioning-connection-for-update database-id)
   (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before the database.")))

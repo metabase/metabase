@@ -4,11 +4,30 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.status :as ws.status]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(mu/defn insert-workspace-database!
+  "Insert a WorkspaceDatabase and return it. Every creation of a workspace database goes through here: it locks the
+  database's provisioning connection row first, in the same transaction, so it cannot interleave with a change or
+  deletion of that login (see [[metabase-enterprise.workspaces.provisioning-connection/save!]]). Throws a 409
+  `provisioning_connection_missing` when the database has none."
+  [row :- [:map {:closed true}
+           [:workspace_id     ms/PositiveInt]
+           [:database_id      ms/PositiveInt]
+           [:isolation_id     :string]
+           [:database_details ms/DatabaseDetails]
+           [:status           [:enum :provisioning :provisioned :deprovisioning :failed]]
+           [:lock_token       :string]]]
+  (t2/with-transaction [_conn]
+    (when-not (ws.db/provisioning-connection-for-update (:database_id row))
+      (throw (ex-info (tru "This database has no workspace provisioning connection.")
+                      {:status-code 409, :error-code "provisioning_connection_missing", :database-id (:database_id row)})))
+    (ws.db/insert-workspace-database! row)))
 
 (mu/defn insert-workspace-schema!
   "Insert a WorkspaceSchema for `main-schema` in the WorkspaceDatabase with `workspace-database-id`, in status `status`,
