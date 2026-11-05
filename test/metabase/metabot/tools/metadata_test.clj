@@ -295,7 +295,10 @@
                 (testing "the output names the card as a question and includes its saved query with the filter"
                   (is (str/includes? output (str "<metabase_question id=\"" question-id "\"")))
                   (is (str/includes? output "The cards in <questions> are saved questions, not metrics or models."))
-                  (is (re-find #"(?s)<query>.*\"ORDERS\".*\"QUANTITY\".*</query>" output)))))
+                  (is (re-find #"(?s)<query>.*\"ORDERS\".*\"QUANTITY\".*</query>" output)))
+                (testing "the output includes the question's fields"
+                  (is (str/includes? output "### Fields"))
+                  (is (str/includes? output "name=\"QUANTITY\"")))))
             (doseq [data-source ["metric" "model"]]
               (testing (str profile " get_field_values with data_source " data-source)
                 (is (=? {:structured-output {:field_id (mt/id :orders :quantity) :result-type :field-metadata}}
