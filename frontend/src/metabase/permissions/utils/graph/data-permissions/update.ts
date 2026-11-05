@@ -60,11 +60,7 @@ export function updatePermission(
   } else {
     newValue = value;
   }
-  for (let i = 0; i < fullPath.length; i++) {
-    if (typeof getAtPath(permissions, fullPath.slice(0, i)) === "string") {
-      permissions = setAtPath(permissions, fullPath.slice(0, i), {});
-    }
-  }
+  // `setAtPath` replaces string ancestors (e.g. `schemas: "all"`) with objects.
   return setAtPath(permissions, fullPath, newValue);
 }
 

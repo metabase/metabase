@@ -617,7 +617,7 @@ describe("dashboard reducers", () => {
           onUpdateDashCardVisualizationSettings(999, { "card.title": "New" }),
         );
 
-        expect(state.dashcards).toEqual(initial.dashcards);
+        expect(state.dashcards).toBe(initial.dashcards);
       });
     });
 
@@ -682,7 +682,7 @@ describe("dashboard reducers", () => {
           }),
         );
 
-        expect(state.dashcards).toEqual(initial.dashcards);
+        expect(state.dashcards).toBe(initial.dashcards);
       });
     });
   });
