@@ -570,6 +570,34 @@
               (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
               (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
 
+(defn- edit-viewed-sql!
+  "Run an agent turn in which the mocked LLM changes `1` to `2` with `edit_sql_query`, in the query whose ID the
+  viewing context in `context` shows first. Return that query ID and the parts of the turn."
+  [context]
+  (let [shown-id (atom nil)
+        calls    (atom 0)
+        parts    (mt/with-dynamic-fn-redefs
+                   [openrouter/openrouter
+                    (fn [request]
+                      (if (= 1 (swap! calls inc))
+                        (let [query-id (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request)))]
+                          (reset! shown-id query-id)
+                          (mut/mock-llm-response
+                           [{:type      :tool-input
+                             :id        "edit"
+                             :function  "edit_sql_query"
+                             :arguments {:query_id  query-id
+                                         :checklist "Checked"
+                                         :title     "Results"
+                                         :edits     [{:old_string "1" :new_string "2"}]}}]))
+                        (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                   (into [] (run-agent-loop {:messages   [{:role :user :content "Select 2 instead"}]
+                                             :state      {}
+                                             :profile-id :internal
+                                             :context    context})))]
+    {:shown-id @shown-id
+     :parts    parts}))
+
 (deftest edit-viewed-saved-sql-card-test
   ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
   (mt/with-current-user (mt/user->id :crowberto)
@@ -578,46 +606,50 @@
                                          llm-metabot-provider test-provider]
         (doseq [card-type ["question" "model"]]
           (testing (str "a saved SQL " card-type " on screen")
-            (let [card-id     157
-                  context     {:capabilities    ["permission:write_sql_queries"]
-                               :user_is_viewing [{:type  card-type
-                                                  :id    card-id
-                                                  :query {:lib/type :mbql/query
-                                                          :database db-id
-                                                          :stages   [{:lib/type :mbql.stage/native
-                                                                      :native   "SELECT 1"}]}}]}
-                  shown-id    (atom nil)
-                  calls       (atom 0)
-                  parts       (mt/with-dynamic-fn-redefs
-                                [openrouter/openrouter
-                                 (fn [request]
-                                   (if (= 1 (swap! calls inc))
-                                     ;; The model edits the query by the ID that the viewing context shows it.
-                                     (let [query-id (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request)))]
-                                       (reset! shown-id query-id)
-                                       (mut/mock-llm-response
-                                        [{:type      :tool-input
-                                          :id        "edit"
-                                          :function  "edit_sql_query"
-                                          :arguments {:query_id  query-id
-                                                      :checklist "Checked"
-                                                      :title     "Results"
-                                                      :edits     [{:old_string "1" :new_string "2"}]}}]))
-                                     (mut/mock-llm-response [{:type :text :text "Done."}])))]
-                                (into [] (run-agent-loop {:messages   [{:role :user :content "Select 2 instead"}]
-                                                          :state      {}
-                                                          :profile-id :internal
-                                                          :context    context})))
-                  edit-result (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %))) (:result %)) parts)
-                  state       (some #(when (= "state" (:data-type %)) (:data %)) parts)]
+            (let [card-id                  157
+                  {:keys [shown-id parts]} (edit-viewed-sql!
+                                            {:capabilities    ["permission:write_sql_queries"]
+                                             :user_is_viewing [{:type  card-type
+                                                                :id    card-id
+                                                                :query {:lib/type :mbql/query
+                                                                        :database db-id
+                                                                        :stages   [{:lib/type :mbql.stage/native
+                                                                                    :native   "SELECT 1"}]}}]})
+                  edit-result              (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %)))
+                                                    (:result %))
+                                                 parts)
+                  state                    (some #(when (= "state" (:data-type %)) (:data %)) parts)]
               (testing "the viewing context shows a query ID for the card's SQL"
-                (is (some? @shown-id)))
+                (is (some? shown-id)))
               (testing "edit_sql_query edits the SQL of the card on screen"
                 (is (nil? (:error edit-result)) (:output edit-result))
-                (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries @shown-id])))))
+                (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries shown-id])))))
               (testing "the card's own ID is not a query ID, so run_query still runs the saved card"
-                (is (not= (str card-id) @shown-id))
+                (is (not= (str card-id) shown-id))
                 (is (not (contains? (:queries state) (str card-id))))))))))))
+
+(deftest edit-sql-model-in-model-editor-test
+  (testing "an edit of a SQL model's query goes to the SQL editor of the model editor"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [{:keys [parts]} (edit-viewed-sql!
+                                 {:capabilities    ["permission:write_sql_queries"]
+                                  :user_is_viewing [{:type  "model"
+                                                     :id    157
+                                                     :query {:lib/type :mbql/query
+                                                             :database db-id
+                                                             :stages   [{:lib/type :mbql.stage/native
+                                                                         :native   "SELECT 1"}]}}
+                                                    {:type    "code_editor"
+                                                     :buffers [{:id     "qb"
+                                                                :source {:language "sql" :database_id db-id}
+                                                                :cursor {:line 1 :column 1}}]}]})
+                data-parts      (into {} (comp (filter :data-type) (map (juxt :data-type :data))) parts)]
+            (is (=? {:buffer_id "qb" :mode "rewrite" :value "SELECT 2"}
+                    (get data-parts "code_edit")))
+            (is (not (contains? data-parts "generated_entity")))))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
