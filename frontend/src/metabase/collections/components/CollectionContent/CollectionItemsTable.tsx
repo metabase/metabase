@@ -139,11 +139,29 @@ const CollectionNoResults = ({ hasSearchText }: { hasSearchText: boolean }) => (
   </Box>
 );
 
-export const CollectionItemsTable = (props: CollectionItemsTableProps) => (
-  // Remounting per collection starts search, type filter, sorting, and page
-  // over for the new collection before its first request, with no effects.
-  <CollectionItemsTableForCollection key={props.collectionId} {...props} />
-);
+export const CollectionItemsTable = (props: CollectionItemsTableProps) => {
+  // The sort order follows the user from collection to collection; search,
+  // type filter and page start over per collection through the remount.
+  const [itemsSorting, setItemsSorting] = useState<
+    SortingOptions<ListCollectionItemsSortColumn>
+  >(() => getDefaultSortingOptions(props.collection));
+
+  return (
+    <CollectionItemsTableForCollection
+      key={props.collectionId}
+      {...props}
+      itemsSorting={itemsSorting}
+      onItemsSortingChange={setItemsSorting}
+    />
+  );
+};
+
+type CollectionItemsTableForCollectionProps = CollectionItemsTableProps & {
+  itemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
+  onItemsSortingChange: (
+    sorting: SortingOptions<ListCollectionItemsSortColumn>,
+  ) => void;
+};
 
 const CollectionItemsTableForCollection = ({
   bookmarks,
@@ -166,9 +184,11 @@ const CollectionItemsTableForCollection = ({
   toggleItem,
   typeFilter,
   onTypeFilterChange,
+  itemsSorting,
+  onItemsSortingChange,
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
-}: CollectionItemsTableProps) => {
+}: CollectionItemsTableForCollectionProps) => {
   const [searchText, setSearchText] = useState("");
   const [selectedFilters, setSelectedFilters] = useUncontrolled<
     CollectionItemModel[] | null
@@ -186,10 +206,6 @@ const CollectionItemsTableForCollection = ({
   const trimmedSearchText =
     searchText.trim().length > 0 ? debouncedSearchText.trim() : "";
   const previousTrimmedSearchText = usePrevious(trimmedSearchText);
-
-  const [itemsSorting, setItemsSorting] = useState<
-    SortingOptions<ListCollectionItemsSortColumn>
-  >(() => getDefaultSortingOptions(collection));
 
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
@@ -227,10 +243,10 @@ const CollectionItemsTableForCollection = ({
 
   const handleItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions<ListCollectionItemsSortColumn>) => {
-      setItemsSorting(sortingOpts);
+      onItemsSortingChange(sortingOpts);
       setPage(0);
     },
-    [setPage],
+    [onItemsSortingChange, setPage],
   );
 
   const scope = getCollectionItemsScope(collection, {

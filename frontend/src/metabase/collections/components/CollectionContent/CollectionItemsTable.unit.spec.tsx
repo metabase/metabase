@@ -161,6 +161,12 @@ function getItemsCalls(collectionId: CollectionId = collection.id) {
   );
 }
 
+function getSortDirections(collectionId: CollectionId = collection.id) {
+  return getItemsCalls(collectionId).map((call) =>
+    new URL(call.url).searchParams.get("sort-direction"),
+  );
+}
+
 function getMetadataCalls(collectionId: CollectionId = collection.id) {
   return fetchMock.callHistory.calls(
     `path:/api/collection/${collectionId}/items/metadata`,
@@ -1038,6 +1044,34 @@ describe("CollectionItemsTable", () => {
 
     advanceSearchDebounce();
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
+  });
+
+  it("keeps the sort order when navigating to another collection", async () => {
+    const nextCollection = createMockCollection({ id: 2, can_write: false });
+    setupCollectionItemsEndpoint({ collection, collectionItems });
+    setupCollectionItemsEndpoint({
+      collection: nextCollection,
+      collectionItems: createFillerItems(3, {
+        collection_id: nextCollection.id,
+      }),
+    });
+    renderWithProviders(
+      <CollectionNavigationTest nextCollection={nextCollection} />,
+      { withRouter: true, withDND: true },
+    );
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Name"));
+    await waitFor(() => {
+      expect(getSortDirections(collection.id).at(-1)).toBe("desc");
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open next collection" }),
+    );
+
+    expect(await screen.findByText("Extra card 1")).toBeInTheDocument();
+    expect(getSortDirections(nextCollection.id)).toEqual(["desc"]);
   });
 
   it("does not show the previous collection's toolbar while a smaller collection loads", async () => {
