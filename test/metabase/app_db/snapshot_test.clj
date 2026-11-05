@@ -151,7 +151,7 @@
 ;; answer re-running the original CREATE would give. Views have no defaults, so the column default goes with it.
 (def ^:private view-column-ignored-metadata
   "Metadata a view column carries that a restored dump cannot reproduce."
-  #{:nullable :is_nullable :column_def})
+  #{:column_def :is_nullable :nullable})
 
 (defn- view-security
   "MySQL's `SQL SECURITY` for each view, from upper-cased view name to `DEFINER` or `INVOKER`.
@@ -345,24 +345,25 @@
     (if (<= (.length s) i)
       (when (and (zero? depth) (not in-string?) (nil? start))
         acc)
-      (let [c (.charAt s i)]
+      (let [c          (.charAt s i)
+            separator? (or (= c \,) (= c \;) (Character/isWhitespace c))]
         (cond
           ;; a doubled '' reads as two toggles, which lands back inside the string, the same as escaping it does
-          in-string? (case c
-                       \\ (recur (+ i 2) depth true start acc)
-                       \' (recur (inc i) depth false start acc)
-                       (recur (inc i) depth true start acc))
-          (= c \')   (recur (inc i) depth true start acc)
-          (= c \()   (recur (inc i) (inc depth) false (or start i) acc)
-          (= c \))   (let [depth (dec depth)]
-                       (if (zero? depth)
-                         (recur (inc i) depth false nil (conj acc (subs s start (inc i))))
-                         (recur (inc i) depth false start acc)))
+          in-string?    (case c
+                          \\ (recur (+ i 2) depth true start acc)
+                          \' (recur (inc i) depth false start acc)
+                          (recur (inc i) depth true start acc))
+          (= c \')      (recur (inc i) depth true start acc)
+          (= c \()      (recur (inc i) (inc depth) false (or start i) acc)
+          (= c \))      (let [depth (dec depth)]
+                          (if (zero? depth)
+                            (recur (inc i) depth false nil (conj acc (subs s start (inc i))))
+                            (recur (inc i) depth false start acc)))
           ;; outside a tuple only the separators between them and the terminator ending the list may appear;
           ;; anything else means this is not a plain list of tuples and is left alone
           (some? start) (recur (inc i) depth false start acc)
-          (or (= c \,) (= c \;) (Character/isWhitespace c)) (recur (inc i) depth false start acc)
-          :else nil)))))
+          separator?    (recur (inc i) depth false start acc)
+          :else         nil)))))
 
 (defn- single-row-inserts
   "A multi-row `INSERT ... VALUES (...),(...)` split into one statement per row, as a vector.
@@ -537,13 +538,13 @@
 (deftest single-row-inserts-test
   (are [statement expected] (= expected (single-row-inserts statement))
     ;; one statement per row, each with the full prefix
-    "INSERT INTO t VALUES (1, 'a'), (2, 'b')"     ["INSERT INTO t VALUES (1, 'a')" "INSERT INTO t VALUES (2, 'b')"]
+    "INSERT INTO t VALUES (1, 'a'), (2, 'b')"    ["INSERT INTO t VALUES (1, 'a')" "INSERT INTO t VALUES (2, 'b')"]
     ;; commas, parens and doubled quotes inside a value are not boundaries
     "INSERT INTO t VALUES ('a, (b)'), ('it''s')" ["INSERT INTO t VALUES ('a, (b)')" "INSERT INTO t VALUES ('it''s')"]
     ;; a single row, or anything that is not a plain list of tuples, is left alone
-    "INSERT INTO t VALUES (1)"                    ["INSERT INTO t VALUES (1)"]
-    "INSERT INTO t VALUES (1), (2) RETURNING *"   ["INSERT INTO t VALUES (1), (2) RETURNING *"]
-    "CREATE TABLE t (id INT, name TEXT)"          ["CREATE TABLE t (id INT, name TEXT)"]))
+    "INSERT INTO t VALUES (1)"                   ["INSERT INTO t VALUES (1)"]
+    "INSERT INTO t VALUES (1), (2) RETURNING *"  ["INSERT INTO t VALUES (1), (2) RETURNING *"]
+    "CREATE TABLE t (id INT, name TEXT)"         ["CREATE TABLE t (id INT, name TEXT)"]))
 
 (deftest first-difference-test
   (are [checked-in regenerated expected] (= expected (first-difference checked-in regenerated))
@@ -555,13 +556,13 @@
 (deftest unstable-values-masked-test
   (are [statement expected] (= expected (unstable-values-masked statement))
     ;; values two regenerations disagree on
-    "VALUES ('2026-11-03 12:00:00.123+00')"              "VALUES ('<timestamp>')"
-    "VALUES ('0d305ac41f1d4d0cb247e')"                   "VALUES ('<entity-id>')"
+    "VALUES ('2026-11-03 12:00:00.123+00')"             "VALUES ('<timestamp>')"
+    "VALUES ('0d305ac41f1d4d0cb247e')"                  "VALUES ('<entity-id>')"
     "{\"id\":\"8f14e45f-ceea-467a-9575-cbd67bb3ef0a\"}" "{\"id\":\"<uuid>\"}"
     ;; shapes that only count as unstable inside a SQL literal, or at full length, are left alone
-    "VALUES ('2026-11-03')"                              "VALUES ('2026-11-03')"
-    "VALUES ('0d305ac41f1d4d0cb247')"                    "VALUES ('0d305ac41f1d4d0cb247')"
-    "{\"key\":\"0d305ac41f1d4d0cb247e\"}"                "{\"key\":\"0d305ac41f1d4d0cb247e\"}")
+    "VALUES ('2026-11-03')"                             "VALUES ('2026-11-03')"
+    "VALUES ('0d305ac41f1d4d0cb247')"                   "VALUES ('0d305ac41f1d4d0cb247')"
+    "{\"key\":\"0d305ac41f1d4d0cb247e\"}"               "{\"key\":\"0d305ac41f1d4d0cb247e\"}")
   (testing "a password hash is masked inside the JSON that holds it"
     (is (= "{\"password_hash\":\"<password-hash>\"}"
            (unstable-values-masked
