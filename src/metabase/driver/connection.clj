@@ -64,7 +64,7 @@
 
 (def connection-types
   "All valid values for [[*connection-type*]]."
-  [:default :write-data :transform])
+  [:default :write-data :transform :workspace-provisioning])
 
 (mr/def ::connection-type
   (into [:enum] connection-types))
@@ -79,9 +79,11 @@
      are taken into account when configured), but resolved through a separate connection pool
      whose c3p0 leak-detector tolerates transform-length runtimes. Set by
      [[with-transform-connection]] from the transform runner.
+   - `:workspace-provisioning` - the database's workspace provisioning login merged over `:details`
+     (if configured). Set by [[with-workspace-provisioning-connection]] around workspace DDL.
 
-   Bind via [[with-write-connection]] or [[with-transform-connection]],
-   not directly."
+   Bind via [[with-write-connection]], [[with-transform-connection]] or
+   [[with-workspace-provisioning-connection]], not directly."
   :default)
 
 (defn do-with-write-connection
@@ -115,6 +117,21 @@
   [& body]
   `(do-with-transform-connection (fn [] ~@body)))
 
+(defn do-with-workspace-provisioning-connection
+  "Functional core of [[with-workspace-provisioning-connection]]."
+  [thunk]
+  (binding [*connection-type* :workspace-provisioning]
+    (thunk)))
+
+(defmacro with-workspace-provisioning-connection
+  "Establishes a workspace-provisioning connection context for body.
+
+   [[effective-details]] calls within this scope take the database's workspace provisioning login
+   into account (if configured): the login that creates workspace users and scratch schemas and grants
+   them access, through a pool of its own."
+  [& body]
+  `(do-with-workspace-provisioning-connection (fn [] ~@body)))
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
   false)
@@ -129,6 +146,13 @@
 
 (defenterprise database-write-data-details
   "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.
+   OSS implementation always returns `nil`."
+  metabase-enterprise.connection-overlays.core
+  [_database]
+  nil)
+
+(defenterprise database-workspace-provisioning-details
+  "Returns the workspace provisioning login details for a database, or `nil` if none is configured.
    OSS implementation always returns `nil`."
   metabase-enterprise.connection-overlays.core
   [_database]
@@ -150,9 +174,10 @@
    (see [[connection-pool-type]]) so the pool properties can differ."
   [database connection-type]
   (case connection-type
-    :default    nil
-    :write-data (database-write-data-details database)
-    :transform  (database-write-data-details database)))
+    :default                nil
+    :write-data             (database-write-data-details database)
+    :transform              (database-write-data-details database)
+    :workspace-provisioning (database-workspace-provisioning-details database)))
 
 (defn- resolve-effective-type
   "Maps a requested `connection-type` plus whether an `overlay` was resolved to the effective
@@ -205,9 +230,10 @@
   [database connection-type]
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
-      :default    (:details database)
-      :write-data (database-write-data-details database)
-      :transform  (:details database))))
+      :default                (:details database)
+      :write-data             (database-write-data-details database)
+      :transform              (:details database)
+      :workspace-provisioning (database-workspace-provisioning-details database))))
 
 (defn connection-telemetry-info
   "A human-readable description of the current connection context, for logging only. Prose, not a

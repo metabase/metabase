@@ -137,8 +137,9 @@
 
 (def ^:private pool-type->name-suffix
   "Suffix appended to the pool name for each non-default [[driver.conn/connection-pool-type]]."
-  {:write-data "-write"
-   :transform  "-transform"})
+  {:write-data             "-write"
+   :transform              "-transform"
+   :workspace-provisioning "-workspace-provisioning"})
 
 (mu/defn- pool-data-source-name :- :string
   "The c3p0 `dataSourceName` for `database`'s pool of the current connection type: `db-<id>-<driver>-<name>`, with

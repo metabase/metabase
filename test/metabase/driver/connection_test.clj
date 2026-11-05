@@ -78,7 +78,30 @@
     (driver.conn/with-write-connection
       (is (= "the write-data connection" (driver.conn/connection-telemetry-info))))
     (driver.conn/with-transform-connection
-      (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
+      (is (= "the transform connection" (driver.conn/connection-telemetry-info))))
+    (driver.conn/with-workspace-provisioning-connection
+      (is (= "the workspace-provisioning connection" (driver.conn/connection-telemetry-info))))))
+
+(deftest workspace-provisioning-connection-test
+  (let [details      {:host "read-host" :port 5432 :user "reader" :password "r"}
+        provisioning {:user "provisioner" :password "p"}
+        database     {:lib/type :metadata/database
+                      :id       1
+                      :details  details}]
+    (testing "with a provisioning login configured, the scope resolves it over :details in a pool of its own"
+      (mt/with-dynamic-fn-redefs [driver.conn/database-workspace-provisioning-details (constantly provisioning)]
+        (driver.conn/with-workspace-provisioning-connection
+          (is (=? (merge details provisioning) (driver.conn/effective-details database)))
+          (is (= :workspace-provisioning (driver.conn/connection-pool-type database))))
+        (testing "details-for-exact-type returns only the provisioning login"
+          (is (= provisioning (driver.conn/details-for-exact-type database :workspace-provisioning))))
+        (testing "outside the scope the provisioning login is not used"
+          (is (=? details (driver.conn/effective-details database)))
+          (is (= :default (driver.conn/connection-pool-type database))))))
+    (testing "without a provisioning login, the scope resolves :details in the default pool"
+      (driver.conn/with-workspace-provisioning-connection
+        (is (=? details (driver.conn/effective-details database)))
+        (is (= :default (driver.conn/connection-pool-type database)))))))
 
 (deftest type-resolved-metric-test
   (mt/when-ee-evailable
