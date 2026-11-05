@@ -351,7 +351,7 @@ export function SuggestionInput({
           value={text}
           placeholder={placeholder}
           autoFocus
-          size={Math.max(text.length, placeholder.length, placeholder ? 4 : 1)}
+          size={getInputSize(text, placeholder)}
           data-empty={(text === "" && placeholder === "") || undefined}
           onChange={(event) => {
             onTextChange(event.currentTarget.value);
@@ -490,6 +490,17 @@ function matchesGroupLabel(label: string | undefined, searchText: string) {
         (index === 0 || !/[a-z0-9]/.test(lowerLabel[index - 1])) &&
         lowerLabel.startsWith(searchText, index),
     );
+}
+
+/**
+ * The width of the input in characters, where CSS `field-sizing` isn't
+ * supported: the typed text, or the placeholder while nothing is typed.
+ */
+function getInputSize(text: string, placeholder: string) {
+  if (text.length > 0) {
+    return text.length;
+  }
+  return placeholder.length > 0 ? Math.max(placeholder.length, 4) : 1;
 }
 
 function isTextInput(target: EventTarget) {

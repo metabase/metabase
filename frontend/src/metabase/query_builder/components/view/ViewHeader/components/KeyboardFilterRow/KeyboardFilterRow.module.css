@@ -248,8 +248,12 @@
   color: var(--mb-color-text-secondary);
 }
 
+/* The input of a pill's part, like the operator: as wide as its text, or
+   as its placeholder while it's empty. `field-sizing` isn't in Firefox; there
+   the `size` attribute (SuggestionInput) does the same, less exactly. */
 .input {
-  min-width: 2rem;
+  min-width: 1ch;
+  field-sizing: content;
   border: none;
   outline: none;
   background: transparent;
