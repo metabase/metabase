@@ -237,8 +237,8 @@
                      (advisory-fixture {:advisory_id  "SC-AUDIT-001"
                                         :severity     "high"
                                         :match_status "active"})]
-        (with-redefs [channel.settings/email-configured?   (constantly true)
-                      notification.send/send-notification! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [channel.settings/email-configured?   (constantly true)
+                                    notification.send/send-notification! (constantly nil)]
           (notification/notify-advisory! advisory)
           (is (=? {:topic   :security-advisory-match
                    :user_id nil
