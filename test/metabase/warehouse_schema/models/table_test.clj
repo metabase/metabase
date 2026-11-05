@@ -744,6 +744,39 @@
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
 
+(deftest hidden-table-serdes-import-over-unhidden-table-test
+  (testing "Importing an export of a hidden table after the table was un-hidden restores it (#77628)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
+                   :model/Table {table-id :id} {:db_id db-id}]
+      (t2/update! :model/Table :id table-id {:visibility_type :hidden})
+      (let [extracted (serdes/extract-one "Table" {} (t2/select-one :model/Table :id table-id))]
+        (t2/update! :model/Table :id table-id {:visibility_type nil})
+        (serdes/load-one! extracted (t2/select-one :model/Table :id table-id))
+        (is (= {:visibility_type :hidden, :data_layer :hidden}
+               (t2/select-one [:model/Table :visibility_type :data_layer] :id table-id)))))))
+
+(deftest update-both-visibility-fields-test
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (testing "outside deserialization, changing both fields is rejected"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot update both visibility_type and data_layer"
+           (t2/update! :model/Table :id table-id {:visibility_type :hidden, :data_layer :hidden}))))
+    (testing "during deserialization"
+      (binding [mi/*deserializing?* true]
+        (testing "a matching pair is stored as given"
+          (t2/update! :model/Table :id table-id {:visibility_type :retired, :data_layer :hidden})
+          (is (= {:visibility_type :retired, :data_layer :hidden}
+                 (t2/select-one [:model/Table :visibility_type :data_layer] :id table-id)))
+          (t2/update! :model/Table :id table-id {:visibility_type nil, :data_layer :final})
+          (is (= {:visibility_type nil, :data_layer :final}
+                 (t2/select-one [:model/Table :visibility_type :data_layer] :id table-id))))
+        (testing "a conflicting pair is still rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cannot update both visibility_type and data_layer"
+               (t2/update! :model/Table :id table-id {:visibility_type :hidden, :data_layer :internal}))))))))
+
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
     (testing "via the model before-insert (the path sync uses)"
