@@ -51,6 +51,11 @@
   [^Integer id]
   (format "%s/question/%d" (site-url) id))
 
+(defn document-url
+  "Return an appropriate URL for a `Document` with ID."
+  [^Integer id]
+  (format "%s/document/%d" (site-url) id))
+
 (def ^:dynamic *dashcard-parameters*
   "Bind dashboard parameters for dashcard deeplinked urls"
   {})

@@ -426,3 +426,16 @@
       (let [[query & params] (sql/format (dashboard-card/link-card-info-query-for-model "card" ids))]
         (is (re-find #"\?" query) "the id appears as a bind parameter")
         (is (= [42] params))))))
+
+(deftest linkcard-info-document-test
+  (mt/with-temp [:model/Document      {doc-id :id}  {:name     "Linked document"
+                                                     :document {}}
+                 :model/Dashboard     {dash-id :id} {}
+                 :model/DashboardCard dashcard      {:dashboard_id           dash-id
+                                                     :visualization_settings {:virtual_card {:display "link"}
+                                                                              :link         {:entity {:id    doc-id
+                                                                                                      :model "document"}}}}]
+    (mt/with-test-user :rasta
+      (is (=? {:id doc-id, :model "document", :name "Linked document"}
+              (-> (t2/hydrate dashcard :dashcard/linkcard-info)
+                  (get-in [:visualization_settings :link :entity])))))))
