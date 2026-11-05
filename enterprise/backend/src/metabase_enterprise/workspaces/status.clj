@@ -1,16 +1,17 @@
 (ns metabase-enterprise.workspaces.status
-  "The status column of a workspace row is its lock: a change of status is a conditional UPDATE from the status the
-  caller expects, and a caller whose UPDATE matches no row gets a 409. A row left in an in-flight status for longer
-  than [[stale-after]] reads as `:failed`, so a crashed request does not hold its lock forever."
+  "The status column of a workspace row is its lock. A request takes the lock by moving the row from the status it
+  expects, in one conditional UPDATE that also sets a fresh random lock token, and a request whose UPDATE matches no
+  row gets a 409. Its follow-up changes must present the token, so a request that stalled and lost the lock cannot
+  overwrite the request that took it over. A row left in an in-flight status for longer than [[stale-after-minutes]]
+  (by the app DB's clock, which writes `updated_at`) reads as `:failed`, so a crashed request does not hold its lock
+  forever; a long request keeps it with [[refresh-lock!]]."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (java.time Duration OffsetDateTime)))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,9 +21,12 @@
 (mr/def ::schema-status
   [:enum :adding :active :removing :failed])
 
-(def stale-after
-  "How long a row may stay in an in-flight status before it reads as `:failed`."
-  (Duration/ofMinutes 10))
+(mr/def ::kind
+  [:enum :database :schema])
+
+(def stale-after-minutes
+  "How long a row may stay in an in-flight status, without a [[refresh-lock!]], before it reads as `:failed`."
+  10)
 
 (def ^:private kinds
   {:database {:table     :workspace_database
@@ -34,63 +38,71 @@
               :row-fn    ws.db/workspace-schema
               :noun      "Workspace schema"}})
 
-(mu/defn stale-before :- (ms/InstanceOfClass OffsetDateTime)
-  "The instant before which an in-flight row, last updated then, reads as `:failed` at `now`."
-  [now :- (ms/InstanceOfClass OffsetDateTime)]
-  (.minus now stale-after))
+(mu/defn staleness :- ::ws.db/staleness
+  "When a row of `kind` reads as failed, for the queries that compute its `:stale` flag."
+  [kind :- ::kind]
+  {:in-flight (get-in kinds [kind :in-flight]), :minutes stale-after-minutes})
 
-(defn- reads-as
-  [kind status ^OffsetDateTime updated-at now]
-  (if (and ((get-in kinds [kind :in-flight]) status)
-           (.isBefore updated-at (stale-before now)))
-    :failed
-    status))
+(mu/defn effective-status :- :keyword
+  "The status a row read with its `:stale` flag (see [[staleness]]) reads as: `:failed` when stale, else its status."
+  [status :- :keyword
+   stale  :- :int]
+  (if (= 1 stale) :failed status))
 
-(defn- transition!
-  [kind id from to]
-  (let [{:keys [table in-flight row-fn noun]} (kinds kind)
-        now        (OffsetDateTime/now)
-        stale-from (if (from :failed) in-flight #{})]
-    (when (zero? (ws.db/update-status! table id from stale-from (stale-before now) to))
-      (let [row (row-fn id)]
-        (when-not row
-          (throw (ex-info (tru "{0} {1} not found." noun id)
-                          {:status-code 404, :id id})))
-        (let [status (reads-as kind (:status row) (:updated_at row) now)]
-          (throw (ex-info (tru "{0} {1} is {2}, not {3}." noun id (name status)
-                               (str/join ", " (sort (map name from))))
-                          {:status-code 409, :id id, :status status})))))))
+(defn new-lock-token
+  "A fresh random lock token, for a row inserted in an in-flight status: the inserting request holds its lock."
+  []
+  (str (random-uuid)))
 
-(mu/defn database-status :- ::database-status
-  "The status a `workspace_database` row with `status`, last updated at `updated-at`, reads as at `now`: `status`, or
-  `:failed` when that is `:provisioning` or `:deprovisioning` and `updated-at` is more than [[stale-after]] before
-  `now`."
-  [status     :- ::database-status
-   updated-at :- (ms/InstanceOfClass OffsetDateTime)
-   now        :- (ms/InstanceOfClass OffsetDateTime)]
-  (reads-as :database status updated-at now))
+(defn- lost-lock!
+  "Throws the 404 or 409 for a status change of the row of `kind` with `id` that matched nothing."
+  [kind id from]
+  (let [{:keys [row-fn noun]} (kinds kind)
+        row                   (row-fn id (staleness kind))]
+    (when-not row
+      (throw (ex-info (tru "{0} {1} not found." noun id)
+                      {:status-code 404, :id id})))
+    (let [status (effective-status (:status row) (:stale row))]
+      (throw (ex-info (tru "{0} {1} is {2}, not {3}, or another request holds it." noun id (name status)
+                           (str/join ", " (sort (map name from))))
+                      {:status-code 409, :id id, :status status})))))
 
-(mu/defn schema-status :- ::schema-status
-  "The status a `workspace_schema` row with `status`, last updated at `updated-at`, reads as at `now`: `status`, or
-  `:failed` when that is `:adding` or `:removing` and `updated-at` is more than [[stale-after]] before `now`."
-  [status     :- ::schema-status
-   updated-at :- (ms/InstanceOfClass OffsetDateTime)
-   now        :- (ms/InstanceOfClass OffsetDateTime)]
-  (reads-as :schema status updated-at now))
+(mu/defn take-lock! :- :string
+  "Move the row of `kind` with `id` to status `to` if it reads as one of `from`, taking its lock, and return the new
+  lock token. With `:failed` in `from`, a stale in-flight row is taken over. Throws a 404 when there is no such row,
+  and a 409 naming the status it reads as when it is in another status, such as when a concurrent request changed it
+  first."
+  [kind :- ::kind
+   id   :- ms/PositiveInt
+   from :- [:set {:min 1} :keyword]
+   to   :- :keyword]
+  (let [{:keys [table in-flight]} (kinds kind)
+        token                     (new-lock-token)
+        stale-from                (if (from :failed) in-flight #{})]
+    (when (zero? (ws.db/take-status! table id from stale-from stale-after-minutes to token))
+      (lost-lock! kind id from))
+    token))
 
-(mu/defn transition-database-status!
-  "Move the `workspace_database` row with `id` to status `to` if it reads as one of `from` (see [[database-status]]),
-  in a single conditional UPDATE. Throws a 404 when there is no such row, and a 409 naming the status it reads as when
-  the row is in another status, such as when a concurrent request changed it first."
-  [id   :- ms/PositiveInt
-   from :- [:set {:min 1} ::database-status]
-   to   :- ::database-status]
-  (transition! :database id from to))
+(mu/defn change-status! :- :string
+  "Move the row of `kind` with `id`, whose lock the caller holds with `token`, from one of `from` to `to`, and return
+  the new lock token. Throws a 409 when the caller no longer holds the lock or the row is in another status."
+  [kind  :- ::kind
+   id    :- ms/PositiveInt
+   token :- :string
+   from  :- [:set {:min 1} :keyword]
+   to    :- :keyword]
+  (let [new-token (new-lock-token)]
+    (when (zero? (ws.db/change-status! (get-in kinds [kind :table]) id token from to new-token))
+      (lost-lock! kind id from))
+    new-token))
 
-(mu/defn transition-schema-status!
-  "Move the `workspace_schema` row with `id` to status `to` if it reads as one of `from` (see [[schema-status]]), like
-  [[transition-database-status!]]."
-  [id   :- ms/PositiveInt
-   from :- [:set {:min 1} ::schema-status]
-   to   :- ::schema-status]
-  (transition! :schema id from to))
+(mu/defn refresh-lock! :- :nil
+  "Restart the staleness clock of the row of `kind` with `id`, whose lock the caller holds with `token`, so a request
+  that runs longer than [[stale-after-minutes]] is not taken over. Throws a 409 when the caller no longer holds it."
+  [kind  :- ::kind
+   id    :- ms/PositiveInt
+   token :- :string]
+  (when (zero? (ws.db/touch-lock! (get-in kinds [kind :table]) id token))
+    (throw (ex-info (tru "{0} {1} is held by another request." (get-in kinds [kind :noun]) id)
+                    {:status-code 409, :id id})))
+  nil)

@@ -10,125 +10,146 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest database-status-test
-  (let [now (OffsetDateTime/now)
-        ago (fn [minutes] (.minusMinutes now minutes))]
-    (testing "an in-flight status reads as failed once it is older than 10 minutes"
-      (doseq [status [:provisioning :deprovisioning]]
-        (is (= status (ws.status/database-status status (ago 9) now)))
-        (is (= :failed (ws.status/database-status status (ago 11) now)))))
-    (testing "a settled status never goes stale"
-      (doseq [status [:provisioned :failed]]
-        (is (= status (ws.status/database-status status (ago 600) now)))))))
-
 (defn- do-with-workspace-database!
-  "Calls `(f wsd-id)` with a new `workspace_database` row in `status`."
+  "Calls `(f wsd-id token)` with a new `workspace_database` row in `status`, whose lock `token` holds."
   [status f]
-  (mt/with-temp [:model/Workspace         {ws-id :id}  {:name "status test"}
-                 :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
-                                                        :database_id      (mt/id)
-                                                        :isolation_id     "statuste"
-                                                        :database_details {:user "u", :password "p"}
-                                                        :status           status}]
-    (f wsd-id)))
-
-(defn- status-of [wsd-id]
-  (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
+  (let [token (ws.status/new-lock-token)]
+    (mt/with-temp [:model/WorkspaceProvisioningConnection _ {:database_id (mt/id), :details {}}
+                   :model/Workspace                       {ws-id :id}  {:name "status test"}
+                   :model/WorkspaceDatabase               {wsd-id :id} {:workspace_id     ws-id
+                                                                        :database_id      (mt/id)
+                                                                        :isolation_id     "statuste"
+                                                                        :database_details {:user "u", :password "p"}
+                                                                        :status           status
+                                                                        :lock_token       token}]
+      (f wsd-id token))))
 
 (defn- age-minutes!
-  "Move the `updated_at` of the row back by `minutes`, through the table rather than the model, whose before-update
-  hook would reset it."
-  [wsd-id minutes]
-  (let [updated-at (t2/select-one-fn :updated_at :model/WorkspaceDatabase :id wsd-id)]
-    (t2/query-one {:update :workspace_database
+  "Move the `updated_at` of the row of `table` back by `minutes`, through the table rather than the model, whose
+  before-update hook would reset it."
+  [table id minutes]
+  (let [updated-at (t2/select-one-fn :updated_at table :id id)]
+    (t2/query-one {:update table
                    :set    {:updated_at (.minusMinutes ^OffsetDateTime updated-at minutes)}
-                   :where  [:= :id wsd-id]})))
+                   :where  [:= :id id]})))
 
-(deftest transition-database-status-test
-  (testing "a transition from the expected status changes it"
-    (do-with-workspace-database! :provisioning
-      (fn [wsd-id]
-        (ws.status/transition-database-status! wsd-id #{:provisioning} :provisioned)
-        (is (= :provisioned (status-of wsd-id))))))
-  (testing "a transition from another status is a 409 naming the status, and changes nothing"
-    (do-with-workspace-database! :deprovisioning
-      (fn [wsd-id]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is deprovisioning, not provisioned"
-                              (ws.status/transition-database-status! wsd-id #{:provisioned} :deprovisioning)))
-        (is (= {:status-code 409, :status :deprovisioning}
-               (try (ws.status/transition-database-status! wsd-id #{:provisioned} :deprovisioning)
-                    (catch clojure.lang.ExceptionInfo e (select-keys (ex-data e) [:status-code :status])))))
-        (is (= :deprovisioning (status-of wsd-id))))))
-  (testing "an unknown row is a 404"
-    (is (= 404 (try (ws.status/transition-database-status! Integer/MAX_VALUE #{:failed} :deprovisioning)
-                    (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))))
+(defn- reads-as [kind id]
+  (let [row (if (= kind :database)
+              (ws.db/workspace-database-without-details id (ws.status/staleness :database))
+              (ws.db/workspace-schema id (ws.status/staleness :schema)))]
+    (ws.status/effective-status (:status row) (:stale row))))
+
+(defn- attempt
+  "`:ok` when `f` returns a lock token, else the status code and status of the error it throws."
+  [f]
+  (try
+    (when (string? (f)) :ok)
+    (catch clojure.lang.ExceptionInfo e
+      (select-keys (ex-data e) [:status-code :status]))))
 
 (deftest stale-in-flight-reads-as-failed-test
   (do-with-workspace-database! :provisioning
-    (fn [wsd-id]
-      (testing "a fresh in-flight row is not failed, so a retry from failed is a 409"
-        (is (= 409 (try (ws.status/transition-database-status! wsd-id #{:failed} :deprovisioning)
-                        (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))))
-      (age-minutes! wsd-id 11)
-      (testing "11 minutes later it reads as failed"
-        (let [{:keys [status updated_at]} (ws.db/workspace-database-without-details wsd-id)]
-          (is (= :failed (ws.status/database-status status updated_at (OffsetDateTime/now))))))
-      (testing "and a transition from failed takes it over"
-        (ws.status/transition-database-status! wsd-id #{:failed} :deprovisioning)
-        (is (= :deprovisioning (status-of wsd-id))))
-      (testing "but not a transition from its stored in-flight status alone when that is not expected"
-        (age-minutes! wsd-id 11)
-        (is (= 409 (try (ws.status/transition-database-status! wsd-id #{:provisioned} :deprovisioning)
-                        (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))))))
-
-(deftest concurrent-transitions-test
-  (testing "of concurrent transitions from the same status exactly one succeeds; the rest get a 409"
+    (fn [wsd-id _token]
+      (testing "an in-flight row reads as itself until it is 10 minutes old, by the app DB's clock"
+        (age-minutes! :workspace_database wsd-id 9)
+        (is (= :provisioning (reads-as :database wsd-id)))
+        (age-minutes! :workspace_database wsd-id 2)
+        (is (= :failed (reads-as :database wsd-id))))))
+  (testing "a settled row never goes stale"
     (do-with-workspace-database! :provisioned
-      (fn [wsd-id]
+      (fn [wsd-id _token]
+        (age-minutes! :workspace_database wsd-id 600)
+        (is (= :provisioned (reads-as :database wsd-id)))))))
+
+(deftest take-lock-test
+  (testing "taking the lock from the expected status changes it and returns a token"
+    (do-with-workspace-database! :provisioned
+      (fn [wsd-id _token]
+        (is (= :ok (attempt #(ws.status/take-lock! :database wsd-id #{:provisioned} :deprovisioning))))
+        (is (= :deprovisioning (reads-as :database wsd-id))))))
+  (testing "from another status: a 409 naming the status, and no change"
+    (do-with-workspace-database! :deprovisioning
+      (fn [wsd-id _token]
+        (is (= {:status-code 409, :status :deprovisioning}
+               (attempt #(ws.status/take-lock! :database wsd-id #{:provisioned} :deprovisioning))))
+        (testing "a fresh in-flight row is not failed"
+          (is (= {:status-code 409, :status :deprovisioning}
+                 (attempt #(ws.status/take-lock! :database wsd-id #{:failed} :deprovisioning)))))
+        (testing "11 minutes later a take from failed takes it over"
+          (age-minutes! :workspace_database wsd-id 11)
+          (is (= :ok (attempt #(ws.status/take-lock! :database wsd-id #{:failed} :deprovisioning))))))))
+  (testing "an unknown row is a 404"
+    (is (= {:status-code 404} (attempt #(ws.status/take-lock! :database Integer/MAX_VALUE #{:failed} :deprovisioning))))))
+
+(deftest concurrent-takes-test
+  (testing "of concurrent takes from the same status exactly one succeeds; the rest get a 409"
+    (do-with-workspace-database! :provisioned
+      (fn [wsd-id _token]
         (let [start   (promise)
               results (doall (for [_ (range 8)]
                                (future
                                  @start
-                                 (try
-                                   (ws.status/transition-database-status! wsd-id #{:provisioned} :deprovisioning)
-                                   :ok
-                                   (catch clojure.lang.ExceptionInfo e
-                                     (:status-code (ex-data e)))))))]
+                                 (attempt #(ws.status/take-lock! :database wsd-id #{:provisioned} :deprovisioning)))))]
           (deliver start true)
-          (is (= {:ok 1, 409 7} (frequencies (map deref results))))
-          (is (= :deprovisioning (status-of wsd-id))))))))
+          (is (= {:ok 1, {:status-code 409, :status :deprovisioning} 7} (frequencies (map deref results)))))))))
 
-(deftest schema-status-test
-  (let [now (OffsetDateTime/now)]
-    (testing "adding and removing read as failed once older than 10 minutes; active and failed never go stale"
-      (doseq [status [:adding :removing]]
-        (is (= status (ws.status/schema-status status (.minusMinutes now 9) now)))
-        (is (= :failed (ws.status/schema-status status (.minusMinutes now 11) now))))
-      (doseq [status [:active :failed]]
-        (is (= status (ws.status/schema-status status (.minusMinutes now 600) now)))))))
+(deftest stalled-request-loses-its-lock-test
+  (testing "a request that stalled past the stale limit and was taken over cannot change the row any more"
+    (do-with-workspace-database! :provisioned
+      (fn [wsd-id _token]
+        (let [token-a (ws.status/take-lock! :database wsd-id #{:provisioned} :deprovisioning)
+              _       (age-minutes! :workspace_database wsd-id 11)
+              token-b (ws.status/take-lock! :database wsd-id #{:failed} :deprovisioning)]
+          (is (= {:status-code 409, :status :deprovisioning}
+                 (attempt #(ws.status/change-status! :database wsd-id token-a #{:deprovisioning} :failed))))
+          (is (= {:status-code 409} (attempt #(ws.status/refresh-lock! :database wsd-id token-a))))
+          (testing "the request that took it over still can"
+            (is (nil? (ws.status/refresh-lock! :database wsd-id token-b)))
+            (is (= :ok (attempt #(ws.status/change-status! :database wsd-id token-b #{:deprovisioning} :failed))))
+            (is (= :failed (reads-as :database wsd-id)))))))))
 
-(deftest transition-schema-status-test
+(deftest change-status-test
+  (do-with-workspace-database! :provisioning
+    (fn [wsd-id token]
+      (testing "the inserting request holds the lock and each change returns the next token"
+        (let [next-token (ws.status/change-status! :database wsd-id token #{:provisioning} :provisioned)]
+          (is (= :provisioned (reads-as :database wsd-id)))
+          (testing "an old token no longer works"
+            (is (= {:status-code 409, :status :provisioned}
+                   (attempt #(ws.status/change-status! :database wsd-id token #{:provisioned} :deprovisioning)))))
+          (testing "nor does the right token from the wrong status"
+            (is (= {:status-code 409, :status :provisioned}
+                   (attempt #(ws.status/change-status! :database wsd-id next-token #{:provisioning} :failed)))))
+          (is (= :ok (attempt #(ws.status/change-status! :database wsd-id next-token #{:provisioned} :failed)))))))))
+
+(deftest refresh-lock-keeps-a-long-request-test
+  (do-with-workspace-database! :deprovisioning
+    (fn [wsd-id token]
+      (age-minutes! :workspace_database wsd-id 11)
+      (ws.status/refresh-lock! :database wsd-id token)
+      (is (= :deprovisioning (reads-as :database wsd-id)))
+      (is (= {:status-code 409, :status :deprovisioning}
+             (attempt #(ws.status/take-lock! :database wsd-id #{:failed} :deprovisioning)))))))
+
+(deftest schema-lock-test
   (do-with-workspace-database! :provisioned
-    (fn [wsd-id]
-      (let [schema-id (:id (ws.db/insert-workspace-schema! {:workspace_database_id wsd-id
-                                                            :main_schema           "sales"
-                                                            :scratch_namespace     "mb__isolation_statuste_s1_sales"
-                                                            :status                :adding}))
-            status-of (fn [] (t2/select-one-fn :status :model/WorkspaceSchema :id schema-id))
-            attempt   (fn [from to]
-                        (try (ws.status/transition-schema-status! schema-id from to) :ok
-                             (catch clojure.lang.ExceptionInfo e (select-keys (ex-data e) [:status-code :status]))))]
-        (testing "a fresh adding row is not failed, so a retry from failed is a 409"
-          (is (= {:status-code 409, :status :adding} (attempt #{:failed} :removing))))
-        (testing "11 minutes later it is taken over from failed"
-          (t2/query-one {:update :workspace_schema
-                         :set    {:updated_at (.minusMinutes ^OffsetDateTime (t2/select-one-fn :updated_at :model/WorkspaceSchema :id schema-id) 11)}
-                         :where  [:= :id schema-id]})
-          (is (= :ok (attempt #{:failed} :removing)))
-          (is (= :removing (status-of))))
-        (testing "of concurrent transitions exactly one succeeds"
-          (let [start   (promise)
-                results (doall (for [_ (range 8)]
-                                 (future @start (attempt #{:removing} :active))))]
-            (deliver start true)
-            (is (= {:ok 1, {:status-code 409, :status :active} 7} (frequencies (map deref results))))))))))
+    (fn [wsd-id _token]
+      (let [schema (ws.db/insert-workspace-schema! {:workspace_database_id wsd-id
+                                                    :main_schema           "sales"
+                                                    :scratch_namespace     "mb__isolation_statuste_s1_sales"
+                                                    :status                :adding
+                                                    :lock_token            (ws.status/new-lock-token)})
+            id     (:id schema)]
+        (testing "a fresh adding row reads as adding and is not taken over"
+          (is (= :adding (reads-as :schema id)))
+          (is (= {:status-code 409, :status :adding} (attempt #(ws.status/take-lock! :schema id #{:failed} :removing)))))
+        (testing "11 minutes later it reads as failed and is taken over; the stalled inserter loses its lock"
+          (age-minutes! :workspace_schema id 11)
+          (is (= :failed (reads-as :schema id)))
+          (let [token (ws.status/take-lock! :schema id #{:failed} :removing)]
+            (is (= {:status-code 409, :status :removing}
+                   (attempt #(ws.status/change-status! :schema id (:lock_token schema) #{:adding} :active))))
+            (is (= :ok (attempt #(ws.status/change-status! :schema id token #{:removing} :failed))))))
+        (testing "a failed row never goes stale"
+          (age-minutes! :workspace_schema id 600)
+          (is (= :failed (reads-as :schema id))))))))

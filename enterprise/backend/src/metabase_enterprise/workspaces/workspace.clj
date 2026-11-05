@@ -6,16 +6,15 @@
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (mu/defn insert-workspace-schema!
   "Insert a WorkspaceSchema for `main-schema` in the WorkspaceDatabase with `workspace-database-id`, in status `status`,
-  and return it. Its `:scratch_namespace` is `(scratch-namespace-fn row)` of the inserted row, whose `:id` is part of
-  the name; the row is never visible without it."
+  and return it with its `:lock_token`: the caller holds its lock. Its `:scratch_namespace` is
+  `(scratch-namespace-fn row)` of the inserted row, whose `:id` is part of the name; the row is never visible without
+  it."
   [workspace-database-id :- ms/PositiveInt
    main-schema           :- ms/NonBlankString
    status                :- [:enum :adding :active :removing :failed]
@@ -26,35 +25,39 @@
     (let [row     (ws.db/insert-workspace-schema! {:workspace_database_id workspace-database-id
                                                    :main_schema           main-schema
                                                    :scratch_namespace     (str "pending-" (random-uuid))
-                                                   :status                status})
+                                                   :status                status
+                                                   :lock_token            (ws.status/new-lock-token)})
           scratch (scratch-namespace-fn row)]
       (ws.db/set-scratch-namespace! (:id row) scratch)
       (assoc row :scratch_namespace scratch))))
 
+(defn- with-effective-status
+  [row]
+  (-> row
+      (assoc :status (ws.status/effective-status (:status row) (:stale row)))
+      (dissoc :stale)))
+
 (defn- workspace-with-databases
-  [workspace databases-by-workspace schemas-by-database now]
+  [workspace databases-by-workspace schemas-by-database]
   (assoc workspace :databases
          (vec (for [wsd (databases-by-workspace (:id workspace))]
-                (assoc wsd
-                       :status  (ws.status/database-status (:status wsd) (:updated_at wsd) now)
-                       :schemas (mapv #(assoc % :status (ws.status/schema-status (:status %) (:updated_at %) now))
-                                      (schemas-by-database (:id wsd))))))))
+                (assoc (with-effective-status wsd)
+                       :schemas (mapv with-effective-status (schemas-by-database (:id wsd))))))))
 
 (mu/defn workspaces-page :- [:map [:data [:sequential :map]] [:total :int]]
   "One page of Workspaces, in id order, each with its `:databases` and their `:schemas`, never with a
   `:database_details`: `{:data <up to limit workspaces after offset>, :total <number of workspaces>}`. A database's
-  `:status`, and each schema's, is the status it reads as (see [[ws.status/database-status]] and
-  [[ws.status/schema-status]])."
+  `:status`, and each schema's, is the status it reads as (see [[ws.status/effective-status]])."
   [{:keys [limit offset]} :- [:map {:closed true}
                               [:limit  ms/PositiveInt]
                               [:offset ms/IntGreaterThanOrEqualToZero]]]
   (let [workspaces (ws.db/workspaces-page limit offset)
         databases  (when (seq workspaces)
-                     (ws.db/workspace-databases-of-workspaces (mapv :id workspaces)))
+                     (ws.db/workspace-databases-of-workspaces (mapv :id workspaces) (ws.status/staleness :database)))
         schemas    (when (seq databases)
-                     (ws.db/workspace-schemas-of-workspace-databases (mapv :id databases)))
+                     (ws.db/workspace-schemas-of-workspace-databases (mapv :id databases)
+                                                               (ws.status/staleness :schema)))
         by-ws      (group-by :workspace_id databases)
-        by-wsd     (group-by :workspace_database_id schemas)
-        now        (OffsetDateTime/now)]
-    {:data  (mapv #(workspace-with-databases % by-ws by-wsd now) workspaces)
+        by-wsd     (group-by :workspace_database_id schemas)]
+    {:data  (mapv #(workspace-with-databases % by-ws by-wsd) workspaces)
      :total (ws.db/workspace-count)}))

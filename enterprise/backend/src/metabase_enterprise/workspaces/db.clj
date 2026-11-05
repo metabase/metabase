@@ -5,13 +5,46 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private workspace-database-columns
-  "Every `workspace_database` column but `database_details`, which holds the workspace user's password."
-  [:model/WorkspaceDatabase :id :workspace_id :database_id :isolation_id :status :created_at :updated_at])
+(mr/def ::status-table
+  [:enum :workspace_database :workspace_schema])
+
+(mr/def ::staleness
+  "When a row of a status table reads as failed: its status is one of `:in-flight` and it was last updated more than
+  `:minutes` ago by the app DB's clock, the clock that wrote `updated_at`."
+  [:map {:closed true}
+   [:in-flight [:set {:min 1} :keyword]]
+   [:minutes   ms/PositiveInt]])
+
+(defn- stale-cutoff
+  [minutes]
+  (h2x/add-interval-honeysql-form (mdb/db-type) (mi/now) (- minutes) :minute))
+
+(defn- stale-column
+  "`:stale`, 1 when the row reads as failed by `staleness` and 0 otherwise."
+  [{:keys [in-flight minutes]}]
+  [[:case
+    [:and [:in :status (mapv name in-flight)] [:< :updated_at (stale-cutoff minutes)]] [:inline 1]
+    :else [:inline 0]]
+   :stale])
+
+(defn- workspace-database-columns
+  "Every `workspace_database` column but `database_details`, which holds the workspace user's password, and
+  `lock_token`, plus the `:stale` flag."
+  [staleness]
+  [:model/WorkspaceDatabase :id :workspace_id :database_id :isolation_id :status :created_at :updated_at
+   (stale-column staleness)])
+
+(defn- workspace-schema-columns
+  "Every `workspace_schema` column but `lock_token`, plus the `:stale` flag."
+  [staleness]
+  [:model/WorkspaceSchema :id :workspace_database_id :main_schema :scratch_namespace :status :error :created_at
+   :updated_at (stale-column staleness)])
 
 ;;; ------------------------------------------------- Database -------------------------------------------------
 
@@ -50,7 +83,8 @@
            [:database_id      ::lib.schema.id/database]
            [:isolation_id     :string]
            [:database_details ms/DatabaseDetails]
-           [:status           :keyword]]]
+           [:status           :keyword]
+           [:lock_token       :string]]]
   (t2/insert-returning-instance! :model/WorkspaceDatabase row))
 
 (mu/defn workspace-database
@@ -59,30 +93,34 @@
   (t2/select-one :model/WorkspaceDatabase :id [:auto/param id]))
 
 (mu/defn workspace-database-without-details
-  "The WorkspaceDatabase with `id` without its `:database_details`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one workspace-database-columns :id [:auto/param id]))
+  "The WorkspaceDatabase with `id` without its `:database_details` or `:lock_token`, with `:stale` by `staleness`,
+  or nil."
+  [id        :- ms/PositiveInt
+   staleness :- ::staleness]
+  (t2/select-one (workspace-database-columns staleness) :id [:auto/param id]))
 
 (mu/defn workspace-databases-of-workspaces
-  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, without their `:database_details`, in id
-  order."
-  [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select workspace-database-columns :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
+  "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, without their `:database_details` or
+  `:lock_token`, with `:stale` by `staleness`, in id order."
+  [workspace-ids :- [:sequential ms/PositiveInt]
+   staleness     :- ::staleness]
+  (t2/select (workspace-database-columns staleness) :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
 
-(mu/defn update-status!
-  "Set the status of the row of `table` with `id` to `to`, but only while its status is one of `from`, or one of
-  `stale-from` with an `updated_at` before `stale-before`. Returns the number of rows updated, 0 or 1. One UPDATE
-  statement, so of two concurrent callers from the same status only one updates the row."
-  [table        :- [:enum :workspace_database :workspace_schema]
-   id           :- ms/PositiveInt
-   from         :- [:set {:min 1} :keyword]
-   stale-from   :- [:set :keyword]
-   stale-before :- (ms/InstanceOfClass java.time.OffsetDateTime)
-   to           :- :keyword]
+(mu/defn take-status!
+  "Set the status of the row of `table` with `id` to `to` and its lock token to `new-token`, but only while its status
+  is one of `from`, or one of `stale-from` last updated more than `stale-minutes` ago by the app DB's clock. Returns
+  the number of rows updated, 0 or 1. One UPDATE statement, so of two concurrent callers only one updates the row."
+  [table         :- ::status-table
+   id            :- ms/PositiveInt
+   from          :- [:set {:min 1} :keyword]
+   stale-from    :- [:set :keyword]
+   stale-minutes :- ms/PositiveInt
+   to            :- :keyword
+   new-token     :- :string]
   ;; A raw UPDATE rather than t2/update! on the model: Toucan's before-update hook selects the matching rows first
   ;; and this must stay a single statement.
   (t2/query-one {:update table
-                 :set    {:status [:auto/param (name to)], :updated_at (mi/now)}
+                 :set    {:status [:auto/param (name to)], :lock_token [:auto/param new-token], :updated_at (mi/now)}
                  :where  [:and
                           [:= :id [:auto/param id]]
                           [:or
@@ -90,7 +128,35 @@
                            ;; Toucan compiles an empty `stale-from` to false
                            [:and
                             [:in :status (mapv name stale-from)]
-                            [:< :updated_at [:auto/param stale-before]]]]]}))
+                            [:< :updated_at (stale-cutoff stale-minutes)]]]]}))
+
+(mu/defn change-status!
+  "Set the status of the row of `table` with `id` to `to` and its lock token to `new-token`, but only while its status
+  is one of `from` and its lock token is `token`. Returns the number of rows updated, 0 or 1."
+  [table     :- ::status-table
+   id        :- ms/PositiveInt
+   token     :- :string
+   from      :- [:set {:min 1} :keyword]
+   to        :- :keyword
+   new-token :- :string]
+  (t2/query-one {:update table
+                 :set    {:status [:auto/param (name to)], :lock_token [:auto/param new-token], :updated_at (mi/now)}
+                 :where  [:and
+                          [:= :id [:auto/param id]]
+                          [:= :lock_token [:auto/param token]]
+                          [:in :status (mapv name from)]]}))
+
+(mu/defn touch-lock!
+  "Set `updated_at` of the row of `table` with `id` to now while its lock token is `token`. Returns the number of rows
+  updated, 0 or 1."
+  [table :- ::status-table
+   id    :- ms/PositiveInt
+   token :- :string]
+  (t2/query-one {:update table
+                 :set    {:updated_at (mi/now)}
+                 :where  [:and
+                          [:= :id [:auto/param id]]
+                          [:= :lock_token [:auto/param token]]]}))
 
 (mu/defn live-workspaces-of-database
   "`:id` and `:name` of every Workspace with a WorkspaceDatabase on the Database with `database-id`, in id order."
@@ -109,7 +175,8 @@
            [:workspace_database_id ms/PositiveInt]
            [:main_schema           :string]
            [:scratch_namespace     :string]
-           [:status                :keyword]]]
+           [:status                :keyword]
+           [:lock_token            :string]]]
   (t2/insert-returning-instance! :model/WorkspaceSchema row))
 
 (mu/defn set-scratch-namespace!
@@ -119,14 +186,18 @@
   (t2/update! :model/WorkspaceSchema :id [:auto/param id] {:scratch_namespace scratch-namespace}))
 
 (mu/defn workspace-schema
-  "The WorkspaceSchema with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/WorkspaceSchema :id [:auto/param id]))
+  "The WorkspaceSchema with `id` without its `:lock_token`, with `:stale` by `staleness`, or nil."
+  [id        :- ms/PositiveInt
+   staleness :- ::staleness]
+  (t2/select-one (workspace-schema-columns staleness) :id [:auto/param id]))
 
 (mu/defn workspace-schemas-of-workspace-databases
-  "The WorkspaceSchemas of the WorkspaceDatabases with ids in `workspace-database-ids`, in id order."
-  [workspace-database-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceSchema :workspace_database_id [:in workspace-database-ids] {:order-by [[:id :asc]]}))
+  "The WorkspaceSchemas of the WorkspaceDatabases with ids in `workspace-database-ids`, without their `:lock_token`,
+  with `:stale` by `staleness`, in id order."
+  [workspace-database-ids :- [:sequential ms/PositiveInt]
+   staleness              :- ::staleness]
+  (t2/select (workspace-schema-columns staleness) :workspace_database_id [:in workspace-database-ids]
+             {:order-by [[:id :asc]]}))
 
 ;;; ------------------------------------------ Provisioning connection -------------------------------------------
 
