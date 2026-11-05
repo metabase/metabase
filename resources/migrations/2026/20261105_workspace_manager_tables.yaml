@@ -47,6 +47,20 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  # Indexes come before the foreign keys they serve: MySQL then uses them for the foreign key rather than adding its
+  # own, and rolls the foreign key back before the index, which it cannot drop while a foreign key needs it.
+  - changeSet:
+      id: xzi1oq
+      author: escherize
+      comment: Index workspace.creator_id
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
   - changeSet:
       id: bglkj0
       author: escherize
@@ -148,6 +162,20 @@ databaseChangeLog:
             tableName: workspace_database
             columnNames: isolation_id
             constraintName: idx_uq_workspace_database_isolation_id
+
+  # On Postgres the unique constraint on (workspace_id, database_id) cannot serve lookups by database_id alone. This
+  # index also serves both foreign keys on database_id.
+  - changeSet:
+      id: bij8gc
+      author: escherize
+      comment: Index workspace_database.database_id
+      changes:
+        - createIndex:
+            tableName: workspace_database
+            indexName: idx_workspace_database_database_id
+            columns:
+              - column:
+                  name: database_id
 
   - changeSet:
       id: iz6ude
@@ -314,6 +342,18 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: b1k0bp
+      author: escherize
+      comment: Index workspace_provisioning_connection.updated_by
+      changes:
+        - createIndex:
+            tableName: workspace_provisioning_connection
+            indexName: idx_workspace_provisioning_connection_updated_by
+            columns:
+              - column:
+                  name: updated_by
+
+  - changeSet:
       id: 3x1uau
       author: escherize
       comment: Add the foreign key from workspace_provisioning_connection.database_id to metabase_database
@@ -339,32 +379,8 @@ databaseChangeLog:
             constraintName: fk_workspace_provisioning_connection_updated_by
             onDelete: SET NULL
 
-  - changeSet:
-      id: xzi1oq
-      author: escherize
-      comment: Index workspace.creator_id
-      changes:
-        - createIndex:
-            tableName: workspace
-            indexName: idx_workspace_creator_id
-            columns:
-              - column:
-                  name: creator_id
-
-  - changeSet:
-      id: b1k0bp
-      author: escherize
-      comment: Index workspace_provisioning_connection.updated_by
-      changes:
-        - createIndex:
-            tableName: workspace_provisioning_connection
-            indexName: idx_workspace_provisioning_connection_updated_by
-            columns:
-              - column:
-                  name: updated_by
-
   # A workspace database needs its database's provisioning login, which cannot be deleted while the workspace
-  # database exists. The insert of a workspace_database row also locks the login's row against a concurrent change.
+  # database exists.
   - changeSet:
       id: d0hvgm
       author: escherize
@@ -377,16 +393,3 @@ databaseChangeLog:
             referencedColumnNames: database_id
             constraintName: fk_workspace_database_provisioning_connection
             onDelete: RESTRICT
-
-  # The unique constraint on (workspace_id, database_id) cannot serve lookups by database_id alone on Postgres.
-  - changeSet:
-      id: bij8gc
-      author: escherize
-      comment: Index workspace_database.database_id
-      changes:
-        - createIndex:
-            tableName: workspace_database
-            indexName: idx_workspace_database_database_id
-            columns:
-              - column:
-                  name: database_id
