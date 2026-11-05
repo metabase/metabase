@@ -116,23 +116,22 @@ export const ImpersonationModal = ({
     dispatch(fetchUserAttributes());
   });
 
-  const isLoading =
-    isDatabaseLoading || isImpersonationLoading || !attributes || !database;
+  const isReady =
+    !isDatabaseLoading &&
+    !isImpersonationLoading &&
+    attributes != null &&
+    database != null;
+  const loadError = error ?? impersonationError;
 
   return (
     <Modal
       opened
       density="relaxed"
-      withCloseButton={false}
+      withCloseButton={!isReady && loadError != null}
       title={database ? getImpersonationModalTitle(database) : undefined}
       onClose={onClose}
     >
-      {isLoading ? (
-        <LoadingAndErrorWrapper
-          loading={isLoading}
-          error={error ?? impersonationError}
-        />
-      ) : (
+      {isReady ? (
         <ImpersonationModalView
           selectedAttribute={selectedAttribute}
           attributes={attributes}
@@ -140,6 +139,8 @@ export const ImpersonationModal = ({
           onSave={handleSave}
           onCancel={onClose}
         />
+      ) : (
+        <LoadingAndErrorWrapper loading error={loadError} />
       )}
     </Modal>
   );
