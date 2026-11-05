@@ -70,19 +70,23 @@
      (sync-group-memberships*! user-or-id to-remove to-add))))
 
 (mu/defn ldap-directory-user :- [:maybe ldap.impl/UserInfo]
-  "The directory entry of `username` when LDAP is enabled and its directory finds `username`, or nil, also when the
-  lookup fails."
+  "The directory entry of `username` when LDAP is enabled and its directory finds `username`, or nil, so that callers
+  treat `username` as a local user, also when the lookup fails (for example, when the LDAP server is unavailable)."
   [username :- :string]
   (when (ldap.settings/ldap-enabled)
-    (u/ignore-exceptions (ldap/find-user username))))
+    (try
+      (ldap/find-user username)
+      (catch Throwable e
+        (log/warnf "LDAP user lookup failed: %s" (ex-message e))
+        nil))))
 
 (mu/defn sso-only-user? :- :boolean
-  "Whether the User with `user-id`, `email` and `sso-source` signs in only through SSO: their LDAP directory finds them,
-  or their SSO provider is enabled and they have no used password."
+  "Whether the User with `user-id`, `email` and `sso-source` signs in only through SSO: their SSO provider is enabled
+  and they have no used password, or their LDAP directory finds them."
   [user-id    :- ::lib.schema.id/user
    email      :- :string
    sso-source :- [:maybe [:or :keyword :string]]]
-  (boolean (or (ldap-directory-user email)
-               (and (some? sso-source)
+  (boolean (or (and (some? sso-source)
                     (sso.settings/sso-source-enabled? sso-source)
-                    (not (sso.db/used-password-exists? user-id))))))
+                    (not (sso.db/used-password-exists? user-id)))
+               (ldap-directory-user email))))
