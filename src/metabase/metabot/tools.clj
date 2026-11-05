@@ -24,6 +24,7 @@
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
    [metabase.metabot.tools.snippets :as tools.snippets]
@@ -45,7 +46,8 @@
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
-  construct-notebook-query-tool
+  construct-notebook-query-tool]
+ [tools.shared
   without-show-chart]
  [tools.run-query
   run-query-tool

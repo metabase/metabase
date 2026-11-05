@@ -105,6 +105,13 @@
 ;;; Create SQL query
 ;;; ──────────────────────────────────────────────────────────────────
 
+(defn- hide-chart?
+  "Whether to show the user nothing for a query built outside a SQL editor: the model passed `show_chart` false, and
+   it can read the results with run_query, so the user still gets the values in its answer. Where it cannot read
+   them, the chart is the one way the user sees anything and is always shown."
+  [show-chart]
+  (and (false? show-chart) (tools.run-query/sql-results-readable?)))
+
 (def ^:private create-sql-schema
   [:map {:closed true}
    [:database_id :int]
@@ -120,8 +127,10 @@
                     "Create a new SQL query. Provide a short, human-friendly `title` shown above the results.")
      :scope scope/agent-sql-create
      :metabot/capabilities #{:permission-write-sql-queries}
-     :args create-sql-schema})
-  (handle [_ {database-id :database_id sql-query :sql_query :keys [title]} ctx]
+     ;; The editor variant proposes the query in the open buffer and never shows a chart.
+     :args (cond-> create-sql-schema
+             (not code-edit?) (conj shared/show-chart-arg))})
+  (handle [_ {database-id :database_id sql-query :sql_query :keys [title show_chart]} ctx]
     (let [buffer-id (when code-edit?
                       (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
                           (tools/unrecoverable! ::missing-editor
@@ -131,14 +140,16 @@
                           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
           {:keys [query-id query-content]} action-result
           structured (assoc action-result :result-type :query)
-          instr (if code-edit?
-                  instructions/query-loaded-in-editor-instructions
-                  (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))]
-      {:output (format-query-output structured instr {:preamble? true})
-       :structured-output structured
-       :data-parts [(if code-edit?
-                      (code-edit-part buffer-id query-content)
-                      (query-viz-part action-result title))]})))
+          hidden? (and (not code-edit?) (hide-chart? show_chart))
+          instr (cond
+                  code-edit? instructions/query-loaded-in-editor-instructions
+                  hidden?    (instructions/query-hidden-instructions-for query-id)
+                  :else      (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))]
+      (cond-> {:output (format-query-output structured instr {:preamble? true})
+               :structured-output structured}
+        (not hidden?) (assoc :data-parts [(if code-edit?
+                                            (code-edit-part buffer-id query-content)
+                                            (query-viz-part action-result title))])))))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."
@@ -160,22 +171,28 @@
                          [:old_string :string]
                          [:new_string :string]
                          [:replace_all {:optional true} [:maybe :boolean]]]]]
-   [:title :string]])
+   [:title :string]
+   shared/show-chart-arg])
 
 (defn- sql-edit-result!
-  [operation-result title instruction-fn ctx & {:keys [edit?]}]
+  "The result of an edit or replace: proposed in the user's open SQL editor when there is one, otherwise shown as a
+   chart unless [[hide-chart?]] says to show nothing."
+  [operation-result title show-chart instruction-fn ctx & {:keys [edit?]}]
   (let [{:keys [query-id query query-content] :as action-result} (sql.common/validated-sql-action!
                                                                   operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
-        instr (instruction-fn query-id (some? buffer-id))]
+        delivery (cond
+                   buffer-id                :editor
+                   (hide-chart? show-chart) :hidden
+                   :else                    :link)]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
-    {:output (format-query-output structured instr)
-     :structured-output structured
-     :data-parts [(if buffer-id
-                    (code-edit-part buffer-id query-content)
-                    (query-viz-part action-result title))]}))
+    (cond-> {:output (format-query-output structured (instruction-fn query-id delivery))
+             :structured-output structured}
+      (not= delivery :hidden) (assoc :data-parts [(if buffer-id
+                                                    (code-edit-part buffer-id query-content)
+                                                    (query-viz-part action-result title))]))))
 
 (defrecord EditSqlQueryTool []
   tools/Tool
@@ -187,14 +204,14 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :metabot/runs-alone? true
      :args edit-sql-schema})
-  (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
+  (handle [_ {query-id :query_id :keys [edits checklist title show_chart]} ctx]
     (sql-edit-result! (do-with-notebook-fallback
                        ctx #(edit-sql-query-tools/edit-sql-query
                              {:query-id query-id
                               :edits edits
                               :checklist checklist
                               :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                      title instructions/edit-sql-query-instructions-for ctx {:edit? true})))
+                      title show_chart instructions/edit-sql-query-instructions-for ctx {:edit? true})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."
@@ -209,7 +226,8 @@
    [:query_id [:or :string :int]]
    [:checklist :string]
    [:new_query :string]
-   [:title :string]])
+   [:title :string]
+   shared/show-chart-arg])
 
 (defrecord ReplaceSqlQueryTool []
   tools/Tool
@@ -221,14 +239,14 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :metabot/runs-alone? true
      :args replace-sql-schema})
-  (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
+  (handle [_ {query-id :query_id new-query :new_query :keys [checklist title show_chart]} ctx]
     (sql-edit-result! (do-with-notebook-fallback
                        ctx #(replace-sql-query-tools/replace-sql-query
                              {:query-id query-id
                               :sql new-query
                               :checklist checklist
                               :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                      title instructions/replace-sql-query-instructions-for ctx)))
+                      title show_chart instructions/replace-sql-query-instructions-for ctx)))
 
 (def replace-sql-query-tool
   "The tool that replaces the SQL in a stored query."
