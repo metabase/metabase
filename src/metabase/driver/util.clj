@@ -1010,6 +1010,88 @@
      db-details)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Workspace Isolation                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Do not change this prefix: it is in the names of workspace users and scratch namespaces in customer warehouses.
+(def ^:private workspace-isolation-prefix "mb__isolation_")
+
+(defn instance-slug
+  "The first character of each `-`-separated section of `site-uuid`, which tells apart workspaces made by different
+  Metabase instances on one warehouse."
+  [site-uuid]
+  (apply str (map first (str/split site-uuid #"-"))))
+
+(defn workspace-isolation-user-name
+  "The workspace user name for the `workspace_database` row `wsd-id` on the instance with slug `slug`:
+  `mb__isolation_<slug>_<wsd-id>`."
+  [slug wsd-id]
+  (str workspace-isolation-prefix slug "_" wsd-id))
+
+(defn workspace-scratch-namespace-name
+  "The scratch namespace for main schema `main` in `workspace_schema` row `schema-id`:
+  `<user-name>_s<schema-id>_<main>`. Every character of `main` outside `[A-Za-z0-9]` becomes `_`, and `main` is cut
+  so the name is at most `max-length` characters; `s<schema-id>` keeps a cut name unique."
+  [user-name schema-id main max-length]
+  (let [prefix (str user-name "_s" schema-id "_")
+        main   (str/replace main #"[^A-Za-z0-9]" "_")]
+    (str prefix (subs main 0 (min (count main) (- max-length (count prefix)))))))
+
+(def ^:private workspace-password-alphabet
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+
+(defonce ^:private ^java.security.SecureRandom secure-random
+  (java.security.SecureRandom.))
+
+(defn random-workspace-password
+  "A 32-character password drawn from `[A-Za-z0-9]` by `SecureRandom`, holding at least one upper-case letter, one
+  lower-case letter and one digit, so it meets common password policies and needs no quoting."
+  []
+  (let [candidate (apply str (repeatedly 32 #(.charAt ^String workspace-password-alphabet
+                                                      (.nextInt secure-random (count workspace-password-alphabet)))))]
+    (if (and (re-find #"[A-Z]" candidate) (re-find #"[a-z]" candidate) (re-find #"[0-9]" candidate))
+      candidate
+      (recur))))
+
+(defn batch-exception
+  "The per-statement exception inside a `java.sql.BatchUpdateException`, or `t` itself for any other throwable. Rethrow
+  this so a failure reads as the server's message rather than `Batch entry N ... was aborted`."
+  ^Throwable [^Throwable t]
+  (if (instance? java.sql.BatchUpdateException t)
+    (let [^java.sql.BatchUpdateException bue t]
+      ;; pgjdbc and its Redshift fork chain the statement's error through .getNextException, the MariaDB connector
+      ;; through .getCause; connectors that chain nothing put the server's message on the batch exception itself
+      (or (.getNextException bue)
+          (.getCause bue)
+          bue))
+    t))
+
+(defn- redact-secrets
+  [msg secrets]
+  (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
+
+(defn scrub-exceptions
+  "A copy of `t` and its cause chain with every occurrence of each of `secrets` in their messages replaced by `****`."
+  [^Throwable t secrets]
+  (let [secrets (remove str/blank? secrets)
+        msg     (redact-secrets (ex-message t) secrets)
+        cause   (some-> (.getCause t) (scrub-exceptions secrets))]
+    (cond
+      (instance? clojure.lang.ExceptionInfo t)
+      (ex-info msg (ex-data t) cause)
+
+      (instance? java.sql.SQLException t)
+      (let [^java.sql.SQLException sql-ex t
+            next-ex (some-> (.getNextException sql-ex) (scrub-exceptions secrets))]
+        (doto (java.sql.SQLException. msg (.getSQLState sql-ex) (.getErrorCode sql-ex) cause)
+          (.setStackTrace (.getStackTrace t))
+          (cond-> next-ex (.setNextException next-ex))))
+
+      :else
+      (doto (Exception. msg cause)
+        (.setStackTrace (.getStackTrace t))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Macaw parsing helpers                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

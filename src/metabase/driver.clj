@@ -2216,6 +2216,63 @@
         false
         (throw e)))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Workspace Isolation                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; A workspace gives one warehouse user read access to some main schemas and write access to one scratch namespace
+;;; per main schema. In every method below, `database` is the Lib metadata of a Database and `wsd` is a
+;;; `workspace_database` row: `:id`, plus `:database_details` (`:user`, `:password`) once
+;;; [[workspace-isolation-details]] has filled it. Callers run every method inside
+;;; [[metabase.driver.connection/with-workspace-provisioning-connection]].
+;;;
+;;; The warehouse methods return nil or throw. A failed precondition, checked before any warehouse change, throws
+;;; `ex-info` with `{:status-code 412, :schema <schema>}` and a message naming the SQL that fixes it. A warehouse error
+;;; is rethrown through [[metabase.driver.util/batch-exception]] and [[metabase.driver.util/scrub-exceptions]]. Drivers
+;;; do not clean up after a failure: the caller runs [[remove-workspace-schema!]] or [[destroy-workspace-isolation!]].
+
+(defmulti workspace-isolation-details
+  "The connection details of the workspace user for `wsd`: `:user`, `:password` and any engine-specific extras. Does
+  not touch the warehouse. Generates a new password on every call, so the caller stores the result as the `wsd`'s
+  `:database_details`."
+  {:added "0.66.0" :arglists '([driver database wsd])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti workspace-scratch-namespace
+  "The name of the scratch schema (or database, on engines where a database is the namespace) for `schema-row`, a
+  `workspace_schema` row with `:id` and `:main_schema`. Does not touch the warehouse."
+  {:added "0.66.0" :arglists '([driver database wsd schema-row])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti init-workspace-isolation!
+  "Create the workspace user named in the `wsd`'s `:database_details`, with its password."
+  {:added "0.66.0" :arglists '([driver database wsd])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti add-workspace-schema!
+  "Give the workspace user read access to `main-schema`, including tables created there later, and create the
+  `scratch` namespace with write access for it."
+  {:added "0.66.0" :arglists '([driver database wsd main-schema scratch])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti remove-workspace-schema!
+  "Drop the `scratch` namespace and revoke the workspace user's access to `main-schema`, then verify that no grant on
+  `main-schema` is left. Idempotent, and does not use the password."
+  {:added "0.66.0" :arglists '([driver database wsd main-schema scratch])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti destroy-workspace-isolation!
+  "Drop every scratch namespace of `wsd`, revoke every grant left to the workspace user, and drop the user. Idempotent,
+  and does not use the password."
+  {:added "0.66.0" :arglists '([driver database wsd])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti validate-impersonated-query
   "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."
   {:added "0.60.0" :arglists '([driver query])}

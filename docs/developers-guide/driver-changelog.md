@@ -6,6 +6,15 @@ title: Driver interface changelog
 
 ## Metabase 0.66.0
 
+- New multimethods for workspace isolation, which give one warehouse user read access to some main schemas and write
+  access to one scratch namespace per main schema: `metabase.driver/workspace-isolation-details` `[driver database
+  wsd]`, `metabase.driver/workspace-scratch-namespace` `[driver database wsd schema-row]`,
+  `metabase.driver/init-workspace-isolation!` `[driver database wsd]`, `metabase.driver/add-workspace-schema!`
+  `[driver database wsd main-schema scratch]`, `metabase.driver/remove-workspace-schema!` `[driver database wsd
+  main-schema scratch]` and `metabase.driver/destroy-workspace-isolation!` `[driver database wsd]`. Callers run them
+  inside the new `:workspace-provisioning` connection type
+  (`metabase.driver.connection/with-workspace-provisioning-connection`). Postgres implements them.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of

@@ -1087,3 +1087,57 @@
     (are [claims] (nil? (driver.u/jwt-expiry-ms (fake-jwt claims)))
       {:sub "s"}
       {:exp "nope"})))
+
+(deftest ^:parallel workspace-isolation-names-test
+  (testing "the instance slug is the first character of each section of the site UUID"
+    (is (= "ab12c" (driver.u/instance-slug "a0000000-b000-1000-2000-c00000000000"))))
+  (testing "the user name is mb__isolation_<slug>_<wsd-id>"
+    (is (= "mb__isolation_ab12c_17" (driver.u/workspace-isolation-user-name "ab12c" 17))))
+  (testing "the scratch namespace is <user>_s<schema-id>_<main>"
+    (is (= "mb__isolation_ab12c_17_s42_sales"
+           (driver.u/workspace-scratch-namespace-name "mb__isolation_ab12c_17" 42 "sales" 63))))
+  (testing "characters outside [A-Za-z0-9] in the main schema become _"
+    (is (= "mb__isolation_ab12c_17_s42_Sales_EU_2024__"
+           (driver.u/workspace-scratch-namespace-name "mb__isolation_ab12c_17" 42 "Sales-EU.2024 ü" 63))))
+  (testing "the main schema is cut to fit the length limit"
+    (let [main (apply str (repeat 100 "m"))]
+      (doseq [limit [63 64]]
+        (let [scratch (driver.u/workspace-scratch-namespace-name "mb__isolation_ab12c_17" 42 main limit)]
+          (is (= limit (count scratch)))
+          (is (str/starts-with? scratch "mb__isolation_ab12c_17_s42_mmm")))))))
+
+(deftest ^:parallel random-workspace-password-test
+  (let [passwords (repeatedly 200 driver.u/random-workspace-password)]
+    (testing "32 characters from [A-Za-z0-9], with an upper-case letter, a lower-case letter and a digit"
+      (doseq [password passwords]
+        (is (re-matches #"[A-Za-z0-9]{32}" password))
+        (is (re-find #"[A-Z]" password))
+        (is (re-find #"[a-z]" password))
+        (is (re-find #"[0-9]" password))))
+    (testing "each call returns a new password"
+      (is (= 200 (count (set passwords)))))))
+
+(deftest ^:parallel batch-exception-test
+  (let [server-error (java.sql.SQLException. "ERROR: role \"x\" already exists" "42710")
+        batch        (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER x was aborted" "42710" 0 (int-array 0))
+                       (.setNextException server-error))]
+    (testing "a batch exception yields the statement's own exception"
+      (is (identical? server-error (driver.u/batch-exception batch))))
+    (testing "any other exception is returned as is"
+      (is (identical? server-error (driver.u/batch-exception server-error))))))
+
+(deftest ^:parallel scrub-exceptions-test
+  (let [secret   "s3cretPassw0rd"
+        sql-ex   (doto (java.sql.SQLException. (str "CREATE USER x WITH PASSWORD '" secret "'") "42710" 7)
+                   (.setNextException (java.sql.SQLException. (str "next " secret))))
+        wrapped  (ex-info (str "outer " secret) {:status-code 412} sql-ex)
+        scrubbed (driver.u/scrub-exceptions wrapped [secret nil ""])
+        cause    (ex-cause scrubbed)]
+    (testing "every message in the cause chain loses the secret"
+      (is (= "outer ****" (ex-message scrubbed)))
+      (is (= "CREATE USER x WITH PASSWORD '****'" (ex-message cause)))
+      (is (= "next ****" (ex-message (.getNextException ^java.sql.SQLException cause)))))
+    (testing "ex-data, SQLState and error code survive"
+      (is (= {:status-code 412} (ex-data scrubbed)))
+      (is (= "42710" (.getSQLState ^java.sql.SQLException cause)))
+      (is (= 7 (.getErrorCode ^java.sql.SQLException cause))))))
