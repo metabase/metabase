@@ -907,12 +907,6 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             raise ValueError("Only read-only queries can run on a workspace; SELECT ... INTO creates a table.")
         if ast.find(exp.Lock):
             raise ValueError("Only read-only queries can run on a workspace; FOR UPDATE / FOR SHARE locks rows.")
-        # A backslash in a string literal: sqlglot regenerates E'...' strings with their backslashes collapsed, and a
-        # server with standard_conforming_strings off reads one in a plain string as an escape, so the statement could
-        # end somewhere other than where sqlglot thinks.
-        for literal in ast.find_all(exp.Literal, exp.ByteString):
-            if (isinstance(literal, exp.ByteString) or literal.is_string) and "\\" in str(literal.this):
-                raise ValueError("The SQL has a backslash in a string literal, which a workspace can't rewrite safely.")
         # Defense in depth: no allowed statement we have found parses with a command inside it.
         if ast.find(exp.Command):
             raise ValueError("The SQL contains a statement sqlglot can't read into (for example EXPLAIN, DECLARE, "
@@ -939,6 +933,15 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     raise ValueError(f"The SQL passes {name} SQL text that names a remapped table, which can't be "
                                      f"rewritten.")
 
+    # A backslash anywhere in the text, in strict mode: it is the one character whose meaning in a string depends on
+    # the string's kind (E'..', U&'..') and on the server (standard_conforming_strings off makes it an escape in a
+    # plain '..'), so the server could read the text differently from the AST checked here, and sqlglot regenerates
+    # E-strings with their backslashes collapsed. With no backslash, every kind of literal reads the same either way,
+    # so returning the text as written runs what was checked. Dollar-quoted text is included: refusing every
+    # backslash is simpler than proving where a $$ body ends.
+    if strict_statements and "\\" in sql:
+        raise ValueError("The SQL has a backslash, which a workspace refuses because the server could read it "
+                         "differently from this check.")
     asts = statements(sql, dialect)
     rewritten = [rewrite(ast) for ast in asts]
     if strict_statements and not changed[0]:

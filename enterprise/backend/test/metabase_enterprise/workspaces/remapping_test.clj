@@ -367,18 +367,22 @@
           sql))))
 
 (deftest rewrite-sql-string-literals-test
-  (testing "a backslash in a string literal is refused: sqlglot regenerates E-strings with doubled backslashes
-            collapsed, and with standard_conforming_strings off a backslash in a plain string is an escape"
+  (testing "a backslash anywhere in the text is refused, inside dollar quotes and comments too: its meaning depends on
+            the literal's kind and on standard_conforming_strings, so the server could read it differently from the check"
     (doseq [sql ["SELECT * FROM public.orders WHERE src ~ E'\\\\s+'"
                  "SELECT E'\\\\s+' AS r"
                  "SELECT 'a\\' AS r"
-                 "SELECT 'a\\'' ; DELETE FROM public.customers; --'"]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"backslash in a string literal"
+                 "SELECT 'a\\'' ; DELETE FROM public.customers; --'"
+                 "SELECT N'a\\b' AS r"
+                 "SELECT U&'d\\0061t' AS r"
+                 "SELECT $$a\\b$$ AS r"
+                 "SELECT 1 -- a comment with a \\ in it"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The SQL has a backslash, which a workspace refuses"
                             (ws/rewrite-sql :postgres remaps sql))
           sql)))
   (testing "SQL with no replacement comes back exactly as written"
     (doseq [sql ["select  src   from public.customers  where name = 'x'"
-                 "SELECT $$it's$$ AS q, E'no escapes' AS e"]]
+                 "SELECT $$it's$$ AS q, E'no escapes' AS e, N'national' AS n, U&'unicode' AS u"]]
       (is (= sql (ws/rewrite-sql :postgres remaps sql)))))
   (testing "row locks are refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"FOR UPDATE / FOR SHARE locks rows"
