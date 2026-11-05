@@ -863,9 +863,12 @@
     :legacy-mbql.normalize))
 
 (deftest ^:parallel discouraged-count-keys-test
-  (let [config '{:linters {:discouraged-var {a/x {:message "no"}, a/y {:message "no"}}}}]
-    (is (= #{:a/x :a/y}
-           (kondo-ratchet/discouraged-count-keys :discouraged-var config)))))
+  (let [config '{:linters {:discouraged-var {a/x {:message "no"}, a/y {:message "no"}, metabase.b/x {:message "no"}}}}]
+    (is (= #{:a/x :a/y :b/x}
+           (kondo-ratchet/discouraged-count-keys :discouraged-var config)))
+    (testing "a symbol that counts under another has no key of its own"
+      (is (= #{:a/x :a/y}
+             (kondo-ratchet/discouraged-count-keys :discouraged-var config {:b/x :a/x}))))))
 
 (deftest ^:parallel discouraged-count-field-test
   (is (= :discouraged-var-counts (kondo-ratchet/discouraged-count-field :discouraged-var)))
@@ -907,10 +910,13 @@
 
 (deftest ^:parallel unconfigured-budget-warnings-test
   (is (= [(str "WARNING: r.edn budgets :discouraged-var symbols no longer configured in .clj-kondo/config.edn: :a/gone"
-               " -- `./bin/mage kondo-ratchets-shrink` drops them")]
+               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+          (str "WARNING: r.edn budgets :discouraged-var symbols that count under another symbol's key:"
+               " :b/x -> :a/x -- `./bin/mage kondo-ratchets-shrink` drops them")]
          (kondo-ratchet/unconfigured-budget-warnings "r.edn"
-                                                     {:discouraged-var-counts {:a/x 1, :a/gone 1}}
-                                                     {:discouraged-var #{:a/x}, :discouraged-namespace #{}}))))
+                                                     {:discouraged-var-counts {:a/x 1, :a/gone 1, :b/x 1}}
+                                                     {:discouraged-var #{:a/x}, :discouraged-namespace #{}}
+                                                     {:b/x :a/x}))))
 
 (deftest ^:parallel discouraged-count-keys-collision-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #":discouraged-var symbols a/x, metabase.a/x share the ratchet key :a/x"

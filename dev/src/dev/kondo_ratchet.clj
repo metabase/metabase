@@ -324,17 +324,20 @@
     ""))
 
 (defn discouraged-count-keys
-  "The [[discouraged-count-key]] of every symbol configured under `linter` ([[discouraged-symbols]]).
+  "The ratchet keys of the symbols configured under `linter` ([[discouraged-symbols]]): each one's
+  [[discouraged-count-key]], or the key it counts under in `aliases` (see [[fix!]]).
   Throws when two symbols share a key."
-  [linter config]
-  (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
-    ;; two symbols on one key would share a budget without anyone noticing
-    (doseq [[k syms] by-key
-            :when    (< 1 (count syms))]
-      (throw (ex-info (format "%s symbols %s share the ratchet key %s"
-                              linter (str/join ", " (sort-by str syms)) k)
-                      {:linter linter, :key k, :symbols (vec syms)})))
-    (set (keys by-key))))
+  ([linter config]
+   (discouraged-count-keys linter config {}))
+  ([linter config aliases]
+   (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
+     ;; two symbols on one key would share a budget without anyone noticing
+     (doseq [[k syms] by-key
+             :when    (< 1 (count syms))]
+       (throw (ex-info (format "%s symbols %s share the ratchet key %s"
+                               linter (str/join ", " (sort-by str syms)) k)
+                       {:linter linter, :key k, :symbols (vec syms)})))
+     (into #{} (map #(get aliases % %)) (keys by-key)))))
 
 (defn- validate-count-keys!
   "Throw when two symbols configured under one of the [[discouragement-linters]] share a ratchet key."
@@ -374,11 +377,11 @@
                       {:unknown (vec unknown)})))))
 
 (defn configured-count-keys
-  "[[discouraged-count-keys]] for each of the [[discouragement-linters]]."
-  []
+  "[[discouraged-count-keys]] for each of the [[discouragement-linters]], following `aliases`."
+  [aliases]
   (let [config (kondo-config)]
     (into {} (for [linter discouragement-linters]
-               [linter (discouraged-count-keys linter config)]))))
+               [linter (discouraged-count-keys linter config aliases)]))))
 
 (defn discouraged-in-ignore-counts
   "The [[discouragement-linters]] with a stale flat budget in `ignore-counts`, sorted."
@@ -396,16 +399,23 @@
 
 (defn unconfigured-budget-warnings
   "Warnings for budgets in `ratchets`, read from `ratchets-file`, whose symbol is no longer configured under
-  its linter. `configured` is [[configured-count-keys]]."
-  [ratchets-file ratchets configured]
-  ;; Attribution never charges an unconfigured symbol, so fix! drops these at zero like any unused budget.
+  its linter, or counts under another symbol's key. `configured` is [[configured-count-keys]] for `aliases`."
+  [ratchets-file ratchets configured aliases]
+  ;; Attribution never charges these keys, so fix! drops them at zero like any unused budget.
   (for [linter (sort discouragement-linters)
-        :let   [budgeted (keys (get ratchets (discouraged-count-field linter)))
-                unknown  (sort-by str (remove (configured linter) budgeted))]
-        :when  (seq unknown)]
-    (format (str "WARNING: %s budgets %s symbols no longer configured in %s: %s"
-                 " -- `./bin/mage kondo-ratchets-shrink` drops them")
-            ratchets-file linter kondo-config-file (str/join ", " unknown))))
+        :let   [budgeted                      (keys (get ratchets (discouraged-count-field linter)))
+                stale                         (sort-by str (remove (configured linter) budgeted))
+                {aliased true, unknown false} (group-by (comp boolean aliases) stale)]
+        line   [(when (seq unknown)
+                  (format (str "WARNING: %s budgets %s symbols no longer configured in %s: %s"
+                               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+                          ratchets-file linter kondo-config-file (str/join ", " unknown)))
+                (when (seq aliased)
+                  (format (str "WARNING: %s budgets %s symbols that count under another symbol's key: %s"
+                               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+                          ratchets-file linter (str/join ", " (map #(str % " -> " (aliases %)) aliased))))]
+        :when  line]
+    line))
 
 (defn- validate-test-config-counts!
   "Throw unless `test-ratchets` has an empty :config-counts -- config-level suppressions are tracked only
@@ -1481,7 +1491,7 @@
          (let [{:keys [module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
                {:keys [prod-occ test-occ attribution test-attribution]} (scan-and-attribute attribute test-disabled?)
                aliases          (aliases)
-               configured       (configured-count-keys)
+               configured       (configured-count-keys aliases)
                lines            (concat
                                  (check-report ratchets module-ratchets prod-occ attribution
                                                (config-suppressions) (module-escape-hatches)
@@ -1492,12 +1502,12 @@
            (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts prod-occ)) println)
            (some-> (stale-exemptions-warning (:comment-exempt ratchets) prod-occ) println)
            (run! println (unattributed-lines (:unattributed attribution)))
-           (run! println (unconfigured-budget-warnings *ratchets-file* ratchets configured))
+           (run! println (unconfigured-budget-warnings *ratchets-file* ratchets configured aliases))
            (when-not test-disabled?
              (some-> (unexercised-unlimited-warning (:ignore-counts test-ratchets) (actual-counts test-occ)) println)
              (some-> (stale-exemptions-warning (:comment-exempt test-ratchets) test-occ) println)
              (run! println (unattributed-lines (:unattributed test-attribution)))
-             (run! println (unconfigured-budget-warnings *test-ratchets-file* test-ratchets configured)))
+             (run! println (unconfigured-budget-warnings *test-ratchets-file* test-ratchets configured aliases)))
            (if (empty? lines)
              (do
                (println (format "ok -- %d ignore forms within %d policies"
