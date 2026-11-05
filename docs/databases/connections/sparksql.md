@@ -1,6 +1,6 @@
 ---
 title: SparkSQL
-summary: Connect Metabase to SparkSQL, with every connection setting explained, including SSH tunneling.
+summary: Connect Metabase to SparkSQL, with every connection and sync setting explained.
 ---
 
 # SparkSQL

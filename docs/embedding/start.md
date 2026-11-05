@@ -1,6 +1,6 @@
 ---
 title: Embedding overview
-summary: Put Metabase dashboards, charts, and the query builder inside your own app, with modular embedding, the SDK, or iframes.
+summary: Put dashboards, charts, the query builder, and AI chat in your app with modular embedding, the SDK, full app embedding, or public embeds, and secure them.
 redirect_from:
   - /docs/latest/embedding
 ---

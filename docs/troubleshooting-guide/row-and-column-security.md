@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting row and column security access
-summary: Figure out why people see too many or too few rows when row and column security is turned on.
+summary: Figure out why people see too many or too few rows or columns when row and column security is turned on.
 redirect_from:
   - /docs/latest/troubleshooting-guide/sandboxing
 ---

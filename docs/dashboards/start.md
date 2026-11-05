@@ -1,6 +1,6 @@
 ---
 title: Dashboards overview
-summary: Build dashboards, add filters, customize what happens on click, and send results out on a schedule.
+summary: Build dashboards, add filters and action buttons, customize what happens on click, combine series on one chart, and send results out on a schedule.
 redirect_from:
   - /docs/latest/dashboards
 ---

@@ -1,6 +1,6 @@
 ---
 title: Metabase Cloud
-summary: Metabase Cloud is Metabase's hosted service, where Metabase runs your server and handles uptime, backups, and upgrades. Covers Cloud settings, migrations, and billing.
+summary: Metabase Cloud is Metabase's hosted service, with uptime, backups, and upgrades handled for you. Covers storage, settings, limitations, migrations, and billing.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

@@ -1,6 +1,6 @@
 ---
 title: Introduction to dashboards
-summary: Group related questions, text, and filters into tabs on a single page, and share the result as a report.
+summary: Create dashboards, add questions and text, link, and iframe cards, arrange them in tabs, and share, export, or auto-refresh the results.
 redirect_from:
   - /docs/latest/users-guide/07-dashboards
 ---

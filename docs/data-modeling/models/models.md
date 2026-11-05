@@ -1,6 +1,6 @@
 ---
 title: "Models"
-summary: Curate data from one or more tables into a reusable starting point for new questions, with your own column names, descriptions, and types.
+summary: Curate data from one or more tables into a reusable starting point for new questions, with your own column metadata. Consider transforms as an alternative.
 redirect_from:
   - /docs/latest/data-modeling/models
   - /docs/latest/users-guide/models

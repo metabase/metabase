@@ -1,6 +1,6 @@
 ---
 title: Permissions overview
-summary: Everything you can set permissions on in Metabase, from data and collections to features and notifications.
+summary: Set permissions on data, collections, features, snippets, and notifications, and isolate data with row and column security and other multi-tenant tools.
 redirect_from:
   - /docs/latest/permissions
 ---

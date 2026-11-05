@@ -1,6 +1,6 @@
 ---
 title: Tables
-summary: Arrange, hide, resize, and freeze columns, and filter or summarize right from a column heading.
+summary: Arrange, hide, resize, freeze, and format columns, add conditional formatting, and filter or summarize right from a column heading.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/table
 ---

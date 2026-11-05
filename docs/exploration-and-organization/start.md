@@ -1,6 +1,6 @@
 ---
 title: "Organization overview"
-summary: Tools for finding things in Metabase and keeping your content organized.
+summary: Find and organize your content with search, collections, history, and verification, plus keyboard shortcuts, X-rays, and events and timelines.
 redirect_from:
   - /docs/latest/exploration-and-organization
 ---

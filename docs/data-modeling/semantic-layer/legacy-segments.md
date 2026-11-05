@@ -1,6 +1,6 @@
 ---
 title: "Segments"
-summary: Save a named filter that people can reuse in the query builder as an official definition of a subset of your data.
+summary: Create and retire segments, saved filters for the query builder, from the Admin panel's Table Metadata page. Prefer Data Studio for managing segments.
 ---
 
 # Segments

@@ -1,6 +1,6 @@
 ---
 title: Questions overview
-summary: Ask questions with the query builder or SQL, visualize the results, and set up alerts to tell you when something changes.
+summary: Ask questions with the query builder, SQL, or the Metrics Explorer, then visualize, export, and share the results with alerts.
 redirect_from:
   - /docs/latest/questions
 ---

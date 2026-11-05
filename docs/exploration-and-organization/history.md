@@ -1,6 +1,6 @@
 ---
 title: History
-summary: See what changed in a question, dashboard, model, or transform, and roll back to an earlier version.
+summary: See what changed in questions, dashboards, metrics, models, transforms, segments, and measures, and revert most of them to an earlier version.
 ---
 
 # History

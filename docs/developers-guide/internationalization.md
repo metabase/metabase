@@ -1,6 +1,6 @@
 ---
 title: Internationalization
-summary: Mark frontend and backend strings for translation, and how Metabase maps them to translated strings.
+summary: Mark frontend and backend strings for translation, and learn how Metabase maps them to translated strings.
 ---
 
 # Internationalization

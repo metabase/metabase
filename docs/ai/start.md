@@ -1,6 +1,6 @@
 ---
 title: "AI in Metabase"
-summary: Connect an AI provider to bring Metabot and other AI features to your Metabase, and control what data they can see and who can use them.
+summary: Set up and control AI in Metabase, including Metabot in the app and in Slack, AI providers, usage limits, and the MCP server for AI clients.
 ---
 
 # AI in Metabase
