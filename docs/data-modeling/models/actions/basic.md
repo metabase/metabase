@@ -10,9 +10,11 @@ Basic actions are "implicit" [actions](./introduction.md) that do things that pe
 
 If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](./custom.md).
 
+To add, update, or delete one row without a model, create a [data action from a table](../../data-actions.md#create-a-data-action-that-changes-one-row).
+
 ## Creating basic actions
 
-Only admins can create basic actions. Once actions are enabled, you can create basic actions on a new or existing [model](../../../data-modeling/models/models.md) that only wraps a single database table.
+Only admins can create basic actions. Once an admin [turns on data actions](../../data-actions.md#turn-on-data-actions-for-a-database) for the database, you can create basic actions on a new or existing [model](../../../data-modeling/models/models.md) that only wraps a single database table.
 
 1. Visit the model and click the **info** button.
 2. Click **Actions**.
@@ -76,6 +78,6 @@ If you have basic actions enabled for a model, you can click on an individual re
 
 ## Further reading
 
-- [Introduction to actions](./introduction.md)
+- [Introduction to model actions](./introduction.md)
 - [Custom actions](./custom.md)
 - [Actions in dashboards](../../../dashboards/actions.md)

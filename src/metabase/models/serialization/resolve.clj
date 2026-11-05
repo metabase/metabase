@@ -188,6 +188,11 @@
         (update :source_table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
+    {:table-id #'vector?}
+    (-> &match
+        (update :table-id (partial import-table-fk resolver))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
+
     ;; support legacy MBQL 4 for the Audit v2 queries
     {:source-table (id :guard portable-id?)}
     (-> &match
@@ -308,6 +313,7 @@
                                                     (export-fk-keyed resolver db-id :model/Database :name)))
                   (:card_id :card-id)           #(export-fk resolver % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
                   (:source_table :source-table) #(export-table-fk resolver %)
+                  :table-id                     #(cond->> % (pos-int? %) (export-table-fk resolver))
                   (:source_card :source-card)   #(export-fk resolver % :model/Card)
                   ::mb.viz/param-mapping-source #(export-field-fk resolver %)
                   :segment                      #(export-fk resolver % :model/Segment)

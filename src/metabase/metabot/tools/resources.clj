@@ -68,6 +68,7 @@
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -231,8 +232,33 @@
   {:message  (str "No resource is served at " (pr-str (uri-preview uri)) ".")
    :recovery (vec (keep identity [(templates-step kind) kinds-step search-step]))})
 
+(def ^:private search-id-step
+  "The step that finds a numeric id through `search`."
+  {:uses #{"search"}
+   :text (str "Call `search` and build the URI from a result's numeric `id`"
+              " attribute, or copy its `uri` attribute as-is.")})
+
+(def ^:private id-lookup-steps
+  "A kind → step map for `database` and `collection`, because the agent-loop `search` tools do not return them.
+
+  Each step names the URI that lists the entities of its kind.
+
+  The steps name no tool, so `:uses` is empty: they stay in every profile and on the Agent API,
+  whose tool set is `#{\"search\"}`."
+  {"database"   {:uses #{}
+                 :text (str "Read `metabase://databases` to list the databases you can read and their numeric"
+                            " `id` attributes. Use that `id` in the URI.")}
+   "collection" {:uses #{}
+                 :text (str "Read `metabase://collections?tree=true` to list the collections you can read and"
+                            " their numeric `id` attributes. Use that `id` in the URI. The root collection"
+                            " (by default \"Our analytics\") has no numeric id: use `metabase://collection/root`.")}})
+
 (tools/defrecoverable non-numeric-id!
-  "An entity URI carried something other than a numeric id — usually a 21-character entity id."
+  "An entity URI carried something other than a numeric id.
+
+  Usually it is a 21-character entity id, or the name of a database or collection. The agent-loop
+  `search` tools return no databases or collections, so for those kinds the recovery names the URI
+  that lists them."
   {:payload [:map {:closed true}
              [:uri  :string]
              [:kind :string]
@@ -242,9 +268,7 @@
                   " an entity_id, a name or a slug.")
    :recovery (vec (keep identity
                         [(templates-step kind)
-                         {:uses #{"search"}
-                          :text (str "Call `search` and build the URI from a result's numeric `id`"
-                                     " attribute, or copy its `uri` attribute as-is.")}]))})
+                         (get id-lookup-steps kind search-id-step)]))})
 
 (tools/defrecoverable inactive-table!
   "Report a readable table that is no longer active."
@@ -431,12 +455,13 @@
 (defn- present-database
   "Trim a database row to a token-frugal item map for list responses."
   [{:keys [id name engine description]}]
-  {:type        "database"
-   :id          id
-   :name        name
-   :engine      (some-> engine clojure.core/name)
-   :description description
-   :uri         (llm-shape/metabase-uri :database id)})
+  (cond-> {:type        "database"
+           :id          id
+           :name        name
+           :engine      (some-> engine clojure.core/name)
+           :description description
+           :uri         (llm-shape/metabase-uri :database id)}
+    (= audit/audit-db-id id) (assoc :sql_unavailable true)))
 
 (defn- present-collection
   "Trim a collection row to an item map. `path-name` may be supplied if the caller pre-computed it."

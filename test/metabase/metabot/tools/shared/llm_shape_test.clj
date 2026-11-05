@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -535,6 +536,26 @@
       (is (not (str/includes? xml-missing "<query>")))
       (is (not (str/includes? xml-empty "<query>"))))))
 
+(deftest ^:parallel question->xml-fields-test
+  (testing "renders the result columns under ### Fields when :fields is provided"
+    ;; Native aliases and aggregates have no Field row, so their ids are strings.
+    (let [xml (llm-shape/question->xml
+               {:id     203
+                :name   "Q"
+                :fields [{:field_id 7 :name "CATEGORY" :display_name "Category"
+                          :type :type/Text :database_type "VARCHAR"}
+                         {:field_id "count" :name "count" :display_name "Count"
+                          :type :type/Integer :database_type "BIGINT"}]})]
+      (is (str/includes? xml "### Fields"))
+      (is (str/includes? xml "The following fields are returned by this question"))
+      (is (str/includes? xml "<field id=\"7\" name=\"CATEGORY\" display_name=\"Category\""))
+      (is (str/includes? xml "<field id=\"count\" name=\"count\" display_name=\"Count\""))))
+  (testing "omits the fields section when :fields is missing or empty"
+    (let [xml-missing (llm-shape/question->xml {:id 204 :name "Q"})
+          xml-empty   (llm-shape/question->xml {:id 205 :name "Q" :fields []})]
+      (is (not (str/includes? xml-missing "### Fields")))
+      (is (not (str/includes? xml-empty "### Fields"))))))
+
 (deftest ^:parallel dashboard->xml-test
   (testing "formats dashboard matching Python"
     (let [dashboard {:id 50
@@ -790,6 +811,15 @@
                        :page      1
                        :pages     1})
                      "can_write=\"false\"")))
+
+(deftest ^:parallel sql-unavailable-on-the-audit-database-test
+  (doseq [[database-id unavailable?] [[audit/audit-db-id true] [1 false]]
+          [element ->xml entity] [["table" llm-shape/table->xml {:id 10 :name "v_users"}]
+                                  ["model" llm-shape/model->xml {:id 6 :name "People"}]
+                                  ["search result" llm-shape/search-result->xml {:id 6 :type :model :name "People"}]]
+          :let [xml (->xml (assoc entity :database_id database-id))]]
+    (testing (str element " in database " database-id)
+      (is (= unavailable? (str/includes? xml "sql_unavailable=\"true\""))))))
 
 (deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"

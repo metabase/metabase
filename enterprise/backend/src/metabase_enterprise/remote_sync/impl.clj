@@ -28,6 +28,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -326,11 +327,11 @@
       (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
                          (remove kept-tables)
                          (partition-all app-db-batch-size))]
-        (remote-sync.db/delete-table-user-settings! (vec batch)))
+        (warehouse-schema/delete-table-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
                          (remove kept-fields)
                          (partition-all app-db-batch-size))]
-        (remote-sync.db/delete-field-user-settings! (vec batch)))
+        (warehouse-schema/delete-field-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-dimensions table-ids)
                          (remove kept-dims)
                          (partition-all app-db-batch-size))]

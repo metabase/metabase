@@ -136,7 +136,7 @@
     (catch clojure.lang.ExceptionInfo e
       (let [data (ex-data e)
             status-code (:status-code data)]
-        (if (and (not (contains? data tools.error/error-key))
+        (if (and (not (tools.error/declared? e))
                  (int? status-code) (<= 400 status-code 499))
           (save-rejected! {:message (ex-message e)})
           (throw e))))))

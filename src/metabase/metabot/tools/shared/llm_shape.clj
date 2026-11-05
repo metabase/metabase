@@ -13,6 +13,7 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
@@ -521,7 +522,8 @@
    Matches Python Table.get_llm_representation exactly, except we additionally surface
    `database_name` as a tag attribute so the LLM has the human-readable DB name available
    without a separate `read_resource` call — it's the first slot of every portable FK in
-   the representations-format `construct_notebook_query` tool."
+   the representations-format `construct_notebook_query` tool. A table in the audit database
+   also carries `sql_unavailable`, because Metabase runs no SQL there."
   [{:keys [id name database_id database_name database_engine database_schema
            description fields related_tables related_tables_total
            related_tables_without_fields measures segments]}]
@@ -533,6 +535,7 @@
       :table_database_id        (str database_id)
       :table_database_name      database_name
       :table_database_engine    (database-engine-or-unknown database_engine)
+      :table_sql_unavailable    (= audit/audit-db-id database_id)
       :table_fqn                fqn
       :table_description        description
       :table_fields_xml         (when (seq fields)
@@ -559,7 +562,7 @@
 (defn model->xml
   "Format model for LLM consumption.
    Matches Python Model.get_llm_representation exactly, except we additionally surface
-   `database_name` as a tag attribute (see [[table->xml]] for the rationale).
+   `database_name` and `sql_unavailable` as tag attributes (see [[table->xml]] for the rationale).
 
    When the caller supplies `:query_json` (the model's `dataset_query` exported through the
    representations resolver as a portable repr-form map), it is rendered inside the
@@ -578,6 +581,7 @@
       :model_database_id        (str database_id)
       :model_database_name      database_name
       :model_database_engine    (database-engine-or-unknown database_engine)
+      :model_sql_unavailable    (= audit/audit-db-id database_id)
       :model_fqn                fqn
       :model_description        description
       :model_portable_entity_id portable_entity_id
@@ -860,7 +864,7 @@
    includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
    without an extra `read_resource` call, and (when available) `database_name` — the
    human-readable name the LLM needs as the first slot of every portable FK in
-   `construct_notebook_query`.
+   `construct_notebook_query`. A result in the audit database carries `sql_unavailable`, as in [[table->xml]].
 
    Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
    `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
@@ -905,6 +909,7 @@
       :search_database_id (when database_id (str database_id))
       :search_database_name database_name
       :search_database_engine engine
+      :search_sql_unavailable (= audit/audit-db-id database_id)
       :search_fqn fqn
       :search_portable_entity_id portable_entity_id
       :search_base_table_fqn (when (and (vector? base_table_portable_fk)
@@ -1045,7 +1050,7 @@
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
   [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
-   :engine :timestamp])
+   :engine :sql_unavailable :timestamp])
 
 (defn- item-attrs->xml
   [item]

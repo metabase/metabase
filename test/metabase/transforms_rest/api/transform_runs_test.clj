@@ -3,6 +3,8 @@
   DAG-reprocess runs, and standalone transform runs) — and GET /api/transform/run/:run-id."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-util :refer [parse-instant
@@ -255,10 +257,8 @@
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Transform {transform-id :id} {:name   "Hidden Transform"
-                                                            :source {:type  "query"
-                                                                     :query {:database db-id
-                                                                             :type     "native"
-                                                                             :native   {:query "SELECT 1"}}}}
+                                                            :source {:type  :query
+                                                                     :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}}
                        :model/TransformRun {run-id :id} {:transform_id   transform-id
                                                          :transform_name "Hidden Transform"}]
           ;; deleting the source database makes the transform unreadable to data analysts

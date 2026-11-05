@@ -68,23 +68,29 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  "You do not have permission to write SQL against this database."
-   :recovery [{:uses #{notebook-tool-name}
-               :text (str "Build the question with `construct_notebook_query` instead. Don't write SQL against"
-                          " this database again.")}]})
+   :recovery [sql.common/notebook-instead-step]})
+
+(tools/defrecoverable sql-on-audit-database-with-notebook-fallback!
+  "The SQL targets the audit database, and the notebook builder is offered this turn."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Metabase does not run SQL on the Internal Metabase Database, for any user."
+   :recovery [sql.common/notebook-instead-step]})
 
 (defn- do-with-notebook-fallback
-  "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
-  when the notebook builder is offered this turn.
-  Without the notebook builder the refusal still ends the turn."
+  "Call `thunk`, making SQL refusals recoverable when the notebook builder is offered this turn."
   [ctx thunk]
   ;; A user who may write SQL on any database gets the SQL tools, so the agent can pick a database where they may not.
   ;; The recoverable error lets it try the notebook builder instead of ending the turn.
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
-      (if (and (= ::sql.common/no-native-permission (get-in (ex-data e) [tools.error/error-key :code]))
-               (contains? (:tool-names ctx) notebook-tool-name))
-        (tools.error/throw-recoverable! ::no-native-permission-with-notebook-fallback {} {:cause e})
+      (if-let [recovery-code (when (contains? (:tool-names ctx) notebook-tool-name)
+                               (case (get-in (ex-data e) [tools.error/error-key :code])
+                                 ::sql.common/no-native-permission ::no-native-permission-with-notebook-fallback
+                                 ::sql.common/sql-on-audit-database ::sql-on-audit-database-with-notebook-fallback
+                                 nil))]
+        (tools.error/throw-recoverable! recovery-code {} {:cause e})
         (throw e)))))
 
 (defn- query-viz-part
@@ -156,8 +162,9 @@
    [:title :string]])
 
 (defn- sql-edit-result
-  [operation-result title instruction-fn ctx]
-  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action! operation-result)
+  [operation-result title instruction-fn ctx & {:keys [edit?]}]
+  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action!
+                                                            operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]
@@ -183,7 +190,7 @@
                              :edits edits
                              :checklist checklist
                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/edit-sql-query-instructions-for ctx)))
+                     title instructions/edit-sql-query-instructions-for ctx {:edit? true})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."

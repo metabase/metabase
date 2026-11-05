@@ -16,7 +16,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.dashboards.schema]
    [metabase.formatter.core :as formatter]
-   [metabase.geojson.api :as geojson.api]
+   [metabase.geojson.core :as geojson.core]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -389,19 +389,19 @@
 
 (defn- simple-pivot-indexes
   "Column indexes `{:normal i, :pivot j, :cell k}` when the Table viz's \"Pivot table\" toggle applies to `cols`, else
-  nil. Mirrors the browser's `isPivoted` and `isValid` (viz-core/lib/settings/column.ts, Table/definition.ts):
-  `:table.pivot` is set, there are exactly three columns, and `:table.pivot_column` and `:table.cell_column` name two
-  different columns. The remaining column is the normal one; its values become the row labels."
+  nil. Mirrors the browser's `isPivoted` (viz-core/lib/settings/column.ts): `:table.pivot` is set, there are at least
+  three columns, and `:table.pivot_column` and `:table.cell_column` name two different columns. The first remaining
+  column is the normal one; its values become the row labels. Any other columns are ignored."
   [cols viz-settings]
   (when (and (setting-value viz-settings :table.pivot)
-             (= 3 (count cols)))
+             (<= 3 (count cols)))
     (let [index-of  (fn [k]
                       (let [col-name (setting-value viz-settings k)]
                         (u/index-of #(= (:name %) col-name) cols)))
           pivot-idx (index-of :table.pivot_column)
           cell-idx  (index-of :table.cell_column)]
       (when (and pivot-idx cell-idx (not= pivot-idx cell-idx))
-        {:normal (first (remove #{pivot-idx cell-idx} (range 3)))
+        {:normal (first (remove #{pivot-idx cell-idx} (range (count cols))))
          :pivot  pivot-idx
          :cell   cell-idx}))))
 
@@ -458,9 +458,9 @@
     (order-distinct-values state (distinct (map #(nth % value-idx) rows)))))
 
 (defn- simple-pivot-grid
-  "Port of the browser's `pivot` (visualizations/lib/data_grid.ts): fold a three-column result into a 2D grid, header
-  row first. Column 0 holds the normal column's title and its values; the other columns are the distinct pivot values.
-  Each cell is the cell column's value for that (normal, pivot) pair, or nil when no row has the pair."
+  "Port of the browser's `pivot` (visualizations/lib/data_grid.ts): fold the normal, pivot and cell columns into a 2D
+  grid, header row first. Column 0 holds the normal column's title and its values; the other columns are the distinct
+  pivot values. Each cell is the cell column's value for that (normal, pivot) pair, or nil when no row has the pair."
   [timezone-id {:keys [cols rows viz-settings] :as data} {:keys [normal pivot cell]}]
   (let [format-rows?  (get data :format-rows? true)
         formatter-for (fn [idx]
@@ -836,7 +836,7 @@
   ;; Resolve the display type the same way detection does, so a visualizer dashcard's display wins.
   (let [display-type (or (render.util/visualizer-display-type dashcard) (:display card))
         region-key   (region-map-region-key display-type card dashcard data)
-        geojson      (some-> region-key geojson.api/region-geojson)]
+        geojson      (some-> region-key geojson.core/region-geojson)]
     (if-not geojson
       ;; The region's GeoJSON couldn't be resolved (e.g. a custom map whose fetch failed); degrade to a
       ;; table of the data rather than emit an empty map.
