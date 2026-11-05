@@ -147,7 +147,9 @@
                             nil))]
       ;; The LIMIT stops the database sending rows past the ceiling; JDBC drivers such as PostgreSQL's otherwise
       ;; buffer the whole result set before the reduction sees a row.
-      (let [rows (transduce (comp (take (inc max-pre-image-rows)) (map t2.realize/realize))
+      (let [rows (transduce (comp (take (inc max-pre-image-rows))
+                                  ;; Modelless rows still come back as toucan2 instances; the contract is plain maps.
+                                  (map #(into {} (t2.realize/realize %))))
                             conj []
                             (t2.execute/reducible-query sql-args))]
         (cond
