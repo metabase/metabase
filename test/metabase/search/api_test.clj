@@ -2103,26 +2103,29 @@
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
   (testing "When deleting a database, cards referring to that database should be hidden from search"
     (let [card-name (str (random-uuid))]
-      (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
-                     :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
-                     :model/Card {card-id :id} {:name card-name
-                                                :database_id db-id
-                                                :table_id table-id
-                                                :dataset_query {:database db-id
-                                                                :type :query
-                                                                :query {:source-table table-id}}}]
-        (search/reindex! {:async? false :in-place? true})
-        (testing "Card should be visible in search before database deletion"
-          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (some #(= (:id %) card-id) (:data search-results))
-                "Card should be found in search results before database deletion")))
-        (testing "Card should be hidden from search after database deletion"
-          (t2/delete! :model/Database :id db-id)
-          (is (not (t2/exists? :model/Card :id card-id)))
-          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (not (some #{card-id}
-                           (mapv :id (:data search-results))))
-                "Card should not be found in search results after database deletion")))))))
+      ;; The search purge runs after the delete commits, and `with-temp` normally wraps its body in a rollback-only
+      ;; transaction that never commits; this makes it commit for real, with explicit cleanup.
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
+                       :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
+                       :model/Card {card-id :id} {:name card-name
+                                                  :database_id db-id
+                                                  :table_id table-id
+                                                  :dataset_query {:database db-id
+                                                                  :type :query
+                                                                  :query {:source-table table-id}}}]
+          (search/reindex! {:async? false :in-place? true})
+          (testing "Card should be visible in search before database deletion"
+            (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+              (is (some #(= (:id %) card-id) (:data search-results))
+                  "Card should be found in search results before database deletion")))
+          (testing "Card should be hidden from search after database deletion"
+            (t2/delete! :model/Database :id db-id)
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+              (is (not (some #{card-id}
+                             (mapv :id (:data search-results))))
+                  "Card should not be found in search results after database deletion"))))))))
 
 (deftest collection-filter-test
   (mt/with-temp
