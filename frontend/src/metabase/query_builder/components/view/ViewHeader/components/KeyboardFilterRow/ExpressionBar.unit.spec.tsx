@@ -141,6 +141,173 @@ describe("ExpressionBar", () => {
     });
   });
 
+  describe("typing parentheses", () => {
+    const getQueryWithFilter = () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+      const column = columnFinder(query, Lib.filterableColumns(query, 0))(
+        "ORDERS",
+        "TOTAL",
+      );
+      return Lib.filter(
+        query,
+        0,
+        toFilterClause(
+          query,
+          0,
+          Lib.numberFilterClause({ operator: ">", column, values: [10] }),
+        ),
+      );
+    };
+
+    const AutoApplyBar = ({
+      onChange,
+    }: {
+      onChange: (query: Lib.Query) => void;
+    }) => {
+      const [query, setQuery] = useState(getQueryWithFilter);
+      return (
+        <>
+          <ExpressionBar
+            query={query}
+            stageIndex={0}
+            isAutoApply
+            onChange={(nextQuery) => {
+              setQuery(nextQuery);
+              onChange(nextQuery);
+            }}
+            openKey={0}
+          />
+          <button>Outside</button>
+        </>
+      );
+    };
+
+    const setup = () => {
+      fetchMock.get("path:/api/prototype/field-categories", []);
+      fetchMock.get("path:/api/prototype/filter-usage", []);
+      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
+      const onChange = jest.fn<void, [Lib.Query]>();
+      renderWithProviders(<AutoApplyBar onChange={onChange} />);
+      return { onChange };
+    };
+
+    const typeKeys = (keys: string) =>
+      userEvent.type(screen.getByRole("textbox"), keys);
+    const findOption = (label: string) =>
+      within(screen.getByRole("listbox")).findByText(label);
+    const addFilter = async (columnName: string) => {
+      await typeKeys(columnName);
+      await userEvent.click(await findOption(columnName));
+      await userEvent.click(await findOption(">"));
+      await typeKeys("5{Enter}");
+    };
+    const getOpens = () =>
+      screen.queryAllByRole("button", { name: "Remove (" });
+    const getCloses = () =>
+      screen.queryAllByRole("button", { name: "Remove )" });
+    const getFilterOperators = (query: Lib.Query) =>
+      Lib.filters(query, 0).map(
+        (filter) => Lib.expressionParts(query, 0, filter).operator,
+      );
+
+    it("adds the closing parenthesis with the opening one", async () => {
+      const { onChange } = setup();
+      await typeKeys("(");
+      expect(getOpens()).toHaveLength(1);
+      expect(getCloses()).toHaveLength(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("puts a filter between the parentheses, and they survive its apply", async () => {
+      const { onChange } = setup();
+      await typeKeys("(");
+      await addFilter("Tax");
+      expect(onChange).toHaveBeenCalled();
+      expect(getOpens()).toHaveLength(1);
+      expect(getCloses()).toHaveLength(1);
+
+      await typeKeys("or{Enter}");
+      await addFilter("Discount");
+
+      expect(getFilterOperators(onChange.mock.lastCall![0])).toEqual([
+        ">",
+        "or",
+      ]);
+    });
+
+    it("steps over the closing parenthesis, so the next filter goes after it", async () => {
+      const { onChange } = setup();
+      await typeKeys("(");
+      await addFilter("Tax");
+      await typeKeys("or{Enter}");
+      await addFilter("Discount");
+      await typeKeys(")");
+      expect(getCloses()).toHaveLength(1);
+
+      await addFilter("Quantity");
+
+      expect(getCloses()).toHaveLength(1);
+      expect(getFilterOperators(onChange.mock.lastCall![0])).toEqual([
+        ">",
+        "or",
+        ">",
+      ]);
+    });
+
+    it("removes an empty pair with Backspace", async () => {
+      const { onChange } = setup();
+      await typeKeys("(");
+      await typeKeys("{Backspace}");
+      expect(getOpens()).toHaveLength(0);
+      expect(getCloses()).toHaveLength(0);
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    const typeOpenBeforeFilter = async () => {
+      const bar = screen.getByTestId("filter-expression-bar");
+      // eslint-disable-next-line testing-library/no-node-access -- the caret slots have no role or text
+      await userEvent.click(bar.querySelectorAll("[data-caret-slot]")[0]);
+      await typeKeys("(");
+    };
+
+    it("does not close a group that wraps the filter after the caret", async () => {
+      setup();
+      await typeOpenBeforeFilter();
+      expect(getOpens()).toHaveLength(1);
+      expect(getCloses()).toHaveLength(0);
+    });
+
+    it("adds a missing closing parenthesis on Enter instead of an error", async () => {
+      setup();
+      await typeOpenBeforeFilter();
+      await typeKeys("{Enter}");
+      expect(
+        screen.queryByText("Missing closing parenthesis"),
+      ).not.toBeInTheDocument();
+      expect(getOpens()).toHaveLength(0);
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(1);
+    });
+
+    it("adds a missing closing parenthesis on leaving", async () => {
+      setup();
+      await typeOpenBeforeFilter();
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+      expect(getOpens()).toHaveLength(0);
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(1);
+    });
+
+    it("drops parentheses that the query does not need on leaving", async () => {
+      setup();
+      await typeKeys("(");
+      await addFilter("Tax");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+      expect(getOpens()).toHaveLength(0);
+      expect(getCloses()).toHaveLength(0);
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(2);
+    });
+  });
+
   describe("typing AND", () => {
     const getQueryWithTwoFilters = () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);

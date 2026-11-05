@@ -225,7 +225,11 @@ export function parseTokens(tokens: readonly Token[]): ParseResult {
       return inner;
     }
     if (token.type === "paren") {
-      return fail(t`Unexpected closing parenthesis`);
+      return fail(
+        isOpToken(tokens[position - 1])
+          ? t`Expected a filter before ")"`
+          : t`Unexpected closing parenthesis`,
+      );
     }
     return fail(t`Expected a filter before "${token.op}"`);
   };
@@ -328,6 +332,63 @@ export function insertToken(
   return { tokens: nextTokens, caret: caretAfterToken };
 }
 
+/**
+ * A typed parenthesis, the way code editors treat them. `(` also adds its `)`
+ * after the caret, unless an operand follows: that `(` is about to wrap it. `)`
+ * steps over a `)` that is already next to the caret instead of repeating it.
+ */
+export function insertParen(
+  tokens: Token[],
+  caret: number,
+  side: "open" | "close",
+): { tokens: Token[]; caret: number } {
+  if (side === "close" && isParenToken(tokens[caret], "close")) {
+    return { tokens, caret: caret + 1 };
+  }
+  const next = insertToken(
+    tokens,
+    caret,
+    side === "open" ? OPEN_PAREN : CLOSE_PAREN,
+  );
+  if (side === "close" || startsOperand(tokens[caret])) {
+    return next;
+  }
+  return {
+    tokens: [
+      ...next.tokens.slice(0, next.caret),
+      CLOSE_PAREN,
+      ...next.tokens.slice(next.caret),
+    ],
+    caret: next.caret,
+  };
+}
+
+/**
+ * Adds the closing parentheses missing at the end of the expression, when that
+ * can't change what it means. A group with one kind of connector closes at the
+ * end. In a group that mixes AND and OR, like `(a or b and c`, the group could
+ * also end before the connector changes, so only the user can say. Returns the
+ * same `tokens` when there is nothing to add or it isn't safe.
+ */
+export function closeUnclosedGroups(tokens: Token[]): Token[] {
+  const unclosedGroups: Set<BoolOperator>[] = [];
+  tokens.forEach((token) => {
+    if (isParenToken(token, "open")) {
+      unclosedGroups.push(new Set());
+    } else if (isParenToken(token, "close")) {
+      unclosedGroups.pop();
+    } else if (token.type === "op") {
+      unclosedGroups.at(-1)?.add(token.op);
+    }
+  });
+  const isAmbiguous = unclosedGroups.some((operators) => operators.size > 1);
+  if (unclosedGroups.length === 0 || isAmbiguous) {
+    return tokens;
+  }
+  const closed = [...tokens, ...unclosedGroups.map((): Token => CLOSE_PAREN)];
+  return parseTokens(closed).ok ? closed : tokens;
+}
+
 export function removeTokenAt(
   tokens: readonly Token[],
   index: number,
@@ -337,15 +398,18 @@ export function removeTokenAt(
 
 /**
  * The connectors once the user is done editing: an AND wherever operands touch,
- * and no AND / OR or empty parentheses that dangle. Returns the same `tokens`
- * when there is nothing to change.
+ * no AND / OR or empty parentheses that dangle, and the closing parentheses
+ * that are safe to add. Returns the same `tokens` when there is nothing to
+ * change.
  */
 export function settleConnectors(tokens: Token[]): Token[] {
   const kept = removeDanglingTokens(tokens);
-  const settled = kept.flatMap((token, index) =>
-    endsOperand(kept[index - 1]) && startsOperand(token)
-      ? [opToken("and"), token]
-      : [token],
+  const settled = closeUnclosedGroups(
+    kept.flatMap((token, index) =>
+      endsOperand(kept[index - 1]) && startsOperand(token)
+        ? [opToken("and"), token]
+        : [token],
+    ),
   );
   const isUnchanged =
     settled.length === tokens.length &&
@@ -428,7 +492,10 @@ function removeDanglingTokens(tokens: readonly Token[]): Token[] {
           isParenToken(after, "close")
         );
       }
-      return isParenToken(token, "open") && isParenToken(after, "close");
+      return (
+        isParenToken(token, "open") &&
+        (after == null || isParenToken(after, "close"))
+      );
     });
     if (index !== -1) {
       const isEmptyGroup = isParenToken(next[index], "open");

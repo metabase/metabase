@@ -10,8 +10,10 @@ import {
   CLOSE_PAREN,
   OPEN_PAREN,
   type Token,
+  closeUnclosedGroups,
   filterToken,
   getSummaryStageIndex,
+  insertParen,
   insertToken,
   matchLogic,
   opToken,
@@ -19,6 +21,7 @@ import {
   readTokens,
   removeParenPair,
   removePillAt,
+  settleConnectors,
   toFilterClause,
   writeTokens,
 } from "./tokens";
@@ -162,6 +165,122 @@ describe("parseTokens", () => {
       });
     },
   );
+});
+
+describe("parentheses", () => {
+  const a = filterToken(numberFilter(createQuery(), "TOTAL", ">", 100));
+  const b = filterToken(numberFilter(createQuery(), "TAX", ">", 2));
+  const c = filterToken(numberFilter(createQuery(), "QUANTITY", ">", 3));
+  const and = opToken("and");
+  const or = opToken("or");
+
+  describe("insertParen", () => {
+    it("adds the closing parenthesis after the caret", () => {
+      expect(insertParen([], 0, "open")).toEqual({
+        tokens: [OPEN_PAREN, CLOSE_PAREN],
+        caret: 1,
+      });
+    });
+
+    it("adds the connector and the closing parenthesis after a filter", () => {
+      expect(insertParen([a], 1, "open")).toEqual({
+        tokens: [a, and, OPEN_PAREN, CLOSE_PAREN],
+        caret: 3,
+      });
+    });
+
+    it("adds no closing parenthesis right before a filter it will wrap", () => {
+      expect(insertParen([a, or, b], 0, "open")).toEqual({
+        tokens: [OPEN_PAREN, a, or, b],
+        caret: 1,
+      });
+    });
+
+    it("steps over a closing parenthesis instead of repeating it", () => {
+      const tokens = [OPEN_PAREN, a, CLOSE_PAREN];
+      const next = insertParen(tokens, 2, "close");
+      expect(next.tokens).toBe(tokens);
+      expect(next.caret).toBe(3);
+    });
+
+    it("adds a closing parenthesis when none is next to the caret", () => {
+      expect(insertParen([OPEN_PAREN, a], 2, "close")).toEqual({
+        tokens: [OPEN_PAREN, a, CLOSE_PAREN],
+        caret: 3,
+      });
+    });
+  });
+
+  describe("closeUnclosedGroups", () => {
+    it.each<{ name: string; tokens: Token[]; closes: number }>([
+      { name: "a lone filter", tokens: [OPEN_PAREN, a], closes: 1 },
+      { name: "an OR", tokens: [OPEN_PAREN, a, or, b], closes: 1 },
+      { name: "an AND", tokens: [OPEN_PAREN, a, and, b], closes: 1 },
+      {
+        name: "a group after other filters",
+        tokens: [a, and, OPEN_PAREN, b, or, c],
+        closes: 1,
+      },
+      {
+        name: "nested groups",
+        tokens: [OPEN_PAREN, a, or, OPEN_PAREN, b, and, c],
+        closes: 2,
+      },
+      {
+        name: "a closed group of another kind inside",
+        tokens: [OPEN_PAREN, a, or, OPEN_PAREN, b, and, c, CLOSE_PAREN],
+        closes: 1,
+      },
+    ])("closes $name at the end", ({ tokens, closes }) => {
+      const closed = closeUnclosedGroups(tokens);
+      expect(closed).toEqual([
+        ...tokens,
+        ...Array.from({ length: closes }, () => CLOSE_PAREN),
+      ]);
+      expect(parseTokens(closed).ok).toBe(true);
+    });
+
+    it.each<{ name: string; tokens: Token[] }>([
+      {
+        name: "a group that mixes AND and OR, which could end earlier",
+        tokens: [OPEN_PAREN, a, or, b, and, c],
+      },
+      { name: "a balanced expression", tokens: [OPEN_PAREN, a, CLOSE_PAREN] },
+      { name: "a dangling connector", tokens: [OPEN_PAREN, a, or] },
+      { name: "an empty group", tokens: [OPEN_PAREN] },
+      { name: "a stray closing parenthesis", tokens: [a, CLOSE_PAREN] },
+    ])("leaves $name as it is", ({ tokens }) => {
+      expect(closeUnclosedGroups(tokens)).toBe(tokens);
+    });
+  });
+
+  describe("settleConnectors", () => {
+    it("closes a group on leaving, once the dangling connector is gone", () => {
+      expect(settleConnectors([OPEN_PAREN, a, or, b, or])).toEqual([
+        OPEN_PAREN,
+        a,
+        or,
+        b,
+        CLOSE_PAREN,
+      ]);
+    });
+
+    it("drops a group with nothing in it", () => {
+      expect(settleConnectors([a, and, OPEN_PAREN])).toEqual([a]);
+      expect(settleConnectors([a, and, OPEN_PAREN, CLOSE_PAREN])).toEqual([a]);
+    });
+
+    it("keeps an ambiguous group for the user to fix", () => {
+      expect(settleConnectors([OPEN_PAREN, a, or, b, and, c])).toEqual([
+        OPEN_PAREN,
+        a,
+        or,
+        b,
+        and,
+        c,
+      ]);
+    });
+  });
 });
 
 describe("insertToken", () => {

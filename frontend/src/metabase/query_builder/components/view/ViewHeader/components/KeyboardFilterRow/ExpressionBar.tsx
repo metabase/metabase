@@ -51,6 +51,7 @@ import {
   OPEN_PAREN,
   type Token,
   type TokenRange,
+  closeUnclosedGroups,
   endsOperand,
   filterToken,
   getFilterLabel,
@@ -59,6 +60,7 @@ import {
   getSummaryStageIndex,
   groupRange,
   hasTopLevelOr,
+  insertParen,
   insertToken,
   isOpToken,
   isParenToken,
@@ -342,6 +344,7 @@ export function ExpressionBar({
   const [hasFocus, setHasFocus] = useState(false);
   const isPointerInBarRef = useRef(false);
   const [openPillCount, setOpenPillCount] = useState(0);
+  const isExpanded = hasFocus || isOpen || openPillCount > 0;
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(typingTimeoutRef.current), []);
 
@@ -351,6 +354,7 @@ export function ExpressionBar({
   // not edited, and the auto-commit below would write that stale draft back
   // over the new query, which the reset then undoes, forever.
   const isSelfCommitRef = useRef(false);
+  const lastAutoCommitRef = useRef<Token[]>(undefined);
   const skipFlashRef = useRef(false);
   // A draft shows no error while it is typed. An apply that fails turns
   // validation on: the error shows and follows every edit until the next
@@ -359,12 +363,12 @@ export function ExpressionBar({
   const [syncedTokens, setSyncedTokens] = useState(committedTokens);
   if (syncedTokens !== committedTokens) {
     setSyncedTokens(committedTokens);
-    setTokens(committedTokens);
     setIsValidating(false);
     if (isSelfCommitRef.current) {
       isSelfCommitRef.current = false;
       skipFlashRef.current = true;
     } else {
+      setTokens(committedTokens);
       setCaret(committedTokens.length);
       setPillEdit(undefined);
     }
@@ -397,7 +401,9 @@ export function ExpressionBar({
 
   // Removing tokens can leave the caret past the end; clamp it.
   const caretIndex = Math.min(caret, tokens.length);
-  const isDirty = tokens !== committedTokens;
+  const isDirty = ![committedTokens, lastAutoCommitRef.current].includes(
+    tokens,
+  );
   const baseQuery = draftQuery ?? query;
   const canApply = isDirty || draftQuery != null;
   const parsed = useMemo(() => parseTokens(tokens), [tokens]);
@@ -412,7 +418,6 @@ export function ExpressionBar({
     onErrorChange?.(ownError);
   }, [ownError, onErrorChange]);
   const parenDepths = useMemo(() => getParenDepths(tokens), [tokens]);
-  const isExpanded = hasFocus || isOpen || openPillCount > 0;
   const nesting = Math.max(
     0,
     ...tokens.map((token, index) =>
@@ -706,7 +711,10 @@ export function ExpressionBar({
         !(isOpBefore && index === caretIndex - 1) &&
         !(isOpAfter && index === caretIndex),
     );
-    const next = insertToken(without, at, token);
+    const next =
+      token.type === "paren"
+        ? insertParen(tokens, caretIndex, token.side)
+        : insertToken(without, at, token);
     setTokens(next.tokens);
     setCaret(next.caret);
     if (isOpToken(token, "and")) {
@@ -944,10 +952,21 @@ export function ExpressionBar({
         isHiddenAnd(tokens[caretIndex - 1]) && caretIndex > 1
           ? caretIndex - 2
           : caretIndex - 1;
-      const { tokens: next, caret } =
-        tokens[index].type === "filter"
-          ? removePill(tokens, index)
-          : { tokens: removeTokenAt(tokens, index), caret: index };
+      const isEmptyGroup =
+        isParenToken(tokens[index], "open") &&
+        isParenToken(tokens[index + 1], "close");
+      const getNextTokens = () => {
+        if (tokens[index].type === "filter") {
+          return removePill(tokens, index);
+        }
+        return {
+          tokens: isEmptyGroup
+            ? removeParenPair(tokens, index)
+            : removeTokenAt(tokens, index),
+          caret: index,
+        };
+      };
+      const { tokens: next, caret } = getNextTokens();
       setTokens(next);
       setCaret(caret);
       resetDraft();
@@ -970,13 +989,14 @@ export function ExpressionBar({
   };
 
   // With auto-apply there is no Apply: every valid expression goes straight to the question.
-  const lastAutoCommitRef = useRef<Token[]>(undefined);
   useEffect(() => {
-    const isNew = tokens !== lastAutoCommitRef.current;
-    if ((isAutoApply || isNested) && isDirty && parsed.ok && isNew) {
+    if ((isAutoApply || isNested) && isDirty && parsed.ok) {
       lastAutoCommitRef.current = tokens;
-      isSelfCommitRef.current = true;
-      onChange(writeTokens(query, stageIndex, tokens));
+      const nextQuery = writeTokens(query, stageIndex, tokens);
+      // An equal query never comes back as a new `query`, so nothing would
+      // consume the flag.
+      isSelfCommitRef.current = !areQueriesEqual(query, nextQuery);
+      onChange(nextQuery);
     }
   }, [
     isAutoApply,
@@ -988,6 +1008,18 @@ export function ExpressionBar({
     tokens,
     onChange,
   ]);
+
+  // The query drops parentheses it doesn't need, like those of the group the
+  // caret may still be in, so an applied draft stays as typed until the bar
+  // folds. Then it reads the way the query does, once its commit has arrived.
+  useEffect(() => {
+    const isAppliedDraft =
+      tokens === lastAutoCommitRef.current && tokens !== committedTokens;
+    if (!isExpanded && isAppliedDraft && !isSelfCommitRef.current) {
+      setTokens(committedTokens);
+      setCaret(committedTokens.length);
+    }
+  }, [isExpanded, tokens, committedTokens, setTokens]);
 
   // Prototype: Clear empties the bar and opens a new pill at its start, as in
   // an empty bar. The parent removes the filters of every stage in one
@@ -1001,13 +1033,21 @@ export function ExpressionBar({
   };
 
   const commit = () => {
+    const closedTokens = closeUnclosedGroups(tokens);
+    const isClosingGroups = closedTokens !== tokens;
     // An expression that does not parse blocks the apply and shows why.
-    if (error != null) {
+    if (!parseTokens(closedTokens).ok || trailingError != null) {
       setIsValidating(true);
       return;
     }
-    if (canApply) {
-      onChange(writeTokens(baseQuery, stageIndex, tokens));
+    if (canApply || isClosingGroups) {
+      const nextQuery = writeTokens(baseQuery, stageIndex, closedTokens);
+      if (isClosingGroups) {
+        setTokens(closedTokens);
+        lastAutoCommitRef.current = closedTokens;
+        isSelfCommitRef.current = !areQueriesEqual(query, nextQuery);
+      }
+      onChange(nextQuery);
     }
     close();
     // The focus may sit in the open pill's input rather than the caret's.
