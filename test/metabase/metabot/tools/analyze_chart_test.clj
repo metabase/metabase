@@ -14,8 +14,11 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.analyze-chart :as analyze-chart]
+   [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.util :as metabot.u]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -265,16 +268,53 @@
                :output #(str/includes? % sql-steps)}
               (agent-loop-outcome! :internal-sql (get (text-series-config "Count") "c1")))))))
 
+(defn- run-query-as-rasta!
+  "Call `run_query` on `query-id` as rasta, in a conversation of rasta's own that holds `state`, and return the
+  outcome."
+  [state query-id]
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+      (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                      (metabot.tools/->entries [#'metabot.tools/run-query-tool]
+                                               (atom {:state state :conversation-id conversation-id})
+                                               nil
+                                               :internal))]
+        ((:fn (get entries "run_query")) {:query_id query-id})))))
+
 (deftest analyze-chart-tool-viewed-question-query-id-test
-  (testing "for a saved question on screen with no series, the step names the ID that the turn holds its query under"
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
     (let [query    (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))
           parts    (agent-loop-parts! :internal {:type          "question"
-                                                 :id            157
+                                                 :id            card-id
                                                  :query         query
                                                  :chart_configs [{:display_type "scalar" :title "Total" :series {}}]})
           outcome  (tool-outcome parts)
           query-id (second (re-find #"call `run_query` with query ID \"([^\"]+)\", and answer from its rows\."
                                     (:output outcome)))
           state    (some #(when (= "state" (:data-type %)) (:data %)) parts)]
-      (is (=? {:error {:class :recoverable :code ::analyze-chart/no-series-data}} outcome))
-      (is (= "SELECT 1" (some-> (get-in state [:queries query-id]) metabot.u/extract-sql-content))))))
+      (testing "with no series to analyze, the first step names the ID that the turn holds the question's query under"
+        (is (=? {:error {:class :recoverable :code ::analyze-chart/no-series-data}} outcome))
+        (is (= "SELECT 1" (some-> (get-in state [:queries query-id]) metabot.u/extract-sql-content))))
+      (testing "the next step offers the question's own ID, which reads its saved version"
+        (is (str/includes? (:output outcome)
+                           (str "If `run_query` refuses that ID, call it with question ID " card-id
+                                ", which reads the saved version of the question."))))
+      (testing "where run_query refuses the SQL on screen, the question's own ID still reads its rows"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (let [refused-then-read (fn [refusal]
+                                    (is (=? {:error {:code refusal}} (run-query-as-rasta! state query-id)))
+                                    (is (str/includes? (:output (run-query-as-rasta! state (str card-id)))
+                                                       "<query_results")))]
+            (testing "with SQL execution off"
+              (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+                (refused-then-read ::run-query/sql-not-allowed)))
+            (testing "without native query access"
+              (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+                (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                          scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                    scope/all-yes-permissions)]
+                  (mt/with-no-data-perms-for-all-users!
+                    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries
+                                                    :query-builder)
+                    (refused-then-read ::run-query/no-sql-permission)))))))))))
