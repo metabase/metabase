@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { Fragment } from "react";
 import { t } from "ttag";
@@ -86,7 +87,8 @@ function FilterPillValues({
   operator: DraftOperator;
   values: string[];
 }) {
-  const separator = operator.valueKind === "range" ? ` ${t`and`} ` : `, `;
+  const isRange = operator.valueKind === "range";
+  const separator = isRange ? ` ${t`and`} ` : `, `;
   const shownValues =
     values.length > MAX_SHOWN_VALUES
       ? values.slice(0, MAX_SHOWN_VALUES - 1)
@@ -97,7 +99,13 @@ function FilterPillValues({
     <>
       {shownValues.map((value, index) => (
         <Fragment key={value}>
-          {index > 0 && <span className={S.conjunction}>{separator}</span>}
+          {index > 0 && (
+            <span
+              className={cx(S.conjunction, { [S.rangeConjunction]: isRange })}
+            >
+              {separator}
+            </span>
+          )}
           <span className={S.value}>{formatDraftValue(operator, value)}</span>
         </Fragment>
       ))}

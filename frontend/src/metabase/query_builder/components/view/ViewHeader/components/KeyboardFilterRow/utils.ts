@@ -600,9 +600,25 @@ export function formatDraftValue(operator: DraftOperator, value: string) {
 }
 
 /** The operator as the pill shows it in a sentence, like "is between". */
+/** Prototype: the math symbol of a number operator, shown in the pill. */
+const PILL_OPERATOR_SYMBOLS: Partial<Record<string, string>> = {
+  "=": "=",
+  "!=": "≠",
+  ">": ">",
+  ">=": "≥",
+  "<": "<",
+  "<=": "≤",
+};
+
 export function getPillOperatorLabel(operator: DraftOperator) {
   if (operator.hasNoPillOperator) {
     return "";
+  }
+  const symbol = operator.isNumeric
+    ? PILL_OPERATOR_SYMBOLS[operator.key]
+    : undefined;
+  if (symbol != null) {
+    return symbol;
   }
   if (operator.pillValueLabel != null) {
     return t`is`;
