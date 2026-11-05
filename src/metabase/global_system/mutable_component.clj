@@ -7,13 +7,12 @@
    Deref the handle to read the value currently visible to this thread."
   (binding [handle new-value thunk]
     "Calls `thunk` with the value rebound to `new-value` for the dynamic extent of the call.
-     The binding is visible to `thunk`, the code it calls, and threads that inherit its bindings, such as a
-     `future` started inside it.
-     Those threads share the binding, so a [[reset!]] or [[swap!]] from any of them is seen by all.")
+     The binding is visible to `thunk`, the code it calls, and threads that inherit its bindings, such as a `future`.
+     Those threads share the binding, so a [[reset!]] or [[swap!]] from any of them is seen by all.
+     Returns what `thunk` returns.")
   (reset! [handle new-value]
-    "Sets the value in whichever slot this thread currently reads.
-     Inside a [[binding]] that is the bound value; otherwise it is the root, which every thread outside a
-     [[binding]] sees.
+    "Sets the value in whichever slot this thread currently reads, and returns `new-value`.
+     Inside a [[binding]] that is the bound value; otherwise it is the root, which every unbound thread sees.
      Outside a [[binding]], throws if the component has no root; use [[alter-root]] to install one.")
   (swap!* [handle f args]
     "Same as [[swap!]] but takes `args` as an explicit collection.
@@ -24,7 +23,8 @@
      Returns nil both when the old root was nil and when there was none, so it cannot restore an absent root.")
   (without-binding [handle thunk]
     "Calls `thunk` with this thread's [[binding]] of the component removed, so `thunk` reads and writes the root.
-     Bindings of other components are kept."))
+     Bindings of other components are kept.
+     Returns what `thunk` returns."))
 
 ;; Protocol methods can't take varargs, so this wraps [[swap!*]] to give callers the usual `swap!` signature.
 (defn swap!
