@@ -415,8 +415,8 @@
         (log/errorf "Failed to initialize OpenTelemetry tracing — tracing will be disabled: %s" (ex-message e))))))
 
 (defn shutdown!
-  "Shutdown the OTel SDK, flushing any pending spans. Called during application shutdown; halting the global system
-   shuts it down too."
+  "Shut down the OTel SDK, flushing any pending spans.
+   Called during application shutdown; halting the global system shuts it down too."
   []
   (system/stop! otel-sdk-component)
   nil)
