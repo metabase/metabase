@@ -69,7 +69,7 @@
 (defn- referenced-query
   "`query` set up to run as a referenced entity: limited to `max-rows` + 1 rows, and recorded as a QueryExecution
   under the `:dynamic-goal` context."
-  [query entity-type id max-rows {:keys [parent-info]}]
+  [query entity-type id max-rows {:keys [parent-info ignore-cached-results?]}]
   (-> query
       (assoc
        ;; one over the limit, so an entity returning too much can be rejected instead of silently truncated. a
@@ -77,7 +77,9 @@
        :constraints {:max-results (inc max-rows), :max-results-bare-rows (inc max-rows)}
        ;; otherwise a card source's id makes this run overwrite that card's result_metadata, and a metric's
        ;; stripped breakouts would erase its dimension columns
-       :middleware {:skip-results-metadata? true})
+       :middleware {:skip-results-metadata? true
+                    ;; a refresh of the chart refreshes its goals too
+                    :ignore-cached-results? (boolean ignore-cached-results?)})
       (dissoc :info)
       (qp/userland-query (cond-> (merge {:executed-by api/*current-user-id*
                                          :context     :dynamic-goal}
@@ -116,8 +118,10 @@
 
 (defn- run-referenced-entity
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`. `parent-info` is the `:info` of the query
-  referencing the entity."
-  [{entity-type :type, :keys [id columns max_rows]} default-max-rows {:keys [parent-info]}]
+  referencing the entity. `cache-strategy-fn` picks a referenced card's cache strategy from the card and its query;
+  measures run uncached."
+  [{entity-type :type, :keys [id columns max_rows]} default-max-rows
+   {:keys [parent-info cache-strategy-fn ignore-cached-results?]}]
   (let [max-rows (or max_rows default-max-rows)
         card?    (= entity-type "card")
         {:keys [model query-key]} (entity-types entity-type)]
@@ -126,8 +130,15 @@
       ;; already have checked that the reference is readable
       (let [entity         (api/read-check model id)
             query          (referenced-query (runnable-query entity query-key) entity-type id max-rows
-                                             {:parent-info (perf/select-keys parent-info [:dashboard-id :pulse-id])})
-            result         (run-isolated query (when card? id))
+                                             {:parent-info            (perf/select-keys parent-info
+                                                                                        [:dashboard-id :pulse-id])
+                                              :ignore-cached-results? ignore-cached-results?})
+            ;; measures have no cache config of their own. computed on the final query, since its hash (which the
+            ;; strategy's average execution time is looked up by) covers the constraints
+            cache-strategy (when (and card? cache-strategy-fn)
+                             (cache-strategy-fn entity query))
+            result         (run-isolated (cond-> query cache-strategy (assoc :cache-strategy cache-strategy))
+                                         (when card? id))
             data           (:data result)]
         (cond
           ;; a userland run returns its failure instead of throwing it
@@ -212,10 +223,12 @@
 (defn- maybe-wrap-qp
   "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`. The specs run
   when the qp is called, not at wrap time; for a card endpoint that's inside the streaming body."
-  [qp specs max-rows]
+  [qp specs max-rows cache-strategy-fn]
   (if (seq specs)
     (fn [query rff]
-      (let [run-opts {:parent-info (:info query)}]
+      (let [run-opts {:parent-info            (:info query)
+                      :cache-strategy-fn      cache-strategy-fn
+                      :ignore-cached-results? (perf/get-in query [:middleware :ignore-cached-results?])}]
         (if-let [result (referenced-entities-result specs max-rows nil run-opts)]
           (qp query (inject-referenced-entities rff result))
           (qp query rff))))
@@ -274,9 +287,11 @@
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from the goals `card` draws on `dashcard` (nil for a card on its own) and wrap `qp` to inject their
-  values. Exports skip this: only `:api` responses render goals."
-  [qp card dashcard export-format]
+  values. Exports skip this: only `:api` responses render goals. `cache-strategy-fn` picks a referenced card's
+  cache strategy (see [[run-referenced-entity]])."
+  [qp card dashcard export-format cache-strategy-fn]
   (if-let [{:keys [display viz-settings effective-settings]} (and (= export-format :api)
                                                                   (dynamic-goals/goal-scope card dashcard))]
-    (maybe-wrap-qp qp (viz-settings->goal-specs display viz-settings effective-settings) goal-max-rows)
+    (maybe-wrap-qp qp (viz-settings->goal-specs display viz-settings effective-settings) goal-max-rows
+                   cache-strategy-fn)
     qp))

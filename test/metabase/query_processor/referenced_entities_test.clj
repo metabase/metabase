@@ -9,6 +9,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -797,3 +798,26 @@
         (is (=? {:status "failed" :error #"(?is).*no_such_table.*"} goal))
         (is (=? [{:card_id goal-id :error #"(?is).*no_such_table.*"}]
                 (goal-executions! :card_id goal-id)))))))
+
+(deftest goal-runs-use-the-card-cache-test
+  (testing "a goal source card runs under its cache strategy, so a repeat view is served from the cache"
+    (let [{:keys [goal chart]} (goal-chart-cards)]
+      (mt/with-model-cleanup [:model/CacheConfig]
+        (cache-config/store! (mt/user->id :crowberto)
+                             {:model    "root"
+                              :model_id 0
+                              :strategy {:type :ttl :multiplier 99999 :min_duration_ms 0}})
+        (mt/with-temp [:model/Card {goal-id :id} goal
+                       :model/Card {chart-id :id} (chart goal-id)]
+          (let [view! #(mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id)
+                                             {:ignore_cache %})]
+            (view! false)
+            ;; the strategy's average execution time is read from the first run's record
+            (process-userland-query/flush-execution-metadata!)
+            (view! false)
+            (testing "the repeat view's goal run is a cache hit"
+              (is (=? [{:cache_hit false} {:cache_hit true}]
+                      (sort-by :cache_hit (goal-executions! :card_id goal-id)))))
+            (testing "refreshing the chart refreshes its goal too"
+              (view! true)
+              (is (= 2 (count (filter (comp false? :cache_hit) (goal-executions! :card_id goal-id))))))))))))
