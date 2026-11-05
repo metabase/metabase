@@ -3,12 +3,25 @@
    [clj-kondo.hooks-api :as hooks]
    [hooks.common]))
 
+(def enterprise-ns-key
+  "Var metadata naming the enterprise namespace an OSS `defenterprise` dispatches to. The ratchet tooling reads it
+  from kondo's analysis to count the enterprise var's ignores under the OSS one."
+  :metabase/enterprise-ns)
+
+(defn- with-enterprise-ns
+  "`fn-name` with [[enterprise-ns-key]] metadata naming `enterprise-namespace`, a token node."
+  [fn-name enterprise-namespace]
+  ;; A string, not the symbol: kondo would try to resolve a symbol in metadata.
+  (update fn-name :meta (fnil conj [])
+          (hooks/map-node [(hooks/keyword-node enterprise-ns-key)
+                           (hooks/string-node (str (hooks/sexpr enterprise-namespace)))])))
+
 (defn defenterprise [{node :node}]
   (let [[_defenterprise fn-name & args] (:children node)
         [docstring & args]              (if (hooks/string-node? (first args))
                                           args
                                           (cons nil args))
-        [_enterprise-namespace & args]   (if (hooks/token-node? (first args))
+        [enterprise-namespace & args]    (if (hooks/token-node? (first args))
                                            args
                                            (cons nil args))
         [options fn-tail]               (loop [options (hooks/map-node []), [x y & more :as args] args]
@@ -24,7 +37,8 @@
                   (concat
                    (filter some?
                            (list (hooks/token-node 'defn)
-                                 fn-name
+                                 (cond-> fn-name
+                                   enterprise-namespace (with-enterprise-ns enterprise-namespace))
                                  docstring))
                    fn-tail))
                  (with-meta (meta node)))))}))

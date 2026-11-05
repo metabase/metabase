@@ -833,9 +833,12 @@
     :legacy-mbql.normalize))
 
 (deftest ^:parallel discouraged-count-keys-test
-  (let [config '{:linters {:discouraged-var {a/x {:message "no"}, a/y {:message "no"}}}}]
-    (is (= #{:a/x :a/y}
-           (kondo-ratchet/discouraged-count-keys :discouraged-var config)))))
+  (let [config '{:linters {:discouraged-var {a/x {:message "no"}, a/y {:message "no"}, metabase.b/x {:message "no"}}}}]
+    (is (= #{:a/x :a/y :b/x}
+           (kondo-ratchet/discouraged-count-keys :discouraged-var config)))
+    (testing "a symbol that counts under another has no key of its own"
+      (is (= #{:a/x :a/y}
+             (kondo-ratchet/discouraged-count-keys :discouraged-var config '{metabase.b/x a/x}))))))
 
 (deftest ^:parallel discouraged-count-field-test
   (is (= :discouraged-var-counts (kondo-ratchet/discouraged-count-field :discouraged-var)))
@@ -850,21 +853,34 @@
   (mt/with-dynamic-fn-redefs [kondo-ratchet/discouraged-count-keys (constantly #{:a/x :ee.b/y})]
     (testing "an ordinary linter seeds itself in :ignore-counts"
       (is (= {:ignore-counts [:some-linter]}
-             (#'kondo-ratchet/resolve-seed ":some-linter"))))
+             (#'kondo-ratchet/resolve-seed ":some-linter" {}))))
     (testing "a bare discouragement linter seeds every configured symbol in its own field"
       (is (= {:discouraged-var-counts [:a/x :ee.b/y], :bulk #{:discouraged-var-counts}}
-             (#'kondo-ratchet/resolve-seed ":discouraged-var"))))
+             (#'kondo-ratchet/resolve-seed ":discouraged-var" {}))))
     (testing "a symbol suffix seeds that symbol, named either way"
       (is (= {:discouraged-var-counts [:ee.b/y]}
-             (#'kondo-ratchet/resolve-seed ":discouraged-var/metabase-enterprise.b/y")
-             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y"))))
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/metabase-enterprise.b/y" {})
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y" {}))))
     (testing "an unconfigured or empty symbol suffix throws instead of seeding"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"a/nope\" is not a symbol configured under :discouraged-var"
-                            (#'kondo-ratchet/resolve-seed ":discouraged-var/a/nope")))
+                            (#'kondo-ratchet/resolve-seed ":discouraged-var/a/nope" {})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"\" is not a symbol configured under :discouraged-var"
-                            (#'kondo-ratchet/resolve-seed ":discouraged-var/"))))
+                            (#'kondo-ratchet/resolve-seed ":discouraged-var/" {}))))
+    (testing "a symbol that counts under another seeds that one's budget"
+      (is (= {:discouraged-var-counts [:a/x]}
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y" '{metabase-enterprise.b/y a/x}))))
     (testing "nil seeds nothing"
-      (is (= {} (#'kondo-ratchet/resolve-seed nil))))))
+      (is (= {} (#'kondo-ratchet/resolve-seed nil {}))))))
+
+(deftest ^:parallel unconfigured-budget-warnings-test
+  (is (= [(str "WARNING: r.edn budgets :discouraged-var symbols no longer configured in .clj-kondo/config.edn: :a/gone"
+               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+          (str "WARNING: r.edn budgets :discouraged-var symbols whose ignores count under the symbol they name:"
+               " :b/x -> :a/x -- `./bin/mage kondo-ratchets-shrink` drops them")]
+         (kondo-ratchet/unconfigured-budget-warnings "r.edn"
+                                                     {:discouraged-var-counts {:a/x 1, :a/gone 1, :b/x 1}}
+                                                     {:discouraged-var #{:a/x}, :discouraged-namespace #{}}
+                                                     '{metabase.b/x a/x}))))
 
 (deftest ^:parallel discouraged-count-keys-collision-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #":discouraged-var symbols a/x, metabase.a/x share the ratchet key :a/x"

@@ -482,7 +482,8 @@
     (is (= {:actual       {:discouraged-var       {:clojure.core/eval 2, :clojure.core/println 1}
                            :discouraged-namespace {}}
             :unattributed [{:file "a.clj", :line 6, :linters [:discouraged-var]}]
-            :unresolved   []}
+            :unresolved   []
+            :aliases      {}}
            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println [] known))))
   (testing "two findings of one symbol under one ignore count once"
     (is (= {:clojure.core/eval 1}
@@ -510,7 +511,8 @@
                            :discouraged-namespace {}}
             :unattributed [{:file "a.clj", :line 4, :linters [:discouraged-var]}
                            {:file "a.clj", :line 6, :linters [:discouraged-var]}]
-            :unresolved   []}
+            :unresolved   []
+            :aliases      {}}
            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
                                                 eval-and-println
                                                 [{:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}]
@@ -563,6 +565,35 @@
                                                  eval-and-println
                                                  []
                                                  (assoc known :discouraged-var #{'clojure.core/eval})))))))
+
+(deftest source-aliases-test
+  (let [definitions [{:ns "oss.mirror", :name "f", :meta {:metabase/enterprise-ns "ee.core"}}
+                     {:ns "oss.core", :name "f", :imported-ns "oss.mirror"}
+                     {:ns "ee.core", :name "f"}
+                     {:ns "lib.core", :name "g", :imported-ns "lib.convert"}]]
+    (testing "a re-export and an enterprise defenterprise each count under the OSS var"
+      (is (= '{oss.core/f oss.mirror/f, ee.core/f oss.mirror/f}
+             (kondo-ratchet/source-aliases definitions '#{oss.core/f oss.mirror/f ee.core/f}))))
+    (testing "a chain through an unconfigured var ends at the last configured one"
+      (is (= '{a/f c/f}
+             (kondo-ratchet/source-aliases [{:ns "a", :name "f", :imported-ns "b"}
+                                            {:ns "b", :name "f", :imported-ns "c"}]
+                                           '#{a/f c/f}))))
+    (testing "a var whose source isn't configured counts under itself"
+      (is (= {} (kondo-ratchet/source-aliases definitions '#{lib.core/g}))))))
+
+(deftest attribute-discouraged-alias-test
+  (testing "an ignore on a re-exported var counts under the var it re-exports"
+    (is (= {:lib.convert/->legacy-MBQL 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"d.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(lib/->legacy-MBQL q)\n"}
+                {:findings [{:filename "d.clj", :row 2, :col 2, :type "discouraged-var"}]
+                 :analysis {:var-usages       [{:filename "d.clj", :row 2, :col 2, :to "metabase.lib.core", :alias "lib", :name "->legacy-MBQL"}]
+                            :namespace-usages [{:filename "d.clj", :row 1, :col 1, :to "metabase.lib.core", :alias "lib"}]
+                            :var-definitions  [{:ns "metabase.lib.core", :name "->legacy-MBQL", :imported-ns "metabase.lib.convert"}]}}
+                []
+                {:discouraged-var #{'metabase.lib.convert/->legacy-MBQL 'metabase.lib.core/->legacy-MBQL}})
+               (get-in [:actual :discouraged-var]))))))
 
 (deftest parse-kondo-output-test
   (testing "a run that reported findings still parses"
