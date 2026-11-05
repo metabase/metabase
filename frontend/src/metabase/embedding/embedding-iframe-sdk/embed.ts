@@ -320,13 +320,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
     }
 
-    try {
-      this._setup();
-
-      registerEmbed(this);
-    } catch (error) {
-      console.error("[metabase.embed.error]", error);
-    }
+    this._initializeEmbed();
   }
 
   disconnectedCallback() {
@@ -339,7 +333,19 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     oldVal: string | null,
     newVal: string | null,
   ) {
-    if (!this._iframe || oldVal === newVal) {
+    if (oldVal === newVal) {
+      return;
+    }
+
+    if (!this._iframe) {
+      if (
+        this.isConnected &&
+        this._componentName === "metabase-data-app" &&
+        attrName === "path"
+      ) {
+        this._initializeEmbed();
+      }
+
       return;
     }
 
@@ -363,6 +369,16 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     if (handlers) {
       handlers.forEach((handler) => handler());
+    }
+  }
+
+  private _initializeEmbed() {
+    try {
+      this._setup();
+
+      registerEmbed(this);
+    } catch (error) {
+      console.error("[metabase.embed.error]", error);
     }
   }
 

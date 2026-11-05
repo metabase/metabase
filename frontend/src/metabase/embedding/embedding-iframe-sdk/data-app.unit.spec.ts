@@ -126,6 +126,15 @@ describe("metabase-data-app", () => {
     );
   });
 
+  it("loads after a valid path is assigned", () => {
+    const element = setup("");
+    expect(element.querySelector("iframe")).toBeNull();
+
+    element.path = "sales/orders";
+
+    expect(element.querySelector("iframe")?.src).toContain("/sales/orders?");
+  });
+
   it("rejects an invalid data app path", () => {
     const element = setup("sales/../other");
     expect(element.querySelector("iframe")).toBeNull();
