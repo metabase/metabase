@@ -649,7 +649,7 @@ export class UnconnectedDataSelector extends Component<
     const freshPickStep = this.getFreshPickStep();
     await this.switchToStep(
       freshPickStep,
-      this.getClearedStateForStep(DATA_BUCKET_STEP),
+      this.getClearedStateForStep(freshPickStep),
     );
   }
 
@@ -662,8 +662,10 @@ export class UnconnectedDataSelector extends Component<
     }[cardType];
   }
 
+  // With Raw Data the only data type, open on the databases: opening on the
+  // data types would show them for a frame before `skipSteps` moves on
   getFreshPickStep(): DataSelectorStep {
-    return this.props.canSelectTable && !this.hasUsableSavedEntities()
+    return this.props.canSelectTable && !this.hasDataBucketChoice()
       ? DATABASE_STEP
       : DATA_BUCKET_STEP;
   }
