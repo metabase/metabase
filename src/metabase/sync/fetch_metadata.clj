@@ -12,7 +12,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]))
+   [metabase.util.malli.fn :as mu.fn]
+   [metabase.workspaces.core :as ws]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body. The sync step that catches the exception
@@ -28,6 +29,34 @@
          (log/errorf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#)))
        (throw e#))))
 
+(defn- physical-table
+  "The table the warehouse holds `table`'s data in: on a workspace sidecar a remapped table lives in its scratch
+  namespace."
+  [database table]
+  (or (some-> (ws/table-remappings (:id database)) (ws/remapped-table table))
+      table))
+
+(defn- with-workspace-fields
+  "On a workspace sidecar a remapped table's columns come from its scratch table, reported under the main table's name,
+  in place of any columns of the main table. `fields` is what `describe-fields` returned for `args`."
+  [describe-fields database args fields]
+  (if-let [remappings (ws/table-remappings (:id database))]
+    (let [schema-names (some-> (:schema-names args) set)
+          table-names  (some-> (:table-names args) set)
+          wanted       (filter (fn [[from _to]]
+                                 (and (or (nil? schema-names) (contains? schema-names (:schema from)))
+                                      (or (nil? table-names) (contains? table-names (:table from)))))
+                               remappings)]
+      (eduction
+       cat
+       [(eduction (remove #(contains? remappings {:schema (:table-schema %), :table (:table-name %)})) fields)
+        (eduction
+         (mapcat (fn [[from to]]
+                   (eduction (map #(assoc % :table-schema (:schema from) :table-name (:table from)))
+                             (describe-fields database {:schema-names [(:schema to)], :table-names [(:table to)]}))))
+         wanted)]))
+    fields))
+
 (mu/defn db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
   [database :- i/DatabaseInstance]
@@ -41,7 +70,7 @@
   (let [driver (driver.u/database->driver database)]
     (cond-> fields
       (driver.u/supports? driver :nested-field-columns database)
-      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database (physical-table database table))))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
@@ -50,7 +79,8 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "table-fields-metadata"
-    (let [driver (driver.u/database->driver database)]
+    (let [driver (driver.u/database->driver database)
+          table  (physical-table database table)]
       (if (driver.u/supports? driver :describe-fields database)
         (set (driver/describe-fields driver
                                      database
@@ -87,15 +117,17 @@
   This will be deprecated in "
   [database :- i/DatabaseInstance & {:as args} :- [:maybe ::driver/describe-fks.options]]
   (log-if-error "fields-metadata"
-    (let [driver             (driver.u/database->driver database)
-          describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
-                               (do (log/debug "Using `describe-fields` (fast sync) to fetch fields metadata.")
-                                   driver/describe-fields)
-                               ;; In a future version we may remove [[driver/describe-table]]
-                               ;; and we'll just use [[driver/describe-fields]] here
-                               (do (log/debug "Using `describe-table` (legacy sync) to fetch fields metadata.")
-                                   describe-fields-using-describe-table))]
-      (cond->> (describe-fields-fn driver database args)
+    (let [driver          (driver.u/database->driver database)
+          fields-metadata (if (driver.u/supports? driver :describe-fields database)
+                            (do (log/debug "Using `describe-fields` (fast sync) to fetch fields metadata.")
+                                (with-workspace-fields (partial driver/describe-fields driver) database args
+                                  (driver/describe-fields driver database args)))
+                            ;; In a future version we may remove [[driver/describe-table]]
+                            ;; and we'll just use [[driver/describe-fields]] here. `describe-table` already reads a
+                            ;; remapped table from its scratch table (see [[table-fields-metadata]]).
+                            (do (log/debug "Using `describe-table` (legacy sync) to fetch fields metadata.")
+                                (describe-fields-using-describe-table driver database args)))]
+      (cond->> fields-metadata
         ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
         (mu.fn/instrument-ns? *ns*)
         (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
@@ -117,4 +149,4 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "index-metadata"
-    (driver/describe-table-indexes (driver.u/database->driver database) database table)))
+    (driver/describe-table-indexes (driver.u/database->driver database) database (physical-table database table))))

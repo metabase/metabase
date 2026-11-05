@@ -21,7 +21,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization])
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.workspaces.core :as ws])
   (:import
    (clojure.lang ITransientSet)))
 
@@ -537,7 +538,12 @@
                                {:created 0, :updated 0, :complete? true
                                 :sample? (sync.db/database-sample? (:id database))
                                 :seen (transient #{}), :metabase-metadata []}
-                               (:tables db-metadata))
+                               ;; a workspace sidecar hides its scratch tables and reports a remapped table under its
+                               ;; main name
+                               (if-let [schema-map (ws/workspace-schemas database)]
+                                 (eduction (ws/workspace-tables-xf schema-map (ws/table-remappings (u/the-id database)))
+                                           (:tables db-metadata))
+                                 (:tables db-metadata)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
          (vreset! holder (:metabase-metadata context)))
