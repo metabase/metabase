@@ -8,8 +8,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
-(set! *warn-on-reflection* true)
-
 (def ^:private required-permission :permission/metabot-nlq)
 
 (def ^:private name-max-chars 60)
