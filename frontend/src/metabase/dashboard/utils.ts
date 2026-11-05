@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -31,6 +30,7 @@ import type {
   ClickBehavior,
   ColumnSettings,
   DashCardDataMap,
+  DashCardVisualizationSettings,
   Dashboard,
   DashboardCard,
   Database,
@@ -518,13 +518,23 @@ export function setDashboardHeaderParameterIndex(
   return result;
 }
 
+export function getDashcardClickBehavior(dashcard: {
+  visualization_settings?: DashCardVisualizationSettings | null;
+}): ClickBehavior | undefined {
+  // `visualization_settings` is an open `Record<string, unknown>`, but when
+  // `click_behavior` is set it is always a ClickBehavior.
+  return dashcard.visualization_settings?.click_behavior as
+    | ClickBehavior
+    | undefined;
+}
+
 export function getClickBehaviorDescription(dashcard: DashboardCard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
     ? t`Open the drill-through menu`
     : t`Do nothing`;
   if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
-      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
+      dashcard.visualization_settings?.column_settings || {};
 
     const count = Object.values(columnSettings).filter(
       (settings) => settings.click_behavior != null,
@@ -540,16 +550,10 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     );
   }
 
-  if (
-    dashcard.visualization_settings == null ||
-    dashcard.visualization_settings.click_behavior == null
-  ) {
+  const clickBehavior = getDashcardClickBehavior(dashcard);
+  if (clickBehavior == null) {
     return noBehaviorMessage;
   }
-
-  // Unjustified type cast. FIXME
-  const clickBehavior = dashcard.visualization_settings
-    .click_behavior as ClickBehavior;
 
   if (clickBehavior.type === "link") {
     const { linkType } = clickBehavior;

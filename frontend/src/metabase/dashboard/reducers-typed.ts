@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn } from "icepick";
 import _ from "underscore";
 
 import {
@@ -384,13 +383,21 @@ export const dashboards = createReducer(
       })
       .addMatcher(
         createDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], payload.uuid),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          if (dashboard) {
+            dashboard.public_uuid = payload.uuid;
+          }
+        },
       )
       .addMatcher(
         deleteDashboardPublicLink.matchFulfilled,
-        (state, { payload }) =>
-          assocIn(state, [payload.id, "public_uuid"], null),
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          if (dashboard) {
+            dashboard.public_uuid = null;
+          }
+        },
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,
@@ -481,8 +488,7 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          // Mutates the draft: icepick would copy child drafts into a frozen
-          // object Immer skips when finalizing, leaving revoked proxies behind.
+          // Mutates the draft directly so Immer finalizes child drafts correctly.
           // Object.assign because DashCardDataMap does not model { error } results.
           Object.assign((state[dashcard_id] ??= {}), { [card_id]: result });
         }

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { getIn } from "icepick";
 import { t } from "ttag";
 
 import {
@@ -48,7 +46,7 @@ const getDetailsPermission = (
   groupId: number,
   databaseId: number,
 ) =>
-  getIn(permissions, [groupId, databaseId, DataPermission.DETAILS]) ??
+  permissions[groupId]?.[databaseId]?.[DataPermission.DETAILS] ??
   DETAILS_PERMISSION_OPTIONS.no.value;
 
 export const buildDetailsPermission = (

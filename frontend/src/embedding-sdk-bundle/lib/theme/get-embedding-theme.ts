@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
-import { merge } from "icepick";
 import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
@@ -28,6 +26,7 @@ import type {
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
 import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
+import { deepMerge } from "metabase/utils/deep-merge";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
@@ -35,9 +34,13 @@ import { colorTuple } from "./color-tuple";
 const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
 // Strip any key that has the value of "undefined"
-const stripUndefinedKeys = <T>(x: T): unknown =>
+const stripUndefinedKeys = <T>(x: T): T =>
   _.isObject(x)
-    ? _.pick(_.mapObject(x, stripUndefinedKeys), (v) => !_.isUndefined(v))
+    ? // `_.pick`/`_.mapObject` only drop keys, so the result keeps the shape of `x`
+      (_.pick(
+        _.mapObject(x, stripUndefinedKeys),
+        (v) => !_.isUndefined(v),
+      ) as T)
     : x;
 
 /**
@@ -55,8 +58,8 @@ export function getEmbeddingThemeOverride(
     foreground: theme.colors?.["text-primary"],
     border: userTheme.colors?.border,
   });
-  const components: MetabaseComponentTheme = merge(
-    merge(DEFAULT_EMBEDDED_COMPONENT_THEME, {
+  const components: MetabaseComponentTheme = deepMerge(
+    deepMerge(DEFAULT_EMBEDDED_COMPONENT_THEME, {
       cartesian: { splitLine: { lineStyle: { color: gridlineColor } } },
     }),
     stripUndefinedKeys(theme.components),
@@ -83,7 +86,9 @@ export function getEmbeddingThemeOverride(
 
   const whitelabeledTokens = mapWhitelabelColorsToTokens(whitelabeledColors);
 
-  for (const [key, value] of Object.entries(whitelabeledTokens)) {
+  for (const [key, value] of Object.entries<string | undefined>(
+    whitelabeledTokens,
+  )) {
     if (value === undefined) {
       continue;
     }

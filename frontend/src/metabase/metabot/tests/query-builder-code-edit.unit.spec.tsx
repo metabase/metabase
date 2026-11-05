@@ -1,7 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
@@ -39,6 +38,7 @@ import {
   convoForAgent,
   createTestMetabotState,
   testConversationId,
+  updateTestConversation,
 } from "./utils";
 
 jest.mock("metabase/api/ai-streaming", () => ({
@@ -150,10 +150,10 @@ describe("query builder code edits from omnibot", () => {
         databases: [TEST_DB],
         questions: [TEST_NATIVE_CARD],
       }),
-      metabot: assocIn(
+      metabot: updateTestConversation(
         createTestMetabotState(),
-        ["conversations", testConversationId("omnibot"), "title"],
-        "SQL edit",
+        testConversationId("omnibot"),
+        { title: "SQL edit" },
       ),
     } as any);
 

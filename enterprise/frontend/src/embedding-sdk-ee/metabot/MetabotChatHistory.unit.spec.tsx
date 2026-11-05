@@ -1,49 +1,53 @@
-import { assocIn } from "icepick";
-
 import { act, screen } from "__support__/ui";
 import { metabotActions } from "metabase/metabot/state";
-import type { MetabotMessagePart } from "metabase/metabot/state/types";
+import type {
+  MetabotMessagePart,
+  MetabotState,
+} from "metabase/metabot/state/types";
 import {
   createTestMetabotState,
   setup,
   testConversationId,
+  updateTestConversation,
 } from "metabase/metabot/tests/utils";
+import { checkNotNull } from "metabase/utils/types";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 
 const makeVisibleState = (parts: MetabotMessagePart[]) =>
-  assocIn(
-    assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
-    ["conversations", testConversationId("omnibot"), "messages"],
-    parts.map((part, index) => ({
-      id: `message-${index}`,
-      role: part.role,
-      parts: [part],
-      status: { type: "done" },
-    })),
+  updateTestConversation(
+    createTestMetabotState({ visibleAgentIds: ["omnibot"] }),
+    testConversationId("omnibot"),
+    {
+      messages: parts.map((part, index) => ({
+        id: `message-${index}`,
+        role: part.role,
+        parts: [part],
+        status: { type: "done" },
+      })),
+    },
   );
+
+const withLongChatTokens = (state: MetabotState) => {
+  const conversationId = testConversationId("omnibot");
+  const { messages } = checkNotNull(state.conversations[conversationId]);
+  return updateTestConversation(state, conversationId, {
+    contextWindowTokens: 200,
+    messages: messages.map((message, index) =>
+      index === 1 ? { ...message, contextTokens: 200 } : message,
+    ),
+  });
+};
 
 describe("MetabotChatHistory", () => {
   it("should hide the long chat notice while the agent is responding", () => {
     const { store } = setup({
       ui: <MetabotChatHistory />,
-      metabotInitialState: assocIn(
-        assocIn(
-          makeVisibleState([
-            { id: "1", role: "user", type: "text", message: "hi" },
-            { id: "2", role: "agent", type: "text", message: "hello" },
-          ]),
-          [
-            "conversations",
-            testConversationId("omnibot"),
-            "messages",
-            1,
-            "contextTokens",
-          ],
-          200,
-        ),
-        ["conversations", testConversationId("omnibot"), "contextWindowTokens"],
-        200,
+      metabotInitialState: withLongChatTokens(
+        makeVisibleState([
+          { id: "1", role: "user", type: "text", message: "hi" },
+          { id: "2", role: "agent", type: "text", message: "hello" },
+        ]),
       ),
     });
 

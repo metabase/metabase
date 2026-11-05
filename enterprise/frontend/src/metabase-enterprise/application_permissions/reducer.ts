@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -47,12 +45,14 @@ const LOAD_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/LOAD_APPLICATION_PERMISSIONS";
 export const loadApplicationPermissions = createThunkAction(
   LOAD_APPLICATION_PERMISSIONS,
-  () => async (dispatch) =>
-    runRtkEndpoint(
-      undefined,
-      dispatch,
-      applicationPermissionsApi.endpoints.getApplicationPermissionsGraph,
-    ),
+  () =>
+    async (dispatch): Promise<ApplicationPermissionsGraphPayload> =>
+      // `runRtkEndpoint` is untyped; the graph endpoint responds with `{ groups, revision }`
+      (await runRtkEndpoint(
+        undefined,
+        dispatch,
+        applicationPermissionsApi.endpoints.getApplicationPermissionsGraph,
+      )) as ApplicationPermissionsGraphPayload,
 );
 
 const UPDATE_APPLICATION_PERMISSION =
@@ -84,7 +84,8 @@ export const saveApplicationPermissions = createThunkAction(
     const { applicationPermissions, applicationPermissionsRevision } =
       getState().plugins.applicationPermissionsPlugin;
 
-    const result = await runRtkEndpoint(
+    // `runRtkEndpoint` is untyped; the endpoint responds with `{ groups, revision }`
+    const result = (await runRtkEndpoint(
       {
         groups: applicationPermissions,
         revision: applicationPermissionsRevision,
@@ -98,7 +99,7 @@ export const saveApplicationPermissions = createThunkAction(
           message: getErrorMessage(error, t`Error saving permissions`),
         }),
       );
-    });
+    })) as ApplicationPermissionsGraphPayload;
 
     return result;
   },
@@ -123,7 +124,10 @@ const applicationPermissions = handleActions<
           return state;
         }
         const { groupId, permission, value } = payload;
-        return assocIn(state, [groupId, permission], value);
+        return {
+          ...state,
+          [groupId]: { ...state[groupId], [permission]: value },
+        };
       },
     },
   },

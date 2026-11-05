@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
-import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import { type PathKey, getAtPath } from "metabase/utils/get-at-path";
 import {
   DataPermission,
   DataPermissionValue,
@@ -27,6 +26,7 @@ import {
   getPermissionPath,
   getSchemasPermission,
 } from "./get";
+import { setAtPath } from "./path";
 import { isRestrictivePermission } from "./utils";
 
 export function updatePermission(
@@ -36,10 +36,10 @@ export function updatePermission(
   permission: DataPermission,
   path: Array<number | string>,
   value: string | undefined,
-  entityIds?: any[],
+  entityIds?: PathKey[],
 ) {
   const fullPath = getPermissionPath(groupId, databaseId, permission, path);
-  const current = getIn(permissions, fullPath);
+  const current = getAtPath(permissions, fullPath);
 
   if (
     current === value ||
@@ -49,7 +49,7 @@ export function updatePermission(
   ) {
     return permissions;
   }
-  let newValue: any;
+  let newValue: string | Record<PathKey, unknown> | undefined;
   if (value === DataPermissionValue.CONTROLLED) {
     newValue = {};
     if (entityIds) {
@@ -61,18 +61,18 @@ export function updatePermission(
     newValue = value;
   }
   for (let i = 0; i < fullPath.length; i++) {
-    if (typeof getIn(permissions, fullPath.slice(0, i)) === "string") {
-      permissions = setIn(permissions, fullPath.slice(0, i), {});
+    if (typeof getAtPath(permissions, fullPath.slice(0, i)) === "string") {
+      permissions = setAtPath(permissions, fullPath.slice(0, i), {});
     }
   }
-  return setIn(permissions, fullPath, newValue);
+  return setAtPath(permissions, fullPath, newValue);
 }
 
 export function updateFieldsPermission(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: TableEntityId,
-  value: any,
+  value: string | undefined,
   database: PermissionsDatabase,
   permission: DataPermission,
 ) {
@@ -102,7 +102,7 @@ export function updateTablesPermission(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId, schemaName }: SchemaEntityId,
-  value: any,
+  value: string | undefined,
   database: PermissionsDatabase,
   permission: DataPermission,
 ) {

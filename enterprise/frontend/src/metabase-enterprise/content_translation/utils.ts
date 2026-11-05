@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import * as I from "icepick";
 import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
@@ -11,11 +9,7 @@ import type {
 } from "metabase/content-translation/types";
 import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import type {
-  DictionaryArray,
-  RowValue,
-  SeriesSettings,
-} from "metabase-types/api";
+import type { DictionaryArray, RowValue } from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -43,8 +37,8 @@ export function translateContentString<T>(
   }
 
   if (Array.isArray(rawMsgid)) {
-    // Unjustified type cast. FIXME
-    return rawMsgid.map((msgid) =>
+    // Translating each element preserves the array shape, so it is still a `T`
+    return rawMsgid.map((msgid: unknown) =>
       translateContentString(dictionary, locale, msgid),
     ) as T;
   }
@@ -149,8 +143,8 @@ export const translateDisplayNames = <T>({
 
   const traverse = (element: T): T => {
     if (Array.isArray(element)) {
-      // Unjustified type cast. FIXME
-      return element.map((item) => traverse(item)) as T;
+      // Traversing each element preserves the array shape, so it is still a `T`
+      return element.map((item: T) => traverse(item)) as T;
     }
 
     if (isRecord(element)) {
@@ -172,7 +166,7 @@ export const translateDisplayNames = <T>({
           : // Unjustified type cast. FIXME
             traverse(value as T);
 
-        return I.assoc(acc, key, newValue);
+        return { ...acc, [key]: newValue };
       }, element);
     }
 
@@ -300,7 +294,7 @@ export const translateCardNames = (
   }
   return (series) =>
     series.map((s) =>
-      s.card?.name ? I.setIn(s, ["card", "name"], tc(s.card.name)) : s,
+      s.card?.name ? { ...s, card: { ...s.card, name: tc(s.card.name) } } : s,
     );
 };
 
@@ -342,14 +336,16 @@ export const translateSeriesNames = (tc: ContentTranslationFunction) => {
           ]),
       );
 
-      return I.updateIn(
-        singleSeries,
-        ["card", "visualization_settings", "series_settings"],
-        (settings: Record<string, SeriesSettings>) => ({
-          ...settings,
-          ...translated,
-        }),
-      );
+      return {
+        ...singleSeries,
+        card: {
+          ...singleSeries.card,
+          visualization_settings: {
+            ...singleSeries.card.visualization_settings,
+            series_settings: { ...seriesSettings, ...translated },
+          },
+        },
+      };
     });
   };
 };

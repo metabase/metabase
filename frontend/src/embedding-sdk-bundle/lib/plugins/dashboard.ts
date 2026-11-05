@@ -1,26 +1,19 @@
-import { merge } from "icepick";
+import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import type { DashboardCardCustomMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+import { deepMerge } from "metabase/utils/deep-merge";
 
-import type {
-  MetabaseDashboardPluginsConfig,
-  MetabasePluginsConfig,
-} from "embedding-sdk-bundle/types/plugins";
-
-const DEFAULT_DASHCARD_MENU_ITEMS: MetabaseDashboardPluginsConfig = {
-  dashboardCardMenu: {
-    withDownloads: true,
-    withEditLink: true,
-    customItems: [],
-  },
-} as const;
+const DEFAULT_DASHCARD_MENU_ITEMS: DashboardCardCustomMenuItem = {
+  withDownloads: true,
+  withEditLink: true,
+  customItems: [],
+};
 
 const getDashcardMenu = (plugins: MetabasePluginsConfig) => {
-  if (typeof plugins?.dashboard?.dashboardCardMenu === "function") {
-    return plugins?.dashboard?.dashboardCardMenu;
+  const dashboardCardMenu = plugins?.dashboard?.dashboardCardMenu;
+  if (typeof dashboardCardMenu === "function") {
+    return dashboardCardMenu;
   }
-  return merge(
-    DEFAULT_DASHCARD_MENU_ITEMS,
-    plugins?.dashboard?.dashboardCardMenu,
-  );
+  return deepMerge(DEFAULT_DASHCARD_MENU_ITEMS, dashboardCardMenu);
 };
 
 export const addDefaultDashboardPluginValues = (
