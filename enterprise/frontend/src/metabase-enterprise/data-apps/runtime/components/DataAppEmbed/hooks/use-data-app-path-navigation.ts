@@ -7,6 +7,7 @@ import {
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import { EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
+import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 
 /**
  * Updates the current path of the data app router
@@ -15,9 +16,11 @@ import { EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME } from "metabase/embedd
 export function useDataAppPathNavigation({
   name,
   path,
+  navigationRequest = null,
 }: {
   name: string;
   path: string;
+  navigationRequest?: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
 }) {
   useEffect(() => {
     const currentUrl = new URL(window.location.href);
@@ -40,5 +43,5 @@ export function useDataAppPathNavigation({
 
       navigate(route.startsWith("/") ? route : `/${route}`);
     }
-  }, [name, path]);
+  }, [name, path, navigationRequest]);
 }

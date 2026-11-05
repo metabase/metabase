@@ -42,6 +42,7 @@ type Settings = Extract<
 export function setupSettings(overrides: Partial<Settings> = {}) {
   mockUseSdkIframeEmbedEventBus.mockReturnValue({
     sendMessage: jest.fn(),
+    dataAppPathNavigationRequest: null,
     embedSettings: {
       componentName: "metabase-data-app",
       path: "sales/orders?active=true",

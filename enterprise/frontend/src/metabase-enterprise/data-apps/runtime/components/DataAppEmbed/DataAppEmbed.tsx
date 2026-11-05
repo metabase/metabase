@@ -25,10 +25,11 @@ const store = getSdkStore();
 export function DataAppEmbed() {
   const name = useMemo(() => readNameFromUrl(), []);
 
-  const { embedSettings } = useSdkIframeEmbedEventBus({
-    store,
-    onSettingsChanged: installEmbedReferrerHeader,
-  });
+  const { embedSettings, dataAppPathNavigationRequest } =
+    useSdkIframeEmbedEventBus({
+      store,
+      onSettingsChanged: installEmbedReferrerHeader,
+    });
 
   // The bundle loads after auth and provides app settings,
   // such as app themes, to the provider above it.
@@ -108,6 +109,7 @@ export function DataAppEmbed() {
       <DataAppEmbedContent
         name={name}
         path={embedSettings.path}
+        navigationRequest={dataAppPathNavigationRequest}
         onProviderPropsLoaded={setMetabaseProviderProps}
       />
     </ComponentProvider>

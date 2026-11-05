@@ -87,6 +87,7 @@ describe("DataAppEmbed", () => {
   it("waits for settings to arrive before starting auth", () => {
     mockUseSdkIframeEmbedEventBus.mockReturnValue({
       embedSettings: null,
+      dataAppPathNavigationRequest: null,
       sendMessage: jest.fn(),
     });
 

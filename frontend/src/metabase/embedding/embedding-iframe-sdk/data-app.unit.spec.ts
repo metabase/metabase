@@ -197,4 +197,25 @@ describe("metabase-data-app", () => {
       "/franchises/products?",
     );
   });
+
+  it("sends a navigation request when the same path is set again", () => {
+    const element = setup("sales/orders");
+    const iframe = element.querySelector("iframe")!;
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    ready(iframe);
+    postMessage.mockClear();
+
+    element.path = "sales/orders";
+    expect(element.querySelector("iframe")).toBe(iframe);
+
+    // navigateToDataAppPath is sent after path property is set
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.navigateToDataAppPath",
+        data: { path: "sales/orders" },
+      },
+      new URL(INSTANCE_URL).origin,
+    );
+  });
 });

@@ -87,4 +87,34 @@ describe("DataAppEmbed - router navigation", () => {
 
     expect(pushState).not.toHaveBeenCalled();
   });
+
+  it("navigates when the host sets the same path again", () => {
+    const initialProps: {
+      navigationRequest: { path: string } | null;
+    } = { navigationRequest: null };
+
+    const { rerender } = renderHook(
+      ({ navigationRequest }) =>
+        useDataAppPathNavigation({
+          name: "sales",
+          path: "sales/orders/details?tab=summary",
+          navigationRequest,
+        }),
+      { initialProps },
+    );
+
+    // simulates in-app navigation
+    window.history.replaceState(null, "", "/embed/embedded-apps/sales/orders");
+
+    // host sets the same path again after in-app navigation
+    rerender({
+      navigationRequest: {
+        path: "sales/orders/details?tab=summary",
+      },
+    });
+
+    expect(window.location.href).toBe(
+      `${window.location.origin}/embed/embedded-apps/sales/orders/details?tab=summary`,
+    );
+  });
 });

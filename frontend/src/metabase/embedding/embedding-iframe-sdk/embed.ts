@@ -334,12 +334,9 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     oldVal: string | null,
     newVal: string | null,
   ) {
-    if (oldVal === newVal) {
-      return;
-    }
-
     if (!this._iframe) {
       if (
+        oldVal !== newVal &&
         this.isConnected &&
         this._componentName === "metabase-data-app" &&
         attrName === "path"
@@ -347,6 +344,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         this._initializeEmbed();
       }
 
+      return;
+    }
+
+    if (this._handleRepeatedDataAppPathWrite(attrName, oldVal, newVal)) {
+      return;
+    }
+
+    if (oldVal === newVal) {
       return;
     }
 
@@ -784,6 +789,28 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     return data.jwt;
+  }
+
+  private _handleRepeatedDataAppPathWrite(
+    attrName: string,
+    oldValue: string | null,
+    newValue: string | null,
+  ): boolean {
+    const isRepeatedDataAppPathWrite =
+      this._componentName === "metabase-data-app" &&
+      attrName === "path" &&
+      oldValue === newValue &&
+      newValue !== null;
+
+    if (!isRepeatedDataAppPathWrite) {
+      return false;
+    }
+
+    this.sendMessage("metabase.embed.navigateToDataAppPath", {
+      path: newValue,
+    });
+
+    return true;
   }
 
   /**
