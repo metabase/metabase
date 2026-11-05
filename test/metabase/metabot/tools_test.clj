@@ -255,15 +255,17 @@
                             :shown?   (boolean (seq (:data-parts result)))
                             :query-id (get-in result [:structured-output :query-id])
                             :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
-                                                        (:output result)))}))))]
+                                                        (:output result)))
+                            :unsaved? (boolean (re-find #"It is not saved" (:output result)))
+                            :link?    (boolean (re-find #"\(metabase://query/q-1\)" (:output result)))}))))]
     (testing "with run_query offered, the query is built and the user is shown nothing"
-      (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
+      (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true, :unsaved? true, :link? true}
              (construct! #{"construct_notebook_query" "run_query"} {:show_chart false}))))
     (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
-      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true}
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true, :unsaved? true, :link? false}
              (construct! #{"construct_notebook_query" "run_query"} {}))))
     (testing "without run_query the chart is shown whatever the argument says"
-      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false, :unsaved? true, :link? false}
              (construct! #{"construct_notebook_query"} {:show_chart false}))))))
 
 (defn- source-field-query-without-validation! [construct!]

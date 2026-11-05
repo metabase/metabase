@@ -152,6 +152,16 @@
       (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
       nil)))
 
+(defn- resolve-question-link
+  "Resolve a metabase://question/{id} link to a proper URL.
+  A numeric ID is a card, also when a chart seeded from that saved question has the same ID. The model can also put
+  the ID of a query or chart from this conversation in such a link. That ID names no card, so the link opens the
+  ad-hoc query. Any other ID resolves to nil, because the frontend reads a leading digit as a card ID."
+  [entity-id charts-state queries-state]
+  (if (re-matches #"\d+" entity-id)
+    (resolve-entity-link "question" entity-id)
+    (resolve-chart-link entity-id charts-state queries-state)))
+
 (defn- resolve-measure-link
   "Resolve a metabase://measure/{id} link to the measure's Data Studio page, or nil when the measure is
   unknown."
@@ -181,7 +191,7 @@
   Supported URI formats:
   - metabase://query/{uuid} - Links to query results
   - metabase://chart/{uuid} - Links to chart visualizations
-  - metabase://question/{uuid} - Links to saved questions
+  - metabase://question/{id} - Links to saved questions, or to a query or chart from this conversation
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
   - metabase://dashboard/{id} - Links to dashboards
@@ -200,7 +210,7 @@
         (case entity-type
           "query"    (resolve-query-link entity-id queries-state)
           "chart"    (resolve-chart-link entity-id charts-state queries-state)
-          "question" (resolve-entity-link "question" entity-id)
+          "question" (resolve-question-link entity-id charts-state queries-state)
           "measure"  (resolve-measure-link entity-id)
           "segment"  (resolve-segment-link entity-id)
           ;; For other types, use simple path mapping
