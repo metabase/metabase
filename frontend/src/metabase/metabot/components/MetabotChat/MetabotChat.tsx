@@ -53,6 +53,8 @@ export const MetabotChat = ({
   className,
   headerActions,
   size = "md",
+  promptContext,
+  excludeViewingContext = false,
 }: {
   conversationId: string;
   agentId?: MetabotAgentId;
@@ -61,6 +63,10 @@ export const MetabotChat = ({
   className?: string;
   headerActions?: ReactNode;
   size?: "md" | "lg";
+  /** PROTOTYPE: shown inside the prompt box, above the input */
+  promptContext?: ReactNode;
+  /** PROTOTYPE: leave the current page out of the context sent with prompts */
+  excludeViewingContext?: boolean;
 }) => {
   const [
     isAiProviderConfigurationModalOpen,
@@ -191,7 +197,9 @@ export const MetabotChat = ({
                       <UnstyledButton
                         key={index}
                         fz="sm"
-                        onClick={() => metabot.submitInput(prompt)}
+                        onClick={() =>
+                          metabot.submitInput(prompt, { excludeViewingContext })
+                        }
                         className={Styles.promptSuggestionButton}
                         bg="background_surface-brand-subtle"
                         bdrs="sm"
@@ -257,15 +265,21 @@ export const MetabotChat = ({
                 className={cx(
                   Styles.inputContainer,
                   metabot.isDoingScience && Styles.inputContainerLoading,
+                  promptContext != null && Styles.inputContainerWithContext,
                 )}
               >
+                {promptContext}
                 <MetabotChatEditor
                   ref={metabot.promptInputRef}
                   value={metabot.prompt}
                   autoFocus
                   isResponding={metabot.isDoingScience}
                   onChange={metabot.setPrompt}
-                  onSubmit={() => metabot.submitInput(metabot.prompt)}
+                  onSubmit={() =>
+                    metabot.submitInput(metabot.prompt, {
+                      excludeViewingContext,
+                    })
+                  }
                   onStop={metabot.cancelRequest}
                   suggestionConfig={{
                     suggestionModels: config.suggestionModels,
@@ -274,18 +288,15 @@ export const MetabotChat = ({
               </Paper>
             )}
           </Box>
-          <Box className={Styles.footerRow}>
-            <Text fz="sm" c="text-secondary" ta="center">
-              {t`${metabotName} isn't perfect. Double-check results.`}
-            </Text>
-            {metabot.contextWindowPercentUsage > 50 &&
-              !metabot.isContextWindowFull && (
+          {metabot.contextWindowPercentUsage > 50 &&
+            !metabot.isContextWindowFull && (
+              <Box className={Styles.footerRow}>
                 <MetabotContextUsageRing
                   className={Styles.contextUsage}
                   percentUsage={metabot.contextWindowPercentUsage}
                 />
-              )}
-          </Box>
+              </Box>
+            )}
         </Box>
       )}
       <AIProviderConfigurationModal

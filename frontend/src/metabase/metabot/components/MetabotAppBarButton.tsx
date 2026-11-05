@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import {
   useIsFullPageMetabot,
-  useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useSetting } from "metabase/settings";
@@ -11,6 +10,7 @@ import { METAKEY } from "metabase/utils/browser";
 
 import { trackMetabotChatOpened } from "../analytics";
 
+import { useToggleFloatingChat } from "./MetabotFloatingChat";
 import { MetabotIcon } from "./MetabotIcon";
 
 interface MetabotAppBarButtonProps extends ActionIconProps {
@@ -22,7 +22,7 @@ export function MetabotAppBarButton({
   ...rest
 }: MetabotAppBarButtonProps) {
   const { hasMetabotAccess } = useUserMetabotPermissions();
-  const metabot = useMetabotAgent("omnibot");
+  const { isFloating, toggleFloatingChat } = useToggleFloatingChat();
   const metabotName = useSetting("metabot-name");
   const isFullPageMetabot = useIsFullPageMetabot();
 
@@ -30,12 +30,12 @@ export function MetabotAppBarButton({
     return null;
   }
 
+  // PROTOTYPE: opens a blank conversation in the floating card, not the sidebar
   const handleClick = () => {
-    if (!metabot.visible) {
+    if (!isFloating) {
       trackMetabotChatOpened("header");
     }
-
-    metabot.setVisible(!metabot.visible);
+    toggleFloatingChat();
   };
 
   const label = t`Chat with ${metabotName} (${METAKEY}+E)`;

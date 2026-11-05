@@ -90,6 +90,7 @@ export const {
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
+  setIsAskChatFloating,
   createAgent,
   destroyAgent,
   attachAgentToConversation,

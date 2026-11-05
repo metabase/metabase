@@ -130,6 +130,9 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
+    setIsAskChatFloating: (state, action: PayloadAction<boolean>) => {
+      state.isAskChatFloating = action.payload;
+    },
     markChartSaved: (
       state,
       action: PayloadAction<{ entityId: string; cardId: number }>,
@@ -540,8 +543,10 @@ export const metabot = createSlice({
         )?.params.convoId;
         if (convoId) {
           attachAgent(state, "ask", convoId);
+          state.isAskChatFloating = false;
         } else if (matchPath(Urls.newQuestion({ mode: "ask" }), pathname)) {
           startNewConversationForAgent(state, "ask");
+          state.isAskChatFloating = false;
         }
       });
   },

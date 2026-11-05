@@ -215,6 +215,8 @@ export interface MetabotState {
   titlePollingConversationIds: string[];
   debugMode: boolean;
   savedChartCardIds: Record<string, number>;
+  // PROTOTYPE: the full-page ask conversation collapsed into a floating card
+  isAskChatFloating: boolean;
 }
 
 export interface SlashCommand {

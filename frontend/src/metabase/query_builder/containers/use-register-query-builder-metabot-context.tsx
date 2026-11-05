@@ -1,6 +1,12 @@
+import { t } from "ttag";
+
 import { dayjs } from "metabase/dayjs";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import {
+  useRegisterMetabotContextProvider,
+  useRegisterMetabotPageContextEntity,
+} from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { useSelector } from "metabase/redux";
 import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import {
   type ComputedVisualizationSettings,
@@ -17,6 +23,10 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+import {
+  getAdHocQuestionDescription,
+  shouldRenderAdhocDescription,
+} from "../components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
 import {
   getFirstQueryResult,
   getQuestion,
@@ -261,8 +271,36 @@ export const registerQueryBuilderMetabotContextFn = async ({
   };
 };
 
+// PROTOTYPE: matches the title the query builder header shows for the question
+function getQuestionTitle(question: Question): string {
+  const savedName = question.displayName();
+  if (savedName) {
+    return savedName;
+  }
+
+  const query = question.query();
+  if (Lib.queryDisplayInfo(query).isNative) {
+    return t`New question`;
+  }
+  if (shouldRenderAdhocDescription({ question })) {
+    return getAdHocQuestionDescription({ question }) ?? t`New question`;
+  }
+  return Lib.suggestedName(query) ?? t`New question`;
+}
+
 export const useRegisterQueryBuilderMetabotContext = () => {
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+  const question = useSelector(getQuestion);
+
+  useRegisterMetabotPageContextEntity(
+    question
+      ? {
+          key: question.isSaved() ? `card:${question.id()}` : "adhoc",
+          name: getQuestionTitle(question),
+          icon: "table2",
+        }
+      : null,
+  );
 
   useRegisterMetabotContextProvider(
     async (state) => {

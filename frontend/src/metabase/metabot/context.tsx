@@ -1,6 +1,8 @@
 import type React from "react";
 import {
+  type Dispatch,
   type RefObject,
+  type SetStateAction,
   createContext,
   useCallback,
   useContext,
@@ -18,7 +20,7 @@ import {
 import { dayjs } from "metabase/dayjs";
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type { MetabotChatContext } from "metabase-types/api";
+import type { IconName, MetabotChatContext } from "metabase-types/api";
 
 export type ChatContextProviderFn = (
   state: State,
@@ -34,6 +36,13 @@ export type MetabotPromptInputRef = {
   scrollTop: number;
 };
 
+/** PROTOTYPE: the entity on the current page, shown as a prompt context token */
+export type MetabotPageContextEntity = {
+  key: string;
+  name: string;
+  icon: IconName;
+};
+
 export type MetabotCtx = {
   prompt: string;
   setPrompt: (prompt: string) => void;
@@ -43,6 +52,11 @@ export type MetabotCtx = {
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;
+
+  pageContextEntity: MetabotPageContextEntity | null;
+  setPageContextEntity: Dispatch<
+    SetStateAction<MetabotPageContextEntity | null>
+  >;
 };
 
 export const defaultContext: MetabotCtx = {
@@ -57,6 +71,9 @@ export const defaultContext: MetabotCtx = {
       capabilities: [],
     }),
   registerChatContextProvider: () => () => {},
+
+  pageContextEntity: null,
+  setPageContextEntity: () => {},
 };
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
@@ -85,6 +102,30 @@ export const useRegisterMetabotContextProvider = (
   }, [cachedProviderFn, registerChatContextProvider]);
 };
 
+/**
+ * PROTOTYPE: publishes the entity on the current page while the caller is
+ * mounted, so Metabot can show it as context. Pass `null` while it loads.
+ */
+export const useRegisterMetabotPageContextEntity = (
+  entity: MetabotPageContextEntity | null,
+) => {
+  const { setPageContextEntity } = useMetabotContext();
+  const key = entity?.key;
+  const name = entity?.name;
+  const icon = entity?.icon;
+
+  useEffect(() => {
+    if (key == null || name == null || icon == null) {
+      return;
+    }
+    setPageContextEntity({ key, name, icon });
+    return () =>
+      setPageContextEntity((current) =>
+        current?.key === key ? null : current,
+      );
+  }, [key, name, icon, setPageContextEntity]);
+};
+
 const mergeCtx = (
   ctx: MetabotChatContext,
   partialCtx: Partial<MetabotChatContext>,
@@ -110,6 +151,8 @@ export const MetabotProvider = ({
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
+  const [pageContextEntity, setPageContextEntity] =
+    useState<MetabotPageContextEntity | null>(null);
 
   const getChatContext = useCallback(async () => {
     const state = store.getState();
@@ -158,6 +201,8 @@ export const MetabotProvider = ({
         promptInputRef,
         getChatContext,
         registerChatContextProvider,
+        pageContextEntity,
+        setPageContextEntity,
       }}
     >
       {children}

@@ -56,6 +56,11 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
+export const getIsAskChatFloating = createSelector(
+  getMetabotState,
+  (state) => state.isAskChatFloating,
+);
+
 export const getSavedChartCardId = createSelector(
   [getMetabotState, (_state: State, entityId: string) => entityId],
   (metabotState, entityId): number | undefined =>

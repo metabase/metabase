@@ -31,6 +31,10 @@ import type { MetabotAgentId } from "../state";
 
 import { MetabotConversationHistory } from "./MetabotChat/MetabotConversationHistory";
 import { createLazyMetabotChat, prefetchMetabotChat } from "./MetabotChat/lazy";
+import {
+  MetabotFloatingChat,
+  useToggleFloatingChat,
+} from "./MetabotFloatingChat";
 
 const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   return (
@@ -125,6 +129,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const agentId = config?.agentId ?? "omnibot";
   const { visible, setVisible, conversationId, createNewConversation } =
     useMetabotAgent(agentId);
+  const { isFloating, toggleFloatingChat } = useToggleFloatingChat();
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
   const [MetabotChat, setMetabotChat] = useState(createLazyMetabotChat);
   const isFullPageMetabot = useIsFullPageMetabot();
@@ -140,16 +145,17 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     return tinykeys(window, {
       "$mod+e": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
-        if (isFullPageMetabot) {
+        if (isFullPageMetabot || hide) {
           return;
         }
-        if (!visible) {
+        if (!isFloating) {
           trackMetabotChatOpened("keyboard_shortcut");
         }
-        setVisible(!visible);
+        // PROTOTYPE: the shortcut opens the floating card, not the sidebar
+        toggleFloatingChat();
       },
     });
-  }, [visible, setVisible, isFullPageMetabot]);
+  }, [isFloating, toggleFloatingChat, isFullPageMetabot, hide]);
 
   useEffect(function prefetchChatPanelWhenIdle() {
     if (typeof requestIdleCallback !== "function") {
@@ -209,5 +215,10 @@ export const Metabot = (props: MetabotProps) => {
     return null;
   }
 
-  return <MetabotAuthenticated {...props} />;
+  return (
+    <>
+      <MetabotAuthenticated {...props} />
+      {!props.hide && <MetabotFloatingChat />}
+    </>
+  );
 };

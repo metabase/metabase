@@ -13,6 +13,12 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+
+  /* PROTOTYPE: full-page header strip, mirroring the question header */
+  .large & {
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--mb-color-border-neutral);
+  }
 }
 
 .headerTitle {
@@ -40,6 +46,14 @@
   &:focus-within {
     border-color: var(--mb-color-core-brand);
   }
+}
+
+/* PROTOTYPE: context token stacked above the input */
+.inputContainerWithContext {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding-top: 0.5rem;
 }
 
 .inputContainerLoading {
@@ -258,7 +272,7 @@
 .footerContainer {
   display: flex;
   flex-direction: column;
-  padding: 0 1.5rem;
+  padding: 0 1.5rem 1rem;
   width: 100%;
   max-width: 37.5rem;
   margin-inline: auto;
@@ -275,13 +289,7 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  min-height: 2.5rem;
-  padding: 0.75rem 0.25rem;
-
-  > :first-child {
-    grid-column: 2;
-    line-height: 1rem;
-  }
+  padding: 0.5rem 0.25rem 0;
 }
 
 .contextUsage {

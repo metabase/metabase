@@ -35,6 +35,8 @@ export type SubmitInputOptions = {
   profile?: MetabotProfileId | undefined;
   focusInput?: boolean;
   onBeforeSubmit?: () => void;
+  // PROTOTYPE: the user removed the current page from the prompt context
+  excludeViewingContext?: boolean;
 };
 
 /**
@@ -86,7 +88,11 @@ export const useMetabotConversation = (conversationId: string) => {
           ...(typeof prompt === "string"
             ? { type: "text", message: prompt }
             : prompt),
-          context: await getChatContext(),
+          context: await getChatContext().then((context) =>
+            options?.excludeViewingContext
+              ? { ...context, user_is_viewing: [] }
+              : context,
+          ),
           conversationId,
           metabot_id: metabotRequestEntityId,
           profile: options?.profile,

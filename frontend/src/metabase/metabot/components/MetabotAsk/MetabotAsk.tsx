@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { t } from "ttag";
 
 import { MetabotChat } from "metabase/metabot/components/MetabotChat";
 import { MetabotConversationHistory } from "metabase/metabot/components/MetabotChat/MetabotConversationHistory";
@@ -8,9 +9,11 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { setIsAskChatFloating } from "metabase/metabot/state";
+import { useDispatch } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { useNavigate } from "metabase/router";
-import { Box, Flex } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import S from "./MetabotAsk.module.css";
@@ -27,6 +30,7 @@ const SUGGESTION_MODELS: SuggestionModel[] = [
 
 export const MetabotAsk = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
   const { conversationId, messages, isDoingScience, profile } =
     useMetabotAgent("ask");
@@ -60,6 +64,29 @@ export const MetabotAsk = () => {
     />
   ) : undefined;
 
+  // PROTOTYPE: collapse the conversation into a floating card on the home page
+  const handleCollapse = () => {
+    dispatch(setIsAskChatFloating(true));
+    navigate("/");
+  };
+
+  const chatHeaderActions = (
+    <Flex gap="sm" align="center">
+      {historyAction}
+      {!isAskPage && (
+        <Tooltip label={t`Move to side panel`} position="bottom">
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Move to side panel`}
+            onClick={handleCollapse}
+          >
+            <Icon c="text-primary" name="sidebar_open" />
+          </ActionIcon>
+        </Tooltip>
+      )}
+    </Flex>
+  );
+
   return (
     <Flex
       direction="column"
@@ -89,7 +116,7 @@ export const MetabotAsk = () => {
             }
             config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
-            headerActions={historyAction}
+            headerActions={chatHeaderActions}
           />
         </Box>
       )}
