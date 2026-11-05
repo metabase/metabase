@@ -74,7 +74,7 @@
   `stale-from` with an `updated_at` before `stale-before`. Returns the number of rows updated, 0 or 1. One UPDATE
   statement, so of two concurrent callers from the same status only one updates the row."
   [id           :- ms/PositiveInt
-   from         :- [:set :keyword]
+   from         :- [:set {:min 1} :keyword]
    stale-from   :- [:set :keyword]
    stale-before :- (ms/InstanceOfClass java.time.OffsetDateTime)
    to           :- :keyword]
@@ -86,11 +86,10 @@
                           [:= :id [:auto/param id]]
                           [:or
                            [:in :status (mapv name from)]
-                           (if (seq stale-from)
-                             [:and
-                              [:in :status (mapv name stale-from)]
-                              [:< :updated_at [:auto/param stale-before]]]
-                             false)]]}))
+                           ;; Toucan compiles an empty `stale-from` to false
+                           [:and
+                            [:in :status (mapv name stale-from)]
+                            [:< :updated_at [:auto/param stale-before]]]]]}))
 
 (mu/defn live-workspaces-of-database
   "`:id` and `:name` of every Workspace with a WorkspaceDatabase on the Database with `database-id`, in id order."

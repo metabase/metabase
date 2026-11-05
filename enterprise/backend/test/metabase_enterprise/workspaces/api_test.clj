@@ -80,7 +80,7 @@
      (testing "nothing configured"
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "a login that cannot connect is a 400 and stores nothing"
-       (is (=? {:message string?}
+       (is (=? {:message string?, :error-code "connection_failed"}
                (mt/user-http-request :crowberto :put 400 (url db-id) {:details (assoc login-a :password "wrong")})))
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "details that are not a map are a 400"
@@ -121,11 +121,14 @@
                                                           :status           :failed}]
        (testing "a different login is a 409 listing the workspaces, and changes nothing"
          (is (= {:message    (str "Workspaces on this database were made with the user " (:user login-a)
-                                  "; delete them before you change the user.")
+                                  "; delete them before you change anything but its password.")
                  :error-code "workspaces_exist"
                  :workspaces [{:id ws-id, :name "live"}]}
                 (mt/user-http-request :crowberto :put 409 (url db-id) {:details login-b})))
          (is (= (:user login-a) (:user (mt/user-http-request :crowberto :get 200 (url db-id))))))
+       (testing "the same user on another database is a 409 too"
+         (is (=? {:error-code "workspaces_exist"}
+                 (mt/user-http-request :crowberto :put 409 (url db-id) {:details (assoc login-a :dbname "postgres")}))))
        (testing "the same login with a new password is saved"
          (exec! spec (format "ALTER ROLE %s PASSWORD 'LoginANewPassw0rd'" (:user login-a)))
          (is (nil? (mt/user-http-request :crowberto :put 204 (url db-id)

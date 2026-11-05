@@ -53,22 +53,25 @@
 (mu/defn save!
   "Store `details` as the provisioning connection of the Database with `database-id`, after a test connection with
   them merged over the database's own details. Throws a 404 for an unknown Database, a 400 when the connection fails,
-  and a 409 listing the workspaces on the database when they exist and `details` log in as a different user than the
-  stored connection; a new password for the same user is accepted."
+  and a 409 listing the workspaces on the database when they exist and `details`, merged over the database's own,
+  differ from the stored connection in anything but the password; a new password for the same login is accepted."
   [database-id :- ::lib.schema.id/database
    details     :- ms/DatabaseDetails
    user-id     :- [:maybe ms/PositiveInt]]
   (let [database (database-or-404 database-id)]
     (when-let [existing (provisioning-details database-id)]
-      (when (not= (login database existing) (login database details))
+      ;; the workspaces' warehouse objects belong to this login on this server: while they exist, only its password
+      ;; may change
+      (when (not= (dissoc (merge (:details database) existing) :password)
+                  (dissoc (merge (:details database) details) :password))
         (throw-if-live-workspaces!
          database-id
-         (tru "Workspaces on this database were made with the user {0}; delete them before you change the user."
+         (tru "Workspaces on this database were made with the user {0}; delete them before you change anything but its password."
               (login database existing)))))
     (when-let [error (warehouses/test-database-connection (:engine database) (merge (:details database) details)
                                                           :log-exception false)]
       (throw (ex-info (or (:message error) (tru "Unable to connect to the database."))
-                      (assoc error :status-code 400))))
+                      (assoc error :status-code 400, :error-code "connection_failed"))))
     (ws.db/save-provisioning-connection! database-id details user-id)
     nil))
 

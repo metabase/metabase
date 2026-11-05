@@ -45,7 +45,7 @@
   in a single conditional UPDATE. Throws a 404 when there is no such row, and a 409 naming the status it reads as when
   the row is in another status, such as when a concurrent request changed it first."
   [id   :- ms/PositiveInt
-   from :- [:set ::database-status]
+   from :- [:set {:min 1} ::database-status]
    to   :- ::database-status]
   (let [now        (OffsetDateTime/now)
         stale-from (if (from :failed) in-flight-database-statuses #{})]
