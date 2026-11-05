@@ -1782,7 +1782,8 @@
            task.history
            tracing
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 

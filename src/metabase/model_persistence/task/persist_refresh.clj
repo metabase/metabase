@@ -23,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as ws]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -219,10 +220,14 @@
   [^org.quartz.JobExecutionContext job-context]
   (let [{:strs [type db-id persisted-id] :as _payload} (job-context->job-type job-context)
         trigger                                        (.getTrigger job-context)]
-    (case type
-      "database"   (refresh-tables!     db-id        dispatching-refresher trigger)
-      "individual" (refresh-individual! persisted-id dispatching-refresher trigger)
-      (log/infof "Unknown payload type %s" type))))
+    ;; a workspace sidecar must not persist models: the refresh compiles without the workspace rewrite, so it would
+    ;; read main tables and write a cache table outside the scratch namespaces
+    (if (ws/workspace-mode?)
+      (log/info "Skipping persisted model refresh: this instance is a workspace.")
+      (case type
+        "database"   (refresh-tables!     db-id        dispatching-refresher trigger)
+        "individual" (refresh-individual! persisted-id dispatching-refresher trigger)
+        (log/infof "Unknown payload type %s" type)))))
 
 (defn- prune-job-fn!
   [_job-context]

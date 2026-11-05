@@ -71,6 +71,7 @@
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
    #'cache/maybe-return-cached-results
+   #'qp.workspace-remapping/bypass-cache-when-remapped
    #'remove-native-form-without-native-perms
    #'qp.perms/check-query-permissions
    #'qp.middleware.enterprise/check-download-permissions-middleware])

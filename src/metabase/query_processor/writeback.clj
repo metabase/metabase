@@ -13,6 +13,7 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
+   [metabase.query-processor.middleware.workspace-remapping :as qp.workspace-remapping]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -52,7 +53,8 @@
   ;; `rff` and `context` are not currently used by the writeback QP stuff, so these parameters can be ignored; we pass
   ;; in `nil` for these below.
   (letfn [(qp* [query _rff]
-            (let [query (substitute-params query)]
+            ;; on a workspace sidecar, write to scratch copies of remapped tables (failing closed like reads)
+            (let [query (qp.workspace-remapping/rewrite-query (substitute-params query))]
               ;; ok, now execute the query.
               (log/debug "Executing write query")
               (driver/execute-write-query! driver/*driver* (lib/->legacy-MBQL query))))]
