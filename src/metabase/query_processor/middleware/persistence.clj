@@ -2,22 +2,19 @@
   (:require
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
-   [metabase.util.match :as match]
-   [metabase.workspaces.core :as ws]))
+   [metabase.util.match :as match]))
 
 (defn substitute-persisted-query
   "Removes persisted information if user is sandboxed, uses connection impersonation, or is routed to a Destination
-  Database, and on a workspace sidecar. `:persisted-info/native` is set in [[metabase.query-processor.middleware.fetch-source-query]].
+  Database. `:persisted-info/native` is set in [[metabase.query-processor.middleware.fetch-source-query]].
 
   It may be be possible to use the persistence cache with sandboxing and/or impersonation at a later date with further
   work, but for now we skip the cache in these cases."
   [query]
-  (if (or (and api/*current-user-id*
-               (or (match/match-one query {:query-permissions/sandboxed-table &truthy} true)
-                   (perms/impersonation-enforced-for-db? (:database query))
-                   (:destination-database/id query)))
-          ;; a persisted model was computed from main tables, not the workspace's scratch copies
-          (ws/workspace-mode?))
+  (if (and api/*current-user-id*
+           (or (match/match-one query {:query-permissions/sandboxed-table &truthy} true)
+               (perms/impersonation-enforced-for-db? (:database query))
+               (:destination-database/id query)))
     (match/replace query
       {:persisted-info/native &truthy}
       ;; Signal to the SQL QP's independent persisted-cache lookup that it should not use the cache for this

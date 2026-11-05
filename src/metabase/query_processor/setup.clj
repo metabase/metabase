@@ -160,15 +160,15 @@
         (database-routing/check-allowed-access! (lib.metadata/database (qp.store/metadata-provider)))
         (f (maybe-attach-metadata-provider-to-query query))))))
 
-(mu/defn- do-with-workspace-remapping :- fn?
-  "On a workspace sidecar, bind a metadata provider that reports each remapped table of the query's database at its
-  scratch location; see [[metabase.query-processor.middleware.workspace-remapping]]."
+(mu/defn- do-with-workspace-remappings :- fn?
+  "On a workspace sidecar, read the query's remappings once and carry them on the bound metadata provider, for the
+  execution rewrite; see [[metabase.query-processor.middleware.workspace-remapping]]. Tables keep their main names."
   [f :- fn?]
   (fn [query]
     (if-let [remappings (when-not (= (query-type query) :internal)
                           (ws/table-remappings (:database query)))]
       (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
-        (qp.store/with-metadata-provider (qp.workspace-remapping/remapped-metadata-provider
+        (qp.store/with-metadata-provider (qp.workspace-remapping/carry-remappings
                                           (qp.store/metadata-provider)
                                           remappings)
           (f (maybe-attach-metadata-provider-to-query query))))
@@ -284,7 +284,7 @@
   [#'do-with-canceled-chan
    #'do-with-database-local-settings
    #'do-with-driver
-   #'do-with-workspace-remapping
+   #'do-with-workspace-remappings
    #'do-with-metadata-provider
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing
