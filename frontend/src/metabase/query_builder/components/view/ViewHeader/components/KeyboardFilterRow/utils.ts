@@ -315,6 +315,7 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
         valueKind:
           STRING_OPERATORS[operator].type === "empty" ? "none" : "multi",
         isNumeric: false,
+        hasNoValueSuggestions: STRING_OPERATORS[operator].type === "partial",
         formatValue: Lib.isCountry(column)
           ? getCountryName
           : Lib.isState(column)

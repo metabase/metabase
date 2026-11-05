@@ -1085,7 +1085,8 @@ function ValueInput({
   onKeyDown,
 }: ValueInputProps) {
   const isAiPromptText = isAiPrompt(text);
-  const fieldValues = useFieldValues(query, column, isAiPromptText ? "" : text);
+  const hasNoDropdown = isAiPromptText || operator.hasNoValueSuggestions;
+  const fieldValues = useFieldValues(query, column, hasNoDropdown ? "" : text);
   const valueCounts = useValueCounts({
     query,
     stageIndex,
@@ -1160,10 +1161,10 @@ function ValueInput({
       )}
       <SuggestionInput
         inputRef={inputRef}
-        groups={isAiPromptText ? NO_GROUPS : groups}
-        header={isAiPromptText ? undefined : widget.header}
-        aside={isAiPromptText ? undefined : widget.aside}
-        footer={isAiPromptText ? undefined : getValueCountsFooter(valueCounts)}
+        groups={hasNoDropdown ? NO_GROUPS : groups}
+        header={hasNoDropdown ? undefined : widget.header}
+        aside={hasNoDropdown ? undefined : widget.aside}
+        footer={hasNoDropdown ? undefined : getValueCountsFooter(valueCounts)}
         isTiles={widget.isTiles}
         columns={widget.columns}
         dropdownWidth={widget.dropdownWidth}
