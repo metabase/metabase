@@ -1,4 +1,4 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
@@ -13,7 +13,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { HealthCheck } from "metabase-types/api";
 
 import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
@@ -34,17 +33,11 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
   return (
     <Card p="xxl" withBorder data-testid={`health-check-card-${check.id}`}>
       <Stack gap="lg">
-        <Group gap="sm" justify="space-between" align="flex-start">
-          <Group gap="sm">
-            <SeverityBadge severity={check.severity} isAffecting={isFailing} />
-            {isFailing && check.requires_restart && (
-              <Badge color="neutral" size="sm">{t`Requires a restart`}</Badge>
-            )}
-          </Group>
-          <Text size="sm" c="text-secondary">
-            {c("{0} is a relative time like 5 minutes ago")
-              .t`Checked ${getRelativeTime(check.checked_at)}`}
-          </Text>
+        <Group gap="sm">
+          <SeverityBadge severity={check.severity} isAffecting={isFailing} />
+          {isFailing && check.requires_restart && (
+            <Badge color="neutral" size="sm">{t`Requires a restart`}</Badge>
+          )}
         </Group>
 
         <Stack gap="sm">
@@ -68,7 +61,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
             </Button>
           )}
           {showMetabaseLinks && (
-            <Button component={ExternalLink} href={docsUrl} variant="subtle">
+            <Button component={ExternalLink} href={docsUrl} variant="default">
               {t`Read the docs`}
             </Button>
           )}

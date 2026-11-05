@@ -1,16 +1,17 @@
 import { useEffect } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Button, Group, Icon, Stack, Title } from "metabase/ui";
+import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { HealthCheck, HealthCheckStatus } from "metabase-types/api";
 
 import { trackHealthChecksPageViewed } from "../../analytics";
 import { HealthCheckGroup } from "../HealthCheckGroup/HealthCheckGroup";
 import { HealthChecksSummary } from "../HealthChecksSummary/HealthChecksSummary";
 import { useHealthChecks } from "../hooks/use-health-checks";
-import { getChecksByStatus } from "../utils";
+import { getChecksByStatus, getOldestCheckedAt } from "../utils";
 
 const GROUP_ORDER: HealthCheckStatus[] = ["fail", "unknown", "pass"];
 
@@ -63,14 +64,20 @@ export const HealthChecksPage = () => {
       <Group gap="sm" justify="space-between">
         <Title order={1}>{t`Health checks`}</Title>
         {hasChecks && (
-          <Button
-            variant="subtle"
-            leftSection={<Icon name="sync" />}
-            loading={isRecheckingAll}
-            onClick={recheckAll}
-          >
-            {t`Re-check all`}
-          </Button>
+          <Group gap="sm">
+            <Text size="sm" c="text-secondary">
+              {c("{0} is a relative time like 5 minutes ago")
+                .t`Checked ${getRelativeTime(getOldestCheckedAt(checks))}`}
+            </Text>
+            <Button
+              variant="subtle"
+              leftSection={<Icon name="sync" />}
+              loading={isRecheckingAll}
+              onClick={recheckAll}
+            >
+              {t`Re-check`}
+            </Button>
+          </Group>
         )}
       </Group>
       <HealthChecksContent

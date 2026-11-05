@@ -155,7 +155,7 @@ describe("HealthChecksPage", () => {
       screen.queryByText("All security checks pass"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "sync icon Re-check all" }),
+      screen.queryByRole("button", { name: "sync icon Re-check" }),
     ).not.toBeInTheDocument();
   });
 
@@ -452,7 +452,7 @@ describe("HealthChecksPage", () => {
     await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
+      screen.getByRole("button", { name: "sync icon Re-check" }),
     );
 
     expect(
@@ -465,29 +465,29 @@ describe("HealthChecksPage", () => {
     ).toHaveLength(1);
   });
 
-  it("tracks the re-check all click", async () => {
+  it("tracks the re-check click", async () => {
     const track = jest.spyOn(analytics, "trackHealthChecksRecheckClicked");
     setupRecheckHealthChecksEndpoint([FAILING_CHECK]);
     await setup({ checks: [FAILING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
+      screen.getByRole("button", { name: "sync icon Re-check" }),
     );
 
     expect(track).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "sync icon Re-check all" }),
+        screen.getByRole("button", { name: "sync icon Re-check" }),
       ).toBeEnabled(),
     );
   });
 
-  it("shows an error when re-check all fails", async () => {
+  it("shows an error when re-check fails", async () => {
     setupRecheckHealthChecksErrorEndpoint();
     await setup({ checks: [FAILING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
+      screen.getByRole("button", { name: "sync icon Re-check" }),
     );
 
     expect(
@@ -512,7 +512,7 @@ describe("HealthChecksPage", () => {
 
     expect(screen.getByText("An error occurred")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "sync icon Re-check all" }),
+      screen.queryByRole("button", { name: "sync icon Re-check" }),
     ).not.toBeInTheDocument();
   });
 });

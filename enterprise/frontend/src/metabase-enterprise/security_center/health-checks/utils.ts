@@ -52,6 +52,13 @@ export const getChecksByStatus = (
 ) =>
   checks.filter((check) => check.status === status).toSorted(compareBySeverity);
 
+export const getOldestCheckedAt = (checks: HealthCheck[]) =>
+  checks
+    .map((check) => check.checked_at)
+    .reduce((oldest, checkedAt) =>
+      Date.parse(checkedAt) < Date.parse(oldest) ? checkedAt : oldest,
+    );
+
 export const getItemsByStatus = (
   items: HealthCheckItem[],
   status: HealthCheckStatus,
