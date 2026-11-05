@@ -223,34 +223,35 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
-(deftest validate-collection-move-permissions-allows-move-from-root-test
-  (testing "allows move when old collection is nil (moving from root)"
+(deftest validate-collection-move-permissions-move-from-root-test
+  (testing "moving from root (old collection nil) requires write permission on root"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {new-collection-id :id} {:name "New Collection"}
                      :model/User {user-id :id} {}]
         (mt/with-current-user user-id
-          ;; Grant write permission to new collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should not throw any exception when old collection is nil
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (document/validate-collection-move-permissions nil new-collection-id)))
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
           (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
 
-(deftest validate-collection-move-permissions-allows-move-to-root-test
-  (testing "allows move when new collection is nil (moving to root)"
+(deftest validate-collection-move-permissions-move-to-root-test
+  (testing "moving to root (new collection nil) requires write permission on root"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
                      :model/User {user-id :id} {}]
         (mt/with-current-user user-id
-          ;; Grant write permission to old collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Should not throw any exception when new collection is nil
-          (is (nil? (document/validate-collection-move-permissions old-collection-id nil))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (document/validate-collection-move-permissions old-collection-id nil)))
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+          (is (some? (document/validate-collection-move-permissions old-collection-id nil))))))))
 
 (deftest validate-collection-move-permissions-allows-move-both-nil-test
-  (testing "allows move when both collections are nil"
+  (testing "allows move when both collections are nil and the user can write root"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
-        ;; Should not throw any exception when both collections are nil
-        (is (nil? (document/validate-collection-move-permissions nil nil)))))))
+        (is (some? (document/validate-collection-move-permissions nil nil)))))))
 
 (deftest validate-collection-move-permissions-throws-400-nonexistent-collection-test
   (testing "throws 400 when new collection does not exist"
