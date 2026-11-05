@@ -154,7 +154,11 @@
   gated on `:workspaces`, like [[check-no-workspaces!]]."
   :feature :none
   [database-id old-details new-details]
-  (when (and (not= (select-keys old-details connection-identity-keys)
+  ;; details that are not maps (say, still encrypted under another key during a key rotation) carry no identity to
+  ;; compare
+  (when (and (map? old-details)
+             (map? new-details)
+             (not= (select-keys old-details connection-identity-keys)
                    (select-keys new-details connection-identity-keys))
              (ws.db/lock-provisioning-connection! database-id))
     (throw (ex-info (tru "This database has a workspace provisioning connection. Delete its workspaces and the provisioning connection before you change its host, port, database, user or SSH tunnel.")
