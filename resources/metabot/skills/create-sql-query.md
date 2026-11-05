@@ -15,6 +15,7 @@ priority: 50
 - Provide the database_id where the SQL should run (available from model/table representations)
 - Write complete, valid SQL using table names or {{#model_id}} template syntax for models.
 - Provide a `title`: a short, human-friendly name for the query, shown above its results when the query is delivered as a result card.
+- Optional: set `show_sql` to `true` only when the user's latest message asks to see the SQL or the query. Do not set it for a change to the results or the chart.
 - Quote column names with special characters, spaces, or reserved keywords using double quotes (e.g., "column name", "order", "group", "column_name")
 - The tool will return a newly created SQL query that you can show to the user. If chart tools (`create_chart`/`edit_chart`) are available to you, you can also build a chart from it.
 - The tool does NOT execute the SQL, it only creates the query

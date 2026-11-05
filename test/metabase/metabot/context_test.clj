@@ -12,6 +12,7 @@
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -341,3 +342,20 @@
                (context/host-app-request? {:headers (cond-> {} client (assoc "x-metabase-client" client))}))))))
   (testing "no request bound, e.g. a caller outside an HTTP handler"
     (is (false? (context/host-app-request? nil)))))
+
+(deftest ^:parallel code-editor-buffer-auto-apply-schema-test
+  (testing "a code-editor buffer may carry an optional boolean `auto_apply`"
+    (let [buffer        {:id "qb" :source {:language "sql" :database_id 1} :cursor {:line 0 :column 0}}
+          with-buffer   (fn [buffer]
+                          {:user_is_viewing [{:type "code_editor" :buffers [buffer]}]
+                           :code_editor     {:type "code_editor" :buffers [buffer]}})]
+      (doseq [[auto-apply valid?] [[::absent true]
+                                   [true     true]
+                                   [false    true]
+                                   [nil      true]
+                                   ["yes"    false]]]
+        (testing (pr-str auto-apply)
+          (is (= valid?
+                 (mr/validate ::context/context
+                              (with-buffer (cond-> buffer
+                                             (not= auto-apply ::absent) (assoc :auto_apply auto-apply)))))))))))

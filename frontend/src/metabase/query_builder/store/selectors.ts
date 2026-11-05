@@ -151,6 +151,9 @@ export const getIsBookmarked = (
 export const getQueryStartTime = (state: QueryBuilderStoreState) =>
   state.qb.queryStartTime;
 
+export const getPendingAutoRun = (state: QueryBuilderStoreState) =>
+  state.qb.pendingAutoRun;
+
 export const getDatabaseId = createSelector(
   [getCard],
   (card) => card && card.dataset_query && card.dataset_query.database,

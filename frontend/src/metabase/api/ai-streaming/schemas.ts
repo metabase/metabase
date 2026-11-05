@@ -95,6 +95,8 @@ export type GeneratedCard = {
   description?: string;
   query: GeneratedQuery;
   display?: CardDisplayType;
+  /** Present, and true, when the user asked Metabot to show the SQL. */
+  show_sql?: boolean;
 };
 
 export type GeneratedDashboard = {

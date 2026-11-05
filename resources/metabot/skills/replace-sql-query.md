@@ -13,6 +13,8 @@ Replace the entire content of an existing SQL query with new SQL. Use for major 
 - `new_query` — the complete replacement SQL. It replaces the whole body, so include everything the query needs.
 - `title` — a short, human-friendly title for the query, shown above its results when the query is handed back as a link rather than proposed in the editor.
 
+**Optional:** `show_sql` — set it to `true` only when the user's latest message asks to see the SQL or the query. Do not set it for a change to the results or the chart. When the SQL does not need to change, pass the current SQL as `new_query`.
+
 **Example:** `{"query_id": "1", "checklist": "Re-read orders and customers; join is on customer_id", "new_query": "SELECT c.name, COUNT(*) AS order_count FROM customers c JOIN orders o ON o.customer_id = c.id GROUP BY c.name", "title": "Orders per customer"}`
 
 **When to use:** large changes to a SQL query that is already in the conversation context (use `edit_sql_query` for small targeted edits). Never execute SQL or act outside the current query.

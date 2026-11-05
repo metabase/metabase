@@ -27,14 +27,13 @@
     (string? type-val)  (u/lower-case-en type-val)
     :else               ""))
 
-(defn- first-code-editor-buffer-id
+(defn- first-code-editor-buffer
   [memory]
   (some->> (get-in memory [:context :user_is_viewing] [])
            (filter #(= "code_editor" (normalize-context-type (:type %))))
            first
            :buffers
-           first
-           :id))
+           first))
 
 (defn- format-query-output
   "Format a query result for LLM consumption.
@@ -60,6 +59,17 @@
   (streaming/code-edit-part {:buffer_id buffer-id
                              :mode "rewrite"
                              :value sql}))
+
+(defn- with-show-sql
+  "Mark `part` with `:show_sql true` when the model asked to show the SQL to the user."
+  [part show-sql?]
+  (cond-> part
+    show-sql? (assoc-in [:data :show_sql] true)))
+
+(def ^:private show-sql-schema
+  [:show_sql {:optional true}
+   [:maybe [:boolean {:description (str "Set to true only when the user's latest message asks to see the SQL. "
+                                        "Do not set it for a change to the results or the chart.")}]]])
 
 (def ^:private notebook-tool-name "construct_notebook_query")
 
@@ -108,7 +118,8 @@
   [:map {:closed true}
    [:database_id :int]
    [:sql_query :string]
-   [:title :string]])
+   [:title :string]
+   show-sql-schema])
 
 (defrecord CreateSqlQueryTool [code-edit?]
   tools/Tool
@@ -120,9 +131,9 @@
      :scope scope/agent-sql-create
      :metabot/capabilities #{:permission-write-sql-queries}
      :args create-sql-schema})
-  (handle [_ {database-id :database_id sql-query :sql_query :keys [title]} ctx]
+  (handle [_ {database-id :database_id sql-query :sql_query show-sql? :show_sql :keys [title]} ctx]
     (let [buffer-id (when code-edit?
-                      (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+                      (or (:id (first-code-editor-buffer (some-> (:memory-atom ctx) deref)))
                           (tools/unrecoverable! ::missing-editor
                                                 {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
           action-result (sql.common/validated-sql-action!
@@ -135,9 +146,10 @@
                   (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))]
       {:output (format-query-output structured instr {:preamble? true})
        :structured-output structured
-       :data-parts [(if code-edit?
-                      (code-edit-part buffer-id query-content)
-                      (query-viz-part action-result title))]})))
+       :data-parts [(with-show-sql (if code-edit?
+                                     (code-edit-part buffer-id query-content)
+                                     (query-viz-part action-result title))
+                      show-sql?)]})))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."
@@ -159,20 +171,30 @@
                          [:old_string :string]
                          [:new_string :string]
                          [:replace_all {:optional true} [:maybe :boolean]]]]]
-   [:title :string]])
+   [:title :string]
+   show-sql-schema])
+
+(defn- delivery
+  "How an updated query reaches the user: `:applied` or `:proposed` in an open editor `buffer`, else `:link`."
+  [buffer]
+  (cond
+    (:auto_apply buffer) :applied
+    buffer               :proposed
+    :else                :link))
 
 (defn- sql-edit-result
-  [operation-result title instruction-fn ctx & {:keys [edit?]}]
+  [operation-result title instruction-fn ctx & {:keys [edit? show-sql?]}]
   (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action!
                                                             operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
-        buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
-        instr (instruction-fn query-id (some? buffer-id))]
+        buffer (first-code-editor-buffer (some-> (:memory-atom ctx) deref))
+        instr (instruction-fn query-id (delivery buffer))]
     {:output (format-query-output structured instr)
      :structured-output structured
-     :data-parts [(if buffer-id
-                    (code-edit-part buffer-id query-content)
-                    (query-viz-part action-result title))]}))
+     :data-parts [(with-show-sql (if buffer
+                                   (code-edit-part (:id buffer) query-content)
+                                   (query-viz-part action-result title))
+                    show-sql?)]}))
 
 (defrecord EditSqlQueryTool []
   tools/Tool
@@ -183,14 +205,14 @@
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
      :args edit-sql-schema})
-  (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
+  (handle [_ {query-id :query_id show-sql? :show_sql :keys [edits checklist title]} ctx]
     (sql-edit-result (do-with-notebook-fallback
                       ctx #(edit-sql-query-tools/edit-sql-query
                             {:query-id query-id
                              :edits edits
                              :checklist checklist
                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/edit-sql-query-instructions-for ctx {:edit? true})))
+                     title instructions/edit-sql-query-instructions-for ctx {:edit? true :show-sql? show-sql?})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."
@@ -205,7 +227,8 @@
    [:query_id [:or :string :int]]
    [:checklist :string]
    [:new_query :string]
-   [:title :string]])
+   [:title :string]
+   show-sql-schema])
 
 (defrecord ReplaceSqlQueryTool []
   tools/Tool
@@ -216,14 +239,14 @@
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
      :args replace-sql-schema})
-  (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
+  (handle [_ {query-id :query_id new-query :new_query show-sql? :show_sql :keys [checklist title]} ctx]
     (sql-edit-result (do-with-notebook-fallback
                       ctx #(replace-sql-query-tools/replace-sql-query
                             {:query-id query-id
                              :sql new-query
                              :checklist checklist
                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/replace-sql-query-instructions-for ctx)))
+                     title instructions/replace-sql-query-instructions-for ctx {:show-sql? show-sql?})))
 
 (def replace-sql-query-tool
   "The tool that replaces the SQL in a stored query."

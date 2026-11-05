@@ -6,6 +6,7 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
+import { metabotSqlLoaded } from "metabase/metabot/state";
 import {
   getShallowTables,
   paramFieldsFetched,
@@ -16,7 +17,7 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { INITIALIZE_QB } from "metabase/redux/query-builder";
+import { INITIALIZE_QB, setPendingAutoRun } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
@@ -45,6 +46,7 @@ import { resetQB } from "../../store/actions";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
+  getPendingAutoRun,
 } from "../../store/selectors";
 import type { QueryBuilderStoreState } from "../../store/state";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
@@ -267,6 +269,16 @@ export async function updateTemplateTagNames(
   return query;
 }
 
+/** The pending auto-run key when it is for this location, else `null`. */
+function getMatchingPendingAutoRun(
+  state: QueryBuilderStoreState,
+  location: Location,
+) {
+  const pendingAutoRun = getPendingAutoRun(state);
+  const url = `${location.pathname}${location.hash}`;
+  return pendingAutoRun?.url === url ? pendingAutoRun : null;
+}
+
 // Tracks the most recent initializeQB invocation so that stale, in-flight
 // calls (whose location has been superseded by a newer navigation before they
 // finished awaiting metadata) don't overwrite the QB state with results
@@ -471,6 +483,24 @@ async function handleQBInit(
     return;
   }
 
+  // A Metabot sidebar turn asks for one run of the question it opened. Only a
+  // current init uses the key, and it clears it, so a later init does not run.
+  const pendingAutoRun = getMatchingPendingAutoRun(getState(), location);
+  if (pendingAutoRun) {
+    dispatch(setPendingAutoRun(null));
+    if (isNative) {
+      uiControls.isNativeEditorOpen = pendingAutoRun.isNativeEditorOpen;
+      // The init renames model and snippet tags, so Metabot compares its next
+      // edit with the SQL of this question, not with the SQL that it sent.
+      dispatch(
+        metabotSqlLoaded({
+          conversationId: pendingAutoRun.conversationId,
+          sql: Lib.rawNativeQuery(question.query()),
+        }),
+      );
+    }
+  }
+
   dispatch({
     type: INITIALIZE_QB,
     payload: {
@@ -484,7 +514,11 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode !== "notebook") {
     const { isNative } = Lib.queryDisplayInfo(question.query());
-    if (question.canRun() && (question.isSaved() || !isNative)) {
+    const canAutoRun =
+      question.isSaved() ||
+      !isNative ||
+      (pendingAutoRun !== null && pendingAutoRun.shouldRun);
+    if (question.canRun() && canAutoRun) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),

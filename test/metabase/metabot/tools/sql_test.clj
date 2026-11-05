@@ -36,11 +36,11 @@
       ((get-in entries [tool-name :fn])
        (merge {:title "Birds"}
               (case tool-name
-                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title]))
+                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title :show_sql]))
                 (merge {:query_id "q1" :checklist "Checked"}
                        (select-keys args (if (= tool-name "edit_sql_query")
-                                           [:query_id :edits :title :checklist]
-                                           [:query_id :new_query :title :checklist])))))))))
+                                           [:query_id :edits :title :checklist :show_sql]
+                                           [:query_id :new_query :title :checklist :show_sql])))))))))
 
 (deftest create-sql-query-output-test
   (testing "create_sql_query output includes preamble, query XML, and query-ID-aware instructions"
@@ -183,6 +183,96 @@
                                                                       :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
                       (is (= 1 (count parts)))
                       (is (= "code_edit" (:data-type (first parts)))))))))))))))
+
+(defn- code-editor-context
+  "A viewing context with one open code-editor buffer; `buffer-keys` are merged into the buffer."
+  [buffer-keys]
+  {:user_is_viewing [{:type    "code_editor"
+                      :buffers [(merge {:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}
+                                       buffer-keys)]}]})
+
+(defn- run-sql-edit-tool
+  "Run `tool-name` on a stored native query `SELECT * FROM t`, with `context` as the request context."
+  [tool-name context extra-args]
+  (let [query-id "test-q"
+        query    (-> (lib/native-query (mt/metadata-provider) "SELECT * FROM t") lib/->legacy-MBQL)
+        args     (case tool-name
+                   "edit_sql_query"    {:edits [{:old_string "SELECT *" :new_string "SELECT id"}]}
+                   "replace_sql_query" {:new_query "SELECT id FROM t"})]
+    (binding [shared/*memory-atom* (atom {:state {:queries {query-id query}} :context context})]
+      (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                       (merge args {:query_id query-id :checklist "- [x] checked" :title "Results"} extra-args)))))
+
+(deftest edit-and-replace-sql-query-auto-apply-instructions-test
+  (testing "an auto-applied buffer tells the model the change is applied, not waiting for approval"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {:as db} {:engine :h2}]
+          (mt/with-db db
+            (doseq [tool-name ["edit_sql_query" "replace_sql_query"]]
+              (testing tool-name
+                (testing "auto_apply true: a code_edit part and the applied delivery line"
+                  (let [{:keys [output data-parts]} (run-sql-edit-tool tool-name (code-editor-context {:auto_apply true}) {})]
+                    (is (= ["code_edit"] (map :data-type data-parts)))
+                    (is (str/includes? output "already applied in the user's query"))
+                    (is (not (str/includes? output "accept or reject")))
+                    (is (not (str/includes? output "metabase://query/")))))
+                (doseq [[label buffer-keys] [["auto_apply false" {:auto_apply false}]
+                                             ["no auto_apply"    {}]]]
+                  (testing (str label ": the change is proposed for approval")
+                    (let [{:keys [output data-parts]} (run-sql-edit-tool tool-name (code-editor-context buffer-keys) {})]
+                      (is (= ["code_edit"] (map :data-type data-parts)))
+                      (is (str/includes? output "accept or reject"))
+                      (is (not (str/includes? output "already applied"))))))
+                (testing "no buffer: a link to the query"
+                  (let [{:keys [output]} (run-sql-edit-tool tool-name {} {})]
+                    (is (str/includes? output "metabase://query/test-q"))
+                    (is (not (str/includes? output "already applied")))))))))))))
+
+(deftest sql-tools-show-sql-test
+  (testing "show_sql true puts `:show_sql true` on the part data; otherwise the key is absent"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
+          (mt/with-db db
+            (let [create (fn [profile context extra-args]
+                           (invoke-sql-tool profile {:context context} "create_sql_query"
+                                            (merge {:database_id db-id :sql_query "SELECT 1" :title "Results"}
+                                                   extra-args)))
+                  cases  [["create_sql_query, generated_entity"  "generated_entity" #(create :internal {} %)]
+                          ["create_sql_query, code_edit"         "code_edit"        #(create :sql (code-editor-context {}) %)]
+                          ["edit_sql_query, generated_entity"    "generated_entity" #(run-sql-edit-tool "edit_sql_query" {} %)]
+                          ["edit_sql_query, code_edit"           "code_edit"        #(run-sql-edit-tool "edit_sql_query" (code-editor-context {}) %)]
+                          ["replace_sql_query, generated_entity" "generated_entity" #(run-sql-edit-tool "replace_sql_query" {} %)]
+                          ["replace_sql_query, code_edit"        "code_edit"        #(run-sql-edit-tool "replace_sql_query" (code-editor-context {}) %)]]]
+              (doseq [[label data-type run] cases]
+                (testing label
+                  (testing "show_sql true"
+                    (let [{:keys [error data-parts]} (run {:show_sql true})]
+                      (is (nil? error))
+                      (is (= [data-type] (map :data-type data-parts)))
+                      (is (true? (get-in (first data-parts) [:data :show_sql])))))
+                  (doseq [[sub-label extra-args] [["show_sql false" {:show_sql false}]
+                                                  ["no show_sql"    {}]]]
+                    (testing sub-label
+                      (let [{:keys [error data-parts]} (run extra-args)]
+                        (is (nil? error))
+                        (is (= [data-type] (map :data-type data-parts)))
+                        (is (not (contains? (:data (first data-parts)) :show_sql)))))))))))))))
+
+(deftest replace-sql-query-unchanged-sql-test
+  (testing "replace_sql_query accepts the current SQL unchanged, so the model can use it to show the SQL"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {:as db} {:engine :h2}]
+          (mt/with-db db
+            (let [{:keys [error data-parts]} (run-sql-edit-tool "replace_sql_query" (code-editor-context {:auto_apply true})
+                                                                {:new_query "SELECT * FROM t" :show_sql true})
+                  part                       (first data-parts)]
+              (is (nil? error))
+              (is (= "code_edit" (:data-type part)))
+              (is (= {:buffer_id "buf-1" :mode "rewrite" :value "SELECT * FROM t" :show_sql true}
+                     (:data part))))))))))
 
 (deftest edit-and-replace-sql-query-unexpected-error-test
   (mt/with-dynamic-fn-redefs [sql.edit/edit-sql-query (fn [_] (throw (ex-info "boom" {})))

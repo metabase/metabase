@@ -13,11 +13,13 @@ import {
   EDIT_SUMMARY,
   INITIALIZE_QB,
   RESET_QB,
+  SET_PENDING_AUTO_RUN,
   SET_UI_CONTROLS,
 } from "metabase/redux/query-builder";
 import type {
   ForeignKeyReference,
   InitialChartSettingState,
+  PendingAutoRun,
   QueryBuilderLoadingControls,
   QueryBuilderParentEntityState,
   QueryBuilderQueryStatus,
@@ -485,6 +487,14 @@ const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   },
 );
 
+// Not cleared on RESET_QB: `initializeQB` resets the QB before it reads the key.
+const pendingAutoRun = createReducer<PendingAutoRun | null>(null, (builder) => {
+  builder.addCase<string, { type: string; payload: PendingAutoRun | null }>(
+    SET_PENDING_AUTO_RUN,
+    (_state, action) => action.payload,
+  );
+});
+
 // AbortController used for tracking a query execution in progress. when a query is started we capture this.
 const cancelQueryController = createReducer<AbortController | null>(
   null,
@@ -708,6 +718,7 @@ const card = createReducer<Card | null>(null, (builder) => {
 });
 
 export const queryBuilderReducer: Reducer<QueryBuilderState> = combineReducers({
+  pendingAutoRun,
   uiControls,
   loadingControls,
   queryStatus,

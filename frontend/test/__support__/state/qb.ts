@@ -53,6 +53,7 @@ export const createMockQueryBuilderState = (
   opts?: Partial<QueryBuilderState>,
 ): QueryBuilderState => ({
   uiControls: createMockQueryBuilderUIControlsState(),
+  pendingAutoRun: null,
   loadingControls: {
     showLoadCompleteFavicon: false,
     documentTitle: "",

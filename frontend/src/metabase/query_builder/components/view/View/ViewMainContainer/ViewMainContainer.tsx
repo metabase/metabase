@@ -63,7 +63,7 @@ interface ViewMainContainerProps {
   runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setDatasetQuery: (query: NativeQuery) => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;

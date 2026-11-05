@@ -353,3 +353,10 @@ export const getMetabotSuggestedCodeEdit = createSelector(
   [getMetabotSuggestedCodeEdits, (_, bufferId: string) => bufferId],
   (suggestedCodeEdits, bufferId) => suggestedCodeEdits[bufferId],
 );
+
+export const getMetabotSqlModeEntry = (state: State, conversationId: string) =>
+  getMetabotReactionsState(state).sqlModes[conversationId];
+
+/** The SQL mode of the current sidebar conversation; `undefined` when Metabot did not start its SQL. */
+export const getOmnibotSqlModeEntry = (state: State) =>
+  getMetabotSqlModeEntry(state, getMetabotConversationId(state, "omnibot"));

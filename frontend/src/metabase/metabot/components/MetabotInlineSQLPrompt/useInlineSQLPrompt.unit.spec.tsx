@@ -26,9 +26,15 @@ import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { MetabotChainOfThought } from "metabase/metabot/components/MetabotChat/MetabotChainOfThought";
 import { MetabotProvider } from "metabase/metabot/context";
 import {
+  type MetabotSqlMode,
+  getMetabotSqlModeEntry,
+} from "metabase/metabot/state";
+import {
+  createTestMetabotState,
   erroredResponse,
   lastReqBody,
   mockAgentEndpoint,
+  testConversationId,
 } from "metabase/metabot/tests/utils";
 import { getDiffControls } from "metabase/querying/components/CodeMirrorEditor/test-utils";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
@@ -180,9 +186,27 @@ function TestPage({ question }: { question: Question }) {
 interface SetupOpts {
   isMetabotEnabled?: boolean;
   otherContent?: ReactElement;
+  sidebarSqlMode?: MetabotSqlMode;
 }
 
-function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
+const OMNIBOT_CONVERSATION_ID = testConversationId("omnibot");
+
+const createMetabotState = (sidebarSqlMode: MetabotSqlMode | undefined) => {
+  const metabotState = createTestMetabotState();
+  if (sidebarSqlMode) {
+    metabotState.reactions.sqlModes[OMNIBOT_CONVERSATION_ID] = {
+      mode: sidebarSqlMode,
+      lastAppliedSql: "SELECT 1",
+    };
+  }
+  return metabotState;
+};
+
+function setup({
+  isMetabotEnabled = true,
+  otherContent,
+  sidebarSqlMode,
+}: SetupOpts = {}) {
   setupEnterprisePlugins();
   setupDatabasesEndpoints([TEST_DB, OTHER_DB]);
   setupUserMetabotPermissionsEndpoint();
@@ -200,17 +224,23 @@ function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
       databases: [TEST_DB, OTHER_DB],
       questions: [TEST_CARD],
     }),
+    metabot: createMetabotState(sidebarSqlMode),
   });
   const metadata = createMockMetadataFromState(state);
   const question = checkNotNull(metadata.question(TEST_CARD.id));
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <MetabotProvider>
       <TestPage question={question} />
       {otherContent}
     </MetabotProvider>,
     { storeInitialState: state },
   );
+
+  const getSidebarSqlMode = () =>
+    getMetabotSqlModeEntry(store.getState(), OMNIBOT_CONVERSATION_ID)?.mode;
+
+  return { getSidebarSqlMode };
 }
 
 async function openOtherConversationReasoning() {
@@ -608,6 +638,47 @@ describe("useInlineSQLPrompt", () => {
 
     await waitFor(() => expect(queryDiffControls()).not.toBeInTheDocument());
     expect(screen.getByTestId("proposed-sql")).toBeEmptyDOMElement();
+  });
+
+  it("switches the sidebar SQL to user-in-control on a hand edit with no pending proposal", async () => {
+    const { getSidebarSqlMode } = setup({ sidebarSqlMode: "chart" });
+    expect(await screen.findByText("SELECT")).toBeInTheDocument();
+
+    await userEvent.type(editorContent(), " ");
+
+    await waitFor(() => expect(getSidebarSqlMode()).toBe("user-in-control"));
+  });
+
+  it("keeps the sidebar SQL mode on a cursor move", async () => {
+    const { getSidebarSqlMode } = setup({ sidebarSqlMode: "sql-shown" });
+    expect(await screen.findByText("SELECT")).toBeInTheDocument();
+
+    await userEvent.click(editorContent());
+    await userEvent.keyboard("{ArrowLeft}{ArrowRight}{End}");
+
+    expect(getSidebarSqlMode()).toBe("sql-shown");
+  });
+
+  it("keeps the sidebar SQL mode when a proposal changes the editor text and the user accepts it", async () => {
+    const { getSidebarSqlMode } = setup({ sidebarSqlMode: "chart" });
+
+    await generateSql({ prompt: "select all users", sql: "SELECT 2" });
+    expect(editorContent()).toHaveTextContent("SELECT 2");
+    await userEvent.click(
+      within(getDiffControls().row).getByRole("button", { name: /Accept/ }),
+    );
+    await waitFor(() => expect(queryDiffControls()).not.toBeInTheDocument());
+
+    expect(getSidebarSqlMode()).toBe("chart");
+  });
+
+  it("does not create a sidebar SQL mode on a hand edit", async () => {
+    const { getSidebarSqlMode } = setup();
+    expect(await screen.findByText("SELECT")).toBeInTheDocument();
+
+    await userEvent.type(editorContent(), " ");
+
+    expect(getSidebarSqlMode()).toBeUndefined();
   });
 
   it("does not render when metabot is not enabled", async () => {

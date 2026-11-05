@@ -182,7 +182,9 @@
    [:id :string]
    [:source CodeEditorBufferSourceSchema]
    [:cursor CodeEditorCursorSchema]
-   [:selection {:optional true} [:maybe CodeEditorBufferSelectionSchema]]])
+   [:selection {:optional true} [:maybe CodeEditorBufferSelectionSchema]]
+   ;; The sidebar sets it when it applies Metabot's SQL edits to this buffer without an approval step.
+   [:auto_apply {:optional true} [:maybe :boolean]]])
 
 (def ^:private CodeEditorContextSchema
   "The top-level `:code_editor` key of [[::context]] (as distinct from a `type: code_editor` viewing-context item)."

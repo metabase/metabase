@@ -98,8 +98,19 @@ export interface QueryBuilderParentEntityState {
   isEditing: boolean;
 }
 
+export type PendingAutoRun = {
+  /** `pathname + hash` of the location that the init must match. */
+  url: string;
+  /** The Metabot conversation that opened the question. */
+  conversationId: string;
+  isNativeEditorOpen: boolean;
+  /** `false` after a stopped or failed turn, or with a pending Metabot diff: the question opens with no run. */
+  shouldRun: boolean;
+};
+
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
+  pendingAutoRun: PendingAutoRun | null;
   loadingControls: QueryBuilderLoadingControls;
   parentEntity: QueryBuilderParentEntityState;
   queryStatus: QueryBuilderQueryStatus;
