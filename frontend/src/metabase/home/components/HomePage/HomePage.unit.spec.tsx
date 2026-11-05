@@ -8,7 +8,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type { Dashboard, DashboardId } from "metabase-types/api";
@@ -86,9 +91,7 @@ describe("HomePage", () => {
     expect(homePage).not.toBeInTheDocument();
 
     expect(await screen.findByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "Loading..." }),
-    ).not.toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
     expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
   });
 
