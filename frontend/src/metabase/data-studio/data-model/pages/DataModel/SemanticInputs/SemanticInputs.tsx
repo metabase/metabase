@@ -86,7 +86,7 @@ export function SemanticTypeSelect({
       allowDeselect={false}
       leftSection={<Icon name={getFieldTypeIcon(value)} />}
       renderOption={renderIconOption(getTypeOptionIcon)}
-      onChange={(nextValue) =>
+      onOptionSubmit={(nextValue) =>
         onChange(nextValue === NO_TYPE ? null : nextValue)
       }
       {...props}
@@ -115,7 +115,7 @@ export function SubjectSelect({
       allowDeselect={false}
       leftSection={<Icon name={getTableSubjectIcon(value)} />}
       renderOption={renderIconOption(getSubjectOptionIcon)}
-      onChange={(nextValue) => {
+      onOptionSubmit={(nextValue) => {
         if (isTableSubject(nextValue)) {
           onChange(nextValue);
         }

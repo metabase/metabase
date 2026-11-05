@@ -33,10 +33,8 @@ import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
 import { SemanticTypeSelect } from "../SemanticInputs";
-import {
-  InferredIcon,
-  NeedsReviewBadge,
-} from "../TableSection/InferenceReview";
+import { NeedsReviewButton } from "../SemanticReview";
+import { InferredIcon } from "../TableSection/InferenceReview";
 
 interface FieldSemanticsSectionProps {
   field: Field;
@@ -69,8 +67,8 @@ export function FieldSemanticsSection({
           label={t`Semantic type`}
           fillValue
           labelAside={
-            resolved.needsReview ? (
-              <NeedsReviewBadge />
+            resolved.needsReview && !readOnly ? (
+              <NeedsReviewButton table={table} />
             ) : (
               <InferredIcon description={getInferenceDescription(resolved)} />
             )

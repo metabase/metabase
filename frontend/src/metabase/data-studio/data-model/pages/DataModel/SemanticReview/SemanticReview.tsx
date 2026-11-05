@@ -33,6 +33,8 @@ import {
   ScrollArea,
   Stack,
   Text,
+  Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -70,6 +72,26 @@ export function SemanticReviewButton({ table }: { table: Table }) {
         }
         onClick={open}
       >{t`Review types`}</Button>
+      <SemanticReviewModal
+        schema={table}
+        initialTableId={table.id}
+        opened={isOpen}
+        onClose={close}
+      />
+    </>
+  );
+}
+
+export function NeedsReviewButton({ table }: { table: Table }) {
+  const [isOpen, { open, close }] = useDisclosure(false);
+
+  return (
+    <>
+      <Tooltip label={t`Review`}>
+        <UnstyledButton aria-label={t`Review`} onClick={open}>
+          <NeedsReviewBadge />
+        </UnstyledButton>
+      </Tooltip>
       <SemanticReviewModal
         schema={table}
         initialTableId={table.id}
