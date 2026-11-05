@@ -8,6 +8,7 @@
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.notification.send :as notification.send]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]))
@@ -39,7 +40,7 @@
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card card_part)
                                                                   (get-in card_part [:result :data]))]
     (when-not (and goal-val comparison-col-rowfn)
-      (throw (ex-info "Unable to compare results to goal for notificationt_card"
+      (throw (ex-info (tru "Unable to compare results to goal")
                       {:notification_card  notification_card
                        :result card_part})))
     (boolean
