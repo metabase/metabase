@@ -148,7 +148,8 @@ export const translateDisplayNames = <T>({
     }
 
     if (isRecord(element)) {
-      return Object.entries(element).reduce((acc, [key, value]) => {
+      let result: Record<string, unknown> | undefined;
+      for (const [key, value] of Object.entries(element)) {
         const shouldTranslate =
           fieldsToTranslate.includes(key) && typeof value === "string";
 
@@ -166,8 +167,13 @@ export const translateDisplayNames = <T>({
           : // Unjustified type cast. FIXME
             traverse(value as T);
 
-        return { ...acc, [key]: newValue };
-      }, element);
+        if (newValue !== value) {
+          result ??= { ...element };
+          result[key] = newValue;
+        }
+      }
+      // `result` is a shallow copy of `element` with values traversed, so it is still a `T`
+      return (result as T | undefined) ?? element;
     }
 
     return element;

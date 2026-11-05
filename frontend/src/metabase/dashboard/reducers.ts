@@ -127,6 +127,7 @@ const dashcards = createReducer(
           if (!dashcard) {
             return;
           }
+          // Payload settings may be null, while the dashcard field is only optional
           Object.assign(dashcard, { visualization_settings: settings });
           dashcard.isDirty = true;
         },
