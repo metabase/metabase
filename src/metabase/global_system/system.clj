@@ -206,8 +206,7 @@
     value))
 
 (defn start!
-  "Like [[ensure-started!]], but returns `[value started?]`, where `started?` says whether this call started the
-   component."
+  "Like [[ensure-started!]], but returns `[value started?]`, where `started?` says whether this call did the start."
   [handle start stop]
   (if (bound-here? handle)
     [@handle false]
@@ -264,8 +263,7 @@
    Returns true if there was a running component to stop.
    The stop function runs without the component's lock, so it can wait for threads that use the system.
    Any of them that tries to start this component meanwhile gets an exception.
-   Leaves alone a component [[start!]] did not start, and any binding on this thread, since bindings are never
-   started."
+   Leaves alone a component [[start!]] did not start, and any binding of the component on this thread."
   [handle]
   (let [k       (handle-key handle)
         stopped (mc/without-binding
@@ -287,8 +285,9 @@
 
 (defn- stop-all!
   "Call [[stop!]] on each of `handles` in order.
-   A stop that throws does not prevent the rest; once all have run, throws an ex-info whose `:failures` holds each
-   component key with its exception."
+   A stop that throws does not prevent the rest.
+   Once all have run, throws an ex-info whose `:failures` holds each component key with its exception, and whose
+   cause is the first failure, with the others attached to it as suppressed exceptions."
   [handles]
   (let [failures (into []
                        (keep (fn [handle]
@@ -308,8 +307,7 @@
                         cause))))))
 
 (defn- halt-order
-  "The handles of the running components, in the order [[halt!]] stops them: the reverse of the order they first
-  started in."
+  "The handles of the running components, in the order [[halt!]] stops them: the reverse of their first-start order."
   []
   (let [running @started-components]
     (keep #(get-in running [% :handle]) (rseq @start-order))))
