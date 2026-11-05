@@ -90,7 +90,8 @@
 
   Makes an INSERT INTO statement from a SELECT statement, with any WITH clause before INSERT INTO."
   {:arglists '([parser driver sql table-name])}
-  parser-driver-dispatch)
+  parser-driver-dispatch
+  :hierarchy #'backend-hierarchy)
 
 (defmulti transpile-sql-impl
   "Transpile sql from one dialect to another."
