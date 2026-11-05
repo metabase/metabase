@@ -151,7 +151,7 @@
         (is (= 0 (indexed-count "action" action-id)))))))
 
 (deftest purge-cards-on-database-delete-test
-  (testing "deleting a database purges the cards it deletes without a row-level hook, and what it cascades away with them"
+  (testing "deleting a database purges the cards it deletes in bulk, and the actions that cascade with them"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Database {db-id :id}     {}
                      :model/Card     {card-id :id}   {:name "Db Delete Model", :type :model, :database_id db-id}
