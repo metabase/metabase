@@ -971,6 +971,7 @@
            metabase.driver.settings
            metabase.driver.sql
            metabase.driver.sql-jdbc
+           metabase.driver.sql-jdbc.connection
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync

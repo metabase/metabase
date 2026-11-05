@@ -362,3 +362,18 @@ databaseChangeLog:
             columns:
               - column:
                   name: updated_by
+
+  # A workspace database needs its database's provisioning login, which cannot be deleted while the workspace
+  # database exists. The insert of a workspace_database row also locks the login's row against a concurrent change.
+  - changeSet:
+      id: d0hvgm
+      author: escherize
+      comment: Add the foreign key from workspace_database.database_id to workspace_provisioning_connection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: database_id
+            referencedTableName: workspace_provisioning_connection
+            referencedColumnNames: database_id
+            constraintName: fk_workspace_database_provisioning_connection
+            onDelete: RESTRICT

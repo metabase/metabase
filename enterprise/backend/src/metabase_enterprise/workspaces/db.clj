@@ -206,6 +206,12 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/WorkspaceProvisioningConnection :database_id [:auto/param database-id]))
 
+(mu/defn provisioning-connection-for-update
+  "The WorkspaceProvisioningConnection of the Database with `database-id`, `:details` included, or nil, locking its row
+  until the current transaction ends."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/WorkspaceProvisioningConnection :database_id [:auto/param database-id] {:for :update}))
+
 (mu/defn save-provisioning-connection!
   "Insert or replace the WorkspaceProvisioningConnection of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database

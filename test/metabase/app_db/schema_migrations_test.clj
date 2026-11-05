@@ -4467,8 +4467,8 @@
         (is (not (t2/exists? :transform :id transform-id)))))))
 
 (deftest workspace-manager-tables-test
-  (testing "kbrzhe..k8rq2d create the workspace tables, their constraints and foreign keys, and roll back"
-    (impl/test-migrations ["kbrzhe" "k8rq2d"] [migrate!]
+  (testing "kbrzhe..d0hvgm create the workspace tables, their constraints, foreign keys and indexes, and roll back"
+    (impl/test-migrations ["kbrzhe" "d0hvgm"] [migrate!]
       (let [boundary (with-open [conn (.getConnection (mdb/data-source))]
                        (liquibase/with-liquibase [liquibase conn]
                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
@@ -4488,30 +4488,35 @@
         (let [ws-id  (t2/insert-returning-pk! :workspace {:name "ws", :creator_id user-id})
               wsd    (fn [isolation-id]
                        {:workspace_id ws-id, :database_id db-id, :isolation_id isolation-id
-                        :database_details "{}", :status "provisioning"})
-              wsd-id (t2/insert-returning-pk! :workspace_database (wsd "abcdefgh"))
-              schema (fn [main scratch]
-                       {:workspace_database_id wsd-id, :main_schema main, :scratch_namespace scratch, :status "adding"})]
-          (t2/insert! :workspace_schema (schema "sales" "mb__isolation_abcdefgh_s1_sales"))
+                        :database_details "{}", :status "provisioning", :lock_token "t"})]
+          (testing "a workspace database needs its database's provisioning connection"
+            (is (thrown? Exception (t2/insert! :workspace_database (wsd "nologinx")))))
           (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "{}", :updated_by user-id})
-          (testing "unique constraints"
-            (is (thrown? Exception (t2/insert! :workspace_database (wsd "zzzzzzzz"))))
-            (is (thrown? Exception (t2/insert! :workspace_schema (schema "sales" "other"))))
-            (is (thrown? Exception (t2/insert! :workspace_schema (schema "finance" "mb__isolation_abcdefgh_s1_sales"))))
-            (is (thrown? Exception (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "{}"}))))
-          (testing "a database with a workspace on it cannot be deleted"
-            (is (thrown? Exception (t2/delete! :metabase_database :id db-id))))
-          (testing "deleting the creator keeps the workspace and the provisioning connection"
-            (t2/delete! :core_user :id user-id)
-            (is (= [nil] (t2/select-fn-vec :creator_id :workspace :id ws-id)))
-            (is (= [nil] (t2/select-fn-vec :updated_by :workspace_provisioning_connection :database_id db-id))))
-          (testing "deleting a workspace deletes its databases and schemas"
-            (t2/delete! :workspace :id ws-id)
-            (is (zero? (t2/count :workspace_database)))
-            (is (zero? (t2/count :workspace_schema))))
-          (testing "deleting the database deletes its provisioning connection"
-            (t2/delete! :metabase_database :id db-id)
-            (is (zero? (t2/count :workspace_provisioning_connection)))))
+          (let [wsd-id (t2/insert-returning-pk! :workspace_database (wsd "abcdefgh"))
+                schema (fn [main scratch]
+                         {:workspace_database_id wsd-id, :main_schema main, :scratch_namespace scratch, :status "adding"
+                          :lock_token "t"})]
+            (t2/insert! :workspace_schema (schema "sales" "mb__isolation_abcdefgh_s1_sales"))
+            (testing "the provisioning connection cannot be deleted while a workspace database uses it"
+              (is (thrown? Exception (t2/delete! :workspace_provisioning_connection :database_id db-id))))
+            (testing "unique constraints"
+              (is (thrown? Exception (t2/insert! :workspace_database (wsd "zzzzzzzz"))))
+              (is (thrown? Exception (t2/insert! :workspace_schema (schema "sales" "other"))))
+              (is (thrown? Exception (t2/insert! :workspace_schema (schema "finance" "mb__isolation_abcdefgh_s1_sales"))))
+              (is (thrown? Exception (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "{}"}))))
+            (testing "a database with a workspace on it cannot be deleted"
+              (is (thrown? Exception (t2/delete! :metabase_database :id db-id))))
+            (testing "deleting the creator keeps the workspace and the provisioning connection"
+              (t2/delete! :core_user :id user-id)
+              (is (= [nil] (t2/select-fn-vec :creator_id :workspace :id ws-id)))
+              (is (= [nil] (t2/select-fn-vec :updated_by :workspace_provisioning_connection :database_id db-id))))
+            (testing "deleting a workspace deletes its databases and schemas"
+              (t2/delete! :workspace :id ws-id)
+              (is (zero? (t2/count :workspace_database)))
+              (is (zero? (t2/count :workspace_schema))))
+            (testing "deleting the database deletes its provisioning connection"
+              (t2/delete! :metabase_database :id db-id)
+              (is (zero? (t2/count :workspace_provisioning_connection))))))
         (testing "rollback drops the tables"
           (with-open [conn (.getConnection (mdb/data-source))]
             (liquibase/with-liquibase [liquibase conn]

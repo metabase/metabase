@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.status :as ws.status]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -72,7 +73,42 @@
   (do-with-warehouse!
    (fn [_spec db-id]
      (mt/with-premium-features #{}
-       (is (str/includes? (mt/user-http-request :crowberto :get 402 (url db-id)) "Workspaces"))))))
+       (is (str/includes? (mt/user-http-request :crowberto :get 402 (url db-id)) "Workspaces"))
+       (is (str/includes? (mt/user-http-request :crowberto :put 402 (url db-id) {:details login-a}) "Workspaces"))
+       (is (str/includes? (mt/user-http-request :crowberto :delete 402 (url db-id)) "Workspaces")))
+     (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))))
+
+(deftest unsupported-engine-test
+  (testing "a database whose engine does not support workspaces is refused before any connection is tried"
+    (mt/with-premium-features #{:workspaces}
+      (is (= {:message "Workspaces are not supported on h2 databases.", :error-code "workspaces_unsupported"}
+             (mt/user-http-request :crowberto :put 400 (url (mt/id)) {:details {:user "x"}})))
+      (is (nil? (ws.db/provisioning-connection (mt/id)))))))
+
+(defn- pool-open? [db-id]
+  (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool [db-id :workspace-provisioning]))
+
+(defn- sessions-of! [spec user]
+  (:n (first (jdbc/query spec ["SELECT count(*) AS n FROM pg_stat_activity WHERE usename = ?" user]))))
+
+(deftest refused-and-deleted-logins-leave-no-connections-test
+  (do-with-warehouse!
+   (fn [spec db-id]
+     (mt/user-http-request :crowberto :put 204 (url db-id) {:details login-a})
+     (current-user-in-provisioning-scope! db-id)
+     (is (pool-open? db-id))
+     (testing "a 412 keeps the stored login and closes the refused login's connections"
+       (mt/user-http-request :crowberto :put 412 (url db-id) {:details login-weak})
+       (is (= (:user login-a) (:user (mt/user-http-request :crowberto :get 200 (url db-id)))))
+       (is (= (:password login-a) (:password (:details (ws.db/provisioning-connection db-id)))))
+       (is (not (pool-open? db-id)))
+       (is (zero? (sessions-of! spec (:user login-weak))))
+       (is (= (:user login-a) (current-user-in-provisioning-scope! db-id))))
+     (testing "DELETE closes the provisioning login's connections"
+       (is (pos? (sessions-of! spec (:user login-a))))
+       (mt/user-http-request :crowberto :delete 204 (url db-id))
+       (is (not (pool-open? db-id)))
+       (is (zero? (sessions-of! spec (:user login-a))))))))
 
 (deftest unknown-database-test
   (mt/with-premium-features #{:workspaces}
@@ -135,10 +171,11 @@
                                                           :database_id      db-id
                                                           :isolation_id     "livetest"
                                                           :database_details {}
-                                                          :status           :failed}]
+                                                          :status           :failed
+                                                          :lock_token       (ws.status/new-lock-token)}]
        (testing "a different login is a 409 listing the workspaces, and changes nothing"
-         (is (= {:message    (str "Workspaces on this database were made with the user " (:user login-a)
-                                  "; delete them before you change anything but its password.")
+         (is (= {:message    (str "Workspaces exist on this database; delete them before you change anything but the "
+                                  "password of its provisioning login.")
                  :error-code "workspaces_exist"
                  :workspaces [{:id ws-id, :name "live"}]}
                 (mt/user-http-request :crowberto :put 409 (url db-id) {:details login-b})))

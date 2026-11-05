@@ -427,6 +427,19 @@
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
 
+(mu/defn invalidate-pool-for-db-and-type!
+  "Closes the connection pool of `connection-type` for the Database with `db-id`, if there is one, and removes it from
+  the cache, leaving the Database's other pools alone."
+  [db-id           :- ::lib.schema.id/database
+   connection-type :- ::driver.conn/connection-type]
+  (let [cache-key [db-id connection-type]
+        [old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)]
+    (when-let [pool-spec (get old-map cache-key)]
+      (log/infof "Invalidating the %s connection pool for database %d" (name connection-type) db-id)
+      (destroy-pool! db-id pool-spec))
+    (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key)
+    nil))
+
 (defn- empty-pool?
   [data-source]
   (and (instance? PooledDataSource data-source)

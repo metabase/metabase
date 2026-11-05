@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -54,43 +55,67 @@
       {:configured true, :user (login database details), :updated_at updated_at}
       {:configured false})))
 
+(defn- invalidate-provisioning-pool!
+  "Close the database's pool of provisioning-login connections: after its login is deleted or refused, they would
+  otherwise stay open as that login until the next use notices the change."
+  [database-id]
+  (sql-jdbc.conn/invalidate-pool-for-db-and-type! database-id :workspace-provisioning))
+
 (mu/defn save!
   "Store `details` as the provisioning connection of the Database with `database-id`, after a test connection with
-  them merged over the database's own details and the driver's privilege check. Throws a 404 for an unknown Database,
-  a 400 when the connection fails, a 412 naming the privileges the login lacks, and a 409 listing the workspaces on
-  the database when they exist and `details`, merged over the database's own, differ from the stored connection in
-  anything but the password; a new password for the same login is accepted."
+  them merged over the database's own details and the driver's privilege check. Throws a 404 for an unknown Database;
+  a 400 when its engine does not support workspaces or the connection fails; a 412 naming the privileges the login
+  lacks, keeping the stored login; and a 409 listing the workspaces on the database when they exist and `details`,
+  merged over the database's own, differ from the stored connection in anything but the password (or there is no
+  stored connection). A new password for the same login is accepted."
   [database-id :- ::lib.schema.id/database
    details     :- ms/DatabaseDetails
    user-id     :- [:maybe ms/PositiveInt]]
-  (let [database (database-or-404 database-id)]
-    (when-let [existing (provisioning-details database-id)]
-      ;; the workspaces' warehouse objects belong to this login on this server: while they exist, only its password
-      ;; may change
-      (when (not= (dissoc (merge (:details database) existing) :password)
-                  (dissoc (merge (:details database) details) :password))
-        (throw-if-live-workspaces!
-         database-id
-         (tru "Workspaces on this database were made with the user {0}; delete them before you change anything but its password."
-              (login database existing)))))
-    (when-let [error (warehouses/test-database-connection (:engine database) (merge (:details database) details)
-                                                          :log-exception false)]
-      (throw (ex-info (or (:message error) (tru "Unable to connect to the database."))
-                      (assoc error :status-code 400, :error-code "connection_failed"))))
+  (let [database    (database-or-404 database-id)
+        engine      (keyword (:engine database))
+        lib-db      (driver.u/lib-database database-id)
+        same-login? (fn [existing]
+                      (= (dissoc (merge (:details database) existing) :password)
+                         (dissoc (merge (:details database) details) :password)))]
+    ;; before the test connection, and so that check-workspace-provisioning!, which has no default, is only called
+    ;; for an engine that implements it
+    (when-not (driver.u/supports? engine :workspace lib-db)
+      (throw (ex-info (tru "Workspaces are not supported on {0} databases." (name engine))
+                      {:status-code 400, :error-code "workspaces_unsupported"})))
+    ;; The row lock is held until commit. Creating a workspace database inserts a row that references this one, which
+    ;; waits for the lock, so no workspace can appear between the check below and the write.
     (t2/with-transaction [_conn]
+      (let [existing (:details (ws.db/provisioning-connection-for-update database-id))]
+        (when-not (and existing (same-login? existing))
+          ;; the workspaces' warehouse objects belong to the stored login on this server: while they exist, only its
+          ;; password may change
+          (throw-if-live-workspaces!
+           database-id
+           (tru "Workspaces exist on this database; delete them before you change anything but the password of its provisioning login."))))
+      (when-let [error (warehouses/test-database-connection (:engine database) (merge (:details database) details)
+                                                            :log-exception false)]
+        (throw (ex-info (or (:message error) (tru "Unable to connect to the database."))
+                        (assoc error :status-code 400, :error-code "connection_failed"))))
       (ws.db/save-provisioning-connection! database-id details user-id)
       ;; the check logs in through the :workspace-provisioning scope, which reads the login from the app DB on this
       ;; thread, so inside this transaction it sees the new row; a 412 rolls the row back
-      (driver/check-workspace-provisioning! (keyword (:engine database)) (driver.u/lib-database database-id)))
+      (try
+        (driver/check-workspace-provisioning! engine lib-db)
+        (catch Throwable e
+          (invalidate-provisioning-pool! database-id)
+          (throw e))))
     nil))
 
 (mu/defn delete!
-  "Delete the provisioning connection of the Database with `database-id`. Throws a 404 for an unknown Database and a
-  409 listing the workspaces on the database when there are any."
+  "Delete the provisioning connection of the Database with `database-id` and close its connections. Throws a 404 for
+  an unknown Database and a 409 listing the workspaces on the database when there are any."
   [database-id :- ::lib.schema.id/database]
   (database-or-404 database-id)
-  (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before its provisioning connection."))
-  (ws.db/delete-provisioning-connection! database-id)
+  (t2/with-transaction [_conn]
+    (ws.db/provisioning-connection-for-update database-id)
+    (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before its provisioning connection."))
+    (ws.db/delete-provisioning-connection! database-id))
+  (invalidate-provisioning-pool! database-id)
   nil)
 
 (defenterprise check-no-workspaces!
