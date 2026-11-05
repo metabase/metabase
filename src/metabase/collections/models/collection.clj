@@ -2316,8 +2316,8 @@
               :is_sample        false
               :is_remote_synced false}})
 
-;; An import writes the row directly, so `update-collection!` never refuses the archive. An export made before
-;; transforms folders could no longer be archived can still hold one.
+;; An import skips `update-collection!`, so an export from an older version can bring back an archived transforms
+;; folder.
 (defmethod serdes/load-one! "Collection" [ingested maybe-local]
   (when (and (:archived ingested)
              (= transforms-ns (some-> (:namespace ingested) keyword)))
