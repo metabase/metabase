@@ -227,7 +227,8 @@
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
    Starting calls `start` with no arguments and with no bindings in place, which must return a non-nil value,
    installs that as the root, and records `stop`, a function of the value, for [[stop!]] and [[halt!]].
-   Threads racing to start the component start it once.
+   Threads racing to start the component start it once, and `start` runs holding the component's slot lock.
+   So `start` must not wait for another thread that writes this component or starts it.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
    Throws if the component is being stopped, or if `start` tries to start the component it is starting.
    The component's root must already be installed, usually as nil by [[mutable-component-handle]].

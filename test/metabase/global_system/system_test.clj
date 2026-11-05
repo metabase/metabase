@@ -558,6 +558,23 @@
         (finally
           (cleanup! [handle]))))))
 
+(deftest ^:synchronized failed-start-can-be-retried-test
+  (testing "a start that throws leaves nothing registered, and the next start succeeds"
+    (let [handle (system/mutable-component-handle ::fails-then-starts (constantly nil))
+          starts (atom 0)
+          start  #(if (= 1 (swap! starts inc))
+                    (throw (ex-info "first start fails" {}))
+                    :started)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"first start fails"
+                              (system/ensure-started! handle start (constantly nil))))
+        (is (= {:after-failure nil, :retry :started, :starts 2}
+               {:after-failure @handle
+                :retry         (system/ensure-started! handle start (constantly nil))
+                :starts        @starts}))
+        (finally
+          (cleanup! [handle]))))))
+
 (deftest ^:synchronized stop-leaves-unmanaged-roots-test
   (testing "stop! leaves alone a root that ensure-started! did not start"
     (let [handle (system/mutable-component-handle ::unmanaged (constantly :installed))]
