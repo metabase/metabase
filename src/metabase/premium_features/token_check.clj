@@ -653,7 +653,8 @@
       (let [[previous] (swap-state! assoc :ticked-for-token-hash token-hash)]
         (when (not= token-hash (:ticked-for-token-hash previous))
           (try
-            (.execute exec ^Runnable safe-tick!)
+            ;; with the requester's bindings, so a tick asked for under a bound state runs against that state
+            (.execute exec ^Runnable (bound-fn* safe-tick!))
             (catch RejectedExecutionException _e
               nil)))))))
 
