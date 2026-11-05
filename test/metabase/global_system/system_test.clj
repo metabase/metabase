@@ -789,7 +789,7 @@
             racers  (mapv (fn [_] (future @go @derived)) (range 16))
             _       (deliver go true)
             results (mapv deref racers)]
-        (is (= 1 (count (into #{} (map System/identityHashCode) results))))))))
+        (is (every? #(identical? (first results) %) results))))))
 
 (deftest ^:synchronized derived-nil-value-test
   (testing "a derived value of nil is remembered like any other, so it is made once"

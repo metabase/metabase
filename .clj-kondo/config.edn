@@ -676,6 +676,7 @@
    metabase.embedding-rest.api.embed-test/with-temp-card                                                                     hooks.common/let-one-with-optional-value
    metabase.embedding-rest.api.embed-test/with-temp-dashcard                                                                 hooks.common/let-one-with-optional-value
    metabase.global-system.system/->ComponentHandle                                                                           hooks.metabase.global-system.system/mutable-component-handle
+   metabase.global-system.system/->DerivedHandle                                                                             hooks.metabase.global-system.system/mutable-component-handle
    metabase.global-system.system/derived-component-handle                                                                    hooks.metabase.global-system.system/mutable-component-handle
    metabase.global-system.system/mutable-component-handle                                                                    hooks.metabase.global-system.system/mutable-component-handle
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
