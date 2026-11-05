@@ -1,11 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { getIn } from "icepick";
-
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { getAtPath } from "metabase/utils/get-at-path";
 import {
   DataPermission,
   DataPermissionValue,
   type DatabaseEntityId,
+  type DatabasePermissions,
+  type GroupPermissions,
   type GroupsPermissions,
   type PermissionEntityId,
   type SchemaEntityId,
@@ -70,7 +70,14 @@ export function getRawPermissionsGraphValue(
     permission,
     nestedPath,
   );
-  return getIn(permissions, path);
+  // The graph is nested by a dynamic path, so the portion found can be any
+  // level of the graph or a permission value.
+  return getAtPath(permissions, path) as
+    | GroupsPermissions
+    | GroupPermissions
+    | DatabasePermissions
+    | DataPermissionValue
+    | undefined;
 }
 
 interface GetPermissionParams {
@@ -91,11 +98,15 @@ const getPermission = ({
   isControlledType = false,
 }: GetPermissionParams): DataPermissionValue => {
   const valuePath = getPermissionPath(groupId, databaseId, permission, path);
-  const value = getIn(permissions, valuePath);
+  const value = getAtPath(permissions, valuePath);
   if (isControlledType && typeof value === "object") {
     return DataPermissionValue.CONTROLLED;
   }
-  return value ? value : getOmittedPermissionValue(permission);
+  if (!value) {
+    return getOmittedPermissionValue(permission);
+  }
+  // A non-object value in the graph is a permission value
+  return value as DataPermissionValue;
 };
 
 export const getSchemasPermission = (

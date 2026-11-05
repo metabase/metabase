@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
 import _ from "underscore";
 
@@ -31,8 +29,10 @@ import { saveDatabase } from "../database";
 
 const makeDefaultSaveDbFn =
   (dispatch: Dispatch) =>
-  async (database: DatabaseData): Promise<any> =>
-    await dispatch(saveDatabase(database));
+  async (database: DatabaseData): Promise<{ id: DatabaseId }> =>
+    // `saveDatabase` resolves with the created/updated database, but its
+    // dispatch result type is not inferred through the untyped RTK helper
+    (await dispatch(saveDatabase(database))) as { id: DatabaseId };
 
 export const DatabaseEditConnectionForm = ({
   database,
@@ -118,9 +118,10 @@ export const DatabaseEditConnectionForm = ({
 
 const getSubmitError = (error: DatabaseEditErrorType) => {
   if (_.isObject(error?.data?.errors)) {
-    return updateIn(error, ["data", "errors"], (errors) => ({
-      details: errors,
-    }));
+    return {
+      ...error,
+      data: { ...error.data, errors: { details: error.data.errors } },
+    };
   }
 
   return error;
