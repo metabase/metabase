@@ -1,7 +1,7 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
    [metabase.metabot.db :as metabot.db]
-   [metabase.metabot.schema]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -30,7 +30,8 @@
   #{[{:model "Card" :id (:card_id prompt)}]})
 
 (defmethod serdes/make-spec "MetabotPrompt" [_model-name _opts]
-  {:copy      [:entity_id :prompt]
+  {:schema    ::metabot.schema/external-metabot-prompt
+   :copy      [:entity_id :prompt]
    :transform {:model      (serdes/kw)
                :card_id    (serdes/fk :model/Card)
                :metabot_id (serdes/parent-ref)}})

@@ -461,6 +461,10 @@
   "A temporal bucket was applied to a column that is not a date or time."
   [list-fields-step])
 
+(defpipeline-error binning-on-non-numeric-column!
+  "Automatic binning was applied to a column that is not numeric, or that has no known min and max."
+  [])
+
 (defpipeline-error unencodable-temporal-clause!
   "A temporal clause has no representations encoding."
   [])

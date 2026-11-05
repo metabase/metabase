@@ -1,6 +1,8 @@
 (ns metabase.embedding.schema
   "Malli schemas for the embedding module."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -46,3 +48,11 @@
    ::sdk-react-18-host
    [:map {:closed true}
     [:host [:maybe :string]]]])
+
+(mr/def ::external-embedding-theme
+  "An EmbeddingTheme as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::embedding-theme [:entity_id :name :settings]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
