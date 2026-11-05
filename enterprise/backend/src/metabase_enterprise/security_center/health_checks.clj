@@ -215,22 +215,23 @@
    :run               (fn []
                         (let [{group-id :id, group-name :name} (perms/all-users-group)
                               root-permission (get-in (perms/graph nil #{:root} #{group-id}) [:groups group-id :root])
-                              db-names        (security-center.db/group-queryable-database-names group-id)
-                              group-item      (fn [item]
-                                                (assoc item
-                                                       :entity_type :group
-                                                       :entity_id   group-id
-                                                       :entity_name group-name))]
+                              databases       (security-center.db/group-queryable-databases group-id)]
                           (into [(assoc (pass-or-fail (not= :write root-permission)
                                                       (tru "All Users can''t curate Our analytics")
                                                       (tru "All Users can curate Our analytics"))
                                         :entity_type :collection
                                         :entity_id   "root"
                                         :entity_name (tru "Our analytics"))]
-                                (if (empty? db-names)
-                                  [(group-item (item :pass (tru "All Users can''t query any database")))]
-                                  (for [db-name db-names]
-                                    (group-item (item :fail (tru "All Users can query {0}" db-name))))))))})
+                                (if (empty? databases)
+                                  [(assoc (item :pass (tru "All Users can''t query any database"))
+                                          :entity_type :group
+                                          :entity_id   group-id
+                                          :entity_name group-name)]
+                                  (for [{db-id :id, db-name :name} databases]
+                                    (assoc (item :fail (tru "All Users can query {0}" db-name))
+                                           :entity_type :database
+                                           :entity_id   db-id
+                                           :entity_name db-name))))))})
 
 (mr/def ::major-version-support
   "One entry of the version feed's `major_version_support`, as far as the supported-version check reads it. Open, so a

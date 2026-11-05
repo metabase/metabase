@@ -282,24 +282,32 @@
                  :items  [{:status :fail, :message "All Users can curate Our analytics", :entity_id "root"}
                           {:status :pass}]}
                 (run-check-by-id :all-users-permissions)))))
-    (testing "fails with one group item per database All Users can query"
+    (testing "fails with one database item per database All Users can query"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Database _ {:name "Warehouse"}]
+        (mt/with-temp [:model/Database {warehouse-id :id} {:name "Warehouse"}]
           (let [{:keys [status items]} (run-check-by-id :all-users-permissions)
-                group-items             (filter #(= :group (:entity_type %)) items)]
+                database-items          (filter #(= :database (:entity_type %)) items)]
             (is (= :fail status))
             (is (=? {:status :pass, :entity_type :collection} (first items)))
-            (is (every? #(and (= :fail (:status %)) (= group-id (:entity_id %)) (= "All Users" (:entity_name %)))
-                        group-items))
-            (is (contains? (set (map :message group-items)) "All Users can query Warehouse"))
-            (is (= (count group-items) (count (set (map :message group-items))))
+            (is (every? #(= :fail (:status %)) database-items))
+            (is (contains? (set database-items)
+                           {:status      :fail
+                            :message     "All Users can query Warehouse"
+                            :entity_type :database
+                            :entity_id   warehouse-id
+                            :entity_name "Warehouse"}))
+            (is (= (count database-items) (count (set (map :entity_id database-items))))
                 "one item per database")))
         (testing "also for query access on one table only"
           (mt/with-no-data-perms-for-all-users!
             (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
             (is (=? {:status :fail
                      :items  [{:status :pass}
-                              {:status :fail, :message "All Users can query test-data (h2)", :entity_type :group}]}
+                              {:status      :fail
+                               :message     "All Users can query test-data (h2)"
+                               :entity_type :database
+                               :entity_id   (mt/id)
+                               :entity_name "test-data (h2)"}]}
                     (run-check-by-id :all-users-permissions)))))))))
 
 ;;; The supported-version check
