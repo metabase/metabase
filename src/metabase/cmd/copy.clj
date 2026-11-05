@@ -173,7 +173,11 @@
       :model/CustomVizPlugin
       :model/ContentDiagnosticsFinding
       :model/TransformTest
-      :model/TransformTestRun])))
+      :model/TransformTestRun
+      :model/Workspace
+      :model/WorkspaceDatabase
+      :model/WorkspaceSchema
+      :model/WorkspaceProvisioningConnection])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -419,7 +423,9 @@
     :model/ModelIndexValue
     :model/OsiAiContext
     ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
-    :model/TransformRunCancelation})
+    :model/TransformRunCancelation
+    ;; `workspace_provisioning_connection` uses its `database_id` FK as its primary key
+    :model/WorkspaceProvisioningConnection})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

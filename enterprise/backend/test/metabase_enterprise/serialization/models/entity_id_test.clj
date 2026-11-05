@@ -160,7 +160,12 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    ;; per-instance workspace state: warehouse users and the logins that provision them
+    :model/Workspace
+    :model/WorkspaceDatabase
+    :model/WorkspaceProvisioningConnection
+    :model/WorkspaceSchema})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)
