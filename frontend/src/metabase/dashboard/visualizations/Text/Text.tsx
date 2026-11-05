@@ -11,10 +11,13 @@ import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Box, Flex, useMantineTheme } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 import { isEmpty } from "metabase/utils/validate";
 import {
   DATA_IMAGE_URI_PATTERN,
@@ -26,12 +29,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  DisplayContainer,
-  EditModeContainer,
-  ReactMarkdownStyleWrapper,
-  TextInput,
-} from "./Text.styled";
+import S from "./Text.module.css";
 
 type TextProps = {
   onUpdateVisualizationSettings?: (settings: VisualizationSettings) => void;
@@ -76,6 +74,7 @@ export function Text({
   isMobile = false,
 }: TextProps) {
   const dispatch = useDispatch();
+  const theme = useMantineTheme();
   const parameterValues = useSelector(getParameterValues);
   const settingsText = typeof settings.text === "string" ? settings.text : "";
 
@@ -92,6 +91,8 @@ export function Text({
   const preventDragging = (e: React.MouseEvent) => e.stopPropagation();
 
   const isSingleRow = gridSize?.height === 1;
+  const isCompact = isSingleRow && !isMobile;
+  const isFluid = dashboard?.width !== "fixed";
 
   useEffect(() => {
     setTextValue(settingsText);
@@ -122,89 +123,88 @@ export function Text({
   const hasContent = !isEmpty(settingsText);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
-  if (isEditing) {
-    return (
-      <EditModeContainer
-        data-testid="editing-dashboard-text-container"
-        className={cx(className)}
-        isEmpty={!hasContent}
-        isPreviewing={isPreviewing}
-        onClick={toggleFocusOn}
-        isSingleRow={isSingleRow}
-        isMobile={isMobile}
-        isFixedWidth={dashboard?.width === "fixed"}
-      >
-        {isPreviewing ? (
-          <ReactMarkdownStyleWrapper
-            data-testid="editing-dashboard-text-preview"
-            onMouseDown={preventDragging}
-          >
-            <ReactMarkdown
-              remarkPlugins={REMARK_PLUGINS}
-              rehypePlugins={REHYPE_PLUGINS}
-              urlTransform={urlTransform}
-              className={cx(
-                CS.full,
-                CS.flexFull,
-                CS.flex,
-                CS.flexColumn,
-                "text-card-markdown",
-                "cursor-text",
-                getSettingsStyle(settings),
-              )}
-            >
-              {hasContent ? settingsText : placeholder}
-            </ReactMarkdown>
-          </ReactMarkdownStyleWrapper>
-        ) : (
-          <TextInput
-            data-testid="editing-dashboard-text-input"
-            name="text"
-            placeholder={placeholder}
-            value={textValue}
-            autoFocus={justAdded || isFocused}
-            onChange={(e) => setTextValue(e.target.value)}
-            onMouseDown={preventDragging}
-            onBlur={() => {
-              toggleFocusOff();
+  const wrapperClassName = cx(
+    S.root,
+    CS.overflowHidden,
+    {
+      [S.compact]: isCompact,
+      [S.fluid]: isFluid,
+      [S.editing]: isEditing,
+      [DashboardS.DashCardEditOutline]: isEditing,
+      [S.empty]: isEditing && !hasContent,
+    },
+    className,
+  );
+  // a custom property, which CSSProperties does not type
+  const markdownStyle = {
+    "--text-card-stripe": alpha(
+      theme.fn.themeColor("background_page-primary-inverse"),
+      0.05,
+    ),
+  } as React.CSSProperties;
 
-              if (settingsText !== textValue) {
-                onUpdateVisualizationSettings?.({ text: textValue });
-                updateParameterMappings();
-              }
-            }}
-            isMobile={isMobile}
-            isSingleRow={isSingleRow}
-          />
-        )}
-      </EditModeContainer>
-    );
-  }
+  const isTyping = isEditing && !isPreviewing;
 
   return (
-    <DisplayContainer
-      className={cx(className)}
-      isSingleRow={isSingleRow}
-      isMobile={isMobile}
-      isFixedWidth={dashboard?.width === "fixed"}
+    <Flex
+      className={wrapperClassName}
+      data-testid={isEditing ? "editing-dashboard-text-container" : undefined}
+      direction="column"
+      justify="center"
+      w="100%"
+      h="100%"
+      onClick={isEditing ? toggleFocusOn : undefined}
     >
-      <ReactMarkdownStyleWrapper>
-        <ReactMarkdown
-          className={cx(
-            CS.full,
-            CS.flexFull,
-            CS.flex,
-            CS.flexColumn,
-            "text-card-markdown",
-            getSettingsStyle(settings),
-          )}
-          remarkPlugins={REMARK_PLUGINS}
-          rehypePlugins={REHYPE_PLUGINS}
-          urlTransform={urlTransform}
+      {isTyping ? (
+        <Box
+          component="textarea"
+          className={cx(S.input, { [S.inputCompact]: isCompact })}
+          data-testid="editing-dashboard-text-input"
+          name="text"
+          w="100%"
+          mah="100%"
+          placeholder={placeholder}
+          value={textValue}
+          autoFocus={justAdded || isFocused}
+          onChange={(e) => setTextValue(e.target.value)}
+          onMouseDown={preventDragging}
+          onBlur={() => {
+            toggleFocusOff();
+
+            if (settingsText !== textValue) {
+              onUpdateVisualizationSettings?.({ text: textValue });
+              updateParameterMappings();
+            }
+          }}
+        />
+      ) : (
+        <Box
+          className={S.markdown}
+          data-testid={isEditing ? "editing-dashboard-text-preview" : undefined}
+          w="100%"
+          h="100%"
+          pl="xxxs"
+          style={markdownStyle}
+          onMouseDown={isEditing ? preventDragging : undefined}
         >
-          {content}
-        </ReactMarkdown>
-      </ReactMarkdownStyleWrapper>
-    </DisplayContainer>
+          <ReactMarkdown
+            remarkPlugins={REMARK_PLUGINS}
+            rehypePlugins={REHYPE_PLUGINS}
+            urlTransform={urlTransform}
+            className={cx(
+              CS.full,
+              CS.flexFull,
+              CS.flex,
+              CS.flexColumn,
+              "text-card-markdown",
+              { "cursor-text": isEditing },
+              getSettingsStyle(settings),
+            )}
+          >
+            {isEditing ? (hasContent ? settingsText : placeholder) : content}
+          </ReactMarkdown>
+        </Box>
+      )}
+    </Flex>
   );
 }
