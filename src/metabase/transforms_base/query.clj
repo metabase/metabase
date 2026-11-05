@@ -111,7 +111,9 @@
                                      (keyword (:type target)))
           ;; transforms hand compiled SQL straight to the driver, bypassing the QP's execution middleware, so the
           ;; workspace rewrite that middleware does for queries happens here
-          remappings     (ws/table-remappings db)
+          ;; on a workspace database the transform's body must also be a read-only query: Metabase wraps it in the
+          ;; CREATE TABLE AS / INSERT that writes the scratch target, outside this rewrite
+          remappings     (ws/workspace-remappings database)
           compiled-query (cond-> (transforms-base.u/compile-source transform source-range-params)
                            remappings (update :query #(ws/rewrite-sql driver remappings %)))
           transform-details {:db-id db

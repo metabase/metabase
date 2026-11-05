@@ -89,6 +89,14 @@
   [_driver _remappings _sql]
   (throw (ex-info "Workspace remapping is not available on this instance." {})))
 
+(defn workspace-remappings
+  "For a database the installed workspace covers, its [[::remappings]], possibly empty: the queries that run on it get
+  the workspace rewrite, which also keeps them read-only. nil for any other database, and outside workspace mode
+  (without an app-DB read)."
+  [database]
+  (when (workspace-schemas database)
+    (or (table-remappings (:id database)) {})))
+
 ;;; ------------------------------------------------- Pure helpers ---------------------------------------------------
 
 (defn canonical-target

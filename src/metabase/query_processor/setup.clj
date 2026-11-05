@@ -161,12 +161,13 @@
         (f (maybe-attach-metadata-provider-to-query query))))))
 
 (mu/defn- do-with-workspace-remappings :- fn?
-  "On a workspace sidecar, read the query's remappings once and carry them on the bound metadata provider, for the
-  execution rewrite; see [[metabase.query-processor.middleware.workspace-remapping]]. Tables keep their main names."
+  "On a workspace sidecar, for a database the workspace covers, read the query's remappings once (possibly none) and
+  carry them on the bound metadata provider, for the execution rewrite, which also keeps the query read-only; see
+  [[metabase.query-processor.middleware.workspace-remapping]]. Tables keep their main names."
   [f :- fn?]
   (fn [query]
     (if-let [remappings (when-not (= (query-type query) :internal)
-                          (ws/table-remappings (:database query)))]
+                          (ws/workspace-remappings (lib.metadata/database (qp.store/metadata-provider))))]
       (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
         (qp.store/with-metadata-provider (qp.workspace-remapping/carry-remappings
                                           (qp.store/metadata-provider)
