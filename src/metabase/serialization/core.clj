@@ -22,6 +22,7 @@
   - import: entities to rows, resolving references to database ids and creating the Users, Databases, Tables and
     Fields the store lacks when asked to (see [[metabase.serialization.resolve]])."
   (:require
+   [metabase.serialization.mbql :as serialization.mbql]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.resolve :as resolve]
    [metabase.serialization.spec :as serialization.spec]
@@ -30,6 +31,20 @@
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
+ [serialization.mbql
+  card-entity-id
+  card-template-tag-export-rename
+  card-template-tag-import-rename
+  card-template-tag-renames
+  export-mbql
+  import-mbql
+  mbql-transform
+  recording-card-entity-ids
+  serialized-query-source-table
+  walk-export
+  walk-import
+  walk-export-refs
+  walk-import-refs]
  [protocol.app-db
   rows-by-refs]
  [resolve

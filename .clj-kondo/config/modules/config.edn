@@ -2641,6 +2641,8 @@
    :api  #{}
    :uses #{app-db
            lib
+           lib.legacy-mbql
+           lib.schema
            util
            util.config}
    :model-imports #{:model/Card
@@ -2656,6 +2658,7 @@
                     :model/ImplicitAction
                     :model/Measure
                     :model/MetabotPrompt
+                    :model/NativeQuerySnippet
                     :model/OsiAiContext
                     :model/QueryAction
                     :model/Segment
