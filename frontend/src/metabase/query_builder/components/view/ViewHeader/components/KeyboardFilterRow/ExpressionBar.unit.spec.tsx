@@ -50,6 +50,97 @@ describe("ExpressionBar", () => {
     },
   );
 
+  describe("typing a space", () => {
+    const setup = () => {
+      fetchMock.get("path:/api/prototype/field-categories", []);
+      fetchMock.get("path:/api/prototype/filter-usage", []);
+      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+      const onChange = jest.fn<void, [Lib.Query]>();
+      renderWithProviders(
+        <ExpressionBar
+          query={query}
+          stageIndex={0}
+          isAutoApply
+          onChange={onChange}
+          openKey={0}
+        />,
+      );
+      return { onChange };
+    };
+    const typeText = (text: string) =>
+      userEvent.type(screen.getByRole("textbox"), text);
+    const getOptions = () => within(screen.getByRole("listbox"));
+
+    it("selects the column with the typed name, ignoring case", async () => {
+      setup();
+      await typeText("total ");
+      expect(screen.getByRole("button", { name: "Total" })).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Operator")).toBeInTheDocument();
+    });
+
+    it("keeps searching when a column name continues the typed text", async () => {
+      setup();
+      await typeText("created ");
+      expect(
+        screen.queryByRole("button", { name: "Created At" }),
+      ).not.toBeInTheDocument();
+      expect(
+        (await getOptions().findAllByText("Created At")).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("selects the operator with the typed name, ignoring case", async () => {
+      setup();
+      await typeText("total ");
+      await typeText("Not Equal To ");
+      expect(screen.getByPlaceholderText("Number")).toBeInTheDocument();
+    });
+
+    it("keeps searching when an operator name continues the typed text", async () => {
+      setup();
+      await typeText("total ");
+      await typeText("greater than ");
+      expect(screen.getByPlaceholderText("Operator")).toBeInTheDocument();
+      expect(
+        await getOptions().findByText("greater than or equal to"),
+      ).toBeInTheDocument();
+    });
+
+    it.each(["Tab", "Enter", " "])(
+      "%s with a typed number applies the filter",
+      async (key) => {
+        const { onChange } = setup();
+        await typeText("total ");
+        await typeText(">= ");
+        await typeText(`5{${key}}`);
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(
+          screen.getByRole("button", { name: "Total" }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "5" })).toBeInTheDocument();
+      },
+    );
+
+    it("Tab or Space goes from the first number of a range to the second", async () => {
+      const { onChange } = setup();
+      await typeText("total ");
+      await typeText("between ");
+      await userEvent.type(screen.getAllByRole("textbox")[0], "5 ");
+      expect(onChange).not.toHaveBeenCalled();
+      await userEvent.keyboard("10{Tab}");
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: /5.*10/ })).toBeInTheDocument();
+    });
+
+    it("selects a number operator by its symbol", async () => {
+      setup();
+      await typeText("total ");
+      await typeText(">= ");
+      expect(screen.getByPlaceholderText("Number")).toBeInTheDocument();
+    });
+  });
+
   describe("typing AND", () => {
     const getQueryWithTwoFilters = () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);

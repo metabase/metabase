@@ -62,12 +62,14 @@ import type {
 import {
   type ColumnGroup,
   changeDraftColumn,
+  findItemByTypedName,
   formatDraftValue,
   getColumnGroups,
   getDraftFilterClause,
   getMaxValueCount,
   getOperatorAliases,
   getOperatorHint,
+  getOperatorNames,
   getPillOperatorLabel,
   isValidValue,
   parseDatePickerValue,
@@ -186,6 +188,14 @@ export function DraftFilterPill({
   // while the other parts of the filter stay in the pill.
   const [editedPart, setEditedPart] = useState(initialEditedPart);
   const inputRef = useRef<HTMLInputElement>(null);
+  const columnGroups = useMemo(
+    () => getColumnGroups(query, stageIndex),
+    [query, stageIndex],
+  );
+  const columns = useMemo(
+    () => columnGroups.flatMap((group) => group.columns),
+    [columnGroups],
+  );
   const { column, operator, values } = draft;
   const step =
     editedPart ??
@@ -225,21 +235,35 @@ export function DraftFilterPill({
   const handleTextChange = (newText: string) => {
     aiValues.reset();
     aiFilters.reset();
+    // A space after the name of a column or an operator, in any case, selects
+    // it, the same as Tab. The symbol of a number operator, like ">=", is a
+    // name too. A request to the AI is a sentence, so it keeps its spaces.
+    if (newText.endsWith(" ") && !isAiPrompt(newText)) {
+      if (step === "column") {
+        const typedColumn = findItemByTypedName(
+          columns,
+          (column) => [column.label],
+          newText,
+        );
+        if (typedColumn != null) {
+          updateDraft(changeDraftColumn(draft, typedColumn));
+          return;
+        }
+      }
+      if (step === "operator") {
+        const typedOperator = findItemByTypedName(
+          column?.operators ?? [],
+          getOperatorNames,
+          newText,
+        );
+        if (typedOperator != null) {
+          selectOperator(typedOperator);
+          return;
+        }
+      }
+    }
     if (step === "column") {
       onColumnTextChange?.(newText);
-    }
-    // A space after a symbol of a number operator, like ">= ", selects the
-    // operator, the same as Tab.
-    if (step === "operator" && newText.endsWith(" ")) {
-      const symbol = newText.trim();
-      const symbolOperator = column?.operators?.find(
-        (operator) =>
-          operator.isNumeric && getOperatorAliases(operator)?.includes(symbol),
-      );
-      if (symbolOperator != null) {
-        selectOperator(symbolOperator);
-        return;
-      }
     }
     // Commas separate values. Elsewhere, the text can be a request to the AI,
     // which can have commas.
@@ -523,6 +547,20 @@ export function DraftFilterPill({
       if (focusFixedValueInput(event.currentTarget, index + 1)) {
         event.preventDefault();
       }
+    } else if (
+      (event.key === "Tab" && !event.shiftKey) ||
+      (event.key === " " && !isAiPrompt(event.currentTarget.value))
+    ) {
+      // Tab or Space goes to the next number, and from the last one it
+      // completes the filter, the same as Enter. A number has no spaces, and
+      // a Tab that left the bar would drop the filter in progress.
+      if (
+        focusFixedValueInput(event.currentTarget, index + 1) ||
+        submit() ||
+        event.key === " "
+      ) {
+        event.preventDefault();
+      }
     }
   };
 
@@ -636,6 +674,7 @@ export function DraftFilterPill({
           <ColumnInput
             query={query}
             stageIndex={stageIndex}
+            columnGroups={columnGroups}
             text={text}
             placeholder={column?.label ?? (hasPlaceholder ? placeholder : "")}
             onTextChange={handleTextChange}
@@ -853,6 +892,7 @@ function RemoveIcon({ onClick }: { onClick: () => void }) {
 interface ColumnInputProps {
   query: Lib.Query;
   stageIndex: number;
+  columnGroups: ColumnGroup[];
   text: string;
   placeholder: string;
   onTextChange: (text: string) => void;
@@ -875,6 +915,7 @@ interface ColumnInputProps {
 function ColumnInput({
   query,
   stageIndex,
+  columnGroups,
   text,
   placeholder,
   onTextChange,
@@ -889,10 +930,6 @@ function ColumnInput({
 }: ColumnInputProps) {
   const columnInputRef = useRef<HTMLInputElement>(null);
 
-  const columnGroups = useMemo(
-    () => getColumnGroups(query, stageIndex),
-    [query, stageIndex],
-  );
   const { groups: columnSuggestionGroups, getItem } = useColumnSuggestions(
     query,
     stageIndex,
