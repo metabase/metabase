@@ -95,7 +95,7 @@ export const RemoteSyncSettingsForm = ({
           const isReadWrite = values?.[TYPE_KEY] === "read-write";
 
           return (
-            <Form disabled={!dirty}>
+            <Form disabled={isRemoteSyncEnabled && !dirty}>
               <Stack gap={isInModal ? "xl" : "xxl"} maw="52rem">
                 {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
 
