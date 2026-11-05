@@ -23,3 +23,16 @@
   (is (= (str "Use a numeric table id in `source-table:` (from \"browse_data\" "
               "action \"list_tables\"), which needs no database name at all.")
          (some-> (recovery-hints/recovery-hint {:error :ambiguous-database-name}) message/render))))
+
+(deftest ^:parallel metric-as-source-card-hint-test
+  (testing "names the numeric source and the numeric metric reference"
+    (is (= (str "Use numeric IDs here: metric 7 needs `\"source-table\": 3`. "
+                "Then reference the metric by its numeric ID: `aggregation: [[\"metric\", {}, 7]]`.")
+           (some-> (recovery-hints/recovery-hint {:error          :metric-as-source-card
+                                                  :metric-ids     [7]
+                                                  :usable-sources {7 {:source-table 3}}})
+                   message/render))))
+  (testing "gives no hint when the metric has no usable source"
+    (is (nil? (recovery-hints/recovery-hint {:error          :metric-as-source-card
+                                             :metric-ids     [7]
+                                             :usable-sources {}})))))

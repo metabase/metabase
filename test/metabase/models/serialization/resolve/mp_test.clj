@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as resolve]
@@ -204,7 +205,7 @@
         (testing "warm the provider's by-name cache while the table is still active"
           (is (= [true] (mapv :active (by-name))))
           (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
-        (t2/update! :model/Table (:id gone) {:active false})
+        (t2/update! :model/Table :id (:id gone) {:active false})
         (testing "the cache still surfaces the stale ACTIVE row by name"
           (is (= [true] (mapv :active (by-name)))))
         (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"
@@ -464,6 +465,22 @@
     (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
       (is (= {:source-card card-entity-id}
              (resolve/export-mbql r {:source-card 500}))))))
+
+(deftest ^:parallel export-import-mbql-table-template-tag-test
+  (let [query    (-> (lib/native-query mp-simple "SELECT * FROM {{orders}}")
+                     (lib/with-template-tags {"orders" {:id           "c3f2d4b1-0f52-4f4e-9b1c-2f7d5a0e8c11"
+                                                        :name         "orders"
+                                                        :display-name "Orders"
+                                                        :type         :table
+                                                        :table-id     10}}))
+        exported (resolve/export-mbql (resolve.mp/export-resolver mp-simple) query)]
+    (testing "table template tag exports its table as portable path"
+      (is (= ["Sample" "PUBLIC" "ORDERS"]
+             (get-in exported [:stages 0 :template-tags 0 :table-id]))))
+    (testing "portable table path imports back to numeric table id"
+      (is (= 10
+             (get-in (resolve/import-mbql (resolve.mp/import-resolver mp-simple) exported)
+                     [:stages 0 :template-tags 0 :table-id]))))))
 
 ;;; ============================================================
 ;;; Not-yet-implemented methods

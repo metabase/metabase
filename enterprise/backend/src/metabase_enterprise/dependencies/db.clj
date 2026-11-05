@@ -19,7 +19,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private Column
@@ -342,7 +341,7 @@
                            nil))]
     {:table-name (case entity-type
                    :card :report_card
-                   :table (first (warehouse-schema-overlay/table-query))
+                   :table (t2/table-name :model/Table)
                    :transform :transform
                    :snippet :native_query_snippet
                    :dashboard :report_dashboard
@@ -515,7 +514,7 @@
     (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
     (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
     (:document joins) (conj :document [:= :entity.document_id :document.id])
-    (:table joins) (conj (warehouse-schema-overlay/table-query {:alias :table}) [:= :entity.table_id :table.id])))
+    (:table joins) (conj [(t2/table-name :model/Table) :table] [:= :entity.table_id :table.id])))
 
 (mu/defn- dependency-item-select :- ::h2x/honeysql-clause-opts
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
@@ -639,21 +638,13 @@
    id          :- ::deps.dependency-types/entity-id]
   (first (entities entity-type #{id})))
 
-(mu/defn- entity-source :- [:map {:closed true}
-                            [:from {:optional true} [:sequential HoneySQLForm]]]
-  "What a read of `entity-type` selects from: the overlay for a Table, else the model's own table."
-  [entity-type :- ::deps.dependency-types/dependency-types]
-  (if (= entity-type :table)
-    {:from [(warehouse-schema-overlay/table-query)]}
-    {}))
-
 (mu/defn entities-with-columns
   "The `columns` of the entities of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
   (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-             :id [:in ids] (entity-source entity-type)))
+             :id [:in ids]))
 
 (mu/defn entity-with-columns
   "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
@@ -661,7 +652,7 @@
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-                 :id id (entity-source entity-type)))
+                 :id id))
 
 (mu/defn implicit-action-table-ids
   "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
@@ -692,7 +683,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
@@ -702,12 +693,7 @@
 (mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
   "The `:table_id` of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
-  "The IDs of the Transforms reading from the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (or (t2/select-pks-set :model/Transform :source_database_id db-id) #{}))
+  (t2/select-one-fn :table_id :model/Field :id field-id))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -1079,7 +1065,7 @@
   "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
   [field-ids :- [:set ::lib.schema.id/field]]
   (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
-                        {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
+                        {:from  [(t2/table-name :model/Field)]
                          :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
                          :where [:in :dimension.human_readable_field_id field-ids]})
       #{}))
@@ -1103,8 +1089,8 @@
   `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
+                                       :updated_at      :updated_at}))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 

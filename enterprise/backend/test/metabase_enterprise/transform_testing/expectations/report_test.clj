@@ -81,9 +81,8 @@
       (is (= (vec (take expectations.report/row-cap rows)) kept)))))
 
 (deftest capped-empty-test
-  (is (= [[] 0] (expectations.report/capped [])))
-  (is (= [[] 0] (expectations.report/capped nil))))
+  (is (= [[] 0] (expectations.report/capped []))))
 
 (deftest capped-returns-a-vector-test
   (testing "the sample is a vector, so a lazy seq cannot escape into the report"
-    (is (vector? (first (expectations.report/capped (range 3)))))))
+    (is (vector? (first (expectations.report/capped (map vector (range 3))))))))

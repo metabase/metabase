@@ -397,11 +397,11 @@
             [notification {:card     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
                            :handlers [{:channel_type :channel/http
                                        :channel_id chn-id}]}]
-            (notification/send-notification! (t2/select-one :model/Notification (:id notification)) :notification/sync? true)
+            (notification/send-notification! (t2/select-one :model/Notification :id (:id notification)) :notification/sync? true)
             (is (=? {:body {:type               "alert"
                             :alert_id           (-> notification :payload :id)
                             :alert_creator_id   (mt/malli=? int?)
-                            :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                            :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id notification))
                             :data               {:type          "question"
                                                  :question_id   (-> notification :payload :card_id)
                                                  :question_name (-> notification :payload :card :name)

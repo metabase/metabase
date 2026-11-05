@@ -8,6 +8,7 @@
    [colorize.core :as colorize]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -19,9 +20,11 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -304,6 +307,44 @@
           (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))
           (is (not (contains? spec :user))))))))
 
+(deftest connection-spec-ad-managed-identity-hosted-rejected-test
+  (testing "auth-mode 'ad-managed-identity' is rejected on Metabase Cloud (ambient Azure identity, not available on AWS hosts)"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [[label details] [["default identity"       {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"}]
+                               ["user-assigned identity" {:auth-mode                     "ad-managed-identity"
+                                                          :ad-managed-identity-client-id "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                          :host                          "sql.example.com"
+                                                          :db                            "metabase_test"}]]]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec :sqlserver details)))))))
+  (testing "Off Metabase Cloud, ad-managed-identity continues to work."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                         {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"})]
+        (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))))))
+
+(deftest auth-mode-options-hidden-when-hosted-test
+  (let [auth-mode-values
+        (fn [] (->> (:details-fields (:sqlserver (driver.u/available-drivers-info)))
+                    (m/find-first #(= "auth-mode" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, ad-managed-identity is stripped from the auth-mode select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate"]
+               (auth-mode-values)))))
+    (testing "Off Metabase Cloud, every auth-mode option is offered."
+      (mt/with-premium-features #{}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate" "ad-managed-identity"]
+               (auth-mode-values)))))))
+
 (deftest ^:parallel reject-inherited-disallowed-parameters-in-host-test
   (mt/test-driver :sqlserver
     (testing "parameters every SQL-JDBC driver disallows are refused in `host` too"
@@ -368,17 +409,18 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query ["SELECT"
+      (is (= {:query ["WITH \"__mb_stage_0\" AS ("
+                      "  SELECT"
+                      "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                      "  FROM"
+                      "    \"dbo\".\"venues\""
+                      "  ORDER BY"
+                      "    \"dbo\".\"venues\".\"id\" ASC"
+                      ")"
+                      "SELECT"
                       "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
-                      "  ("
-                      "    SELECT"
-                      "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                      "    FROM"
-                      "      \"dbo\".\"venues\""
-                      "    ORDER BY"
-                      "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"__mb_source\""]
+                      "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -391,17 +433,18 @@
   (mt/test-driver :sqlserver
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
-      (is (= {:query  ["SELECT"
+      (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                       "  SELECT"
+                       "    TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
+                       "  FROM"
+                       "    \"dbo\".\"venues\""
+                       "  ORDER BY"
+                       "    \"dbo\".\"venues\".\"id\" ASC"
+                       ")"
+                       "SELECT"
                        "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
-                       "  ("
-                       "    SELECT"
-                       "      TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
-                       "    FROM"
-                       "      \"dbo\".\"venues\""
-                       "    ORDER BY"
-                       "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"__mb_source\""]
+                       "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -426,17 +469,18 @@
                              qp.preprocess/preprocess
                              (lib/limit nil))]
         (mt/with-metadata-provider (mt/id)
-          (is (= {:query  ["SELECT"
+          (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                           "  SELECT"
+                           "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "  FROM"
+                           "    \"dbo\".\"venues\""
+                           "  ORDER BY"
+                           "    \"dbo\".\"venues\".\"id\" ASC"
+                           ")"
+                           "SELECT"
                            "  \"__mb_source\".\"name\" AS \"name\""
                            "FROM"
-                           "  ("
-                           "    SELECT"
-                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                           "    FROM"
-                           "      \"dbo\".\"venues\""
-                           "    ORDER BY"
-                           "      \"dbo\".\"venues\".\"id\" ASC"
-                           "  ) AS \"__mb_source\""
+                           "  \"__mb_stage_0\" AS \"__mb_source\""
                            "ORDER BY"
                            "  \"__mb_source\".\"id\" ASC"]
                   :params nil}
@@ -1147,7 +1191,7 @@
     (mt/test-driver :sqlserver
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
-               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+               (t2/select-one-fn :base_type :model/Field :id (mt/id :bigint_identity_test :id))))))))
 
 (def ^:private udt-alias-db-details
   (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))
@@ -1300,7 +1344,7 @@
               {:query        {:query "SELECT mydb.dbo.products.id FROM mydb.dbo.products"}
                :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
-      (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
+      (is (= ["INSERT INTO [PRODUCTS_COPY] SELECT * FROM products" nil]
              (driver/compile-insert
               :sqlserver
               {:query        {:query "SELECT * FROM products"}

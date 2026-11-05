@@ -153,6 +153,7 @@
     :model/DependencyStatus
     :model/EmbeddingSdkReact18Host
     :model/ExplorationQueryResult
+    :model/ImpersonationQueryCache
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog

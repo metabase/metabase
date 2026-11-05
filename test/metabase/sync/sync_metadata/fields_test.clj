@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -21,7 +22,6 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
@@ -141,8 +141,8 @@
                                    :table_id [:in tables]))
             field-to-drop   (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
             field-to-update (get-field-to-update)]
-        (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
-                                                             :fk_target_field_id (u/the-id field-to-drop)})
+        (t2/update! :model/Field :id (u/the-id field-to-update) {:semantic_type      :type/FK
+                                                                 :fk_target_field_id (u/the-id field-to-drop)})
         ;; get the field before sync
         (let [field-before-sync (get-field-to-update)]
           ;; ok cool! now delete one of those columns...
@@ -171,7 +171,7 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
           (sync/sync-database! (:id db))
           (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-                  (t2/select-one :model/Field :id (:id field) {:from [(warehouse-schema-overlay/field-query)]})))
+                  (t2/select-one :model/Field :id (:id field))))
           (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
           (sync/sync-database! (:id db))
           (testing "the base type change unsets the user's coercion, on the Field and for the user"
@@ -228,7 +228,7 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "Clear out the semantic type"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
           (is (= {:database_is_pk true
                   :semantic_type  nil}
                  (get-pk-details))))
@@ -238,12 +238,12 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type :type/Latitude})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type :type/Latitude})
           (is (= {:database_is_pk true
                   :semantic_type  :type/Latitude}
                  (get-pk-details))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
           (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
@@ -277,7 +277,7 @@
           []]]
         (let [db (mt/db)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
-              get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+              get-fk #(t2/select-one :model/Field :id (mt/id :country :continent_id))]
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! (:id db) {:scan :schema})
@@ -312,14 +312,14 @@
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id {:from [(warehouse-schema-overlay/field-query)]})}))]
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
-        (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
+        (t2/update! :model/Field :id (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
           (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
@@ -328,13 +328,12 @@
                  (state))))))))
 
 (deftest sync-table-fks-test2
-  (testing "Check that sync-table! keeps writing FKs to the Field while the user keeps seeing their own values"
+  (testing "Check that sync-table! leaves user-set semantic type alone"
     (mt/with-temp-copy-of-db
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id)
-                                                                                {:from [(warehouse-schema-overlay/field-query)]})]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
@@ -351,10 +350,7 @@
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :semantic-type     :type/Name
                   :fk-target-exists? false}
-                 (state)))
-          (testing "sync's own row still carries the FK it detected, under the user's :type/Name"
-            (is (=? {:semantic_type :type/FK :fk_target_field_id int?}
-                    (t2/select-one :model/Field :id (mt/id :checkins :user_id))))))))))
+                 (state))))))))
 
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
@@ -479,7 +475,7 @@
                   (mapv :visibility_type)
                   frequencies)))
       ;; remove cruft column directive:
-      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns []}})
+      (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
       (sync-metadata/sync-db-metadata! (:id db))
       (is (= {:details-only 12}
              (->> (db->fields db)
@@ -496,8 +492,8 @@
                  :preview_display true}
                 details-field)
             "before auto-cruft: field has default visibility and preview_display")
-        (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
-        (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database (u/the-id db))))
+        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
+        (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :id (u/the-id db))))
         (is (=? {:visibility_type :details-only
                  :preview_display false}
                 (t2/select-one :model/Field :id (:id details-field)))
@@ -538,14 +534,12 @@
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
               (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
-                                                              {:from [(warehouse-schema-overlay/field-query)]})))
+              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
                   "Manual change should set visibility_type to :normal"))
             (sync/sync-database! (:id database))
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
-                                                              {:from [(warehouse-schema-overlay/field-query)]})))
+              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
 
 (deftest hiding-a-case-variant-table-leaves-the-other-tables-fields-alone-test
@@ -585,15 +579,28 @@
         (testing "should not have FK relationship"
           (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
           (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
-        (field-user-settings/upsert-user-settings
+        (field-user-settings/upsert-field-user-settings!
          {:id (u/the-id flocks-example-bird-name-field)}
          {:semantic_type :type/FK
           :fk_target_field_id (u/the-id birds-example-name-field)})
         (testing "after sync, user-set FK is preserved"
           (sync/sync-database! (mt/id))
-          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field) {:from [(warehouse-schema-overlay/field-query)]})]
+          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
             (is (= :type/FK (:semantic_type field-after-sync)))
             (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))
+
+(deftest mark-fk-keeps-user-set-columns-test
+  (testing "sync marks a foreign key to a primary key whose semantic type a user set, and keeps the FK's own user values"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {pk-table :id} {:db_id db-id :name "pk_table" :schema "s"}
+                   :model/Table    {fk-table :id} {:db_id db-id :name "fk_table" :schema "s"}
+                   :model/Field    {pk-id :id}    {:table_id pk-table :name "id"}
+                   :model/Field    {fk-id :id :as fk-field} {:table_id fk-table :name "pk_id" :has_field_values :auto-list}]
+      (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
+      (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
+      (is (= 1 (sync.db/mark-fk! db-id "s" "fk_table" "pk_id" "s" "pk_table" "id")))
+      (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
+              (t2/select-one :model/Field :id fk-id))))))
 
 (deftest database-default-test
   (with-test-db
@@ -626,7 +633,7 @@
         (is (false? (:database_is_nullable b)))))))
 
 (deftest data-sensitivity-survives-sync-test
-  (testing "a user-set data_sensitivity lives in FieldUserSettings, untouched by a full sync or a bare Field update"
+  (testing "user-set data_sensitivity is written to Field and survives full sync"
     (mt/with-temp-test-data [["sens_table"
                               [{:field-name "email", :base-type :type/Text}]
                               [["ngoc@metabase.com"]]]]
@@ -638,17 +645,13 @@
           (is (nil? (field)))
           (is (not (t2/exists? :model/FieldUserSettings :field_id field-id))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
-        (testing "after a full sync, the classifier skips the user-overridden Field"
+        (testing "after full sync, Field and its settings keep user's label"
           (sync/sync-database! (:id db))
-          (is (nil? (field)))
-          (is (= :PII (mirror))))
-        (testing "a bare update to the Field only changes the classifier's own value"
-          (t2/update! :model/Field field-id {:data_sensitivity :SEC_KEY})
-          (is (= :SEC_KEY (field)))
+          (is (= :PII (field)))
           (is (= :PII (mirror))))))))
 
 (deftest data-sensitivity-classifier-respects-user-label-test
-  (testing "a user-set data_sensitivity in FieldUserSettings survives the classifier reclassifying the raw Field"
+  (testing "user-set data_sensitivity survives classifier"
     (mt/with-temp-test-data [["app_users"
                               [{:field-name "email", :base-type :type/Text}
                                {:field-name "ssn", :base-type :type/Text}
@@ -660,9 +663,8 @@
         (is (nil? (field :ssn)))
         (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
           (sync/sync-database! (mt/id)))
-        (testing "the classifier still infers and writes its own category on the raw Field"
-          (is (= :PII (field :email))))
-        (testing "the user's PUBLIC override on email survives in FieldUserSettings"
+        (testing "user's PUBLIC label on email stays on Field and in its settings"
+          (is (= :PUBLIC (field :email)))
           (is (= :PUBLIC (mirror :email))))
         (testing "the classifier labels the unlabeled siblings without creating mirror rows"
           (is (= :PII (field :ssn)))
@@ -684,16 +686,16 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
           (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" DROP COLUMN \"EMAIL\";"])
           (sync/sync-database! (:id db))
-          (testing "the field is inactive while the column is gone; the mirror keeps the label"
-            (is (=? {:active false, :data_sensitivity nil} (field)))
+          (testing "field is inactive while column is gone, and keeps its label"
+            (is (=? {:active false, :data_sensitivity :PHI} (field)))
             (is (= :PHI (mirror))))
           (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" ADD COLUMN \"EMAIL\" VARCHAR;"])
           (sync/sync-database! (:id db))
-          (testing "the same Field row is reactivated and the mirror still keeps its label"
-            (is (=? {:active true, :data_sensitivity nil} (field)))
+          (testing "same Field row is reactivated and still keeps its label"
+            (is (=? {:active true, :data_sensitivity :PHI} (field)))
             (is (= :PHI (mirror)))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))
 
 (deftest per-table-field-sync-failure-levels-test
   (testing "a failure syncing one table's fields is logged by kind (GHY-4945, GHY-4946)"
@@ -728,3 +730,15 @@
         (let [msgs (map :message (messages))]
           (is (seq msgs))
           (is (not-any? #(re-find #"Table Table" %) msgs)))))))
+
+(deftest sync-keeps-custom-field-order-test
+  (testing "sync keeps positions of table whose field order users set to custom (#86100)"
+    (mt/test-driver :h2
+      (mt/with-temp-copy-of-db
+        (let [table-id     (mt/id :venues)
+              custom-order (vec (reverse (t2/select-pks-vec :model/Field :table_id table-id {:order-by [:database_position]})))
+              field-order  #(t2/select-pks-vec :model/Field :table_id table-id {:order-by [:position]})]
+          (mt/user-http-request :crowberto :put 200 (format "table/%d/fields/order" table-id) custom-order)
+          (dotimes [_ 2]
+            (is (= custom-order (field-order)))
+            (sync-fields/sync-fields-for-table! (t2/select-one :model/Table :id table-id))))))))

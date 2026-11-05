@@ -25,7 +25,7 @@
     (let [uid   (mt/user->id :rasta)
           old   (mint! uid)
           fresh (mint! uid)]
-      (t2/update! :model/McpQueryHandle old {:created_at (hours-ago 25)}) ; default TTL is 24h
+      (t2/update! :model/McpQueryHandle :id old {:created_at (hours-ago 25)}) ; default TTL is 24h
       (#'gc/gc-expired-query-handles!)
       (testing "a handle older than the TTL is deleted"
         (is (nil? (t2/select-one :model/McpQueryHandle :id old))))
@@ -37,7 +37,7 @@
     (mt/with-temporary-setting-values [mcp-query-handle-ttl-hours 1]
       (let [uid (mt/user->id :rasta)
             h   (mint! uid)]
-        (t2/update! :model/McpQueryHandle h {:created_at (hours-ago 2)})
+        (t2/update! :model/McpQueryHandle :id h {:created_at (hours-ago 2)})
         (#'gc/gc-expired-query-handles!)
         (is (nil? (t2/select-one :model/McpQueryHandle :id h))
             "a 2h-old handle is deleted when the TTL is set to 1h")))))

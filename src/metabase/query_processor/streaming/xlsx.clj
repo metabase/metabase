@@ -421,8 +421,8 @@
   (when (isa? semantic_type :type/Coordinate)
     (try (formatter/format-geographic-coordinates semantic_type value)
          ;; Fallback to plain string value if it couldn't be parsed
-         (catch Exception _ value
-                value))))
+         (catch Exception _
+           value))))
 
 (defn- maybe-parse-temporal-value
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
@@ -437,8 +437,8 @@
              (string? value))
     (try (u.date/parse value)
          ;; Fallback to plain string value if it couldn't be parsed
-         (catch Exception _ value
-                value))))
+         (catch Exception _
+           value))))
 
 ;; ColumnHelper hack.
 ;;
@@ -759,5 +759,7 @@
         (try
           (spreadsheet/save-workbook-into-stream! os workbook)
           (finally
-            (.dispose ^SXSSFWorkbook workbook)
-            (.close os)))))))
+            (try
+              (.close ^SXSSFWorkbook workbook)
+              (finally
+                (.close os)))))))))

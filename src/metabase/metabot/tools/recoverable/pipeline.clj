@@ -182,6 +182,14 @@
      {:message  (:message payload#)
       :recovery ~recovery}))
 
+;;; Curation
+
+(defpipeline-error uncurated-source!
+  "The query reads a table, model, metric, measure, or segment that a curated-only Metabot may not use."
+  [{:uses #{"search"}
+    :text (str "Call `search` to find curated tables, models, or metrics and build the query on those instead. "
+               "A table related to a curated one may be joined, but not used as the query's source.")}])
+
 ;;; Table resolution
 
 (defrecoverable unknown-table!
@@ -259,8 +267,8 @@
 
 (defpipeline-error unresolved-join-alias-field!
   "A reference through a join alias named a column that join does not return."
-  ;; No step: the message already lists the columns the join returns, and for a grouped join those
-  ;; are its breakouts and aggregations, not a table's fields.
+  ;; No step: the message already lists the columns the join returns, and says how to reach another
+  ;; table's column through a plain table join.
   [])
 
 (defrecoverable column-not-returned!
@@ -356,6 +364,14 @@
   ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
+(defpipeline-error metric-as-source-card!
+  "A metric was the stage's `source-card:`, and the stage did not aggregate it."
+  ;; The message names the source the metric needs, or says to drop the metric when it has none. The step gives
+  ;; the reference form for the first case.
+  [{:uses #{}
+    :text (str "When you build the stage on the metric's source, reference the metric by its `portable_entity_id`: "
+               "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}])
+
 ;;; Query shape
 
 (defpipeline-error missing-source-in-first-stage!
@@ -444,6 +460,10 @@
 (defpipeline-error temporal-unit-on-non-temporal-column!
   "A temporal bucket was applied to a column that is not a date or time."
   [list-fields-step])
+
+(defpipeline-error binning-on-non-numeric-column!
+  "Automatic binning was applied to a column that is not numeric, or that has no known min and max."
+  [])
 
 (defpipeline-error unencodable-temporal-clause!
   "A temporal clause has no representations encoding."

@@ -45,8 +45,10 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (liquibase Scope)
+   (liquibase.changelog ChangeLogHistoryServiceFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -1163,7 +1165,7 @@
         (migrate!)
         (testing "After the migration, fields are deactivated correctly"
           (doseq [[active? field] active+field]
-            (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
+            (is (= active? (t2/select-one-fn :active :metabase_field :id (:id field))))))))))
 
 (deftest ^:mb/old-migrations-test populate-new-permission-fields-works
   (testing "Migration v49.2024-08-21T08:33:10"
@@ -2480,9 +2482,9 @@
                                                     :model_id  dash-id
                                                     :timestamp :%now}))]
         (migrate!)
-        (is (= 1 (t2/select-one-fn :view_count :metabase_table table-id)))
-        (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
-        (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
+        (is (= 1 (t2/select-one-fn :view_count :metabase_table :id table-id)))
+        (is (= 1 (t2/select-one-fn :view_count :report_card :id card-id)))
+        (is (= 2 (t2/select-one-fn :view_count :report_dashboard :id dash-id)))))))
 
 (deftest ^:mb/old-migrations-test trash-migrations-test
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
@@ -2707,7 +2709,7 @@
   (testing "Site locale is migrated from zh to zh_CN"
     (impl/test-migrations "v54.2025-03-17T18:52:59" [migrate!]
       (let [user-id (:id (create-raw-user! (mt/random-email)))]
-        (t2/update! (t2/table-name :model/User) user-id {:locale "zh"})
+        (t2/update! (t2/table-name :model/User) :id user-id {:locale "zh"})
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
 
@@ -3353,7 +3355,7 @@
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       v59-ids))
-        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (.resetAll ^ChangeLogHistoryServiceFactory (.getSingleton (Scope/getCurrentScope) ChangeLogHistoryServiceFactory))
         (migrate!)
         (testing "the stale v59 rows are gone and the existing column is adopted"
           (is (empty? (t2/select clog :id [:in v59-ids])))
@@ -3457,7 +3459,7 @@
         (testing "an existing field reads NULL"
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
         (testing "a value writes and reads back on metabase_field"
-          (t2/update! :metabase_field field-id {:data_sensitivity "PII"})
+          (t2/update! :metabase_field :id field-id {:data_sensitivity "PII"})
           (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
         (testing "a value writes and reads back on the user-settings mirror"
           (t2/insert! :metabase_field_user_settings {:field_id field-id :data_sensitivity "SYS_TELEMETRY"})
@@ -3534,9 +3536,10 @@
             visible         (insert-table! "visible" true nil "internal")
             unpublished     (insert-table! "unpublished" false "hidden" "hidden")
             user-visibility (fn [table-id]
-                              (t2/select-one-fn :v [:metabase_table
-                                                    [(warehouse-schema-overlay/table-user-visibility-type :metabase_table) :v]]
-                                                {:where [:= :metabase_table.id table-id]}))]
+                              (let [settings (t2/select-one :metabase_table_user_settings :table_id table-id)]
+                                (if (:visibility_type_set settings)
+                                  (:visibility_type settings)
+                                  (t2/select-one-fn :visibility_type :metabase_table :id table-id))))]
         (migrate!)
         (testing "the backfill moves a published table's hidden or technical visibility into its settings row"
           (doseq [[table-id visibility-type] [[hidden "hidden"] [technical "technical"]]]
@@ -3554,6 +3557,153 @@
         (testing "the visibility_type users see is unchanged by the migration"
           (is (= {hidden "hidden" technical "technical" cruft "cruft" visible nil unpublished "hidden"}
                  (into {} (map (juxt identity user-visibility)) [hidden technical cruft visible unpublished]))))))))
+
+(deftest move-user-settings-into-metabase-table-and-field-test
+  (testing "ceygl0, ziqcir, 1h91ve: user-set values move into metabase_table and metabase_field"
+    (impl/test-migrations ["ceygl0" "1h91ve"] [migrate!]
+      (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "Move User Settings Test DB"
+                                                                       :engine     "h2"
+                                                                       :created_at :%now
+                                                                       :updated_at :%now
+                                                                       :details    "{}"})
+            insert-table! (fn [table-name]
+                            (t2/insert-returning-pk! :metabase_table {:active          true
+                                                                      :db_id           db-id
+                                                                      :name            table-name
+                                                                      :display_name    "Synced Name"
+                                                                      :description     "synced comment"
+                                                                      :visibility_type "cruft"
+                                                                      :data_layer      "internal"
+                                                                      :field_order     "database"
+                                                                      :created_at      :%now
+                                                                      :updated_at      :%now}))
+            edited        (insert-table! "edited")
+            untouched     (insert-table! "untouched")
+            insert-field! (fn [table-id field-name]
+                            (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                      :name          field-name
+                                                                      :display_name  "Synced Field"
+                                                                      :description   "synced comment"
+                                                                      :semantic_type "type/Category"
+                                                                      :active        true
+                                                                      :base_type     "type/Text"
+                                                                      :database_type "TEXT"
+                                                                      :created_at    :%now
+                                                                      :updated_at    :%now}))
+            edited-field  (insert-field! edited "edited")
+            plain-field   (insert-field! edited "plain")]
+        (t2/insert! :metabase_table_user_settings {:table_id        edited
+                                                   :display_name    "User Name"
+                                                   :description     nil
+                                                   :description_set true
+                                                   :caveats         "user caveats"
+                                                   :caveats_set     true
+                                                   :data_layer      "final"
+                                                   :data_layer_set  true
+                                                   :field_order     "custom"
+                                                   :is_published    true})
+        (t2/insert! :metabase_field_user_settings {:field_id          edited-field
+                                                   :display_name      "User Field"
+                                                   :description       nil
+                                                   :description_set   true
+                                                   :effective_type    "type/Integer"
+                                                   :coercion_strategy "Coercion/String->Integer"
+                                                   :custom_position   3})
+        (migrate!)
+        (testing "a Table gets the values its user set, user-set NULLs included, and keeps the ones nobody set"
+          (is (=? {:display_name    "User Name"
+                   :description     nil
+                   :caveats         "user caveats"
+                   :data_layer      "final"
+                   :field_order     "custom"
+                   :is_published    true
+                   :visibility_type "cruft"}
+                  (t2/select-one :metabase_table :id edited))))
+        (testing "a Table without settings is untouched"
+          (is (=? {:display_name "Synced Name" :description "synced comment" :field_order "database"}
+                  (t2/select-one :metabase_table :id untouched))))
+        (testing "a Field gets the values its user set, and keeps the semantic type nobody set"
+          (is (=? {:display_name      "User Field"
+                   :description       nil
+                   :semantic_type     "type/Category"
+                   :effective_type    "type/Integer"
+                   :coercion_strategy "Coercion/String->Integer"
+                   :custom_position   3}
+                  (t2/select-one :metabase_field :id edited-field))))
+        (testing "a Field without settings is untouched"
+          (is (=? {:display_name "Synced Field" :description "synced comment"}
+                  (t2/select-one :metabase_field :id plain-field))))))))
+
+(defn- app-db-boolean
+  "`x` read from a boolean column of the app DB, which MySQL returns as a number or a byte array."
+  [x]
+  (cond (number? x)                             (= 1 x)
+        (instance? (Class/forName "[B") x)      (= 1 (first ^bytes x))
+        :else                                   x))
+
+(deftest move-user-settings-follows-flags-and-pairs-test
+  (testing "ceygl0, ziqcir, 1h91ve: a false flag keeps the synced value and clears the settings value, a true flag
+           copies NULL, and a column that follows another moves with it"
+    (impl/test-migrations ["ceygl0" "1h91ve"] [migrate!]
+      (let [db-id     (t2/insert-returning-pk! :metabase_database {:name "Flags Test DB" :engine "h2" :created_at :%now
+                                                                   :updated_at :%now :details "{}"})
+            coll-id   (t2/insert-returning-pk! :collection {:name "c" :slug "c" :created_at :%now
+                                                            :entity_id "flagsflagsflagsflags1"})
+            table-id  (t2/insert-returning-pk! :metabase_table {:active true :db_id db-id :name "t" :display_name "Synced"
+                                                                :description "synced" :visibility_type "cruft"
+                                                                :data_layer "hidden" :data_source "ingested"
+                                                                :field_order "database" :caveats "synced caveats"
+                                                                :show_in_getting_started true :is_published true
+                                                                :collection_id coll-id :created_at :%now
+                                                                :updated_at :%now})
+            field!    (fn [field-name extra]
+                        (t2/insert-returning-pk! :metabase_field
+                                                 (merge {:table_id table-id :name field-name :display_name "Synced"
+                                                         :description "synced" :semantic_type "type/Category"
+                                                         :active true :base_type "type/Text" :database_type "TEXT"
+                                                         :json_unfolding true :has_field_values "auto-list"
+                                                         :coercion_strategy "Coercion/Synced" :created_at :%now
+                                                         :updated_at :%now}
+                                                        extra)))
+            target-id (field! "target" {})
+            flagged   (field! "flagged" {:fk_target_field_id target-id})
+            coerced   (field! "coerced" {})]
+        (t2/insert! :metabase_table_user_settings {:table_id               table-id
+                                                   :description            "stale" :description_set false
+                                                   :visibility_type        "hidden" :visibility_type_set false
+                                                   :data_layer             nil :data_layer_set true
+                                                   :data_source            "upload" :data_source_set true
+                                                   :caveats                "stale" :caveats_set false
+                                                   :show_in_getting_started false
+                                                   :is_published           false :collection_id nil})
+        (t2/insert! :metabase_field_user_settings {:field_id               flagged
+                                                   :semantic_type          nil :semantic_type_set true
+                                                   :fk_target_field_id     nil :fk_target_field_id_set true
+                                                   :description            "stale" :description_set false
+                                                   :has_field_values       "list"
+                                                   :json_unfolding         false
+                                                   :settings               "{\"currency\":\"EUR\"}"
+                                                   :coercion_strategy      "Coercion/Orphan"})
+        (t2/insert! :metabase_field_user_settings {:field_id coerced :effective_type "type/Integer" :coercion_strategy nil})
+        (migrate!)
+        (let [table (t2/select-one :metabase_table :id table-id)]
+          (testing "a Table"
+            (is (=? {:description "synced" :visibility_type "cruft" :data_layer nil :data_source "upload"
+                     :caveats "synced caveats" :collection_id nil}
+                    table))
+            (is (false? (app-db-boolean (:show_in_getting_started table))))
+            (is (false? (app-db-boolean (:is_published table))) "collection_id follows is_published"))
+          (testing "a settings value whose flag said no user set it is cleared"
+            (is (nil? (:caveats (t2/select-one :metabase_table_user_settings :table_id table-id))))))
+        (let [field (t2/select-one :metabase_field :id flagged)]
+          (testing "a Field"
+            (is (=? {:semantic_type nil :fk_target_field_id nil :description "synced" :has_field_values "list"
+                     :settings "{\"currency\":\"EUR\"}" :coercion_strategy "Coercion/Synced"}
+                    field))
+            (is (false? (app-db-boolean (:json_unfolding field))))))
+        (testing "a NULL coercion_strategy moves with the effective_type it follows"
+          (is (=? {:effective_type "type/Integer" :coercion_strategy nil}
+                  (t2/select-one :metabase_field :id coerced))))))))
 
 (deftest glossary-entity-id-backfill-test
   (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
@@ -3594,7 +3744,7 @@
                                          :exectype      "EXECUTED"})
                                       suffixes))
         ;; Liquibase caches the ran-changeset list per connection; drop it so the precondition sees the rows above.
-        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (.resetAll ^ChangeLogHistoryServiceFactory (.getSingleton (Scope/getCurrentScope) ChangeLogHistoryServiceFactory))
         (migrate!)
         (is (= (repeat 4 "MARK_RAN")
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
@@ -3925,7 +4075,7 @@
             event-date  #(t2/select-one-fn :timestamp :timeline_event :id event-id)
             before      (event-date)]
         (migrate!)
-        (t2/update! :timeline_event event-id {:archived true})
+        (t2/update! :timeline_event :id event-id {:archived true})
         (is (= before (event-date)))))))
 
 (deftest add-library-dashboards-section-test
@@ -4005,7 +4155,7 @@
           (is (false? (:finished (message aborted))))
           (is (nil? (:finished (message in-flight)))))
         (testing "the column stores a reason"
-          (t2/update! :metabot_message completed {:finish_reason "content-filter"})
+          (t2/update! :metabot_message :id completed {:finish_reason "content-filter"})
           (is (= "content-filter" (:finish_reason (message completed)))))
         (testing "rolling back drops the column and keeps the rows"
           (migrate! :down 64)
@@ -4043,7 +4193,7 @@
           (is (contains? (message) :context_window_full))
           (is (nil? (:context_window_full (message)))))
         (testing "the column stores the verdict"
-          (t2/update! :metabot_message message-id {:context_window_full true})
+          (t2/update! :metabot_message :id message-id {:context_window_full true})
           (is (true? (:context_window_full (message)))))
         (testing "rolling back drops the column and keeps the row"
           (migrate! :down 64)
@@ -4279,3 +4429,39 @@
                 "Monthly job" false
                 "Custom job"  true}
                (job-active)))))))
+
+(deftest transform-source-database-delete-cascade-test
+  (testing "pz7hdr..kq4w2m delete orphan query transforms, then transforms with their source database"
+    (impl/test-migrations ["pz7hdr" "kq4w2m"] [migrate!]
+      (let [user-id          (t2/insert-returning-pk! :core_user {:first_name    "Transform"
+                                                                  :last_name     "Owner"
+                                                                  :email         "transform-owner@test.com"
+                                                                  :entity_id     (u/generate-nano-id)
+                                                                  :date_joined   :%now
+                                                                  :password      "password"
+                                                                  :password_salt "salt"})
+            db-id            (t2/insert-returning-pk! :metabase_database {:name       "Transform Source DB"
+                                                                          :engine     "h2"
+                                                                          :created_at :%now
+                                                                          :updated_at :%now
+                                                                          :details    "{}"})
+            insert-transform (fn [source-type source-db-id]
+                               (t2/insert-returning-pk! :transform {:name               (mt/random-name)
+                                                                    :source             "{}"
+                                                                    :target             "{}"
+                                                                    :source_type        source-type
+                                                                    :source_database_id source-db-id
+                                                                    :creator_id         user-id
+                                                                    :entity_id          (u/generate-nano-id)
+                                                                    :created_at         :%now
+                                                                    :updated_at         :%now}))
+            transform-id     (insert-transform "native" db-id)
+            native-orphan-id (insert-transform "native" nil)
+            mbql-orphan-id   (insert-transform "mbql" nil)
+            python-id        (insert-transform "python" nil)]
+        (migrate!)
+        (is (not (t2/exists? :transform :id native-orphan-id)))
+        (is (not (t2/exists? :transform :id mbql-orphan-id)))
+        (is (t2/exists? :transform :id python-id))
+        (t2/delete! :metabase_database :id db-id)
+        (is (not (t2/exists? :transform :id transform-id)))))))

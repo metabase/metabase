@@ -9,7 +9,7 @@ import {
   DATA_APP_GLOBALS,
 } from "../constants/bundle";
 
-const DEFAULT_OUT_DIR = "build";
+const DEFAULT_OUT_DIR = "dist";
 
 export function dataAppOutDir(config: UserConfig) {
   return config.build?.outDir ?? DEFAULT_OUT_DIR;

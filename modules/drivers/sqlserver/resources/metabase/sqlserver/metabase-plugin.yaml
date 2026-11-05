@@ -31,7 +31,7 @@ driver:
         - {name: "SQL Server login",                           value: "sql"}
         - {name: "Azure AD - Service principal",               value: "ad-service-principal"}
         - {name: "Azure AD - Service principal (certificate)", value: "ad-service-principal-certificate"}
-        - {name: "Azure AD - Managed identity",                value: "ad-managed-identity"}
+        - {name: "Azure AD - Managed identity",                value: "ad-managed-identity", hidden-when-hosted: true}
     - merge:
         - user
         - visible-if:

@@ -4,6 +4,8 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]))
 
+(set! *warn-on-reflection* true)
+
 (defrecord MockSourceSnapshot [files]
   source.p/SourceSnapshot
   (list-files [_]

@@ -64,7 +64,7 @@ export const TimelineModalHeader = ({
       {collectionName && (
         <Group gap="xxs">
           {c("Refers to: 'Events' in a collection").t`in`}
-          <Icon name="folder" c="text-disabled" />
+          <Icon name="folder" c="text-secondary" />
           {collectionName}
         </Group>
       )}

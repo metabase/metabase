@@ -242,7 +242,7 @@ export function ColumnValue({
             {String(value).slice(0, -1)}
             <span
               style={{
-                color: "var(--mb-color-text-disabled)",
+                color: "var(--mb-color-text-secondary)",
                 paddingLeft: "0.25rem",
               }}
             >
@@ -275,7 +275,7 @@ export function ColumnValue({
             {beforeCurrency}
             <Text
               component="span"
-              c="text-disabled"
+              c="text-secondary"
               fw="normal"
               pr={afterCurrency ? "xxs" : undefined}
             >

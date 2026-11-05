@@ -102,7 +102,6 @@ function setup({
     <QuestionActions
       question={question}
       isBookmarked={false}
-      isShowingQuestionInfoSidebar={false}
       onOpenModal={onOpenModal}
       onToggleBookmark={jest.fn()}
       onSetQueryBuilderMode={onSetQueryBuilderMode}
