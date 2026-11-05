@@ -133,10 +133,8 @@
 
 (defn loadable?
   "Whether a snapshot this connection can use is checked in."
-  ([^java.sql.Connection conn db-type]
-   (loadable? conn db-type snapshot-version))
-  ([^java.sql.Connection conn db-type version]
-   (boolean (some->> (flavor conn db-type) flavors (snapshot-resource version) some?))))
+  [^java.sql.Connection conn db-type]
+  (boolean (some->> (flavor conn db-type) flavors (snapshot-resource snapshot-version) some?)))
 
 (defn statements
   "Split the contents of a snapshot `.sql` file into individual statements."
@@ -147,12 +145,17 @@
         (str/split sql
                    (re-pattern (str "(?m)^" (java.util.regex.Pattern/quote statement-separator) "$")))))
 
+(defn metadata-schema
+  "The schema to pass JDBC metadata calls for `db-type`.
+  It is `PUBLIC` for H2, and nil for Postgres and MySQL, which find theirs from the connection."
+  [db-type]
+  (when (= db-type :h2) "PUBLIC"))
+
 (defn user-tables
   "The non-system tables visible to `conn`. Empty exactly when the app DB has not been migrated yet."
   [^java.sql.Connection conn db-type]
-  (let [schema (when (= db-type :h2) "PUBLIC")]
-    (with-open [rs (.getTables (.getMetaData conn) nil schema "%" (into-array String ["TABLE"]))]
-      (vec (jdbc/result-set-seq rs)))))
+  (with-open [rs (.getTables (.getMetaData conn) nil (metadata-schema db-type) "%" (into-array String ["TABLE"]))]
+    (vec (jdbc/result-set-seq rs))))
 
 (def ^:private drop-changelog-tables
   "Statements dropping the changelog tables, unquoted and upper-case so that every DB resolves them."
@@ -197,63 +200,62 @@
   ;; dump recreates the views. A view can only read tables and views defined before it, so deferring them cannot break
   ;; a load.
   (if (mysql-family flavor)
-    [(remove dump-util/creates-view? stmts) (filter dump-util/creates-view? stmts)]
+    (dump-util/split-views stmts)
     [stmts []]))
 
 (defn load-snapshot!
   "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
   Throws when no snapshot is checked in for that dialect, or when a statement fails, rolling back what it can."
-  ([^java.sql.Connection conn db-type]
-   (load-snapshot! conn db-type snapshot-version))
-  ([^java.sql.Connection conn db-type version]
-   (let [flavor           (flavor conn db-type)
-         resource         (or (snapshot-resource version flavor)
-                              (throw (ex-info "No app DB snapshot for this dialect"
-                                              {:version version, :db-type db-type, :flavor flavor})))
-         stmts            (statements (slurp resource))
-         [before after]   (session-guards flavor)
-         [guarded views]  (load-order flavor stmts)]
-     (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
-     (with-open [stmt (.createStatement conn)]
-       (letfn [(execute! [sqls]
-                 (doseq [sql sqls]
-                   (try
-                     (.execute stmt sql)
-                     (catch Throwable e
-                       (throw (ex-info "Error loading app DB snapshot statement"
-                                       {:version version, :flavor flavor, :statement sql}
-                                       e))))))]
-         ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
-         ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
-         ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
-         (let [autocommit? (.getAutoCommit conn)]
-           (when autocommit?
-             (.setAutoCommit conn false))
-           (try
-             (try
-               ;; inside the `try`, so that a failing guard still restores the ones before it and a pooled connection
-               ;; never goes back with foreign key checks or strict mode off
-               (doseq [sql before]
-                 (.execute stmt sql))
-               (execute! guarded)
-               (finally
-                 (doseq [sql after]
-                   (.execute stmt sql))))
-             (execute! views)
-             (.commit conn)
-             (catch Throwable e
-               ;; without this, restoring autocommit below would commit however much of the load got through
-               (try (.rollback conn) (catch Throwable _))
-               (throw e))
-             (finally
-               (when autocommit?
-                 (.setAutoCommit conn true)))))))
-     ;; Postgres runs DDL inside the transaction, and anything that has already opened Liquibase against this
-     ;; connection has left autocommit off. Liquibase rolls back before taking its changelog lock, which would undo
-     ;; the entire load, so make it durable here.
-     (when-not (.getAutoCommit conn)
-       (.commit conn))
-     :done)))
+  [^java.sql.Connection conn db-type]
+  (let [version          snapshot-version
+        flavor           (flavor conn db-type)
+        resource         (or (snapshot-resource version flavor)
+                             (throw (ex-info "No app DB snapshot for this dialect"
+                                             {:version version, :db-type db-type, :flavor flavor})))
+        stmts            (statements (slurp resource))
+        [before after]   (session-guards flavor)
+        [guarded views]  (load-order flavor stmts)]
+    (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
+    (with-open [stmt (.createStatement conn)]
+      (letfn [(execute! [sqls]
+                (doseq [sql sqls]
+                  (try
+                    (.execute stmt sql)
+                    (catch Throwable e
+                      (throw (ex-info "Error loading app DB snapshot statement"
+                                      {:version version, :flavor flavor, :statement sql}
+                                      e))))))]
+        ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
+        ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
+        ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
+        (let [autocommit? (.getAutoCommit conn)]
+          (when autocommit?
+            (.setAutoCommit conn false))
+          (try
+            (try
+              ;; inside the `try`, so that a failing guard still restores the ones before it and a pooled connection
+              ;; never goes back with foreign key checks or strict mode off
+              (doseq [sql before]
+                (.execute stmt sql))
+              (execute! guarded)
+              (finally
+                (doseq [sql after]
+                  (.execute stmt sql))))
+            (execute! views)
+            (.commit conn)
+            (catch Throwable e
+              ;; without this, restoring autocommit below would commit however much of the load got through
+              (try (.rollback conn) (catch Throwable _))
+              (throw e))
+            (finally
+              (when autocommit?
+                (.setAutoCommit conn true)))))))
+    ;; Postgres runs DDL inside the transaction, and anything that has already opened Liquibase against this
+    ;; connection has left autocommit off. Liquibase rolls back before taking its changelog lock, which would undo
+    ;; the entire load, so make it durable here.
+    (when-not (.getAutoCommit conn)
+      (.commit conn))
+    :done))
 
 (defn changesets
   "The `[id author filename]` of every changeset in the current changelog, in the order Liquibase will run them."

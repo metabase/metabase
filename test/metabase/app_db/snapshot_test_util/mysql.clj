@@ -17,11 +17,15 @@
   ;; [[view-statements]] rebuilds the views instead.
   (loop [[line & more] lines, in-block? false, acc []]
     (cond
-      (nil? line)              acc
-      in-block?                (recur more (not (str/ends-with? (str/trimr line) "*/;")) acc)
-      (str/starts-with? (str/triml line) "/*!")
+      (nil? line)
+      acc
+
+      ;; a block can end on the line that opens it
+      (or in-block? (str/starts-with? (str/triml line) "/*!"))
       (recur more (not (str/ends-with? (str/trimr line) "*/;")) acc)
-      :else                    (recur more false (conj acc line)))))
+
+      :else
+      (recur more false (conj acc line)))))
 
 (defn- drop-sandbox-directive
   "Remove the `/*M!999999\\- enable the sandbox mode */` line mariadb-dump opens with."

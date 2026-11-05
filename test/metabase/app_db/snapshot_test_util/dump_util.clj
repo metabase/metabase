@@ -20,6 +20,12 @@
   [sql]
   (boolean (re-find create-view-pattern sql)))
 
+(defn split-views
+  "Split `stmts` into `[others views]`, where `views` are the statements that [[creates-view?]].
+  Relative order is kept within each group, since a view may read from an earlier one."
+  [stmts]
+  [(remove creates-view? stmts) (filter creates-view? stmts)])
+
 (defn- literals-closed?
   "Whether `text` has no unterminated string literal.
   Quotes escaped either way a dump tool may write them, doubled (`''`, Postgres) or backslashed (`\\'`, MySQL), do not

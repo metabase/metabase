@@ -59,12 +59,6 @@
         (map :table_name)
         (snapshot/user-tables conn db-type)))
 
-(defn- schema-of
-  "The schema to pass JDBC metadata calls: H2's named explicitly, and nil for Postgres and MySQL, which find theirs
-  from the connection."
-  [db-type]
-  (when (= db-type :h2) "PUBLIC"))
-
 ;; Everything the driver reports other than these is compared, so a field nobody thought about still gets checked.
 ;;
 ;; - The catalog and schema columns, including their foreign-key spellings, name the database the connection is to,
@@ -100,13 +94,13 @@
     (= "NULL" (some-> (:column_def row) str/trim)) (assoc :column_def nil)))
 
 (defn- columns [^java.sql.Connection conn db-type table]
-  (with-open [rs (.getColumns (.getMetaData conn) nil (schema-of db-type) table "%")]
+  (with-open [rs (.getColumns (.getMetaData conn) nil (snapshot/metadata-schema db-type) table "%")]
     (into (sorted-map)
           (map (juxt (comp u/upper-case-en :column_name) comparable-row))
           (jdbc/result-set-seq rs))))
 
 (defn- primary-keys [^java.sql.Connection conn db-type table]
-  (with-open [rs (.getPrimaryKeys (.getMetaData conn) nil (schema-of db-type) table)]
+  (with-open [rs (.getPrimaryKeys (.getMetaData conn) nil (snapshot/metadata-schema db-type) table)]
     (into #{}
           (map comparable-row)
           (jdbc/result-set-seq rs))))
@@ -118,7 +112,7 @@
   ;; restored dump can legitimately end up with one index fewer: when a column already carries a unique index, H2 will
   ;; not add a redundant non-unique one alongside it. Neither is drift. Losing an index on a column, or losing its
   ;; uniqueness, still is.
-  (with-open [rs (.getIndexInfo (.getMetaData conn) nil (schema-of db-type) table false false)]
+  (with-open [rs (.getIndexInfo (.getMetaData conn) nil (snapshot/metadata-schema db-type) table false false)]
     (let [by-name    (->> (jdbc/result-set-seq rs)
                           (filter :column_name)
                           (group-by :index_name))
@@ -132,7 +126,7 @@
                       by-name)})))
 
 (defn- foreign-keys [^java.sql.Connection conn db-type table]
-  (with-open [rs (.getImportedKeys (.getMetaData conn) nil (schema-of db-type) table)]
+  (with-open [rs (.getImportedKeys (.getMetaData conn) nil (snapshot/metadata-schema db-type) table)]
     (into #{}
           (map comparable-row)
           (jdbc/result-set-seq rs))))
@@ -180,7 +174,8 @@
   ;; view, just with nothing in it, and the instance analytics views are only ever read through the app so nothing
   ;; else here would notice.
   (let [security (view-security conn db-type)]
-    (with-open [rs (.getTables (.getMetaData conn) nil (schema-of db-type) "%" (into-array String ["VIEW"]))]
+    (with-open [rs (.getTables (.getMetaData conn) nil (snapshot/metadata-schema db-type) "%"
+                               (into-array String ["VIEW"]))]
       (into (sorted-map)
             (map (fn [view]
                    (let [view-name (u/upper-case-en (:table_name view))]
@@ -392,7 +387,8 @@
 
 (defn- first-difference
   "The first statement two snapshots of the same dialect disagree on, as `{:index _, :checked-in _, :regenerated _}`.
-  Returns nil when they agree, and the two statement counts when one is a prefix of the other."
+  When one is a prefix of the other, it is `{:index _, :checked-in-count _, :regenerated-count _}` instead.
+  Returns nil when they agree."
   [checked-in regenerated]
   ;; one statement rather than a whole-file diff, because a snapshot runs to thousands of lines and a report of all of
   ;; it says nothing about where to look
@@ -401,9 +397,9 @@
                                {:index i, :checked-in in-file, :regenerated fresh}))
                            (map vector checked-in regenerated)))
       (when (not= (count checked-in) (count regenerated))
-        {:index       (min (count checked-in) (count regenerated))
-         :checked-in  (format "%d statements" (count checked-in))
-         :regenerated (format "%d statements" (count regenerated))})))
+        {:index             (min (count checked-in) (count regenerated))
+         :checked-in-count  (count checked-in)
+         :regenerated-count (count regenerated)})))
 
 ;;; --------------------------------------------------- the tests ---------------------------------------------------
 
@@ -553,8 +549,8 @@
   (are [checked-in regenerated expected] (= expected (first-difference checked-in regenerated))
     ["a" "b"] ["a" "b"]     nil
     ["a" "b"] ["a" "c"]     {:index 1, :checked-in "b", :regenerated "c"}
-    ["a" "b"] ["a"]         {:index 1, :checked-in "2 statements", :regenerated "1 statements"}
-    ["a"]     ["a" "b" "c"] {:index 1, :checked-in "1 statements", :regenerated "3 statements"}))
+    ["a" "b"] ["a"]         {:index 1, :checked-in-count 2, :regenerated-count 1}
+    ["a"]     ["a" "b" "c"] {:index 1, :checked-in-count 1, :regenerated-count 3}))
 
 (deftest unstable-values-masked-test
   (are [statement expected] (= expected (unstable-values-masked statement))

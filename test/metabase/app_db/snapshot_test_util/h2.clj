@@ -22,18 +22,17 @@
     ;; that does not exist yet succeeds, leaving behind a view with no columns that H2 never recompiles. Loading views
     ;; last makes the reference resolvable; loading them without `FORCE` makes anything still unresolvable fail
     ;; loudly instead of silently producing an empty view.
-    (let [stmts (into []
-                      (comp (map :script)
-                            (map str/trim)
-                            (remove str/blank?)
-                            (remove #(re-matches #"(?is)^(CREATE USER|SET|--).*" %))
-                            (map #(str/replace % #"(?i)^CREATE (MEMORY|CACHED) TABLE " "CREATE TABLE "))
-                            (map #(str/replace % #"(?i)^CREATE FORCE VIEW " "CREATE VIEW "))
-                            (map #(str/replace % #";\s*$" "")))
-                      (jdbc/query {:connection conn} ["SCRIPT"]))]
-      ;; relative order is kept inside each group: a view may read from an earlier view
-      (into (vec (remove dump-util/creates-view? stmts))
-            (filter dump-util/creates-view? stmts)))))
+    (let [stmts          (into []
+                               (comp (map :script)
+                                     (map str/trim)
+                                     (remove str/blank?)
+                                     (remove #(re-matches #"(?is)^(CREATE USER|SET|--).*" %))
+                                     (map #(str/replace % #"(?i)^CREATE (MEMORY|CACHED) TABLE " "CREATE TABLE "))
+                                     (map #(str/replace % #"(?i)^CREATE FORCE VIEW " "CREATE VIEW "))
+                                     (map #(str/replace % #";\s*$" "")))
+                               (jdbc/query {:connection conn} ["SCRIPT"]))
+          [others views] (dump-util/split-views stmts)]
+      (into (vec others) views))))
 
 (def dumper
   "Dumps an H2 app DB. Reads everything through the connection, so it ignores the connection details."
