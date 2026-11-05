@@ -296,7 +296,6 @@ const configs = [
         {
           allowed: [
             "underscore",
-            "lodash.debounce",
             "chalk",
             "node-fetch",
             "js-yaml",

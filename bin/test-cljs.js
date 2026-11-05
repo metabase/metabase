@@ -3,7 +3,7 @@
 const namespace = process.argv[2];
 
 const fs = require("fs");
-const debounce = require("lodash.debounce");
+const { debounce } = require("es-toolkit");
 const { spawn } = require("child_process");
 
 const debouncedHandler = debounce((event, filename) => {

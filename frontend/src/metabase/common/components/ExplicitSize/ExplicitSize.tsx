@@ -1,5 +1,5 @@
 import cx from "classnames";
-import debounce from "lodash.debounce";
+import { debounce } from "es-toolkit";
 import type {
   CSSProperties,
   ComponentType,
@@ -26,7 +26,7 @@ const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
   debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
   debounceLeading: (fn: () => void) =>
-    debounce(fn, WAIT_TIME, { leading: true }),
+    debounce(fn, WAIT_TIME, { edges: ["leading", "trailing"] }),
   none: (fn: () => void) => fn,
   layout: (fn: () => void) => () => flushSync(fn),
 };
