@@ -70,8 +70,8 @@
      (ws/clear-instance-workspace!))))
 
 (api.macros/defendpoint :post "/config" :- [:map {:closed true}
-                                           [:data      [:maybe ::ws/workspace-instance]]
-                                           [:can_write :boolean]]
+                                            [:data      [:maybe ::ws/workspace-instance]]
+                                            [:can_write :boolean]]
   "Apply `config`, the text of the config.yml a parent serves from `GET /api/ee/workspace-manager/:id/connection?format=yaml`,
   as a boot with that config.yml would: create or update its databases by name, then install its workspace and lock
   it, so `POST` and `DELETE /current` refuse to change it. A workspace a config.yml set may be replaced here; one

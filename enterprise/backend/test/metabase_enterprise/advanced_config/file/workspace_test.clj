@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -248,7 +249,8 @@
     (with-clean-workspace!
       (with-fake-warehouse!
         (let [database-name (mt/random-name)
-              email         (str (mt/random-name) "@example.com")]
+              ;; the User model stores emails lower-cased
+              email         (u/lower-case-en (str (mt/random-name) "@example.com"))]
           (try
             (let [response (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
                                                  {:config (str (config-yml database-name)
@@ -309,9 +311,9 @@
             (let [before (ws/instance-workspace)
                   yml    (-> (config-yml database-name)
                              (str/replace "  workspace:\n" (str "    - name: " other-name "\n"
-                                                                 "      engine: postgres\n"
-                                                                 "      details: {host: h, user: u, password: p2-" password "}\n"
-                                                                 "  workspace:\n"))
+                                                                "      engine: postgres\n"
+                                                                "      details: {host: h, user: u, password: p2-" password "}\n"
+                                                                "  workspace:\n"))
                              (str/replace (str "      " database-name ":\n") "      nope:\n"))]
               (is (re-find #"No database is named" (post yml)))
               (is (not (t2/exists? :model/Database :name other-name)))
