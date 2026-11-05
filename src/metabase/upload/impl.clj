@@ -35,6 +35,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.workspaces.core :as ws]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -482,12 +483,22 @@
 (defn- uploads-enabled? []
   (some? (:db_id (upload.settings/uploads-settings))))
 
+(defn- workspace-upload-error
+  "On a workspace sidecar every upload is refused: it creates or alters a table outside the workspace's scratch
+  namespaces."
+  []
+  (ex-info (tru "Uploads are not available on a workspace instance.")
+           {:status-code 400}))
+
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
   entry points. Returns nil otherwise."
   [db]
   (let [driver (driver.u/database->driver db)]
     (cond
+      (ws/workspace-mode?)
+      (workspace-upload-error)
+
       (not (uploads-enabled?))
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
@@ -503,7 +514,9 @@
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
-  (or (cond
+  (or (when (ws/workspace-mode?)
+        (workspace-upload-error))
+      (cond
         (not (:uploads_enabled db))
         (ex-info (tru "Uploads are not enabled.")
                  {:status-code 422})

@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as ws]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -262,6 +263,21 @@
   (assert table-id "Id cannot be nil")
   (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
+(defn- check-no-remapped-table!
+  "On a workspace sidecar, refuse a row action (create, update, delete, data editing) on a table the workspace remaps:
+  it would write the main table, which the workspace may not write, rather than its scratch copy. A database without
+  remappings is not checked; an action whose table can't be told is refused there."
+  [db scope arg-maps]
+  (when-let [remappings (ws/table-remappings (:id db))]
+    (let [table-ids (into #{} (keep #(or (:table-id %) (get-in % [:query :source-table]))) (cons scope arg-maps))
+          mp        (lib-be/application-database-metadata-provider (:id db))
+          remapped? (fn [table-id]
+                      (let [{:keys [schema], table-name :name} (lib.metadata/table mp table-id)]
+                        (contains? remappings {:schema schema, :table table-name})))]
+      (when (or (empty? table-ids) (some remapped? table-ids))
+        (throw (ex-info (tru "This instance is a workspace, and this action would write a table the workspace remaps. Write it with a transform instead.")
+                        {:status-code 400}))))))
+
 (mu/defn- check-permissions
   [policy   :- :keyword
    arg-maps :- [:sequential [:or
@@ -331,6 +347,8 @@
                                        :database-ids (map :id dbs)})))
           db        (first dbs)
           driver    (:engine db)]
+      (when db
+        (check-no-remapped-table! db scope arg-maps))
       ;; -- * Authorization* --
       ;; The action might not be database-centric (e.g., call a webhook)
       (when db

@@ -135,7 +135,8 @@
            settings
            users.schema
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3196,7 +3197,8 @@
            settings
            sync
            util
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
