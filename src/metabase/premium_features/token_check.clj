@@ -402,7 +402,7 @@
                           :on-close          (fn [_] (log/info "Token Check restored"))}))
 
 (defn initial-state
-  "A fresh token check state: an atom holding, before any refresh,
+  "A fresh token check state, which is an atom holding this map before any refresh:
 
     {:entry                 {:token-hash, :status, :status-hash, :fetched-at} or nil
      :last-failure          {:token-hash, :message} of the latest failed refresh, or nil
