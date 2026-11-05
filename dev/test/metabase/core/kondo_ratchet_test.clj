@@ -597,6 +597,36 @@
              reports only the symbols it changes: unused :a/z gets no line, here or for the test file")
         (is (=? {:discouraged-var-counts {:a/x 1}} (kondo-ratchet/read-ratchets)))))))
 
+(deftest ^:synchronized fix-seeds-an-alias-under-its-source-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts          {}
+                                                    :discouraged-var-counts {:b/y 1}
+                                                    :config-counts          {}
+                                                    :comment-exempt         #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
+        occurrences  [{:file "src/f.clj", :line 1, :linters [:discouraged-var]}
+                      {:file "src/g.clj", :line 1, :linters [:discouraged-var]}]
+        attribution  (assoc no-findings :actual {:discouraged-var {:a/x 2}})]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-symbols   (constantly '#{a/x b/y})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (with-out-str
+          (kondo-ratchet/fix! {:seed      ":discouraged-var/b/y"
+                               :attribute (constantly [attribution no-findings])
+                               :aliases   (constantly {:b/y :a/x})}))
+        (is (= {:a/x 2} (:discouraged-var-counts (kondo-ratchet/read-ratchets)))
+            "seeding the alias raises its source's budget, and the alias's own budget is dropped")))))
+
 (deftest ^:synchronized fix-refuses-colliding-symbols-test
   (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
                                "kondo-ratchet-test"
@@ -865,6 +895,22 @@
                             (#'kondo-ratchet/resolve-seed ":discouraged-var/"))))
     (testing "nil seeds nothing"
       (is (= {} (#'kondo-ratchet/resolve-seed nil))))))
+
+(deftest ^:parallel follow-aliases-test
+  (testing "a seeded key that counts under another seeds that one, once"
+    (is (= {:discouraged-var-counts [:a/x :c/z], :bulk #{:discouraged-var-counts}}
+           (#'kondo-ratchet/follow-aliases {:discouraged-var-counts [:a/x :b/y :c/z], :bulk #{:discouraged-var-counts}}
+                                           {:b/y :a/x}))))
+  (testing "other fields are left alone"
+    (is (= {:discouraged-namespace-counts [:b/y]}
+           (#'kondo-ratchet/follow-aliases {:discouraged-namespace-counts [:b/y]} {:b/y :a/x})))))
+
+(deftest ^:parallel unconfigured-budget-warnings-test
+  (is (= [(str "WARNING: r.edn budgets :discouraged-var symbols no longer configured in .clj-kondo/config.edn: :a/gone"
+               " -- `./bin/mage kondo-ratchets-shrink` drops them")]
+         (kondo-ratchet/unconfigured-budget-warnings "r.edn"
+                                                     {:discouraged-var-counts {:a/x 1, :a/gone 1}}
+                                                     {:discouraged-var #{:a/x}, :discouraged-namespace #{}}))))
 
 (deftest ^:parallel discouraged-count-keys-collision-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #":discouraged-var symbols a/x, metabase.a/x share the ratchet key :a/x"
