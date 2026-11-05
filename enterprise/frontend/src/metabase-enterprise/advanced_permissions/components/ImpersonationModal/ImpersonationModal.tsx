@@ -1,3 +1,4 @@
+/* eslint-disable metabase/no-literal-metabase-strings */
 import { type ReactNode, useCallback, useMemo } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -211,10 +212,8 @@ const ImpersonationModalView = ({
   const { url: permsDocsUrl } = useDocsUrl("permissions/data");
 
   const modalMessage = impersonatesUsers(database)
-    ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
-    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
+    ? t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
+    : t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   const description = (
     <Text lh="lg">
