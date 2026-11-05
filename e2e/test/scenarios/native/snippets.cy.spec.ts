@@ -225,6 +225,7 @@ describe("scenarios > native > snippets", () => {
     });
     H.createSnippet({ name: "id-filter", content: "id = {{product_id}}" });
     H.createSnippet({ name: "field-filter", content: "{{filter}}" });
+    H.createSnippet({ name: "table-source", content: "{{table}}" });
     H.createSnippet({
       name: "editable-filter",
       content: "category = {{filter}}",
@@ -281,6 +282,15 @@ describe("scenarios > native > snippets", () => {
     });
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(53);
+
+    cy.log("A snippet variable changed to a table");
+    H.NativeEditor.clear();
+    H.NativeEditor.type("select * from {{snippet: table-source}}");
+    cy.findByTestId("variable-type-select").click();
+    H.popover().findByText("Table").click();
+    H.popover().findByText("Products").click();
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(200);
 
     cy.log("An edit of a snippet replaces its variables in the query");
     H.NativeEditor.clear();
