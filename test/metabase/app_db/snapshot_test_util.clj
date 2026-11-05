@@ -268,6 +268,17 @@
   ;; with a key, custom migrations up to the boundary would have encrypted values the snapshot holds in plain text
   (not (encryption/default-encryption-enabled?)))
 
+(def ^:private changeset-index-cache (atom nil))
+
+(defn- changeset-index
+  "Map of changeset id to its position in the changelog, read through the first connection it is called with."
+  ;; Parsing the changelog costs about 150 ms, and migration tests ask once per test. The changelog files cannot change
+  ;; under a test run. In a REPL that adds a changeset, the new id is simply absent here, so a test starting at it
+  ;; replays from scratch rather than loading the snapshot.
+  [conn]
+  (or @changeset-index-cache
+      (reset! changeset-index-cache (zipmap (map first (changesets conn)) (range)))))
+
 (defn usable-for-start?
   "Whether the snapshot can stand in for replaying changesets up to (but not including) `start-id`.
   It cannot when `start-id` is at or before the snapshot boundary, since those changesets still need to run, or when
@@ -275,6 +286,6 @@
   [^java.sql.Connection conn db-type start-id]
   (and (matches-environment?)
        (loadable? conn db-type)
-       (let [idx (zipmap (map first (changesets conn)) (range))]
+       (let [idx (changeset-index conn)]
          (when-let [through (idx (through-changeset-id))]
            (boolean (some-> (idx start-id) (> through)))))))
