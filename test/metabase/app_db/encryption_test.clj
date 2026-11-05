@@ -1,5 +1,6 @@
 (ns metabase.app-db.encryption-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
@@ -67,3 +68,20 @@
         (let [before (recipient-details)]
           (mdb/encrypt-plaintext-columns!)
           (is (= before (recipient-details))))))))
+
+(defn- encrypted-transform-columns
+  "Every `[table column]` named by a `mi/transform-encrypted-*` call in the backend sources. Each call names its column
+  as a \"table.column\" string, for its decrypt error messages."
+  []
+  (set (for [dir   ["src" "enterprise/backend/src"]
+             ^java.io.File file (file-seq (io/file dir))
+             :when (.endsWith (.getName file) ".clj")
+             [_ table column] (re-seq #"transform-encrypted-[a-z-]+\s+\"([a-z_]+)\.([a-z_]+)\"" (slurp file))]
+         [(keyword table) (keyword column)])))
+
+(deftest every-encrypted-transform-column-is-maintained-test
+  (testing "every column encrypted by a model transform is in the registry that startup encryption, key rotation and
+            decrypt-db walk; one that is not would be rejected on read after the key changes"
+    (let [columns (encrypted-transform-columns)]
+      (is (contains? columns [:metabase_database :details]) "the source scan finds the transforms")
+      (is (= #{} (into #{} (remove (set @#'mdb.encryption/encrypted-string-columns)) columns))))))

@@ -49,7 +49,9 @@
    [:action :public_uuid]
    [:document :public_uuid]
    [:notification_recipient :details]
-   [:pulse_channel :details]])
+   [:pulse_channel :details]
+   [:workspace_database :database_details]
+   [:workspace_provisioning_connection :details]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike

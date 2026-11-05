@@ -414,18 +414,16 @@
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
-  (cond-> #{:model/Setting
-            :model/ImplicitAction
-            :model/FieldUserSettings
-            :model/TableUserSettings
-            :model/QueryAction
-            :model/MetabotConversation
-            :model/ModelIndexValue
-            :model/OsiAiContext
-            ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
-            :model/TransformRunCancelation}
-    ;; `workspace_provisioning_connection` uses its `database_id` FK as its primary key; it is copied only with EE
-    config/ee-available? (conj :model/WorkspaceProvisioningConnection)))
+  #{:model/Setting
+    :model/ImplicitAction
+    :model/FieldUserSettings
+    :model/TableUserSettings
+    :model/QueryAction
+    :model/MetabotConversation
+    :model/ModelIndexValue
+    :model/OsiAiContext
+    ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
+    :model/TransformRunCancelation})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

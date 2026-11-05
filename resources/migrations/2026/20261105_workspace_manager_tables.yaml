@@ -315,11 +315,18 @@ databaseChangeLog:
             remarks: The warehouse login that creates and drops the workspace users and scratch namespaces of a database
             columns:
               - column:
-                  name: database_id
+                  name: id
                   type: int
-                  remarks: The database this login provisions workspaces in
+                  autoIncrement: true
+                  remarks: Unique ID
                   constraints:
                     primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The database this login provisions workspaces in; one login per database
+                  constraints:
                     nullable: false
               - column:
                   name: details
@@ -340,6 +347,18 @@ databaseChangeLog:
                   remarks: The user who last saved the details; null once that user is deleted
                   constraints:
                     nullable: true
+
+  # Before the foreign keys on database_id, so MySQL uses this index for them, and before the foreign key from
+  # workspace_database, which references database_id.
+  - changeSet:
+      id: hdexq0
+      author: escherize
+      comment: Add a unique constraint on workspace_provisioning_connection.database_id
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_provisioning_connection
+            columnNames: database_id
+            constraintName: idx_uq_workspace_provisioning_connection_database_id
 
   - changeSet:
       id: b1k0bp
