@@ -173,14 +173,14 @@ export const KeyShapeDetails = {
   ),
 };
 
-export const ScdType3PreviousValues = {
+export const PreviousValueColumns = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage initialRoute={tableRoute(DIM_PRODUCT, "details")} />
   ),
 };
 
-export const ScdType4CurrentTable = {
+export const OldVersionsOfAnotherTable = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
@@ -189,14 +189,14 @@ export const ScdType4CurrentTable = {
   ),
 };
 
-export const ScdType6CurrentValues = {
+export const TodaysValuesOnEveryVersion = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "details")} />
   ),
 };
 
-export const ScdType7FactKey = {
+export const FactsLinkToTheEntity = {
   beforeEach: seedStorage({
     tables: { [`${WAREHOUSE_ID}:${DIM_CUSTOMER_ID}`]: { scdType: 7 } },
     grainByField: {},

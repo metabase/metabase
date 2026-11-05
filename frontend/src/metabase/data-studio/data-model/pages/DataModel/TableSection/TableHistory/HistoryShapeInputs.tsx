@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,12 +7,16 @@ import {
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
 import {
-  CURRENT_TABLE_SCD_TYPES,
   type FactKeyField,
+  type HistoryShape,
   type PreviousValuePair,
-  type ScdType,
-  getScdTypeLabel,
-  isScdType,
+  type ShapeOption,
+  type TableStructure,
+  getChangeShape,
+  getChangeShapeOptions,
+  getHistoryShapeOptions,
+  getHistorySignalLabel,
+  getScdTypeForChangeShape,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -24,38 +29,116 @@ import type {
 } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
-import { InferredIcon } from "../InferenceReview";
+import { InferredIcon, ReviewValue } from "../InferenceReview";
 
-import { useScdDetails } from "./use-scd-details";
+import { type ScdDetails, useScdDetails } from "./use-scd-details";
 
-export function ScdTypeSelect({
-  types,
+function ShapeSelect<T extends string>({
+  label,
+  options,
   value,
+  disabledValues = [],
   disabled,
+  isOpenOnMount = false,
   onChange,
 }: {
-  types: readonly ScdType[];
-  value: ScdType | null;
+  label: string;
+  options: ShapeOption<T>[];
+  value: T;
+  disabledValues?: T[];
   disabled: boolean;
-  onChange: (scdType: ScdType) => void;
+  isOpenOnMount?: boolean;
+  onChange: (value: T) => void;
 }) {
   return (
     <Select
-      aria-label={t`SCD type`}
+      aria-label={label}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      data={types.map((type) => ({
-        value: String(type),
-        label: getScdTypeLabel(type),
+      data={options.map((option) => ({
+        value: option.value,
+        label: option.label,
+        disabled: disabledValues.includes(option.value),
       }))}
-      value={value != null ? String(value) : null}
+      value={value}
       allowDeselect={false}
       disabled={disabled}
-      onChange={(value) => {
-        const scdType = Number(value);
-        if (isScdType(scdType)) {
-          onChange(scdType);
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
+      renderOption={({ option }) => (
+        <Stack gap={2} py={2}>
+          <Text c="inherit">{option.label}</Text>
+          <Text size="sm" c="text-secondary">
+            {options.find(({ value }) => value === option.value)?.description}
+          </Text>
+        </Stack>
+      )}
+      onChange={(selected) => {
+        const option = options.find(({ value }) => value === selected);
+        if (option) {
+          onChange(option.value);
         }
       }}
+    />
+  );
+}
+
+export function getHistoryShapeInference(
+  structure: Pick<TableStructure, "scdTypeInference">,
+  { resolution }: Pick<ScdDetails, "resolution">,
+): string | null {
+  if (resolution.isOverridden) {
+    return null;
+  }
+  const { rule, signal } = structure.scdTypeInference;
+  return resolution.signal === signal
+    ? t`Inferred from ${getHistorySignalLabel(rule)}: ${signal}`
+    : t`Inferred: ${resolution.signal}`;
+}
+
+export function HistoryShapeValue({
+  shape,
+  inference,
+  isUnderReview,
+  hasDateRange,
+  disabled,
+  onConfirm,
+  onChange,
+}: {
+  shape: HistoryShape;
+  inference: string | null;
+  isUnderReview: boolean;
+  hasDateRange: boolean;
+  disabled: boolean;
+  onConfirm: () => void;
+  onChange: (shape: HistoryShape) => void;
+}) {
+  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
+  const options = getHistoryShapeOptions();
+
+  if (isUnderReview) {
+    return (
+      <ReviewValue
+        value={options.find(({ value }) => value === shape)?.label ?? ""}
+        inference={inference}
+        onConfirm={onConfirm}
+        onChange={() => {
+          setIsSelectOpenOnMount(true);
+          onConfirm();
+        }}
+        data-testid="table-history-shape-review"
+      />
+    );
+  }
+
+  return (
+    <ShapeSelect
+      label={t`History`}
+      options={options}
+      value={shape}
+      disabledValues={hasDateRange ? [] : ["versions-with-dates"]}
+      disabled={disabled}
+      isOpenOnMount={isSelectOpenOnMount}
+      onChange={onChange}
     />
   );
 }
@@ -164,11 +247,12 @@ export function PreviousValuesSection({
   if (!isShown) {
     return null;
   }
+  const shape = getChangeShape(resolution.scdType);
   return (
     <SidebarSection title={t`History`}>
       <DetailsTable>
         <DetailsRow
-          label={t`SCD type`}
+          label={t`Changes`}
           fillValue
           labelAside={
             !resolution.isOverridden && (
@@ -176,15 +260,18 @@ export function PreviousValuesSection({
             )
           }
           value={
-            <ScdTypeSelect
-              types={CURRENT_TABLE_SCD_TYPES}
-              value={resolution.scdType}
+            <ShapeSelect
+              label={t`Changes`}
+              options={getChangeShapeOptions()}
+              value={shape}
               disabled={disabled}
-              onChange={(scdType) => setScdType(table, scdType)}
+              onChange={(shape) =>
+                setScdType(table, getScdTypeForChangeShape(shape))
+              }
             />
           }
         />
-        {resolution.scdType === 3 && previousValuePairs.length > 0 && (
+        {shape === "previous-value" && previousValuePairs.length > 0 && (
           <DetailsRow
             label={t`Previous values`}
             value={<PreviousValueList pairs={previousValuePairs} />}

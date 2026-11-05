@@ -10,8 +10,109 @@ import type {
 
 import type { ScdType, ScdTypeInference } from "./history-source";
 
-export const HISTORY_TABLE_SCD_TYPES = [2, 4, 6, 7] as const;
-export const CURRENT_TABLE_SCD_TYPES = [1, 3] as const;
+export const HISTORY_SHAPES = [
+  "versions-with-dates",
+  "latest-row-per-key",
+  "current-table",
+  "current-values",
+  "fact-key",
+] as const;
+
+export type HistoryShape = (typeof HISTORY_SHAPES)[number];
+
+export const CHANGE_SHAPES = ["overwritten", "previous-value"] as const;
+
+export type ChangeShape = (typeof CHANGE_SHAPES)[number];
+
+export type ShapeOption<T extends string> = {
+  value: T;
+  label: string;
+  description: string;
+};
+
+const HISTORY_SHAPE_SCD_TYPES: Record<HistoryShape, ScdType> = {
+  "versions-with-dates": 2,
+  "latest-row-per-key": 2,
+  "current-table": 4,
+  "current-values": 6,
+  "fact-key": 7,
+};
+
+const CHANGE_SHAPE_SCD_TYPES: Record<ChangeShape, ScdType> = {
+  overwritten: 1,
+  "previous-value": 3,
+};
+
+export const getScdTypeForHistoryShape = (shape: HistoryShape) =>
+  HISTORY_SHAPE_SCD_TYPES[shape];
+
+export const getScdTypeForChangeShape = (shape: ChangeShape) =>
+  CHANGE_SHAPE_SCD_TYPES[shape];
+
+export function getHistoryShape(
+  scdType: ScdType | null,
+  hasValidTo: boolean,
+): HistoryShape {
+  switch (scdType) {
+    case 4:
+      return "current-table";
+    case 6:
+      return "current-values";
+    case 7:
+      return "fact-key";
+    default:
+      return hasValidTo ? "versions-with-dates" : "latest-row-per-key";
+  }
+}
+
+export function getChangeShape(scdType: ScdType | null): ChangeShape {
+  return scdType === 3 ? "previous-value" : "overwritten";
+}
+
+export function getHistoryShapeOptions(): ShapeOption<HistoryShape>[] {
+  return [
+    {
+      value: "versions-with-dates",
+      label: t`A row per change, with start and end dates`,
+      description: t`Each row says when it started and stopped being true.`,
+    },
+    {
+      value: "latest-row-per-key",
+      label: t`A row per change, the newest row is current`,
+      description: t`No end date. The newest row for each key is the current one.`,
+    },
+    {
+      value: "current-table",
+      label: t`Old versions of another table`,
+      description: t`The current rows live in another table. This one keeps what they used to be.`,
+    },
+    {
+      value: "current-values",
+      label: t`A row per change, plus today's values`,
+      description: t`Every row also has columns with the current value, so you can group by either.`,
+    },
+    {
+      value: "fact-key",
+      label: t`A row per change, facts link to the entity`,
+      description: t`Fact tables keep the entity's key, so they can join to today's version or the one at the time.`,
+    },
+  ];
+}
+
+export function getChangeShapeOptions(): ShapeOption<ChangeShape>[] {
+  return [
+    {
+      value: "overwritten",
+      label: t`Overwritten, no history`,
+      description: t`A change replaces the old value.`,
+    },
+    {
+      value: "previous-value",
+      label: t`The previous value is kept in a column`,
+      description: t`One step back: each changed column has a column with its value before the last change.`,
+    },
+  ];
+}
 
 export type ScdDetailsOverrides = {
   currentTableId?: ConcreteTableId | null;

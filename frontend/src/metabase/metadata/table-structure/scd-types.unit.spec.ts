@@ -2,6 +2,11 @@ import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import type { ScdTypeInference } from "./history-source";
 import {
+  HISTORY_SHAPES,
+  getChangeShape,
+  getHistoryShape,
+  getScdTypeForChangeShape,
+  getScdTypeForHistoryShape,
   inferCurrentTable,
   inferCurrentValueFields,
   inferFactKeyFields,
@@ -199,5 +204,34 @@ describe("resolveCurrentTableScdType", () => {
 
   it("is type 1 otherwise", () => {
     expect(resolveCurrentTableScdType(source, []).scdType).toBe(1);
+  });
+});
+
+describe("getHistoryShape", () => {
+  it("tells the two plain history tables apart by their valid to", () => {
+    expect(getHistoryShape(2, true)).toBe("versions-with-dates");
+    expect(getHistoryShape(2, false)).toBe("latest-row-per-key");
+  });
+
+  it("round-trips every shape through its stored type", () => {
+    HISTORY_SHAPES.forEach((shape) => {
+      expect(
+        getHistoryShape(
+          getScdTypeForHistoryShape(shape),
+          shape === "versions-with-dates",
+        ),
+      ).toBe(shape);
+    });
+  });
+});
+
+describe("getChangeShape", () => {
+  it("round-trips through the stored type", () => {
+    expect(getChangeShape(getScdTypeForChangeShape("previous-value"))).toBe(
+      "previous-value",
+    );
+    expect(getChangeShape(getScdTypeForChangeShape("overwritten"))).toBe(
+      "overwritten",
+    );
   });
 });

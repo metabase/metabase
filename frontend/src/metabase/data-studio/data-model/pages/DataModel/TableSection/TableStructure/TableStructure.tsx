@@ -11,12 +11,13 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
-  HISTORY_TABLE_SCD_TYPES,
   type HistoryBinding,
   type ScdDetailsOverrides,
   type TableStructure as TableStructureValue,
+  getHistoryShape,
   getPeriodGranularityOptions,
   getRowIdentityLabel,
+  getScdTypeForHistoryShape,
   getTableHiddenReason,
   getTableRoleLabel,
   getTableRoleOptions,
@@ -58,11 +59,11 @@ import {
   CurrentValueFieldsInput,
   FactKeyList,
   HistoryChecksStatus,
-  HistoryKindInput,
+  HistoryShapeValue,
   HistoryVersionsSummary,
   PreviousValuesSection,
-  ScdTypeSelect,
   SharedPointerNote,
+  getHistoryShapeInference,
   getValidToForDates,
   useScdDetails,
 } from "../TableHistory";
@@ -617,6 +618,15 @@ function HistoryBindingSection({
 }) {
   const binding = structure.history;
   const scd = useScdDetails(table);
+  const shape = getHistoryShape(
+    scd.resolution.scdType,
+    binding.validToFieldId != null,
+  );
+  const shapeInference = getHistoryShapeInference(structure, scd);
+  const isShapeUnderReview =
+    !disabled &&
+    !structure.isScdTypeOverridden &&
+    structure.scdTypeInference.confidence === "low";
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
   const hasCurrentFlag = binding.currentFlagFieldId != null;
 
@@ -625,43 +635,37 @@ function HistoryBindingSection({
       <DetailsTable>
         <DetailsRow
           label={t`History`}
+          fillValue
+          labelAside={
+            isShapeUnderReview ? (
+              <NeedsReviewBadge />
+            ) : (
+              <InferredIcon description={shapeInference} />
+            )
+          }
           value={
-            <HistoryKindInput
-              structure={structure}
-              fields={fields}
+            <HistoryShapeValue
+              shape={shape}
+              inference={shapeInference}
+              isUnderReview={isShapeUnderReview}
+              hasDateRange={getValidToForDates(fields, binding) != null}
               disabled={disabled}
-              onConfirmGuess={() => onScdTypeChange(scd.resolution.scdType)}
-              onChange={(kind) => {
-                onChange({
-                  validToFieldId:
-                    kind === "latest-row-per-key"
-                      ? null
-                      : getValidToForDates(fields, binding),
-                });
+              onConfirm={() => onScdTypeChange(scd.resolution.scdType)}
+              onChange={(shape) => {
+                onScdTypeChange(getScdTypeForHistoryShape(shape));
+                if (shape === "latest-row-per-key") {
+                  onChange({ validToFieldId: null });
+                }
+                if (shape === "versions-with-dates") {
+                  onChange({
+                    validToFieldId: getValidToForDates(fields, binding),
+                  });
+                }
               }}
             />
           }
         />
-        <DetailsRow
-          label={t`SCD type`}
-          fillValue
-          labelAside={
-            !scd.resolution.isOverridden && (
-              <InferredIcon
-                description={t`Inferred: ${scd.resolution.signal}`}
-              />
-            )
-          }
-          value={
-            <ScdTypeSelect
-              types={HISTORY_TABLE_SCD_TYPES}
-              value={scd.resolution.scdType}
-              disabled={disabled}
-              onChange={onScdTypeChange}
-            />
-          }
-        />
-        {scd.resolution.scdType === 4 && (
+        {shape === "current-table" && (
           <DetailsRow
             label={t`Current table`}
             fillValue
@@ -677,7 +681,7 @@ function HistoryBindingSection({
             }
           />
         )}
-        {scd.resolution.scdType === 6 && (
+        {shape === "current-values" && (
           <DetailsRow
             label={t`Current values`}
             fillValue
@@ -693,7 +697,7 @@ function HistoryBindingSection({
             }
           />
         )}
-        {scd.resolution.scdType === 7 && (
+        {shape === "fact-key" && (
           <DetailsRow
             label={t`Facts join on`}
             value={<FactKeyList factKeyFields={scd.factKeyFields} />}

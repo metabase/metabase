@@ -3,20 +3,14 @@ import _ from "underscore";
 
 import {
   type HistoryBinding,
-  type HistoryKind,
   type TableStructure,
-  getHistoryKind,
-  getHistoryKindOptions,
-  getHistorySignalLabel,
   inferHistoryBinding,
   useHistoryReviewStatus,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Button, Group, Loader, Radio, Stack, Text } from "metabase/ui";
+import { Loader, Stack, Text } from "metabase/ui";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
-
-import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
 import { countOf, getEntityNoun } from "./history-labels";
 
@@ -46,10 +40,6 @@ const findField = (fields: Field[], fieldId: FieldId | null) =>
 const displayNameOf = (fields: Field[], fieldId: FieldId | null) =>
   findField(fields, fieldId)?.display_name ?? t`a column`;
 
-export function getTableHistoryKind(structure: TableStructure) {
-  return getHistoryKind(structure.history.validToFieldId != null);
-}
-
 export function getValidToForDates(
   fields: Field[],
   binding: Pick<HistoryBinding, "validFromFieldId">,
@@ -63,80 +53,6 @@ export function getValidToForDates(
       isDate(field) && getRawTableFieldId(field) !== binding.validFromFieldId,
   );
   return otherDateField ? getRawTableFieldId(otherDateField) : null;
-}
-
-function getInferenceDescription({ scdTypeInference }: TableStructure) {
-  return t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`;
-}
-
-export function HistoryKindInput({
-  structure,
-  fields,
-  disabled,
-  onChange,
-  onConfirmGuess,
-}: {
-  structure: TableStructure;
-  fields: Field[];
-  disabled: boolean;
-  onChange: (kind: HistoryKind) => void;
-  onConfirmGuess: () => void;
-}) {
-  const { scdTypeInference, isScdTypeOverridden } = structure;
-  const isWeakGuess =
-    !isScdTypeOverridden && scdTypeInference.confidence === "low";
-  const selectedKind = getTableHistoryKind(structure);
-  const hasDateRange = getValidToForDates(fields, structure.history) != null;
-
-  return (
-    <Stack gap="sm" py="xs">
-      {isWeakGuess && (
-        <Group gap="xs">
-          <NeedsReviewBadge />
-          {!disabled && (
-            <Button size="compact-sm" variant="filled" onClick={onConfirmGuess}>
-              {t`Confirm`}
-            </Button>
-          )}
-        </Group>
-      )}
-      <Radio.Group
-        value={selectedKind}
-        onChange={(value) => {
-          const option = getHistoryKindOptions().find(
-            (option) => option.value === value,
-          );
-          if (option) {
-            onChange(option.value);
-          }
-        }}
-        aria-label={t`History`}
-      >
-        <Stack gap="sm">
-          {getHistoryKindOptions().map((option) => (
-            <Radio
-              key={option.value}
-              value={option.value}
-              label={
-                <Group gap="xs" wrap="nowrap">
-                  {option.label}
-                  {option.value === selectedKind && !isScdTypeOverridden && (
-                    <InferredIcon
-                      description={getInferenceDescription(structure)}
-                    />
-                  )}
-                </Group>
-              }
-              disabled={
-                disabled ||
-                (option.value === "versions-with-dates" && !hasDateRange)
-              }
-            />
-          ))}
-        </Stack>
-      </Radio.Group>
-    </Stack>
-  );
 }
 
 export function getSharedPointers(structure: TableStructure) {

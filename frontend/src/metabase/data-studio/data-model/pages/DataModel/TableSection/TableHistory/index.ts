@@ -1,8 +1,6 @@
 export {
-  HistoryKindInput,
   HistoryVersionsSummary,
   SharedPointerNote,
-  getTableHistoryKind,
   getValidToForDates,
 } from "./HistoryBindingRows";
 export { HistoryChecksStatus } from "./HistoryChecksStatus";
@@ -11,7 +9,8 @@ export {
   CurrentTableSelect,
   CurrentValueFieldsInput,
   FactKeyList,
+  HistoryShapeValue,
   PreviousValuesSection,
-  ScdTypeSelect,
-} from "./ScdTypeInputs";
+  getHistoryShapeInference,
+} from "./HistoryShapeInputs";
 export { type ScdDetails, useScdDetails } from "./use-scd-details";
