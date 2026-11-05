@@ -198,6 +198,65 @@
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
 
+(deftest call-llm-none-tool-choice-test
+  (llm.tu/with-default-connections
+    (testing "every adapter declares the tools and tells the provider that the model may call none of them"
+      (let [captured (atom nil)]
+        (mt/with-premium-features #{:metabase-ai-managed}
+          ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+          (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                     (when (:body opts)
+                                                       (reset! captured (json/decode+kw (:body opts))))
+                                                     (throw (ex-info "stop" {::skip true :api-error true})))]
+            (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.example"]
+              (doseq [[model expected] [["anthropic/claude-haiku-5-5"           {:type "none"}]
+                                        ["anthropic/claude-opus-5-5"            {:type "none"}]
+                                        ["metabase/anthropic/claude-sonnet-4-6" {:type "none"}]
+                                        ["azure/anthropic/claude-deployment"    {:type "none"}]
+                                        ["bedrock/anthropic.claude-haiku-4-5"   {:type "none"}]
+                                        ["deepseek/deepseek-flash"              {:type "none"}]
+                                        ["google/anthropic/claude-haiku-4-5"    {:type "none"}]
+                                        ["google/google/gemini-3.5-flash"       "NONE"]
+                                        ["openai/test-model"                    "none"]
+                                        ["azure/openai/gpt-4.1-mini"            "none"]
+                                        ["openrouter/test-model"                "none"]
+                                        ["mistral/mistral-medium-3-5"           "none"]
+                                        ["moonshot/kimi-k3"                     "none"]
+                                        ["xai/grok-4.7"                         "none"]
+                                        ["zai/glm-5.2"                          "none"]]]
+                (testing model
+                  (reset! captured nil)
+                  (try
+                    (run! identity (self/call-llm model
+                                                  nil
+                                                  [{:role :user :content "hi"}]
+                                                  {"get-time" (get test-util/TOOLS "get-time")}
+                                                  {:tag "agent"}
+                                                  {:tool-choice "none"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (seq (or (:tools @captured) (:functionDeclarations (first (:tools @captured))))))
+                  (is (= expected (or (:tool_choice @captured)
+                                      (get-in @captured [:toolConfig :functionCallingConfig :mode])))))))))))
+    (testing "a call that a provider returns anyway runs no tool"
+      (let [ran? (atom false)
+            tool (assoc (get test-util/TOOLS "get-time") :fn (fn [_] (reset! ran? true) "12:00"))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (test-util/mock-llm-response
+                                                             [{:type      :tool-input
+                                                               :id        "c1"
+                                                               :function  "get-time"
+                                                               :arguments {:tz "UTC"}}]))]
+          (let [parts (into [] (self/call-llm "openrouter/test-model"
+                                              nil
+                                              [{:role :user :content "hi"}]
+                                              {"get-time" tool}
+                                              {:tag "agent"}
+                                              {:tool-choice "none"}))]
+            (is (some #(= :unknown-tool (get-in % [:result :error :code])) parts))
+            (is (false? @ran?))))))))
+
 (deftest call-llm-fast-mode-test
   (llm.tu/with-default-connections
     (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"

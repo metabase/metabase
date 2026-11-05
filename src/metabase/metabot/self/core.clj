@@ -240,7 +240,7 @@
     :system           - System prompt string
     :input            - Sequence of AISDK parts and user messages
     :tools            - Sequence of tool definition maps
-    :tool_choice      - \"auto\" or \"required\"
+    :tool_choice      - \"auto\", \"required\" or \"none\"
     :temperature      - Sampling temperature
     :max-tokens       - Maximum tokens in the response
     :schema           - JSON Schema map for structured output; each provider forces a
@@ -267,7 +267,7 @@
    [:system           {:optional true} [:maybe :string]]
    [:input            {:optional true} [:sequential AISDKPart]]
    [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required" "none"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} [:maybe JSONSchemaNode]]
