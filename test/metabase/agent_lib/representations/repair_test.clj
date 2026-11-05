@@ -1535,7 +1535,7 @@
                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
                               "joins"        [join]}]}
           output (repair/repair trivial-mp input)]
-      (is (= [field] (get-in output ["stages" 0 "joins" 0 "fields"])))))
+      (is (= [(assoc-in field [1 "join-alias"] "P")] (get-in output ["stages" 0 "joins" 0 "fields"])))))
   (testing "join `fields:` enum value (\"all\" / \"none\") is left alone"
     (doseq [enum-value ["all" "none"]]
       (let [stage {"lib/type"     "mbql.stage/mbql"
@@ -4175,18 +4175,26 @@
                               "In a join with no alias in stage 0: No column named \"nope\""))))))
 
 (deftest ^:parallel join-fields-ref-without-alias-test
-  (let [join-fields (fn [previous-stage]
-                      (get-in (repair* (query previous-stage
-                                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
-                                                                      "fields" [["field" {} "min"]])]})))
-                              ["stages" 1 "joins" 0 "fields"]))]
+  (let [fields-query (fn [previous-stage fields]
+                       (query previous-stage
+                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
+                                                      "fields" fields)]})))
+        join-fields  (fn [previous-stage fields]
+                       (get-in (repair* (fields-query previous-stage fields)) ["stages" 1 "joins" 0 "fields"]))]
     (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
       (is (= [["field" {"join-alias" "First", "base-type" "type/Date", "effective-type" "type/Date"} "min"]]
-             (join-fields min-total-by-user-stage))))
+             (join-fields min-total-by-user-stage [["field" {} "min"]]))))
     (testing "the previous stage not having the column doesn't matter"
       (is (= "type/Date"
              (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
-                                                           "breakout"    [(orders-col "USER_ID")]})))))))))
+                                                           "breakout"    [(orders-col "USER_ID")]})
+                                            [["field" {} "min"]]))))))
+    (testing "a path ref in a join's fields gets the join's alias too"
+      (is (= [(assoc-in (orders-col "USER_ID") [1 "join-alias"] "First")]
+             (join-fields min-total-by-user-stage [(orders-col "USER_ID")]))))
+    (testing "a path ref there to a column the grouped join doesn't return is reported"
+      (is (= [[1 "First" ["ORDERS.TOTAL"]]]
+             (join-problems (fields-query min-total-by-user-stage [(orders-col "TOTAL")])))))))
 
 (deftest ^:parallel alias-less-join-fields-left-for-validation-test
   (let [fields-of (fn [column]
@@ -4263,13 +4271,27 @@
       (is (= out (repair* (assoc-in q ["stages" 2 "filters" 0 2 2] "\"min\"")))))
     (is (= out (repair* out)))))
 
+(deftest ^:parallel previous-stage-join-alias-deduplicated-loose-name-test
+  (let [q   (query min-total-by-user-stage
+                   (stage {"joins" [(assoc (join "Prev" [first-orders-stage] :lhs user-id-by-name) "fields" "all")]})
+                   (stage {"filters" [["not-null" {} (join-ref "Prev" "Min")]]}))
+        out (repair* q)]
+    (testing "a loosely spelled ref to a deduplicated join column matches the name after the join prefix"
+      (is (=? (typed (join-ref "Prev" "min") "type/Date") (get-in out ["stages" 2 "filters" 0 2]))))
+    (is (= out (repair* out)))))
+
 (deftest ^:parallel previous-stage-join-alias-prefixed-name-precedence-test
   (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])
         q      (query min-total-by-user-stage
                       (stage {"joins" [(assoc (join "Prev" [joined] :lhs user-id-by-name) "fields" "all")]})
                       (stage {"filters" [["not-null" {} (join-ref "Prev" "min_2")]]}))]
     (testing "the joined min_2 is a Float, even though the joined Date min is deduplicated to min_2"
-      (is (= "type/Float" (base-type (get-in (repair* q) ["stages" 2 "filters" 0 2])))))))
+      (is (= "type/Float" (base-type (get-in (repair* q) ["stages" 2 "filters" 0 2])))))
+    (testing "a loose spelling of min_2 also finds the Float"
+      (doseq [column-name ["Min_2" "MIN-2"]
+              :let        [loose (assoc-in q ["stages" 2 "filters" 0 2 2] column-name)]]
+        (is (=? (typed (join-ref "Prev" "min_2") "type/Float")
+                (get-in (repair* loose) ["stages" 2 "filters" 0 2])))))))
 
 (deftest ^:parallel previous-stage-join-alias-display-name-collision-test
   (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])]
@@ -4332,6 +4354,67 @@
                               (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
                                                     "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
 
+(def ^:private people ["Sample" "PUBLIC" "PEOPLE"])
+
+(def ^:private people-id (conj people "ID"))
+
+(def ^:private plain-join (join "Plain" [(orders-stage {})]))
+
+(defn- plain-filtering [target]
+  (query (orders-stage {"joins"   [plain-join]
+                        "filters" [["not-null" {} (join-ref "Plain" target)]]})))
+
+(defn- advice-flags
+  "The flags set on each problem in the join-alias error `q`'s repair raises, which pick the advice in its message."
+  [q]
+  (mapv #(set (filter % [:named? :plain? :other-table? :other-table-in-fields?])) (:problems (repair-error q))))
+
+(defn- plain-join-fields [target]
+  (query (orders-stage {"joins" [(assoc plain-join "fields" [["field" {} target]])]})))
+
+(deftest ^:parallel plain-table-join-other-table-path-ref-test
+  (testing "a path ref through a plain table join to another table's column of the same name raises"
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-filtering people-id)))))
+  (testing "a path ref there in the join's own fields raises too"
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-join-fields people-id)))))
+  (testing "a path ref to the joined table's own column is accepted"
+    (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))
+  (testing "a path ref to a column of a join nested in the joined stage is accepted"
+    (let [inner (assoc (join "People" [(stage {"source-table" people})])
+                       "conditions" [["=" {} (orders-col "USER_ID") (join-ref "People" people-id)]]
+                       "fields"     "all")
+          outer (join "Outer" [(orders-stage {"joins" [inner]})])]
+      (is (nil? (repair-error (query (orders-stage {"joins"   [outer]
+                                                    "filters" [["not-null" {} (join-ref "Outer" people-id)]]}))))))))
+
+(deftest ^:parallel join-alias-field-advice-test
+  (let [message (comp :message repair-error)]
+    (testing "a ref to another table through a plain table join is told how to reach that table, and nothing else"
+      (let [q (plain-filtering people-id)
+            m (message q)]
+        (is (= [#{:plain? :other-table?}] (advice-flags q)))
+        (is (str/includes? m "drop `join-alias`"))
+        (is (str/includes? m "set both `source-field`"))
+        (is (not-any? #(str/includes? m %) ["display label" "grouped join" "add a join"]))))
+    (testing "a ref to another table in a plain table join's own fields is told to join that table"
+      (let [q (plain-join-fields people-id)
+            m (message q)]
+        (is (= [#{:plain? :other-table-in-fields?}] (advice-flags q)))
+        (is (str/includes? m "add a join on that table"))
+        (is (not-any? #(str/includes? m %) ["drop `join-alias`" "display label" "grouped join"]))))
+    (testing "a bad name through a plain table join gets only the advice about names"
+      (let [q (plain-filtering "nope")
+            m (message q)]
+        (is (= [#{:named? :plain?}] (advice-flags q)))
+        (is (str/includes? m "display label"))
+        (is (not-any? #(str/includes? m %) ["grouped join" "source-field"]))))
+    (testing "problems in a grouped and a plain table join get the advice for each"
+      (let [q (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) plain-join]
+                                    "filters" [["not-null" {} (join-ref "First" "nope")]
+                                               ["not-null" {} (join-ref "Plain" people-id)]]}))]
+        (is (= [#{:named?} #{:plain? :other-table?}] (advice-flags q)))
+        (is (every? #(str/includes? (message q) %) ["display label" "grouped join" "set both `source-field`"]))))))
+
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
     (is (= once (repair* once)))))
@@ -4348,7 +4431,9 @@
                :error        :unresolved-join-alias-field
                :problems     [{:stage 0 :join-alias "First" :clauses [total-ref] :columns ["TOTAL"] :available ["USER_ID" "min"]}]}
               e))
-      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: \"USER_ID\", \"min\"\)" (:message e)))))
+      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: \"USER_ID\", \"min\"\)" (:message e)))
+      (is (str/includes? (:message e) "a grouped join returns just its breakouts and aggregations"))
+      (is (not (str/includes? (:message e) "source-field-join-alias")))))
   (testing "every bad ref is reported in one error, across refs, joins, and stages"
     (is (= [[0 "First" ["nope" "ORDERS.TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
            (join-problems
@@ -4448,3 +4533,184 @@
                    (lib/filter orders-query (lib/= bucketed "2025-01-01")))
                   nil
                   (catch clojure.lang.ExceptionInfo e (ex-message e))))))))
+
+;;; ============================================================
+;;; Editor gate - the cast hint for text columns used as numbers (BOT-1482)
+;;; ============================================================
+
+(deftest ^:parallel numerically-used-field-refs-test
+  (let [text-field [:field {} "user_high"]
+        used       #(#'repair/numerically-used-field-refs %)]
+    (testing "a field is used as a number"
+      (testing "under a comparison with a number"
+        (doseq [op [:< :<= :> :>=]]
+          (is (= [text-field] (used [op {} text-field 100])))))
+      (testing "under `between` with numbers"
+        (is (= [text-field] (used [:between {} text-field 1 100]))))
+      (testing "as an argument of arithmetic"
+        (doseq [op [:+ :- :* :/]]
+          (is (= [text-field] (used [op {} text-field 1])))))
+      (testing "as the argument of a numeric aggregation"
+        (doseq [op [:sum :avg :median :stddev :var :cum-sum]]
+          (is (= [text-field] (used [op {} text-field]))))
+        (is (= [text-field] (used [:percentile {} text-field 0.5])))
+        (is (= [text-field] (used [:sum-where {} text-field [:= {} [:field {} "ID"] 1]]))))
+      (testing "nested in a larger clause"
+        (is (= [text-field] (used [:case {} [[[:> {} text-field 100] "big"]] "small"])))))
+    (testing "a field is not used as a number"
+      (testing "under `=` or `!=` with a number"
+        (is (empty? (used [:= {} text-field 100])))
+        (is (empty? (used [:!= {} text-field 100]))))
+      (testing "when compared with a string"
+        (is (empty? (used [:> {} text-field "100"]))))
+      (testing "inside a cast"
+        (is (empty? (used [:> {} [:integer {} text-field] 100])))
+        (is (empty? (used [:sum {} [:float {} text-field]]))))
+      (testing "under `max` or `min`"
+        (is (empty? (used [:max {} text-field])))
+        (is (empty? (used [:min {} text-field]))))
+      (testing "as the condition of `sum-where`"
+        (is (= [[:field {} "ID"]] (used [:sum-where {} [:field {} "ID"] [:= {} text-field "1"]])))))))
+
+(defn- query-with-features
+  "A query on a database that has `features`."
+  [features]
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "Sample" :features features}
+             :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+             :fields   [{:id 100 :name "ID" :table-id 10 :base-type :type/Integer}]})]
+    (lib/query mp (lib.metadata/table mp 10))))
+
+(deftest ^:parallel cast-hint-test
+  (let [hint         #(#'repair/cast-hint (query-with-features %) true)
+        integer-cast "[\"integer\", {}, <field>]"
+        float-cast   "[\"float\", {}, <field>]"]
+    (testing "integer only"
+      (is (str/includes? (hint #{:expressions/integer}) integer-cast))
+      (is (not (str/includes? (hint #{:expressions/integer}) float-cast))))
+    (testing "float only"
+      (is (str/includes? (hint #{:expressions/float}) float-cast))
+      (is (not (str/includes? (hint #{:expressions/float}) integer-cast))))
+    (testing "both"
+      (is (str/includes? (hint #{:expressions/integer :expressions/float}) integer-cast))
+      (is (str/includes? (hint #{:expressions/integer :expressions/float}) float-cast)))
+    (testing "neither: no cast, and the options that remain"
+      (let [fallback (hint #{})]
+        (is (not (str/includes? fallback "[\"integer\"")))
+        (is (not (str/includes? fallback "[\"float\"")))
+        (is (str/includes? fallback "Table Metadata"))
+        (is (str/includes? fallback "SQL question"))))
+    (testing "neither, for a column that is not a table field: only the SQL question"
+      (let [fallback (#'repair/cast-hint (query-with-features #{}) false)]
+        (is (not (str/includes? fallback "Table Metadata")))
+        (is (str/includes? fallback "SQL question"))))))
+
+(def ^:private mp-cast-sources
+  "CHURNS with a text field, an MBQL model and a SQL model over it, each with that field's id on a column."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 30 :name "CHURNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 302 :name "user_high" :table-id 30 :base-type :type/Text}]
+    :cards    [{:id              600
+                :database-id     1
+                :type            :model
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 30}]}
+                :result-metadata [{:name "user_high" :base-type :type/Text :id 302 :table-id 30}
+                                  {:name "Users Text" :base-type :type/Text}]}
+               {:id              601
+                :database-id     1
+                :type            :model
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/native :native "SELECT user_high FROM churns"}]}
+                :result-metadata [{:name "user_high" :base-type :type/Text :id 302 :table-id 30}]}]}))
+
+(deftest ^:parallel table-field-ref?-test
+  (let [mp          mp-cast-sources
+        by-name     (fn [column-name] [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text} column-name])
+        table-field (fn [query stage-idx a-ref] (#'repair/table-field-ref? query stage-idx a-ref))]
+    (testing "a table field"
+      (is (true? (table-field (lib/query mp (lib.metadata/table mp 30)) 0
+                              (lib/ref (lib.metadata/field mp 302))))))
+    (testing "a column of an MBQL model that comes from a table field"
+      (is (true? (table-field (lib/query mp (lib.metadata/card mp 600)) 0 (by-name "user_high")))))
+    (testing "a model custom column"
+      (is (false? (table-field (lib/query mp (lib.metadata/card mp 600)) 0 (by-name "Users Text")))))
+    (testing "a column of a SQL model mapped to a table field"
+      (is (false? (table-field (lib/query mp (lib.metadata/card mp 601)) 0 (by-name "user_high")))))
+    (testing "a custom column of an earlier stage"
+      (let [query (-> (lib/query mp (lib.metadata/table mp 30))
+                      (lib/expression "Users Range" (lib/concat "n" (lib.metadata/field mp 302)))
+                      lib/append-stage)]
+        (is (false? (table-field query 1 (by-name "Users Range"))))
+        (testing "and a table field of an earlier stage"
+          (is (true? (table-field query 1 (by-name "user_high")))))))
+    (testing "a clause that is not a `:field` ref"
+      (is (false? (table-field (lib/query mp (lib.metadata/table mp 30)) 0
+                               (lib/concat "n" (lib.metadata/field mp 302))))))))
+
+;;; ============================================================
+;;; Post-resolve check - automatic bins on text columns (BOT-1482)
+;;; ============================================================
+
+(def ^:private mp-text-users
+  "ORDERS with a text column that holds numbers, and PRODUCTS to join to."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample" :features #{:expressions/integer}}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "user_high"  :table-id 10 :base-type :type/Text
+                :display-name "Max No. of Users"}
+               {:id 102 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
+                :fk-target-field-id 200}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
+               {:id 201 :name "PRICE"      :table-id 20 :base-type :type/Float}]}))
+
+(defn- text-users-ref [field-id]
+  (lib/ref (lib.metadata/field mp-text-users field-id)))
+
+(defn- binned [a-ref]
+  (lib/with-binning a-ref {:strategy :num-bins :num-bins 10}))
+
+(defn- binning-error!
+  "The `:error` code and the message that the bin check throws for `query`, or nil."
+  [query]
+  (try
+    (repair/assert-binning-on-numeric-columns! query)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      [(:error (ex-data e)) (ex-message e)])))
+
+(deftest assert-binning-on-numeric-columns-test
+  (let [orders (lib/query mp-text-users (lib.metadata/table mp-text-users 10))]
+    (testing "a binned text column is rejected, and the message names it and gives the cast"
+      (let [[code msg] (binning-error! (lib/breakout orders (binned (text-users-ref 101))))]
+        (is (= :binning-on-non-numeric-column code))
+        (is (str/includes? msg "\"Max No. of Users\""))
+        (is (str/includes? msg "`case`"))
+        (is (str/includes? msg "[\"<=\", {}, [\"integer\", {}, <field>], 100]"))
+        (is (not (str/includes? msg "`between`")))
+        (is (not (str/includes? msg "wrap it in a cast")))))
+    (testing "a binned numeric column passes, and the query comes back"
+      (let [query (lib/breakout orders (binned (text-users-ref 100)))]
+        (is (= query (repair/assert-binning-on-numeric-columns! query)))))
+    (testing "a temporal bucket without `binning` is not this check's concern"
+      (is (nil? (binning-error! (lib/breakout orders (lib/with-temporal-bucket (text-users-ref 103) :month))))))
+    (testing "a binned ref whose type cannot be resolved is skipped"
+      (is (nil? (binning-error! (assoc-in (lib/breakout orders (binned (text-users-ref 100)))
+                                          [:stages 0 :breakout 0 2] 999)))))
+    (testing "in a join condition, each ref is checked against its own stage"
+      (let [join     (lib/join-clause (lib.metadata/table mp-text-users 20)
+                                      [(lib/= (text-users-ref 102) (text-users-ref 200))])
+            joined   (lib/join orders join)
+            alias    (lib/current-join-alias (first (lib/joins joined)))
+            with-lhs (fn [query lhs] (assoc-in query [:stages 0 :joins 0 :conditions 0 2] lhs))]
+        (testing "a binned text column of the parent stage is rejected"
+          (is (= :binning-on-non-numeric-column
+                 (first (binning-error! (with-lhs joined (binned (text-users-ref 101))))))))
+        (testing "a binned numeric column of the join passes"
+          (is (nil? (binning-error! (with-lhs joined (binned (lib/with-join-alias (text-users-ref 201) alias)))))))))))

@@ -14,11 +14,16 @@ import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/typ
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { MetabaseTestOptions } from "embedding-sdk-package/testing/components/MetabaseTestProvider";
 
+import { type MetabaseActionMock, createActionHandlers } from "./actions";
+import { type MetabaseQueryMock, createQueryHandlers } from "./queries";
+
 type ChildrenProps = { children?: ReactNode };
 
 // eslint-disable-next-line metabase/no-literal-metabase-strings -- the default name a real instance reports
 const DEFAULT_APPLICATION_NAME = "Metabase";
 const NO_FONTS: string[] = [];
+const NO_DATA_APP_QUERIES: MetabaseQueryMock[] = [];
+const NO_DATA_APP_ACTIONS: MetabaseActionMock[] = [];
 const SIGNED_IN_STATUS: LoginStatus = { status: "success" };
 
 const STATIC_QUESTION_SUBCOMPONENTS = {
@@ -83,6 +88,8 @@ export function createMockSdkBundle({
   loginStatus = SIGNED_IN_STATUS,
   applicationName = DEFAULT_APPLICATION_NAME,
   availableFonts = NO_FONTS,
+  dataAppQueries = NO_DATA_APP_QUERIES,
+  dataAppActions = NO_DATA_APP_ACTIONS,
 }: MetabaseTestOptions): MetabaseEmbeddingSdkBundleExports {
   return {
     CollectionBrowser,
@@ -111,11 +118,10 @@ export function createMockSdkBundle({
     MetabotSubscriber: () => throwNoMock("MetabotSubscriber"),
     SdkThemeProviderWithStore: () => throwNoMock("SdkThemeProviderWithStore"),
     getSdkStore: () => throwNoMock("getSdkStore"),
-    resolveDatasetQuery: () => () => throwNoMock("resolveDatasetQuery"),
-    queryDataset: () => () => throwNoMock("queryDataset"),
+    ...createQueryHandlers(dataAppQueries),
     queryQuestion: () => () => throwNoMock("queryQuestion"),
     createDashboard: () => () => throwNoMock("createDashboard"),
-    executeAction: () => () => throwNoMock("executeAction"),
+    ...createActionHandlers(dataAppActions),
     getApplicationName: () => applicationName,
     getAvailableFonts: () => availableFonts,
     getLoginStatus: () => loginStatus,

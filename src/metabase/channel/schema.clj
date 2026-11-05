@@ -4,6 +4,8 @@
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -82,17 +84,21 @@
   "[[details-by-type]] as a schema, for the row schemas below."
   (details-by-type))
 
+(mr/def ::channel.columns
+  "The columns of a Channel selected from the app DB that every type of Channel has."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:name        :string]
+   [:description {:optional true} [:maybe :string]]
+   [:type        [:or :keyword :string]]
+   [:active      {:optional true} :boolean]
+   [:created_at  ms/TemporalInstant]
+   [:updated_at  ms/TemporalInstant]])
+
 (mr/def ::channel
   "A Channel as selected from the app DB: every column of `:channel`."
   [:merge
-   [:map {:closed true}
-    [:id          ms/PositiveInt]
-    [:name        :string]
-    [:description [:maybe :string]]
-    [:type        [:or :keyword :string]]
-    [:active      :boolean]
-    [:created_at  ms/TemporalInstant]
-    [:updated_at  ms/TemporalInstant]]
+   ::channel.columns
    ::channel.details-by-type])
 
 (mr/def ::channel.update
@@ -158,3 +164,12 @@
    [:details      {:optional true} [:maybe ::channel-template.details]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-channel
+  "A Channel as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::channel.columns [:name :description :type :active]]
+    ::channel.details-by-type
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

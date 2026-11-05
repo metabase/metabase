@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.permissions.models.permissions :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]))
 
 (defn check-has-application-permission
@@ -39,6 +39,12 @@
      (when require-superuser?
        (api/check-superuser)))))
 
+(defenterprise current-user-manages-group?
+  "Whether `*current-user*` is a manager of `group-or-id`. Group managers are an advanced-permissions feature."
+  metabase-enterprise.advanced-permissions.oss-hooks
+  [_group-or-id]
+  false)
+
 (defn check-manager-of-group
   "If `advanced-permissions` is enabled, check is `*current-user*` is manager of `group-or-id`.
   Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled."
@@ -46,9 +52,8 @@
    (check-manager-of-group group-or-id true))
 
   ([group-or-id require-superuser?]
-   (if-let [f (and (premium-features/enable-advanced-permissions?)
-                   config/ee-available?
-                   (requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager-of-group?))]
-     (api/check-403 (or api/*is-superuser?* (f group-or-id)))
+   (if (and (premium-features/enable-advanced-permissions?)
+            config/ee-available?)
+     (api/check-403 (or api/*is-superuser?* (current-user-manages-group? group-or-id)))
      (when require-superuser?
        (api/check-superuser)))))

@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import NativeQuery, {
@@ -301,6 +302,61 @@ describe("NativeQuery", () => {
         );
         expect(q.canRun()).toBe(true);
       });
+
+      it("field filter mapped to a field of another database (metabase#31926)", () => {
+        const otherDatabaseId = SAMPLE_DB_ID + 2;
+        const metadata = createMockMetadata({
+          databases: [
+            createSampleDatabase(),
+            createMockDatabase({ id: otherDatabaseId }),
+          ],
+        });
+        const query = makeQuery(
+          "SELECT COUNT(*) FROM PRODUCTS WHERE {{filter}}",
+          {
+            filter: createMockTemplateTag({
+              name: "filter",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "string/=",
+            }),
+          },
+          metadata,
+        );
+        expect(query.canRun()).toBe(true);
+
+        const otherDatabaseQuery = query.setDatabaseId(otherDatabaseId);
+        expect(
+          otherDatabaseQuery.templateTagsMap().filter.dimension,
+        ).toBeUndefined();
+        expect(otherDatabaseQuery.canRun()).toBe(false);
+      });
+    });
+
+    describe("required template tags", () => {
+      it.each(["text", "number", "date"] as const)(
+        "should run and save without a default value for a required %s tag",
+        (type) => {
+          const q = makeQuery().setQueryText(
+            "SELECT * from ORDERS where {{foo}}",
+          );
+          const requiredQuery = q.setTemplateTag(
+            "foo",
+            createMockTemplateTag({
+              name: "foo",
+              "display-name": "Foo",
+              type,
+              required: true,
+              default: undefined,
+            }),
+          );
+
+          expect(requiredQuery.canRun()).toBe(true);
+          expect(
+            Lib.canSave(requiredQuery.question().query(), "question"),
+          ).toBe(true);
+        },
+      );
     });
 
     describe("snippet template tags", () => {
@@ -357,6 +413,108 @@ describe("NativeQuery", () => {
         expect(queryWithNewSnippet.templateTags()).toMatchObject([
           { name: `snippet: ${newName}`, type: "snippet" },
           { name: "var", type: "text" },
+        ]);
+      });
+
+      it("should take the inner tags of an updated snippet from the metadata", () => {
+        const oldSnippet = createMockNativeQuerySnippet({
+          name: "filter-snippet",
+          content: "category = {{filter}}",
+          template_tags: {
+            filter: createMockTemplateTag({ name: "filter", type: "text" }),
+          },
+        });
+        const oldQuery = makeQuery(
+          "",
+          {},
+          createMockMetadata({ snippets: [oldSnippet] }),
+        ).setQueryText(
+          "select id from products where {{snippet: filter-snippet}}",
+        );
+        expect(oldQuery.templateTags().map((tag) => tag.name)).toEqual([
+          "snippet: filter-snippet",
+          "filter",
+        ]);
+
+        const newSnippet = createMockNativeQuerySnippet({
+          ...oldSnippet,
+          content: "ean = {{ean}} or vendor = {{vendor}}",
+          template_tags: {
+            ean: createMockTemplateTag({ name: "ean", type: "text" }),
+            vendor: createMockTemplateTag({ name: "vendor", type: "text" }),
+          },
+        });
+        const newQuery = makeQuery(
+          oldQuery.queryText(),
+          oldQuery.templateTagsMap(),
+          createMockMetadata({ snippets: [newSnippet] }),
+        ).updateSnippet(oldSnippet, newSnippet);
+
+        expect(newQuery.queryText()).toBe(oldQuery.queryText());
+        expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+          "snippet: filter-snippet",
+          "ean",
+          "vendor",
+        ]);
+      });
+
+      it("should keep the changed type of a snippet's inner tag", () => {
+        const snippet = createMockNativeQuerySnippet({
+          name: "filter-snippet",
+          content: "ID = {{filter}}",
+          template_tags: {
+            filter: createMockTemplateTag({ name: "filter", type: "text" }),
+          },
+        });
+        const metadata = createMockMetadata({ snippets: [snippet] });
+        const queryText =
+          "select id from products where {{snippet: filter-snippet}}";
+        const parsedQuery = makeQuery("", {}, metadata).setQueryText(queryText);
+        const filterTag = checkNotNull(parsedQuery.templateTagsMap().filter);
+
+        const queryWithNumberTag = parsedQuery
+          .setTemplateTag("filter", { ...filterTag, type: "number" })
+          .setQueryText(`${queryText} limit 1`);
+
+        expect(queryWithNumberTag.templateTagsMap().filter).toMatchObject({
+          id: filterTag.id,
+          name: "filter",
+          type: "number",
+        });
+      });
+
+      it("should link a renamed snippet tag to the snippet with the new name (metabase#15387)", () => {
+        const ordersSnippet = createMockNativeQuerySnippet({
+          id: 1,
+          name: "Table: Orders",
+          content: "ORDERS",
+        });
+        const reviewsSnippet = createMockNativeQuerySnippet({
+          id: 2,
+          name: "Table: Reviews",
+          content: "REVIEWS",
+        });
+        const metadata = createMockMetadata({
+          snippets: [ordersSnippet, reviewsSnippet],
+        });
+        const ordersQuery = makeQuery("", {}, metadata).setQueryText(
+          "select * from {{snippet: Table: Orders}} limit 1",
+        );
+        expect(ordersQuery.templateTags()).toMatchObject([
+          { name: "snippet: Table: Orders", "snippet-id": ordersSnippet.id },
+        ]);
+
+        const reviewsQuery = ordersQuery.setQueryText(
+          "select * from {{snippet: Table: Reviews}} limit 1",
+        );
+
+        expect(reviewsQuery.templateTags()).toEqual([
+          expect.objectContaining({
+            name: "snippet: Table: Reviews",
+            type: "snippet",
+            "snippet-id": reviewsSnippet.id,
+            "snippet-name": reviewsSnippet.name,
+          }),
         ]);
       });
 

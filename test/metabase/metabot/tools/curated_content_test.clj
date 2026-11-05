@@ -31,6 +31,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private curation-features
@@ -398,8 +399,12 @@
                       :name          "plain metric"
                       :dataset_query (count-metric-query (orders-query))}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        ;; The stage aggregates the metric: construct_notebook_query rejects a metric `source-card` that the stage
+        ;; does not aggregate, with `:metric-as-source-card`.
         (let [q         {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql" :source-card metric-eid}]}
+                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                     :source-card metric-eid
+                                     :aggregation [["metric" {} metric-eid]]}]}
               construct (fn [metabot profile-id]
                           (as-metabot metabot profile-id #(construct/execute-representations-query q)))
               rejected? (fn []
@@ -1023,15 +1028,13 @@
     (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
             check sees it: a user with no query permission reads it through its Library collection"
       (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
-                     :model/Table {table-id :id} {:db_id      (mt/id)
-                                                  :name       "published_by_settings"
-                                                  :schema     "LIBRARY_SCHEMA"
-                                                  :active     true
-                                                  :data_layer :final}
-                     :model/TableUserSettings _ {:table_id      table-id
-                                                 :is_published  true
-                                                 :collection_id lib}
+                     :model/Table {table-id :id :as table} {:db_id      (mt/id)
+                                                            :name       "published_by_settings"
+                                                            :schema     "LIBRARY_SCHEMA"
+                                                            :active     true
+                                                            :data_layer :final}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id lib})
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-current-user (mt/user->id :rasta)
@@ -1281,6 +1284,22 @@
               (is (nil? (:error resource)) (:error resource))
               (is (= (mt/id :reviews) (get-in resource [:content :structured-output :base_table_id]))
                   "a metric's base table is its source"))))))))
+
+(deftest curated-metric-over-a-deleted-source-is-marked-unavailable-test
+  (testing "a curated metric whose source card was deleted is marked unavailable"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {question :id} {:name "doomed question" :dataset_query (orders-query)}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {metric :id} {:type          :metric
+                                                   :name          "metric on a doomed question"
+                                                   :dataset_query (count-metric-query
+                                                                   (lib/query mp (lib.metadata/card mp question)))}]
+            (verify-card! metric)
+            (t2/delete! :model/Card :id question)
+            (let [resource (first (read-uris metabot :internal (str "metabase://metric/" metric)))]
+              (is (nil? (:error resource)) (:error resource))
+              (is (true? (get-in resource [:content :structured-output :source_unavailable]))))))))))
 
 (deftest uncurated-metric-over-an-unreadable-table-fails-closed-test
   ;; the user reads the published table through the Library grant, which exists only on EE

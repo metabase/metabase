@@ -13,8 +13,6 @@ import { useApplicationName } from "embedding-sdk-package/hooks/public/use-appli
 import { useCurrentUser } from "embedding-sdk-package/hooks/public/use-current-user";
 import { useDateFormatter } from "embedding-sdk-package/hooks/public/use-date-formatter";
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
-import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
-import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
 import {
   createMockDashboard,
   createMockUser,
@@ -24,10 +22,6 @@ import {
   MetabaseTestProvider,
   type MetabaseTestProviderProps,
 } from "./MetabaseTestProvider";
-
-const ORDERS_QUERY = defineQuery({
-  source: { type: "card", entityId: "ordersQuestionEntity" },
-});
 
 const CREATED_DASHBOARD = createMockDashboard({ name: "Q3 revenue" });
 
@@ -41,12 +35,6 @@ function SessionInfo() {
       {applicationName} {authStatus?.status} {user?.first_name ?? "anonymous"}
     </p>
   );
-}
-
-function OrdersQueryError() {
-  const { error } = useMetabaseQuery(ORDERS_QUERY);
-
-  return <p>{error instanceof Error ? error.message : "no error"}</p>;
 }
 
 function DateRangeLabel() {
@@ -146,14 +134,6 @@ describe("MetabaseTestProvider", () => {
 
     expect(
       await screen.findByText("2024-01-01 - 2024-01-31"),
-    ).toBeInTheDocument();
-  });
-
-  it("rejects unmocked data requests", async () => {
-    setup({ children: <OrdersQueryError /> });
-
-    expect(
-      await screen.findByText(/No mock for resolveDatasetQuery/),
     ).toBeInTheDocument();
   });
 

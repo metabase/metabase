@@ -319,17 +319,21 @@
 (defn discouraged-count-keys
   "The [[discouraged-count-key]] of every symbol configured under `linter` ([[discouraged-symbols]]).
   Throws when two symbols share a key."
-  ([linter]
-   (discouraged-count-keys linter (kondo-config)))
-  ([linter config]
-   (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
-     ;; two symbols on one key would share a budget without anyone noticing
-     (doseq [[k syms] by-key
-             :when    (< 1 (count syms))]
-       (throw (ex-info (format "%s symbols %s share the ratchet key %s"
-                               linter (str/join ", " (sort-by str syms)) k)
-                       {:linter linter, :key k, :symbols (vec syms)})))
-     (set (keys by-key)))))
+  [linter config]
+  (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
+    ;; two symbols on one key would share a budget without anyone noticing
+    (doseq [[k syms] by-key
+            :when    (< 1 (count syms))]
+      (throw (ex-info (format "%s symbols %s share the ratchet key %s"
+                              linter (str/join ", " (sort-by str syms)) k)
+                      {:linter linter, :key k, :symbols (vec syms)})))
+    (set (keys by-key))))
+
+(defn- validate-count-keys!
+  "Throw when two symbols configured under one of the [[discouragement-linters]] share a ratchet key."
+  []
+  (let [config (kondo-config)]
+    (run! #(discouraged-count-keys % config) discouragement-linters)))
 
 (defn known-linters
   "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]]."
@@ -771,7 +775,8 @@
 (def ^:private shared-header
   (str ";; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline\n"
        ";; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened\n"
-       ";; to `ee.`.\n"
+       ";; to `ee.`. A re-exported var counts under the var it re-exports, and an enterprise `defenterprise` under\n"
+       ";; its OSS counterpart.\n"
        ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other\n"
        ";; budget is a non-negative integer.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
@@ -1223,7 +1228,7 @@
           linter            (keyword linter-name)]
       (if-not (contains? discouragement-linters linter)
         {:ignore-counts [(keyword seed)]}
-        (let [known (discouraged-count-keys linter)
+        (let [known (discouraged-count-keys linter (kondo-config))
               k     (some-> sym symbol discouraged-count-key)]
           ;; an empty suffix (`:discouraged-var/`) is a typo, not a request to seed every symbol
           (when (and sym (not (contains? known k)))
@@ -1246,6 +1251,15 @@
                     {})))
   (vec (repeat (count groups) {:actual {}, :unattributed [], :unresolved []})))
 
+(defn- follow-aliases
+  "`seeds` from [[resolve-seed]], with each :discouraged-var key that counts under another in `aliases` (see
+  [[fix!]]) replaced by that one."
+  [seeds aliases]
+  (let [field (discouraged-count-field :discouraged-var)]
+    (cond-> seeds
+      (contains? seeds field)
+      (update field #(vec (sort-by str (distinct (map (fn [k] (get aliases k k)) %))))))))
+
 (defn- lowered-policies
   "The inline-ignore budgets of `ratchets`, one ratchets file's policies, lowered to the counts in
   `occurrences` and `attribution`, with `seeds` applied (see [[fix!]])."
@@ -1262,15 +1276,14 @@
 
 (defn- read-policies
   "Validate `ratchets`, the prod policies, against the known linters, and read the module and test ratchet files.
-  Returns `{:known _, :configured _, :module-ratchets _, :test-ratchets _, :test-disabled? _}`, with `:configured`
-  from [[configured-count-keys]].
-  Throws when two configured symbols share a ratchet key."
+  Returns `{:known _, :module-ratchets _, :test-ratchets _, :test-disabled? _}`.
+  Throws when two configured symbols share a ratchet key ([[validate-count-keys!]])."
   [ratchets]
   (let [known (known-linters)]
     (validate-linters! ratchets known)
+    (validate-count-keys!)
     (let [test-ratchets (read-validated-test-ratchets known *ratchets-file*)]
       {:known           known
-       :configured      (configured-count-keys)
        :module-ratchets (read-module-ratchets)
        :test-ratchets   test-ratchets
        :test-disabled?  (disabled? test-ratchets)})))
@@ -1296,13 +1309,15 @@
   `:attribute` (default [[no-attribution]]) takes a seq of occurrence seqs from [[scan]] and returns, for each
   in order, the per-symbol counts of the [[discouragement-linters]] ignores among them,
   `{:actual {linter {key count}}, :unattributed _, :unresolved _}`.
+  `:aliases` (default none) is a function of no arguments returning a map from the ratchet key of each configured
+  :discouraged-var symbol that is another under a second name to the key its ignores count under.
   Throws before writing when any `:unresolved` finding has no symbol to budget it under.
   Prints a [[change-report]] per file, or `unchanged` on a no-op.
   Does nothing, including seeding, when [[*ratchets-file*]] sets `:disabled` to `true`; the test ratchets
   file honors its own `:disabled` independently, skipping only its own pass."
   ([]
    (fix! nil))
-  ([{:keys [seed attribute], :or {attribute no-attribution}}]
+  ([{:keys [seed attribute aliases], :or {attribute no-attribution, aliases (constantly {})}}]
    ;; Attribution is passed in because it needs a kondo run through mage, which isn't on the JVM classpath.
    (let [{:keys [config-counts] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
@@ -1312,6 +1327,8 @@
              seeds            (resolve-seed seed)
              _                (validate-seed! (:ignore-counts seeds) known)
              {:keys [prod-occ test-occ attribution test-attribution]} (scan-and-attribute attribute test-disabled?)
+             aliases          (aliases)
+             seeds            (follow-aliases seeds aliases)
              unresolved       (concat (:unresolved attribution) (:unresolved test-attribution))
              _                (when (seq unresolved)
                                 (throw (ex-info (str/join "\n" (cons unresolved-header (unresolved-lines unresolved)))
@@ -1446,8 +1463,9 @@
      (let [ratchets (read-ratchets)]
        (if (disabled? ratchets)
          (println (str *ratchets-file* " is disabled -- nothing to check"))
-         (let [{:keys [configured module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
+         (let [{:keys [module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
                {:keys [prod-occ test-occ attribution test-attribution]} (scan-and-attribute attribute test-disabled?)
+               configured       (configured-count-keys)
                lines            (concat
                                  (check-report ratchets module-ratchets prod-occ attribution
                                                (config-suppressions) (module-escape-hatches)
