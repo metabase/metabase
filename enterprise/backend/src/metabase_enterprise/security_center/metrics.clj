@@ -82,14 +82,16 @@
          (health-check-label check status))))
 
 (defn set-health-check-gauges!
-  "Sets the health-checks gauge from `checks`, the responses of a run: 1 for the status each check has, 0 for the other
-  two. A check that is not in `checks` keeps its last value."
+  "Sets the health-checks gauge from `checks`, the responses of a full run: 1 for the status each check has, 0 for the
+  other two. A registered check that is not in `checks` gets 0 on all three statuses, so a check that stops applying
+  reads as cleared."
   [checks]
   (try
-    (doseq [check  checks
-            status health-check-statuses]
-      (analytics/set-gauge! :metabase-security-center/health-checks
-                            (health-check-label check status)
-                            (if (= status (:status check)) 1 0)))
+    (let [status-of-id (into {} (map (juxt :id :status)) checks)]
+      (doseq [check  (health-checks/all-checks)
+              status health-check-statuses]
+        (analytics/set-gauge! :metabase-security-center/health-checks
+                              (health-check-label check status)
+                              (if (= status (status-of-id (:id check))) 1 0))))
     (catch Exception e
       (log/warnf "Failed to set :metabase-security-center/health-checks metric: %s" (ex-message e)))))
