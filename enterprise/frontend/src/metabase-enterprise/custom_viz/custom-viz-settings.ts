@@ -5,7 +5,6 @@ import type {
   ReservedVisualizationSettingId,
   Widgets,
 } from "custom-viz";
-import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import type {
@@ -148,14 +147,13 @@ function toHostDefinition(
         // A built-in widget renders these in the host, so no sandbox object may reach it.
         return isComponentWidget(widget) ? props : copyPluginProps(props);
       }),
-    widget:
-      typeof widget === "function"
-        ? wrapPluginWidget(
-            (container, initialProps) => mount(widget, container, initialProps),
-            plugin,
-            prefix,
-          )
-        : widget,
+    widget: isComponentWidget(widget)
+      ? wrapPluginWidget(
+          (container, initialProps) => mount(widget, container, initialProps),
+          plugin,
+          prefix,
+        )
+      : widget,
   };
 }
 
@@ -190,9 +188,7 @@ function copyPluginProps(props: unknown): Record<string, unknown> {
   }
 }
 
-function isComponentWidget(
-  widget: unknown,
-): widget is ComponentType<Record<string, unknown>> {
+function isComponentWidget(widget: unknown) {
   return typeof widget === "function";
 }
 
