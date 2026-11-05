@@ -832,7 +832,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/native-query (mt/metadata-provider)
                                                         "SELECT * FROM products WHERE category = 'Gadget'")}}]
         (testing "fetches transform info"
@@ -855,7 +855,7 @@
      (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
        (mt/with-temp [:model/Transform {transform-id :id}
                       {:name   "Orders Rollup"
-                       :source {:type  "query"
+                       :source {:type  :query
                                 :query (lib/query (mt/metadata-provider)
                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
          (mt/with-data-analyst-role! (mt/user->id :rasta)
@@ -889,7 +889,7 @@
                              :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                             :model/Transform {transform-id :id}
                             {:name   "Private source card"
-                             :source {:type  "query"
+                             :source {:type  :query
                                       :query (lib/query mp (lib.metadata/card mp card-id))}}]
                (let [uri (str "metabase://transform/" transform-id)]
                  (testing "a source card in an unreadable collection prevents reading the transform"
@@ -1044,7 +1044,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Permission test transform"
-                        :source {:type  "query"
+                        :source {:type  :query
                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
           (with-redefs [mi/can-read? (constantly false)]
             (doseq [uri [(str "metabase://transform/" transform-id)
@@ -1258,7 +1258,7 @@
                        :model/Transform {tx-other-db :id}
                        {:name               "Other-DB Transform"
                         :source_database_id db2
-                        :source             {:type "query"
+                        :source             {:type :query
                                              :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
           (testing "/derived for a table in db1 must exclude transforms whose source is in db2"
             (let [{:keys [output]} (read-uris
@@ -1982,7 +1982,41 @@
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
-                    structured))))))))
+                    structured)))
+          (testing "Rendered text lists the result columns the LLM must reference by name"
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output (str "<field id=\"" (mt/id :products :category) "\" name=\"CATEGORY\"")))
+            (is (str/includes? output "<field id=\"count\" name=\"count\""))))
+        (testing "The base URI omits the fields, which only /fields returns"
+          (let [read-result (read-uris {:uris [(str "metabase://question/" question-id)]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (re-find #"<name>\S*My fav card" output))
+            (is (empty? (:fields structured)))
+            (is (not (str/includes? output "### Fields")))
+            (is (not (str/includes? output "<field ")))))))))
+
+(deftest read-native-question-resource-test
+  (testing "/fields on a native question renders its result columns, which have no Field ids"
+    (let [query    (lib/native-query (mt/metadata-provider)
+                                     "SELECT CATEGORY AS CAT, COUNT(*) AS N FROM PRODUCTS GROUP BY CATEGORY")
+          metadata (-> query
+                       qp/process-query
+                       :data :results_metadata :columns)]
+      (mt/with-temp
+        [:model/Card {question-id :id} {:name            "Native card"
+                                        :dataset_query   query
+                                        :result_metadata metadata}]
+        (mt/with-test-user :crowberto
+          (let [read-result (read-uris
+                             {:uris [(str "metabase://question/" question-id "/fields")]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (=? {:fields [{:name "CAT"} {:name "N"}]}
+                    structured))
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output "<field id=\"CAT\" name=\"CAT\""))
+            (is (str/includes? output "<field id=\"N\" name=\"N\""))))))))
 
 ;; ===== Pagination =====
 

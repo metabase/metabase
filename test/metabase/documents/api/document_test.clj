@@ -1447,6 +1447,29 @@
               ;; Verify document wasn't moved
               (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
 
+(deftest document-move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+    (mt/with-temp [:model/Collection {write-col :id} {:name "Write Collection"}
+                   :model/Document   {doc-id :id}      {:name          "In a writable collection"
+                                                        :document      (documents.test-util/text->prose-mirror-ast "x")
+                                                        :collection_id write-col}
+                   :model/Document   {root-doc-id :id} {:name     "In root"
+                                                        :document (documents.test-util/text->prose-mirror-ast "x")}]
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-col)
+      (testing "moving a document into root without root write perms is forbidden"
+        (mt/user-http-request :rasta :put 403 (format "document/%s" doc-id) {:collection_id nil})
+        (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+      (testing "moving a document out of root without root write perms is forbidden"
+        (mt/user-http-request :rasta :put 403 (format "document/%s" root-doc-id) {:collection_id write-col})
+        (is (nil? (t2/select-one-fn :collection_id :model/Document :id root-doc-id))))
+      (testing "an update that doesn't mention collection_id doesn't move the document"
+        (mt/user-http-request :rasta :put 200 (format "document/%s" doc-id) {:name "Renamed"})
+        (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+      (testing "a user with root write perms can move a document into root"
+        (mt/user-http-request :crowberto :put 200 (format "document/%s" doc-id) {:collection_id nil})
+        (is (nil? (t2/select-one-fn :collection_id :model/Document :id doc-id)))))))
+
 (deftest rasta-document-read-permissions-test
   (testing "Document read permissions for non-admin user :rasta"
     (mt/with-non-admin-groups-no-root-collection-perms

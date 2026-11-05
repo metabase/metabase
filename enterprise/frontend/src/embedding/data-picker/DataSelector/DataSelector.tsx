@@ -50,7 +50,6 @@ import type {
 
 import { DataSelectorDataBucketPicker as DataBucketPicker } from "../DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker as DatabasePicker } from "../DataSelectorDatabasePicker";
-import { DataSelectorDatabaseSchemaPicker as DatabaseSchemaPicker } from "../DataSelectorDatabaseSchemaPicker";
 import { DataSelectorSchemaPicker as SchemaPicker } from "../DataSelectorSchemaPicker";
 import { DataSelectorTablePicker as TablePicker } from "../DataSelectorTablePicker";
 import {
@@ -84,7 +83,6 @@ type AvailableModelsResult = Omit<SearchResponse, "data">;
 
 interface DataSelectorOwnProps {
   steps: DataSelectorStep[];
-  combineDatabaseSchemaSteps?: boolean;
   triggerContentComponent: ComponentType<TriggerComponentProps>;
   triggerElement?: ReactNode;
   triggerIconSize?: number;
@@ -190,7 +188,6 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
   return (
     <DataSelector
       steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-      combineDatabaseSchemaSteps
       triggerContentComponent={TableTrigger}
       {...props}
     />
@@ -862,14 +859,9 @@ export class UnconnectedDataSelector extends Component<
   };
 
   renderActiveStep(): ReactNode {
-    const { steps, combineDatabaseSchemaSteps, hasNestedQueriesEnabled } =
-      this.props;
+    const { hasNestedQueriesEnabled } = this.props;
     const hasNextStep = this.getNextStep() != null;
     const hasPreviousStep = this.getPreviousStep() != null;
-    const hasBackButton =
-      hasPreviousStep &&
-      steps.includes(DATA_BUCKET_STEP) &&
-      (this.hasUsableModels() || this.hasSavedQuestions());
 
     const props = {
       ...this.state,
@@ -905,17 +897,9 @@ export class UnconnectedDataSelector extends Component<
           </Box>
         );
       case DATABASE_STEP:
-        return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
-        ) : (
-          <DatabasePicker {...props} />
-        );
+        return <DatabasePicker {...props} />;
       case SCHEMA_STEP:
-        return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
-        ) : (
-          <SchemaPicker {...props} />
-        );
+        return <SchemaPicker {...props} />;
       case TABLE_STEP:
         return <TablePicker {...props} />;
     }

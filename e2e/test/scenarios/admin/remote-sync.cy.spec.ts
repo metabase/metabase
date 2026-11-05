@@ -1197,11 +1197,14 @@ describe("Remote Sync", () => {
         });
 
         visitDataStudioGlossary();
+        cy.intercept("POST", "/api/glossary").as("createGlossaryTerm");
         cy.findByRole("button", { name: /new term/i }).click();
         cy.findByPlaceholderText(/boat/i).type(GLOSSARY_TERM);
-        cy.findByPlaceholderText(/a small vessel.*/i).type(GLOSSARY_DEFINITION);
-        cy.findByLabelText("Save").click();
-        cy.get("table").findByText(GLOSSARY_TERM).should("be.visible");
+        cy.findByPlaceholderText(/a small vessel.*/i).type(
+          `${GLOSSARY_DEFINITION}{enter}`,
+        );
+        cy.wait("@createGlossaryTerm");
+        cy.get("table").findByDisplayValue(GLOSSARY_TERM).should("be.visible");
 
         cy.log("The Glossary tab shows unsynced changes");
         glossaryTab().findByTestId("remote-sync-status").should("be.visible");
@@ -1252,7 +1255,7 @@ describe("Remote Sync", () => {
         cy.get("table").within(() => {
           cy.findByText(GLOSSARY_TERM).should("be.visible");
           cy.findByText(GLOSSARY_DEFINITION).should("be.visible");
-          cy.findByLabelText("Delete").should("not.exist");
+          cy.findByRole("button", { name: /delete/i }).should("not.exist");
         });
         cy.findByRole("button", { name: /new term/i }).should("not.exist");
 

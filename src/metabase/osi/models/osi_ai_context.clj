@@ -17,7 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
-   [metabase.osi.schema]
+   [metabase.osi.schema :as osi.schema]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.util :as u]
@@ -157,7 +157,8 @@
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
 ;; verbatim. The key columns are exported so [[serdes/ingested-path]] can rebuild the path, and imported from that path.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
-  {:copy      [:ai_context :entity_id]
+  {:schema    ::osi.schema/external-osi-ai-context
+   :copy      [:ai_context :entity_id]
    :transform {:entity_type     {:export identity
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
