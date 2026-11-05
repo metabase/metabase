@@ -720,3 +720,15 @@
      (testing "the states a caller adding protection accepts, and the one it does not"
        (is (#{:https :unknown} (u/https-state {:scheme :http :headers {"origin" "https://example.com"}})))
        (is (nil? (#{:https :unknown} (u/https-state {:scheme :http :headers {}})))))))
+
+(deftest run-each!-test
+  (testing "every step runs whatever the earlier ones did, and the ones that threw come back in order"
+    (let [ran      (atom [])
+          failures (u/run-each! [[:a #(swap! ran conj :a)]
+                                 [:b #(throw (ex-info "b failed" {}))]
+                                 [:c #(swap! ran conj :c)]
+                                 [:d #(throw (ex-info "d failed" {}))]])]
+      (is (= {:ran [:a :c], :failures [[:b "b failed"] [:d "d failed"]]}
+             {:ran @ran, :failures (mapv (fn [[label e]] [label (ex-message e)]) failures)}))))
+  (testing "with no failures it returns an empty vector"
+    (is (= [] (u/run-each! [[:a (constantly :ok)]])))))
