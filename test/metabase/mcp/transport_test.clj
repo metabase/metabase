@@ -602,7 +602,8 @@
                                              :capabilities       {:tools {}}
                                              :tools-hash-fn      (constantly "hash")
                                              :endpoint-paths     #{"/api/metabase-mcp"}
-                                             :default-path       "/api/metabase-mcp"})
+                                             :default-path       "/api/metabase-mcp"
+                                             :accepted-scopes    #{"agent:test"}})
         result  (promise)]
     (mt/with-current-user user-id
       (handler (merge {:request-method :post
@@ -628,7 +629,7 @@
               (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token")))))
         (testing "an OAuth-authenticated request with token scopes is served"
           (is (= 200 (:status (invoke-transport (mt/user->id :rasta)
-                                                {:authenticated-via-oauth? true :token-scopes #{"agent:content:read"}}
+                                                {:authenticated-via-oauth? true :token-scopes #{"agent:test"}}
                                                 initialize)))))))))
 
 (deftest only-oauth-authenticated-requests-are-dispatched-test
@@ -645,6 +646,27 @@
               (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
               (is (str/includes? challenge "resource_metadata="))
               (is (not (str/includes? challenge "invalid_token"))))))))))
+
+(deftest oauth-request-without-an-accepted-scope-is-refused-test
+  (testing "GHY-4969: an OAuth token that holds none of the surface's accepted scopes was not issued for this server,
+            so the MCP authorization spec requires a 401 `invalid_token`. A token holding one accepted scope is
+            served."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [initialize {"jsonrpc" "2.0" "id" 1 "method" "initialize" "params" {"capabilities" {}}}]
+        (doseq [token-scopes [#{:metabase.api.macros.scope/unrestricted}
+                              #{"agent:content:read"}
+                              #{:metabase.api.macros.scope/unrestricted "agent:content:read"}]]
+          (testing (str "OAuth-authenticated with token-scopes " (pr-str token-scopes))
+            (let [response (invoke-transport (mt/user->id :rasta)
+                                             {:authenticated-via-oauth? true :token-scopes token-scopes}
+                                             initialize)]
+              (is (= 401 (:status response)))
+              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"invalid_token\"")))))
+        (testing "an OAuth token holding an accepted scope is served"
+          (is (= 200 (:status (invoke-transport (mt/user->id :rasta)
+                                                {:authenticated-via-oauth? true
+                                                 :token-scopes             #{"agent:test" "other"}}
+                                                initialize)))))))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
@@ -960,42 +982,20 @@
       (is (= (str "Bearer error=\"insufficient_scope\", scope=\"a b\", resource_metadata=\"" url "\"")
              (challenge url ["a" "b"] nil))))))
 
-(deftest legacy-scoped-bearer-token-is-stepped-up-test
-  (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
-                "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
-                "scope satisfies any v2 tool scope, and the pre-fix failure mode was a successful handshake followed "
-                "by HTTP 200 with an empty tools list. GHY-4491: the upgrade leaves such tokens alive, so the client "
-                "must recover on its own: it is listed every tool, and a call gets a 403 `insufficient_scope` "
-                "challenge naming the v2 scope to re-authorize for.")
+(deftest legacy-scoped-bearer-token-must-reauthorize-test
+  (testing (str "GHY-4343, GHY-4491, GHY-4969: MCP clients connected to a v0.60-v0.63 release hold tokens with the "
+                "pre-v2 agent scopes, and the upgrade leaves those tokens alive. They hold no v2 MCP scope, so the "
+                "endpoint refuses them as not issued for this server: a 401 `invalid_token` on `initialize`, which "
+                "makes the client re-authorize.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server.tu/with-oauth-client [client-id]
         (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (let [;; Two agent-API scopes the v2 surface never gates on.
-                token     (issue-bearer! (mt/user->id :rasta) client-id
-                                         ["agent:question:create" "agent:resource:read"])
-                headers   (fn [& {:as extra}]
-                            {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
-                sid       (get-in (client/client-full-response
-                                   :post 200 "metabase-mcp" (headers)
-                                   (jsonrpc-request "initialize" {:capabilities {}}))
-                                  [:headers "Mcp-Session-Id"])
-                listed    (client/client-full-response :post 200 "metabase-mcp"
-                                                       (headers "mcp-session-id" sid)
-                                                       (jsonrpc-request "tools/list" {} 2))
-                tools     (get-in listed [:body :result :tools])
-                call      (client/client-full-response :post 403 "metabase-mcp"
-                                                       (headers "mcp-session-id" sid)
-                                                       (jsonrpc-request "tools/call" {:name "search" :arguments {}} 3))
-                challenge (get-in call [:headers "WWW-Authenticate"] "")]
-            (testing "the handshake succeeds and every tool is listed, since tools/list does not filter by scope"
-              (is (string? sid))
-              (is (some #{"search"} (map :name tools))))
-            (testing "a call is refused with a step-up challenge rather than a 200 or a 401"
-              (is (= 403 (:status call)))
-              (is (str/includes? challenge "error=\"insufficient_scope\""))
-              (is (str/includes? challenge "agent:content:read")
-                  "the challenge names the v2 scope to ask for, which the widened client snapshot validates")
-              (is (str/includes? challenge "resource_metadata=")
-                  "and carries RFC 9728 discovery, so the client knows where to re-authorize")
-              (is (str/starts-with? (get-in call [:body :error :message] "")
-                                    "Insufficient scope to call tool: ")))))))))
+          (let [token    (issue-bearer! (mt/user->id :rasta) client-id
+                                        ["agent:question:create" "agent:resource:read"])
+                response (client/client-full-response :post 401 endpoint
+                                                      {:request-options
+                                                       {:headers {"authorization" (str "Bearer " token)}}}
+                                                      (jsonrpc-request "initialize" {:capabilities {}}))]
+            (is (= 401 (:status response)))
+            (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
+            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"invalid_token\""))))))))

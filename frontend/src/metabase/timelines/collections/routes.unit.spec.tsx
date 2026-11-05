@@ -109,6 +109,10 @@ describe("collection timeline routes", () => {
   ])("closes from $from to $to", async ({ from, to }) => {
     const { pathname } = setup(from);
 
+    // Each modal renders its own dialog, so the route must not add another
+    await screen.findByRole("button", { name: "Close" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
     await close();
 
     expect(pathname()).toBe(to);

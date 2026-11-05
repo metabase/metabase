@@ -1076,7 +1076,7 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
+        (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
@@ -1084,7 +1084,7 @@
     (mt/with-temp [:model/Table _normal {:name "Foo Visible"}
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Foo Visible")]
+        (is (= [(assoc (default-table-search-row "Foo Visible") :can_write (= user :crowberto))]
                (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
@@ -1092,7 +1092,7 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
@@ -1100,7 +1100,8 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable")
+                         :description lancelot :table_description lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
@@ -1148,7 +1149,7 @@
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
+          (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                  (binding [*search-request-results-database-id* db-id]
                    (search-request-data user :q "RoundTable")))))))))
 
@@ -1221,7 +1222,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp [:model/Dashboard dashboard {}]
-              (t2/update! :model/Pulse (:id pulse) {:dashboard_id (:id dashboard)})
+              (t2/update! :model/Pulse :id (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest filter-by-creator-test
@@ -2252,7 +2253,7 @@
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id (t2/select-one :model/Table table-id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! group-id (t2/select-one :model/Table :id table-id) :perms/create-queries :query-builder)
         (is (=? [{:name "test measure" :model "measure"}]
                 (binding [*search-request-results-database-id* db-id]
                   (search-request-data :rasta :q "test measure"))))))))
@@ -2266,13 +2267,13 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
         (testing "after archiving, measure disappears from default results"
-          (t2/update! :model/Measure measure-id {:archived true})
+          (t2/update! :model/Measure :id measure-id {:archived true})
           (is (= [] (search-request-data :crowberto :q measure-name))))
         (testing "archived measure appears in archived=true results"
           (is (=? [{:name measure-name :model "measure" :archived true}]
                   (search-request-data :crowberto :q measure-name :archived "true"))))
         (testing "after unarchiving, measure returns to default results"
-          (t2/update! :model/Measure measure-id {:archived false})
+          (t2/update! :model/Measure :id measure-id {:archived false})
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 

@@ -19,6 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.random :as u.random]))
 
+(set! *warn-on-reflection* true)
+
 (comment metabase.driver.sql/keep-me)
 
 (driver/register! :sql/test-extensions, :abstract? true)

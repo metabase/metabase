@@ -10,7 +10,7 @@
 
 (defn- temp-transform-spec []
   {:name   (mt/random-name)
-   :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
+   :source {:type :query :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
 (deftest transform-indexes-inlined-test

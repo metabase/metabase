@@ -1,7 +1,7 @@
 import { useHover } from "@mantine/hooks";
 import cx from "classnames";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";

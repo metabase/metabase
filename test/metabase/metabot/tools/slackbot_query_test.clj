@@ -25,6 +25,8 @@
    [metabase.test.data.users :as test.users]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ---------------------------------------- prompt content tests ---------------------------------------------------
 
 (deftest slackbot-prompt-display-guidance-test
@@ -128,7 +130,7 @@
                      from its declaration in `tools.recoverable.pipeline`, filtered by the tools
                      the calling profile has — passing a hint as well would append a second copy
                      of the same advice."
-              (is (nil? @captured-opts)))
+              (is (= {:preprocess-check? true} @captured-opts)))
             (testing "structured-output is returned upstream"
               (is (= "q-1" (get-in result [:structured-output :query-id])))
               (is (= fake-query (get-in result [:structured-output :query]))))

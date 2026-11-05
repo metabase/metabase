@@ -14,6 +14,12 @@
 
 (use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
+(defn- venues-query
+  "Build an MBQL 5 query over the venues table."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."
   [text]
@@ -371,14 +377,14 @@
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :is_remote_synced true}]
           (testing "Published tables in remote-synced collections have can_write=false"
-            (t2/update! :model/Table (mt/id :venues)
+            (t2/update! :model/Table :id (mt/id :venues)
                         {:is_published true
                          :collection_id library-coll-id})
             (try
               (is (false? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
                   "Published table in remote-synced collection should not be writable when remote-sync-type is read-only")
               (finally
-                (t2/update! :model/Table (mt/id :venues)
+                (t2/update! :model/Table :id (mt/id :venues)
                             {:is_published false
                              :collection_id nil})))))))))
 
@@ -389,14 +395,14 @@
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :is_remote_synced true}]
           (testing "Published tables in remote-synced collections have can_write=true"
-            (t2/update! :model/Table (mt/id :venues)
+            (t2/update! :model/Table :id (mt/id :venues)
                         {:is_published true
                          :collection_id library-coll-id})
             (try
               (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
                   "Published table in remote-synced collection should be writable when remote-sync-type is read-write")
               (finally
-                (t2/update! :model/Table (mt/id :venues)
+                (t2/update! :model/Table :id (mt/id :venues)
                             {:is_published false
                              :collection_id nil})))))))))
 
@@ -407,14 +413,14 @@
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
                                                                 :is_remote_synced true}]
           (testing "Unpublished tables in remote-synced collections have can_write=true"
-            (t2/update! :model/Table (mt/id :venues)
+            (t2/update! :model/Table :id (mt/id :venues)
                         {:is_published false
                          :collection_id library-coll-id})
             (try
               (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
                   "Unpublished table in remote-synced collection should be writable even when remote-sync-type is read-only")
               (finally
-                (t2/update! :model/Table (mt/id :venues)
+                (t2/update! :model/Table :id (mt/id :venues)
                             {:is_published false
                              :collection_id nil})))))))))
 
@@ -427,14 +433,14 @@
           (testing (str "When remote-sync-type is " remote-sync-setting)
             (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
               (testing "Published tables in regular collections have can_write=true"
-                (t2/update! :model/Table (mt/id :venues)
+                (t2/update! :model/Table :id (mt/id :venues)
                             {:is_published true
                              :collection_id regular-coll-id})
                 (try
                   (is (true? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues))))
                       "Published table in regular collection should be writable regardless of remote-sync-type")
                   (finally
-                    (t2/update! :model/Table (mt/id :venues)
+                    (t2/update! :model/Table :id (mt/id :venues)
                                 {:is_published false
                                  :collection_id nil})))))))))))
 
@@ -447,7 +453,7 @@
             (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
               (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:visibility_type :sensitive}
                 (testing "published tables in remote-synced collections are not writable when remote-sync-type is read-only"
-                  (is (false? (mi/can-write? (t2/select-one :model/Table (mt/id :venues)))))
+                  (is (false? (mi/can-write? (t2/select-one :model/Table :id (mt/id :venues)))))
                   (is (false? (:can_write (mt/user-http-request :crowberto :get 200
                                                                 (str "table/" (mt/id :venues) "/query_metadata")
                                                                 :include_editable_data_model true)))))
@@ -589,14 +595,14 @@
           (testing "Fields on published tables in remote-synced collections have can_write=false"
             (let [table-id (mt/id :venues)
                   field-id (mt/id :venues :name)]
-              (t2/update! :model/Table table-id
+              (t2/update! :model/Table :id table-id
                           {:is_published true
                            :collection_id library-coll-id})
               (try
                 (is (false? (mi/can-write? (t2/select-one :model/Field :id field-id)))
                     "Field on published table in remote-synced collection should not be writable when remote-sync-type is read-only")
                 (finally
-                  (t2/update! :model/Table table-id
+                  (t2/update! :model/Table :id table-id
                               {:is_published false
                                :collection_id nil}))))))))))
 
@@ -609,14 +615,14 @@
           (testing "Fields on published tables in remote-synced collections have can_write=true"
             (let [table-id (mt/id :venues)
                   field-id (mt/id :venues :name)]
-              (t2/update! :model/Table table-id
+              (t2/update! :model/Table :id table-id
                           {:is_published true
                            :collection_id library-coll-id})
               (try
                 (is (true? (mi/can-write? (t2/select-one :model/Field :id field-id)))
                     "Field on published table in remote-synced collection should be writable when remote-sync-type is read-write")
                 (finally
-                  (t2/update! :model/Table table-id
+                  (t2/update! :model/Table :id table-id
                               {:is_published false
                                :collection_id nil}))))))))))
 
@@ -630,7 +636,7 @@
                                                                 :is_remote_synced true}]
           (testing "Segments on published tables in remote-synced collections have can_write=false"
             (let [table-id (mt/id :venues)]
-              (t2/update! :model/Table table-id
+              (t2/update! :model/Table :id table-id
                           {:is_published true
                            :collection_id library-coll-id})
               (try
@@ -641,7 +647,7 @@
                   (is (false? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
                       "Segment on published table in remote-synced collection should not be writable when remote-sync-type is read-only"))
                 (finally
-                  (t2/update! :model/Table table-id
+                  (t2/update! :model/Table :id table-id
                               {:is_published false
                                :collection_id nil}))))))))))
 
@@ -653,7 +659,7 @@
                                                                 :is_remote_synced true}]
           (testing "Segments on published tables in remote-synced collections have can_write=true"
             (let [table-id (mt/id :venues)]
-              (t2/update! :model/Table table-id
+              (t2/update! :model/Table :id table-id
                           {:is_published true
                            :collection_id library-coll-id})
               (try
@@ -664,7 +670,7 @@
                   (is (true? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
                       "Segment on published table in remote-synced collection should be writable when remote-sync-type is read-write"))
                 (finally
-                  (t2/update! :model/Table table-id
+                  (t2/update! :model/Table :id table-id
                               {:is_published false
                                :collection_id nil}))))))))))
 
@@ -676,7 +682,7 @@
                                                                 :is_remote_synced true}]
           (testing "Segment creation should be blocked on published tables in remote-synced collections"
             (let [table-id (mt/id :venues)]
-              (t2/update! :model/Table table-id
+              (t2/update! :model/Table :id table-id
                           {:is_published true
                            :collection_id library-coll-id})
               (try
@@ -688,7 +694,7 @@
                                                               :definition {}}))
                       "Segment creation should be blocked on published table in remote-synced collection when remote-sync-type is read-only"))
                 (finally
-                  (t2/update! :model/Table table-id
+                  (t2/update! :model/Table :id table-id
                               {:is_published false
                                :collection_id nil}))))))))))
 
@@ -704,10 +710,8 @@
                                                         :namespace :transforms}
                        :model/Transform {transform-id :id} {:name "Test Transform"
                                                             :collection_id coll-id
-                                                            :source {:type "query"
-                                                                     :query {:database (mt/id)
-                                                                             :type :query
-                                                                             :query {:source-table (mt/id :venues)}}}
+                                                            :source {:type :query
+                                                                     :query (venues-query)}
                                                             :target {:database (mt/id)
                                                                      :type "table"
                                                                      :schema "public"
@@ -723,10 +727,8 @@
                                                         :namespace :transforms}
                        :model/Transform {transform-id :id} {:name "Test Transform"
                                                             :collection_id coll-id
-                                                            :source {:type "query"
-                                                                     :query {:database (mt/id)
-                                                                             :type :query
-                                                                             :query {:source-table (mt/id :venues)}}}
+                                                            :source {:type :query
+                                                                     :query (venues-query)}
                                                             :target {:database (mt/id)
                                                                      :type "table"
                                                                      :schema "public"
@@ -744,10 +746,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -765,10 +765,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -787,10 +785,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -808,10 +804,8 @@
                                                           :namespace :transforms}]
             (is (false? (mi/can-create? :model/Transform {:name "New Transform"
                                                           :collection_id coll-id
-                                                          :source {:type "query"
-                                                                   :query {:database (mt/id)
-                                                                           :type :query
-                                                                           :query {:source-table (mt/id :venues)}}}
+                                                          :source {:type :query
+                                                                   :query (venues-query)}
                                                           :target {:database (mt/id)
                                                                    :type "table"
                                                                    :schema "public"
@@ -828,10 +822,8 @@
                                                           :namespace :transforms}]
             (is (true? (mi/can-create? :model/Transform {:name "New Transform"
                                                          :collection_id coll-id
-                                                         :source {:type "query"
-                                                                  :query {:database (mt/id)
-                                                                          :type :query
-                                                                          :query {:source-table (mt/id :venues)}}}
+                                                         :source {:type :query
+                                                                  :query (venues-query)}
                                                          :target {:database (mt/id)
                                                                   :type "table"
                                                                   :schema "public"
@@ -847,10 +839,8 @@
                                                           :namespace :transforms}
                          :model/Transform {transform-id :id} {:name "Test Transform"
                                                               :collection_id coll-id
-                                                              :source {:type "query"
-                                                                       :query {:database (mt/id)
-                                                                               :type :query
-                                                                               :query {:source-table (mt/id :venues)}}}
+                                                              :source {:type :query
+                                                                       :query (venues-query)}
                                                               :target {:database (mt/id)
                                                                        :type "table"
                                                                        :schema "public"
@@ -867,7 +857,7 @@
                                                         :namespace :transforms}
                        :model/Transform {transform-id :id} {:name "Read-only Transform"
                                                             :collection_id coll-id
-                                                            :source {:type "query"
+                                                            :source {:type :query
                                                                      :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                             :target {:database (mt/id)
                                                                      :type "table"
@@ -891,10 +881,8 @@
                                                           :namespace :transforms}]
             (is (false? (mi/can-create? :model/Transform {:name "New Transform"
                                                           :collection_id coll-id
-                                                          :source {:type "query"
-                                                                   :query {:database (mt/id)
-                                                                           :type :query
-                                                                           :query {:source-table (mt/id :venues)}}}
+                                                          :source {:type :query
+                                                                   :query (venues-query)}
                                                           :target {:database (mt/id)
                                                                    :type "table"
                                                                    :schema "public"

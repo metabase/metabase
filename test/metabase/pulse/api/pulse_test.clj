@@ -438,6 +438,109 @@
                   (is (= nil
                          (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name))))))))))))
 
+(deftest create-dashboard-subscription-ignores-collection-keys-test
+  (testing "POST /api/pulse"
+    (testing "A dashboard subscription ignores `collection_id` and `collection_position` from the request"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Pulse]
+          (mt/with-temp [:model/Collection {coll-a :id} {}
+                         :model/Collection {coll-s :id} {}
+                         :model/Dashboard  {dashboard-id :id} {:collection_id coll-a}
+                         :model/Card       {card-id :id} {:collection_id coll-a}
+                         :model/Card       {pin-1 :id} {:collection_id coll-s :collection_position 1}
+                         :model/Card       {pin-2 :id} {:collection_id coll-s :collection_position 2}]
+            ;; View-only access to the dashboard's collection A, and no access to S.
+            (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
+            ;; :rasta cannot write to S. :crowberto can, so the request would pass the permission check for S.
+            (doseq [user [:rasta :crowberto]]
+              (testing (str "as " user)
+                (let [pulse-name (mt/random-name)]
+                  (mt/user-http-request user :post 200 "pulse"
+                                        {:name                pulse-name
+                                         :dashboard_id        dashboard-id
+                                         :cards               [{:id                card-id
+                                                                :include_csv       false
+                                                                :include_xls       false
+                                                                :dashboard_card_id nil}]
+                                         :channels            [daily-email-channel]
+                                         :skip_if_empty       false
+                                         :collection_id       coll-s
+                                         :collection_position 1})
+                  (testing "pinned cards in the other collection do not move"
+                    (is (= {pin-1 1, pin-2 2}
+                           (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]]))))
+                  (testing "the subscription is saved in the dashboard's collection, unpinned"
+                    (is (= {:collection_id coll-a, :collection_position nil}
+                           (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position]
+                                                          :name pulse-name))))))))))))))
+
+(deftest update-dashboard-subscription-collection-keys-test
+  (testing "PUT /api/pulse/:id"
+    (testing "A dashboard subscription refuses a different `collection_id` or `collection_position`"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Pulse]
+          (mt/with-temp [:model/Collection {coll-a :id} {}
+                         :model/Collection {coll-s :id} {}
+                         :model/Dashboard  {dashboard-id :id} {:collection_id coll-a}
+                         :model/Card       {card-id :id} {:collection_id coll-a}
+                         :model/Card       {pin-1 :id} {:collection_id coll-a :collection_position 1}
+                         :model/Card       {pin-2 :id} {:collection_id coll-a :collection_position 2}]
+            ;; View-only access to the dashboard's collection A. Two cards are pinned there, at 1 and 2.
+            (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
+            (doseq [user [:rasta :crowberto]]
+              (testing (str "as " user)
+                (let [pulse-name (mt/random-name)
+                      {id :id}   (mt/user-http-request user :post 200 "pulse"
+                                                       {:name          pulse-name
+                                                        :dashboard_id  dashboard-id
+                                                        :cards         [{:id                card-id
+                                                                         :include_csv       false
+                                                                         :include_xls       false
+                                                                         :dashboard_card_id nil}]
+                                                        :channels      [daily-email-channel]
+                                                        :skip_if_empty false})
+                      stored     #(t2/select-one [:model/Pulse :collection_id :collection_position] :id id)]
+                  (doseq [updates [{:collection_position 1}
+                                   {:collection_id coll-s, :collection_position 1}]]
+                    (testing (pr-str updates)
+                      (mt/user-http-request user :put 400 (str "pulse/" id) updates)
+                      (testing "pinned cards in the collection do not move"
+                        (is (= {pin-1 1, pin-2 2}
+                               (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]]))))
+                      (testing "the subscription stays in the dashboard's collection, unpinned"
+                        (is (= {:collection_id coll-a, :collection_position nil}
+                               (mt/derecordize (stored)))))))
+                  (testing "values equal to the stored ones are accepted and change nothing"
+                    (mt/user-http-request user :put 200 (str "pulse/" id)
+                                          {:collection_id coll-a, :collection_position nil})
+                    (is (= {:collection_id coll-a, :collection_position nil}
+                           (mt/derecordize (stored))))))))))))))
+
+(deftest update-archived-dashboard-subscription-refused-move-changes-nothing-test
+  (testing "PUT /api/pulse/:id"
+    (testing "A refused move does not reset `archived` or `skip_if_empty` to their defaults"
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Collection {coll-a :id} {}
+                       :model/Collection {coll-s :id} {}
+                       :model/Dashboard  {dashboard-id :id} {:collection_id coll-a}
+                       :model/Card       {card-id :id} {:collection_id coll-a}]
+          (let [{id :id} (mt/user-http-request :crowberto :post 200 "pulse"
+                                               {:name          (mt/random-name)
+                                                :dashboard_id  dashboard-id
+                                                :cards         [{:id                card-id
+                                                                 :include_csv       false
+                                                                 :include_xls       false
+                                                                 :dashboard_card_id nil}]
+                                                :channels      [daily-email-channel]
+                                                :skip_if_empty true})
+                stored   #(mt/derecordize (t2/select-one [:model/Pulse :archived :skip_if_empty :collection_id]
+                                                         :id id))]
+            (t2/update! :model/Pulse :id id {:archived true})
+            (let [before (stored)]
+              (is (= {:archived true, :skip_if_empty true, :collection_id coll-a} before))
+              (mt/user-http-request :crowberto :put 400 (str "pulse/" id) {:collection_id coll-s})
+              (is (= before (stored))))))))))
+
 (deftest validate-email-domains-test
   (mt/when-ee-evailable
    (mt/with-model-cleanup [:model/Pulse]
@@ -647,7 +750,7 @@
              (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse)))))
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection! [_ collection pulse]
-        (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
+        (t2/update! :model/Pulse :id (u/the-id pulse) {:collection_position 1})
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
@@ -660,7 +763,7 @@
         (is (= nil
                (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))
         (testing "shouldn't be able to unset (unpin) a Pulse"
-          (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
+          (t2/update! :model/Pulse :id (u/the-id pulse) {:collection_position 1})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
@@ -679,7 +782,7 @@
   (testing "Can we unarchive a Pulse?"
     (pulse-test/with-pulse-in-collection! [_ collection pulse]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (t2/update! :model/Pulse (u/the-id pulse) {:archived true})
+      (t2/update! :model/Pulse :id (u/the-id pulse) {:archived true})
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false

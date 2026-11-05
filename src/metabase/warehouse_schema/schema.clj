@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema]))
@@ -53,7 +54,7 @@
    [:preview_display            {:optional true} [:maybe :boolean]]
    [:position                   {:optional true} [:maybe :int]]
    [:table_id                   {:optional true} [:maybe ::lib.schema.id/table]]
-   [:parent_id                  {:optional true} [:maybe ms/PositiveInt]]
+   [:parent_id                  {:optional true} [:maybe ::lib.schema.id/field]]
    [:display_name               {:optional true} [:maybe :string]]
    [:visibility_type            {:optional true} [:maybe [:or :keyword :string]]]
    [:fk_target_field_id         {:optional true} [:maybe ::lib.schema.id/field]]
@@ -109,11 +110,11 @@
    [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
    [:caveats            {:optional true} [:maybe :string]]
    [:points_of_interest {:optional true} [:maybe :string]]
-   [:nfc_path           {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
    [:custom_position    {:optional true} [:maybe :int]]
+   [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
@@ -225,3 +226,71 @@
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]])
+
+(mr/def ::external-dimension
+  "A Dimension as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::dimension [:name :type :entity_id :human_readable_field_id :field_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-field
+  "A Field as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::field [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default
+                           :database_indexed :database_is_auto_increment :database_is_generated
+                           :database_is_nullable :database_is_pk :database_partitioned :database_position
+                           :database_required :database_type :description :display_name :effective_type
+                           :has_field_values :is_defective_duplicate :json_unfolding :name :nfc_path
+                           :points_of_interest :position :preview_display :semantic_type :settings
+                           :unique_field_helper :visibility_type :table_id :fk_target_field_id :parent_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-field-user-settings
+  "A FieldUserSettings as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::field-user-settings [:semantic_type :description :display_name :visibility_type
+                                         :has_field_values :effective_type :coercion_strategy :caveats
+                                         :points_of_interest :json_unfolding :settings :data_sensitivity
+                                         :custom_position :description_set :semantic_type_set
+                                         :fk_target_field_id_set :fk_target_field_id :field_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-field-values
+  "A FieldValues as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::field-values [:values :human_readable_values :has_more_values :hash_key :type :field_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-table-user-settings
+  "A TableUserSettings as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table-user-settings [:display_name :description :entity_type :visibility_type :field_order
+                                         :caveats :points_of_interest :show_in_getting_started :data_authority
+                                         :data_source :owner_email :is_published :description_set
+                                         :visibility_type_set :data_layer_set :data_source_set :collection_id
+                                         :owner_user_id :data_layer :table_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-table
+  "A Table as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::table [:name :description :entity_type :active :display_name :visibility_type :schema
+                           :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
+                           :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable
+                           :data_authority :data_source :owner_email :is_published :data_layer :db_id
+                           :collection_id :transform_id :owner_user_id]]
+    [:map {:closed true}
+     [:serdes/meta    {:optional true} ::models.schema/external-meta]
+     [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]
+     [:deactivated_at {:optional true} [:maybe ::models.schema/external-date]]]]])

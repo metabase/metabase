@@ -117,7 +117,7 @@ dependencies:
     # management page as well in the future
     message: >
       Metabase requires the Oracle JDBC driver to connect to JDBC databases. See
-      https://metabase.com/docs/latest/administration-guide/databases/oracle.html
+      https://www.metabase.com/docs/latest/databases/connections/oracle
       for more details
 
   # A 'plugin' dependency checks whether a given plugin is available.

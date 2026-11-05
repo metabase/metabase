@@ -3,7 +3,6 @@ type FieldSchema = SchemaColumn & {
   fieldId?: number;
   id?: string | number;
   sourceFieldId?: number;
-  sourceName?: string;
   tableId?: number;
   type: "column";
 };
@@ -20,7 +19,6 @@ Metadata for a generated table field.
 | `fieldId?`       | `number`             |
 | `id?`            | `string` \| `number` |
 | `sourceFieldId?` | `number`             |
-| `sourceName?`    | `string`             |
 | `tableId?`       | `number`             |
 | `type`           | `"column"`           |
 

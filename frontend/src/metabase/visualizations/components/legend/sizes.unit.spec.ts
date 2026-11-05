@@ -1,18 +1,18 @@
-import { getLegendSize } from "./sizes";
+import { getLegendSizeTier } from "./sizes";
 
-describe("getLegendSize", () => {
-  it("should pick lg for large dashboard cards and sm otherwise", () => {
-    expect(getLegendSize({ width: 640, height: 360 })).toBe("lg");
-    expect(getLegendSize({ width: 639, height: 360 })).toBe("sm");
-    expect(getLegendSize({ width: 640, height: 359 })).toBe("sm");
+describe("getLegendSizeTier", () => {
+  it("should pick largeCard for large dashboard cards and smallCard otherwise", () => {
+    expect(getLegendSizeTier({ width: 640, height: 360 })).toBe("largeCard");
+    expect(getLegendSizeTier({ width: 639, height: 360 })).toBe("smallCard");
+    expect(getLegendSizeTier({ width: 640, height: 359 })).toBe("smallCard");
   });
 
-  it("should always pick md in the query builder and fullscreen", () => {
+  it("should always pick fullscreen in the query builder and fullscreen mode", () => {
     expect(
-      getLegendSize({ width: 300, height: 200, isQueryBuilder: true }),
-    ).toBe("md");
+      getLegendSizeTier({ width: 300, height: 200, isQueryBuilder: true }),
+    ).toBe("fullscreen");
     expect(
-      getLegendSize({ width: 2000, height: 900, isFullscreen: true }),
-    ).toBe("md");
+      getLegendSizeTier({ width: 2000, height: 900, isFullscreen: true }),
+    ).toBe("fullscreen");
   });
 });

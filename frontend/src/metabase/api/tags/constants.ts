@@ -102,4 +102,5 @@ export const TAG_TYPE_MAPPING = {
   pulse: "subscription",
   transform: "transform",
   exploration: "exploration",
+  "data-app": "data-app",
 } as const;
