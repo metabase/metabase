@@ -393,7 +393,8 @@
 ;;; -------------------------------------------- Derived components --------------------------------------------
 
 ;; Entries hold their dependency values weakly, so a dependency value nothing else refers to, such as a finished test's
-;; temporary app DB, can be collected, and its entry goes at the next write. A nil value is stored as itself.
+;; temporary app DB, can be collected, and its entry is dropped the next time an entry is added.
+;; A nil value is stored as itself.
 (defn- weak
   [v]
   (if (nil? v) ::nil (WeakReference. v)))
