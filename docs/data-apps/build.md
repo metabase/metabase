@@ -46,7 +46,7 @@ To see how this works with only one Metabase, check out the [single Metabase wor
 
 Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your [semantic layer](../data-modeling/semantic-layer/library.md). The semantic layer is the place to store your set of curated tables and metrics. Building on your semantic layer means that your app shows the same vetted numbers as the rest of your Metabase, so publish only trusted tables that are ready for analysis.
 
-If your app needs a table that isn't published, your agent stops and tells you what's missing. Your agent publishes a table only if you ask it to. How you publish depends on how your Metabase syncs with your Git repository:
+If your app needs a table that isn't published, your agent stops and tells you what's missing. How you publish depends on how your Metabase syncs with your Git repository:
 
 - **No repository yet.** Ideally, publish your tables now, before you connect a repository. You can [publish the tables yourself](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer). Or start your agent in any folder, and ask it to create your semantic layer and publish the tables that your app needs.
 - **Read-write mode** (Metabase can also write to the repository). Publish the tables yourself, or ask your agent to publish them. Your agent pushes the tables to the repository when it [ships the app](#ship-the-app-to-your-development-metabase).
