@@ -120,12 +120,6 @@
     (contains? query :delete-from) (-> (dissoc :delete-from)
                                        (assoc :from [(:delete-from query)]))))
 
-(defn- with-row-cap
-  "The built `query` with a LIMIT of `n`, or `query` itself when it is not a HoneySQL map."
-  [query n]
-  (cond-> query
-    (map? query) (assoc :limit n)))
-
 ;; Executed modelless because `after-select` methods and type transforms often dereference columns a narrow
 ;; snapshot doesn't fetch.
 ;; SQL execution failures propagate, since suppressing one cannot restore a PostgreSQL transaction it already
@@ -143,7 +137,7 @@
                           (let [built (-> (t2.pipeline/build query-type model
                                                              (assoc parsed-args :columns (vec fields))
                                                              (delete-query->select-query resolved-query))
-                                          (with-row-cap (inc max-pre-image-rows)))]
+                                          (assoc :limit (inc max-pre-image-rows)))]
                             (t2.pipeline/compile query-type model built))
                           (catch Exception e
                             (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
