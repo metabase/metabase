@@ -96,10 +96,18 @@
   {:discouraged-var       :var-usages
    :discouraged-namespace :namespace-usages})
 
+(defn- alias-namespaces
+  "A map of `[file lang alias]` to the namespace the file requires under that alias, from kondo's
+  `namespace-usages`; a `.cljc` file can require a different one for each language."
+  [namespace-usages]
+  (into {}
+        (for [{:keys [filename lang alias to]} namespace-usages
+              :when                            alias]
+          [[filename (some-> lang str) (str alias)] to])))
+
 (defn- usage-symbol
   "The fully-qualified symbol a var-usage or namespace-usage names.
-  A var used through an alias takes its namespace from that alias in `alias-ns`, a map of `[file lang alias]` to
-  the namespace the file requires under it; a `.cljc` file can require a different one for each language."
+  A var used through an alias takes its namespace from `alias-ns`, as [[alias-namespaces]] returns it."
   [alias-ns {:keys [filename lang alias to name]}]
   ;; Kondo resolves a re-exported var to the namespace it learned the var came from, which depends on its cache
   ;; and on which files share the run. The namespace the file required under the alias doesn't move.
@@ -113,20 +121,37 @@
   ;; a copy of hooks.metabase.premium-features.defenterprise/enterprise-ns-key, whose namespace babashka can't load
   :metabase/enterprise-ns)
 
+(def ^:private imports-key
+  "Var metadata the `import-fn`, `import-def` and `import-macro` kondo macros put on a definition, naming the var
+  it re-exports as the file writes it."
+  ;; a copy of the key in the macros under .clj-kondo/macros/potemkin and .clj-kondo/macros/metabase/util
+  :metabase/imports)
+
 (defn alias-edges
   "A map from each var defined in `analysis` that is another var under a second name to that var.
-  `analysis` is kondo's, with `:var-definitions` and their [[enterprise-ns-key]] metadata.
-  A potemkin `import-vars` re-export points at the var it imports, and an enterprise `defenterprise` at the OSS
-  var that dispatches to it."
-  [{:keys [var-definitions]}]
-  (into {}
-        (for [{:keys [ns imported-ns meta], var-name :name} var-definitions
-              :let  [sym   (symbol (str ns) (str var-name))
-                     ee-ns (get meta enterprise-ns-key)]
-              edge  [(when imported-ns [sym (symbol (str imported-ns) (str var-name))])
-                     (when ee-ns [(symbol (str ee-ns) (str var-name)) sym])]
-              :when edge]
-          edge)))
+  `analysis` is kondo's, with `:var-definitions` (and their [[enterprise-ns-key]] and [[imports-key]] metadata)
+  and `:namespace-usages`.
+  A potemkin `import-vars` or an `import-fn` re-export points at the var it imports, and an enterprise
+  `defenterprise` at the OSS var that dispatches to it."
+  [{:keys [var-definitions namespace-usages]}]
+  (let [alias-ns (alias-namespaces namespace-usages)]
+    (into {}
+          (for [{:keys [filename lang ns imported-ns meta], var-name :name} var-definitions
+                :let  [sym      (symbol (str ns) (str var-name))
+                       imported (some-> (get meta imports-key) symbol)
+                       ee-ns    (get meta enterprise-ns-key)]
+                edge  [(when imported-ns
+                         [sym (symbol (str imported-ns) (str var-name))])
+                       (when imported
+                         ;; an unqualified source is a var of the defining namespace
+                         [sym (symbol (str (if-let [written (namespace imported)]
+                                             (get alias-ns [filename (some-> lang str) written] written)
+                                             ns))
+                                      (name imported))])
+                       (when ee-ns
+                         [(symbol (str ee-ns) (str var-name)) sym])]
+                :when edge]
+            edge))))
 
 (defn- chain
   "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`, stopping before a repeat."
@@ -177,10 +202,7 @@
          ignores   (update-vals contents discouraged-ignores)
          offsets   (update-vals contents offset-fn)
          reported? (set (map (juxt :filename :row :col :type) baseline))
-         alias-ns  (into {}
-                         (for [{:keys [filename lang alias to]} (get-in output [:analysis :namespace-usages])
-                               :when                            alias]
-                           [[filename (some-> lang str) (str alias)] to]))
+         alias-ns  (alias-namespaces (get-in output [:analysis :namespace-usages]))
          ;; kondo puts each finding at its usage's own :row/:col
          usages-at (group-by (juxt :linter :filename :row :col)
                              (for [[linter k] usages-key
@@ -246,14 +268,17 @@
         (fs/delete-tree dir)))))
 
 (def ^:private source-dirs
-  ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"])
+  (delay (into ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"]
+               (map str)
+               (fs/glob "modules/drivers" "*/{src,test}"))))
 
 (defn- namespace-files
-  "The files defining the namespace `ns-name` in [[source-dirs]], or none for a namespace outside them."
+  "The files defining the namespace `ns-name` in [[source-dirs]]: more than one when it has separate `.clj` and
+  `.cljs` files, and none for a namespace outside them."
   [ns-name]
   (let [path (-> (str ns-name) (str/replace "-" "_") (str/replace "." "/"))]
-    (for [dir   source-dirs
-          ext   [".clj" ".cljc"]
+    (for [dir   @source-dirs
+          ext   [".clj" ".cljc" ".cljs"]
           :let  [file (str dir "/" path ext)]
           :when (fs/exists? file)]
       file)))
@@ -262,7 +287,8 @@
   "Kondo's analysis of `files`, as [[alias-edges]] takes it."
   [files]
   (:analysis (run-kondo! :json
-                         {:output {:analysis {:var-definitions {:meta [enterprise-ns-key]}}}}
+                         {:output {:analysis {:var-definitions  {:meta [enterprise-ns-key imports-key]}
+                                              :namespace-usages true}}}
                          files
                          false)))
 

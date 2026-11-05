@@ -863,9 +863,12 @@
     :legacy-mbql.normalize))
 
 (deftest ^:parallel discouraged-count-keys-test
-  (let [config '{:linters {:discouraged-var {a/x {:message "no"}, a/y {:message "no"}}}}]
-    (is (= #{:a/x :a/y}
-           (kondo-ratchet/discouraged-count-keys :discouraged-var config)))))
+  (let [config '{:linters {:discouraged-var {a/x {:message "no"}, a/y {:message "no"}, metabase.b/x {:message "no"}}}}]
+    (is (= #{:a/x :a/y :b/x}
+           (kondo-ratchet/discouraged-count-keys :discouraged-var config)))
+    (testing "a symbol that counts under another has no key of its own"
+      (is (= #{:a/x :a/y}
+             (kondo-ratchet/discouraged-count-keys :discouraged-var config {:b/x :a/x}))))))
 
 (deftest ^:parallel discouraged-count-field-test
   (is (= :discouraged-var-counts (kondo-ratchet/discouraged-count-field :discouraged-var)))
@@ -907,10 +910,13 @@
 
 (deftest ^:parallel unconfigured-budget-warnings-test
   (is (= [(str "WARNING: r.edn budgets :discouraged-var symbols no longer configured in .clj-kondo/config.edn: :a/gone"
-               " -- `./bin/mage kondo-ratchets-shrink` drops them")]
+               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+          (str "WARNING: r.edn budgets :discouraged-var symbols that count under another symbol's key:"
+               " :b/x -> :a/x -- `./bin/mage kondo-ratchets-shrink` drops them")]
          (kondo-ratchet/unconfigured-budget-warnings "r.edn"
-                                                     {:discouraged-var-counts {:a/x 1, :a/gone 1}}
-                                                     {:discouraged-var #{:a/x}, :discouraged-namespace #{}}))))
+                                                     {:discouraged-var-counts {:a/x 1, :a/gone 1, :b/x 1}}
+                                                     {:discouraged-var #{:a/x}, :discouraged-namespace #{}}
+                                                     {:b/x :a/x}))))
 
 (deftest ^:parallel discouraged-count-keys-collision-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #":discouraged-var symbols a/x, metabase.a/x share the ratchet key :a/x"
@@ -1241,7 +1247,8 @@
                                         attribution
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         {:api-any 1, :uses-any 2}
-                                        {:ignore-counts [:new :void]}))
+                                        {:ignore-counts [:new :void]}
+                                        {}))
         "untouched budgets (:same, :cfg-same, :dv-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
          ignores left; the empty unlimited policy (:empty) is kept and warned about; per-symbol fields report
@@ -1254,7 +1261,18 @@
                                         {:actual {:discouraged-var {:dv-new 1}}}
                                         {}
                                         {}
-                                        {:discouraged-var-counts [:dv-new]})))))
+                                        {:discouraged-var-counts [:dv-new]}
+                                        {}))))
+  (testing "a key other keys count under names them"
+    (is (= ["WARNING: :dv-x (also counts :dv-y) is over budget (1 recorded, 2 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-x`"]
+           (kondo-ratchet/change-report {:ignore-counts {}, :discouraged-var-counts {:dv-x 1}, :config-counts {}, :comment-exempt #{}}
+                                        {}
+                                        []
+                                        {:actual {:discouraged-var {:dv-x 2}}}
+                                        {}
+                                        {}
+                                        {}
+                                        {:dv-y :dv-x})))))
 
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"
