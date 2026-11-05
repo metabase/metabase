@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
@@ -7,28 +7,18 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import {
-  type HistoryProfileState,
-  getFailedChecks,
-  useHistoryProfile,
-} from "./history-profile";
-import type { ScdType } from "./history-source";
-import type { HistoryBinding } from "./inference";
+import { type HistoryProfileState, useHistoryProfile } from "./history-profile";
 import { isRoleA } from "./roles";
 import { type TableStructure, useTableStructures } from "./table-structure";
 
 type TableReview = {
   correctionFieldIds: string[];
-  confirmedDefinition?: string;
-  confirmedAt?: string;
 };
 
 type HistoryReviewStorage = Record<string, TableReview>;
 
 export type HistoryReviewStatus = {
   needsReview: boolean;
-  isConfirmed: boolean;
-  confirmedAt: string | null;
   issue: string | null;
   profileState: HistoryProfileState;
 };
@@ -43,15 +33,7 @@ function parseTableReview(value: unknown): TableReview {
   const correctionFieldIds = Array.isArray(value.correctionFieldIds)
     ? value.correctionFieldIds.filter((id) => typeof id === "string")
     : [];
-  return {
-    correctionFieldIds,
-    confirmedDefinition:
-      typeof value.confirmedDefinition === "string"
-        ? value.confirmedDefinition
-        : undefined,
-    confirmedAt:
-      typeof value.confirmedAt === "string" ? value.confirmedAt : undefined,
-  };
+  return { correctionFieldIds };
 }
 
 function parseStorage(value: unknown): HistoryReviewStorage {
@@ -60,9 +42,6 @@ function parseStorage(value: unknown): HistoryReviewStorage {
 
 const getTableKey = (table: Pick<Table, "db_id" | "id">) =>
   `${table.db_id}:${table.id}`;
-
-const getDefinitionKey = (binding: HistoryBinding, scdType: ScdType | null) =>
-  JSON.stringify({ ..._.omit(binding, "currentRowsOnly"), scdType });
 
 export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
   const [storage, updateStorage] = usePrototypeStorage(
@@ -100,32 +79,7 @@ export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
     [updateReview],
   );
 
-  const confirm = useCallback(
-    (structure: Pick<TableStructure, "history" | "scdType">) =>
-      updateReview((current) => ({
-        ...current,
-        confirmedDefinition: getDefinitionKey(
-          structure.history,
-          structure.scdType,
-        ),
-        confirmedAt: new Date().toISOString(),
-      })),
-    [updateReview],
-  );
-
-  const isConfirmed = (
-    structure: Pick<TableStructure, "history" | "scdType">,
-  ) =>
-    review.confirmedDefinition ===
-    getDefinitionKey(structure.history, structure.scdType);
-
-  return {
-    confirmedAt: review.confirmedAt ?? null,
-    isConfirmed,
-    isCorrectionField,
-    setCorrectionField,
-    confirm,
-  };
+  return { isCorrectionField, setCorrectionField };
 }
 
 function getIssue(
@@ -137,17 +91,6 @@ function getIssue(
   }
   if (structure.scdType == null) {
     return t`Say how this table keeps history`;
-  }
-  if (profileState.status !== "loaded") {
-    return null;
-  }
-  const failedCount = getFailedChecks(profileState.profile).length;
-  if (failedCount > 0) {
-    return ngettext(
-      msgid`${failedCount} history check fails`,
-      `${failedCount} history checks fail`,
-      failedCount,
-    );
   }
   const isWeakGuess =
     !structure.isScdTypeOverridden &&
@@ -165,18 +108,9 @@ export function useHistoryReviewStatus(
   const profileState = useHistoryProfile(table, structure.history, {
     skip: !isHistory,
   });
-  const { isConfirmed, confirmedAt } = useHistoryReview(table);
-
   if (!isHistory) {
     return null;
   }
   const issue = getIssue(structure, profileState);
-  const isDefinitionConfirmed = isConfirmed(structure);
-  return {
-    needsReview: issue != null && !isDefinitionConfirmed,
-    isConfirmed: isDefinitionConfirmed,
-    confirmedAt: isDefinitionConfirmed ? confirmedAt : null,
-    issue,
-    profileState,
-  };
+  return { needsReview: issue != null, issue, profileState };
 }

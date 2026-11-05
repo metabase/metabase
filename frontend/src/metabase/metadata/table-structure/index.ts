@@ -5,6 +5,7 @@ export {
   findTargetTable,
   inferCustomPropertyFacet,
   inferDefinitionColumns,
+  inferHistoryBinding,
   inferWildcardDefinitionTable,
   type MainDateInference,
   type HistoryBinding,

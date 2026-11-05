@@ -56,6 +56,7 @@ import {
   HistoryKindInput,
   HistoryVersionsSummary,
   SharedPointerNote,
+  getValidToForDates,
 } from "../TableHistory";
 
 import S from "./TableStructure.module.css";
@@ -619,15 +620,19 @@ function HistoryBindingSection({
           value={
             <HistoryKindInput
               structure={structure}
+              fields={fields}
               disabled={disabled}
               onConfirmGuess={() =>
                 onScdTypeChange(structure.scdTypeInference.scdType)
               }
               onChange={(kind) => {
                 onScdTypeChange(2);
-                if (kind === "latest-row-per-key") {
-                  onChange({ validToFieldId: null });
-                }
+                onChange({
+                  validToFieldId:
+                    kind === "latest-row-per-key"
+                      ? null
+                      : getValidToForDates(fields, binding),
+                });
               }}
             />
           }
@@ -696,7 +701,7 @@ function HistoryBindingSection({
         />
         <DetailsRow
           label={t`Checks`}
-          value={<HistoryChecksStatus table={table} readOnly={disabled} />}
+          value={<HistoryChecksStatus table={table} />}
         />
         <DetailsRow
           label={t`Advanced`}

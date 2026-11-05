@@ -1,7 +1,6 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
-  getFailedChecks,
   getHistorySignalLabel,
   isRoleA,
   useHistoryReviewStatus,
@@ -22,27 +21,9 @@ export function HistoryListSummary({
   if (!isHistory || status == null) {
     return null;
   }
-  const signal = structure.isScdTypeOverridden
+  const summary = structure.isScdTypeOverridden
     ? t`Set by an admin`
     : getHistorySignalLabel(structure.scdTypeInference.rule);
-  const failingCount =
-    status.profileState.status === "loaded"
-      ? getFailedChecks(status.profileState.profile).length
-      : 0;
-  const parts = [
-    signal,
-    ...(status.isConfirmed ? [t`reviewed`] : []),
-    ...(failingCount > 0
-      ? [
-          ngettext(
-            msgid`${failingCount} failing check`,
-            `${failingCount} failing checks`,
-            failingCount,
-          ),
-        ]
-      : []),
-  ];
-  const summary = parts.join(" · ");
   return (
     <Text c="text-secondary" size="sm" truncate title={summary}>
       {summary}
