@@ -89,6 +89,7 @@ import {
   writeTokens,
 } from "./tokens";
 import type { DraftState, SuggestionGroup } from "./types";
+import { useExpressionClipboard } from "./use-expression-clipboard";
 import { getDraftColumn, getDraftStateFromFilter } from "./utils";
 
 export type ExpressionBarProps = {
@@ -912,6 +913,9 @@ export function ExpressionBar({
    * changes the selection. True when the key was for the selection.
    */
   const handleSelectionKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (clipboard.handleKeyDown(event)) {
+      return true;
+    }
     if (
       event.shiftKey &&
       (event.key === "ArrowLeft" || event.key === "ArrowRight")
@@ -1054,6 +1058,42 @@ export function ExpressionBar({
   // of the latest render.
   const latestSelectionKeyRef = useLatest(handleSelectionKey);
   const latestCloseRef = useLatest(close);
+
+  const clipboard = useExpressionClipboard({
+    query,
+    stageIndex,
+    tokens,
+    caretIndex,
+    selection,
+    barRef,
+    getHighlightedRange: (target) => {
+      const at = getTokenRangeAt(target);
+      return at?.element.hasAttribute(PILL_ATTR) ? at.range : undefined;
+    },
+    onSelect: (range) => {
+      selectTokens(range.start, range.end);
+      close({ keepFocus: true });
+    },
+    onChange: ({
+      tokens: nextTokens,
+      caret: nextCaret,
+      selection: nextSelection,
+    }) => {
+      setTokens(nextTokens);
+      if (nextSelection == null) {
+        setSelectionState(undefined);
+        moveCaret(nextCaret, { open: false });
+        return;
+      }
+      setCaret(nextCaret);
+      setSelectionState({
+        anchor: nextSelection.start,
+        focus: nextSelection.end,
+        tokens: nextTokens,
+      });
+      close({ keepFocus: true });
+    },
+  });
 
   const removeTokenBeforeCaret = () => {
     if (caretIndex > 0) {
@@ -1506,6 +1546,14 @@ export function ExpressionBar({
           [S.barNested]: isNested,
         })}
         onClick={handleBarClick}
+        onCopy={clipboard.handleCopy}
+        onPaste={clipboard.handlePaste}
+        onKeyDown={(event) => {
+          // The inputs take the clipboard keys through their own handlers.
+          if (!(event.target instanceof HTMLInputElement)) {
+            clipboard.handleKeyDown(event);
+          }
+        }}
         onClickCapture={(event) => {
           // The click at the end of a drag does not open the pill under it.
           if (didDragRef.current) {

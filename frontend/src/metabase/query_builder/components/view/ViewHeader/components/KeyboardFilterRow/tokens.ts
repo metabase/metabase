@@ -475,7 +475,7 @@ function getBalancedRange(
 }
 
 /** Prototype: the tokens without the AND / OR and empty parentheses that dangle. */
-function removeDanglingTokens(tokens: readonly Token[]): Token[] {
+export function removeDanglingTokens(tokens: readonly Token[]): Token[] {
   let next = [...tokens];
   let isChanged = true;
   while (isChanged) {

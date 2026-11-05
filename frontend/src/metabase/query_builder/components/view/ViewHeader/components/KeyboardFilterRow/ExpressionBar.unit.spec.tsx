@@ -2,7 +2,15 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { render, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -12,10 +20,17 @@ import {
 
 import { ExpressionBar } from "./ExpressionBar";
 import {
+  FILTER_CLIPBOARD_TYPE,
+  parseFilterClipboard,
+  serializeTokens,
+} from "./clipboard";
+import {
   CLOSE_PAREN,
   OPEN_PAREN,
   filterToken,
+  getFilterLabel,
   opToken,
+  readTokens,
   toFilterClause,
   writeTokens,
 } from "./tokens";
@@ -43,7 +58,7 @@ describe("ExpressionBar", () => {
         ),
       );
 
-      render(
+      renderWithProviders(
         <ExpressionBar
           query={hasSourceFilters ? filteredQuery : query}
           stageIndex={0}
@@ -606,6 +621,221 @@ describe("ExpressionBar", () => {
 
       expect(screen.getAllByTestId("filter-pill")).toHaveLength(3);
       expect(getAnds()).toHaveLength(0);
+    });
+  });
+
+  describe("clipboard", () => {
+    const createQuery = () =>
+      Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const addNumberFilter = (
+      query: Lib.Query,
+      columnName: string,
+      value: number,
+    ) => {
+      const column = columnFinder(query, Lib.filterableColumns(query, 0))(
+        "ORDERS",
+        columnName,
+      );
+      return Lib.filter(
+        query,
+        0,
+        toFilterClause(
+          query,
+          0,
+          Lib.numberFilterClause({ operator: ">", column, values: [value] }),
+        ),
+      );
+    };
+    const createQueryWithFilters = () =>
+      addNumberFilter(addNumberFilter(createQuery(), "TOTAL", 10), "TAX", 5);
+
+    type SetupOpts = { query: Lib.Query; openKey?: number };
+
+    const setup = ({ query, openKey }: SetupOpts) => {
+      fetchMock.get("path:/api/prototype/field-categories", []);
+      fetchMock.get("path:/api/prototype/filter-usage", []);
+      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
+      const onChange = jest.fn<void, [Lib.Query]>();
+      const { store } = renderWithProviders(
+        <ExpressionBar
+          query={query}
+          stageIndex={0}
+          isAutoApply
+          onChange={onChange}
+          openKey={openKey}
+        />,
+      );
+      return { onChange, store };
+    };
+
+    const createClipboardData = (entries: Record<string, string> = {}) => ({
+      getData: (type: string) => entries[type] ?? "",
+      setData: jest.fn<void, [string, string]>(),
+    });
+    const getCopiedPayload = (
+      clipboardData: ReturnType<typeof createClipboardData>,
+    ) =>
+      parseFilterClipboard(
+        clipboardData.setData.mock.calls.find(
+          ([type]) => type === FILTER_CLIPBOARD_TYPE,
+        )?.[1],
+      );
+    const getFilterLabels = (query: Lib.Query) =>
+      Lib.filters(query, 0).map((filter) => getFilterLabel(query, 0, filter));
+    const focusFirstPill = async () => {
+      const pill = screen.getAllByTestId("filter-pill")[0];
+      await act(async () => pill.focus());
+      return pill;
+    };
+    // jsdom has no Copy command: the stub fires the copy event that the
+    // browser fires on the focused element.
+    const stubCopyCommand = () => {
+      const clipboardData = createClipboardData();
+      document.execCommand = jest.fn((command: string) => {
+        if (command !== "copy") {
+          return false;
+        }
+        // eslint-disable-next-line testing-library/no-node-access -- the browser copies from the focused element
+        fireEvent.copy(checkNotNull(document.activeElement), {
+          clipboardData,
+        });
+        return true;
+      });
+      return clipboardData;
+    };
+    afterEach(() => {
+      Reflect.deleteProperty(document, "execCommand");
+    });
+
+    it("copies the highlighted pill as text and as filters", async () => {
+      const query = createQueryWithFilters();
+      setup({ query });
+      const pill = await focusFirstPill();
+      const clipboardData = stubCopyCommand();
+
+      await userEvent.keyboard("{Meta>}c{/Meta}");
+
+      expect(clipboardData.setData).toHaveBeenCalledWith(
+        "text/plain",
+        getFilterLabels(query)[0],
+      );
+      expect(getCopiedPayload(clipboardData)?.tokens).toHaveLength(1);
+      expect(pill).toHaveFocus();
+    });
+
+    it("copies every token after Select All", async () => {
+      const query = createQueryWithFilters();
+      setup({ query });
+      await focusFirstPill();
+      const clipboardData = stubCopyCommand();
+
+      await userEvent.keyboard("{Meta>}a{/Meta}");
+      await userEvent.keyboard("{Meta>}c{/Meta}");
+
+      const [total, tax] = getFilterLabels(query);
+      expect(clipboardData.setData).toHaveBeenCalledWith(
+        "text/plain",
+        `${total} and ${tax}`,
+      );
+      expect(getCopiedPayload(clipboardData)?.tokens).toHaveLength(3);
+    });
+
+    it("cuts the highlighted pill out of the query", async () => {
+      const query = createQueryWithFilters();
+      const { onChange } = setup({ query });
+      await focusFirstPill();
+      const clipboardData = stubCopyCommand();
+
+      await userEvent.keyboard("{Meta>}x{/Meta}");
+
+      expect(getCopiedPayload(clipboardData)?.tokens).toHaveLength(1);
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(getFilterLabels(onChange.mock.calls[0][0])).toEqual([
+        getFilterLabels(query)[1],
+      ]);
+    });
+
+    it("pastes copied filters at the caret and applies them", () => {
+      const source = createQueryWithFilters();
+      const payload = serializeTokens(source, 0, readTokens(source, 0));
+      const { onChange } = setup({ query: createQuery(), openKey: 0 });
+
+      fireEvent.paste(screen.getByRole("textbox"), {
+        clipboardData: createClipboardData({
+          [FILTER_CLIPBOARD_TYPE]: JSON.stringify(payload),
+        }),
+      });
+
+      expect(screen.getAllByTestId("filter-pill")).toHaveLength(2);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(getFilterLabels(onChange.mock.calls[0][0])).toEqual(
+        getFilterLabels(source),
+      );
+    });
+
+    it("leaves a paste alone while the input has text", async () => {
+      const source = createQueryWithFilters();
+      const payload = serializeTokens(source, 0, readTokens(source, 0));
+      const { onChange } = setup({ query: createQuery(), openKey: 0 });
+      await userEvent.type(screen.getByRole("textbox"), "tot");
+
+      fireEvent.paste(screen.getByRole("textbox"), {
+        clipboardData: createClipboardData({
+          [FILTER_CLIPBOARD_TYPE]: JSON.stringify(payload),
+        }),
+      });
+
+      expect(screen.queryAllByTestId("filter-pill")).toHaveLength(0);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("leaves a paste of plain text to the input", () => {
+      const { onChange } = setup({ query: createQuery(), openKey: 0 });
+      const event = fireEvent.paste(screen.getByRole("textbox"), {
+        clipboardData: createClipboardData({ "text/plain": "Total" }),
+      });
+
+      expect(event).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("warns about filters from another database instead of pasting them", async () => {
+      const source = createQueryWithFilters();
+      const payload = {
+        ...serializeTokens(source, 0, readTokens(source, 0)),
+        databaseId: 999,
+      };
+      const { onChange, store } = setup({ query: createQuery(), openKey: 0 });
+
+      const isUnhandled = fireEvent.paste(screen.getByRole("textbox"), {
+        clipboardData: createClipboardData({
+          [FILTER_CLIPBOARD_TYPE]: JSON.stringify(payload),
+        }),
+      });
+
+      expect(isUnhandled).toBe(false);
+      await waitFor(() =>
+        expect(store.getState().undo).toContainEqual(
+          expect.objectContaining({
+            message: "These filters are from another database",
+          }),
+        ),
+      );
+      expect(screen.queryAllByTestId("filter-pill")).toHaveLength(0);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("selects every token with Select All, so Backspace removes them", async () => {
+      const { onChange } = setup({ query: createQueryWithFilters() });
+      await focusFirstPill();
+
+      await userEvent.keyboard("{Meta>}a{/Meta}");
+      await userEvent.keyboard("{Backspace}");
+
+      expect(screen.queryAllByTestId("filter-pill")).toHaveLength(0);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(Lib.filters(onChange.mock.calls[0][0], 0)).toHaveLength(0);
     });
   });
 });
