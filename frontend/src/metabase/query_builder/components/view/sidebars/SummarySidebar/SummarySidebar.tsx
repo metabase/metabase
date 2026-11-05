@@ -141,6 +141,8 @@ export function SummarySidebar({
         data-testid="summary-field-list-drawer"
       >
         <SummaryFieldList
+          query={query}
+          stageIndex={stageIndex}
           sections={sections}
           onSelect={handleFieldSelect}
           onAdd={(field) => handleAdd(getFieldWellId(field), field)}

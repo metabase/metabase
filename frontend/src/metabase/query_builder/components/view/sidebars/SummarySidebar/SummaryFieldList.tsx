@@ -8,6 +8,10 @@ import {
 import { t } from "ttag";
 
 import {
+  HoverParent,
+  QueryColumnInfoIcon,
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
+import {
   Box,
   Card,
   Icon,
@@ -16,6 +20,7 @@ import {
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 
 import { MatchedLabel } from "./MatchedLabel";
 import S from "./SummarySidebar.module.css";
@@ -27,6 +32,8 @@ import type {
 import { filterFieldSections } from "./utils";
 
 type SummaryFieldListProps = {
+  query: Lib.Query;
+  stageIndex: number;
   sections: SummaryFieldSection[];
   /** A field was clicked: it replaces what its well holds. */
   onSelect: (field: SummaryField) => void;
@@ -37,9 +44,12 @@ type SummaryFieldListProps = {
 /**
  * The fields a summary can be built from, in collapsible sections: measures, metrics, then a
  * section per table the query reaches. A search keeps only the matching fields and opens every
- * section, so no match is hidden.
+ * section, so no match is hidden. Hovering a column swaps its icon for one that shows the
+ * column's info.
  */
 export function SummaryFieldList({
+  query,
+  stageIndex,
   sections,
   onSelect,
   onAdd,
@@ -121,6 +131,8 @@ export function SummaryFieldList({
               {section.items.map((item) => (
                 <FieldListItem
                   key={item.key}
+                  query={query}
+                  stageIndex={stageIndex}
                   item={item}
                   searchText={searchText}
                   onSelect={onSelect}
@@ -183,6 +195,8 @@ function CollapsibleSection({
 }
 
 type FieldListItemProps = {
+  query: Lib.Query;
+  stageIndex: number;
   item: SummaryFieldItem;
   searchText: string;
   onSelect: (field: SummaryField) => void;
@@ -190,6 +204,8 @@ type FieldListItemProps = {
 };
 
 function FieldListItem({
+  query,
+  stageIndex,
   item,
   searchText,
   onSelect,
@@ -199,9 +215,10 @@ function FieldListItem({
     event.altKey ? onAdd(item.field) : onSelect(item.field);
 
   return (
-    <li data-testid="summary-field-item">
+    <HoverParent as="li" data-testid="summary-field-item">
       <UnstyledButton
         className={S.fieldItem}
+        aria-label={item.name}
         onClick={pick}
         onKeyDown={(event) => {
           // a click from Enter or Space carries no modifier, so the key handles alt itself
@@ -211,9 +228,19 @@ function FieldListItem({
           }
         }}
       >
-        <Icon name={item.icon} c="text-secondary" aria-hidden />
+        {item.field.kind === "column" ? (
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={stageIndex}
+            column={item.field.column}
+            position="left"
+            color="text-secondary"
+          />
+        ) : (
+          <Icon name={item.icon} c="text-secondary" aria-hidden />
+        )}
         <MatchedLabel label={item.name} searchText={searchText} />
       </UnstyledButton>
-    </li>
+    </HoverParent>
   );
 }
