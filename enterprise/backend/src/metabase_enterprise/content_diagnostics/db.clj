@@ -308,8 +308,8 @@
 (mu/defn cards-with-empty-latest-run
   "The `(card_id, started_at)` rows of the non-archived Cards in the containers `eligible-clause` allows
   whose latest *clean* run since `cutoff` returned zero rows. Clean means unparameterized, unsandboxed, not
-  a cache hit and error-free; `parameterized` is matched strictly against `false`, so legacy rows predating
-  these columns (NULL) fall out, and a NULL `is_sandboxed` is treated as not sandboxed.
+  a cache hit, error-free and not a dynamic goal's run; `parameterized` is matched strictly against `false`, so
+  legacy rows predating these columns (NULL) fall out, and a NULL `is_sandboxed` is treated as not sandboxed.
 
   `cutoff` bounds the window the way `card-run-medians` does; without it the ranking covered every
   `query_execution` row ever recorded, which on Postgres means every monthly partition."
@@ -332,13 +332,15 @@
                                  [:= [:coalesce :qe.is_sandboxed false] false]
                                  [:not= :qe.cache_hit true]
                                  [:= :qe.error nil]
+                                 [:or [:= :qe.context nil] [:not= :qe.context "dynamic-goal"]]
                                  eligible-clause]}
                        :ranked]]
              :where  [:and [:= :rn 1] [:= :result_rows 0]]}))
 
 (mu/defn card-run-medians
   "The `(card_id, median_ms)` rows of the non-archived Cards in the containers `eligible-clause` allows
-  whose median `running_time` over their non-cache-hit executions since `cutoff` exceeds `threshold-ms`.
+  whose median `running_time` over their non-cache-hit executions since `cutoff` exceeds `threshold-ms`. Dynamic
+  goals' runs of a card don't count.
   The app DBs share no median aggregate (H2 has MEDIAN, Postgres percentile_cont, MySQL neither), so it
   is computed portably: rank each card's executions by `running_time`, keep the middle row (odd count)
   or middle two (even), and AVG them. `median_ms` comes back as a BigDecimal."
@@ -358,6 +360,7 @@
                           :where  [:and
                                    [:not= :qe.running_time nil]
                                    [:not= :qe.cache_hit true]
+                                   [:or [:= :qe.context nil] [:not= :qe.context "dynamic-goal"]]
                                    [:= :c.archived false]
                                    [:>= :qe.started_at cutoff]
                                    eligible-clause]}

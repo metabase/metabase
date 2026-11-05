@@ -182,26 +182,31 @@
              :where    [:in :card_id card-ids]
              :group-by [:card_id]}))
 
+(defn- own-uncached-runs
+  "Where-clause for the uncached executions of `card-ids`, leaving out dynamic goals' runs of them."
+  [card-ids]
+  [:and
+   [:not= :running_time nil]
+   [:not= :cache_hit true]
+   [:or [:= :context nil] [:not= :context "dynamic-goal"]]
+   [:in :card_id card-ids]])
+
 (mu/defn average-running-times-by-card
-  "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."
+  "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`. Dynamic goals'
+  runs of a card don't count."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%avg.running_time :running_time] :card_id]
              :from     [:query_execution]
-             :where    [:and
-                        [:not= :running_time nil]
-                        [:not= :cache_hit true]
-                        [:in :card_id card-ids]]
+             :where    (own-uncached-runs card-ids)
              :group-by [:card_id]}))
 
 (mu/defn last-query-starts-by-card
-  "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`."
+  "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`. Dynamic goals' runs
+  of a card don't count."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%max.started_at :started_at] :card_id]
              :from     [:query_execution]
-             :where    [:and
-                        [:not= :running_time nil]
-                        [:not= :cache_hit true]
-                        [:in :card_id card-ids]]
+             :where    (own-uncached-runs card-ids)
              :group-by [:card_id]}))
 
 (defn card-dashboards
