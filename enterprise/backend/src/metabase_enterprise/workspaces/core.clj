@@ -238,23 +238,37 @@
                     id)))
           rows)))
 
+(defn- in-one-transaction!
+  "Run `f`, which changes the remappings and the `instance-workspace` setting, in one app-DB transaction, so no query
+  sees the new map with the old remappings or the other way round. Writing the setting updates this instance's
+  in-memory settings cache at once, before the commit; when the transaction rolls back, the cache is reloaded from the
+  app DB so it does not keep a value that was never committed."
+  [f]
+  (try
+    (t2/with-transaction [_conn]
+      (f))
+    (catch Throwable e
+      (setting/restore-cache!)
+      (throw e))))
+
 (mu/defn set-instance-workspace! :- ::workspace-instance
   "Install `instance` on this instance, after checking each of its database names names exactly one database. Deletes
   the remappings the new schema maps no longer back. Returns the installed workspace."
   [instance :- ::workspace-instance]
   (let [name->id (into {} (map (juxt identity database-id-named)) (keys (:databases instance)))]
-    ;; one transaction, so no reader sees the new map with the old remappings or the other way round
-    (t2/with-transaction [_conn]
-      (ws.db/delete-table-remappings! (stale-remapping-ids instance name->id (ws.db/table-remappings)))
-      (ws.settings/instance-workspace! (json/encode instance)))
+    (in-one-transaction!
+     (fn []
+       (ws.db/delete-table-remappings! (stale-remapping-ids instance name->id (ws.db/table-remappings)))
+       (ws.settings/instance-workspace! (json/encode instance))))
     (instance-workspace)))
 
 (defn clear-instance-workspace!
   "Turn workspace mode off: remove the installed workspace and every remapping."
   []
-  (t2/with-transaction [_conn]
-    (ws.settings/instance-workspace! nil)
-    (ws.db/delete-all-table-remappings!))
+  (in-one-transaction!
+   (fn []
+     (ws.settings/instance-workspace! nil)
+     (ws.db/delete-all-table-remappings!)))
   nil)
 
 (defn table-remapping-rows
