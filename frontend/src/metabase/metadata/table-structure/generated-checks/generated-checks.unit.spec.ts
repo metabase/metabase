@@ -1,5 +1,6 @@
 import type { CustomPropertyChecksInput } from "./custom-property-checks";
-import { getGeneratedChecks } from "./generated-checks";
+import { getGeneratedChecks, getWorstFailingCheck } from "./generated-checks";
+import type { HistoryChecksInput } from "./history-checks";
 import { formatChecksYaml } from "./yaml";
 
 const CUSTOM_PROPERTIES: CustomPropertyChecksInput = {
@@ -60,6 +61,18 @@ const CUSTOM_PROPERTIES: CustomPropertyChecksInput = {
       looksLike: "plan",
     },
   ],
+};
+
+const HISTORY: HistoryChecksInput = {
+  table: { schema: "hr", name: "worker_position_history" },
+  columns: {
+    entityKey: "worker_id",
+    validFrom: "valid_from",
+    validTo: "valid_to",
+    currentFlag: "is_current",
+    version: "version_number",
+  },
+  isContiguous: true,
 };
 
 describe("getGeneratedChecks", () => {
@@ -131,5 +144,129 @@ describe("getGeneratedChecks", () => {
       table: { schema: "public", name: "custom_field_value" },
       params: { column: "custom_field_id", values: ["16"] },
     });
+  });
+});
+
+describe("history checks", () => {
+  it("writes history checks in the data quality assertion language", () => {
+    const checks = getGeneratedChecks({
+      structure: { role: "role/HistoryDimension" },
+      history: HISTORY,
+    });
+
+    expect(formatChecksYaml(checks)).toBe(`checks:
+  - check: not_null
+    table: hr.worker_position_history
+    column: worker_id
+    name: "Every version has a worker_id"
+
+  - check: unique
+    table: hr.worker_position_history
+    column: worker_id
+    name: "One current version per worker_id"
+    where: "is_current = TRUE"
+
+  - check: mutually_exclusive_ranges
+    table: hr.worker_position_history
+    lower: valid_from
+    upper: valid_to
+    partition_by: [worker_id]
+    gaps: not_allowed
+    name: "Versions of a worker_id don't overlap or leave gaps"
+
+  - check: column_a_lte_column_b
+    table: hr.worker_position_history
+    a: valid_from
+    b: valid_to
+    operator: "<"
+    or_null: true
+    name: "valid_from is before valid_to"
+
+  - check: expression_is_true
+    table: hr.worker_position_history
+    expression: "(is_current = TRUE) = (valid_to IS NULL)"
+    name: "Only current versions have an open valid_to"
+
+  - check: monotonic
+    table: hr.worker_position_history
+    column: version_number
+    order_by: valid_from
+    direction: increasing
+    strictly: true
+    partition_by: [worker_id]
+    name: "version_number goes up with each version"
+    severity: warn
+`);
+  });
+
+  it("uses an open valid to as the current rule and allows gaps when the history isn't contiguous", () => {
+    const checks = getGeneratedChecks({
+      structure: { role: "role/HistoryDimension" },
+      history: {
+        ...HISTORY,
+        columns: { ...HISTORY.columns, currentFlag: null, version: null },
+        isContiguous: false,
+      },
+    });
+
+    expect(checks.map(({ check }) => check)).toEqual([
+      "not_null",
+      "unique",
+      "mutually_exclusive_ranges",
+      "column_a_lte_column_b",
+    ]);
+    expect(checks[1].where).toBe("valid_to IS NULL");
+    expect(checks[2].params.gaps).toBe("allowed");
+  });
+
+  it("only checks the key when the latest row per key is current", () => {
+    const checks = getGeneratedChecks({
+      structure: { role: "role/HistoryDimension" },
+      history: {
+        ...HISTORY,
+        columns: {
+          ...HISTORY.columns,
+          validTo: null,
+          currentFlag: null,
+          version: null,
+        },
+      },
+    });
+
+    expect(checks.map(({ check }) => check)).toEqual(["not_null"]);
+  });
+
+  it("returns no history checks for a table that isn't a history table", () => {
+    expect(
+      getGeneratedChecks({
+        structure: { role: "role/Dimension" },
+        history: HISTORY,
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe("getWorstFailingCheck", () => {
+  const checks = getGeneratedChecks({
+    structure: { role: "role/HistoryDimension" },
+    history: HISTORY,
+  });
+
+  it("prefers a failing error over a failing warning", () => {
+    const results = new Map([
+      ["history:version-order", { status: "failing", summary: "warn" }],
+      ["history:ranges", { status: "failing", summary: "error" }],
+    ] as const);
+
+    expect(getWorstFailingCheck(checks, results)?.id).toBe("history:ranges");
+  });
+
+  it("returns null when nothing fails", () => {
+    expect(
+      getWorstFailingCheck(
+        checks,
+        new Map([["history:ranges", { status: "passing" }]] as const),
+      ),
+    ).toBeNull();
   });
 });

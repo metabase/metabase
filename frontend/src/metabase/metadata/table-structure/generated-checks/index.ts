@@ -14,7 +14,14 @@ export {
   type GeneratedChecksInput,
   countFailingChecks,
   getGeneratedChecks,
+  getWorstFailingCheck,
 } from "./generated-checks";
+export {
+  HISTORY_CHECK_ID,
+  type HistoryChecksInput,
+  getHistoryChecks,
+  getHistoryCurrentCondition,
+} from "./history-checks";
 export {
   type CustomPropertyCheckProperty,
   type CustomPropertyChecksInput,

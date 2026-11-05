@@ -52,7 +52,7 @@ import {
 } from "../InferenceReview";
 import {
   CurrentRuleHint,
-  DefaultSegmentInput,
+  HistoryChecksSummary,
   HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
@@ -712,19 +712,12 @@ function HistoryBindingSection({
           />
         )}
         <DetailsRow
-          label={t`Default filter`}
-          value={
-            <DefaultSegmentInput
-              structure={structure}
-              fields={fields}
-              disabled={disabled}
-              onChange={(currentRowsOnly) => onChange({ currentRowsOnly })}
-            />
-          }
-        />
-        <DetailsRow
           label={t`Versions`}
           value={<HistoryVersionsSummary table={table} />}
+        />
+        <DetailsRow
+          label={t`Checks`}
+          value={<HistoryChecksSummary table={table} />}
         />
         <DetailsRow
           label={t`Advanced`}

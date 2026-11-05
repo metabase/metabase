@@ -2,11 +2,9 @@ import { msgid, ngettext, t } from "ttag";
 
 import type {
   HistoryCheck,
-  HistoryCheckStatus,
   HistoryProfile,
 } from "metabase/metadata/table-structure";
-import type { ColorName } from "metabase/ui/colors/types";
-import type { Field, IconName, Table } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 export type EntityNoun = { one: string; other: string };
 
@@ -85,26 +83,4 @@ export function getCheckDescription(
         count,
       );
   }
-}
-
-export const CHECK_STATUS_ICON: Record<
-  HistoryCheckStatus,
-  { name: IconName; color: ColorName }
-> = {
-  passed: { name: "check_filled", color: "feedback-positive" },
-  warning: { name: "warning", color: "feedback-warning" },
-  failed: { name: "warning_round_filled", color: "feedback-negative" },
-};
-
-export function getCheckScope(
-  profile: HistoryProfile,
-  table: Pick<Table, "estimated_row_count">,
-) {
-  if (!profile.isSampled) {
-    return t`Checked on all ${profile.rowCount.toLocaleString()} records.`;
-  }
-  const total = table.estimated_row_count;
-  return total != null
-    ? t`Checked on a sample of ${profile.rowCount.toLocaleString()} of about ${total.toLocaleString()} records.`
-    : t`Checked on a sample of ${profile.rowCount.toLocaleString()} records.`;
 }

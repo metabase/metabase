@@ -8,31 +8,18 @@ import {
   type HistoryKind,
   type TableStructure,
   countsDurableKeys,
-  filtersCurrentRows,
-  getFailedChecks,
   getHistoryKind,
   getHistoryKindOptions,
   getHistorySignalLabel,
-  getWarningChecks,
   useHistoryReview,
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import {
-  Badge,
-  Button,
-  Group,
-  Loader,
-  Radio,
-  Stack,
-  Switch,
-  Text,
-} from "metabase/ui";
+import { Badge, Button, Group, Loader, Radio, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { CheckCountBadges } from "./CheckCountBadges";
 import { countOf, getCheckDescription, getEntityNoun } from "./history-labels";
 
 type PointerKey = keyof Omit<HistoryBinding, "currentRowsOnly">;
@@ -244,36 +231,6 @@ export function SharedPointerNote({
   );
 }
 
-export function DefaultSegmentInput({
-  structure,
-  fields,
-  disabled,
-  onChange,
-}: {
-  structure: TableStructure;
-  fields: Field[];
-  disabled: boolean;
-  onChange: (currentRowsOnly: boolean) => void;
-}) {
-  const appliesToType = filtersCurrentRows(structure.scdType);
-  return (
-    <Stack gap="xs" py="xs">
-      <Switch
-        label={t`Start new questions on current records`}
-        checked={appliesToType && structure.history.currentRowsOnly}
-        disabled={disabled || !appliesToType}
-        onChange={(event) => onChange(event.target.checked)}
-        data-testid="history-current-rows-switch"
-      />
-      <Text size="sm" c="text-secondary">
-        {appliesToType
-          ? t`Questions open with a removable “Current records only” filter: ${describeCurrentRule(structure, fields)}.`
-          : t`Not used: every row counts as its own record.`}
-      </Text>
-    </Stack>
-  );
-}
-
 export function HistoryVersionsSummary({ table }: { table: Table }) {
   const status = useHistoryReviewStatus(table);
   const { scdType } = useTableStructures().getTableStructure(table);
@@ -305,16 +262,9 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
 
   return (
     <Stack gap="xs" py="xs">
-      <Group gap="sm">
-        <Text c="text-primary" fw="bold">
-          {t`${countOf(profile.entityCount, noun)} · ${profile.rowCount.toLocaleString()} records`}
-        </Text>
-        <CheckCountBadges
-          failedCount={getFailedChecks(profile).length}
-          warningCount={getWarningChecks(profile).length}
-          isConfirmed={status.isConfirmed}
-        />
-      </Group>
+      <Text c="text-primary" fw="bold">
+        {t`${countOf(profile.entityCount, noun)} · ${profile.rowCount.toLocaleString()} records`}
+      </Text>
       {durableKeyCheck?.status === "failed" && (
         <Text size="sm" c="feedback-negative">
           {getCheckDescription(durableKeyCheck, profile, noun)}

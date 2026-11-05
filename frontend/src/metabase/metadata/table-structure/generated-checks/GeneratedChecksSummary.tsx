@@ -15,7 +15,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { countFailingChecks } from "./generated-checks";
+import { countFailingChecks, getWorstFailingCheck } from "./generated-checks";
 import type { CheckResults, CheckTableRef, GeneratedCheck } from "./types";
 import { formatChecksYaml, formatTableRef } from "./yaml";
 
@@ -35,6 +35,7 @@ export function GeneratedChecksSummary({
 }: GeneratedChecksSummaryProps) {
   const [isOpen, { open, close }] = useDisclosure(false);
   const failingCount = countFailingChecks(checks, results);
+  const worstCheck = getWorstFailingCheck(checks, results);
 
   if (checks.length === 0) {
     return (
@@ -44,7 +45,22 @@ export function GeneratedChecksSummary({
 
   return (
     <Stack gap="xs" py="xs" data-testid="generated-checks-summary">
-      <Text>
+      {worstCheck != null && (
+        <Group gap="sm" wrap="nowrap" align="flex-start">
+          <Icon
+            name="warning"
+            c={
+              worstCheck.severity === "warn"
+                ? "feedback-warning"
+                : "feedback-negative"
+            }
+            mt={2}
+            flex="0 0 auto"
+          />
+          <Text fw="bold">{getFailureSummary(results, worstCheck)}</Text>
+        </Group>
+      )}
+      <Text c={worstCheck != null ? "text-secondary" : undefined}>
         {ngettext(
           msgid`${checks.length} check from this table's metadata`,
           `${checks.length} checks from this table's metadata`,

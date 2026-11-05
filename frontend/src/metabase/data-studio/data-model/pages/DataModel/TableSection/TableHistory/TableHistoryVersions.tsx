@@ -1,15 +1,12 @@
 import { useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { SidebarSection } from "metabase/common/components/DetailSidebar";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
-  type HistoryCheck,
   type HistoryProfile,
   type HistoryVersion,
-  getFailedChecks,
-  getWarningChecks,
   useHistoryReview,
   useHistoryReviewStatus,
   useTableStructures,
@@ -30,15 +27,13 @@ import {
 import * as Urls from "metabase/urls";
 import type { RowValue, Table } from "metabase-types/api";
 
+import { HistoryChecksSummary } from "./HistoryChecksSummary";
 import { HistoryPreviewGrid, type PreviewColumn } from "./HistoryPreviewGrid";
 import { buildCurrentRowsSql } from "./current-rows-sql";
 import {
-  CHECK_STATUS_ICON,
   type EntityNoun,
   countOf,
   formatDate,
-  getCheckDescription,
-  getCheckScope,
   getEntityNoun,
 } from "./history-labels";
 
@@ -83,8 +78,6 @@ export function TableHistoryVersions({
     <Stack gap="xxl" data-testid="table-history-versions">
       <ReviewSummary
         table={table}
-        profile={profile}
-        noun={noun}
         isConfirmed={status.isConfirmed}
         confirmedAt={status.confirmedAt}
         readOnly={readOnly}
@@ -95,60 +88,36 @@ export function TableHistoryVersions({
   );
 }
 
-function getWorstFinding(profile: HistoryProfile): HistoryCheck | undefined {
-  const failed = getFailedChecks(profile);
-  const findings = failed.length > 0 ? failed : getWarningChecks(profile);
-  return [...findings].sort(
-    (a, b) => b.entityKeys.length - a.entityKeys.length,
-  )[0];
-}
-
 function ReviewSummary({
   table,
-  profile,
-  noun,
   isConfirmed,
   confirmedAt,
   readOnly,
 }: {
   table: Table;
-  profile: HistoryProfile;
-  noun: EntityNoun;
   isConfirmed: boolean;
   confirmedAt: string | null;
   readOnly: boolean;
 }) {
   const structure = useTableStructures().getTableStructure(table);
   const { confirm } = useHistoryReview(table);
-  const findingCount =
-    getFailedChecks(profile).length + getWarningChecks(profile).length;
-  const worstFinding = getWorstFinding(profile);
-  const icon = CHECK_STATUS_ICON[worstFinding?.status ?? "passed"];
-  const otherFindingCount = Math.max(0, findingCount - 1);
 
   return (
-    <Paper withBorder radius="lg" p="lg" data-testid="history-review-summary">
+    <Paper
+      withBorder
+      radius="lg"
+      px="lg"
+      py="sm"
+      data-testid="history-review-summary"
+    >
       <Group justify="space-between" wrap="nowrap" align="center" gap="lg">
-        <Stack gap={4} miw={0}>
-          <Group gap="sm" wrap="nowrap" align="flex-start">
-            <Icon name={icon.name} c={icon.color} mt={2} flex="0 0 auto" />
-            <Text fw="bold">
-              {worstFinding
-                ? getCheckDescription(worstFinding, profile, noun)
-                : t`No problems found.`}
+        <Stack gap={0} miw={0} flex={1}>
+          <HistoryChecksSummary table={table} />
+          {isConfirmed && (
+            <Text size="sm" c="text-secondary" pb="xs">
+              {t`Metadata reviewed by an admin on ${formatDate(confirmedAt)}.`}
             </Text>
-          </Group>
-          <Text size="sm" c="text-secondary">
-            {isConfirmed
-              ? t`Metadata reviewed by an admin on ${formatDate(confirmedAt)}.`
-              : getCheckScope(profile, table)}{" "}
-            {otherFindingCount > 0 &&
-              ngettext(
-                msgid`${otherFindingCount} more finding.`,
-                `${otherFindingCount} more findings.`,
-                otherFindingCount,
-              )}
-          </Text>
+          )}
         </Stack>
         {!isConfirmed && (
           <Button

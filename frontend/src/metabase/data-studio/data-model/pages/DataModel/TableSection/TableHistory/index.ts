@@ -1,6 +1,5 @@
 export {
   CurrentRuleHint,
-  DefaultSegmentInput,
   HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
@@ -9,6 +8,6 @@ export {
   getCurrentRule,
   getTableHistoryKind,
 } from "./HistoryBindingRows";
-export { CheckCountBadges } from "./CheckCountBadges";
+export { HistoryChecksSummary } from "./HistoryChecksSummary";
 export { HistoryListSummary } from "./HistoryListSummary";
 export { TableHistoryVersions } from "./TableHistoryVersions";

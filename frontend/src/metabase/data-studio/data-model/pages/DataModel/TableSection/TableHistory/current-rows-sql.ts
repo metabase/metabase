@@ -1,4 +1,5 @@
 import type { HistoryBinding } from "metabase/metadata/table-structure";
+import { getHistoryCurrentCondition } from "metabase/metadata/table-structure/generated-checks";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 const RANK_COLUMN = "version_rank";
@@ -6,16 +7,6 @@ const INDENT = "  ";
 
 function nameOf(fields: Field[], fieldId: FieldId | null) {
   return fields.find((field) => field.id === fieldId)?.name ?? null;
-}
-
-function getCurrentCondition(
-  currentFlagName: string | null,
-  validToName: string | null,
-) {
-  if (currentFlagName != null) {
-    return `${currentFlagName} = TRUE`;
-  }
-  return validToName != null ? `${validToName} IS NULL` : null;
 }
 
 function getTableName(table: Pick<Table, "schema" | "name">) {
@@ -41,7 +32,10 @@ export function buildCurrentRowsSql(
     .filter((name) => name != null)
     .map((name) => `${name} DESC`)
     .join(", ");
-  const currentCondition = getCurrentCondition(currentFlagName, validToName);
+  const currentCondition = getHistoryCurrentCondition({
+    validTo: validToName,
+    currentFlag: currentFlagName,
+  });
   const where = currentCondition ? `\n${INDENT}WHERE ${currentCondition}` : "";
 
   return `SELECT
