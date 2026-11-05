@@ -1,5 +1,4 @@
 export {
-  HistoryIntro,
   HistoryKindInput,
   HistoryVersionsSummary,
   SharedPointerNote,
