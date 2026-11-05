@@ -801,6 +801,21 @@
                                                               :table.pivot_column  "Col2"
                                                               :table.cell_column   "Col3"}))))))))
 
+(deftest ^:parallel simple-pivot-indexes-test
+  (let [cols     [{:name "Col1"} {:name "Col2"} {:name "Col3"} {:name "Col4"}]
+        settings {:table.pivot true, :table.pivot_column "Col2", :table.cell_column "Col3"}]
+    (testing "the toggle applies with more than three columns; the first column left over is the normal one (#86290)"
+      (is (= {:normal 0, :pivot 1, :cell 2}
+             (qp.streaming/simple-pivot-indexes cols settings))))
+    (testing "string-keyed settings work too"
+      (is (= {:normal 0, :pivot 1, :cell 2}
+             (qp.streaming/simple-pivot-indexes cols (update-keys settings name)))))
+    (testing "nil when the toggle is off, a column is missing, or both settings name the same column"
+      (is (nil? (qp.streaming/simple-pivot-indexes cols (dissoc settings :table.pivot))))
+      (is (nil? (qp.streaming/simple-pivot-indexes cols (assoc settings :table.pivot_column "Nope"))))
+      (is (nil? (qp.streaming/simple-pivot-indexes cols (assoc settings :table.cell_column "Col2"))))
+      (is (nil? (qp.streaming/simple-pivot-indexes (take 2 cols) settings))))))
+
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil
 

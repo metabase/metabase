@@ -94,17 +94,28 @@
   (and (= display :table)
        (= (:visibility_type col) :details-only)))
 
-(defn- legacy-pivot?
-  "Does the Table viz's \"Pivot table\" toggle apply to `cols`? Mirrors the browser's `isPivoted`: `:table.pivot` is
-  set, there are exactly three columns, and `:table.pivot_column` and `:table.cell_column` name two different columns."
+(defn- setting-value
+  "Look up `k` in a viz-settings map that may be keyed by either keywords or strings."
+  [settings k]
+  (or (get settings k) (get settings (name k))))
+
+(defn simple-pivot-indexes
+  "Column indexes `{:normal i, :pivot j, :cell k}` when the Table viz's \"Pivot table\" toggle applies to `cols`, else
+  nil. Mirrors the browser's `isPivoted` (viz-core/lib/settings/column.ts): `:table.pivot` is set, there are at least
+  three columns, and `:table.pivot_column` and `:table.cell_column` name two different columns. The first remaining
+  column is the normal one; its values become the row labels. Any other columns are ignored."
   [cols viz-settings]
-  (boolean
-   (when (and (:table.pivot viz-settings)
-              (= 3 (count cols)))
-     (let [index-of  (fn [k] (u/index-of #(= (:name %) (get viz-settings k)) cols))
-           pivot-idx (index-of :table.pivot_column)
-           cell-idx  (index-of :table.cell_column)]
-       (and pivot-idx cell-idx (not= pivot-idx cell-idx))))))
+  (when (and (setting-value viz-settings :table.pivot)
+             (<= 3 (count cols)))
+    (let [index-of  (fn [k]
+                      (let [col-name (setting-value viz-settings k)]
+                        (u/index-of #(= (:name %) col-name) cols)))
+          pivot-idx (index-of :table.pivot_column)
+          cell-idx  (index-of :table.cell_column)]
+      (when (and pivot-idx cell-idx (not= pivot-idx cell-idx))
+        {:normal (first (remove #{pivot-idx cell-idx} (range (count cols))))
+         :pivot  pivot-idx
+         :cell   cell-idx}))))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
@@ -170,7 +181,7 @@
   [cols viz-settings]
   (let [deduped-cols  (deduplicate-col-names cols)
         ;; the pivot grid is built from every column, so details-only ones are not hidden there
-        display       (when-not (legacy-pivot? deduped-cols viz-settings)
+        display       (when-not (simple-pivot-indexes deduped-cols viz-settings)
                         (::mb.viz/display viz-settings))
         output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings) display)
         ordered-cols  (if output-order
