@@ -244,16 +244,37 @@
          (finally
            (execute-sql! (format "DROP TABLE public.%s" table-name))))))))
 
-(deftest writeback-writes-to-scratch-test
+(deftest writeback-is-refused-on-a-workspace-database-test
   (do-with-postgres-workspace!
    (fn [scratch]
      (let [table-name (random-identifier "ws_written")]
        (run-transform! (native-transform! "SELECT 'scratch' AS source" table-name))
-       (testing "an action's write to a remapped table goes to the scratch table"
-         (mt/with-current-user (mt/user->id :crowberto)
-           (qp.writeback/execute-write-sql! (mt/id) (format "INSERT INTO public.%s VALUES ('action')" table-name)))
-         (is (= [["action"]] (query-sql (format "SELECT source FROM %s.%s WHERE source = 'action'" scratch table-name))))
-         (is (not (table-exists? "public" table-name))))))))
+       (testing "a native action's write gets a 400: native SQL is read-only on a workspace"
+         (is (=? {:status-code 400}
+                 (ex-data (is (thrown-with-msg? clojure.lang.ExceptionInfo #"native SQL is read-only"
+                                                (mt/with-current-user (mt/user->id :crowberto)
+                                                  (qp.writeback/execute-write-sql!
+                                                   (mt/id) (format "INSERT INTO public.%s VALUES ('action')" table-name))))))))
+         (is (= [] (query-sql (format "SELECT source FROM %s.%s WHERE source = 'action'" scratch table-name)))))))))
+
+(deftest native-sql-is-read-only-on-a-workspace-database-test
+  (do-with-postgres-workspace!
+   (fn [_scratch]
+     (testing "before any transform has run (no remappings yet), native SQL on a workspace database is read-only"
+       (is (= [] (remappings)))
+       (is (thrown-with-msg? Exception #"can run on a workspace, not CREATE"
+                             (qp/process-query (mt/native-query {:query "CREATE TABLE public.ws_never AS SELECT 1 AS x"}))))
+       (is (= [[1]] (rows (mt/native-query {:query "SELECT 1"}))))))))
+
+(deftest transform-body-must-be-read-only-test
+  (do-with-postgres-workspace!
+   (fn [scratch]
+     (let [table-name (random-identifier "ws_bad_body")]
+       (testing "a transform whose own SQL writes is refused; Metabase's CREATE TABLE AS around a SELECT body still runs"
+         (is (thrown-with-msg? Exception #"this one contains DELETE"
+                               (run-transform! (native-transform! "WITH w AS (DELETE FROM public.customers RETURNING 1 AS x) SELECT * FROM w"
+                                                                  table-name))))
+         (is (not (table-exists? scratch table-name))))))))
 
 (deftest unmapped-target-schema-is-refused-test
   (mt/test-driver :postgres
@@ -313,7 +334,25 @@
           (is (contains? @seen :cache-strategy)))))))
 
 (deftest rewrite-sql-statement-allowlist-test
-  (testing "anything but a query, INSERT, UPDATE, DELETE, MERGE or CREATE TABLE ... AS is refused"
+  (testing "anything but a read-only query is refused, naming the statement type"
+    (doseq [[sql statement] [["INSERT INTO public.orders SELECT * FROM public.orders" "INSERT"]
+                             ["UPDATE public.orders SET id = 1" "UPDATE"]
+                             ["DELETE FROM public.orders" "DELETE"]
+                             ["MERGE INTO public.orders t USING public.orders s ON t.id = s.id WHEN MATCHED THEN DELETE" "MERGE"]
+                             ["CREATE TABLE public.x AS SELECT * FROM public.orders" "CREATE"]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            (re-pattern (str "Only read-only queries \\(SELECT, WITH \\.\\.\\. SELECT, UNION\\) can run on a workspace, not "
+                                             statement))
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql)))
+  (testing "a write or SELECT ... INTO inside a query is refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"this one contains INSERT"
+                          (ws/rewrite-sql :postgres remaps "WITH w AS (INSERT INTO public.orders VALUES (1) RETURNING id) SELECT * FROM w")))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"this one contains DELETE"
+                          (ws/rewrite-sql :postgres remaps "WITH w AS (DELETE FROM public.orders RETURNING id) SELECT * FROM w")))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SELECT \.\.\. INTO creates a table"
+                          (ws/rewrite-sql :postgres remaps "SELECT * INTO public.y FROM public.orders"))))
+  (testing "statements sqlglot can't read into are refused"
     (doseq [sql ["EXPLAIN SELECT * FROM public.orders"
                  "DECLARE c CURSOR FOR SELECT * FROM public.orders"
                  "PREPARE p AS SELECT * FROM public.orders; EXECUTE p"
@@ -323,7 +362,19 @@
                  "COPY (SELECT * FROM public.orders) TO STDOUT"
                  "SET statement_timeout = 1000; SELECT * FROM public.orders"
                  "CREATE TABLE public.x AS EXECUTE p"]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only queries, INSERT, UPDATE, DELETE, MERGE and CREATE TABLE"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only read-only queries \(SELECT, WITH \.\.\. SELECT, UNION\) can run on a workspace, not"
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql))))
+
+(deftest rewrite-sql-side-effect-functions-test
+  (testing "a function with a side effect is refused, by name or family, however its name is written"
+    (doseq [function ["nextval" "setval" "lo_creat" "lo_import" "lo_unlink" "set_config" "pg_advisory_lock"
+                      "pg_advisory_xact_lock_shared" "pg_try_advisory_lock" "pg_terminate_backend" "pg_cancel_backend"
+                      "pg_reload_conf" "pg_sleep" "pg_sleep_for"]
+            sql      [(format "SELECT %s(1)" function)
+                      (format "SELECT pg_catalog.\"%s\"(1)" function)
+                      (format "SELECT id FROM public.orders WHERE id = %s(1)" function)]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "calls " function ", which has a side effect"))
                             (ws/rewrite-sql :postgres remaps sql))
           sql))))
 
@@ -353,13 +404,12 @@
                           (ws/rewrite-sql :postgres remaps "SELECT upper('select src from public.orders')")))))
 
 (deftest rewrite-sql-allowed-statements-test
-  (testing "allowed statements are rewritten"
-    (doseq [sql ["WITH x AS (SELECT 1) SELECT * FROM public.orders"
+  (testing "read-only queries are rewritten"
+    (doseq [sql ["SELECT * FROM public.orders"
+                 "WITH x AS (SELECT 1) SELECT * FROM public.orders"
                  "SELECT 1 UNION ALL SELECT id FROM public.orders"
-                 "INSERT INTO public.orders SELECT * FROM public.orders"
-                 "UPDATE public.orders SET id = 1"
-                 "DELETE FROM public.orders"
-                 "CREATE TABLE public.x AS SELECT * FROM public.orders"]]
+                 "SELECT id FROM public.orders INTERSECT SELECT id FROM public.orders"
+                 "SELECT lower(src) FROM public.orders"]]
       (is (str/includes? (ws/rewrite-sql :postgres remaps sql) "mb__iso_public") sql))
     (is (= "SELECT UPPER('select 1 from public.customers')"
            (ws/rewrite-sql :postgres remaps "SELECT upper('select 1 from public.customers')"))
