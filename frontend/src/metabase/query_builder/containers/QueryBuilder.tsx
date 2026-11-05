@@ -121,7 +121,7 @@ import {
   getCard,
   getDataReferenceStack,
   getDocumentTitle,
-  getEmbeddedParameterVisibility,
+  getEmbeddedParameterVisibilityGetter,
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
@@ -227,8 +227,7 @@ const mapStateToProps = (state: State) => {
       "non-table-chart-generated",
     ),
 
-    getEmbeddedParameterVisibility: (slug: string) =>
-      getEmbeddedParameterVisibility(state, slug),
+    getEmbeddedParameterVisibility: getEmbeddedParameterVisibilityGetter(state),
   };
 };
 
