@@ -2293,6 +2293,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti check-workspace-provisioning!
+  "Check that the provisioning login of `database` holds every privilege the methods above need, before any workspace
+  is made with it. Returns nil, or throws `ex-info` with `{:status-code 412}` and a message naming each missing
+  privilege and the SQL that grants it."
+  {:added "0.66.0" :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti validate-impersonated-query
   "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."
   {:added "0.60.0" :arglists '([driver query])}

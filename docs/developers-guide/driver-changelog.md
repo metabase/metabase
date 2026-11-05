@@ -18,6 +18,10 @@ title: Driver interface changelog
   Redshift inherits the Postgres methods but reports `:workspace` false. Workspace users and scratch namespaces are named for
   the `wsd`'s `:isolation_id`, from `metabase.driver.util/random-isolation-id`.
 
+- `metabase.driver/check-workspace-provisioning!` `[driver database]` -- new multimethod, run in the
+  `:workspace-provisioning` connection type when a provisioning login is saved: returns nil, or throws a 412 naming
+  each privilege the login lacks. Postgres requires CREATEROLE and CREATE on the database.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of

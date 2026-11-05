@@ -1916,3 +1916,25 @@
                (map #(revoke-statement user %) (grants))
                [(format "DROP USER %s" (quote-role user))]))))))
      (constantly nil))))
+
+(defmethod driver/check-workspace-provisioning! :postgres
+  [_driver database]
+  (let [missing (jdbc/with-db-transaction [conn (driver.conn/with-workspace-provisioning-connection
+                                                  (sql-jdbc.conn/db->pooled-connection-spec database))
+                                           {:read-only? true}]
+                  ;; nothing below may resolve to an object the workspace user could have planted
+                  (jdbc/execute! conn ["SET LOCAL search_path = pg_catalog"])
+                  (let [{:keys [login createrole create_db dbname]}
+                        (first (jdbc/query conn [(str "SELECT current_user AS login, current_database() AS dbname, "
+                                                      "r.rolsuper OR r.rolcreaterole AS createrole, "
+                                                      "has_database_privilege(current_user, current_database(), 'CREATE') "
+                                                      "AS create_db "
+                                                      "FROM pg_roles r WHERE r.rolname = current_user")]))]
+                    (cond-> []
+                      (not createrole) (conj (format "CREATEROLE (run `ALTER ROLE %s CREATEROLE`)"
+                                                     (quote-role login)))
+                      (not create_db)  (conj (format "CREATE on the database (run `GRANT CREATE ON DATABASE %s TO %s`)"
+                                                     (quote-role dbname) (quote-role login))))))]
+    (when (seq missing)
+      (throw (ex-info (str "The workspace provisioning login lacks " (str/join " and " missing) ".")
+                      {:status-code 412, :missing-privileges missing})))))
