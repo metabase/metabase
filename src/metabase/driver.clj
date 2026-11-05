@@ -2234,7 +2234,8 @@
 ;;; database's main login.
 ;;;
 ;;; The warehouse methods return nil or throw. A failed precondition, checked before any warehouse change, throws
-;;; `ex-info` with `{:status-code 412, :schema <schema>}` and a message naming the SQL that fixes it. A warehouse error
+;;; `ex-info` with `{:status-code 412}`, the schema(s) it concerns as `:schema` or `:schemas`, and a message naming the
+;;; SQL that fixes it. A warehouse error
 ;;; is rethrown through [[metabase.driver.util/batch-exception]] and [[metabase.driver.util/scrub-exceptions]]. Drivers
 ;;; do not clean up after a failure: the caller runs [[remove-workspace-schema!]] or [[destroy-workspace-isolation!]],
 ;;; unless the error's ex-data has `:workspace/cleanup? false`.
@@ -2257,7 +2258,8 @@
   :hierarchy #'hierarchy)
 
 (defmulti init-workspace-isolation!
-  "Create the workspace user for the `wsd`'s `:isolation_id`, with the password in its `:database_details`.
+  "Create the workspace user for the `wsd`'s `:isolation_id`, with the password in its `:database_details`. A
+  precondition refuses a database where any schema grants CREATE to PUBLIC: the workspace user could write there.
 
   When a user of that name already exists, throws `ex-info` with `{:status-code 409, :workspace/cleanup? false}`
   and changes nothing. That user may belong to another workspace, so the caller must not run
@@ -2287,8 +2289,8 @@
 
 (defmulti destroy-workspace-isolation!
   "Drop every scratch namespace of `wsd`, revoke every grant left to the workspace user, and drop the user. Idempotent.
-  With the password in the `wsd`'s `:database_details`, it also drops what the workspace user created outside its
-  scratch namespaces; without it (a crashed create), it still drops everything above."
+  It needs nothing from the workspace user or its stored password, and also drops what the user created outside its
+  scratch namespaces. If it fails, the user is already unable to log in."
   {:added "0.66.0" :arglists '([driver database wsd])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -1175,3 +1175,14 @@
       (is (= {:status-code 412} (ex-data scrubbed)))
       (is (= "42710" (.getSQLState ^java.sql.SQLException cause)))
       (is (= 7 (.getErrorCode ^java.sql.SQLException cause))))))
+
+(deftest workspace-main-schema-validation-test
+  (testing "a missing, blank or workspace-owned main schema is a 400"
+    (doseq [main [nil "" "  " 17 "mb__isolation_ab2c3d4e_s1_sales"]]
+      (is (= 400 (:status-code (ex-data (is (thrown? clojure.lang.ExceptionInfo
+                                                     (driver.u/check-workspace-main-schema! main)))))))))
+  (testing "a schema id that is not a positive integer, or leaves no room for the main schema, is a 400"
+    (doseq [schema-id [nil 0 -1 "1" (bigint 1e45)]]
+      (is (= 400 (:status-code (ex-data (is (thrown? clojure.lang.ExceptionInfo
+                                                     (driver.u/workspace-scratch-namespace-name
+                                                      "mb__isolation_ab2c3d4e" schema-id "sales" 63))))))))))
