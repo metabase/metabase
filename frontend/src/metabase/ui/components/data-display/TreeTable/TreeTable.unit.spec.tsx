@@ -11,7 +11,7 @@ import {
 
 import { TreeTable } from "./TreeTable";
 import { useTreeTableInstance } from "./hooks";
-import type { TreeNodeData, TreeTableColumnDef } from "./types";
+import type { RenderRowLink, TreeNodeData, TreeTableColumnDef } from "./types";
 
 interface TestNode extends TreeNodeData {
   id: string;
@@ -43,12 +43,14 @@ interface SetupOpts {
   columns?: TreeTableColumnDef<TestNode>[];
   onRowActivate?: (row: { original: TestNode }) => void;
   isStatic?: boolean;
+  renderRowLink?: RenderRowLink<TestNode>;
 }
 
 function setup({
   columns = SORTABLE_COLUMNS,
   onRowActivate,
   isStatic = false,
+  renderRowLink,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 200, height: 40 });
 
@@ -68,6 +70,7 @@ function setup({
         ariaLabel="Test table"
         static={isStatic}
         getRowProps={getRowProps}
+        renderRowLink={renderRowLink}
       />
     );
   }
@@ -147,6 +150,19 @@ describe("TreeTable static mode", () => {
       "data-keyboard-active",
     );
     expect(onRowActivate).not.toHaveBeenCalled();
+  });
+
+  it("does not wrap rows in links", async () => {
+    setup({
+      isStatic: true,
+      renderRowLink: (row, props) => (
+        <a href={`/items/${row.original.id}`} {...props} />
+      ),
+    });
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    await userEvent.tab();
+    expect(screen.getByTestId("row-1")).not.toHaveFocus();
   });
 
   it("keeps controls inside cells reachable by keyboard and click", async () => {

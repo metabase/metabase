@@ -292,9 +292,9 @@ export interface TreeTableProps<
   hierarchical?: boolean;
 
   /**
-   * Renders rows as plain content: no hover or active highlight, no row click,
-   * and no keyboard navigation between rows. Controls inside cells and header
-   * sorting keep working.
+   * Renders rows as plain content: no hover or active highlight, no row click
+   * or row link, and no keyboard navigation between rows. Controls inside cells
+   * and header sorting keep working.
    */
   static?: boolean;
 
