@@ -1,7 +1,7 @@
-import { dissocIn } from "icepick";
 import _ from "underscore";
 
 import type { Dispatch } from "metabase/redux/store";
+import { produce } from "metabase/utils/immutable";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
@@ -146,9 +146,11 @@ export function cleanIndexFlags<T extends DatasetColumn | Field>(
 
   const newResultMetadata = [...fields];
   for (const index of indexesToClean) {
-    newResultMetadata[index] = dissocIn(newResultMetadata[index], [
-      "should_index",
-    ]);
+    newResultMetadata[index] = produce(newResultMetadata[index], (field) => {
+      if ("should_index" in field) {
+        delete field.should_index;
+      }
+    });
   }
   return newResultMetadata;
 }

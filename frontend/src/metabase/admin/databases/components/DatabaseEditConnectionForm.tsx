@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
 import _ from "underscore";
 
@@ -117,9 +116,10 @@ export const DatabaseEditConnectionForm = ({
 
 const getSubmitError = (error: DatabaseEditErrorType) => {
   if (_.isObject(error?.data?.errors)) {
-    return updateIn(error, ["data", "errors"], (errors) => ({
-      details: errors,
-    }));
+    return {
+      ...error,
+      data: { ...error.data, errors: { details: error.data.errors } },
+    };
   }
 
   return error;

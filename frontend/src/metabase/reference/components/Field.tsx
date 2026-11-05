@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { memo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -112,10 +111,9 @@ const Field = ({
                   )}
                 </div>
                 <span className={CS.textSecondary}>
-                  {getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                    field.semantic_type ?? "",
-                    "name",
-                  ]) || t`No field type`}
+                  {(field.semantic_type &&
+                    FIELD_SEMANTIC_TYPES_MAP[field.semantic_type]?.name) ||
+                    t`No field type`}
                 </span>
               </div>
             )}

@@ -1,6 +1,5 @@
-import { updateIn } from "icepick";
-
 import { color } from "metabase/ui/colors";
+import { produce } from "metabase/utils/immutable";
 
 import { StaticVisualization } from "../../StaticVisualization";
 import { data } from "../stories-data";
@@ -129,11 +128,12 @@ export const LineCustomYAxisRangeOffScreenHigh = {
   render: Template,
   args: {
     // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.lineCustomYAxisRangeEqualsExtents,
-      [0, "card", "visualization_settings"],
-      (val) => ({ ...val, "graph.y_axis.max": 1000, "graph.y_axis.min": 200 }),
-    ) as any,
+    rawSeries: produce(data.lineCustomYAxisRangeEqualsExtents, (draft) => {
+      Object.assign(draft[0].card.visualization_settings, {
+        "graph.y_axis.max": 1000,
+        "graph.y_axis.min": 200,
+      });
+    }) as any,
     renderingContext,
   },
 };
@@ -142,11 +142,12 @@ export const LineCustomYAxisRangeOffScreenLow = {
   render: Template,
   args: {
     // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.lineCustomYAxisRangeEqualsExtents,
-      [0, "card", "visualization_settings"],
-      (val) => ({ ...val, "graph.y_axis.max": 0, "graph.y_axis.min": -100 }),
-    ) as any,
+    rawSeries: produce(data.lineCustomYAxisRangeEqualsExtents, (draft) => {
+      Object.assign(draft[0].card.visualization_settings, {
+        "graph.y_axis.max": 0,
+        "graph.y_axis.min": -100,
+      });
+    }) as any,
     renderingContext,
   },
 };
@@ -1085,16 +1086,13 @@ export const StackedNormalizedCustomYAxisRange = {
   render: Template,
   args: {
     // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.stackedChartCustomYAxisRange,
-      [0, "card", "visualization_settings"],
-      (val) => ({
-        ...val,
+    rawSeries: produce(data.stackedChartCustomYAxisRange, (draft) => {
+      Object.assign(draft[0].card.visualization_settings, {
         "stackable.stack_type": "normalized",
         "graph.y_axis.min": 40,
         "graph.y_axis.max": 60,
-      }),
-    ) as any,
+      });
+    }) as any,
     renderingContext,
   },
 };

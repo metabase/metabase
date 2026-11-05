@@ -1,6 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -11,7 +10,11 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import {
+  createConversation,
+  getMetabotInitialState,
+} from "metabase/metabot/state/reducer-utils";
+import { produce } from "metabase/utils/immutable";
 import {
   createMockCard,
   createMockCollection,
@@ -66,8 +69,11 @@ const setup = (
   );
 
   const metabot = conversationCharts
-    ? assocIn(getMetabotInitialState(), ["conversations", "omnibot", "state"], {
-        charts: conversationCharts,
+    ? produce(getMetabotInitialState(), (state) => {
+        state.conversations.omnibot = createConversation({
+          conversationId: "omnibot",
+          state: { charts: conversationCharts },
+        });
       })
     : getMetabotInitialState();
 

@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { updateIn } from "icepick";
 
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import {
@@ -7,6 +6,7 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
+import { produce } from "metabase/utils/immutable";
 import {
   DEFAULT_VISUALIZATION_THEME,
   type RenderingContext,
@@ -454,18 +454,13 @@ export const WithGoalLine = {
 
   args: {
     // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.yAxisFullWithDataLabels,
-      [0, "card", "visualization_settings"],
-      (settings) => {
-        return {
-          ...settings,
-          "graph.show_goal": true,
-          "graph.goal_value": 250000,
-          "graph.goal_label": "Target",
-        };
-      },
-    ) as any,
+    rawSeries: produce(data.yAxisFullWithDataLabels, (draft) => {
+      Object.assign(draft[0].card.visualization_settings, {
+        "graph.show_goal": true,
+        "graph.goal_value": 250000,
+        "graph.goal_label": "Target",
+      });
+    }) as any,
     renderingContext,
   },
 };
@@ -475,16 +470,13 @@ export const CustomYAxisRangeOffScreen = {
 
   args: {
     // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.ordinalXScale,
-      [0, "card", "visualization_settings"],
-      (val) => ({
-        ...val,
+    rawSeries: produce(data.ordinalXScale, (draft) => {
+      Object.assign(draft[0].card.visualization_settings, {
         "graph.y_axis.auto_range": false,
         "graph.y_axis.min": 30000,
         "graph.y_axis.max": 40000,
-      }),
-    ) as any,
+      });
+    }) as any,
     renderingContext,
   },
 };

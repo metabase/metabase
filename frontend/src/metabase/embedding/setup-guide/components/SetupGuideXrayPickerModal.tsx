@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { dissoc } from "icepick";
+import { omit } from "es-toolkit";
 import { t } from "ttag";
 
 import { Api, dashboardApi, useLazyGetXrayDashboardQuery } from "metabase/api";
@@ -35,7 +35,7 @@ export const SetupGuideXrayPickerModal = ({
 
       const { data: savedDashboard } = await dispatch(
         dashboardApi.endpoints.saveDashboard.initiate(
-          dissoc(xrayDashboard, "id"),
+          omit(xrayDashboard, ["id"]),
         ),
       );
 

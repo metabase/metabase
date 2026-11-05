@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -120,8 +119,9 @@ export const settings = {
         // breakout order, so a card saved with `pivot_table.column_split`
         // (which the query builder persists on save) keeps its layout for
         // every viewer, while an unsaved split can differ between viewers.
-        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
-          getIn(col, ["fingerprint", "global", "distinct-count"]),
+        const [first, second, ...rest] = _.sortBy(
+          dimensions,
+          (col) => col.fingerprint?.global?.["distinct-count"],
         );
 
         let rows;

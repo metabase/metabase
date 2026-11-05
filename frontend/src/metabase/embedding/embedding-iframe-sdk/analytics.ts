@@ -1,7 +1,7 @@
-import { merge } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { mergeDeep } from "metabase/utils/merge-deep";
 import type {
   AUTH_TYPES,
   DefaultValues,
@@ -70,7 +70,7 @@ const DEFAULT_VALUES: DefaultValues = {
   },
 };
 
-const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = merge(DEFAULT_VALUES, {
+const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = mergeDeep(DEFAULT_VALUES, {
   dashboard: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L157} */
     drills: false,

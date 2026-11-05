@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { merge } from "icepick";
 import {
   type ReactNode,
   useCallback,
@@ -437,9 +436,13 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     (changes: { id: FieldId | null } & Partial<Omit<DatasetColumn, "id">>) => {
       const mappedField =
         changes.id != null ? storeFields[changes.id] : undefined;
-      const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField, isNative);
-      return mappedField ? merge(inheritedProperties, changes) : changes;
+      if (!mappedField) {
+        return changes;
+      }
+      return {
+        ...getWritableColumnProperties(mappedField, isNative),
+        ...changes,
+      };
     },
     [storeFields, isNative],
   );

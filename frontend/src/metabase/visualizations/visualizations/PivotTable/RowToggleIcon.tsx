@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import _ from "underscore";
 
 import { Icon } from "metabase/ui";
@@ -91,7 +90,10 @@ export function RowToggleIcon({
       onClick={(e) => {
         e.stopPropagation();
         updateSettings({
-          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
+          [COLLAPSED_ROWS_SETTING]: {
+            ...setting,
+            value: toggle(setting.value),
+          },
         });
       }}
     >

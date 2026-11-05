@@ -1,7 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
 import { act, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
@@ -13,6 +12,7 @@ import {
   submitInput,
 } from "metabase/metabot/state";
 import type { State } from "metabase/redux/store";
+import { produce } from "metabase/utils/immutable";
 import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
 
@@ -77,10 +77,14 @@ describe("metabot > retry", () => {
   });
 
   it("should reuse the conversation profileOverride when retrying a response", async () => {
-    const metabotInitialState = assocIn(
-      assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
-      ["conversations", testConversationId("omnibot"), "profileOverride"],
-      "nlq",
+    const metabotInitialState = produce(
+      createTestMetabotState({ visibleAgentIds: ["omnibot"] }),
+      (state) => {
+        const conversation = state.conversations[testConversationId("omnibot")];
+        if (conversation) {
+          conversation.profileOverride = "nlq";
+        }
+      },
     );
     setup({ metabotInitialState });
 

@@ -1,5 +1,6 @@
-import { assocIn } from "icepick";
 import _ from "underscore";
+
+import { produce } from "metabase/utils/immutable";
 
 const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
@@ -351,17 +352,11 @@ describe("scenarios > collection defaults", () => {
       "/api/collection/root/items?models=dashboard**",
       (req) => {
         req.on("response", (res) => {
-          const withLong = assocIn(
-            res.body,
-            ["data", 0, "last-edit-info"],
-            lastEditInfo(LONG_EMAIL),
-          );
           res.send(
-            assocIn(
-              withLong,
-              ["data", 1, "last-edit-info"],
-              lastEditInfo(SHORT_EMAIL),
-            ),
+            produce(res.body, (body) => {
+              body.data[0]["last-edit-info"] = lastEditInfo(LONG_EMAIL);
+              body.data[1]["last-edit-info"] = lastEditInfo(SHORT_EMAIL);
+            }),
           );
         });
       },

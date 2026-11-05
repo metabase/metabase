@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import type { JSX } from "react";
 import { c, t } from "ttag";
 
@@ -15,6 +14,7 @@ import {
 } from "metabase/setup";
 import { Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import {
   skipDatabase,
@@ -126,7 +126,9 @@ const getStepTitle = (
 };
 
 const getSubmitError = (error: unknown): unknown => {
-  return updateIn(error, ["data", "errors"], (errors) => ({
-    details: errors,
-  }));
+  if (!isObject(error)) {
+    return error;
+  }
+  const data = isObject(error.data) ? error.data : undefined;
+  return { ...error, data: { ...data, errors: { details: data?.errors } } };
 };

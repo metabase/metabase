@@ -1,6 +1,5 @@
-import { getIn } from "icepick";
-
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { getByPath } from "metabase/utils/immutable";
 import {
   DataPermission,
   DataPermissionValue,
@@ -10,6 +9,7 @@ import {
   type SchemaEntityId,
   type TableEntityId,
 } from "metabase-types/api";
+import { isDataPermissionValue } from "metabase-types/guards";
 
 // permission that do not have a nested schemas/native key
 const flatPermissions = new Set([
@@ -69,7 +69,7 @@ export function getRawPermissionsGraphValue(
     permission,
     nestedPath,
   );
-  return getIn(permissions, path);
+  return getByPath(permissions, path);
 }
 
 interface GetPermissionParams {
@@ -90,11 +90,13 @@ const getPermission = ({
   isControlledType = false,
 }: GetPermissionParams): DataPermissionValue => {
   const valuePath = getPermissionPath(groupId, databaseId, permission, path);
-  const value = getIn(permissions, valuePath);
+  const value = getByPath(permissions, valuePath);
   if (isControlledType && typeof value === "object") {
     return DataPermissionValue.CONTROLLED;
   }
-  return value ? value : getOmittedPermissionValue(permission);
+  return isDataPermissionValue(value)
+    ? value
+    : getOmittedPermissionValue(permission);
 };
 
 export const getSchemasPermission = (

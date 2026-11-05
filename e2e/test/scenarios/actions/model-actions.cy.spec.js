@@ -1,4 +1,4 @@
-import { assocIn } from "icepick";
+import { produce } from "metabase/utils/immutable";
 
 const { H } = cy;
 import {
@@ -55,11 +55,9 @@ const SAMPLE_QUERY_ACTION = {
   },
 };
 
-const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
-  SAMPLE_QUERY_ACTION,
-  ["dataset_query", "native", "query"],
-  `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-);
+const SAMPLE_WRITABLE_QUERY_ACTION = produce(SAMPLE_QUERY_ACTION, (action) => {
+  action.dataset_query.native.query = `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`;
+});
 
 describe(
   "scenarios > actions > model actions",

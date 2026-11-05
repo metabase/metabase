@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import {
@@ -7,6 +6,7 @@ import {
   UnstyledButton,
   useCombobox,
 } from "metabase/ui";
+import { produce } from "metabase/utils/immutable";
 import type { ClickBehavior } from "metabase-types/api";
 
 import S from "./ClickMappings.module.css";
@@ -32,11 +32,15 @@ export function ClickMappingsTargetWithoutSource({
       .find((option) => getValueForSource(option) === value);
 
     updateSettings(
-      assocIn(clickBehavior, ["parameterMapping", id], {
-        source,
-        target: target.target,
-        id,
-        type,
+      produce(clickBehavior, (draft) => {
+        const existing =
+          "parameterMapping" in draft ? draft.parameterMapping : undefined;
+        Object.assign(draft, {
+          parameterMapping: {
+            ...existing,
+            [id]: { source, target: target.target, id, type },
+          },
+        });
       }),
     );
     combobox.closeDropdown();

@@ -5,13 +5,12 @@ import type {
   DataPermission,
   DataPermissionValue,
   DatabaseEntityId,
-  DatabasePermissions,
   EntityWithGroupId,
-  GroupPermissions,
   GroupsPermissions,
   PermissionsDatabase,
   SchemaEntityId,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { isSchemaEntityId } from "../../data-entity-id";
 import { getDatabaseSchema, getDatabaseSchemas } from "../../metadata";
@@ -77,11 +76,7 @@ export function hasPermissionValueInSubgraph(
 // NOTE: default values are omitted from the graph, and given the way this function was written, it won't return
 // the right answer for those permissions. for now, those default values have been omitted from allowed values to avoid bugs
 export function hasPermissionValueInGraph(
-  permissions:
-    | GroupsPermissions
-    | GroupPermissions
-    | DatabasePermissions
-    | DataPermissionValue,
+  permissions: unknown,
   permissionValue: Omit<
     DataPermissionValue,
     DataPermissionValue.BLOCKED | DataPermissionValue.NO // omit default values
@@ -91,7 +86,12 @@ export function hasPermissionValueInGraph(
     return true;
   }
 
-  function _hasPermissionValueInGraph(permissionsGraphSection: any) {
+  function _hasPermissionValueInGraph(
+    permissionsGraphSection: unknown,
+  ): boolean {
+    if (!isObject(permissionsGraphSection)) {
+      return false;
+    }
     for (const key in permissionsGraphSection) {
       const isMatch = permissionsGraphSection[key] === permissionValue;
       if (isMatch) {

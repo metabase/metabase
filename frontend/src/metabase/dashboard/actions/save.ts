@@ -1,4 +1,3 @@
-import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
@@ -8,6 +7,7 @@ import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
+import { produce } from "metabase/utils/immutable";
 import type {
   DashCardId,
   ParameterId,
@@ -78,16 +78,21 @@ export const updateDashboardAndCards = createThunkAction(
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.dashcards = dashboard.dashcards.map((card, index) => {
-        if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
-          const startingValue = getIn(dashboardBeforeEditing?.dashcards ?? [], [
-            index,
-            ...clickBehaviorPath,
-          ]);
-          return startingValue == null
-            ? dissocIn(card, clickBehaviorPath)
-            : assocIn(card, clickBehaviorPath, startingValue);
+        if (
+          !clickBehaviorIsValid(card.visualization_settings?.click_behavior)
+        ) {
+          const startingValue =
+            dashboardBeforeEditing?.dashcards?.[index]?.visualization_settings
+              ?.click_behavior;
+          return produce(card, (draft) => {
+            if (startingValue == null) {
+              delete draft.visualization_settings?.click_behavior;
+            } else {
+              (draft.visualization_settings ??= {}).click_behavior =
+                startingValue;
+            }
+          });
         }
         return card;
       });

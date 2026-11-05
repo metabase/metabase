@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
@@ -27,6 +26,7 @@ import type {
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
 import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
+import { mergeDeep } from "metabase/utils/merge-deep";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
@@ -54,11 +54,15 @@ export function getEmbeddingThemeOverride(
     foreground: theme.colors?.["text-primary"],
     border: userTheme.colors?.border,
   });
-  const components: MetabaseComponentTheme = merge(
-    merge(DEFAULT_EMBEDDED_COMPONENT_THEME, {
+  // We only drop undefined keys, so the result keeps the shape of `theme.components`.
+  const userComponents = stripUndefinedKeys(
+    theme.components,
+  ) as MetabaseTheme["components"];
+  const components: MetabaseComponentTheme = mergeDeep(
+    mergeDeep(DEFAULT_EMBEDDED_COMPONENT_THEME, {
       cartesian: { splitLine: { lineStyle: { color: gridlineColor } } },
     }),
-    stripUndefinedKeys(theme.components),
+    userComponents,
   );
 
   const override: MantineThemeOverride = {

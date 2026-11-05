@@ -1,4 +1,3 @@
-import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -65,7 +64,7 @@ const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
       title={title}
       overwriteOnInitialValuesChange
       copy={async (object) => {
-        const { is_shallow_copy, ...overrides } = dissoc(object, "id");
+        const { id: _id, is_shallow_copy, ...overrides } = object;
         return await copyDashboard({
           id: dashboardIdFromSlug,
           ...overrides,

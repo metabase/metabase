@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 
 import type { State } from "metabase/redux/store";
 
@@ -49,7 +48,7 @@ const getRevisions = (state: State) =>
 
 export const getSegmentRevisions = createSelector(
   [getSegmentId, getRevisions],
-  (segmentId, revisions) => getIn(revisions, ["segment", segmentId]) || {},
+  (segmentId, revisions) => revisions?.segment?.[segmentId] || {},
 );
 
 export const getIsEditing = (state: State) =>

@@ -1,7 +1,8 @@
 import { shallowEqual } from "@mantine/hooks";
-import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
+
+import { getByPath } from "metabase/utils/immutable";
 
 import type { Item, Row, SearchProps, Section } from "./types";
 
@@ -223,7 +224,7 @@ const searchSubstring = memoize(function <TItem extends Item>({
       let score = 1;
       for (const prop of searchProps) {
         const path = prop.split(".");
-        const itemText = String(getIn(item, path) || "");
+        const itemText = String(getByPath(item, path) || "");
         const match = itemText.toLowerCase().includes(searchText.toLowerCase());
         score = Math.min(score, match ? 0 : 1);
       }

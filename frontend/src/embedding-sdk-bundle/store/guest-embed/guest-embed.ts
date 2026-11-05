@@ -1,5 +1,3 @@
-import { merge } from "icepick";
-
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import {
   type OnBeforeRequestHandlerConfig,
@@ -9,6 +7,7 @@ import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-
 import { createAsyncThunk } from "metabase/redux/utils";
 import { refetchSiteSettings } from "metabase/settings";
 import { isJWT } from "metabase/utils/jwt";
+import { mergeDeep } from "metabase/utils/merge-deep";
 
 import { getOrRefreshGuestSession } from "./auth";
 
@@ -31,7 +30,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
           // `data` for the legacy whole-bag callers). Refresh whichever channel
           // carries it before the URL `:tag` substitution reads it.
           if (newToken && "entityIdentifier" in config.data) {
-            return merge(config, {
+            return mergeDeep(config, {
               data: {
                 entityIdentifier: newToken,
               },
@@ -39,7 +38,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
           }
 
           if (newToken && config.body && "token" in config.body) {
-            return merge(config, {
+            return mergeDeep(config, {
               body: {
                 token: newToken,
               },
@@ -47,7 +46,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
           }
 
           if (newToken && "token" in config.data) {
-            return merge(config, {
+            return mergeDeep(config, {
               data: {
                 token: newToken,
               },
@@ -63,7 +62,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
               .find((segment) => isJWT(segment));
 
             if (jwtInUrl) {
-              return merge(config, {
+              return mergeDeep(config, {
                 url: config.url.replace(jwtInUrl, ":entityIdentifier"),
                 data: { entityIdentifier: newToken },
               });

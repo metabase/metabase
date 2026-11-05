@@ -1,11 +1,11 @@
 import type { StoryFn } from "@storybook/react";
-import { updateIn } from "icepick";
 
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
+import { produce } from "metabase/utils/immutable";
 import {
   DEFAULT_VISUALIZATION_THEME,
   type RenderingContext,
@@ -227,16 +227,13 @@ export const CustomYAxisRangeOffScreen = {
 
   args: {
     // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.default,
-      [0, "card", "visualization_settings"],
-      (val) => ({
-        ...val,
+    rawSeries: produce(data.default, (draft) => {
+      Object.assign(draft[0].card.visualization_settings, {
         "graph.y_axis.auto_range": false,
         "graph.y_axis.min": 100000,
         "graph.y_axis.max": 200000,
-      }),
-    ) as any,
+      });
+    }) as any,
     renderingContext,
   },
 };

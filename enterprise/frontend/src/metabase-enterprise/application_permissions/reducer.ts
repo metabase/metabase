@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -122,7 +121,13 @@ const applicationPermissions = handleActions<
           return state;
         }
         const { groupId, permission, value } = payload;
-        return assocIn(state, [groupId, permission], value);
+        if (state[groupId]?.[permission] === value) {
+          return state;
+        }
+        return {
+          ...state,
+          [groupId]: { ...state[groupId], [permission]: value },
+        };
       },
     },
   },

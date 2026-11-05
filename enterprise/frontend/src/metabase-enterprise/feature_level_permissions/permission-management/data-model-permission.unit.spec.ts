@@ -198,7 +198,7 @@ describe("buildDataModelPermission", () => {
         { databaseId },
         groupId,
         regularGroupType,
-        getPermissionGraph("block"),
+        getPermissionGraph("blocked"),
         defaultGroup,
         "schemas",
       );

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -111,11 +110,14 @@ function updateParameter(
 
   const index = _.findIndex(dashboard.parameters, (p) => p.id === id);
   if (index >= 0) {
-    const parameters = assoc(
-      dashboard.parameters,
-      index,
-      parameterUpdater(dashboard.parameters[index]),
-    );
+    const parameter = dashboard.parameters[index];
+    const updatedParameter = parameterUpdater(parameter);
+    const parameters =
+      updatedParameter === parameter
+        ? dashboard.parameters
+        : dashboard.parameters.map((p, i) =>
+            i === index ? updatedParameter : p,
+          );
     dispatch(
       setDashboardAttributes({ id: dashboard.id, attributes: { parameters } }),
     );

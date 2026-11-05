@@ -1,5 +1,4 @@
 import { createAction } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
@@ -278,7 +277,7 @@ export const fetchCardDataAction = createAsyncThunk<
       dashcard?.parameter_mappings ?? undefined,
     );
 
-    const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
+    const lastResult = dashcardData?.[dashcard.id]?.[card.id];
     if (!reload) {
       // if reload not set, check to see if the last result has the same query dict and return that
       if (

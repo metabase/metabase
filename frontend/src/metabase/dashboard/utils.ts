@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -523,7 +522,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     : t`Do nothing`;
   if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
-      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
+      dashcard.visualization_settings?.column_settings || {};
 
     const count = Object.values(columnSettings).filter(
       (settings) => settings.click_behavior != null,

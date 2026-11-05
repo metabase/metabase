@@ -2,9 +2,7 @@ import {
   type PayloadAction,
   type UnknownAction,
   createReducer,
-  current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
-import { assocIn, merge } from "icepick";
 import { isBoolean } from "underscore";
 
 import { collectionApi, databaseApi, permissionApi } from "metabase/api";
@@ -20,8 +18,11 @@ import {
   createThunkAction,
 } from "metabase/redux";
 import { navigate } from "metabase/router";
+import type { Draft } from "metabase/utils/immutable";
+import { mergeDeep } from "metabase/utils/merge-deep";
 import {
   type Collection,
+  type CollectionId,
   type CollectionPermissions,
   type CollectionPermissionsGraph,
   DataPermission,
@@ -616,10 +617,10 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
     builder.addMatcher(
       isLoadDataPermissionsForGroupAction,
       (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+        state != null ? mergeDeep(payload.groups, state) : payload.groups,
     );
     builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
-      state != null ? merge(payload.groups, current(state)) : payload.groups,
+      state != null ? mergeDeep(payload.groups, state) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -632,8 +633,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       if (payload == null || state == null) {
         return state;
       }
-
-      state = current(state); // some of the update functions use icepick which is incompatible with immer
 
       const { value, groupId, entityId, database, permissionInfo } = payload;
 
@@ -743,10 +742,10 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
     builder.addMatcher(
       isLoadDataPermissionsForGroupAction,
       (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+        state != null ? mergeDeep(payload.groups, state) : payload.groups,
     );
     builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
-      state != null ? merge(payload.groups, current(state)) : payload.groups,
+      state != null ? mergeDeep(payload.groups, state) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -836,11 +835,10 @@ const collectionPermissions = createReducer<CollectionPermissions | null>(
           shouldPropagateToChildren,
           value,
         } = payload;
-        let newPermissionsState = assocIn(
-          state != null ? current(state) : state,
-          [groupId, collection.id],
-          value,
-        );
+        if (state == null) {
+          return state;
+        }
+        setCollectionPermission(state, groupId, collection.id, value);
 
         /**
          * Check if shouldPropagateToChildren is explicitly set (true or false) vs unset (null or undefined).
@@ -848,17 +846,16 @@ const collectionPermissions = createReducer<CollectionPermissions | null>(
          */
         if (isBoolean(shouldPropagateToChildren)) {
           for (const descendent of getDecendentCollections(collection)) {
-            newPermissionsState = assocIn(
-              newPermissionsState,
-              [groupId, descendent.id],
+            setCollectionPermission(
+              state,
+              groupId,
+              descendent.id,
               shouldPropagateToChildren
                 ? value
                 : originalPermissionsState?.[groupId]?.[descendent.id],
             );
           }
         }
-
-        return newPermissionsState;
       },
     );
     builder.addMatcher(
@@ -894,23 +891,40 @@ const collectionPermissionsRevision = createReducer<number | null>(
   },
 );
 
+// The update actions carry the permission as `unknown`, so we store it as it comes.
+type CollectionPermissionsDraft = Record<
+  GroupId,
+  Partial<Record<CollectionId, unknown>> | undefined
+>;
+
+function setCollectionPermission(
+  permissions: CollectionPermissionsDraft,
+  groupId: GroupId,
+  collectionId: CollectionId,
+  value: unknown,
+) {
+  const groupPermissions = (permissions[groupId] ??= {});
+  // An equal value is a no-op, so restoring a missing permission adds no key.
+  if (groupPermissions[collectionId] !== value) {
+    groupPermissions[collectionId] = value;
+  }
+}
+
 function handleUpdateTenantCollectionPermission(
-  state: CollectionPermissions | null,
+  state: Draft<CollectionPermissions> | null,
   { payload }: PayloadAction<UpdateTenantCollectionPermissionParams>,
 ) {
+  if (state == null) {
+    return state;
+  }
   const { groupId, collection, value, shouldPropagateToChildren } = payload;
-  let newPermissions = assocIn(
-    state != null ? current(state) : state,
-    [groupId, collection.id],
-    value,
-  );
+  setCollectionPermission(state, groupId, collection.id, value);
 
   if (shouldPropagateToChildren) {
     for (const descendent of getDecendentCollections(collection)) {
-      newPermissions = assocIn(newPermissions, [groupId, descendent.id], value);
+      setCollectionPermission(state, groupId, descendent.id, value);
     }
   }
-  return newPermissions;
 }
 
 const tenantCollectionPermissions = createReducer<CollectionPermissions | null>(

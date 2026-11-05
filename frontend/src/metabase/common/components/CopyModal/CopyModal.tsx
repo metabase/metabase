@@ -1,4 +1,3 @@
-import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
@@ -32,8 +31,9 @@ export function CopyModal(props: CopyModalProps) {
     ? { ...resolvedObject, collection_id: defaultCollectionId }
     : resolvedObject;
 
+  const { id: _id, ...valuesWithoutId } = resolvedObjectWithDefaultCollection;
   const initialValues = {
-    ...dissoc(resolvedObjectWithDefaultCollection, "id"),
+    ...valuesWithoutId,
     name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
   };
 

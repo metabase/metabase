@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -52,7 +51,7 @@ const getApplicationPermission = (
   permissions: ApplicationPermissions,
   groupId: number,
   permissionKey: ApplicationPermissionKey,
-) => getIn(permissions, [groupId, permissionKey]) ?? "no";
+) => permissions[groupId]?.[permissionKey] ?? "no";
 
 export const getIsDirty = createSelector(
   (state: ApplicationPermissionsState) =>

@@ -1,9 +1,9 @@
 import cx from "classnames";
-import { dissocIn, getIn } from "icepick";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
+import { produce } from "metabase/utils/immutable";
 import type { ClickBehavior } from "metabase-types/api";
 
 import type { SourceType, TargetItem } from "./types";
@@ -21,7 +21,9 @@ export function ClickMappingsTargetWithSource({
 }) {
   const { name, id } = target;
   const source: { name?: string; type?: SourceType } =
-    getIn(clickBehavior, ["parameterMapping", id, "source"]) ?? {};
+    ("parameterMapping" in clickBehavior
+      ? clickBehavior.parameterMapping?.[id]?.source
+      : undefined) ?? {};
 
   return (
     <div className={CS.mb2}>
@@ -78,7 +80,13 @@ export function ClickMappingsTargetWithSource({
         <div
           className={cx(CS.cursorPointer, CS.mlAuto)}
           onClick={() =>
-            updateSettings(dissocIn(clickBehavior, ["parameterMapping", id]))
+            updateSettings(
+              produce(clickBehavior, (draft) => {
+                if ("parameterMapping" in draft) {
+                  delete draft.parameterMapping?.[id];
+                }
+              }),
+            )
           }
         >
           <Icon name="close" size={12} />
