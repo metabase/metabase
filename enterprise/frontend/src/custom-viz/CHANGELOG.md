@@ -2,6 +2,16 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## Unreleased
+
+### ⚠ BREAKING CHANGES
+
+- The plugin icon must be an SVG file. `@metabase/custom-viz pack` fails when `metabase-plugin.json` names an icon of any other type, and Metabase refuses such a bundle at upload. Convert a PNG or JPEG icon to SVG (the scaffold's `public/assets/icon.svg` is a starting point); a plugin already uploaded with a bitmap icon keeps working but shows no icon until it is re-uploaded.
+
+### Bug Fixes
+
+- `@metabase/custom-viz pack` no longer packs files listed under `assets` in `metabase-plugin.json`. Metabase only ever served the icon, so those files were dead weight in the archive; the icon is still packed from `dist/assets/`.
+
 ## 2.0.1
 
 ### Bug Fixes

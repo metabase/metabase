@@ -1,7 +1,7 @@
 // Packages metabase-plugin.json + dist/ into <name>-<version>.tgz at the
 // project root, ready to upload via Admin → Custom visualizations → Add.
 //
-// Layout (manifest at root, dist/index.js, dist/assets/*) matches what the
+// Layout (manifest at root, dist/index.js, dist/assets/<icon>) matches what the
 // Metabase backend expects.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -45,12 +45,17 @@ export async function packPlugin(dir: string = process.cwd()) {
     throw new Error('package.json is missing a "version" field.');
   }
 
-  const assetNames = Array.from(
-    new Set([
-      ...(manifest.icon ? [manifest.icon] : []),
-      ...(manifest.assets ?? []),
-    ]),
-  );
+  // The icon is the only asset Metabase serves, so it is the only one packed,
+  // and Metabase accepts it only as an SVG file.
+  const assetNames: string[] = manifest.icon ? [manifest.icon] : [];
+
+  for (const assetName of assetNames) {
+    if (!assetName.toLowerCase().endsWith(".svg")) {
+      throw new Error(
+        `Icon "${assetName}" declared in metabase-plugin.json must be an SVG file.`,
+      );
+    }
+  }
 
   const tar = tarPack();
   const mtime = new Date();

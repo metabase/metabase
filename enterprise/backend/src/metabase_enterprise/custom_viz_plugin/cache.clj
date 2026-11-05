@@ -132,6 +132,9 @@
         (when-let [error (manifest/identifier-error (:name parsed))]
           (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
                           {:status-code 400})))
+        (when-let [error (manifest/icon-error (:icon parsed))]
+          (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
+                          {:status-code 400})))
         {:bytes       bundle-bytes
          :hash        (bytes-hash bundle-bytes)
          :manifest    parsed
