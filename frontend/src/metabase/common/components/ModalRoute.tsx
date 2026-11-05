@@ -91,7 +91,7 @@ export function lazyModalRouteComponent(
   });
 }
 
-export function createModalRouteComponent(
+function createModalRouteComponent(
   ComposedModal: ModalComponent,
   { closeTo = ".." }: ModalRouteOptions,
 ) {
