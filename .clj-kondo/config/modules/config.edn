@@ -1948,9 +1948,7 @@
            search.entity-retrieval
            util}
    :model-exports #{:model/OsiAiContext}
-   :model-imports #{:model/Card
-                    :model/Measure
-                    :model/Segment}}
+   :model-imports #{:model/Card :model/Measure :model/Segment}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -2637,6 +2635,15 @@
            util
            xrays}
    :model-imports #{:model/Segment}}
+
+  serialization
+  {:team "Data Apps"
+   :api  #{}
+   :uses #{lib util util.config}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   server
   {:team "UX West"
