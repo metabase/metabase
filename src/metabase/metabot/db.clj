@@ -885,6 +885,19 @@
   (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
                                                        :metabot_chart_id        chart-id}))
 
+(mu/defn conversation-dashboard-question-id
+  "The ID of the unarchived dashboard question of `dashboard-id` that was saved from `chart-id` in the conversation
+  with `conversation-id`, or nil."
+  [conversation-id :- :string
+   chart-id        :- :string
+   dashboard-id    :- ::lib.schema.id/dashboard]
+  (t2/select-one-pk :model/Card
+                    :metabot_conversation_id conversation-id
+                    :metabot_chart_id        chart-id
+                    :dashboard_id            dashboard-id
+                    :archived                false
+                    {:order-by [[:id :asc]]}))
+
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (mu/defn collection
