@@ -35,7 +35,7 @@
   [id         :- ms/PositiveInt
    term       :- :string
    definition :- :string]
-  (t2/update! :model/Glossary id {:term term :definition definition}))
+  (t2/update! :model/Glossary :id id {:term term :definition definition}))
 
 (mu/defn delete-glossary-entry!
   "Delete the Glossary entry with `id`."

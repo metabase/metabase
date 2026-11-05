@@ -15,7 +15,8 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -206,18 +207,22 @@
   [[format-viewing-context]]) there is no SQL editor, so the item is described as a query the user is
   looking at rather than an editor they are in."
   [item]
-  (let [{:keys [database-id query-str]} (native-query-details (:query item))]
+  (let [{:keys [database-id query-str]} (native-query-details (:query item))
+        question? (= "question" (effective-context-type item))]
     (te/lines
      (if (:in_host_app item)
        "The user is currently looking at a SQL query."
        "The user is currently in the SQL editor.")
-     (when (:id item)
-       (te/field "Query ID" (:id item)))
+     (when question?
+       (te/field "Question ID" (:id item)))
+     ;; The `:id` of a saved question is its card ID. Its query has a different ID, which
+     ;; `metabase.metabot.agent.core/assign-context-ids` sets as `:query_id`.
+     (te/field "Query ID" (if question? (:query_id item) (:id item)))
      (te/field "Current SQL query" (te/code query-str "sql"))
      (te/field "Database ID" database-id)
      (te/field "Database SQL engine" (:sql_engine item))
      (when-some [error (:error item)]
-       (te/field "Query error" (te/code error)))
+       (te/field "Query error" (quoting/quoted error)))
      (when-let [config-ids (format-chart-config-ids item)]
        (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
      (te/field "Tables used" (some->> (:used_tables item)
@@ -228,12 +233,14 @@
   [entity]
   (if (native-query-item? entity)
     (format-native-query entity)
-    (fetch-and-format entity
-                      "The user is currently looking at the results of a report:"
-                      #(do (resources-tools/check-card-resource-database (:id entity))
-                           (entity-details/get-report-details {:report-id (:id entity)
-                                                               :with-field-values? false}))
-                      llm-shape/question->xml)))
+    ;; A question the user cannot read is omitted, together with its query ID.
+    (some-> (fetch-and-format entity
+                              "The user is currently looking at the results of a report:"
+                              #(do (resources-tools/check-card-resource-database (:id entity))
+                                   (entity-details/get-report-details {:report-id (:id entity)
+                                                                       :with-field-values? false}))
+                              llm-shape/question->xml)
+            (te/lines (te/field "Query ID" (:query_id entity))))))
 
 (defmethod format-entity "metric"
   [entity]

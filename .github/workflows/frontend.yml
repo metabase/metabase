@@ -155,6 +155,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Run CI script tests
         run: bun run test-ci-scripts
+      - name: Run create-backport tests
+        run: ./.github/actions/create-backport/create-backport-test.sh
 
   # The custom-viz package is an isolated Bun workspace under
   # enterprise/frontend/src/custom-viz

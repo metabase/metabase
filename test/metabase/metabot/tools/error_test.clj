@@ -3,6 +3,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [malli.generator :as mg]
+   [metabase.mcp.v2.api]
+   [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.legacy :as tools.legacy]
@@ -111,6 +113,11 @@
            (tools.error/classify (ex-info "a plain failure" {:status-code 500}))))
     (is (= {:class :unrecoverable :code :internal}
            (tools.error/classify (RuntimeException. "boom")))))
+  (testing "a JVM error and an interrupt get codes of their own"
+    (is (= {:class :unrecoverable :code :jvm-error}
+           (tools.error/classify (StackOverflowError.))))
+    (is (= {:class :unrecoverable :code :interrupted}
+           (tools.error/classify (InterruptedException.)))))
   (testing "classify reads the top-level exception only — wrapping a declared error demotes it,
            which is the safe direction"
     (let [declared (is (thrown? clojure.lang.ExceptionInfo (test-custom-status! {:id 1})))]
@@ -207,14 +214,16 @@
                   (is (some? (:output (tools.runtime/render error tool-names)))))))))))))
 
 (def ^:private every-tool-name
-  "Every model-facing tool name in the product, from the registered profiles.
+  "Every tool name a registered profile or MCP's registry declares.
 
-  The universe a declaration's text is checked against, rather than one profile's: a message naming
-  a tool is wrong wherever that tool is missing, and which profiles exist is not this test's
-  business."
-  (delay (into #{} (comp (mapcat :tools)
-                         (keep #(:name (tools.legacy/declaration-of %))))
-               (vals @@#'profiles/*profiles))))
+  The universe a declaration's text and `:uses` are checked against, rather than one profile's: a
+  message naming a tool is wrong wherever that tool is missing, and which profiles exist is not this
+  test's business. MCP's tools are in it because one declaration can carry both surfaces' steps, as
+  `recoverable.pipeline-test` shows."
+  (delay (into (into #{} (comp (mapcat :tools)
+                               (keep #(:name (tools.legacy/declaration-of %))))
+                     (vals @@#'profiles/*profiles))
+               (keys @@#'registry/tools*))))
 
 (defn- tools-named-in
   "The tool names `text` names in backticks."
@@ -240,7 +249,13 @@
                  a profile that has no such tool"
           (doseq [{:keys [uses text]} recovery]
             (is (= #{} (set/difference (tools-named-in text) (set uses)))
-                (str "add these to the :uses of the step " (pr-str text)))))))))
+                (str "add these to the :uses of the step " (pr-str text)))))
+        (testing "and a step may use only tools that exist, or renaming a tool would drop the step
+                 from every profile"
+          (doseq [{:keys [uses text]} recovery]
+            (is (= #{} (set/difference (set uses) @every-tool-name))
+                (str "no tool has these names; update the :uses and the text of the step "
+                     (pr-str text)))))))))
 
 (deftest the-naming-check-finds-something-test
   (testing "a predicate that stopped matching would make the test above pass vacuously"

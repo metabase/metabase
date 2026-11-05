@@ -715,8 +715,11 @@
      `:endpoint-paths`.
    - `:default-ask-scopes` — optional scopes emitted as the `scope` parameter of the 401
      `WWW-Authenticate` challenge, i.e. what a client that has not been told otherwise asks for.
-     Omit to let clients ask for everything the resource metadata advertises."
-  [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
+     Omit to let clients ask for everything the resource metadata advertises.
+   - `:accepted-scopes` — the set of scope strings that mark an OAuth token as issued for this surface. An
+     OAuth-authenticated request whose token holds none of them gets the 401 `invalid_token` challenge.
+     Other auth methods are not checked."
+  [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes accepted-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (let [origin-error    (validate-origin request)
@@ -758,16 +761,15 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, refuse it
-           ;; as an invalid token.
-           (and (:authenticated-via-oauth? request) (empty? token-scopes))
+           ;; An OAuth token holding none of this surface's scopes was not issued for this server, e.g. a REST token,
+           ;; so the MCP auth spec requires `invalid_token`. A token without scopes falls here too.
+           (and (:authenticated-via-oauth? request) (not-any? accepted-scopes token-scopes))
            (respond @invalid-token)
 
            ;; MCP authenticates only with an OAuth bearer token. The session middleware already ignores sessions and
            ;; API keys on the MCP paths; this check keeps a request with a current user but no OAuth marker from
-           ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. An `mb:full` token
-           ;; carries the unrestricted sentinel next to its other granted scopes; the sentinel is not an MCP scope, so
-           ;; only those strings reach MCP.
+           ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. A token that reaches
+           ;; here holds an MCP scope, so the session middleware kept only MCP scopes; the filter keeps only strings.
            (and current-user-id (:authenticated-via-oauth? request))
            (dispatch current-user-id (into #{} (filter string?) token-scopes))
 

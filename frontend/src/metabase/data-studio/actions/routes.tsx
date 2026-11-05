@@ -1,3 +1,5 @@
+import type { ComponentType } from "react";
+
 import { ActionsSectionLayout } from "metabase/data-studio/app/pages/ActionsSectionLayout";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
@@ -23,9 +25,9 @@ const newActionPage = () =>
   );
 
 const actionQueryPage = () =>
-  import(/* webpackChunkName: "data-actions" */ "./pages/ActionQueryPage").then(
-    ({ ActionQueryPage }) => ({ Component: ActionQueryPage }),
-  );
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionDefinitionPage"
+  ).then(({ ActionDefinitionPage }) => ({ Component: ActionDefinitionPage }));
 
 const actionFieldsPage = () =>
   import(
@@ -49,11 +51,13 @@ const actionDependenciesPage = () =>
     Component: ActionDependenciesPage,
   }));
 
-export function getDataStudioActionRoutes() {
+export function getDataStudioActionRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="actions" element={<ActionsSectionLayout />}>
       <Route index lazy={actionsPage} />
-      <Route path="new" lazy={newActionPage} />
+      <Route path="new" element={<IsAdmin />}>
+        <Route index lazy={newActionPage} />
+      </Route>
       <Route path="archived" lazy={archivedActionListPage} />
       <Route path=":actionId" lazy={actionQueryPage} />
       <Route path=":actionId/edit" lazy={actionQueryPage} />

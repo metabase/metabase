@@ -14,7 +14,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
@@ -540,7 +539,7 @@
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::permissions.schema/collection-permission-graph-revision.update [:before :after])]
-  (t2/update! :model/CollectionPermissionGraphRevision revision-id changes))
+  (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -548,11 +547,6 @@
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
-
-(mu/defn collection-namespace
-  "The namespace of the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace :model/Collection :id collection-id))
 
 (mu/defn personal-or-descendant-collection-ids
   "The IDs among `collection-ids` that are personal Collections, or descendants of one."
@@ -711,7 +705,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn update-users!
   "Apply `changes` to the Users with `user-ids`."
@@ -748,37 +742,36 @@
   `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
   see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (mu/defn table-database-ids
   "The ID and Database ID of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
 
 (mu/defn active-table-locations-for-database
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true))
 
 (mu/defn table-ids-and-schemas-excluding
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."
   [database-id        :- ::lib.schema.id/database
    excluded-table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :schema]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-              :where [:and
+             {:where [:and
                       [:= :db_id database-id]
                       [:not [:in :id excluded-table-ids]]]}))
 
 (mu/defn field-visibility-info
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))
 
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."

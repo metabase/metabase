@@ -1,4 +1,5 @@
 import { updateIn } from "icepick";
+import type { JSX } from "react";
 import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";

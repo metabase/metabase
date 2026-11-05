@@ -32,7 +32,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
 }
 
 export function useTailLogs(logs: Log[]) {
-  const scrollRef = useRef<any>();
+  const scrollRef = useRef<any>(undefined);
   const shouldAutoFollow = useRef(true);
 
   function autoFollow() {

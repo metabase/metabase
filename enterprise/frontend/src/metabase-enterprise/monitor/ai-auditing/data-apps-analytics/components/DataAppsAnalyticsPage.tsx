@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -78,9 +77,7 @@ export function DataAppsAnalyticsPage() {
         : null,
     [provider, table, filters],
   );
-  const { isInitialLoading, isRefetching, hasData, count, error } =
-    useHasData(countQuery);
-  const showEmpty = !isInitialLoading && !isRefetching && !hasData;
+  const { isInitialLoading, count, error } = useHasData(countQuery);
 
   return (
     <AiAnalyticsSectionLayout
@@ -120,17 +117,9 @@ export function DataAppsAnalyticsPage() {
           }
         />
       }
-      emptyState={
-        <EmptyState
-          icon="audit"
-          title={t`No data app activity`}
-          message={t`Questions and actions that data apps run will show up here. Try widening the date range or check back once people start using your data apps.`}
-        />
-      }
       error={error ?? audit.error ?? missingColumnsError}
       isInitialLoading={isInitialLoading}
       isTableRoute
-      showEmpty={showEmpty}
     >
       <DataAppLogTable
         provider={provider}

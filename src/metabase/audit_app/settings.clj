@@ -1,7 +1,6 @@
 (ns metabase.audit-app.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
 (defsetting last-analytics-checksum
@@ -47,7 +46,7 @@
       env-var-value)))
 
 (defsetting audit-max-retention-days
-  (deferred-tru "Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.")
+  "Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely."
   :encryption :no
   :visibility :internal
   :setter     :none
@@ -63,7 +62,7 @@ Twice a day, Metabase will delete rows older than this threshold. The minimum va
 If set to 0, Metabase will keep all rows.")
 
 (defsetting audit-table-truncation-batch-size
-  (deferred-tru "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable.")
+  "Batch size to use for deletion of old rows for audit-related tables (like query_execution). Can be only set as an environment variable."
   :visibility :internal
   :setter     :none
   :type       :integer

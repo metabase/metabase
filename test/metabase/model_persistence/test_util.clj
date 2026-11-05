@@ -1,6 +1,7 @@
 (ns metabase.model-persistence.test-util
   (:require
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test.data :as data]
@@ -11,7 +12,7 @@
   [f]
   (tu/with-temporary-setting-values [:persisted-models-enabled true]
     (dynamic-redefs/with-dynamic-fn-redefs [persisted-info/default-persistent-info-state (fn [] "creating")]
-      (ddl.i/check-can-persist (data/db))
+      (ddl.i/check-can-persist (driver.u/lib-database (data/id)))
       (persisted-info/ready-database! (data/id))
       (let [persist-fn (fn persist-fn []
                          (#'task.persist-refresh/refresh-tables!

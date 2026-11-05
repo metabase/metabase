@@ -18,24 +18,26 @@
 (def search-models
   "Search model string names, ordered by indexing priority.
    Important / cheaper models come first so partial index is usable as soon as possible during a full index."
-  ["collection"
-   "dashboard"
-   "segment"
-   "measure"
-   "database"
-   "action"
-   "document"
-   "exploration"
-   "transform"
-   ;; The following come last as they can be slow to index due to:
-   ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. large text payloads and native-query parsing for cards)
-   "table"
-   "metric"
-   "card"
-   "dataset"
-   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
-   "indexed-entity"])
+  (-> ["collection"
+       "dashboard"
+       "segment"
+       "measure"
+       "database"
+       "action"
+       "document"
+       "exploration"
+       "transform"]
+      ;; An OSS build has no model namespace to resolve data apps from.
+      (cond-> config/ee-available? (conj "data-app"))
+      (into [;; The following come last as they can be slow to index due to:
+             ;; - cardinality (table, indexed-entity),
+             ;; - cost (e.g. large text payloads and native-query parsing for cards)
+             "table"
+             "metric"
+             "card"
+             "dataset"
+             ;; These can easily dwarf the cardinality of other entities, hence being dead last.
+             "indexed-entity"])))
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
@@ -211,7 +213,6 @@
                    [:map-of :keyword [:or fn? true?]]]]
    [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
-   [:source {:optional true} fn?]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
@@ -412,10 +413,6 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
-   - `:source` - A thunk returning what `:this` reads from, as a `[source :this]` pair, when the indexable rows are
-     not simply the model's own table -- a Table, whose user-set values live in a side-car. A thunk because the spec
-     map is evaluated as the namespace loads, and resolving another model there would be a load cycle. Defaults to
-     the model's own table.
    - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
      column keyword to either `true` (use the raw value) or a transform fn applied for
      full-text search (required)

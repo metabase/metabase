@@ -22,6 +22,8 @@ describe("getCurrentTab", () => {
     ${"/data-studio/snippets/12"}                  | ${"snippets"}
     ${"/data-studio/actions"}                      | ${"actions"}
     ${"/data-studio/actions/34/run"}               | ${"actions"}
+    ${"/data-studio/apps"}                         | ${"data-apps"}
+    ${"/data-studio/apps/sales/actions/3/fields"}  | ${"data-apps"}
     ${"/data-studio/transforms/runs"}              | ${"transforms"}
     ${"/data-studio/transforms/runs?page=2"}       | ${"transforms"}
     ${"/data-studio/transforms"}                   | ${"transforms"}

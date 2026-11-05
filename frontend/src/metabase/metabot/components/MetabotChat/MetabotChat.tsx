@@ -170,7 +170,7 @@ export const MetabotChat = ({
                     onConfigureAi={openAiProviderConfigurationModal}
                   />
                 ) : (
-                  <Text c="text-disabled" maw="12rem" ta="center" lh="lg">
+                  <Text c="text-secondary" maw="12rem" ta="center" lh="lg">
                     {showIllustrations
                       ? t`I can help you explore your metrics and models.`
                       : t`Explore your metrics and models with AI.`}
@@ -275,7 +275,7 @@ export const MetabotChat = ({
             )}
           </Box>
           <Box className={Styles.footerRow}>
-            <Text fz="sm" c="text-disabled" ta="center">
+            <Text fz="sm" c="text-secondary" ta="center">
               {t`${metabotName} isn't perfect. Double-check results.`}
             </Text>
             {metabot.contextWindowPercentUsage > 50 &&

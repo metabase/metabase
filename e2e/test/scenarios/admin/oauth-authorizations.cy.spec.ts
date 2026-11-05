@@ -73,7 +73,8 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
       const authorizeUrl =
         `/oauth/authorize?client_id=${client.client_id}` +
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-        `&response_type=code&scope=${encodeURIComponent(SCOPE)}&state=test-state`;
+        `&response_type=code&scope=${encodeURIComponent(SCOPE)}&state=test-state` +
+        `&resource=${encodeURIComponent(mcpResource())}`;
 
       // Stub a same-origin HTML response so the browser navigates to it (firing a `load` event
       // Cypress can wait on) instead of following the real 302 to the external redirect_uri, which
@@ -153,7 +154,8 @@ function decideClient(client: RegisteredClient, approved: boolean) {
   const authorizeUrl =
     `/oauth/authorize?client_id=${clientId}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    `&response_type=code&scope=${encodeURIComponent(SCOPE)}&state=test-state`;
+    `&response_type=code&scope=${encodeURIComponent(SCOPE)}&state=test-state` +
+    `&resource=${encodeURIComponent(mcpResource())}`;
 
   return cy.request("GET", authorizeUrl).then(({ body }) => {
     cy.request({
@@ -170,11 +172,16 @@ function decideClient(client: RegisteredClient, approved: boolean) {
         response_type: "code",
         scope: SCOPE,
         state: "test-state",
+        resource: mcpResource(),
       },
     })
       .its("status")
       .should("eq", 302);
   });
+}
+
+function mcpResource() {
+  return `${Cypress.config("baseUrl")}/api/metabase-mcp`;
 }
 
 /**

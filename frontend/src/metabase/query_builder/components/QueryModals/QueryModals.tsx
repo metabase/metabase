@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,7 +17,7 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
-import { Modal, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
@@ -32,7 +33,7 @@ import { NewDatasetModal } from "../NewDatasetModal";
 import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
 interface QueryModalsProps {
-  modal: QueryModalType;
+  modal: QueryModalType | null;
   question: Question;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
@@ -69,6 +70,11 @@ export function QueryModals({
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
   const visualizationSettings = useSelector(getVisualizationSettings);
+  const questionRef = useLatest(question);
+  const questionToCopy = useMemo(
+    () => (modal === MODAL_TYPES.CLONE ? questionRef.current : undefined),
+    [modal, questionRef],
+  );
 
   const handleAlertCreatedOrUpdated = useCallback(() => {
     dispatch(updateUrl(question, { dirty: false }));
@@ -244,13 +250,17 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.CLONE:
+      if (!questionToCopy) {
+        return null;
+      }
+
       return (
         <CopyModal
           entityType="cards"
           entityObject={{
-            ...question.card(),
-            collection_id: question.canWrite()
-              ? question.collectionId()
+            ...questionToCopy.card(),
+            collection_id: questionToCopy.canWrite()
+              ? questionToCopy.collectionId()
               : initialCollectionId,
           }}
           copy={async (formValues) => {
@@ -279,29 +289,9 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="md"
-          withCloseButton={false}
-          padding={0}
-        >
-          <NewDatasetModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <NewDatasetModal onClose={onCloseModal} />;
     case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <ImpossibleToCreateModelModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <ImpossibleToCreateModelModal onClose={onCloseModal} />;
     case MODAL_TYPES.PREVIEW_QUERY:
       return <PreviewQueryModal onClose={onCloseModal} />;
     case MODAL_TYPES.QUESTION_EMBED:

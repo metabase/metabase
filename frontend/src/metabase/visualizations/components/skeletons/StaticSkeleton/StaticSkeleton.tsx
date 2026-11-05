@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, JSX, ReactNode } from "react";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
