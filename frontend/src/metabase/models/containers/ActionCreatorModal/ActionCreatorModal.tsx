@@ -102,12 +102,7 @@ function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
       ) : isLoading || error != null || !model ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : (
-        <ActionCreatorModal
-          params={params}
-          onClose={onClose}
-          model={model}
-          loading={isLoading}
-        />
+        <ActionCreatorModal params={params} onClose={onClose} model={model} />
       )}
     </Modal>
   );
