@@ -307,6 +307,7 @@
   {"database"   [:id :name :description]
    "table"      [:id [:display_name :name] :description :db_id]
    "dashboard"  [:id :name :description :collection_id]
+   "document"   [:id :name :collection_id]
    "card"       [:id :name :description :collection_id :display]
    "dataset"    [:id :name :description :collection_id :display]
    "collection" [:id :name :description]})

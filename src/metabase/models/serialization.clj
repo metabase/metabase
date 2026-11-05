@@ -1597,6 +1597,7 @@
    "collection" :model/Collection
    "database"   :model/Database
    "dashboard"  :model/Dashboard
+   "document"   :model/Document
    "question"   :model/Card
    "table"      :model/Table})
 
