@@ -66,10 +66,6 @@ export type PropertySignal =
 
 export type PropertySource = "admin" | "definition" | "values";
 
-export const MISMATCH_HANDLINGS = ["ignore", "text"] as const;
-
-export type MismatchHandling = (typeof MISMATCH_HANDLINGS)[number];
-
 type ObservedProperty = {
   key: string;
   entityCount: number;
@@ -93,7 +89,6 @@ type PropertyOverrides = {
   synonyms?: string[];
   isHidden?: boolean;
   mergedInto?: string;
-  onMismatch?: MismatchHandling;
 };
 
 export type RegistryProperty = ObservedProperty & {
@@ -110,8 +105,6 @@ export type RegistryProperty = ObservedProperty & {
   isHidden: boolean;
   mergedInto: string | null;
   mergedFrom: string[];
-  onMismatch: MismatchHandling;
-  isMismatchHandlingSet: boolean;
   coverage: number;
   quality: number;
   isSuggestedForPivot: boolean;
@@ -174,9 +167,6 @@ function parsePropertyOverrides(value: unknown): PropertyOverrides {
       : undefined,
     isHidden: typeof value.isHidden === "boolean" ? value.isHidden : undefined,
     mergedInto: parseString(value.mergedInto),
-    onMismatch: MISMATCH_HANDLINGS.find(
-      (handling) => handling === value.onMismatch,
-    ),
   };
 }
 
@@ -648,11 +638,8 @@ function buildRegistry(
       definition?.declaredType ?? null,
       property.topValues,
     );
-    const keepsText = overrides.type == null && overrides.onMismatch === "text";
-    const type = keepsText
-      ? "text"
-      : (overrides.type ?? declared?.type ?? inferredType);
-    const typeSource = keepsText ? "admin" : getTypeSource(overrides, declared);
+    const type = overrides.type ?? declared?.type ?? inferredType;
+    const typeSource = getTypeSource(overrides, declared);
     const signals = getSignals(
       property,
       definition,
@@ -682,8 +669,6 @@ function buildRegistry(
       isHidden,
       mergedInto,
       mergedFrom: [],
-      onMismatch: overrides.onMismatch ?? "ignore",
-      isMismatchHandlingSet: overrides.onMismatch != null,
       coverage,
       quality: coverage * conformingShare,
       isSuggestedForPivot:

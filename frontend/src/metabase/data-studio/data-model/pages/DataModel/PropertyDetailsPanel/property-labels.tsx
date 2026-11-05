@@ -62,7 +62,19 @@ export function getPropertyIcon(
 
 export const formatShare = (share: number) => `${Math.round(share * 100)}%`;
 
-export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
+export type OpenPropertySignal = Exclude<
+  PropertySignal,
+  { type: "type-drift" }
+>;
+
+const isOpenSignal = (signal: PropertySignal): signal is OpenPropertySignal =>
+  signal.type !== "type-drift";
+
+export function PropertySignalBadge({
+  signal,
+}: {
+  signal: OpenPropertySignal;
+}) {
   return match(signal)
     .with({ type: "undefined" }, () => (
       <Badge color="warning" variant="light" size="sm">
@@ -71,9 +83,6 @@ export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
     ))
     .with({ type: "unused" }, () => (
       <Badge color="neutral" variant="light" size="sm">{t`No values`}</Badge>
-    ))
-    .with({ type: "type-drift" }, () => (
-      <Badge color="warning" variant="light" size="sm">{t`Bad values`}</Badge>
     ))
     .with({ type: "duplicate" }, ({ propertyLabel }) => (
       <Badge color="warning" variant="light" size="sm">
@@ -84,9 +93,7 @@ export function PropertySignalBadge({ signal }: { signal: PropertySignal }) {
 }
 
 export const getOpenSignals = (property: RegistryProperty) =>
-  property.signals.filter(
-    (signal) => signal.type !== "type-drift" || !property.isMismatchHandlingSet,
-  );
+  property.signals.filter(isOpenSignal);
 
 export const needsAttention = (property: RegistryProperty) =>
   !property.isHidden &&

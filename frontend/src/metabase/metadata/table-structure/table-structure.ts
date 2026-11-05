@@ -113,7 +113,6 @@ function parseEavBinding(value: unknown): Partial<EavBinding> {
     definitionTableId: parseTableId(value.definitionTableId),
     labelFieldId: parseFieldId(value.labelFieldId),
     typeFieldId: parseFieldId(value.typeFieldId),
-    pivotToColumns: parseBoolean(value.pivotToColumns),
   };
 }
 

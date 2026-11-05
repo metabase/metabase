@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import { type ReactElement, useState } from "react";
 
 import { mockSettings } from "__support__/settings";
@@ -7,6 +6,7 @@ import { DataSectionLayout } from "metabase/data-studio/app/pages/DataSectionLay
 import { DataStudioLayout } from "metabase/data-studio/app/pages/DataStudioLayout";
 import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/routes";
 import { Outlet, Route } from "metabase/router";
+import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
@@ -18,15 +18,12 @@ import {
   MetabotComparisonPrototype,
   MetabotDiscoveryPrototype,
 } from "./MetabotPrototype";
-import { ModelPrototype } from "./ModelPrototype";
-import { QueryBuilderPrototype } from "./QueryBuilderPrototype";
 import {
   CURATED_REGISTRY,
   CUSTOMER_PROPERTIES_ID,
   DEALS_ID,
   DEAL_AMOUNT_FIELD_ID,
   EMPTY_TABLE_STRUCTURE,
-  PIVOTED_CUSTOMERS_SQL,
   WAREHOUSE_FIELD_VALUES,
   WAREHOUSE_ID,
   createWarehouse,
@@ -52,7 +49,7 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
       tableStructure: EMPTY_TABLE_STRUCTURE,
     });
     setupMockApi({
-      database: createWarehouse({ withPropertyColumns: false }),
+      database: createWarehouse(),
       fieldValues: WAREHOUSE_FIELD_VALUES,
       getDataset: getPropertyRegistryDataset,
     });
@@ -66,6 +63,8 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
         currentUser: createMockUser({ is_superuser: true }),
         settings: mockSettings({
           "token-features": createMockTokenFeatures(),
+          "transforms-enabled": true,
+          "transforms-setup-complete": true,
         }),
       },
     });
@@ -74,13 +73,13 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
   return (
     <div style={{ height: "100vh" }}>
       <Wrapper>
-        <Route path="model/:slug" element={<ModelPrototype />} />
         <Route path="data-studio" element={<DataStudioLayout />}>
           <Route path="data">
             <Route element={<DataSectionLayout />}>
               {getDataStudioMetadataRoutes(Outlet)}
             </Route>
           </Route>
+          <Route path="transforms">{getDataStudioTransformRoutes()}</Route>
         </Route>
       </Wrapper>
     </div>
@@ -114,20 +113,16 @@ export const DataStudioWildcardField = {
   ),
 };
 
-function QueryBuilderPage({ children }: { children: ReactElement }) {
+function MetabotPage({ children }: { children: ReactElement }) {
   const [{ wrapper: Wrapper }] = useState(() => {
     seedPrototypeStorage({
       registry: CURATED_REGISTRY,
       tableStructure: EMPTY_TABLE_STRUCTURE,
     });
     setupMockApi({
-      database: createWarehouse({ withPropertyColumns: true }),
+      database: createWarehouse(),
       fieldValues: WAREHOUSE_FIELD_VALUES,
       getDataset: getPropertyRegistryDataset,
-    });
-    fetchMock.post("path:/api/dataset/native", {
-      query: PIVOTED_CUSTOMERS_SQL,
-      params: null,
     });
     catchUnmatchedRequests();
     return getTestStoreAndWrapper({
@@ -144,26 +139,18 @@ function QueryBuilderPage({ children }: { children: ReactElement }) {
   return <Wrapper>{children}</Wrapper>;
 }
 
-export const QueryBuilderPropertiesAsColumns = {
-  render: () => (
-    <QueryBuilderPage>
-      <QueryBuilderPrototype />
-    </QueryBuilderPage>
-  ),
-};
-
 export const MetabotPropertyContext = {
   render: () => (
-    <QueryBuilderPage>
+    <MetabotPage>
       <MetabotComparisonPrototype />
-    </QueryBuilderPage>
+    </MetabotPage>
   ),
 };
 
 export const MetabotPropertyDiscovery = {
   render: () => (
-    <QueryBuilderPage>
+    <MetabotPage>
       <MetabotDiscoveryPrototype />
-    </QueryBuilderPage>
+    </MetabotPage>
   ),
 };

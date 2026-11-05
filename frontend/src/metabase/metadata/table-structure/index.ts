@@ -37,17 +37,10 @@ export {
   useCustomPropertyParents,
   useEavBinding,
 } from "./eav-binding";
-export {
-  type PivotModel,
-  usePivotModel,
-  usePivotModelById,
-} from "./pivot-models";
 export { getTableHiddenReason } from "./visibility";
 export { type TableStructure, useTableStructures } from "./table-structure";
 export {
   type BoundDefinitions,
-  MISMATCH_HANDLINGS,
-  type MismatchHandling,
   type EntityKeyValue,
   type PropertySampleRow,
   conformsToType,

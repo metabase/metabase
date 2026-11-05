@@ -66,7 +66,7 @@ function EntityCustomProperties({
     <SidebarSection title={t`Custom properties`}>
       <Text size="sm" c="text-secondary">
         {count != null
-          ? t`${count} properties from ${valueTable.display_name}. They show on each ${noun.singular}'s card below the typed fields, and as a Custom properties group of columns in the query builder.`
+          ? t`${count} properties from ${valueTable.display_name}. They show on each ${noun.singular}'s card below the typed fields.`
           : t`From ${valueTable.display_name}.`}
       </Text>
       <ObjectCardPreview table={table} valueTable={valueTable} />
