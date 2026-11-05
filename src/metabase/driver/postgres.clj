@@ -1699,7 +1699,9 @@
                  (jdbc/with-db-transaction [other spec]
                    (start-workspace-transaction! other)
                    (doall (public-create-schemas other)))))
-              (catch java.sql.SQLException _
+              ;; any failure to check, including a name the connection guard refuses, leaves the database unverified,
+              ;; and init refuses it
+              (catch Exception _
                 :unverifiable)))])))
 
 (defn- check-no-public-create-anywhere!
@@ -1719,7 +1721,11 @@
                    (when (seq unverifiable)
                      (format " The provisioning login cannot connect to check these databases: %s."
                              (str/join ", " unverifiable)))
-                   (format " Run %s, or keep the workspace user out of a database with `REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`, and retry."
+                   (format (str " Run %s"
+                                (when (seq schemas)
+                                  (str ", or keep the workspace user out of a database with "
+                                       "`REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`"))
+                                ", and retry.")
                            (str/join ", " (concat
                                            (for [[db schema] schemas]
                                              (format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;` in database %s"
@@ -2063,13 +2069,28 @@
                          "WHERE usename = ?::text AND pg_catalog.pg_has_role(current_user, usesysid, 'USAGE')")
                     user]))
 
+(defn- other-members
+  "The roles other than this login that are members of `user`."
+  [conn user]
+  (map :member (jdbc/query conn [(str "SELECT m.rolname AS member FROM pg_catalog.pg_auth_members am "
+                                      "JOIN pg_catalog.pg_roles r ON r.oid = am.roleid "
+                                      "JOIN pg_catalog.pg_roles m ON m.oid = am.member "
+                                      "WHERE r.rolname = ?::text AND m.rolname <> current_user ORDER BY 1")
+                                 user])))
+
 (defn- lock-out-workspace-user!
-  "The user can no longer log in, its role settings are reset, and its sessions are ended."
+  "The user can no longer log in, its role settings are reset, this login is a member of it again, no other role is,
+  and its sessions are ended. Before Postgres 16 a role administers its own membership, so the user may have revoked
+  this login's membership, which teardown needs, or granted itself to another role, which could then act as it."
   [conn user db]
   (doseq [sql [(format "ALTER ROLE %s NOLOGIN" (quote-role user))
                (format "ALTER ROLE %s RESET ALL" (quote-role user))
-               (format "ALTER ROLE %s IN DATABASE %s RESET ALL" (quote-role user) (quote-role db))]]
+               (format "ALTER ROLE %s IN DATABASE %s RESET ALL" (quote-role user) (quote-role db))
+               (grant-membership-statement conn user)]]
     (jdbc/execute! conn [sql]))
+  (when (> 160000 (:v (first (jdbc/query conn ["SELECT pg_catalog.current_setting('server_version_num')::int AS v"]))))
+    (doseq [member (other-members conn user)]
+      (jdbc/execute! conn [(format "REVOKE %s FROM %s" (quote-role user) (quote-role member))])))
   (end-sessions! conn user))
 
 (def ^:private session-exit-wait-ms
@@ -2117,13 +2138,19 @@
   naming them."
   [user ^Throwable e]
   (let [e (driver.u/batch-exception e)]
-    (if (= "2BP01" (sql-state e))
-      (ex-info (format (str "Workspace user %s cannot be dropped yet: %s It can no longer log in and holds no grant from "
-                            "the provisioning login. Drop or reassign what it still owns, as a superuser where it is in "
-                            "another database, then retry.")
-                       (quote-role user) (ex-message e))
-               {:status-code 409, :user user}
-               e)
+    (case (sql-state e)
+      "2BP01" (ex-info (format (str "Workspace user %s cannot be dropped yet: %s It can no longer log in and holds no "
+                                    "grant from the provisioning login. Drop or reassign what it still owns, as a "
+                                    "superuser where it is in another database, then retry.")
+                               (quote-role user) (ex-message e))
+                       {:status-code 409, :user user}
+                       e)
+      "42501" (ex-info (format (str "The provisioning login may not drop workspace user %s: %s It can no longer log in "
+                                    "and holds no grant from the provisioning login. Make the provisioning login a "
+                                    "member of it (`GRANT %s TO <provisioning login>`), then retry.")
+                               (quote-role user) (ex-message e) (quote-role user))
+                       {:status-code 409, :user user}
+                       e)
       e)))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
