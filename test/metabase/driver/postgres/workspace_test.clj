@@ -832,3 +832,54 @@
            (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO %s" closed (:user provisioner))])
            (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
+
+(deftest destroy-restores-its-membership-and-drops-other-members-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd       (new-wsd database 1042)
+           user      (-> wsd :database_details :user)
+           before-16 (> 160000 (:v (first (jdbc/query spec ["SELECT current_setting('server_version_num')::int AS v"]))))
+           members   #(map :member (jdbc/query spec [(str "SELECT m.rolname AS member FROM pg_auth_members am "
+                                                          "JOIN pg_roles r ON r.oid = am.roleid "
+                                                          "JOIN pg_roles m ON m.oid = am.member WHERE r.rolname = ?")
+                                                     user]))]
+       (exec! spec ["DROP ROLE IF EXISTS mb_ws_test_accomplice" "CREATE ROLE mb_ws_test_accomplice NOLOGIN"])
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
+       (is (= [0] (as-workspace-user wsd "DO $$BEGIN PERFORM lo_create(0); END$$")))
+       (when before-16
+         (testing "before Postgres 16, the user can revoke the provisioning login's membership and share itself"
+           (is (= [0] (as-workspace-user wsd (format "REVOKE %s FROM %s" user (:user provisioner)))))
+           (is (= [0] (as-workspace-user wsd (format "GRANT %s TO mb_ws_test_accomplice" user))))
+           (is (= ["mb_ws_test_accomplice"] (members)))))
+       ;; a grant the provisioning login cannot revoke stops destroy at DROP USER, after the lock-out has committed
+       (exec! spec ["CREATE TABLE noselect.other (id int)" (format "GRANT SELECT ON noselect.other TO %s" user)])
+       (testing "a destroy stopped at DROP USER has already restored this login's membership and dropped the other"
+         (is (thrown? clojure.lang.ExceptionInfo (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+         (is (= [(:user provisioner)] (distinct (members)))))
+       (exec! spec [(format "REVOKE SELECT ON noselect.other FROM %s" user)])
+       (testing "destroy restores its membership, drops the other, and drops the user"
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+         (is (not (role-exists? spec user)))
+         (is (empty? (jdbc/query spec [(str "SELECT 1 FROM pg_auth_members am JOIN pg_roles m ON m.oid = am.member "
+                                            "WHERE m.rolname = 'mb_ws_test_accomplice'")]))))
+       (exec! spec ["DROP ROLE mb_ws_test_accomplice"])))))
+
+(deftest destroy-maps-a-refused-drop-to-a-409-test
+  (testing "a DROP OWNED or DROP USER the provisioning login may not run is a 409 saying what to grant"
+    (let [e (#'postgres/drop-user-error "mb__isolation_ab2c3d4e"
+                                        (java.sql.SQLException. "ERROR: permission denied to drop objects" "42501"))]
+      (is (= {:status-code 409, :user "mb__isolation_ab2c3d4e"} (ex-data e)))
+      (is (str/includes? (ex-message e) "`GRANT \"mb__isolation_ab2c3d4e\" TO <provisioning login>`")))))
+
+(deftest cluster-check-reports-a-database-it-cannot-name-test
+  (do-with-warehouse!
+   (fn [_spec database]
+     (let [wsd (new-wsd database 1043)
+           bad "workspace_isolation_bad?name"]
+       (tx/drop-if-exists-and-create-db! :postgres bad)
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name bad])]
+         (testing "a database whose name the connection guard refuses is listed as unverifiable"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
+             (is (= {:status-code 412, :schemas [], :unverifiable [bad]} (ex-data e))))))))))
