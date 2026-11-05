@@ -1,6 +1,7 @@
 export {
   type CohortProposal,
   type Confidence,
+  type CurrentVersionBinding,
   DEFAULT_REQUIRED_FILTER_ROW_THRESHOLD,
   type DefaultSegment,
   type DefaultSegmentInference,

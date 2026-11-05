@@ -69,9 +69,12 @@ export function HistoryKindInput({
   onChange: (kind: HistoryKind) => void;
   onConfirmGuess: () => void;
 }) {
-  const { scdTypeInference, isScdTypeOverridden } = structure;
+  const { scdType, scdTypeInference, isScdTypeOverridden } = structure;
   const isWeakGuess =
     !isScdTypeOverridden && scdTypeInference.confidence === "low";
+  const source = isScdTypeOverridden
+    ? t`Set by an admin`
+    : t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`;
 
   return (
     <Stack gap="sm" py="xs">
@@ -103,10 +106,8 @@ export function HistoryKindInput({
           ))}
         </Stack>
       </Radio.Group>
-      <Text size="sm" c="text-secondary">
-        {isScdTypeOverridden
-          ? t`Set by an admin`
-          : t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`}
+      <Text size="sm" c="text-secondary" data-testid="history-source">
+        {scdType != null ? t`SCD type ${scdType} · ${source}` : source}
       </Text>
       {!disabled && isWeakGuess && (
         <Button
