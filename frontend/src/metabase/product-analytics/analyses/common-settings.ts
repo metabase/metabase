@@ -7,7 +7,6 @@ import {
   type SettingDefinition,
   type SettingSection,
   getEventTableSettings,
-  isColumnInTable,
   withWidgetProps,
 } from "metabase/event-tables";
 import { SegmentedControl } from "metabase/ui";
@@ -22,7 +21,6 @@ import { NO_FILTERS, isAnalysisFilters } from "../filters";
 import type { ActorGrain, Grain, Granularity } from "../spec/types";
 
 import { BREAKOUT_VIEWS, isBreakout } from "./breakout";
-import { getUserPropertyOptions, isUserPropertyColumn } from "./column-roles";
 import { isOneOf } from "./setting-helpers";
 import type {
   AnalysisContext,
@@ -92,24 +90,20 @@ const breakoutSetting = (
     isValid: (value, context) =>
       value === null || (isEnabled && isBreakoutValid(context, value)),
     getHidden: () => !isEnabled,
-    getProps: (context, settings) => ({
-      columns: getUserPropertyOptions(context, getColumnRoles(settings)),
-      usersTable: context.usersTable?.table,
+    getProps: (context) => ({
+      table: context.table,
+      usersTable: context.usersTable,
     }),
   });
 
 /**
- * Any of the users table's fields, as its picker offers them all, or else
- * an event table property. People segments live on the users table, so
- * cohorts need one linked.
+ * A property is any column the event table reaches, checked when the query
+ * is built. People segments live on the users table, so cohorts need one
+ * linked.
  */
 const isBreakoutValid = (context: AnalysisContext, value: unknown) =>
   isBreakout(value) &&
-  (value.type === "property"
-    ? context.usersTable !== undefined
-      ? isColumnInTable(context.usersTable.table, value.column)
-      : isUserPropertyColumn(context, value.column)
-    : context.usersTable !== undefined);
+  (value.type === "property" || context.usersTable !== undefined);
 
 /**
  * Settings every analysis has: the toolbar controls and the table's settings.

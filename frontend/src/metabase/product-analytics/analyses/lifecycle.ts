@@ -217,13 +217,11 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       output: { lifecycleShown: settings["lifecycle.shown"] },
     });
   },
-  getExtraColumns: (settings, context) => {
+  getExtraColumns: (settings) => {
     const column = settings["lifecycle.first_seen_column"];
     return [
-      ...(column !== null
-        ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" as const }]
-        : []),
-      ...getBreakoutExtraColumns(settings.breakout, context),
+      ...(column !== null ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column }] : []),
+      ...getBreakoutExtraColumns(settings.breakout),
     ];
   },
   getDisplay: () => "bar",

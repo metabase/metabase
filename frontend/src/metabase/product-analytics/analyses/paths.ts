@@ -260,8 +260,7 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
       output: {},
     });
   },
-  getExtraColumns: ({ breakout }, context) =>
-    getBreakoutExtraColumns(breakout, context),
+  getExtraColumns: ({ breakout }) => getBreakoutExtraColumns(breakout),
   // A direction that shows an empty well takes the event from the one it
   // hides, so switching from "after" to "backwards from" keeps the event.
   getFollowingChanges: (changes, settings) => {

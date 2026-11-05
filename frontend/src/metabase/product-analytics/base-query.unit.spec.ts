@@ -3,9 +3,10 @@ import {
   EVERY_EVENT,
   type PageviewRule,
 } from "metabase/event-tables";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID, PEOPLE_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { buildBaseQuery } from "./base-query";
 import { createFlagAllocator } from "./events/allocate-flags";
@@ -90,9 +91,7 @@ describe("buildBaseQuery", () => {
       pageviews: null,
       pathCleaning: [],
       events: [],
-      extraColumns: [
-        { as: "cohort_start", column: "CREATED_AT", from: "events" },
-      ],
+      extraColumns: [{ as: "cohort_start", column: "CREATED_AT" }],
       usersTable: undefined,
       filters: NO_FILTERS,
       peopleSegments: [],
@@ -108,7 +107,18 @@ describe("buildBaseQuery", () => {
     ).toEqual(["CREATED_AT", "USER_ID"]);
   });
 
-  it("left-joins the users table for an extra column of it", () => {
+  it("adds a column through a foreign key as an expression, for its implicit join", () => {
+    const tableQuery = Lib.queryFromTableOrCardMetadata(
+      SAMPLE_PROVIDER,
+      checkNotNull(Lib.tableOrCardMetadata(SAMPLE_PROVIDER, ORDERS_ID)),
+    );
+    const source = checkNotNull(
+      Lib.visibleColumns(tableQuery, STAGE).find(
+        (column) =>
+          Lib.displayInfo(tableQuery, STAGE, column).longDisplayName ===
+          "User → Source",
+      ),
+    );
     const { query, extraColumns } = buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
       dateRange: "",
       columns: COLUMNS,
@@ -116,56 +126,29 @@ describe("buildBaseQuery", () => {
       pathCleaning: [],
       events: [],
       extraColumns: [
-        { as: "cohort_attribute", column: "SOURCE", from: "users" },
+        {
+          as: "breakout_property",
+          fieldRef: Lib.legacyRef(tableQuery, STAGE, source),
+        },
       ],
-      usersTable: {
-        tableId: PEOPLE_ID,
-        foreignKey: "USER_ID",
-        primaryKey: "ID",
-      },
+      usersTable: undefined,
       filters: NO_FILTERS,
       peopleSegments: [],
       requiredPeopleSegments: [],
       lookbackDays: 0,
     });
 
-    const [join] = Lib.joins(query, STAGE);
-    expect(join).toBeDefined();
-    expect(
-      Lib.displayInfo(query, STAGE, Lib.joinStrategy(join)).shortName,
-    ).toBe("left-join");
+    expect(Lib.joins(query, STAGE)).toEqual([]);
     expect(extraColumns).toEqual([
-      { as: "cohort_attribute", alias: "People - User__SOURCE" },
+      { as: "breakout_property", alias: "breakout_property" },
     ]);
     expect(
       Lib.returnedColumns(query, STAGE).map(
-        (column) => Lib.displayInfo(query, STAGE, column).longDisplayName,
+        (column) => Lib.displayInfo(query, STAGE, column).name,
       ),
-    ).toEqual(["Created At", "User ID", "People - User → Source"]);
+    ).toEqual(["CREATED_AT", "USER_ID", "breakout_property"]);
   });
 
-  it("rejects a users table column without a users table", () => {
-    expect(() =>
-      buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
-        dateRange: "",
-        columns: COLUMNS,
-        pageviews: null,
-        pathCleaning: [],
-        events: [],
-        extraColumns: [
-          { as: "cohort_attribute", column: "SOURCE", from: "users" },
-        ],
-        usersTable: undefined,
-        filters: NO_FILTERS,
-        peopleSegments: [],
-        requiredPeopleSegments: [],
-        lookbackDays: 0,
-      }),
-    ).toThrow("The person column doesn't link to a people table.");
-  });
-});
-
-describe("createFlagAllocator", () => {
   it("numbers flags in order of first use", () => {
     const flags = createFlagAllocator();
     const big = createEventDefinition(totalAbove(100));

@@ -25,7 +25,7 @@ import {
   cohortFilterClause,
   readFilterQuery,
 } from "./filters";
-import { findColumn, findJoinedColumn } from "./find-column";
+import { findColumn, findColumnByRef } from "./find-column";
 import type { AllocatedPeopleSegment } from "./segments/types";
 import { ALL_HISTORY_DAYS, IN_RANGE_FLAG } from "./sql/analyses/lookback";
 import { PAGEVIEW_FLAG } from "./sql/analyses/path-nodes";
@@ -63,7 +63,7 @@ export type BaseQueryInput = {
   pathCleaning: readonly PathCleaningRule[];
   events: readonly AllocatedEvent[];
   extraColumns: readonly ExtraColumn[];
-  /** Needed when an extra column comes from the users table. */
+  /** Where the people segments' members are looked up. */
   usersTable: UsersTableLink | undefined;
   filters: AnalysisFilters;
   /**
@@ -101,19 +101,6 @@ export const getTableMetadata = (
     throw new Error(`Table ${String(tableId)} is not in metadata yet`);
   }
   return tableMetadata;
-};
-
-const findJoinStrategy = (
-  query: Lib.Query,
-  shortName: string,
-): Lib.JoinStrategy => {
-  const strategy = Lib.availableJoinStrategies(query, STAGE).find(
-    (item) => Lib.displayInfo(query, STAGE, item).shortName === shortName,
-  );
-  if (strategy === undefined) {
-    throw new Error(`Join strategy ${shortName} is not available`);
-  }
-  return strategy;
 };
 
 /** Adds the filter query's filters, and limits each cohort to its ids. */
@@ -189,61 +176,11 @@ export const buildFilteredQuery = (
 };
 
 /**
- * Left-joins the users table on the person column, bringing in only
- * `columns`. Returns the join's alias.
- */
-const joinUsersTable = (
-  metadataProvider: Lib.MetadataProvider,
-  query: Lib.Query,
-  usersTable: UsersTableLink,
-  columns: readonly string[],
-): { query: Lib.Query; alias: string } => {
-  const usersMetadata = getTableMetadata(metadataProvider, usersTable.tableId);
-  const joinedFields = columns.map((name) => {
-    const column = Lib.joinableColumns(query, STAGE, usersMetadata).find(
-      (item) => Lib.displayInfo(query, STAGE, item).name === name,
-    );
-    if (column === undefined) {
-      throw new Error(`Column ${name} not found`);
-    }
-    return column;
-  });
-  const foreignKey = findColumn(query, usersTable.foreignKey);
-  const primaryKey = Lib.joinConditionRHSColumns(
-    query,
-    STAGE,
-    usersMetadata,
-    foreignKey,
-  ).find(
-    (column) =>
-      Lib.displayInfo(query, STAGE, column).name === usersTable.primaryKey,
-  );
-  if (primaryKey === undefined) {
-    throw new Error(`Column ${usersTable.primaryKey} not found`);
-  }
-  const condition = Lib.joinConditionClause("=", foreignKey, primaryKey);
-  const clause = Lib.joinClause(
-    usersMetadata,
-    [condition],
-    findJoinStrategy(query, "left-join"),
-  );
-  const joined = Lib.join(
-    query,
-    STAGE,
-    Lib.withJoinFields(clause, joinedFields),
-  );
-  const join = Lib.joins(joined, STAGE).at(-1);
-  if (join === undefined) {
-    throw new Error("The users table join was not added");
-  }
-  return { query: joined, alias: Lib.displayInfo(joined, STAGE, join).name };
-};
-
-/**
  * Lib query on the event table: the date range, a named 0/1 flag expression
  * per event in use, and an explicit field list so compiled aliases stay
- * stable. Columns keep their table names; `buildSql` renames them. Extra
- * columns from the users table are left-joined in through the person column.
+ * stable. Columns keep their table names; `buildSql` renames them. An extra
+ * column given by a field ref is an expression, so one through a foreign key
+ * brings its implicit join.
  *
  * Flags are `case(filter, 1, 0)` rather than raw boolean expressions — Lib
  * custom expressions are typed, and a filter clause as an expression is the
@@ -258,7 +195,6 @@ export const buildBaseQuery = (
     pageviews,
     events,
     extraColumns,
-    usersTable,
     filters,
     lookbackDays,
   }: BaseQueryInput,
@@ -292,18 +228,16 @@ export const buildBaseQuery = (
     query = Lib.expression(query, STAGE, IN_RANGE_FLAG, asFlag(inRange));
   }
 
-  const usersColumns = extraColumns.filter(({ from }) => from === "users");
-  let usersJoinAlias: string | undefined;
-  if (usersColumns.length > 0) {
-    if (usersTable === undefined) {
-      throw new Error(t`The person column doesn't link to a people table.`);
-    }
-    ({ query, alias: usersJoinAlias } = joinUsersTable(
-      metadataProvider,
+  const referencedColumns = extraColumns.flatMap((extra) =>
+    "fieldRef" in extra ? [extra] : [],
+  );
+  for (const { as, fieldRef } of referencedColumns) {
+    query = Lib.expression(
       query,
-      usersTable,
-      usersColumns.map(({ column }) => column),
-    ));
+      STAGE,
+      as,
+      Lib.expressionClause(findColumnByRef(query, fieldRef)),
+    );
   }
 
   const hasPageviewFlag = pageviews?.type === "column_value";
@@ -326,9 +260,9 @@ export const buildBaseQuery = (
 
   const eventColumns = _.uniq([
     ...Object.values(columns).flatMap((column) => column ?? []),
-    ...extraColumns
-      .filter(({ from }) => from === "events")
-      .map(({ column }) => column),
+    ...extraColumns.flatMap((extra) =>
+      "column" in extra ? [extra.column] : [],
+    ),
   ]);
   const flags = [
     ...events.map(({ flag }) => flag),
@@ -337,7 +271,7 @@ export const buildBaseQuery = (
   ];
   const selected = [
     ...eventColumns.map((name) => findColumn(query, name)),
-    ...usersColumns.map(({ column }) => findJoinedColumn(query, column)),
+    ...referencedColumns.map(({ as }) => findColumn(query, as)),
     ...flags.map((flag) => findColumn(query, flag)),
   ];
   query = Lib.withFields(query, STAGE, selected);
@@ -350,13 +284,9 @@ export const buildBaseQuery = (
   return {
     query,
     databaseId,
-    extraColumns: extraColumns.map(({ as, column, from }) => ({
-      as,
-      // The query processor aliases a joined column as `<join alias>__<name>`.
-      alias:
-        from === "users" && usersJoinAlias !== undefined
-          ? `${usersJoinAlias}__${column}`
-          : column,
+    extraColumns: extraColumns.map((extra) => ({
+      as: extra.as,
+      alias: "column" in extra ? extra.column : extra.as,
     })),
     flags,
   };

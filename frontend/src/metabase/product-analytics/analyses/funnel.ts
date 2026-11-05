@@ -298,8 +298,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
       output: { funnelView: settings["funnel.view"] },
     });
   },
-  getExtraColumns: ({ breakout }, context) =>
-    getBreakoutExtraColumns(breakout, context),
+  getExtraColumns: ({ breakout }) => getBreakoutExtraColumns(breakout),
   getDisplay: (settings) => {
     switch (settings["funnel.view"]) {
       case "overTime":

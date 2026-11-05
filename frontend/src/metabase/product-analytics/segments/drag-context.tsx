@@ -30,8 +30,13 @@ type SegmentDragState = {
     event: DragEvent<HTMLElement>,
   ) => void;
   endDrag: () => void;
-  /** Uses a people segment as a filter, from a drop. */
-  onPeopleSegment: (segment: PaletteSegment) => void;
+  /** Filters the analysis to a segment, people or event. */
+  onFilterBySegment: (segment: PaletteSegment) => void;
+  /**
+   * Adds a people segment to the breakout's groups. Undefined when the
+   * analysis can't break out by people segments.
+   */
+  onBreakOutBySegment: ((segment: PaletteSegment) => void) | undefined;
 };
 
 const SegmentDragContext = createContext<SegmentDragState>({
@@ -41,7 +46,8 @@ const SegmentDragContext = createContext<SegmentDragState>({
   startDrag: () => undefined,
   startEventDrag: () => undefined,
   endDrag: () => undefined,
-  onPeopleSegment: () => undefined,
+  onFilterBySegment: () => undefined,
+  onBreakOutBySegment: undefined,
 });
 
 const DATA_TYPE = "application/x-metabase-segment";
@@ -49,7 +55,8 @@ const DATA_TYPE = "application/x-metabase-segment";
 type SegmentDragProviderProps = {
   isPaletteOpen: boolean;
   onTogglePalette: () => void;
-  onPeopleSegment: (segment: PaletteSegment) => void;
+  onFilterBySegment: (segment: PaletteSegment) => void;
+  onBreakOutBySegment: ((segment: PaletteSegment) => void) | undefined;
   children: ReactNode;
 };
 
@@ -61,7 +68,8 @@ type SegmentDragProviderProps = {
 export const SegmentDragProvider = ({
   isPaletteOpen,
   onTogglePalette,
-  onPeopleSegment,
+  onFilterBySegment,
+  onBreakOutBySegment,
   children,
 }: SegmentDragProviderProps) => {
   const [dragging, setDragging] = useState<DragItem | null>(null);
@@ -95,7 +103,8 @@ export const SegmentDragProvider = ({
       startDrag,
       startEventDrag,
       endDrag,
-      onPeopleSegment,
+      onFilterBySegment,
+      onBreakOutBySegment,
     }),
     [
       isPaletteOpen,
@@ -104,7 +113,8 @@ export const SegmentDragProvider = ({
       startDrag,
       startEventDrag,
       endDrag,
-      onPeopleSegment,
+      onFilterBySegment,
+      onBreakOutBySegment,
     ],
   );
 

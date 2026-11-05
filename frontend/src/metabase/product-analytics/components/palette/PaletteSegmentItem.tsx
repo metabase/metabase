@@ -105,7 +105,8 @@ export const PaletteSegmentItem = ({
         />
         <Tooltip
           label={segment.description}
-          disabled={!segment.description}
+          // Out of the way during a drag, whose targets it could cover.
+          disabled={!segment.description || dragging !== null}
           openDelay={400}
           position="right"
         >
@@ -121,6 +122,8 @@ export const PaletteSegmentItem = ({
         </Tooltip>
         {segment.status === "draft" && (
           <RowMenu label={t`Draft options`}>
+            <UseSegmentMenuItems segment={segment} />
+            <Menu.Divider />
             <Menu.Item
               leftSection={<Icon name="pencil" />}
               onClick={onEditDraft}
@@ -144,7 +147,7 @@ export const PaletteSegmentItem = ({
           </RowMenu>
         )}
         {segment.status === "saved" && (
-          <SavedSegmentMenu actions={savedActions} />
+          <SavedSegmentMenu segment={segment} actions={savedActions} />
         )}
       </Group>
       {hasDefinition && isExpanded && (
@@ -187,26 +190,53 @@ const RowMenu = ({ label, children }: RowMenuProps) => (
   </Box>
 );
 
+type UseSegmentMenuItemsProps = {
+  segment: PaletteSegment;
+};
+
+/** Filtering and breaking out by the segment, as a drop on the toolbar does. */
+const UseSegmentMenuItems = ({ segment }: UseSegmentMenuItemsProps) => {
+  const { onFilterBySegment, onBreakOutBySegment } = useSegmentDrag();
+  return (
+    <>
+      <Menu.Item
+        leftSection={<Icon name="filter" />}
+        onClick={() => onFilterBySegment(segment)}
+      >
+        {t`Filter by this segment`}
+      </Menu.Item>
+      {segment.source === "people" && onBreakOutBySegment !== undefined && (
+        <Menu.Item
+          leftSection={<Icon name="split_branch" />}
+          onClick={() => onBreakOutBySegment(segment)}
+        >
+          {t`Break out by this segment`}
+        </Menu.Item>
+      )}
+    </>
+  );
+};
+
 type SavedSegmentMenuProps = {
+  segment: PaletteSegment;
   actions: SavedSegmentActions;
 };
 
 const SavedSegmentMenu = ({
+  segment,
   actions: { editUrl, revisionsUrl, dataStudioUrl, onRemove },
 }: SavedSegmentMenuProps) => {
   const [isConfirmOpen, { open: openConfirm, close: closeConfirm }] =
     useDisclosure();
-  if (
-    [editUrl, revisionsUrl, dataStudioUrl, onRemove].every(
-      (action) => action === undefined,
-    )
-  ) {
-    return null;
-  }
+  const hasActions = [editUrl, revisionsUrl, dataStudioUrl, onRemove].some(
+    (action) => action !== undefined,
+  );
 
   return (
     <>
       <RowMenu label={t`Segment actions`}>
+        <UseSegmentMenuItems segment={segment} />
+        {hasActions && <Menu.Divider />}
         {editUrl !== undefined && (
           <NewTabMenuItem to={editUrl} icon="pencil">
             {t`Edit segment`}

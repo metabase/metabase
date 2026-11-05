@@ -58,7 +58,7 @@ export interface FilterColumnPickerProps {
   stageIndexes: number[];
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
-  onSegmentSelect: (item: SegmentListItem) => void;
+  onSegmentSelect?: (item: SegmentListItem) => void;
   onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
   /**
    * Entries of the caller's own for a group, after the group's segments.
@@ -68,6 +68,8 @@ export interface FilterColumnPickerProps {
   onCustomItemSelect?: (item: CustomListItem) => void;
 
   withCustomExpression?: boolean;
+  /** Whether the source table's segments are listed above its columns. */
+  withSegments?: boolean;
   withColumnGroupIcon?: boolean;
   withColumnItemIcon?: boolean;
 }
@@ -101,6 +103,7 @@ export function FilterColumnPicker({
   getGroupItems,
   onCustomItemSelect,
   withCustomExpression = true,
+  withSegments = true,
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
@@ -116,6 +119,7 @@ export function FilterColumnPicker({
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
+        withSegments,
         isSearching,
         tc,
         getGroupItems,
@@ -125,6 +129,7 @@ export function FilterColumnPicker({
       stageIndexes,
       withColumnGroupIcon,
       withCustomExpression,
+      withSegments,
       isSearching,
       tc,
       getGroupItems,
@@ -152,7 +157,7 @@ export function FilterColumnPicker({
 
   const handleSelect = (item: Item) => {
     if (isSegmentListItem(item)) {
-      onSegmentSelect(item);
+      onSegmentSelect?.(item);
     } else if (isExpressionClauseItem(item)) {
       onExpressionSelect?.(item.clause);
     } else if (isCustomListItem(item)) {
@@ -206,6 +211,7 @@ function getSections({
   stageIndexes,
   withColumnGroupIcon,
   withCustomExpression,
+  withSegments,
   isSearching,
   tc,
   getGroupItems,
@@ -214,6 +220,7 @@ function getSections({
   stageIndexes: number[];
   withColumnGroupIcon: boolean;
   withCustomExpression: boolean;
+  withSegments: boolean;
   isSearching: boolean;
   tc: (content: string | null | undefined) => string | null | undefined;
   getGroupItems?: FilterColumnPickerProps["getGroupItems"];
@@ -239,9 +246,10 @@ function getSections({
           longDisplayName: columnInfo.longDisplayName,
         };
       });
-      const segments = groupInfo.isSourceTable
-        ? Lib.availableSegments(query, stageIndex)
-        : [];
+      const segments =
+        withSegments && groupInfo.isSourceTable
+          ? Lib.availableSegments(query, stageIndex)
+          : [];
       const segmentItems = segments.map((segment) => {
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {

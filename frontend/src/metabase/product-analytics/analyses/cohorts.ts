@@ -260,8 +260,7 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
       },
     });
   },
-  getExtraColumns: ({ breakout }, context) =>
-    getBreakoutExtraColumns(breakout, context),
+  getExtraColumns: ({ breakout }) => getBreakoutExtraColumns(breakout),
   getDisplay: (settings) => {
     if (isTable(settings)) {
       return "cohort";

@@ -58,7 +58,7 @@ export const EventDefinitionSummary = ({
   onRemove,
 }: EventDefinitionSummaryProps) => {
   const { isPaletteOpen, startEventDrag, endDrag } = useSegmentDrag();
-  const { isActive, isOver, dropProps } = useSegmentDropTarget(dropTarget);
+  const { isOver, dropProps } = useSegmentDropTarget(dropTarget);
   const dropLabel =
     name === undefined
       ? t`Drop to use this segment`
@@ -107,7 +107,7 @@ export const EventDefinitionSummary = ({
       >
         <Text
           truncate
-          c={name && !isActive ? "text-primary" : "text-disabled"}
+          c={name ? "text-primary" : "text-disabled"}
           fw={isOver ? "bold" : undefined}
         >
           {label}

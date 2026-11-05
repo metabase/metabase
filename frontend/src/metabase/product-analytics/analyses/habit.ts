@@ -207,8 +207,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
       output: {},
     });
   },
-  getExtraColumns: ({ breakout }, context) =>
-    getBreakoutExtraColumns(breakout, context),
+  getExtraColumns: ({ breakout }) => getBreakoutExtraColumns(breakout),
   getDisplay: (settings) => {
     switch (settings["habit.measure"]) {
       case "histogram":

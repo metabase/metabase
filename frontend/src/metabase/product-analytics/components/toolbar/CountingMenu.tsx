@@ -4,11 +4,6 @@ import type { SettingWidgetProps } from "metabase/event-tables";
 import { Button, Icon, Menu } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import {
-  useSegmentDrag,
-  useSegmentDropTarget,
-} from "../../segments/drag-context";
-import { isPeopleSegment } from "../../segments/to-event-definition";
 import type { Grain } from "../../spec/types";
 
 import S from "./CountingMenu.module.css";
@@ -47,22 +42,12 @@ type CountingMenuProps = SettingWidgetProps<Grain> & {
   isDisabled?: boolean;
 };
 
-/**
- * Also where a people segment from the palette lands: the button lights up
- * while one is dragged, and takes the drop.
- */
 export const CountingMenu = ({
   value,
   onChange,
   options = [],
   isDisabled = false,
 }: CountingMenuProps) => {
-  const { onPeopleSegment } = useSegmentDrag();
-  const { isActive: isHinted, dropProps } = useSegmentDropTarget({
-    accepts: isPeopleSegment,
-    onDrop: onPeopleSegment,
-  });
-
   const hasChoice = options.length > 1;
   const button = (
     <Button
@@ -70,15 +55,12 @@ export const CountingMenu = ({
       variant="default"
       leftSection={<Icon name={GRAIN_ICONS[value]} />}
       disabled={isDisabled}
-      data-hinted={isHinted}
       data-static={!hasChoice}
-      {...dropProps}
     >
       {getButtonLabel(value)}
     </Button>
   );
 
-  // With one option there's nothing to pick, but it still takes a dropped segment.
   if (!hasChoice) {
     return button;
   }

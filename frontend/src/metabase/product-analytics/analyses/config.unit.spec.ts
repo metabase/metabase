@@ -6,7 +6,7 @@ import {
   getSettingWidgets,
 } from "metabase/event-tables";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Table } from "metabase-types/api";
+import type { FieldReference, Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import { buildSql } from "../build-sql";
@@ -74,6 +74,8 @@ const getReadySpec = (result: SpecResult) => {
 
 const getMissingKeys = (result: SpecResult) =>
   result.status === "incomplete" ? result.missing.map(({ key }) => key) : [];
+
+const PLAN_REF: FieldReference = ["field", 12, null];
 
 const PLANNER_COLUMNS = {
   timestamp: "created_at",
@@ -461,7 +463,7 @@ describe("analysis settings", () => {
       true,
     );
     expect(withColumn.extraColumns).toEqual([
-      { as: "first_seen", column: "person__first_seen_at", from: "events" },
+      { as: "first_seen", column: "person__first_seen_at" },
     ]);
     expect(getReadySpec(withoutColumn.specResult).lifecycle?.hasFirstSeen).toBe(
       false,
@@ -492,40 +494,28 @@ describe("analysis settings", () => {
       });
     });
 
-    it("offers the event table's user properties when there is no users table", () => {
-      const { getProps } = setup({ kind: "cohorts", table: EVENT_TABLE });
-
-      expect(getProps("breakout")).toMatchObject({
-        columns: [{ value: "plan" }],
-      });
-    });
-
-    it("offers the users table's columns when the person column links to one", () => {
-      const { getProps, computed, extraColumns } = setup({
+    it("breaks out by the column a stored field ref points to", () => {
+      const { computed, extraColumns } = setup({
         kind: "cohorts",
         table: EVENT_TABLE,
         usersTable: USERS_TABLE_CONTEXT,
-        stored: { breakout: { type: "property", column: "country" } },
+        stored: { breakout: { type: "property", fieldRef: PLAN_REF } },
       });
 
-      expect(getProps("breakout")).toMatchObject({
-        columns: [{ value: "country" }, { value: "plan" }],
-      });
       expect(computed["breakout"]).toEqual({
         type: "property",
-        column: "country",
+        fieldRef: PLAN_REF,
       });
       expect(extraColumns).toEqual([
-        { as: "breakout_property", column: "country", from: "users" },
+        { as: "breakout_property", fieldRef: PLAN_REF },
       ]);
     });
 
-    it("drops a stored attribute the users table doesn't have", () => {
+    it("drops a stored breakout by column name, from before field refs", () => {
       const { computed } = setup({
         kind: "cohorts",
         table: EVENT_TABLE,
-        usersTable: USERS_TABLE_CONTEXT,
-        stored: { breakout: { type: "property", column: "event_name" } },
+        stored: { breakout: { type: "property", column: "plan" } },
       });
 
       expect(computed["breakout"]).toBeNull();
@@ -535,7 +525,7 @@ describe("analysis settings", () => {
       const { specResult } = setup({
         kind: "cohorts",
         table: EVENT_TABLE,
-        stored: { breakout: { type: "property", column: "plan" } },
+        stored: { breakout: { type: "property", fieldRef: PLAN_REF } },
       });
 
       expect(getReadySpec(specResult).breakout).toEqual({ type: "property" });
@@ -616,7 +606,7 @@ describe("analysis settings", () => {
         table: EVENT_TABLE,
         stored: {
           "cohorts.view": "curves",
-          breakout: { type: "property", column: "plan" },
+          breakout: { type: "property", fieldRef: PLAN_REF },
           "cohorts.lines": "average",
         },
       });
@@ -643,7 +633,9 @@ describe("analysis settings", () => {
       );
       expect(isDateAxisHidden({ "cohorts.lines": "average" })).toBe(true);
       expect(
-        isDateAxisHidden({ breakout: { type: "property", column: "plan" } }),
+        isDateAxisHidden({
+          breakout: { type: "property", fieldRef: PLAN_REF },
+        }),
       ).toBe(true);
     });
 

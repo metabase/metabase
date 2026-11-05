@@ -5,7 +5,8 @@ import {
   getLightAccentColors,
   getMainAccentColors,
 } from "metabase/ui/colors/groups";
-import type { VisualizationSettings } from "metabase-types/api";
+import { isFieldReference } from "metabase-lib/v1/references";
+import type { FieldReference, VisualizationSettings } from "metabase-types/api";
 import { isRecord } from "metabase-types/guards";
 
 import type { ExtraColumn } from "../columns";
@@ -18,8 +19,6 @@ import {
   BREAKOUT_PROPERTY_COLUMN,
 } from "../sql/analyses/breakout";
 
-import type { AnalysisContext } from "./types";
-
 /**
  * How an analysis splits its result: by a property's values, which don't
  * overlap, or by people segments, which can.
@@ -27,14 +26,14 @@ import type { AnalysisContext } from "./types";
 export type Breakout =
   | {
       type: "property";
-      /** A users table column when there is a users table, else an event table column. */
-      column: string;
+      /** A column of the event table, or of a table it links to. */
+      fieldRef: FieldReference;
     }
   | { type: "cohorts"; segments: PeopleSegmentRef[] };
 
 export const isBreakout = (value: unknown): value is Breakout =>
   isRecord(value) &&
-  ((value.type === "property" && typeof value.column === "string") ||
+  ((value.type === "property" && isFieldReference(value.fieldRef)) ||
     (value.type === "cohorts" &&
       Array.isArray(value.segments) &&
       value.segments.length > 0 &&
@@ -94,17 +93,24 @@ const getOutsideLabel = (label: string) =>
 /** The property's column on `events_base`, when breaking out by one. */
 export const getBreakoutExtraColumns = (
   breakout: Breakout | null,
-  context: AnalysisContext,
 ): ExtraColumn[] =>
   breakout?.type === "property"
-    ? [
-        {
-          as: BREAKOUT_PROPERTY_COLUMN,
-          column: breakout.column,
-          from: context.usersTable !== undefined ? "users" : "events",
-        },
-      ]
+    ? [{ as: BREAKOUT_PROPERTY_COLUMN, fieldRef: breakout.fieldRef }]
     : [];
+
+/**
+ * The breakout with a people segment among its groups, in place of a
+ * property. Unchanged when the segment is already there.
+ */
+export const withBreakoutSegment = (
+  breakout: Breakout | null,
+  segment: PeopleSegmentRef,
+): Breakout => {
+  const segments = breakout?.type === "cohorts" ? breakout.segments : [];
+  return segments.some((picked) => picked.key === segment.key)
+    ? { type: "cohorts", segments }
+    : { type: "cohorts", segments: [...segments, segment] };
+};
 
 /**
  * A color per cohort group: everyone in gray, and each segment in an accent

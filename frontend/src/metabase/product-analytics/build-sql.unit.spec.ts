@@ -119,7 +119,7 @@ describe("buildSql", () => {
 
     it("places people by the first value on their start events", () => {
       const sql = getCohortsSql({
-        breakout: { type: "property", column: "plan" },
+        breakout: { type: "property", fieldRef: ["field", 12, null] },
         granularity: "month",
       });
 

@@ -11,7 +11,7 @@ import type {
   CustomListItem,
 } from "metabase/querying/filters/components/FilterPicker/types";
 import { Icon, Popover, UnstyledButton } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
 
 import type { UsersTable } from "../analyses/types";
@@ -19,21 +19,19 @@ import {
   type AnalysisFilters,
   readFilterQuery,
   withFilterQuery,
-  withPeopleFilter,
+  withSegmentFilter,
 } from "../filters";
 import {
   isTableColumnGroup,
   toSegmentPickerItem,
 } from "../segments/picker-items";
-import { segmentFilterables } from "../segments/to-event-definition";
 import { usePaletteSegments } from "../segments/use-palette-segments";
+import { usePeoplePickerSegments } from "../segments/use-people-picker-segments";
 import { useSegmentDrafts } from "../segments/use-segment-drafts";
 
 import S from "./AddFilterButton.module.css";
 import { useFilterCount } from "./FilterPills";
 import { useTableQuery } from "./events/use-table-query";
-
-const STAGE = -1;
 
 type AddFilterButtonProps = SettingWidgetProps<AnalysisFilters> & {
   table?: Table;
@@ -108,10 +106,7 @@ type FilterPickerWithSegmentsProps = {
   usersTable: UsersTable | undefined;
 };
 
-/**
- * The filter picker with the segments the query builder's lacks. Mounted
- * with the dropdown, so it lists the drafts as they are when it opens.
- */
+/** The filter picker with the segments the query builder's lacks. */
 const FilterPickerWithSegments = ({
   query,
   value,
@@ -128,17 +123,7 @@ const FilterPickerWithSegments = ({
     "event",
     eventDrafts,
   );
-  const usersTableId = usersTable?.table.id;
-  const peopleDrafts = useSegmentDrafts(usersTableId).drafts;
-  const { saved: savedPeople, drafted: draftedPeople } = usePaletteSegments(
-    usersTableId,
-    "people",
-    peopleDrafts,
-  );
-  const peopleSegments = useMemo(
-    () => (usersTable !== undefined ? [...savedPeople, ...draftedPeople] : []),
-    [usersTable, savedPeople, draftedPeople],
-  );
+  const peopleSegments = usePeoplePickerSegments(usersTable);
 
   const getGroupItems = useCallback(
     ({ info, columns }: ColumnGroupItemsContext): CustomListItem[] => {
@@ -154,25 +139,12 @@ const FilterPickerWithSegments = ({
   );
 
   const handleCustomItemSelect = (item: CustomListItem) => {
-    const people = peopleSegments.find((segment) => segment.key === item.key);
-    if (people !== undefined) {
-      onChange(withPeopleFilter(value, people));
-      return;
-    }
-    const event = eventSegments.find((segment) => segment.key === item.key);
-    if (event === undefined || tableQuery === undefined) {
-      return;
-    }
-    // A draft is no segment on the table yet, so its conditions are copied.
-    const withDraft = segmentFilterables(
-      tableQuery,
-      metadataProvider,
-      event,
-    ).reduce(
-      (current, filterable) => Lib.filter(current, STAGE, filterable),
-      query,
+    const segment = [...peopleSegments, ...eventSegments].find(
+      ({ key }) => key === item.key,
     );
-    onChange(withFilterQuery(value, withDraft));
+    if (segment !== undefined && tableQuery !== undefined) {
+      onChange(withSegmentFilter(value, segment, metadataProvider, tableQuery));
+    }
   };
 
   return (

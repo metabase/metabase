@@ -21,7 +21,7 @@
 
 .root[data-drop-active="true"] {
   border-style: dashed;
-  border-color: var(--mb-color-border-brand);
+  border-color: var(--mb-color-border-highlight);
 }
 
 .root[data-drop-over="true"] {

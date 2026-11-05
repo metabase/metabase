@@ -7,6 +7,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import type { StoredSettings } from "metabase/event-tables";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import type {
@@ -15,13 +16,15 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { withBreakoutSegment } from "../analyses/breakout";
 import { pickSettingsForKind } from "../analyses/config";
 import type { AnalysisSettingsByKind, DisplayColors } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
 import { useDrillActions } from "../drills/use-drill-actions";
 import { useDrillQueries } from "../drills/use-drill-queries";
-import { type AnalysisFilters, withPeopleFilter } from "../filters";
+import { type AnalysisFilters, withSegmentFilter } from "../filters";
 import { SegmentDragProvider } from "../segments/drag-context";
+import { toPeopleSegmentRef } from "../segments/people-segment-ref";
 import type { PaletteSegment } from "../segments/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
@@ -43,6 +46,7 @@ import { DisplayPanel } from "./DisplayPanel";
 import { EventsPanel } from "./EventsPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
+import { useTableQuery } from "./events/use-table-query";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
@@ -270,14 +274,40 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 
   const handleFiltersChange = (filters: AnalysisFilters) =>
     widgets.find((widget) => widget.id === "filters")?.onChange(filters);
-  const handleAddPeopleFilter = (segment: PaletteSegment) =>
-    handleFiltersChange(withPeopleFilter(computed.filters, segment));
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+  const tableQuery = useTableQuery(table);
+  const handleFilterBySegment = (segment: PaletteSegment) => {
+    if (tableQuery === undefined) {
+      return;
+    }
+    handleFiltersChange(
+      withSegmentFilter(
+        computed.filters,
+        segment,
+        metadataProvider,
+        tableQuery,
+      ),
+    );
+    // So the new pill shows.
+    setAreFiltersExpanded(true);
+  };
+  const breakoutWidget = widgets.find((widget) => widget.id === "breakout");
+  const handleBreakOutBySegment =
+    breakoutWidget !== undefined &&
+    !breakoutWidget.hidden &&
+    usersTable !== undefined
+      ? (segment: PaletteSegment) =>
+          breakoutWidget.onChange(
+            withBreakoutSegment(computed.breakout, toPeopleSegmentRef(segment)),
+          )
+      : undefined;
 
   return (
     <SegmentDragProvider
       isPaletteOpen={isSegmentsShowing}
       onTogglePalette={handleToggleSegments}
-      onPeopleSegment={handleAddPeopleFilter}
+      onFilterBySegment={handleFilterBySegment}
+      onBreakOutBySegment={handleBreakOutBySegment}
     >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
       <Stack

@@ -1,5 +1,5 @@
 .zone {
-  border: 1px dashed var(--mb-color-border-brand);
+  border: 1px dashed var(--mb-color-border-highlight);
   transition: background-color 120ms ease;
 }
 

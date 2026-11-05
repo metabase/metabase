@@ -7,6 +7,7 @@ import {
   isPeopleSegmentRef,
   toPeopleSegmentRef,
 } from "./segments/people-segment-ref";
+import { segmentFilterables } from "./segments/to-event-definition";
 import type { PaletteSegment, PeopleSegmentRef } from "./segments/types";
 import type { ActorGrain } from "./spec/types";
 
@@ -99,6 +100,28 @@ export const withFilterQuery = (
   ...filters,
   query: Lib.filters(query, -1).length > 0 ? Lib.toJsQuery(query) : null,
 });
+
+/**
+ * Filters to a palette segment: the people in a people segment, or the events
+ * an event segment matches. `tableQuery` is a blank query on the event table.
+ */
+export const withSegmentFilter = (
+  filters: AnalysisFilters,
+  segment: PaletteSegment,
+  metadataProvider: Lib.MetadataProvider,
+  tableQuery: Lib.Query,
+): AnalysisFilters => {
+  if (segment.source === "people") {
+    return withPeopleFilter(filters, segment);
+  }
+  const query = readFilterQuery(metadataProvider, filters) ?? tableQuery;
+  const filtered = segmentFilterables(
+    tableQuery,
+    metadataProvider,
+    segment,
+  ).reduce((current, filterable) => Lib.filter(current, -1, filterable), query);
+  return withFilterQuery(filters, filtered);
+};
 
 /** `column` is any of the cohort's ids. */
 export const cohortFilterClause = (

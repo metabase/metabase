@@ -1,4 +1,5 @@
 import type { ColumnRole } from "metabase/event-tables";
+import type { FieldReference } from "metabase-types/api";
 
 /** The names the planners read on `events_base`. */
 export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
@@ -19,9 +20,16 @@ export const FIRST_SEEN_COLUMN = "person__first_seen_at";
 export type ExtraColumn = {
   /** The name the planners read it under. */
   as: string;
-  column: string;
-  from: "events" | "users";
-};
+} & (
+  | {
+      /** An event table column, by name. */
+      column: string;
+    }
+  | {
+      /** Any column the event table reaches, through a foreign key too. */
+      fieldRef: FieldReference;
+    }
+);
 
 /** An extra column as the compiled base query returns it. */
 export type ProjectedColumn = {

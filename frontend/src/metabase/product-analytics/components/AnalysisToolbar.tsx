@@ -7,8 +7,10 @@ import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
 import type { ConcreteTableId } from "metabase-types/api";
 
 import type { CommonSettings } from "../analyses/types";
+import { useSegmentDrag, useSegmentDropTarget } from "../segments/drag-context";
 
 import { SqlModal } from "./SqlModal";
+import DropTargetS from "./toolbar/DropTarget.module.css";
 import { TableSegmentsButton } from "./toolbar/TableSegmentsButton";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
@@ -79,6 +81,11 @@ export const AnalysisToolbar = ({
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
   const filtersSetting = findSetting(widgets, "filters");
   const hasTable = tableId !== undefined;
+  const { onFilterBySegment } = useSegmentDrag();
+  const filterDrop = useSegmentDropTarget({
+    accepts: () => hasTable,
+    onDrop: onFilterBySegment,
+  });
   const peopleSegmentsLabel = isPeopleSegmentsOpen
     ? t`Hide people segments`
     : t`Show people segments`;
@@ -87,6 +94,7 @@ export const AnalysisToolbar = ({
     !filtersSetting.hidden && (
       <Tooltip label={t`Filters`}>
         <Button
+          className={DropTargetS.target}
           variant="default"
           px="sm"
           rightSection={
@@ -107,6 +115,7 @@ export const AnalysisToolbar = ({
           aria-pressed={areFiltersExpanded}
           disabled={!hasTable}
           onClick={onToggleFilters}
+          {...filterDrop.dropProps}
         >
           <Icon name="filter" />
         </Button>

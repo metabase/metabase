@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import _ from "underscore";
 
 import type { TableId } from "metabase-types/api";
@@ -19,9 +19,8 @@ const isDraft = (value: unknown): value is SegmentDraft =>
   typeof value.name === "string" &&
   isRecord(value.query);
 
-const readDrafts = (): DraftsByTable => {
+const parseDrafts = (raw: string | null): DraftsByTable => {
   try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
     const parsed: unknown = raw === null ? {} : JSON.parse(raw);
     if (!isRecord(parsed)) {
       return {};
@@ -37,12 +36,50 @@ const readDrafts = (): DraftsByTable => {
   }
 };
 
-const writeDrafts = (drafts: DraftsByTable) => {
+const readRaw = (): string | null => {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+    return window.sessionStorage.getItem(STORAGE_KEY);
   } catch {
-    // Storage can be full or disabled; drafts then last for this page only.
+    return null;
   }
+};
+
+/**
+ * One store for every panel and picker, so a write from one never overwrites
+ * drafts another made since it last read. Storage stays the source of truth;
+ * the parsed copy is reused until it changes, and is all there is when storage
+ * can't be written, so drafts then last for this page only.
+ */
+let cachedRaw: string | null | undefined;
+let cachedDrafts: DraftsByTable = {};
+const listeners = new Set<() => void>();
+
+const getSnapshot = (): DraftsByTable => {
+  const raw = readRaw();
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
+    cachedDrafts = parseDrafts(raw);
+  }
+  return cachedDrafts;
+};
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const setDrafts = (drafts: DraftsByTable) => {
+  const raw = JSON.stringify(drafts);
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, raw);
+    cachedRaw = raw;
+  } catch {
+    // Keeps cachedRaw as storage has it, so the snapshot stays this copy.
+  }
+  cachedDrafts = drafts;
+  listeners.forEach((listener) => listener());
 };
 
 /**
@@ -51,7 +88,7 @@ const writeDrafts = (drafts: DraftsByTable) => {
  * whenever the user likes.
  */
 export const useSegmentDrafts = (tableId: TableId | undefined) => {
-  const [draftsByTable, setDraftsByTable] = useState(readDrafts);
+  const draftsByTable = useSyncExternalStore(subscribe, getSnapshot);
   const key = tableId !== undefined ? String(tableId) : undefined;
   const drafts =
     (key !== undefined ? draftsByTable[key] : undefined) ?? NO_DRAFTS;
@@ -61,11 +98,8 @@ export const useSegmentDrafts = (tableId: TableId | undefined) => {
       if (key === undefined) {
         return;
       }
-      setDraftsByTable((current) => {
-        const next = { ...current, [key]: updater(current[key] ?? []) };
-        writeDrafts(next);
-        return next;
-      });
+      const current = getSnapshot();
+      setDrafts({ ...current, [key]: updater(current[key] ?? []) });
     },
     [key],
   );
