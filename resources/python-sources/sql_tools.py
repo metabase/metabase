@@ -670,8 +670,10 @@ WORKSPACE_TABLE_READING_FUNCTIONS = frozenset(
 
 # Functions with a side effect a workspace query must not have, beyond `_SESSION_EFFECT_FUNCTIONS`: sequences, plus
 # whole families refused by prefix (large objects, advisory locks, sleeps).
-WORKSPACE_SIDE_EFFECT_FUNCTIONS = frozenset({"nextval", "setval"})
-WORKSPACE_SIDE_EFFECT_PREFIXES = ("lo_", "pg_advisory", "pg_try_advisory", "pg_sleep")
+WORKSPACE_SIDE_EFFECT_FUNCTIONS = frozenset({"nextval", "setval", "txid_current", "pg_current_xact_id",
+                                             "pg_switch_wal", "pg_create_restore_point", "pg_import_system_collations"})
+WORKSPACE_SIDE_EFFECT_PREFIXES = ("lo_", "pg_advisory", "pg_try_advisory", "pg_sleep", "pg_create_", "pg_drop_",
+                                  "pg_logical_", "pg_replication_", "pg_stat_reset", "pg_promote")
 
 
 def postgres_identifier(name: str, quoted: bool) -> str:
@@ -727,6 +729,10 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
                   for key, new_name in replacements.get("columns") or []}
     folded_schemas = fold_keys({(name,): new_name for name, new_name in schemas.items()})
+
+    # Whether any name was replaced. In strict mode SQL with no replacement is returned as written: sqlglot's
+    # regenerated text is not always equivalent (it collapses backslashes in E'...' strings).
+    changed = [False]
 
     def rewrite(ast):
         """The statement `ast` with every replacement applied."""
@@ -797,6 +803,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             # catalog/db/this, a Column node keeps its qualifier in catalog/db/table. A string replacement renames the
             # table. A {db?, schema?, table?} replacement sets each part it names, and a nil db or schema clears that
             # qualifier, so {:schema nil :table "x"} turns `public.orders` into `x` (matching Macaw).
+            changed[0] = True
             if isinstance(replacement, str):
                 replacement = {"table": replacement}
             for key, arg in (("db", catalog_arg), ("schema", schema_arg), ("table", table_arg)):
@@ -812,6 +819,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 db, schema, table = node.catalog or None, node.db, node.name
                 new_schema = schemas.get(schema) or fold_lookup(folded_schemas, (schema,)) if schema else None
                 if new_schema:
+                    changed[0] = True
                     set_identifier(node, "db", new_schema)
                 # A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
                 # enclosing query names the CTE and must be left alone — renaming it would point the query at the
@@ -844,6 +852,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                                    if column_matches(key_table, key_column)),
                                   None)
                 if new_column:
+                    changed[0] = True
                     column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted
                     node.set("this", exp.Identifier(this=new_column, quoted=column_quoted))
 
@@ -896,6 +905,14 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                              f"{type(write).__name__.upper()}.")
         if any(select.args.get("into") for select in ast.find_all(exp.Select)):
             raise ValueError("Only read-only queries can run on a workspace; SELECT ... INTO creates a table.")
+        if ast.find(exp.Lock):
+            raise ValueError("Only read-only queries can run on a workspace; FOR UPDATE / FOR SHARE locks rows.")
+        # A backslash in a string literal: sqlglot regenerates E'...' strings with their backslashes collapsed, and a
+        # server with standard_conforming_strings off reads one in a plain string as an escape, so the statement could
+        # end somewhere other than where sqlglot thinks.
+        for literal in ast.find_all(exp.Literal, exp.ByteString):
+            if (isinstance(literal, exp.ByteString) or literal.is_string) and "\\" in str(literal.this):
+                raise ValueError("The SQL has a backslash in a string literal, which a workspace can't rewrite safely.")
         # Defense in depth: no allowed statement we have found parses with a command inside it.
         if ast.find(exp.Command):
             raise ValueError("The SQL contains a statement sqlglot can't read into (for example EXPLAIN, DECLARE, "
@@ -924,6 +941,8 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
     asts = statements(sql, dialect)
     rewritten = [rewrite(ast) for ast in asts]
+    if strict_statements and not changed[0]:
+        return sql
     return "; ".join(rewritten) if rewritten else sql
 
 
