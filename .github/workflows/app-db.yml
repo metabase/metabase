@@ -34,6 +34,7 @@ jobs:
       mysql: ${{ steps.versions.outputs.mysql }}
       postgres: ${{ steps.versions.outputs.postgres }}
       shards: ${{ steps.versions.outputs.shards }}
+      mariadb-extra: ${{ steps.versions.outputs.mariadb-extra }}
     steps:
       - name: Select versions and shards to test
         id: versions
@@ -134,6 +135,16 @@ jobs:
             ];
             core.setOutput('shards', JSON.stringify(shards));
 
+            // MariaDB 10.6 is the only server that loads the mariadb_legacy_timestamp snapshot, so a PR that runs the
+            // drift comparison also runs the migrations shard there.
+            const migrationsShard = shards.find((shard) => shard['snapshot-drift'] !== undefined);
+            const legacyTimestampServer = versions.mariadb.find((version) => version.name === 'MariaDB 10.6');
+            const mariadbExtra = snapshotDrift && !runAll
+              ? [{ version: legacyTimestampServer, job: migrationsShard }]
+              : [];
+            core.info(`mariadb extra: ${mariadbExtra.map(({ version, job }) => `${version.name} ${job.name}`).join(', ')}`);
+            core.setOutput('mariadb-extra', JSON.stringify(mariadbExtra));
+
   be-tests-mariadb:
     needs: app-db-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -143,6 +154,8 @@ jobs:
       matrix:
         version: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb) }}
         job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
+        # one extra version and shard pairing, outside the cross product above
+        include: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb-extra) }}
 
     services:
       mysql:
