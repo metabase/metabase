@@ -54,3 +54,33 @@
       (let [sample-db (t2/select-one :model/Database :is_sample true)]
         (is (some? sample-db))
         (is (= :sqlite (:engine sample-db)))))))
+
+(deftest shutdown-steps-test
+  (testing "shutdown stops what serves requests and runs jobs first, then releases the locks, then halts the rest"
+    (is (= ["stop queue listeners"
+            "stop the token refresher"
+            "run shutdown logic"
+            "stop the scheduler"
+            "stop the web server"
+            "shut down tracing"
+            "shut down analytics"
+            "shut down notifications"
+            "release migration locks"
+            "halt the global system"
+            "stop performance monitoring"
+            "shut down agents"]
+           (mapv first (#'core/shutdown-steps))))))
+
+(deftest destroy-runs-every-step-test
+  (testing "a step that throws is logged, and does not stop the steps after it"
+    (let [ran (atom [])]
+      (mt/with-dynamic-fn-redefs [core/shutdown-steps (constantly [["first" #(swap! ran conj :first)]
+                                                                   ["fails" #(throw (ex-info "boom" {}))]
+                                                                   ["last" #(swap! ran conj :last)]])]
+        (mt/with-log-messages-for-level [messages [metabase.core.core :warn]]
+          (#'core/destroy!)
+          (is (=? {:ran      [:first :last]
+                   :messages [{:level :error, :message "Shutdown step failed: fails"}
+                              {:level :warn, :message "Metabase Shutdown COMPLETE, with 1 failed steps"}]}
+                  {:ran      @ran
+                   :messages (messages)})))))))
