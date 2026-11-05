@@ -2,19 +2,26 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupUpdateDataAppEndpoint } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { DataApp } from "metabase-types/api";
+import type { DataApp, Settings } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppMoreMenu } from "./DataAppMoreMenu";
 
 type SetupOpts = {
   app: DataApp;
+  settings?: Partial<Settings>;
 };
 
-function setup({ app }: SetupOpts) {
+function setup({ app, settings }: SetupOpts) {
   setupUpdateDataAppEndpoint({ ...app, enabled: !app.enabled });
-  renderWithProviders(<DataAppMoreMenu app={app} />, { withRouter: true });
+  renderWithProviders(<DataAppMoreMenu app={app} />, {
+    withRouter: true,
+    storeInitialState: createMockState({
+      settings: createMockSettingsState(settings),
+    }),
+  });
 }
 
 const openMenu = () =>
@@ -32,6 +39,22 @@ describe("DataAppMoreMenu", () => {
     expect(
       screen.getByRole("menuitem", { name: /Make draft/ }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the app on the site-url origin when apps are served cross-origin", async () => {
+    setup({
+      app: createMockDataApp({ name: "sales", enabled: true }),
+      settings: {
+        "isolated-origin": "https://apps.example.com",
+        "site-url": "https://mb.example.com",
+      },
+    });
+
+    await openMenu();
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Open app/ }),
+    ).toHaveAttribute("href", "https://mb.example.com/apps/sales");
   });
 
   it("does not offer to open a draft app", async () => {
