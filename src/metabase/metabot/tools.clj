@@ -102,14 +102,17 @@
  [tools.skills
   load-skill-tool])
 
+(def sql-query-tool-names
+  "Names of the tools that write a SQL query."
+  #{"create_sql_query"
+    "edit_sql_query"
+    "replace_sql_query"})
+
 (def query-generation-tool-names
   "Tool names that produce a runnable query (SQL or notebook). Both the in-app
   and slackbot variants of `construct_notebook_query` register under the same
   `:tool-name`, so a single string covers both."
-  #{"create_sql_query"
-    "edit_sql_query"
-    "replace_sql_query"
-    "construct_notebook_query"})
+  (conj sql-query-tool-names "construct_notebook_query"))
 
 (def ^:private query-result-tool-names
   "Names of the tools that return query results: those that need `:feature-query-execution`."
