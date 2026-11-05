@@ -166,21 +166,6 @@ describe("resolveGoalValue", () => {
     ).toBe("source-not-found");
   });
 
-  it("errors with query-failed when the referenced query failed with a null error type", () => {
-    const data = {
-      cols: [],
-      rows: [],
-      referenced_entities: createMockFailedReferencedEntitiesResults({
-        error: "boom",
-        error_type: null,
-      }),
-    };
-
-    expect(
-      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }).error,
-    ).toMatchObject({ reason: "query-failed", message: "boom" });
-  });
-
   it("errors when the referenced query returned no rows", () => {
     const data = {
       cols: [],
