@@ -86,8 +86,8 @@ describe("ExcludeDateValueInput", () => {
       unit: "day-of-week",
       values: [1],
     });
-    // Monday shows as a token in the pill, and checked in the list.
-    expect(screen.getByLabelText("Remove value")).toBeInTheDocument();
+    // Monday shows as text in the pill, and checked in the list.
+    expect(getPillValueTexts()).toEqual(["Monday"]);
     // The first Backspace removes Monday, the next goes back to the kinds.
     await userEvent.keyboard("{Backspace}{Backspace}");
     expect(
@@ -122,4 +122,24 @@ describe("ExcludeDateValueInput", () => {
     await userEvent.keyboard("{Enter}");
     expect(onDraftChange).toHaveBeenLastCalledWith(undefined);
   });
+
+  it("shows the checked values as comma-separated text, without a remove button per value", () => {
+    setup({
+      type: "exclude",
+      operator: "!=",
+      unit: "day-of-week",
+      values: [1, 2],
+    });
+    expect(getPillValueTexts()).toEqual(["Monday", "Tuesday"]);
+    expect(screen.getAllByText(",")).toHaveLength(2);
+    expect(screen.queryByLabelText("Remove value")).not.toBeInTheDocument();
+  });
 });
+
+/** The values in the pill, not the options of the list with the same text. */
+function getPillValueTexts() {
+  return screen
+    .queryAllByText(/^(Monday|Tuesday)$/)
+    .filter((element) => element.closest('[role="option"]') == null)
+    .map((element) => element.textContent);
+}

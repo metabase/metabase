@@ -23,10 +23,9 @@ import type {
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
 import { useSetting } from "metabase/settings";
-import { Icon } from "metabase/ui";
 
-import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
+import { ValueBox, ValueText, joinValueLabels } from "./ValueText";
 import type { SuggestionGroup, SuggestionOption } from "./types";
 import { SELECT_ALL_VALUE } from "./value-widgets";
 
@@ -213,20 +212,14 @@ export function ExcludeDateValueInput({
     valueOptions.map((option) => [option.value, option.label]),
   );
 
+  const valueLabels = values.map((value) => labels.get(value) ?? String(value));
+
   return (
-    <>
-      {values.map((value) => (
-        <span key={value} className={S.token}>
-          {labels.get(value)}
-          <Icon
-            name="close"
-            size={8}
-            role="button"
-            aria-label={t`Remove value`}
-            onClick={() => setValues(values.filter((v) => v !== value))}
-          />
-        </span>
-      ))}
+    <ValueBox
+      contentKey={`${values.join("\n")}\n${text}`}
+      fullText={joinValueLabels(valueLabels)}
+    >
+      <ValueText labels={valueLabels} hasTrailingSeparator />
       <SuggestionInput
         // A new list opens with each step, like a new step of the pill.
         key={unit ?? "units"}
@@ -236,14 +229,16 @@ export function ExcludeDateValueInput({
             : getUnitGroups(unitOptions, operatorOptions, initialValue)
         }
         text={text}
-        placeholder={values.length > 0 ? "" : (unitLabel ?? t`Exclude…`)}
+        placeholder={
+          values.length > 0 ? t`Add more` : (unitLabel ?? t`Exclude…`)
+        }
         isMultiSelect={unit != null}
         isFirstOptionHighlighted={unit == null}
         onTextChange={setText}
         onOptionSubmit={handleOptionSubmit}
         onKeyDown={handleKeyDown}
       />
-    </>
+    </ValueBox>
   );
 }
 

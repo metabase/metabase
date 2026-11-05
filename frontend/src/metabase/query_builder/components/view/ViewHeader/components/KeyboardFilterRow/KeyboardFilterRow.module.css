@@ -35,8 +35,7 @@
     border-radius: 0.5rem 2px 2px 0.5rem;
   }
 
-  & .value,
-  & .token {
+  & .value {
     color: var(--mb-color-core-filter-strong);
   }
 
@@ -68,10 +67,6 @@
     var(--mantine-shadow-xs_outline),
     0 0 0 1px var(--mb-color-background_surface-primary),
     0 0 0 2px var(--mb-color-core-filter);
-
-  & .token:not(:has(svg)) {
-    background: none;
-  }
 
   & .input {
     padding: 0.125rem 0.25rem;
@@ -207,6 +202,21 @@
   white-space: normal;
 }
 
+/* Prototype: the values of a finished pill are cut off at 160px with "…",
+   like Figma; a tooltip then shows them all. The "…" has the color of the
+   values (the notebook's pills set their own, further down). */
+.valuesSegment.truncatedValues {
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mb-color-core-filter);
+}
+
+.pill .valuesSegment.truncatedValues {
+  color: var(--mb-color-core-filter-strong);
+}
+
 /* The "and" between the two values of a range has more room than the space
    between the parts of the pill, so that the values do not look tight. */
 .rangeConjunction {
@@ -218,24 +228,24 @@
   font-weight: bold;
 }
 
-.token {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 var(--mantine-spacing-xs);
-  /* The radius of a part of the pill, as in its hover state. */
-  border-radius: var(--mantine-radius-xxxs);
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-filter) 12%,
-    transparent
-  );
-  color: var(--mb-color-core-filter);
-  font-weight: bold;
+/* The values and the input of a pill being edited, as one line of text: they
+   grow with their text up to 160px. Past that the start is hidden and the end
+   (the last values and the caret) stays in view, like a text input. Inline,
+   not flex, so that the ", " between the values keeps its space. Not
+   positioned: the dropdown of the input is positioned on the pill, so the
+   box doesn't clip it. */
+.valueBox {
+  display: inline-block;
+  max-width: 10rem;
+  overflow: hidden;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 
-  svg {
-    cursor: pointer;
-  }
+/* The "…" before the values while their start is hidden. Not a fade on the
+   box: a mask would hide the dropdown of the input, which is inside the box. */
+.valueEllipsis {
+  color: var(--mb-color-text-secondary);
 }
 
 .input {
@@ -714,21 +724,13 @@
     & .operatorSegment,
     & .conjunction,
     & .value,
-    & .token {
+    & .valuesSegment.truncatedValues {
       color: var(--mb-color-text-primary-inverse);
     }
 
     & .operatorSegment,
     & .conjunction {
       opacity: 0.8;
-    }
-
-    & .token {
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-text-primary-inverse) 15%,
-        transparent
-      );
     }
 
     & .removeIcon {
@@ -779,7 +781,7 @@
     }
 
     & .value,
-    & .token,
+    & .valuesSegment.truncatedValues,
     & .valueInput {
       color: var(--expression-pill-color);
     }

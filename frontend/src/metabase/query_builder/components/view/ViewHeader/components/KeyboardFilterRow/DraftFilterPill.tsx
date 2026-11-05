@@ -39,6 +39,7 @@ import * as Lib from "metabase-lib";
 import { ExcludeDateValueInput } from "./ExcludeDateValueInput";
 import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
+import { ValueBox, ValueText, joinValueLabels } from "./ValueText";
 import {
   type AiValuesState,
   getAiPromptText,
@@ -706,25 +707,13 @@ export function DraftFilterPill({
             </button>
           )}
         {step !== "operator" && operator?.pillValueLabel != null && (
-          // The operator is also the value, so it looks like a value token.
-          // Its cross clears the choice, and the user picks another one.
+          // The operator is also the value, so it looks like a value. A click
+          // edits the operator, to pick another one.
           <button
             className={`${S.segment} ${S.valuesSegment}`}
             onClick={() => editPart("operator")}
           >
-            <span className={S.token}>
-              {operator.pillValueLabel}
-              <Icon
-                name="close"
-                size={8}
-                role="button"
-                aria-label={t`Remove value`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  updateDraft({ column, values: [] });
-                }}
-              />
-            </span>
+            <span className={S.value}>{operator.pillValueLabel}</span>
           </button>
         )}
         {step === "operator" && column?.operators != null && (
@@ -776,7 +765,6 @@ export function DraftFilterPill({
                   value != null ? [stringifyDatePickerValue(value)] : [],
                 )
               }
-              onClear={() => updateDraft({ ...draft, values: [] })}
             />
           )}
         {step === "value" &&
@@ -813,17 +801,12 @@ export function DraftFilterPill({
               onValuesChange={(newValues) =>
                 updateDraft({ ...draft, values: newValues })
               }
-              onRemoveValue={removeValue}
               onKeyDown={handleKeyDown}
             />
           )}
         {step !== "value" && operator != null && (
           // The values look the same as when the user edits them.
-          <ValueTokens
-            values={values}
-            operator={operator}
-            onRemoveValue={removeValue}
-          />
+          <DraftValueText operator={operator} values={values} />
         )}
         {aiValues.state.status === "loading" && <Loader size="xs" />}
         <RemoveIcon onClick={onRemove} />
@@ -1128,7 +1111,6 @@ interface ValueInputProps {
   onTextChange: (text: string) => void;
   onToggleValue: (value: string) => void;
   onValuesChange: (values: string[]) => void;
-  onRemoveValue: (index: number) => void;
   onKeyDown: (
     event: KeyboardEvent<HTMLInputElement>,
     hasSelectedOption: boolean,
@@ -1148,7 +1130,6 @@ function ValueInput({
   onTextChange,
   onToggleValue,
   onValuesChange,
-  onRemoveValue,
   onKeyDown,
 }: ValueInputProps) {
   const isAiPromptText = isAiPrompt(text);
@@ -1214,17 +1195,22 @@ function ValueInput({
   );
   const isMultiSelect = operator.valueKind === "multi";
   const isRange = operator.valueKind === "range";
+  const valueLabels = values.map(
+    (value) => labels.get(value) ?? formatDraftValue(operator, value),
+  );
 
   return (
-    <>
-      <ValueTokens
-        values={values}
-        operator={operator}
-        labels={labels}
-        onRemoveValue={onRemoveValue}
+    <ValueBox
+      contentKey={`${values.join("\n")}\n${text}`}
+      fullText={joinValueLabels(valueLabels, isRange)}
+    >
+      <ValueText
+        labels={valueLabels}
+        isRange={isRange}
+        hasTrailingSeparator={isMultiSelect}
       />
       {isRange && values.length === 1 && (
-        <span className={S.conjunction}>{t`and`}</span>
+        <span className={cx(S.conjunction, S.rangeConjunction)}>{t`and`}</span>
       )}
       <SuggestionInput
         inputRef={inputRef}
@@ -1245,7 +1231,27 @@ function ValueInput({
         onOptionSubmit={handleOptionSubmit}
         onKeyDown={onKeyDown}
       />
-    </>
+    </ValueBox>
+  );
+}
+
+/** The values of the pill while its column or its operator is edited. */
+function DraftValueText({
+  operator,
+  values,
+}: {
+  operator: DraftOperator;
+  values: string[];
+}) {
+  const isRange = operator.valueKind === "range";
+  const valueLabels = values.map((value) => formatDraftValue(operator, value));
+  return (
+    <ValueBox
+      contentKey={values.join("\n")}
+      fullText={joinValueLabels(valueLabels, isRange)}
+    >
+      <ValueText labels={valueLabels} isRange={isRange} />
+    </ValueBox>
   );
 }
 
@@ -1257,41 +1263,6 @@ function getValueCountsFooter(valueCounts: ValueCounts) {
   return valueCounts.type === "counts" && valueCounts.isEstimate ? (
     <SampleNote />
   ) : null;
-}
-
-interface ValueTokensProps {
-  values: string[];
-  operator: DraftOperator;
-  labels?: Map<string, string>;
-  onRemoveValue?: (index: number) => void;
-}
-
-function ValueTokens({
-  values,
-  operator,
-  labels,
-  onRemoveValue,
-}: ValueTokensProps) {
-  const isRange = operator.valueKind === "range";
-  return values.map((value, index) => (
-    <Fragment key={value}>
-      {isRange && index === 1 && (
-        <span className={S.conjunction}>{t`and`}</span>
-      )}
-      <span className={S.token}>
-        {labels?.get(value) ?? formatDraftValue(operator, value)}
-        {onRemoveValue != null && (
-          <Icon
-            name="close"
-            size={8}
-            role="button"
-            aria-label={t`Remove value`}
-            onClick={() => onRemoveValue(index)}
-          />
-        )}
-      </span>
-    </Fragment>
-  ));
 }
 
 /**
@@ -1417,8 +1388,6 @@ interface DatePickerValueInputProps {
   onCancel: () => void;
   /** The value of the exclude list so far, for a click outside the pill. */
   onDraftChange: (value: DatePickerValue | undefined) => void;
-  /** Removes the value, like the cross of a value token. */
-  onClear: () => void;
 }
 
 /**
@@ -1437,7 +1406,6 @@ function DatePickerValueInput({
   onBack,
   onCancel,
   onDraftChange,
-  onClear,
 }: DatePickerValueInputProps) {
   const availableUnits = useMemo(
     () => getDatePickerUnits(query, stageIndex, column),
@@ -1470,16 +1438,7 @@ function DatePickerValueInput({
       <Popover.Target>
         <span className={`${S.segment} ${S.valuesSegment}`}>
           {label != null ? (
-            <span className={S.token}>
-              {label}
-              <Icon
-                name="close"
-                size={8}
-                role="button"
-                aria-label={t`Remove value`}
-                onClick={onClear}
-              />
-            </span>
+            <span className={S.value}>{label}</span>
           ) : (
             <span className={S.placeholder}>…</span>
           )}

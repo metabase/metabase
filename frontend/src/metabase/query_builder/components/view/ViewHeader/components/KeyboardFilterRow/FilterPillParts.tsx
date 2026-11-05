@@ -1,11 +1,12 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { Fragment } from "react";
+import { Fragment, useRef } from "react";
 import { t } from "ttag";
 
 import { Tooltip } from "metabase/ui";
 
 import S from "./KeyboardFilterRow.module.css";
+import { joinValueLabels, useIsTruncated } from "./ValueText";
 import type { DraftOperator } from "./types";
 import { formatDraftValue, getPillOperatorLabel } from "./utils";
 
@@ -34,6 +35,15 @@ export function FilterPillParts({
     event.stopPropagation();
     onPartClick(part);
   };
+  const valuesText = joinValueLabels(
+    values.map((value) => formatDraftValue(operator, value)),
+    operator.valueKind === "range",
+  );
+  // Prototype: the values are cut off at a max width (`.truncatedValues`).
+  // The tooltip shows them all when they're cut off or past "+N more".
+  const valuesRef = useRef<HTMLButtonElement>(null);
+  const isTruncated = useIsTruncated(valuesRef, valuesText);
+  const hasHiddenValues = values.length > MAX_SHOWN_VALUES;
 
   return (
     <>
@@ -61,15 +71,14 @@ export function FilterPillParts({
       )}
       {values.length > 0 && (
         <Tooltip
-          label={values
-            .map((value) => formatDraftValue(operator, value))
-            .join(", ")}
-          disabled={values.length <= MAX_SHOWN_VALUES}
+          label={valuesText}
+          disabled={!hasHiddenValues && !isTruncated}
           multiline
           maw="20rem"
         >
           <button
-            className={`${S.segment} ${S.valuesSegment}`}
+            ref={valuesRef}
+            className={cx(S.segment, S.valuesSegment, S.truncatedValues)}
             onClick={handleClick("values")}
           >
             <FilterPillValues operator={operator} values={values} />
