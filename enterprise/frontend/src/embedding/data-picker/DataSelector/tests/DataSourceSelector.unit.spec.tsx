@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -14,6 +15,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { useSearchQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { getShallowQuestions } from "metabase/metadata-store";
@@ -1042,6 +1044,19 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Models")).not.toBeInTheDocument();
     });
 
+    it("should open the tables, not the models, when joining data on a model with nested queries disabled", async () => {
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
     it("should open the tables, not a one-database list, from Raw Data when joining data", async () => {
       setup({
         ...setupOpts,
@@ -1204,6 +1219,114 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the saved questions, when joining data on a question with nested queries disabled", async () => {
+      setup({
+        ...setupOpts,
+        // Without nested queries, the backend leaves out the Saved Questions database
+        availableModels: ["table"],
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        querySourceType: "question",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the saved questions, not the tables, when joining data on a question before the database list has loaded", async () => {
+      const databaseList = defer<void>();
+      // Registered before `setupDatabasesEndpoints`' database list, so this one answers
+      fetchMock.get({
+        url: "path:/api/database",
+        query: { saved: true },
+        response: () =>
+          databaseList.promise.then(() => ({
+            data: [...DATABASES, SAVED_QUESTIONS_DATABASE],
+            total: DATABASES.length + 1,
+          })),
+        name: "deferred-database-list",
+      });
+      setupDatabasesEndpoints(DATABASES);
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          calculate_available_models: true,
+          limit: 0,
+          models: ["dataset", "metric"],
+        },
+        response: {
+          data: [],
+          limit: 0,
+          models: ["dataset", "metric"],
+          offset: 0,
+          table_db_id: null,
+          engine: "search.engine/in-place",
+          total: 1,
+          available_models: ["table", "card"],
+        },
+      });
+      setupCollectionsEndpoints({ collections: [] });
+      setupCollectionItemsEndpoint({
+        collection: ROOT_COLLECTION,
+        collectionItems: [],
+      });
+
+      // The models search has loaded before the picker mounts, as when an
+      // earlier picker loaded it
+      function SearchCachedFirst({ children }: { children: ReactNode }) {
+        const { isSuccess } = useSearchQuery({
+          calculate_available_models: true,
+          limit: 0,
+          models: ["dataset", "metric"],
+          context: "data-picker",
+        });
+        return isSuccess ? children : null;
+      }
+
+      renderWithProviders(
+        <SearchCachedFirst>
+          <DataSourceSelector
+            isInitiallyOpen
+            querySourceType="question"
+            canChangeDatabase={false}
+            selectedDatabaseId={SAMPLE_DB_ID}
+            canSelectModel
+            canSelectTable
+            canSelectQuestion
+            canSelectMetric
+            canSelectSemanticLayer
+            triggerElement={<div>Click me to open or close data picker</div>}
+            setSourceTableFn={jest.fn()}
+          />
+        </SearchCachedFirst>,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({
+              permissions: createMockUserPermissions({
+                can_create_queries: true,
+              }),
+            }),
+            settings: createMockSettingsState({
+              "enable-nested-queries": true,
+            }),
+          }),
+        },
+      );
+
+      // The picker has mounted and the database list is still loading
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("deferred-database-list")).toBe(
+          true,
+        );
+      });
+      databaseList.resolve();
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the saved entity picker via its back button", async () => {

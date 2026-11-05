@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 import { Component, useCallback } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -602,18 +603,19 @@ export class UnconnectedDataSelector extends Component<
     ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.isJoinStep()) {
-      const querySourceType = this.props.querySourceType;
-      if (querySourceType === "model" && this.props.canSelectModel) {
-        // A join on a model, with models allowed
-        await this.switchToStep(MODEL_STEP, {}, false);
-      } else if (
-        querySourceType === "question" &&
-        this.props.canSelectQuestion
-      ) {
-        // A join on a saved question, with saved questions allowed
-        await this.switchToStep(SAVED_QUESTION_STEP, {}, false);
+      const sourceCardType = match(this.props.querySourceType)
+        .with("model", "question", (cardType) => cardType)
+        .otherwise(() => undefined);
+      // `canSelectCardType` reads the data `allLoading` waits for: it hydrates again
+      if (sourceCardType && this.props.allLoading) {
+        return;
+      }
+
+      if (sourceCardType && this.canSelectCardType(sourceCardType)) {
+        // A join on a model or saved question that can be picked here
+        await this.switchToStep(STEP_BY_CARD_TYPE[sourceCardType], {}, false);
       } else if (this.props.canSelectTable) {
-        // query source is a table, or a card of a type left out
+        // query source is a table, or a card that can't be picked here
         await this.switchToStep(SCHEMA_STEP);
       } else {
         // A join with tables and the source's type left out: the allowed buckets
