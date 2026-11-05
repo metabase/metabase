@@ -371,7 +371,8 @@
   (onCheckIn [_this _connection _identity-token])
   (onCheckOut [_this connection identity-token]
     (try
-      (let [[driver database] (or (get-in (pools-state) [:databases identity-token])
+      ;; reads the root without starting the state, so a checkout on a pool left over from a halt does not restart it
+      (let [[driver database] (or (get-in @pools-component [:databases identity-token])
                                   (throw (ex-info (tru "This connection pool is closed.") {})))]
         (set-role-if-supported! driver connection (checkout-database database)))
       (catch Throwable e
@@ -420,8 +421,6 @@
         pool-spec           (connection-pool-spec spec properties)]
     (merge
      pool-spec
-     ;; what [[set-canonical-pool!]] records for the pool's checkouts, in the same swap that caches the pool
-     {::driver+database [driver database]}
      ;; also capture entries related to ssh tunneling for later use
      (select-internal-keys-for-spec details-with-auth)
      (select-internal-keys-for-spec spec)
@@ -458,8 +457,10 @@
              (log/debugf "Evicting swapped pool for database %d (cause: %s)"
                          database-id (.getCause rn))
              ;; a swapped pool has no canonical entry, so this drops only its identity token
-             (swap-pools-state! without-pool nil pool-spec)
-             (destroy-pool! database-id pool-spec)
+             (try
+               (swap-pools-state! without-pool nil pool-spec)
+               (finally
+                 (destroy-pool! database-id pool-spec)))
              nil))))
       (build)))
 
@@ -484,24 +485,36 @@
   Use this function instead of modifying connection pool atoms directly because it properly closes down old pools in a
   thread-safe way, ensuring no more than one canonical pool is ever open for a specific database and connection type.
 
+  `database` is the database the pool connects to, which [[WarehouseConnectionCustomizer]] reads on each checkout.
+  If the pool cannot be cached, for example because the pools state is being stopped, the pool is destroyed and the
+  error rethrown.
+
   This function is only for canonical (non-swapped) pools. Swapped pools are managed by the Guava cache."
-  [cache-key details-hash pool-spec-or-nil]
+  [cache-key details-hash pool-spec-or-nil database]
   {:pre [(vector? cache-key) (some? details-hash)]}
   (let [[database-id _connection-type] cache-key
-        [old-state] (swap-pools-state!
-                     (fn [state]
-                       (let [old-pool-spec (get-in state [:pools cache-key])
-                             replaced?     (and old-pool-spec (not (identical? old-pool-spec pool-spec-or-nil)))]
-                         (-> state
-                             (assoc-in [:hashes cache-key] details-hash)
-                             (update :pools (fn [pools]
-                                              (if pool-spec-or-nil
-                                                (assoc pools cache-key pool-spec-or-nil)
-                                                (dissoc pools cache-key))))
-                             (cond-> (pool-token pool-spec-or-nil)
-                               (assoc-in [:databases (pool-token pool-spec-or-nil)]
-                                         (::driver+database pool-spec-or-nil)))
-                             (cond-> replaced? (update :databases dissoc (pool-token old-pool-spec)))))))]
+        [old-state] (try
+                      (swap-pools-state!
+                       (fn [state]
+                         (let [old-pool-spec (get-in state [:pools cache-key])
+                               replaced?     (and old-pool-spec (not (identical? old-pool-spec pool-spec-or-nil)))]
+                           (-> state
+                               (assoc-in [:hashes cache-key] details-hash)
+                               (update :pools (fn [pools]
+                                                (if pool-spec-or-nil
+                                                  (assoc pools cache-key pool-spec-or-nil)
+                                                  (dissoc pools cache-key))))
+                               (cond-> (pool-token pool-spec-or-nil)
+                                 (assoc-in [:databases (pool-token pool-spec-or-nil)] [(:engine database) database]))
+                               (cond-> replaced? (update :databases dissoc (pool-token old-pool-spec)))))))
+                      ;; only the caching itself: a failure destroying the old pool below must not destroy the new one
+                      (catch Throwable e
+                        (when pool-spec-or-nil
+                          (try
+                            (destroy-pool! database-id pool-spec-or-nil)
+                            (catch Throwable cleanup-error
+                              (.addSuppressed e cleanup-error))))
+                        (throw e)))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get-in old-state [:pools cache-key])]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
@@ -635,7 +648,18 @@
               (call [_]
                 (log/debugf "Creating new swapped connection pool for database %d with spec hash %d"
                             id (second cache-key))
-                (create-pool! db))))
+                (let [pool-spec (create-pool! db)]
+                  ;; checkouts read the database from the pools state, as for a canonical pool
+                  (try
+                    (when-let [token (pool-token pool-spec)]
+                      (swap-pools-state! assoc-in [:databases token] [(:engine db) db]))
+                    (catch Throwable e
+                      (try
+                        (destroy-pool! id pool-spec)
+                        (catch Throwable cleanup-error
+                          (.addSuppressed e cleanup-error)))
+                      (throw e)))
+                  pool-spec))))
 
       ;; Existing pool is invalid (password expired, tunnel closed) - invalidate and recreate
       (nil? (get-pool-if-valid existing id true))
@@ -734,7 +758,7 @@
           (get-canonical-pool cache-key details-hash false)
           ;; create a new pool and add it to our cache, then return it
           (u/prog1 (create-pool! db)
-            (set-canonical-pool! cache-key details-hash <>))))))))
+            (set-canonical-pool! cache-key details-hash <> db))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
