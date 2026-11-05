@@ -65,6 +65,7 @@ import {
   SharedPointerNote,
   getHistoryShapeInference,
   getValidToForDates,
+  useHistoryExampleSource,
   useScdDetails,
 } from "../TableHistory";
 
@@ -623,6 +624,7 @@ function HistoryBindingSection({
     binding.validToFieldId != null,
   );
   const shapeInference = getHistoryShapeInference(structure, scd);
+  const exampleSource = useHistoryExampleSource(table, scd);
   const isShapeUnderReview =
     !disabled &&
     !structure.isScdTypeOverridden &&
@@ -649,6 +651,7 @@ function HistoryBindingSection({
               inference={shapeInference}
               isUnderReview={isShapeUnderReview}
               hasDateRange={getValidToForDates(fields, binding) != null}
+              exampleSource={exampleSource}
               disabled={disabled}
               onConfirm={() => onScdTypeChange(scd.resolution.scdType)}
               onChange={(shape) => {

@@ -14,3 +14,4 @@ export {
   getHistoryShapeInference,
 } from "./HistoryShapeInputs";
 export { type ScdDetails, useScdDetails } from "./use-scd-details";
+export { useHistoryExampleSource } from "./HistoryShapeExample";

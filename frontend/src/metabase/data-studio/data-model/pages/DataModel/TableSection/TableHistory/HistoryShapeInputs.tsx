@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -20,7 +20,15 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { MultiSelect, Select, Stack, Text } from "metabase/ui";
+import {
+  DefaultSelectItem,
+  MultiSelect,
+  Select,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   Field,
@@ -31,7 +39,15 @@ import type {
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import { InferredIcon, ReviewValue } from "../InferenceReview";
 
+import { HistoryShapeExample } from "./HistoryShapeExample";
+import {
+  type ExampleSource,
+  getChangeShapeExample,
+  getHistoryShapeExample,
+} from "./history-shape-example";
 import { type ScdDetails, useScdDetails } from "./use-scd-details";
+
+const OPTION_TOOLTIP_OFFSET = 16;
 
 function ShapeSelect<T extends string>({
   label,
@@ -40,6 +56,7 @@ function ShapeSelect<T extends string>({
   disabledValues = [],
   disabled,
   isOpenOnMount = false,
+  renderExample,
   onChange,
 }: {
   label: string;
@@ -48,6 +65,7 @@ function ShapeSelect<T extends string>({
   disabledValues?: T[];
   disabled: boolean;
   isOpenOnMount?: boolean;
+  renderExample: (option: ShapeOption<T>) => ReactNode;
   onChange: (value: T) => void;
 }) {
   return (
@@ -64,14 +82,20 @@ function ShapeSelect<T extends string>({
       disabled={disabled}
       autoFocus={isOpenOnMount}
       defaultDropdownOpened={isOpenOnMount}
-      renderOption={({ option }) => (
-        <Stack gap={2} py={2}>
-          <Text c="inherit">{option.label}</Text>
-          <Text size="sm" c="text-secondary">
-            {options.find(({ value }) => value === option.value)?.description}
-          </Text>
-        </Stack>
-      )}
+      renderOption={({ option, checked }) => {
+        const shapeOption = options.find(({ value }) => value === option.value);
+        return (
+          <Tooltip
+            label={shapeOption ? renderExample(shapeOption) : null}
+            position="left"
+            offset={OPTION_TOOLTIP_OFFSET}
+            maw="none"
+            disabled={shapeOption == null}
+          >
+            <DefaultSelectItem {...option} selected={checked} w="100%" />
+          </Tooltip>
+        );
+      }}
       onChange={(selected) => {
         const option = options.find(({ value }) => value === selected);
         if (option) {
@@ -100,11 +124,13 @@ export function HistoryShapeValue({
   inference,
   isUnderReview,
   hasDateRange,
+  exampleSource,
   disabled,
   onConfirm,
   onChange,
 }: {
   shape: HistoryShape;
+  exampleSource: ExampleSource;
   inference: string | null;
   isUnderReview: boolean;
   hasDateRange: boolean;
@@ -138,6 +164,12 @@ export function HistoryShapeValue({
       disabledValues={hasDateRange ? [] : ["versions-with-dates"]}
       disabled={disabled}
       isOpenOnMount={isSelectOpenOnMount}
+      renderExample={(option) => (
+        <HistoryShapeExample
+          description={option.description}
+          example={getHistoryShapeExample(option.value, exampleSource)}
+        />
+      )}
       onChange={onChange}
     />
   );
@@ -248,6 +280,8 @@ export function PreviousValuesSection({
     return null;
   }
   const shape = getChangeShape(resolution.scdType);
+  const pair = previousValuePairs[0];
+  const keyField = (table.fields ?? []).find(isPK);
   return (
     <SidebarSection title={t`History`}>
       <DetailsTable>
@@ -265,6 +299,17 @@ export function PreviousValuesSection({
               options={getChangeShapeOptions()}
               value={shape}
               disabled={disabled}
+              renderExample={(option) => (
+                <HistoryShapeExample
+                  description={option.description}
+                  example={getChangeShapeExample(option.value, {
+                    keyName: keyField?.display_name ?? t`ID`,
+                    attributeName: pair?.field.display_name ?? t`Value`,
+                    previousAttributeName:
+                      pair?.previousField.display_name ?? t`Previous value`,
+                  })}
+                />
+              )}
               onChange={(shape) =>
                 setScdType(table, getScdTypeForChangeShape(shape))
               }
