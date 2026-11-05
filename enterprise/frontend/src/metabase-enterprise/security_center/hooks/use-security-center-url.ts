@@ -1,9 +1,10 @@
 import * as Urls from "metabase/urls";
 
-import { useSecurityIssues } from "./use-security-issues";
+import { useSecurityIssueIndicators } from "./use-security-issue-indicators";
 
 export const useSecurityCenterUrl = () => {
-  const { hasAffectingAdvisory, hasFailingCheck } = useSecurityIssues();
+  const { hasAffectingAdvisory, hasFailingCheck } =
+    useSecurityIssueIndicators();
   const hasOnlyFailingChecks = hasFailingCheck && !hasAffectingAdvisory;
 
   return hasOnlyFailingChecks

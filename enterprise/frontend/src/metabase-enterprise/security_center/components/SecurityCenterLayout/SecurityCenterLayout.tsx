@@ -8,11 +8,12 @@ import {
 import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { useSecurityIssues } from "../../hooks/use-security-issues";
+import { useSecurityIssueIndicators } from "../../hooks/use-security-issue-indicators";
 import { IssueDot } from "../IssueDot/IssueDot";
 
 const SecurityCenterNav = () => {
-  const { hasAffectingAdvisory, hasFailingCheck } = useSecurityIssues();
+  const { hasAffectingAdvisory, hasFailingCheck } =
+    useSecurityIssueIndicators();
 
   return (
     <AdminNavWrapper data-testid="security-center-nav">

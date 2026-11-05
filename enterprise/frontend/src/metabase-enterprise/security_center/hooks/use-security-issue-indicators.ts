@@ -4,7 +4,7 @@ import {
 } from "../api";
 import { isAffected } from "../utils";
 
-export const useSecurityIssues = () => {
+export const useSecurityIssueIndicators = () => {
   const { data: advisoriesResponse } = useListSecurityAdvisoriesQuery();
   const { data: healthChecksResponse } = useListHealthChecksQuery();
   const hasAffectingAdvisory =
