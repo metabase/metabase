@@ -244,3 +244,20 @@
         (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [_instances] (throw (ex-info "reindex failed" {})))]
           (t2/delete! :model/Card :id card-id))
         (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))))))
+
+(deftest cascade-enumeration-failure-keeps-the-delete-test
+  (testing "a search error while enumerating cascaded documents is logged, and the delete still succeeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Enumeration Failure Model", :type :model}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
+          (is (= 1 (t2/delete! :model/Card :id card-id))))
+        (is (false? (t2/exists? :model/Card :id card-id))))))
+  (testing "a database error still fails the delete, since it has already aborted the transaction"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Enumeration SQL Error Model", :type :model}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents
+                                    (fn [_instances]
+                                      (throw (ex-info "query failed" {} (java.sql.SQLException. "boom"))))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"query failed"
+                                (t2/delete! :model/Card :id card-id))))
+        (is (true? (t2/exists? :model/Card :id card-id)))))))
