@@ -433,7 +433,7 @@
                                  (catch Exception e
                                    (log/errorf e "Skipping search cascade enumeration for database %s" id)
                                    nil))]
-                 (warehouses.db/delete-cards! ids)
+                 (warehouses.db/delete-cards! id ids)
                  ;; Index mutations must see committed state. The shared ingestion queue serializes these
                  ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
                  (search/after-commit! "database delete"

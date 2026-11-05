@@ -265,7 +265,7 @@
      (let [run #(doseq [step steps]
                   (try
                     (step)
-                    (catch Exception e
+                    (catch Throwable e
                       (log/errorf e "Failed search-index handoff: %s" description))))]
        (if search.ingestion/*force-sync*
          (run)
