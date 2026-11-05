@@ -205,7 +205,7 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
-(def refresh-lease-duration-ms
+(def ^:private refresh-lease-duration-ms
   "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
   the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
   (u/minutes->ms 5))

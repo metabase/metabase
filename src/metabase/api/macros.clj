@@ -447,7 +447,7 @@
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
 
-(def enable-response-validation
+(def ^:private enable-response-validation
   "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
   for prod for performance purposes.
 

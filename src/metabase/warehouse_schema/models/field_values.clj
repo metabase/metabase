@@ -532,7 +532,7 @@
   See [[detached-fetch!]]."
   (atom {}))
 
-(def fetch-max-age-ms
+(def ^:private fetch-max-age-ms
   "How long a detached fetch may run before it is canceled, and how long a caller will wait on one.
 
   Only a fetch wedged outside the query processor can reach this: the warehouse query itself is
