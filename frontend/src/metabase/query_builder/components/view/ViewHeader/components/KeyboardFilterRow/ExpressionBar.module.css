@@ -280,6 +280,13 @@
   pointer-events: none;
 }
 
+/* "Add a filter..." after the last pill, while the bar isn't focused. The
+   space between it and the last pill. */
+.trailingPlaceholder {
+  margin-left: var(--mantine-spacing-sm);
+  white-space: nowrap;
+}
+
 /* While editing, each parenthesized group gets its own indented row. */
 .barExpanded {
   /* Same as the folded bar: placing the caret never changes the bar's height. */

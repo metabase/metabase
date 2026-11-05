@@ -113,6 +113,65 @@ const ROWS_FROM_NESTING = 2;
 const INDENT_REM = 1.5;
 const FLASH_MS = 1600;
 
+/**
+ * Prototype: on the question page, an empty bar tells how to start, and a bar
+ * with pills says "Add a filter..." after the last pill. The notebook keeps
+ * its placeholder.
+ */
+function getPlaceholder(
+  placeholder: string | undefined,
+  variant: ExpressionBarVariant,
+  hasTokens: boolean,
+) {
+  if (placeholder != null) {
+    return placeholder;
+  }
+  if (variant !== "header") {
+    return getFilterPlaceholder();
+  }
+  if (hasTokens) {
+    return t`Add a filter...`;
+  }
+  return t`Start typing to add a filter...`;
+}
+
+/**
+ * "Add a filter..." after the pills on the question page, while the bar is
+ * idle. Only in a bar of row filters with no summary filters after it: the end
+ * of that bar is the end of the row. A click on it goes to the bar, which puts
+ * the caret at the end. Focused, the caret's input shows the same text there.
+ */
+function TrailingPlaceholder({
+  variant,
+  tokenCount,
+  isNested,
+  canExitRight,
+  text,
+  isOpen,
+  hasFocus,
+  placeholder,
+}: {
+  variant: ExpressionBarVariant;
+  tokenCount: number;
+  isNested: boolean;
+  canExitRight: boolean;
+  text: string;
+  isOpen: boolean;
+  hasFocus: boolean;
+  placeholder: string;
+}) {
+  const isLastBar = !isNested && !canExitRight;
+  const isIdle = text === "" && !isOpen && !hasFocus;
+  if (variant !== "header" || tokenCount === 0 || !isLastBar || !isIdle) {
+    return null;
+  }
+  return (
+    <span className={cx(S.placeholder, S.trailingPlaceholder)}>
+      {placeholder}
+    </span>
+  );
+}
+
 const EXTRA_OPTION = (name: string) => `${EXTRA_OPTION_PREFIX}${name}:`;
 const LOGIC_OPTION_PREFIX = EXTRA_OPTION("logic");
 const SERIES_OPTION_PREFIX = EXTRA_OPTION("series");
@@ -209,7 +268,7 @@ export function ExpressionBar({
   onErrorChange,
   hasSummaries = true,
   variant = "header",
-  placeholder = getFilterPlaceholder(),
+  placeholder: placeholderProp,
 }: ExpressionBarProps) {
   const query = useStableQuery(queryProp, stageIndex);
   const committedTokens = useMemo(
@@ -217,6 +276,11 @@ export function ExpressionBar({
     [query, stageIndex],
   );
   const [tokens, setTokensState] = useState(committedTokens);
+  const placeholder = getPlaceholder(
+    placeholderProp,
+    variant,
+    tokens.length > 0,
+  );
   const [caret, setCaret] = useState(committedTokens.length);
   const [text, setText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -1416,6 +1480,16 @@ export function ExpressionBar({
           text === "" &&
           !isOpen &&
           !hasFocus && <span className={S.placeholder}>{placeholder}</span>}
+        <TrailingPlaceholder
+          variant={variant}
+          tokenCount={tokens.length}
+          isNested={isNested}
+          canExitRight={canExitRight}
+          text={text}
+          isOpen={isOpen}
+          hasFocus={hasFocus}
+          placeholder={placeholder}
+        />
         {!isNested && (
           <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
             {shownError != null && (
