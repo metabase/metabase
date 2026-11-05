@@ -615,13 +615,50 @@
 (deftest ^:parallel alternate-config-options-test
   (testing "Can configure with either db or dbname"
     (let [options {:host "test.example.com"}]
-      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol "redshift"
+              :subname "//test.example.com:/test-db"
+              :ssl true
+              :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :db "test-db"))))
-      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol "redshift"
+              :subname "//test.example.com:/test-db"
+              :ssl true
+              :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-db"))))
-      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver"
+              :subprotocol "redshift"
+              :subname "//test.example.com:/test-db"
+              :ssl true
+              :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
-          ":db should take precedence"))))
+          ":db should take precedence")))
+  (testing "IAM auth type"
+    (is (=? {:subprotocol "redshift:iam"}
+            (sql-jdbc.conn/connection-details->spec :redshift {:host "test.example.com"
+                                                               :db "test-db"
+                                                               :auth-mode "iam-instance-profile"}))
+        "auth-type should set subprotocol")))
+
+;; Unfortunately testing IAM auth can't be done in CI because it depends on
+;; running on an EC2 instance with a specific IAM role applied. So it's
+;; got to be done manually! What a drag. Anyway these are the steps.
+
+;; Create an IAM role that has AmazonRedshiftFullAccess
+;; Launch an EC2 instance that has that role in the default security group
+;; Create (or find an existing) Redshift "workgroup"
+
+;; (As far as I can tell, "workgroup" is Amazon marketing speak for a database
+;; server in a product they call "serverless" so they can't use the word "server"
+;; for it despite that being obviously what it is.)
+
+;; Make sure the Redshift workgroup is in the same security group as the EC2
+;; instance. The workgroup should have a JDBC URL displayed in the infobox in
+;; the AWS console. Replace "jdbc:redshift://" with "jdbc:redshift:iam//" and
+;; put it in the connection string for metabase running on the EC2 instance.
+;; It should populate the host, database name, and auth method, and if the IAM
+;; role is working right, you should be able to Test Connection successfully.
 
 ;;; ------------------------------------------------ Real Sync Test ------------------------------------------------
 ;; This test uses real sync (not fake sync) to validate that fake sync produces equivalent metadata.

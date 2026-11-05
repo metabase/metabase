@@ -742,13 +742,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db dbname], :as opts}]
+  [_ {:keys [host port db dbname auth-mode] :as opts}]
   (when (and db dbname)
     (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
-     :subprotocol                   "redshift"
+     ;; https://docs.aws.amazon.com/redshift/latest/mgmt/jdbc20-configure-authentication-ssl.html#jdbc20-configure-iam-authentication
+     :subprotocol                   (if (and (string? auth-mode)
+                                             (re-find #"^iam" auth-mode))
+                                      "redshift:iam"
+                                      "redshift")
      :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}

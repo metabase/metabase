@@ -47,7 +47,7 @@ const connectionStringRegexes: Record<
   redshift: new RegExp(
     "^" +
       jdbcPrefix +
-      "(?<protocol>redshift)://" +
+      "(?<protocol>redshift(:iam)?)://" +
       userPass +
       hostAndPort +
       "(?:/(?<database>[^/?#;]*))?" +
