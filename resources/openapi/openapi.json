@@ -10556,10 +10556,6 @@
         "minimum" : 1,
         "type" : "integer"
       },
-      "metabase.driver.connection.connection-type" : {
-        "enum" : [ "default", "write-data", "transform" ],
-        "type" : "string"
-      },
       "metabase.driver.index-field" : {
         "description" : "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a\n  `:columns` type for the indexed columns.",
         "properties" : {
@@ -42547,7 +42543,8 @@
           "name" : "connection-type",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.driver.connection.connection-type"
+            "enum" : [ "default", "write-data", "transform" ],
+            "type" : "string"
           }
         } ],
         "responses" : {
