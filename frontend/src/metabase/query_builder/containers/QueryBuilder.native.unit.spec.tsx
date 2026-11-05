@@ -32,6 +32,7 @@ import {
   TEST_NATIVE_CARD,
   setup,
   triggerNativeQueryChange,
+  waitForNativeQueryEditorReady,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 
@@ -114,6 +115,43 @@ describe("QueryBuilder > native questions", () => {
       screen.getByText("Here's where your results will appear"),
     ).toBeInTheDocument();
     expect(getQueryRunCount()).toBe(0);
+  });
+
+  it("saves the template tags of a new native question as its parameters", async () => {
+    setupCardCreateEndpoint();
+    setupCardQueryMetadataEndpoint(
+      createMockCard(),
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
+    await setup({ card: null, initialRoute: "/" });
+    await userEvent.click(screen.getByText("New"));
+    await userEvent.click(
+      within(await screen.findByRole("menu")).getByText("SQL query"),
+    );
+    await waitForLoaderToBeRemoved();
+    await waitForNativeQueryEditorReady();
+
+    await userEvent.click(
+      within(screen.getByTestId("mock-native-query-editor")).getByRole(
+        "textbox",
+      ),
+    );
+    await userEvent.paste("select * from products where category = {{cat}}");
+    await userEvent.tab();
+    await submitSaveModal({ name: "SQL Products" });
+
+    const saveCall = checkNotNull(
+      fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" }),
+    );
+    const saveBody: unknown = JSON.parse(String(saveCall.options.body));
+    expect(saveBody).toMatchObject({
+      parameters: [
+        {
+          slug: "cat",
+          target: ["variable", ["template-tag", "cat"]],
+        },
+      ],
+    });
   });
 
   it("saves a native question whose results have no rows as a new question", async () => {

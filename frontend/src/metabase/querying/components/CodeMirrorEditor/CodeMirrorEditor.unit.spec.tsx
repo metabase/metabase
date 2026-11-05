@@ -534,7 +534,7 @@ describe("CodemirrorEditor", () => {
       );
     });
 
-    it("indents with two spaces after the query switches to a json-like database (metabase#53299)", async () => {
+    it("indents with two spaces after the query engine changes to a json-like one", async () => {
       const mongoDatabase = createMockDatabase({
         id: MONGO_DB_ID,
         engine: "mongo",

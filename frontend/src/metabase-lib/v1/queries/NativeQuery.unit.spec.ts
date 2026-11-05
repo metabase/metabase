@@ -178,6 +178,15 @@ describe("NativeQuery", () => {
         expect(query.setQueryText("SELECT * FROM ORDERS").table()).toBe(null);
       });
     });
+
+    describe("setDatabaseId()", () => {
+      it("switches a SQL query to a Mongo database (metabase#53299)", () => {
+        const mongoQuery = makeQuery("SELECT 1").setDatabaseId(MONGO_DB_ID);
+        expect(mongoQuery.engine()).toBe("mongo");
+        expect(mongoQuery.requiresTable()).toBe(true);
+        expect(mongoQuery.queryText()).toBe("SELECT 1");
+      });
+    });
   });
 
   describe("Accessing the underlying native query", () => {
