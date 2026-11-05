@@ -14,14 +14,14 @@ priority: 50
 
 **Creating a dashboard**
 - Omit `dashboard_id` and pass `name`: the user's name for it, or a short one that says what it shows. It goes to the user's personal collection unless the user names a collection; then pass its `collection_id`, or `"root"` for the top level.
-- For a dashboard about a topic, build three to six charts that answer the main questions about it, then create the dashboard with all of them in one call. Don't ask the user which charts to include.
+- For a dashboard about a topic, build the charts that answer the main questions about it, then create the dashboard with all of them in one call. Don't ask the user which charts to include.
 - Each chart becomes a question saved on the dashboard. Pass its `chart_id` and a `name` on `add_card`.
 
 **Layout**
 The grid is 24 columns wide. Full width is `size_x: 24`. A card is placed at `position` `{row, col}` with `size` `{size_x, size_y}`, and `col + size_x` must not pass 24.
 - Omit `position` and `size` to add a card or two below the existing ones.
 - Lay out a whole dashboard with explicit `position` and `size` on every card. Don't mix explicit and automatic placement in one row.
-- A common shape: a row of number cards (6×3 each, four to a row), then charts in halves (12×6), then a full-width table (24×9).
+- A common shape: a row of number cards (6×3 each), then charts in halves (12×6), then a full-width table (24×9).
 - Default sizes: number 6×3, pie 12×8, table 12×9, heading 24×1, text 12×3, other charts 12×6.
 - `add_heading` adds a section label and `add_text` a markdown note.
 

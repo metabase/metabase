@@ -5,6 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.skills :as skills]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.tools :as metabot.tools]
@@ -455,8 +457,27 @@
     (testing "the other ops are offered, a chart source included"
       (is (mr/validate args-schema {:name "x", :ops [{:op "add_card", :id -1, :chart_id "A", :name "y"}]})))))
 
+;;; ------------------------------------------------- Profiles -----------------------------------------------------
+
 (deftest profiles-test
   (testing "internal and NLQ Metabot offer the tool"
     (doseq [profile-id [:internal :internal-sql :nlq :nlq-fallback]]
       (testing profile-id
         (is (some #{#'metabot.tools/write-dashboard-tool} (:tools (profiles/get-profile profile-id))))))))
+
+(deftest scope-test
+  (let [tool-names (fn [perms]
+                     (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes perms)]
+                       (set (keys (profiles/get-tools-for-profile :nlq [])))))]
+    (testing "the NLQ permission alone doesn't grant the tool"
+      (is (not (contains? (tool-names {:permission/metabot :yes, :permission/metabot-nlq :yes})
+                          "write_dashboard"))))
+    (testing "the other-tools permission grants it"
+      (is (contains? (tool-names scope/all-yes-permissions) "write_dashboard")))))
+
+(deftest skill-catalog-test
+  (testing "a profile with the tool lists the write-dashboard skill"
+    (is (some #{"write-dashboard"}
+              (map :id (:catalog (skills/build-skill-manifest (profiles/get-profile :internal)
+                                                              ["write_dashboard"]
+                                                              [])))))))
