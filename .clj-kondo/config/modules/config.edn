@@ -2647,11 +2647,14 @@
            util.config}
    :model-imports #{:model/Card
                     :model/Channel
+                    :model/Collection
+                    :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Database
                     :model/Dimension
+                    :model/Document
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
@@ -2666,6 +2669,7 @@
                     :model/Table
                     :model/TableIndex
                     :model/TableUserSettings
+                    :model/Timeline
                     :model/TimelineEvent
                     :model/TransformJobTransformTag
                     :model/TransformTransformTag

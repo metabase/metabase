@@ -23,11 +23,13 @@
     Fields the store lacks when asked to (see [[metabase.serialization.resolve]])."
   (:require
    [metabase.serialization.mbql :as serialization.mbql]
+   [metabase.serialization.parameters :as serialization.parameters]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.resolve :as resolve]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.transform :as serialization.transform]
    [metabase.serialization.util :as serialization.util]
+   [metabase.serialization.visualization-settings :as serialization.viz]
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
@@ -55,6 +57,20 @@
   target-not-found
   target-not-found?
   visit-some]
+ [serialization.parameters
+  export-parameter-mappings
+  export-parameters
+  import-parameter-mappings
+  import-parameters
+  parameter-mappings-transform
+  parameters-transform]
+ [serialization.viz
+  export-visualization-settings
+  import-visualization-settings
+  import-visualizer-settings
+  link-card-model->toucan-model
+  owned-entity-id
+  visualization-settings-transform]
  [serialization.spec
   columns
   spec
