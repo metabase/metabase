@@ -20,6 +20,7 @@
   (:import
    (clojure.lang IDeref)
    (java.io Writer)
+   (java.lang.ref WeakReference)
    (java.util.concurrent ConcurrentHashMap)
    (java.util.concurrent.locks ReentrantReadWriteLock)
    (java.util.function Function)))
@@ -377,18 +378,50 @@
 ;;; -------------------------------------------- Derived components --------------------------------------------
 
 (def ^:private max-derived-values
-  "How many dependency values a derived component remembers a value for. The most recently made value is kept first,
-  and the oldest goes once there are more."
+  "How many dependency values a derived component remembers a value for, besides the ones made from its dependencies'
+  current roots, which it always keeps."
   8)
 
+;; Entries hold their dependency values weakly, so a dependency value nothing else refers to, such as a finished test's
+;; temporary app DB, can be collected, and its entry goes at the next write. A nil value is stored as itself.
+(defn- weak
+  [v]
+  (if (nil? v) ::nil (WeakReference. v)))
+
+(defn- unweak
+  [r]
+  (if (= ::nil r) nil (.get ^WeakReference r)))
+
+(defn- collected?
+  "Whether any of the entry's dependency values has been collected."
+  [[refs]]
+  (some #(and (not= ::nil %) (nil? (unweak %))) refs))
+
+(defn- made-for?
+  "Whether `entry` was made for dependency values identical, one by one, to `deps`."
+  [[refs] deps]
+  (every? true? (map (fn [r d] (identical? (unweak r) d)) refs deps)))
+
 (defn- derived-entry
-  "The `[deps value]` entry in `entries` made for dependency values identical, one by one, to `deps`, or nil.
+  "The `[dep-refs value]` entry in `entries` made for `deps`, or nil.
   Returns the entry rather than the value, so a value of nil or false is still found."
   [entries deps]
-  (some (fn [[entry-deps :as entry]]
-          (when (every? true? (map identical? entry-deps deps))
-            entry))
-        entries))
+  (some #(when (made-for? % deps) %) entries))
+
+(defn- root-values
+  "The root value of each of `dep-handles`, or `::no-root` for one with none."
+  [dep-handles]
+  (mapv #(if-let [entry (mc/root-entry %)] (val entry) ::no-root) dep-handles))
+
+(defn- add-entry
+  "`entries` with a new entry for `deps` first, dropping collected entries, and then the oldest beyond
+  [[max-derived-values]], except the entry made from the current roots."
+  [entries dep-handles make deps]
+  (let [from-roots? #(made-for? % (root-values dep-handles))
+        live        (remove collected? entries)]
+    (-> [[(mapv weak deps) (apply make deps)]]
+        (into (filter from-roots?) live)
+        (into (comp (remove from-roots?) (take (dec max-derived-values))) live))))
 
 (deftype DerivedHandle [k dep-handles make entries]
   IDeref
@@ -400,7 +433,7 @@
            (derived-entry (swap! entries (fn [es]
                                            (if (derived-entry es deps)
                                              es
-                                             (into [[deps (apply make deps)]] (take (dec max-derived-values)) es))))
+                                             (add-entry es dep-handles make deps))))
                           deps))))))
 
 (defmethod print-method DerivedHandle
@@ -417,7 +450,10 @@
    those values, calling `(make dep-value ...)` the first time this combination is seen.
    Values are told apart by identity, so a binding of a dependency, or a write that replaces its value, gets a
    fresh derived value, and the derived value follows bindings of its dependencies with no binding of its own.
-   Only the last few combinations are remembered, so `make` must build something that is safe to rebuild, such as a
-   cache, and it can run more than once for the same values when threads race, keeping one result."
+   The value made from the dependencies' current roots is always kept; beyond it only the last few combinations are
+   remembered, and none whose dependency values have been garbage-collected.
+   So `make` must build something that is safe to rebuild, such as a cache, and it can run more than once for the
+   same values when threads race, keeping one result.
+   Every one of `dep-handles` must be a component handle, since its root is read."
   [k dep-handles make]
   (DerivedHandle. k (vec dep-handles) make (atom [])))

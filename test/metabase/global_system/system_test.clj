@@ -778,14 +778,11 @@
       (let [first-value @derived]
         (mc/reset! db-handle (String. "same"))
         (is (not (identical? first-value @derived)))))
-    (testing "only the most recent dependency values are remembered"
-      (mc/reset! db-handle :oldest)
-      (let [oldest @derived]
+    (testing "only the most recent dependency values are remembered, besides the root's"
+      (let [oldest (mc/binding db-handle :oldest (fn [] @derived))]
         (doseq [i (range 8)]
-          (mc/reset! db-handle i)
-          @derived)
-        (mc/reset! db-handle :oldest)
-        (is (not (identical? oldest @derived)))))
+          (mc/binding db-handle i (fn [] @derived)))
+        (is (not (identical? oldest (mc/binding db-handle :oldest (fn [] @derived)))))))
     (testing "threads racing on a new dependency value all get one derived value"
       (mc/reset! db-handle :raced)
       (let [go      (promise)
@@ -801,3 +798,30 @@
           derived (system/derived-component-handle ::derived-nil [db-handle] (fn [_] (swap! makes inc) nil))]
       (is (= {:values [nil nil nil], :makes 1}
              {:values [@derived @derived @derived], :makes @makes})))))
+
+(deftest ^:synchronized derived-keeps-root-value-test
+  (testing "the value made from the dependencies' roots survives any number of other dependency values"
+    (mc/alter-root db-handle :root-db)
+    (let [derived    (system/derived-component-handle ::derived-root [db-handle] (fn [db] {:for db, :id (Object.)}))
+          root-value @derived]
+      (doseq [i (range 20)]
+        (mc/binding db-handle i (fn [] @derived)))
+      (is (identical? root-value @derived)))))
+
+(deftest ^:synchronized derived-drops-collected-values-test
+  (testing "an entry whose dependency value has been garbage-collected is dropped at the next new value"
+    ;; the derived value must not refer to its dependency, or the dependency could never be collected
+    (let [derived   (system/derived-component-handle ::derived-weak [db-handle] (fn [_db] (Object.)))
+          entries   (fn [] @(.-entries ^metabase.global_system.system.DerivedHandle derived))
+          probe     (java.lang.ref.WeakReference. (let [temp (Object.)]
+                                                    (mc/binding db-handle temp (fn [] @derived))
+                                                    temp))
+          collected (loop [tries 0]
+                      (System/gc)
+                      (cond (nil? (.get probe)) true
+                            (< tries 50)        (do (Thread/sleep 10) (recur (inc tries)))
+                            :else               false))]
+      ;; collection is up to the JVM, so assert only once it has happened
+      (when collected
+        (mc/binding db-handle :fresh (fn [] @derived))
+        (is (= 1 (count (entries))))))))
