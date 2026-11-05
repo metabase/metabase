@@ -1039,13 +1039,27 @@
     (throw (ex-info (str "Invalid workspace isolation id: " (pr-str isolation-id)) {:isolation-id isolation-id})))
   (str workspace-isolation-prefix isolation-id))
 
+(defn check-workspace-main-schema!
+  "Throws a 400 unless `main` can be a workspace's main schema: a non-blank name that is not a workspace namespace,
+  which would let one workspace read another's scratch."
+  [main]
+  (when-not (and (string? main) (not (str/blank? main)))
+    (throw (ex-info (str "Invalid main schema: " (pr-str main)) {:status-code 400, :schema main})))
+  (when (str/starts-with? main workspace-isolation-prefix)
+    (throw (ex-info (format "%s belongs to a workspace and cannot be a workspace's main schema." (pr-str main))
+                    {:status-code 400, :schema main}))))
+
 (defn workspace-scratch-namespace-name
   "The scratch namespace for main schema `main` in `workspace_schema` row `schema-id`:
   `<user-name>_s<schema-id>_<main>`. Every character of `main` outside `[A-Za-z0-9]` becomes `_`, and `main` is cut
-  so the name is at most `max-length` characters; `s<schema-id>` keeps a cut name unique."
+  so the name is at most `max-length` characters; `s<schema-id>` keeps a cut name unique. Throws a 400 when
+  `schema-id` is not a positive integer or leaves no room for `main`."
   [user-name schema-id main max-length]
+  (check-workspace-main-schema! main)
   (let [prefix (str user-name "_s" schema-id "_")
         main   (str/replace main #"[^A-Za-z0-9]" "_")]
+    (when-not (and (pos-int? schema-id) (< (count prefix) max-length))
+      (throw (ex-info (str "Invalid workspace schema id: " (pr-str schema-id)) {:status-code 400, :schema-id schema-id})))
     (str prefix (subs main 0 (min (count main) (- max-length (count prefix)))))))
 
 (def ^:private workspace-password-alphabet
