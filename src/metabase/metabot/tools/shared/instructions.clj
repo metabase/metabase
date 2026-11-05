@@ -66,7 +66,7 @@ Reference items using: [name](metabase://type/id)")
 
 (def not-saved-instruction
   "Tells the model that what it just built has no card, so that it does not claim a save."
-  "- It is not saved and is in no collection. Never tell the user that it is saved.")
+  "- It is not saved and is in no collection. Say that it is saved only after a tool result says so.")
 
 (defn query-created-instructions-for
   "Generate instructions for a newly created SQL query, embedding the query ID

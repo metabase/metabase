@@ -302,6 +302,24 @@
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"NLQ only instruction" rendered)))))))
 
+(deftest ^:parallel every-query-prompt-has-the-save-rule-test
+  (testing "every prompt that builds queries tells the model when it can say that something is saved"
+    (doseq [template ["internal.selmer"
+                      "embedding-next.selmer"
+                      "natural-language-querying-only.selmer"
+                      "natural-language-querying-fallback.selmer"
+                      "sql-querying-only.selmer"
+                      "slackbot.selmer"]]
+      (testing template
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
+          (is (re-find #"Say that it is saved only when a tool result says that it was saved"
+                       (prompts/build-system-message-content
+                        {:prompt-template template}
+                        {:current_time "2026-03-25T12:00:00Z"}
+                        (zipmap active-sql-tool-names (repeat nil))
+                        []))))))))
+
 (deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
   (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
     (doseq [template ["internal.selmer"
