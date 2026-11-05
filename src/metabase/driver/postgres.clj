@@ -29,6 +29,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1530,3 +1531,228 @@
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Workspace Isolation                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private max-identifier-length
+  "Postgres truncates longer identifiers (NAMEDATALEN - 1)."
+  63)
+
+(defn- quote-role [s] (sql.u/quote-name :postgres :field s))
+
+(defn- workspace-user-name [wsd]
+  (driver.u/workspace-isolation-user-name (driver.u/instance-slug (system/site-uuid)) (:id wsd)))
+
+(defmethod driver/workspace-isolation-details :postgres
+  [_driver _database wsd]
+  {:user     (workspace-user-name wsd)
+   :password (driver.u/random-workspace-password)})
+
+(defmethod driver/workspace-scratch-namespace :postgres
+  [_driver _database wsd schema-row]
+  (driver.u/workspace-scratch-namespace-name
+   (workspace-user-name wsd) (:id schema-row) (:main_schema schema-row) max-identifier-length))
+
+(defn- run-workspace-ddl!
+  "In one transaction on `database`, call `(statements-fn conn)` for the statements to run, then run them as one batch.
+  `statements-fn` runs the preconditions first, so a failed one throws before any change. `after-fn`, called with the
+  connection once the batch has run, may throw to roll it back. Errors are rethrown with each of `secrets` scrubbed."
+  [database secrets statements-fn after-fn]
+  (try
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (let [statements (statements-fn t-conn)]
+        (with-open [stmt (.createStatement ^Connection (jdbc/db-connection t-conn))]
+          (doseq [^String sql statements]
+            (.addBatch stmt sql))
+          (.executeBatch stmt))
+        (after-fn t-conn)))
+    (catch Throwable t
+      (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) secrets))))
+  nil)
+
+(defn- role-exists? [conn role]
+  (boolean (seq (jdbc/query conn ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))))
+
+(defmethod driver/init-workspace-isolation! :postgres
+  [_driver database wsd]
+  (let [{:keys [user password]} (:database_details wsd)]
+    (run-workspace-ddl!
+     database [password]
+     (constantly [(format "CREATE USER %s WITH PASSWORD '%s'" (quote-role user) (sql.u/escape-sql password :ansi))])
+     (constantly nil))))
+
+;;; Preconditions of [[driver/add-workspace-schema!]] on the main schema. Each catches a state in which the GRANTs would
+;;; run without error yet leave the workspace user able to write to the main schema, or unable to read all of it.
+
+(defn- precondition-failed! [schema message extra]
+  (throw (ex-info message (merge {:status-code 412, :schema schema} extra))))
+
+(defn- check-no-public-create!
+  "A REVOKE cannot take back a privilege the workspace user holds through PUBLIC, so it could create tables in a main
+  schema that grants CREATE to PUBLIC (the default for `public` before Postgres 15)."
+  [conn schema]
+  (when (seq (jdbc/query conn [(str "SELECT 1 FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a "
+                                    "WHERE n.nspname = ? AND a.grantee = 0 AND a.privilege_type = 'CREATE'")
+                               schema]))
+    (precondition-failed!
+     schema
+     (format "Schema %s grants CREATE to PUBLIC. Run `REVOKE CREATE ON SCHEMA %s FROM PUBLIC` and retry."
+             (quote-schema schema) (quote-schema schema))
+     {})))
+
+(defn- check-usage-grant-option!
+  "Without USAGE WITH GRANT OPTION, `GRANT USAGE ON SCHEMA` succeeds with a warning and grants nothing."
+  [conn login schema]
+  (when-not (:can_grant (first (jdbc/query conn [(str "SELECT has_schema_privilege(current_user, ?, "
+                                                      "'USAGE WITH GRANT OPTION') AS can_grant")
+                                                 schema])))
+    (precondition-failed!
+     schema
+     (format (str "The provisioning login lacks USAGE WITH GRANT OPTION on schema %s. Have the schema owner run "
+                  "`GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION` and retry.")
+             (quote-schema schema) (quote-schema schema) (quote-role login))
+     {})))
+
+(defn- check-select-grant-option!
+  "Without SELECT WITH GRANT OPTION on a relation, `GRANT SELECT ON ALL TABLES` skips it with a warning."
+  [conn login schema]
+  (when-let [objects (seq (map :object (jdbc/query conn [(str "SELECT c.relname AS object FROM pg_class c "
+                                                              "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                                                              "WHERE n.nspname = ? AND c.relkind IN ('r','p','v','m','f') "
+                                                              "AND NOT has_table_privilege(current_user, c.oid, "
+                                                              "'SELECT WITH GRANT OPTION') ORDER BY c.relname")
+                                                         schema])))]
+    (precondition-failed!
+     schema
+     (format (str "The provisioning login lacks SELECT WITH GRANT OPTION on %d object(s) in schema %s: %s. Have "
+                  "their owner run `GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s WITH GRANT OPTION` and retry.")
+             (count objects) (quote-schema schema) (str/join ", " objects) (quote-schema schema) (quote-role login))
+     {:objects (vec objects)})))
+
+(defn- object-owners
+  "The roles owning relations in `schema`, with whether the provisioning login is a member of each."
+  [conn schema]
+  (jdbc/query conn [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner, "
+                         "pg_has_role(current_user, c.relowner, 'MEMBER') AS member "
+                         "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                         "WHERE n.nspname = ? AND c.relkind IN ('r','p','v','m','f') ORDER BY owner")
+                    schema]))
+
+(defn- check-default-privilege-owners!
+  "`ALTER DEFAULT PRIVILEGES FOR ROLE` needs membership in the role, and without it the workspace user would not see
+  tables that role creates later."
+  [login schema owners]
+  (when-let [missing (seq (map :owner (remove :member owners)))]
+    (precondition-failed!
+     schema
+     (format (str "The provisioning login is not a member of %d role(s) owning objects in schema %s: %s. Run `%s` "
+                  "and retry.")
+             (count missing) (quote-schema schema) (str/join ", " missing)
+             (str/join " " (map #(format "GRANT %s TO %s;" (quote-role %) (quote-role login)) missing)))
+     {:owners (vec missing)})))
+
+(defn- add-workspace-schema-statements [user main-schema scratch default-privilege-roles]
+  (let [user (quote-role user)
+        main (quote-schema main-schema)]
+    (concat
+     [(format "CREATE SCHEMA %s" (quote-schema scratch))
+      (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" (quote-schema scratch) user)
+      (format "GRANT USAGE ON SCHEMA %s TO %s" main user)
+      (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" main user)]
+     (for [role default-privilege-roles]
+       (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
+               (quote-role role) main user)))))
+
+(defmethod driver/add-workspace-schema! :postgres
+  [_driver database wsd main-schema scratch]
+  (let [user (-> wsd :database_details :user)]
+    (run-workspace-ddl!
+     database [(-> wsd :database_details :password)]
+     (fn [conn]
+       (let [login  (:current_user (first (jdbc/query conn ["SELECT current_user"])))
+             owners (object-owners conn main-schema)]
+         (check-no-public-create! conn main-schema)
+         (check-usage-grant-option! conn login main-schema)
+         (check-select-grant-option! conn login main-schema)
+         (check-default-privilege-owners! login main-schema owners)
+         (add-workspace-schema-statements user main-schema scratch (distinct (cons login (map :owner owners))))))
+     (constantly nil))))
+
+(defn- grants-to-role
+  "Every privilege `role` holds on a relation or schema, or through a schema's default privileges, as
+  `{:kind :schema :object :privilege :for_role}` maps, where `:for_role` is the role whose future tables a default
+  privilege covers."
+  [conn role]
+  (jdbc/query
+   conn
+   [(str "WITH r AS (SELECT oid FROM pg_roles WHERE rolname = ?) "
+         "SELECT 'relation' AS kind, n.nspname AS schema, c.relname AS object, a.privilege_type AS privilege, "
+         "       NULL AS for_role "
+         "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace CROSS JOIN LATERAL aclexplode(c.relacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) "
+         "UNION ALL "
+         "SELECT 'schema', n.nspname, NULL, a.privilege_type, NULL "
+         "FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) "
+         "UNION ALL "
+         "SELECT 'default', n.nspname, NULL, a.privilege_type, pg_get_userbyid(d.defaclrole) "
+         "FROM pg_default_acl d JOIN pg_namespace n ON n.oid = d.defaclnamespace "
+         "CROSS JOIN LATERAL aclexplode(d.defaclacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) AND d.defaclobjtype = 'r' "
+         "ORDER BY 1, 2, 3, 4")
+    role]))
+
+(defn- revoke-statement
+  "The REVOKE undoing one grant from [[grants-to-role]]. It names the privilege granted rather than ALL: Postgres
+  picks the grantor of a REVOKE by its best-grantor rule, and `REVOKE ALL` can act as a different role than the GRANT
+  did and miss it."
+  [user {:keys [kind schema object privilege for_role]}]
+  (case kind
+    "relation" (format "REVOKE %s ON TABLE %s.%s FROM %s" privilege (quote-schema schema)
+                       (sql.u/quote-name :postgres :table object)
+                       (quote-role user))
+    "schema"   (format "REVOKE %s ON SCHEMA %s FROM %s" privilege (quote-schema schema) (quote-role user))
+    "default"  (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s REVOKE %s ON TABLES FROM %s"
+                       (quote-role for_role) (quote-schema schema) privilege (quote-role user))))
+
+(defmethod driver/remove-workspace-schema! :postgres
+  [_driver database wsd main-schema scratch]
+  (let [user        (-> wsd :database_details :user)
+        main-grants (fn [conn]
+                      (when (role-exists? conn user)
+                        (filter #(= main-schema (:schema %)) (grants-to-role conn user))))]
+    (run-workspace-ddl!
+     database [(-> wsd :database_details :password)]
+     (fn [conn]
+       (cons (format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch))
+             (map #(revoke-statement user %) (main-grants conn))))
+     (fn [conn]
+       (when-let [left (seq (main-grants conn))]
+         (throw (ex-info (format (str "Grants to %s on schema %s survived their REVOKE, so another role granted "
+                                      "them. Have that role run `%s` and retry.")
+                                 (quote-role user) (quote-schema main-schema)
+                                 (str/join "; " (map #(revoke-statement user %) left)))
+                         {:schema main-schema})))))))
+
+(defmethod driver/destroy-workspace-isolation! :postgres
+  [_driver database wsd]
+  (let [user (-> wsd :database_details :user)]
+    (run-workspace-ddl!
+     database [(-> wsd :database_details :password)]
+     (fn [conn]
+       (let [prefix    (str user "_s")
+             scratches (map :nspname (jdbc/query conn [(str "SELECT nspname FROM pg_namespace "
+                                                            "WHERE substr(nspname, 1, length(?)) = ? ORDER BY nspname")
+                                                       prefix prefix]))]
+         (concat
+          (for [scratch scratches]
+            (format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema scratch)))
+          (when (role-exists? conn user)
+            (concat
+             (->> (grants-to-role conn user)
+                  (remove #(contains? (set scratches) (:schema %)))
+                  (map #(revoke-statement user %)))
+             [(format "DROP USER %s" (quote-role user))])))))
+     (constantly nil))))
