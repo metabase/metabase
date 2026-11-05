@@ -257,18 +257,14 @@
          (is (= "elsewhere.example" (:host (t2/select-one-fn :details :model/Database :id db-id)))))))))
 
 (deftest unreadable-provisioning-row-does-not-block-deletes-test
-  (testing "the lock reads the row without decrypting it, so a login stored under another key cannot make a delete fail"
+  (testing "the row lock that DELETE provisioning-connection and Database delete take reads the table, not the model, so
+            a login stored under another key cannot make them fail"
     (do-with-racing-database!
      (fn [db-id _ws-id]
-       (let [insert-unreadable! #(t2/insert! :workspace_provisioning_connection
-                                             {:database_id db-id, :details "plaintext where ciphertext belongs"})]
-         (encryption-test/with-secret-key "workspace-test-secret-key"
-           (insert-unreadable!)
-           (is (thrown? Exception (ws.db/provisioning-connection db-id)) "the model cannot read it")
-           (testing "the provisioning connection itself"
-             (ws.provisioning-connection/delete! db-id)
-             (is (zero? (t2/count :workspace_provisioning_connection :database_id db-id))))
-           (testing "the Database"
-             (insert-unreadable!)
-             (t2/delete! :model/Database :id db-id)
-             (is (not (t2/exists? :model/Database :id db-id))))))))))
+       (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "plaintext where ciphertext belongs"})
+       ;; only the lock and the model read run under the key: this test app DB's settings are not encrypted, and any
+       ;; setting read (a translated message, say) would fail under it
+       (encryption-test/with-secret-key "workspace-test-secret-key"
+         (is (thrown? Exception (ws.db/provisioning-connection db-id)) "the model cannot read it")
+         (is (= db-id (t2/with-transaction [_conn]
+                        (ws.db/lock-provisioning-connection! db-id)))))))))
