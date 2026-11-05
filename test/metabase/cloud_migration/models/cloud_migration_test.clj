@@ -88,6 +88,20 @@
             (finally
               (task/stop-scheduler!))))))))
 
+(deftest migrate!-restarts-scheduler-on-failure-test
+  (testing "the scheduler is started again when the migration fails after stopping it"
+    (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
+      (mt/with-dynamic-fn-redefs [cloud-migration/cluster? (constantly false)]
+        (with-redefs [cloud-migration/upload (fn [& _] (throw (ex-info "upload failed" {})))]
+          (task/start-scheduler!)
+          (try
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error performing migration"
+                                  (#'cloud-migration/migrate! migration)))
+            (is (some-> (task/scheduler) .isStarted)
+                "scheduler is running again after the failed migration")
+            (finally
+              (task/stop-scheduler!))))))))
+
 (deftest migrate!-test-2
   (testing "exits early on terminal state"
     (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
