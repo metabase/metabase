@@ -51,15 +51,19 @@
    _query-params
    body :- ::ws/workspace-instance]
   (api/check-superuser)
-  (check-not-locked!)
-  (ws/set-instance-workspace! body))
+  (ws/call-with-instance-workspace-lock
+   (fn []
+     (check-not-locked!)
+     (ws/set-instance-workspace! body))))
 
 (api.macros/defendpoint :delete "/current" :- :nil
   "Turn workspace mode off: remove the installed workspace and every remapping."
   []
   (api/check-superuser)
-  (check-not-locked!)
-  (ws/clear-instance-workspace!))
+  (ws/call-with-instance-workspace-lock
+   (fn []
+     (check-not-locked!)
+     (ws/clear-instance-workspace!))))
 
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]
   "Every recorded remapping of a main table to the scratch table that backs it."

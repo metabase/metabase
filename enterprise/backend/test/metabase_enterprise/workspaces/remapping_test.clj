@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.core :as ee.ws]
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -486,8 +485,12 @@
         (ee.ws/set-instance-workspace! {:name "w", :databases {db-name {:schemas {"public" "scratch_a"}}}})
         (t2/insert! :model/TableRemapping {:database_id db-id :from_schema "public" :from_table_name "t"
                                            :to_schema "scratch_a" :to_table_name "t"})
-        (testing "a POST whose setting write fails keeps the remappings it would have deleted"
-          (mt/with-dynamic-fn-redefs [ws.settings/instance-workspace! (fn [_] (throw (ex-info "injected" {})))]
+        (testing "a POST that fails after deleting stale remappings keeps them (the delete rolls back)"
+          (mt/with-dynamic-fn-redefs [ws.db/delete-table-remappings!
+                                      (let [delete! (dynamic-redefs/original-fn #'ws.db/delete-table-remappings!)]
+                                        (fn [ids]
+                                          (delete! ids)
+                                          (throw (ex-info "injected" {}))))]
             (is (thrown? Exception (ee.ws/set-instance-workspace!
                                     {:name "w", :databases {db-name {:schemas {"public" "scratch_b"}}}}))))
           (is (= 1 (t2/count :model/TableRemapping :database_id db-id))))
@@ -496,6 +499,16 @@
             (is (thrown? Exception (ee.ws/clear-instance-workspace!))))
           (is (true? (ws/workspace-mode?)))
           (is (= "scratch_a" (get-in (ee.ws/instance-workspace) [:databases db-name :schemas "public"]))))))))
+
+(deftest instance-workspace-setting-is-read-only-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temporary-setting-values [instance-workspace nil]
+      (testing "the settings API can't write the workspace: only POST/DELETE /api/ee/workspace-instance/current can"
+        (is (re-find #"read-only setting"
+                     (str (mt/user-http-request :crowberto :put 500 "setting/instance-workspace"
+                                                {:value (workspace-json "PUBLIC" "SCRATCH")}))))
+        (is (false? (ws/workspace-mode?)))
+        (is (nil? (ee.ws/instance-workspace)))))))
 
 (deftest outside-workspace-mode-no-remapping-lookup-test
   (testing "an instance outside workspace mode never reads remappings: not for queries, transforms or sync"
