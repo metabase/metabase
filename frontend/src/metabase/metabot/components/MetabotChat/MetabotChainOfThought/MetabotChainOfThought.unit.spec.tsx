@@ -4,11 +4,16 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
+import { isReasoningVisible } from "metabase/metabot/utils/reasoning-visibility";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
+
+const TEST_CONVERSATION_ID = "c1";
+const OTHER_CONVERSATION_ID = "c2";
 
 const chain = (
   overrides: Partial<MetabotAgentChainOfThoughtMessage>,
@@ -32,13 +37,29 @@ const setup = (
     createMockDashboard({ id: 123, name: "Orders" }),
   );
   return renderWithProviders(
-    <MetabotChainOfThought part={{ ...message, finished: !isStreaming }} />,
+    <MetabotChainOfThought
+      part={{ ...message, finished: !isStreaming }}
+      conversationId={TEST_CONVERSATION_ID}
+    />,
     { storeInitialState: createMockState({ settings }) },
   );
 };
 
 const expandChain = async () => {
   await userEvent.click(screen.getByTestId("metabot-chain-of-thought-header"));
+};
+
+const toggleReasoningStep = async (label: RegExp) => {
+  const header = screen.getByTestId("metabot-chain-of-thought-header");
+  const stepToggle = await waitFor(() =>
+    checkNotNull(
+      screen
+        .getAllByRole("button", { name: label })
+        .find((button) => button !== header),
+    ),
+  );
+  await userEvent.click(stepToggle);
+  return stepToggle;
 };
 
 afterEach(() => {
@@ -645,5 +666,57 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Read Orders")).toBeInTheDocument();
     await userEvent.click(screen.getByText("1 result"));
     expect(screen.getByText("Sample DB", { exact: false })).toBeInTheDocument();
+  });
+
+  describe("reasoning visibility", () => {
+    it("marks reasoning visible only while the header and the active step are open", async () => {
+      const message = chain({
+        steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+      });
+      const { rerender, unmount } = setup(message, true);
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      await expandChain();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      await toggleReasoningStep(/Thinking/);
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(true);
+      expect(isReasoningVisible(OTHER_CONVERSATION_ID)).toBe(false);
+
+      await expandChain();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      await expandChain();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(true);
+
+      rerender(
+        <MetabotChainOfThought
+          part={{ ...message, finished: true }}
+          conversationId={TEST_CONVERSATION_ID}
+        />,
+      );
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+
+      unmount();
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+    });
+
+    it("does not mark an inactive reasoning step visible", async () => {
+      setup(
+        chain({
+          steps: [
+            { kind: "reasoning", text: "First thought" },
+            { kind: "tool", id: "t1", name: "analyze_data", status: "ended" },
+            { kind: "reasoning", text: "Second thought" },
+          ],
+        }),
+        true,
+      );
+
+      await expandChain();
+      const firstStep = await toggleReasoningStep(/Thought briefly/);
+      expect(firstStep).toHaveAttribute("aria-expanded", "true");
+      expect(isReasoningVisible(TEST_CONVERSATION_ID)).toBe(false);
+    });
   });
 });

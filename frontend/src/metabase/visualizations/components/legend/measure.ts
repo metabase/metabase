@@ -3,14 +3,13 @@ import { c } from "ttag";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
 import type { LegendItemData } from "./LegendItem";
-import {
-  LEGEND_COLUMN_GAP,
-  LEGEND_COLUMN_MARGIN_TOP,
-  LEGEND_PADDING,
-  MIN_VISIBLE_COUNT,
-} from "./constants";
+import { LEGEND_PADDING, MIN_VISIBLE_COUNT } from "./constants";
 import type { ChartSize, LegendCandidates } from "./plots";
-import { LEGEND_SIZES, type LegendSize, type LegendSizeConfig } from "./sizes";
+import {
+  LEGEND_SIZES,
+  type LegendSizeConfig,
+  type LegendSizeTier,
+} from "./sizes";
 
 const LEGEND_FONT_WEIGHT = 400;
 const MAX_VERTICAL_WIDTH_RATIO = 0.25;
@@ -22,7 +21,7 @@ export interface MeasureLegendOptions {
   height: number;
   // the room the chart shares with its legend, the same whichever legend shows
   chartRoom?: ChartSize;
-  size: LegendSize;
+  size: LegendSizeTier;
   fontFamily: string;
   measureText: TextWidthMeasurer;
   isReversed?: boolean;
@@ -68,17 +67,14 @@ export function measureLegend({
     measureText(item.name, font),
   );
   const dotWidth = getDotWidth(config);
-  const availableWidth = width - config.horizontalPadding;
-  const chartRoom = measuredChartRoom ?? {
-    width,
-    height: height - config.verticalPadding,
-  };
+  const availableWidth = width - config.horizontalClearance * 2;
+  const chartRoom = measuredChartRoom ?? { width, height };
   const itemWidths = labelWidths.map((labelWidth) => dotWidth + labelWidth);
   const measureOverflowLabel = (overflowCount: number) =>
     measureText(getOverflowLabel(overflowCount), font);
   const columnFitCount = getColumnFitCount(
     { itemWidths, config },
-    chartRoom.height - LEGEND_COLUMN_MARGIN_TOP,
+    chartRoom.height - getColumnMarginsHeight(config),
   );
   const columnVisibleCount = Math.max(columnFitCount, MIN_VISIBLE_COUNT);
   const columnWidth = getColumnWidth(
@@ -97,7 +93,10 @@ export function measureLegend({
         height: Math.max(chartRoom.height - getRowHeight(config), 0),
       },
       column: {
-        width: Math.max(chartRoom.width - columnWidth - LEGEND_COLUMN_GAP, 0),
+        width: Math.max(
+          chartRoom.width - columnWidth - getColumnMarginsWidth(config),
+          0,
+        ),
         height: chartRoom.height,
       },
     },
@@ -117,8 +116,23 @@ export function measureLegend({
   };
 }
 
+// Auto weighs a bottom row and a right column, so their margins size the candidates
+const getRowMarginsHeight = ({ contentMargin }: LegendSizeConfig) =>
+  (contentMargin.bottomLegend.top ?? 0) +
+  (contentMargin.bottomLegend.bottom ?? 0);
+
+const getColumnMarginsWidth = ({ contentMargin }: LegendSizeConfig) =>
+  (contentMargin.rightLegend.left ?? 0) +
+  (contentMargin.rightLegend.right ?? 0);
+
+const getColumnMarginsHeight = ({ contentMargin }: LegendSizeConfig) =>
+  (contentMargin.rightLegend.top ?? 0) +
+  (contentMargin.rightLegend.bottom ?? 0);
+
 const getRowHeight = (config: LegendSizeConfig) =>
-  config.fontSize * config.lineHeight + config.rowChartGap + LEGEND_PADDING * 2;
+  config.fontSize * config.lineHeight +
+  getRowMarginsHeight(config) +
+  LEGEND_PADDING * 2;
 
 const getDotWidth = (config: LegendSizeConfig) =>
   config.dotSize + config.dotGap;

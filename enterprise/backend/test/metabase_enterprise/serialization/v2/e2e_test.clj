@@ -497,6 +497,11 @@
                                    dash-eid  :entity_id}    {:name          "Linked Dashboard"
                                                              :collection_id coll-id
                                                              :description   "Linked Dashboard desc"}
+             :model/Document      {document-id   :id
+                                   document-name :name
+                                   document-eid  :entity_id} {:name         "Linked document"
+                                                              :document     {:type "doc" :content []}
+                                                              :content_type "application/json+vnd.prose-mirror"}
              :model/Dashboard     {dashboard-id   :id
                                    dashboard-name :name}    {:name          "Test Dashboard"
                                                              :collection_id coll-id}
@@ -517,7 +522,10 @@
                                                              :visualization_settings (link-card-viz-setting "card" card-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
                                                              :row                    5
-                                                             :visualization_settings (link-card-viz-setting "dataset" model-id)}]
+                                                             :visualization_settings (link-card-viz-setting "dataset" model-id)}
+             :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    6
+                                                             :visualization_settings (link-card-viz-setting "document" document-id)}]
             (testing "extract and store"
               (let [extraction          (serdes/with-cache (into [] (extract/extract {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
@@ -526,10 +534,12 @@
                         {:model "table"      :id ["Linked database" "Public" "Linked table"]}
                         {:model "dashboard"  :id dash-eid}
                         {:model "card"       :id card-eid}
-                        {:model "dataset"    :id model-eid}]
+                        {:model "dataset"    :id model-eid}
+                        {:model "document"   :id document-eid}]
                        (dashboard->link-cards extracted-dashboard)))
                 (is (= #{[{:id dash-eid          :model "Dashboard"}]
                          [{:id coll-eid          :model "Collection"}]
+                         [{:id document-eid      :model "Document"}]
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]}
                        (set (serdes/deserialization-dependencies extracted-dashboard))))
@@ -545,7 +555,8 @@
                          [table-name 'Table]
                          [card-name  'Card]
                          [model-name 'Card]
-                         [dash-name  'Dashboard]]]
+                         [dash-name  'Dashboard]
+                         [document-name 'Document]]]
                   (testing (format "model %s from link cards are loaded properly" model)
                     (is (some? (t2/select model :name name)))))
                 (testing "linkcards are loaded with correct fk"
@@ -554,13 +565,15 @@
                         new-card-id  (t2/select-one-pk :model/Card :name card-name)
                         new-model-id (t2/select-one-pk :model/Card :name model-name)
                         new-dash-id  (t2/select-one-pk :model/Dashboard :name dash-name)
-                        new-coll-id  (t2/select-one-pk :model/Collection :name coll-name)]
+                        new-coll-id  (t2/select-one-pk :model/Collection :name coll-name)
+                        new-doc-id   (t2/select-one-pk :model/Document :name document-name)]
                     (is (= [{:id new-coll-id  :model "collection"}
                             {:id new-db-id    :model "database"}
                             {:id new-table-id :model "table"}
                             {:id new-dash-id  :model "dashboard"}
                             {:id new-card-id  :model "card"}
-                            {:id new-model-id :model "dataset"}]
+                            {:id new-model-id :model "dataset"}
+                            {:id new-doc-id   :model "document"}]
                            (-> (t2/select-one :model/Dashboard :name dashboard-name)
                                (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
@@ -714,9 +727,9 @@
                         new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
                         new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
                     (is (= new-dash-id (:dashboard_id
-                                        (t2/select-one :model/Card new-card-id))))
+                                        (t2/select-one :model/Card :id new-card-id))))
                     (is (= new-coll-id (:collection_id
-                                        (t2/select-one :model/Card new-card-id))))))))))))))
+                                        (t2/select-one :model/Card :id new-card-id))))))))))))))
 
 (deftest database-routing-test
   (testing "Destination Databases and Database Routers are excluded from serialization"
@@ -1015,10 +1028,10 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query (card-schema/selection) native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query (card-schema/selection) :id native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
-              (t2/update! :model/Card native-id {:result_metadata source-cols})
+              (t2/update! :model/Card :id native-id {:result_metadata source-cols})
               (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
               (ts/with-db dest-db
@@ -1262,45 +1275,6 @@
                      :table_id    (:id table)}
                     (t2/select-one :model/Card :name "Customers")))))))))
 
-(deftest orphaned-transform-yaml-round-trip-test
-  (testing "A Transform whose source database was deleted round-trips through YAML storage as a tombstone"
-    (mt/with-premium-features #{:transforms-basic}
-      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (ts/with-dbs [source-db dest-db]
-          (ts/with-db source-db
-            (t2/delete! :model/TransformTag)
-            (let [db    (ts/create! :model/Database :name "soon-to-be-deleted")
-                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
-                  mp    (lib-be/application-database-metadata-provider (:id db))]
-              (ts/create! :model/Transform
-                          :name   "Orphan Transform"
-                          :source {:type  "query"
-                                   :query (lib/query mp (lib.metadata/table mp (:id table)))}
-                          :target {:database (:id db)
-                                   :type     "table"
-                                   :schema   "public"
-                                   :name     "orphan_target"})
-              (t2/delete! :model/Database :id (:id db))
-              (storage/store! (serdes/with-cache (into [] (extract/extract {})))
-                              (storage.files/file-writer dump-dir))))
-          (let [file     (io/file dump-dir "collections" "transforms" "orphan_transform.yaml")
-                exported (yaml/from-file file)]
-            (testing "the exported query carries no metadata provider"
-              (is (=? {:database nil, :lib/type "mbql/query"} (get-in exported [:source :query])))
-              (is (not (contains? (get-in exported [:source :query]) :lib/metadata))))
-            (dump/spit-yaml! file (assoc-in exported [:source :query :lib/metadata] nil)))
-          (ts/with-db dest-db
-            (t2/delete! :model/TransformTag)
-            (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                "an export written with a nil `lib/metadata` still loads")
-            (let [transform (t2/select-one :model/Transform :name "Orphan Transform")]
-              (is (=? {:source_database_id nil
-                       :source             {:type :query}}
-                      transform))
-              (is (=? {"database" nil
-                       "stages"   [{"source-table" pos-int?}]}
-                      (get-in transform [:source :query]))))))))))
-
 (deftest transform-test-round-trip-test
   (testing "A transform test is exported under its transform's path and imported with its transform"
     (mt/with-premium-features #{:transforms-basic}
@@ -1314,8 +1288,8 @@
                                         :name          "Orders Summary"
                                         :collection_id (:id coll)
                                         :creator_id    (:id creator)
-                                        :source        {:type  "query"
-                                                        :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                        :source        {:type  :query
+                                                        :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
                                         :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
               (ts/create! :model/TransformTest
                           :transform_id (:id transform)
@@ -1381,8 +1355,8 @@
                                               :name          "Revenue Report"
                                               :collection_id (:id coll)
                                               :creator_id    (:id creator)
-                                              :source        {:type  "query"
-                                                              :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                              :source        {:type  :query
+                                                              :query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1 AS ID")}
                                               :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
                     (ts/create! :model/TransformTest
                                 :transform_id (:id transform)

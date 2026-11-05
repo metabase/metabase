@@ -1,0 +1,27 @@
+.backButton {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: rem(24px);
+  margin-inline-end: calc(
+    var(--mantine-spacing-sm) - var(--mantine-spacing-md)
+  );
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.clickableTitle {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.header:has(.clickableTitle:hover) .backButton,
+.header:has(.backButton:hover) .clickableTitle {
+  color: var(--mb-color-text-brand);
+}

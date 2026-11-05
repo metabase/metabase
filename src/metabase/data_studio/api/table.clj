@@ -160,7 +160,7 @@
    :- [:merge
        ::table-selectors
        [:map {:closed true}
-        [:data_authority {:optional true} [:maybe ::data-authorities]]
+        [:data_authority {:optional true} ::data-authorities]
         [:data_source {:optional true} [:maybe ::data-sources]]
         [:data_layer {:optional true} [:maybe ::data-layers]]
         [:entity_type {:optional true} [:maybe :string]]
@@ -178,7 +178,7 @@
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
-      (schema.table-user-settings/upsert-user-settings-for-tables! table-ids set-map)
+      (schema.table-user-settings/upsert-table-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids)]
@@ -210,7 +210,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.

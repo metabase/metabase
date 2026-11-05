@@ -62,6 +62,7 @@ import type {
 import type {
   ChartSettingEnumToggleProps,
   ChartSettingSegmentedControlProps,
+  ChartSettingSegmentedControlValue,
 } from "../../types/widget-props";
 import { dimensionIsNumeric } from "../numeric";
 import { getMaxDimensionsSupported, getMaxMetricsSupported } from "../registry";
@@ -550,8 +551,8 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
           icon: "line_style_dotted" as const,
         },
       ],
-      onChange: (value: string) => {
-        if (isLineStyle(value)) {
+      onChange: (value: ChartSettingSegmentedControlValue) => {
+        if (typeof value === "string" && isLineStyle(value)) {
           updateSingleSeriesTrendLineSetting(
             series,
             vizSettings,

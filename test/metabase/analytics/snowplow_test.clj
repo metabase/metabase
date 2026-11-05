@@ -14,8 +14,11 @@
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)
+   (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter)
    (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
-   (java.util LinkedHashMap)))
+   (java.net InetAddress ServerSocket)
+   (java.util LinkedHashMap)
+   (org.apache.http.client.config CookieSpecs RequestConfig)))
 
 (set! *warn-on-reflection* true)
 
@@ -185,3 +188,30 @@
             (mt/with-temporary-setting-values [anon-tracking-enabled false]
               (analytics/track-event! :snowplow/account {:event :new_instance_created} nil)
               (is (= [] (pop-event-data-and-user-id!))))))))))
+
+(deftest ^:parallel http-timeouts-test
+  (testing "the Snowplow HTTP client has finite timeouts"
+    (let [^RequestConfig config (#'snowplow/request-config)]
+      ;; Apache HttpClient reads any non-positive value as "wait forever".
+      (is (pos? (.getConnectTimeout config))
+          "connect timeout must be finite")
+      (is (pos? (.getSocketTimeout config))
+          "socket timeout must be finite")
+      (is (pos? (.getConnectionRequestTimeout config))
+          "connection-request timeout must be finite")
+      (testing "and still sets the cookie policy (PR #24579)"
+        (is (= CookieSpecs/STANDARD (.getCookieSpec config)))))))
+
+(deftest ^:parallel unresponsive-collector-test
+  (testing "a collector that accepts connections but never responds cannot hold an emitter thread indefinitely"
+    ;; A `ServerSocket` nobody ever calls `.accept` on still completes the TCP handshake out of its backlog, so this
+    ;; is a connected socket that will never produce a response.
+    (with-open [blackhole (ServerSocket. 0 1 (InetAddress/getLoopbackAddress))]
+      (let [^ApacheHttpClientAdapter adapter (#'snowplow/http-client-adapter
+                                              (str "http://127.0.0.1:" (.getLocalPort blackhole)))
+            event    (SelfDescribingJson. "iglu:com.metabase/instance/jsonschema/1-1-2" {})
+            response (future (.post adapter event))
+            result   (deref response 15000 ::never-returned)]
+        (future-cancel response)
+        (is (= -1 result)
+            "the POST should report a failed request rather than block forever")))))

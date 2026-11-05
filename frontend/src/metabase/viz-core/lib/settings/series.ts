@@ -106,9 +106,9 @@ export function seriesSetting({
       },
       getProps: () => ({
         options: [
-          { value: "line", icon: "line" },
-          { value: "area", icon: "area" },
-          { value: "bar", icon: "bar" },
+          { name: t`Line`, value: "line", icon: "line" },
+          { name: t`Area`, value: "area", icon: "area" },
+          { name: t`Bar`, value: "bar", icon: "bar" },
         ],
       }),
       getHidden: (single, settings, _extra) =>
@@ -147,9 +147,9 @@ export function seriesSetting({
       widget: "segmentedControl",
       getProps: () => ({
         options: [
-          { icon: "straight", value: "linear" },
-          { icon: "curved", value: "cardinal" },
-          { icon: "stepped", value: "step-after" },
+          { name: t`Straight`, value: "linear", icon: "straight" },
+          { name: t`Curved`, value: "cardinal", icon: "curved" },
+          { name: t`Stepped`, value: "step-after", icon: "stepped" },
         ],
       }),
       getHidden: (_single, settings) =>
@@ -167,9 +167,9 @@ export function seriesSetting({
       widget: "segmentedControl",
       getProps: () => ({
         options: [
-          { icon: "line_style_solid", value: "solid" },
-          { icon: "line_style_dashed", value: "dashed" },
-          { icon: "line_style_dotted", value: "dotted" },
+          { name: t`Solid`, value: "solid", icon: "line_style_solid" },
+          { name: t`Dashed`, value: "dashed", icon: "line_style_dashed" },
+          { name: t`Dotted`, value: "dotted", icon: "line_style_dotted" },
         ],
       }),
       getDefault: (_series, settings) => getSeriesDefaultLineStyle(settings),

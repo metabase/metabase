@@ -178,14 +178,19 @@
     [#{:measure "measure"} (entity-id :guard content-ref?)]
     [:measure (import-fk resolver entity-id 'Measure)]
 
-    {:source-table (_ :guard vector?)}
+    {:source-table #'vector?}
     (-> &match
         (update :source-table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:source_table (_ :guard vector?)}
+    {:source_table #'vector?}
     (-> &match
         (update :source_table (partial import-table-fk resolver))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
+
+    {:table-id #'vector?}
+    (-> &match
+        (update :table-id (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
     ;; support legacy MBQL 4 for the Audit v2 queries
@@ -292,13 +297,13 @@
   ([entity] (export-mbql *export-resolver* entity))
   ([resolver entity]
    (match/replace entity
-     (_ :guard mbql-clause-tag)
+     #'mbql-clause-tag
      (mbql-id->fully-qualified-name resolver &match)
 
-     (_ :guard sequential?)
+     #'sequential?
      (mapv (partial export-mbql resolver) &match)
 
-     (_ :guard map?)
+     #'map?
      (reduce-kv
       (fn [entity k _v]
         (let [f (case k
@@ -308,6 +313,7 @@
                                                     (export-fk-keyed resolver db-id :model/Database :name)))
                   (:card_id :card-id)           #(export-fk resolver % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
                   (:source_table :source-table) #(export-table-fk resolver %)
+                  :table-id                     #(cond->> % (pos-int? %) (export-table-fk resolver))
                   (:source_card :source-card)   #(export-fk resolver % :model/Card)
                   ::mb.viz/param-mapping-source #(export-field-fk resolver %)
                   :segment                      #(export-fk resolver % :model/Segment)

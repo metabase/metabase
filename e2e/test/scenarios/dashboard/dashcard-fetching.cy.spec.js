@@ -68,7 +68,6 @@ describe("issue 48878", () => {
     cy.signInAsAdmin();
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-    cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card").as("saveQuestion");
     cy.intercept("POST", "/api/action").as("createAction");
@@ -82,7 +81,6 @@ describe("issue 48878", () => {
   // I could only reproduce this issue in Cypress when I didn't use any helpers like createQuestion, etc.
   it("does not crash the action button viz (metabase#48878)", () => {
     cy.reload();
-    cy.wait("@fetchCard");
     H.getDashboardCard(0).findByText("Click Me").should("be.visible");
   });
 
@@ -141,7 +139,6 @@ describe("issue 48878", () => {
     });
     cy.button("Save").click();
     cy.wait("@updateDashboard");
-    cy.wait("@fetchCard");
   }
 
   function createModel({ name, query }) {

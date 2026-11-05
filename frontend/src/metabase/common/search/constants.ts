@@ -24,6 +24,7 @@ export const enabledSearchTypes: EnabledSearchModel[] = [
   "indexed-entity",
   "document",
   "exploration",
+  "data-app",
 ];
 
 export const SearchContextTypes = {

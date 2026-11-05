@@ -8,9 +8,9 @@ A component that provides the Metabase SDK context and theme.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                      |
-| :-------- | :-------------------------------------------------------- |
-| `props`   | [`MetabaseProviderProps`](./api/MetabaseProviderProps.md) |
+| Parameter | Type                                                                               |
+| :-------- | :--------------------------------------------------------------------------------- |
+| `props`   | [`MetabaseProviderProps`](/docs/latest/embedding/sdk/api/MetabaseProviderProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -18,6 +18,6 @@ A component that provides the Metabase SDK context and theme.
 
 <!-- [<snippet returns>] -->
 
-[`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L478)
+[`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L436)
 
 <!-- [<endsnippet returns>] -->

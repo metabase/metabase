@@ -412,7 +412,8 @@
     (juxt (comp tab-order :dashboard_tab_id) :row :col :entity_id)))
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
-  {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
+  {:schema    ::dashboards.schema/external-dashboard
+   :copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
    :skip      [:initially_published_at

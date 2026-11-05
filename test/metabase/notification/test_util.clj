@@ -132,7 +132,7 @@
     (try
       (thunk (models.notification/hydrate-notification notification))
       (finally
-        (t2/delete! :model/Notification (:id notification))))))
+        (t2/delete! :model/Notification :id (:id notification))))))
 
 (defmacro with-temp-notification
   "Macro that sets up a temporary notification for testing.

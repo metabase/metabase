@@ -8,6 +8,7 @@
    [colorize.core :as colorize]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -19,9 +20,11 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -44,7 +47,7 @@
 (deftest default-schema-test
   (mt/test-driver :sqlserver
     (is (= "dbo"
-           (driver.sql/default-schema :sqlserver (mt/db))))))
+           (driver.sql/default-schema :sqlserver (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -304,6 +307,44 @@
           (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))
           (is (not (contains? spec :user))))))))
 
+(deftest connection-spec-ad-managed-identity-hosted-rejected-test
+  (testing "auth-mode 'ad-managed-identity' is rejected on Metabase Cloud (ambient Azure identity, not available on AWS hosts)"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [[label details] [["default identity"       {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"}]
+                               ["user-assigned identity" {:auth-mode                     "ad-managed-identity"
+                                                          :ad-managed-identity-client-id "4e027ad8-5e10-4e05-b5a6-c071b9b61b37"
+                                                          :host                          "sql.example.com"
+                                                          :db                            "metabase_test"}]]]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec :sqlserver details)))))))
+  (testing "Off Metabase Cloud, ad-managed-identity continues to work."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver
+                                                         {:auth-mode "ad-managed-identity"
+                                                          :host      "sql.example.com"
+                                                          :db        "metabase_test"})]
+        (is (= "ActiveDirectoryManagedIdentity" (:authentication spec)))))))
+
+(deftest auth-mode-options-hidden-when-hosted-test
+  (let [auth-mode-values
+        (fn [] (->> (:details-fields (:sqlserver (driver.u/available-drivers-info)))
+                    (m/find-first #(= "auth-mode" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, ad-managed-identity is stripped from the auth-mode select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate"]
+               (auth-mode-values)))))
+    (testing "Off Metabase Cloud, every auth-mode option is offered."
+      (mt/with-premium-features #{}
+        (is (= ["sql" "ad-service-principal" "ad-service-principal-certificate" "ad-managed-identity"]
+               (auth-mode-values)))))))
+
 (deftest ^:parallel reject-inherited-disallowed-parameters-in-host-test
   (mt/test-driver :sqlserver
     (testing "parameters every SQL-JDBC driver disallows are refused in `host` too"
@@ -491,7 +532,7 @@
       ;; are working we need to add to in from of the query we're trying to check
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (.setAutoCommit conn false)
@@ -521,7 +562,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -546,7 +587,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -587,7 +628,7 @@
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
               (sql-jdbc.execute/do-with-connection-with-options
                :sqlserver
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
@@ -1075,7 +1116,7 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
-    (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+    (is (= "Z" (str (driver/db-default-timezone :sqlserver (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
@@ -1147,7 +1188,7 @@
     (mt/test-driver :sqlserver
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
-               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+               (t2/select-one-fn :base_type :model/Field :id (mt/id :bigint_identity_test :id))))))))
 
 (def ^:private udt-alias-db-details
   (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))
@@ -1172,7 +1213,7 @@
     (mt/test-driver :sqlserver
       (create-udt-alias-db!)
       (mt/with-temp [:model/Database database {:engine :sqlserver, :details @udt-alias-db-details}]
-        (sync/sync-database! database)
+        (sync/sync-database! (:id database))
         (let [table-id (t2/select-one-pk :model/Table :db_id (:id database) :name "udt_alias_test")
               fields   (into {} (map (juxt :name identity))
                              (t2/select :model/Field :table_id table-id))]
@@ -1310,7 +1351,7 @@
   (mt/test-driver :sqlserver
     (testing "`current-user-table-privileges` returns correct structure and privileges"
       (sql-jdbc.execute/do-with-connection-with-options
-       :sqlserver (mt/db) nil
+       :sqlserver (mt/id) nil
        (fn [conn]
          (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
            (is (seq privileges) "Should return at least one table")
@@ -1432,12 +1473,12 @@
     (testing "a transform test's temp table is visible to its own session only"
       (let [table (driver/temp-table-name :sqlserver)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [conn]
            (create-temp-table! conn table "SELECT 1 AS id" [])
            (is (= [[1]] (:rows (temp-table-rows conn table))))
            (driver/do-with-test-connection
-            :sqlserver (mt/db)
+            :sqlserver (lib.metadata/database (mt/metadata-provider))
             (fn [other-conn]
               (is (thrown-with-msg? Exception #"Invalid object name"
                                     (temp-table-rows other-conn table)))))))))))
@@ -1447,7 +1488,7 @@
     (testing "a temp table created by a query with bound parameters outlives the statement that created it"
       (let [table (driver/temp-table-name :sqlserver)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [conn]
            (create-temp-table! conn table "SELECT CAST(? AS nvarchar(50)) AS name, CAST(? AS decimal(10,2)) AS price"
                                ["abc" 1.5M])
@@ -1455,7 +1496,7 @@
     (testing "the test connection runs temp table statements as batches, and gets its prepare method back afterwards"
       (let [physical (atom nil)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [^java.sql.Connection conn]
            (let [sqlserver-conn (.unwrap conn com.microsoft.sqlserver.jdbc.ISQLServerConnection)]
              (reset! physical sqlserver-conn)

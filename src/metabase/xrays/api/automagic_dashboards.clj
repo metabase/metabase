@@ -42,14 +42,16 @@
   [:fn
    {:error/fn  (fn [_ _]
                  (i18n/tru "invalid value for prefix"))
-    :api/regex #"[A-Za-z]+"}
+    :api/regex   #"[A-Za-z]+"
+    :json-schema {:type "string"}}
    (fn [prefix]
      (some #(not-empty (automagic-dashboards.dashboard-templates/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))])
 
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
    [:fn
-    {:api/regex #"[A-Za-z]+"}
+    {:api/regex   #"[A-Za-z]+"
+     :json-schema {:type "string"}}
     (fn [dashboard-template]
       (some (fn [toplevel]
               (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template
@@ -85,7 +87,8 @@
    ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
    ;; `+` and `/`... accept either for now I guess
    {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
-    :error/fn  (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
+    :error/fn    (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))
+    :json-schema {:type "string"}}
    decode-base64-json])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -102,12 +105,11 @@
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
-(defn- adhoc-query-read-check
+(defn adhoc-query-read-check
+  "Return `query` if the user has data and source card permissions; otherwise throw a 403."
   [query]
   (api/check-403
-   (query-perms/check-data-perms (:dataset_query query)
-                                 (query-perms/required-perms-for-query (:dataset_query query))
-                                 :throw-exceptions? false))
+   (query-perms/can-run-query? (:dataset_query query)))
   query)
 
 (defn- ensure-int

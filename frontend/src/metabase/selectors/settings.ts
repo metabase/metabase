@@ -39,7 +39,8 @@ export function getStoreUrl(state: State, path: StorePaths = "") {
 }
 
 export const migrateToCloudGuideUrl = () =>
-  "https://www.metabase.com/cloud/docs/migrate/guide";
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only shown on Cloud during setup, before whitelabeling can be configured
+  "https://www.metabase.com/docs/latest/cloud/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()

@@ -13,7 +13,7 @@
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
   (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-    (sync-metadata/sync-db-metadata! db)
+    (sync-metadata/sync-db-metadata! (:id db))
     (is (= #{{:name              "id"
               :database-type     "SERIAL"
               :base-type         :type/Integer

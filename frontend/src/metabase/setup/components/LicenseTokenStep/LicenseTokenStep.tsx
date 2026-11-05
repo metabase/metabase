@@ -58,7 +58,7 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
     >
       <Text
         mb="xl"
-        c="text-disabled"
+        c="text-secondary"
       >{t`Unlock access to paid features if you'd like to try them out`}</Text>
 
       <LicenseTokenForm

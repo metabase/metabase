@@ -14,7 +14,7 @@ import {
 } from "metabase/common/collections/utils";
 import {
   EntityPickerModal,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
@@ -58,7 +58,7 @@ export const MoveModal = ({
         return false;
       }
 
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return true;
       }
 
@@ -81,8 +81,8 @@ export const MoveModal = ({
       }
 
       if (
-        !isInDbTree(item) &&
-        !isInDbTree(movingItem) &&
+        isInCollectionTree(item) &&
+        isInCollectionTree(movingItem) &&
         item.namespace &&
         movingItem.namespace
       ) {
@@ -101,7 +101,7 @@ export const MoveModal = ({
 
   const canSelectItem = useCallback(
     (item: OmniPickerItem): boolean => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return false;
       }
 
@@ -246,7 +246,7 @@ export const BulkMoveModal = ({
 
   const shouldDisableItem = useCallback(
     (item: OmniPickerItem): boolean => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return true;
       }
 
@@ -284,7 +284,7 @@ export const BulkMoveModal = ({
 
   const canSelectItem = useCallback(
     (item: OmniPickerItem): boolean => {
-      if (isInDbTree(item)) {
+      if (!isInCollectionTree(item)) {
         return false;
       }
       if (shouldDisableItem(item)) {

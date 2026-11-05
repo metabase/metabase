@@ -1,7 +1,11 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
-import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import {
+  BREADCRUMB_TRAIL_CLASS_NAME,
+  Breadcrumb,
+} from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { type Table, isConcreteTableId } from "metabase-types/api";
@@ -13,7 +17,7 @@ interface Props extends GroupProps {
   table: Table;
 }
 
-export const TableNav = ({ rowName, table, ...props }: Props) => {
+export const TableNav = ({ rowName, table, className, ...props }: Props) => {
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
@@ -24,7 +28,14 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
   }
 
   return (
-    <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
+    <Group
+      align="center"
+      className={cx(BREADCRUMB_TRAIL_CLASS_NAME, className)}
+      gap="sm"
+      miw={0}
+      wrap="nowrap"
+      {...props}
+    >
       <Breadcrumb
         icon="database"
         to={Urls.browseDatabase(table.db)}

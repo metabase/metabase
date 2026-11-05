@@ -9,7 +9,7 @@ const StoreLink = () => {
   return (
     <Tooltip label={t`Explore paid features`}>
       <ExternalLink
-        href="https://metabase.com/upgrade"
+        href="https://www.metabase.com/upgrade"
         data-testid="store-link"
         className={S.root}
       >

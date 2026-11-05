@@ -1,0 +1,129 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import {
+  setupListDataAppsEndpoint,
+  setupUserAcknowledgementEndpoints,
+} from "__support__/server-mocks";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
+import type { DataApp } from "metabase-types/api";
+import { createMockDataApp } from "metabase-types/api/mocks";
+
+import { DataAppListPage } from "./DataAppListPage";
+
+const BUILD_DOCS_URL =
+  "https://www.metabase.com/docs/latest/data-apps/build.html";
+
+type SetupOpts = {
+  apps: DataApp[];
+  isBuildGuideDismissed?: boolean;
+};
+
+function setup({ apps, isBuildGuideDismissed = false }: SetupOpts) {
+  setupListDataAppsEndpoint(apps);
+  const { names } = setupUserAcknowledgementEndpoints({
+    key: "data-apps-build-guide",
+    value: isBuildGuideDismissed,
+  });
+  renderWithProviders(<DataAppListPage />, { withRouter: true });
+  return { acknowledgementRequestNames: names };
+}
+
+describe("DataAppListPage", () => {
+  beforeEach(() => {
+    mockGetBoundingClientRect({ width: 1000, height: 1000 });
+  });
+
+  it("lists the apps with their address and status", async () => {
+    setup({
+      apps: [
+        createMockDataApp({
+          name: "order-desk",
+          display_name: "Order desk",
+          enabled: true,
+        }),
+        createMockDataApp({
+          id: 2,
+          name: "inventory",
+          display_name: "Inventory",
+          enabled: true,
+          outdated: true,
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Order desk")).toBeInTheDocument();
+    expect(screen.getByText("/apps/order-desk")).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("Live, outdated")).toBeInTheDocument();
+  });
+
+  it("explains how to create a data app when there are none", async () => {
+    setup({ apps: [] });
+
+    expect(
+      await screen.findByText(
+        "Have your AI agent build a data app with the Metabase CLI. The app lives in your Git repository, and reaches each Metabase that syncs with it when you pull the changes.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Install the Metabase CLI/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Learn how to build data apps" }),
+    ).toHaveAttribute("href", BUILD_DOCS_URL);
+  });
+
+  it("shows the build guide above the apps", async () => {
+    setup({ apps: [createMockDataApp()] });
+
+    const guide = await screen.findByRole("region", {
+      name: "How to build a data app",
+    });
+    expect(guide).toHaveTextContent(/Install the Metabase CLI/);
+    expect(
+      screen.getByRole("link", { name: "Learn how to build data apps" }),
+    ).toHaveAttribute("href", BUILD_DOCS_URL);
+  });
+
+  it("hides the build guide for good once the user dismisses it", async () => {
+    const { acknowledgementRequestNames } = setup({
+      apps: [createMockDataApp()],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Dismiss" }),
+    );
+
+    expect(
+      screen.queryByRole("region", { name: "How to build a data app" }),
+    ).not.toBeInTheDocument();
+    const call = fetchMock.callHistory.lastCall(
+      acknowledgementRequestNames.put,
+    );
+    expect(call).toBeDefined();
+    const body: unknown = JSON.parse(String(call?.options.body));
+    expect(body).toEqual({ value: true });
+    expect(screen.getByText("Sales")).toBeInTheDocument();
+  });
+
+  it("does not show the build guide to a user who dismissed it", async () => {
+    const { acknowledgementRequestNames } = setup({
+      apps: [createMockDataApp()],
+      isBuildGuideDismissed: true,
+    });
+
+    expect(await screen.findByText("Sales")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.called(acknowledgementRequestNames.get),
+      ).toBe(true),
+    );
+    expect(
+      screen.queryByRole("region", { name: "How to build a data app" }),
+    ).not.toBeInTheDocument();
+  });
+});

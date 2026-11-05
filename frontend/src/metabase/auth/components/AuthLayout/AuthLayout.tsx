@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LogoIcon } from "metabase/common/components/LogoIcon";

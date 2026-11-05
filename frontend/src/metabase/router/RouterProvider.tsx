@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useState } from "react";
+import { type JSX, type ReactNode, useLayoutEffect, useState } from "react";
 import {
   type DataRouter,
   RouterProvider as ReactRouterProvider,

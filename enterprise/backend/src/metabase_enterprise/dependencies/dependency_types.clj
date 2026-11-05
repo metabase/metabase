@@ -15,7 +15,8 @@
    :model/Sandbox            :sandbox
    :model/Segment            :segment
    :model/Measure            :measure
-   :model/Action             :action})
+   :model/Action             :action
+   :model/DataApp            :data-app})
 
 (def dependency-type->model
   "A map relating dependency types to their corresponding model."

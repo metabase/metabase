@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.core :as lib-be]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -16,13 +15,17 @@
    [metabase.util.malli.fn :as mu.fn]))
 
 (defmacro log-if-error
-  "Logs an error message if an exception is thrown while executing the body."
+  "Logs an error message if an exception is thrown while executing the body. The sync step that catches the exception
+  logs it too, so failures that aren't Metabase bugs (an unreachable warehouse, a missing grant) only log at DEBUG
+  here."
   {:style/indent 1}
   [function-name & body]
   `(try
      ~@body
      (catch Throwable e#
-       (log/errorf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#))
+       (if (or (sync-util/transient-exception? e#) (sync-util/customer-environment-exception? e#))
+         (log/debugf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#))
+         (log/errorf "Error while fetching metadata with '%s': %s" ~function-name (ex-message e#)))
        (throw e#))))
 
 (mu/defn db-metadata :- i/DatabaseMetadata
@@ -71,6 +74,9 @@
                    (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
                          table-fields))
                  (catch Throwable e
+                   ;; an unreachable warehouse fails every table the same way; abort so sync can retry later
+                   (when (sync-util/transient-exception? e)
+                     (throw e))
                    (log/warn (str "Could not fetch fields from table " table-id ": " (ex-message e)))
                    nil))))
      table-ids)))
@@ -101,9 +107,7 @@
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
       (when (driver.u/supports? driver :metadata/key-constraints database)
-        (cond->> (driver/describe-fks driver
-                                      (lib-be/instance->metadata database :metadata/database)
-                                      args)
+        (cond->> (driver/describe-fks driver database args)
           ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
           (mu.fn/instrument-ns? *ns*)
           (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
