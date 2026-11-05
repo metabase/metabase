@@ -3497,6 +3497,11 @@
            system
            util}}
 
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.core}
+   :uses #{premium-features util}}
+
   xrays
   {:team "Graphy"
    :api  #{metabase.xrays.api
