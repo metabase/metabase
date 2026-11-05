@@ -522,18 +522,25 @@
     (sequential? form) (mapv canonicalize form)
     :else form))
 
-(def ^:private index-version-hash*
-  (delay
-    (-> {:specs         @raw-spec-forms
-         :default-attrs default-attrs
-         :attr-types    attr-types}
-        canonicalize
-        json/encode
-        buddy-hash/sha256
-        codecs/bytes->hex)))
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *testing-only-index-version-hash*
+  "Override for tests that need a specific index version."
+  nil)
+
+(def ^{:arglists '([testing-only-index-version-hash]) :private true} index-version-hash*
+  (memoize (fn [testing-only-index-version-hash]
+             (or testing-only-index-version-hash
+                 (let [data {:specs        @raw-spec-forms
+                             :default-attrs default-attrs
+                             :attr-types    attr-types}]
+                   (-> data
+                       canonicalize
+                       json/encode
+                       buddy-hash/sha256
+                       codecs/bytes->hex))))))
 
 (defn index-version-hash
   "Compute a deterministic hash of all search specifications.
    Includes raw spec forms, default-attrs, and attr-types."
   []
-  @index-version-hash*)
+  (index-version-hash* *testing-only-index-version-hash*))
