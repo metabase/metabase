@@ -21,6 +21,8 @@ import { VersionAwareJoin } from "./VersionAwareJoin";
 import {
   ACCOUNT_HISTORY_ID,
   CUSTOMERS_SNAPSHOT_ID,
+  DIM_CUSTOMER_ID,
+  DIM_PRODUCT_ID,
   EMPTY_TABLE_STRUCTURE,
   SUBSCRIPTION_HISTORY_ID,
   WAREHOUSE_FIELD_VALUES,
@@ -122,6 +124,8 @@ const SUBSCRIPTION_HISTORY = {
   id: SUBSCRIPTION_HISTORY_ID,
   schema: "analytics",
 };
+const DIM_CUSTOMER = { id: DIM_CUSTOMER_ID, schema: "analytics" };
+const DIM_PRODUCT = { id: DIM_PRODUCT_ID, schema: "analytics" };
 const BUSINESS_TITLE_FIELD_ID = 8605;
 const EFFECTIVE_DATE_FIELD_ID = 8610;
 
@@ -166,6 +170,39 @@ export const KeyShapeDetails = {
     <DataStudioPage
       initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "details")}
     />
+  ),
+};
+
+export const ScdType3PreviousValues = {
+  beforeEach: seedStorage(),
+  render: () => (
+    <DataStudioPage initialRoute={tableRoute(DIM_PRODUCT, "details")} />
+  ),
+};
+
+export const ScdType4CurrentTable = {
+  beforeEach: seedStorage(),
+  render: () => (
+    <DataStudioPage
+      initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "details")}
+    />
+  ),
+};
+
+export const ScdType6CurrentValues = {
+  beforeEach: seedStorage(),
+  render: () => (
+    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "details")} />
+  ),
+};
+
+export const ScdType7FactKey = {
+  beforeEach: seedStorage({
+    tables: { [`${WAREHOUSE_ID}:${DIM_CUSTOMER_ID}`]: { scdType: 7 } },
+    grainByField: {},
+  }),
+  render: () => (
+    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "details")} />
   ),
 };
 

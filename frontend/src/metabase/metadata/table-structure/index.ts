@@ -78,6 +78,20 @@ export {
   isScdType,
 } from "./history-source";
 export {
+  CURRENT_TABLE_SCD_TYPES,
+  type FactKeyField,
+  HISTORY_TABLE_SCD_TYPES,
+  type PreviousValuePair,
+  type ScdDetailsOverrides,
+  type ScdTypeResolution,
+  inferCurrentTable,
+  inferCurrentValueFields,
+  inferFactKeyFields,
+  inferPreviousValuePairs,
+  resolveCurrentTableScdType,
+  resolveHistoryScdType,
+} from "./scd-types";
+export {
   type ColumnChangeProfile,
   type CurrentRule,
   type HistoryCheck,

@@ -65,12 +65,8 @@ export function getValidToForDates(
   return otherDateField ? getRawTableFieldId(otherDateField) : null;
 }
 
-function getInferenceDescription({
-  scdType,
-  scdTypeInference,
-}: TableStructure) {
-  const source = t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`;
-  return scdType != null ? t`SCD type ${scdType} · ${source}` : source;
+function getInferenceDescription({ scdTypeInference }: TableStructure) {
+  return t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`;
 }
 
 export function HistoryKindInput({
