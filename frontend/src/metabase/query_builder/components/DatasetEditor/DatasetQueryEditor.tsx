@@ -8,7 +8,11 @@ import {
 } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
-import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { getEngineNativeType } from "metabase/databases/utils/engine";
+import {
+  type UseInlineSqlEditResult,
+  useInlineSQLPrompt,
+} from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
@@ -47,17 +51,20 @@ type DatasetQueryEditorProps = Omit<
   onResizeStop: ResizableBoxProps["onResizeStop"];
 };
 
-// useInlineSQLPrompt registers a SQL buffer with Metabot on mount, so only SQL models may render this
+type DatasetNativeQueryEditorProps = Omit<DatasetQueryEditorProps, "height"> & {
+  inlineSQLPrompt?: UseInlineSqlEditResult;
+};
+
 function DatasetNativeQueryEditor({
   question,
   isActive,
+  inlineSQLPrompt,
   ...props
-}: Omit<DatasetQueryEditorProps, "height">) {
+}: DatasetNativeQueryEditorProps) {
   const isMetabotSidebarOpen = useSelector((state) =>
     getMetabotVisible(state, "omnibot"),
   );
   const { hasSqlGenerationAccess } = useUserMetabotPermissions();
-  const inlineSQLPrompt = useInlineSQLPrompt(question, "qb");
 
   return (
     <>
@@ -68,10 +75,10 @@ function DatasetNativeQueryEditor({
         isInitiallyOpen
         canAutoOpenDataReference={!isMetabotSidebarOpen}
         hasSqlGenerationAccess={hasSqlGenerationAccess}
-        extensions={inlineSQLPrompt.extensions}
-        proposedQuestion={inlineSQLPrompt.proposedQuestion}
-        onAcceptProposed={inlineSQLPrompt.handleAcceptProposed}
-        onRejectProposed={inlineSQLPrompt.handleRejectProposed}
+        extensions={inlineSQLPrompt?.extensions}
+        proposedQuestion={inlineSQLPrompt?.proposedQuestion}
+        onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
+        onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
       >
         {isActive && (
           <NativeQueryEditor.TopBar>
@@ -81,8 +88,17 @@ function DatasetNativeQueryEditor({
         )}
         {isActive && <NativeQueryEditor.RunButton />}
       </NativeQueryEditor>
-      {inlineSQLPrompt.portalElement}
+      {inlineSQLPrompt?.portalElement}
     </>
+  );
+}
+
+// useInlineSQLPrompt registers a SQL buffer with Metabot on mount, so only SQL models may render this
+function DatasetSqlQueryEditor(props: Omit<DatasetQueryEditorProps, "height">) {
+  const inlineSQLPrompt = useInlineSQLPrompt(props.question, "qb");
+
+  return (
+    <DatasetNativeQueryEditor {...props} inlineSQLPrompt={inlineSQLPrompt} />
   );
 }
 
@@ -94,6 +110,10 @@ function DatasetQueryEditorInner({
   ...props
 }: DatasetQueryEditorProps) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const NativeEditor =
+    getEngineNativeType(question.database()?.engine) === "sql"
+      ? DatasetSqlQueryEditor
+      : DatasetNativeQueryEditor;
 
   const [isResizing, setResizing] = useState(false);
 
@@ -132,7 +152,7 @@ function DatasetQueryEditorInner({
   return (
     <QueryEditorContainer isActive={isActive}>
       {isNative ? (
-        <DatasetNativeQueryEditor
+        <NativeEditor
           {...props}
           question={question}
           isActive={isActive}
