@@ -5,7 +5,7 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -59,7 +59,7 @@
   "Close the database's pool of provisioning-login connections: after its login is deleted or refused, they would
   otherwise stay open as that login until the next use notices the change."
   [database-id]
-  (sql-jdbc.conn/invalidate-pool-for-db-and-type! database-id :workspace-provisioning))
+  (sql-jdbc/invalidate-pool-for-db-and-type! database-id :workspace-provisioning))
 
 (mu/defn save!
   "Store `details` as the provisioning connection of the Database with `database-id`, after a test connection with

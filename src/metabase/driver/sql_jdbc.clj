@@ -113,6 +113,13 @@
   (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id database))
   (memoize/memo-clear! driver-api/secret-value-as-file!))
 
+(mu/defn invalidate-pool-for-db-and-type!
+  "Close the connection pool of `connection-type` for the Database with `db-id`, if there is one, leaving its other
+  pools alone."
+  [db-id           :- pos-int?
+   connection-type :- :keyword]
+  (sql-jdbc.conn/invalidate-pool-for-db-and-type! db-id connection-type))
+
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
