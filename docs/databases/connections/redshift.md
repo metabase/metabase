@@ -66,7 +66,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 > In order for sync and scan to work, make sure this database user account has access to the `information_schema`.
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
