@@ -12,7 +12,6 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
@@ -261,7 +260,7 @@
         transforms     (transforms.db/transforms-in-collections collection-ids)]
     ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
     ;; write, and from the premium feature of their type.
-    (api/check-403 (every? mi/can-write? transforms))
+    (run! api/write-check transforms)
     ;; Drop the tables before the transaction, in the order of the single delete in the frontend (table, then
     ;; transform). A failed drop stops the delete with every Transform row in place, so the user can retry; the tables
     ;; dropped before it stay dropped. `delete-target-table!` needs the Transform row to find its target.
