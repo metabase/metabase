@@ -2,6 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupBookmarksEndpoints,
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCommentEndpoints,
   setupDocumentEndpoints,
   setupDocumentErrorEndpoint,
@@ -15,18 +18,49 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { DocumentContent } from "metabase-types/api";
 import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDataset,
   createMockDocument,
   createMockDocumentContent,
 } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
 
+registerVisualizations();
+
+const CARD = createMockCard({ id: 42, name: "Orders", display: "table" });
+
+const PARAGRAPH_CONTENT: DocumentContent["content"] = [
+  {
+    type: "paragraph",
+    attrs: { _id: "1" },
+    content: [{ type: "text", text: "Original content" }],
+  },
+];
+
+const CARD_EMBED_CONTENT: DocumentContent["content"] = [
+  {
+    type: "resizeNode",
+    attrs: { height: 400, minHeight: 280 },
+    content: [
+      {
+        type: "cardEmbed",
+        attrs: { id: CARD.id, name: null, _id: "2" },
+      },
+    ],
+  },
+];
+
 interface SetupOpts {
   canWrite?: boolean;
+  withCardEmbed?: boolean;
 }
 
-const setup = ({ canWrite = true }: SetupOpts = {}) => {
+const setup = ({ canWrite = true, withCardEmbed = false }: SetupOpts = {}) => {
   setupBookmarksEndpoints([]);
   setupDocumentEndpoints(
     createMockDocument({
@@ -34,16 +68,17 @@ const setup = ({ canWrite = true }: SetupOpts = {}) => {
       id: 1,
       can_write: canWrite,
       document: createMockDocumentContent({
-        content: [
-          {
-            type: "paragraph",
-            attrs: { _id: "1" },
-            content: [{ type: "text", text: "Original content" }],
-          },
-        ],
+        content: withCardEmbed
+          ? [...PARAGRAPH_CONTENT, ...CARD_EMBED_CONTENT]
+          : PARAGRAPH_CONTENT,
       }),
     }),
   );
+  if (withCardEmbed) {
+    setupCardEndpoints(CARD);
+    setupCardQueryMetadataEndpoint(CARD, createMockCardQueryMetadata());
+    setupCardQueryEndpoints(CARD, createMockDataset());
+  }
   setupCommentEndpoints([], { target_type: "document", target_id: 1 });
   setupTimelinesEndpoints([]);
 
@@ -166,6 +201,29 @@ describe("Document Page", () => {
 
     await waitFor(() =>
       expect(store.getState().app.errorPage).toMatchObject({ status: 403 }),
+    );
+  });
+
+  it("only enables 'Download results' in the card menu when the user cannot write the document", async () => {
+    setup({ canWrite: false, withCardEmbed: true });
+
+    const card = await screen.findByTestId("document-card-embed");
+    expect(
+      await within(card).findByTestId("card-embed-title"),
+    ).toHaveTextContent("Orders");
+
+    await userEvent.click(
+      await within(card).findByRole("button", { name: /ellipsis/ }),
+    );
+
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu).getByRole("menuitem", { name: "Download results" }),
+    ).toBeEnabled();
+    [/Edit Query/, /Edit Visualization/, /Replace/, /Remove Chart/].forEach(
+      (name) => {
+        expect(within(menu).getByRole("menuitem", { name })).toBeDisabled();
+      },
     );
   });
 });
