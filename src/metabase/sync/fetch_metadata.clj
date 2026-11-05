@@ -149,4 +149,4 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "index-metadata"
-    (driver/describe-table-indexes (driver.u/database->driver database) database (physical-table database table))))
+    (driver/describe-table-indexes (driver.u/database->driver database) database table)))
