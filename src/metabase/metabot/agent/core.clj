@@ -733,13 +733,22 @@
             (log/warn e "The last call of a turn at its step limit failed")
             (filterv #(= :usage (:type %)) @parts-atom)))))))
 
+(defn- cut-short?
+  "Whether a call's `parts` report that it stopped for a reason other than a normal end, such as its output limit or
+  a content filter. A call whose adapter reports no reason is not cut short."
+  [parts]
+  (some #(and (= :usage (:type %))
+              (some? (:finish-reason %))
+              (not= "stop" (:finish-reason %)))
+        parts))
+
 (defn- text-reply?
-  "Whether `parts`, from the last call of a turn at its step limit, hold a reply: text, and no tool call, error or
-  truncation."
+  "Whether `parts`, from the last call of a turn at its step limit, hold a reply: text from a call that wasn't cut
+  short, and no tool call or error."
   [parts]
   (and (not (str/blank? (collect-text-from-parts parts)))
        (not (has-tool-calls? parts))
-       (not (truncated? parts))
+       (not (cut-short? parts))
        (not (errored? parts))))
 
 (defn- result-after-parts

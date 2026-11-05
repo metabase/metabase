@@ -24,8 +24,11 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.google.stream-generate-content :as gemini]
+   [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.core :as tools.core]
@@ -957,6 +960,72 @@
         (is (= {test-provider {:prompt 900 :completion 70}}
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
+
+(def ^:private partial-reply
+  "The text that the last call streams before it stops."
+  "I couldn't chart revenue by customer segment because")
+
+(defn- claude-stream
+  "A Claude stream of [[partial-reply]] that stops with `stop-reason`, through the Claude adapter."
+  [stop-reason]
+  (eduction (claude/claude->aisdk-chunks-xf)
+            [{:type "message_start" :message {:id "msg-1" :usage {:input_tokens 50 :output_tokens 0}}}
+             {:type "content_block_start" :index 0 :content_block {:type "text" :text ""}}
+             {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text partial-reply}}
+             {:type "content_block_stop" :index 0}
+             {:type "message_delta" :delta {:stop_reason stop-reason} :usage {:output_tokens 8}}
+             {:type "message_stop"}]))
+
+(defn- chat-completions-stream
+  "A Chat Completions stream of [[partial-reply]] that stops with `finish-reason`, through `xf`."
+  [xf finish-reason]
+  (eduction xf
+            [{:id "msg-1" :choices [{:delta {:content partial-reply}}]}
+             {:id      "msg-1"
+              :choices [{:delta {} :finish_reason finish-reason}]
+              :usage   {:prompt_tokens 50 :completion_tokens 8}}]))
+
+(deftest step-limit-reply-stop-reason-test
+  (mt/as-admin
+    (doseq [[label stream reply]
+            [["a Claude refusal" (claude-stream "refusal") step-limit-text]
+             ["a Gemini recitation stop"
+              (eduction (gemini/->aisdk-chunks-xf)
+                        [{:responseId "msg-1"
+                          :candidates [{:content {:role "model" :parts [{:text partial-reply}]}}]}
+                         {:candidates    [{:finishReason "RECITATION"}]
+                          :usageMetadata {:promptTokenCount 50 :candidatesTokenCount 8 :totalTokenCount 58}}])
+              step-limit-text]
+             ["an OpenAI content filter"
+              (eduction (openai/openai->aisdk-chunks-xf)
+                        [{:type "response.output_item.added" :item {:type "message" :id "out-1"}}
+                         {:type "response.content_part.added" :item_id "out-1" :part {:type "output_text" :text ""}}
+                         {:type "response.output_text.delta" :item_id "out-1" :delta partial-reply}
+                         {:type     "response.incomplete"
+                          :response {:id                 "msg-1"
+                                     :incomplete_details {:reason "content_filter"}
+                                     :usage              {:input_tokens 50 :output_tokens 8 :total_tokens 58}}}])
+              step-limit-text]
+             ["a Chat Completions content filter"
+              (chat-completions-stream (chat-completions/chat-completions->aisdk-chunks-xf) "content_filter")
+              step-limit-text]
+             ["a Z.AI sensitive-content stop" (chat-completions-stream (zai/zai->aisdk-chunks-xf) "sensitive")
+              step-limit-text]
+             ["a stop reason the adapter doesn't know"
+              (chat-completions-stream (chat-completions/chat-completions->aisdk-chunks-xf)
+                                       "insufficient_system_resource")
+              step-limit-text]
+             ["a Z.AI network error" (chat-completions-stream (zai/zai->aisdk-chunks-xf) "network_error")
+              step-limit-text]
+             ["a normal Claude stop" (claude-stream "end_turn") partial-reply]]]
+      (testing label
+        (let [{:keys [parts]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                                (step-limit-turn! :document-generate-content (constantly stream)))]
+          (is (= reply (str/join (keep #(when (= :text (:type %)) (:text %)) parts))))
+          (is (= {test-provider {:prompt 250 :completion 48}}
+                 (metabot.persistence/extract-usage parts)))
+          (is (not-any? #(= :error (:type %)) parts))
+          (is (= {:type :finish :finish-reason :max-iterations} (last parts))))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
