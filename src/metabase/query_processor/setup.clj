@@ -16,6 +16,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.workspace-remapping :as qp.workspace-remapping]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    ;; qp.setup is the code that initializes the ambient store for the legacy pipeline
@@ -23,7 +24,8 @@
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as ws])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)
    (org.apache.logging.log4j ThreadContext)))
@@ -158,6 +160,20 @@
         (database-routing/check-allowed-access! (lib.metadata/database (qp.store/metadata-provider)))
         (f (maybe-attach-metadata-provider-to-query query))))))
 
+(mu/defn- do-with-workspace-remapping :- fn?
+  "On a workspace sidecar, bind a metadata provider that reports each remapped table of the query's database at its
+  scratch location; see [[metabase.query-processor.middleware.workspace-remapping]]."
+  [f :- fn?]
+  (fn [query]
+    (if-let [remappings (when-not (= (query-type query) :internal)
+                          (ws/table-remappings (:database query)))]
+      (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+        (qp.store/with-metadata-provider (qp.workspace-remapping/remapped-metadata-provider
+                                          (qp.store/metadata-provider)
+                                          remappings)
+          (f (maybe-attach-metadata-provider-to-query query))))
+      (f query))))
+
 (mu/defn- do-with-driver :- fn?
   [f :- fn?]
   (fn [query]
@@ -268,6 +284,7 @@
   [#'do-with-canceled-chan
    #'do-with-database-local-settings
    #'do-with-driver
+   #'do-with-workspace-remapping
    #'do-with-metadata-provider
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing

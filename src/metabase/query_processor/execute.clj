@@ -8,6 +8,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.middleware.update-used-cards :as update-used-cards]
+   [metabase.query-processor.middleware.workspace-remapping :as qp.workspace-remapping]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
@@ -64,6 +65,7 @@
   ;; to execute INSIDE the `binding` blocks established by the EE postprocessing middlewares below. See
   ;; [[metabase.query-processor.middleware.process-userland-query/capture-execution-context-middleware]] for why.
   [#'qp.process-userland-query/capture-execution-context-middleware
+   #'qp.workspace-remapping/apply-workspace-sql-remapping
    #'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
