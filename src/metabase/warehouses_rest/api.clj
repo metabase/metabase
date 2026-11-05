@@ -1407,9 +1407,8 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map {:closed true}
                                  ;; the workspace provisioning login is never tested or exposed through this API
-                                 [:connection-type {:optional true} [:and
-                                                                     ::driver.conn/connection-type
-                                                                     [:not= :workspace-provisioning]]]]]
+                                 [:connection-type {:optional true}
+                                  (into [:enum] (remove #{:workspace-provisioning}) driver.conn/connection-types)]]]
   (api/check-superuser)
   (let [{:as database :keys [engine]} (api/check-404 (warehouses-rest.db/database id))
         connection-type               (or connection-type :default)
