@@ -65,11 +65,9 @@ Each BigQuery dataset will have a **Project ID**. You can find this ID via the [
 
 The JSON file contains the credentials your Metabase application will need to access BigQuery datasets, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
-Leave this field empty to [connect without a service account key](#connecting-without-a-service-account-key).
-
 ### Credential configuration file
 
-A [Workload Identity Federation](#workload-identity-federation) credential configuration file. Leave this field empty if you upload a service account JSON file.
+A [Workload Identity Federation](#workload-identity-federation) credential configuration file.
 
 ### Datasets
 
@@ -128,7 +126,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Connecting without a service account key
 
-Service account keys are long-lived secrets. If Metabase runs somewhere that can prove its identity to Google Cloud, you can leave the **Service account JSON file** field empty and authenticate in one of two other ways.
+Service account keys are long-lived secrets. If Metabase runs somewhere that can prove its identity to Google Cloud, you can pick one of the alternatives below.
 
 Neither of them tells Metabase which Google Cloud project to use, so fill in the **Data project ID** (the project that owns your datasets) and, if query jobs should run and be billed somewhere else, the **Billing project ID**. If you set neither, Metabase uses the server's default project (the `GOOGLE_CLOUD_PROJECT` environment variable, or the project of the GCE/GKE instance it runs on), and fails to connect if there isn't one.
 
@@ -153,7 +151,7 @@ The file contains no secrets, just the pool, the service account to impersonate,
 
 ### Application Default Credentials
 
-With no service account JSON file and no credential configuration file, Metabase uses the [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) of the server it runs on, the same way the gcloud CLI and Google's client libraries do. That covers:
+Metabase can also use the [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) of the server it runs on, the same way the gcloud CLI and Google's client libraries do. That covers:
 
 - [Workload Identity on GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity), or the attached service account of a Compute Engine instance.
 - A `GOOGLE_APPLICATION_CREDENTIALS` environment variable pointing at a service account key or credential configuration file on the server.

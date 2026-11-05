@@ -106,23 +106,39 @@
 (defn- credential-urls
   "The URLs the credentials in `details` make Metabase connect to while authenticating."
   [{:keys [service-account-json credential-config-json] :as details}]
-  (case (bigquery.common/credentials-source details)
+  (case (:auth-mode details)
     ;; `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the key, so where the signed assertion gets
     ;; POSTed is a destination chosen by whoever supplied the credentials rather than a fixed Google endpoint.
-    :service-account     [(or (perf/not-empty (get (json/decode service-account-json) "token_uri"))
-                              default-token-uri)]
+    ("service-account" nil) [(or (perf/not-empty (get (json/decode service-account-json)
+                                                      "token_uri"))
+                                 default-token-uri)]
     ;; A credential configuration file is URLs all the way down: the token exchange endpoint, the service account
     ;; impersonation endpoint, and often the place the subject token is fetched from (e.g. a cloud metadata server).
     ;; Every one of them was chosen by whoever supplied the file, so report them all rather than a known subset.
-    :credential-config   (json-urls (json/decode credential-config-json))
+    "credential-config" (json-urls (json/decode credential-config-json))
     ;; Application Default Credentials come from the Metabase server's own environment, not from `details`.
-    :application-default []))
+    "application-default" []))
 
 (defmethod driver/connection-hosts :bigquery-cloud-sdk
   [_driver {:keys [host] :as details}]
   (into (driver/hosts-from-details {:api-host (if (str/blank? host) default-api-host host)} [:api-host])
         (keep u.http/->hostname)
         (credential-urls details)))
+
+(defn- maybe-scope-creds [{:keys [auth-mode credential-config-json] :as details}]
+  ;; A service account key needs scopes. Credentials the environment hands out, like the GCE/GKE metadata
+  ;; server's, can come with scopes of their own, and then the library asks us not to add any.
+  ;; If the WIF config sets scopes of its own, trust the admin's choice; skip .createScoped.
+  (let [^GoogleCredentials base-creds (bigquery.common/database-details->credentials details)
+        config-scopes (if (= "credential-config" auth-mode)
+                        (:scope (json/decode credential-config-json))
+                        [])]
+    (when-not (= bigquery-scopes (filter (set bigquery-scopes) config-scopes))
+      (log/warn "BigQuery credential config does not contain needed scopes"
+                {:scopes config-scopes}))
+    (if (or (perf/empty? config-scopes) (.createScopedRequired base-creds))
+      (.createScoped base-creds bigquery-scopes)
+      base-creds)))
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
@@ -142,11 +158,7 @@
                           nil  ;; delegates (not needed)
                           (java.util.ArrayList. bigquery-scopes)
                           3600))  ;; 1 hour token lifetime
-                       (if (.createScopedRequired base-creds)
-                         (.createScoped base-creds bigquery-scopes)
-                         base-creds))
-        ;; Jobs are created and billed in this project; queried tables can live elsewhere.
-        ^String billing-project-id (bigquery.common/get-billing-project-id details)
+                       (maybe-scope-creds details))
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -155,15 +167,13 @@
         universe-domain (or (:universe-domain details)
                             (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
                             (System/getProperty "google.cloud.universe_domain"))
-        read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
-                              (.setReadTimeout read-timeout-ms)
+                              (.setReadTimeout driver.settings/*query-timeout-ms*)
                               (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
                        (.setCredentials final-creds)
                        (.setHeaderProvider header-provider)
-                       (.setTransportOptions transport-options)
-                       (.setProjectId billing-project-id))]
+                       (.setTransportOptions transport-options))]
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
     ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
@@ -178,7 +188,10 @@
         (.setProjectId bq-bldr ^String pid)))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
-    (.. bq-bldr build getService)))
+    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
+      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
+      (.setProjectId bq-bldr billing-project-id))
+    (-> bq-bldr .build .getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |

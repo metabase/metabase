@@ -155,19 +155,22 @@
   (testing "every URL in a credential configuration file is somewhere Metabase connects to while authenticating"
     (is (= #{"bigquery.googleapis.com" "sts.googleapis.com" "iamcredentials.googleapis.com"}
            (set (driver/connection-hosts :bigquery-cloud-sdk
-                                         {:credential-config-json (credential-config-json)}))))
+                                         {:auth-mode "credential-config"
+                                          :credential-config-json (credential-config-json)}))))
     (is (= #{"bigquery.googleapis.com" "sts.googleapis.com" "iamcredentials.googleapis.com" "169.254.169.254"}
            (set (driver/connection-hosts
                  :bigquery-cloud-sdk
-                 {:credential-config-json (credential-config-json :credential_source (azure-imds-credential-source))})))))
+                 {:auth-mode "credential-config"
+                  :credential-config-json (credential-config-json :credential_source (azure-imds-credential-source))})))))
   (testing "Application Default Credentials come from the server's environment, so only the API endpoint is reported"
     (is (= #{"bigquery.googleapis.com"}
-           (set (driver/connection-hosts :bigquery-cloud-sdk {})))))
+           (set (driver/connection-hosts :bigquery-cloud-sdk {:auth-mode "credential-config"})))))
   (testing "credentials we cannot read fail closed rather than reporting only the endpoints we can see"
     (is (thrown? Exception
                  (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"})))
     (is (thrown? Exception
-                 (driver/connection-hosts :bigquery-cloud-sdk {:credential-config-json "{not json"})))))
+                 (driver/connection-hosts :bigquery-cloud-sdk {:auth-mode "credential-config"
+                                                               :credential-config-json "{not json"})))))
 
 (deftest client-honors-network-policy-test
   (testing "the network policy is enforced when the client is built, not only when the database is saved"

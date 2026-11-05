@@ -18,15 +18,26 @@ driver:
       helper-text: Google Cloud project that owns the datasets you want to query. Defaults to the service account key's project, or to the Metabase server's default Google Cloud project with other credentials.
       required: false
       placeholder: my-warehouse-project
+    - name: auth-mode
+      display-name: Authentication method
+      type: select
+      default: service-account
+      required: true
+      options:
+        - {name: "Service Account JSON", value: "service-account"}
+        - {name: "Credential configuration file", value: "credential-config"}
+        - {name: "Application Default Credentials", value: "application-default"}
     - name: service-account-json
       display-name: Service account JSON file
-      helper-text: The key file of the service account Metabase uses to read and query your datasets. Leave empty to authenticate with a credential configuration file or with the Application Default Credentials of the Metabase server.
-      required: false
+      helper-text: The key file of the service account Metabase uses to read and query your datasets.
+      visible-if:
+        auth-mode: service-account
       type: textFile
     - name: credential-config-json
       display-name: Credential configuration file
-      helper-text: Workload Identity Federation configuration from `gcloud iam workload-identity-pools create-cred-config`, to authenticate without a service account key (for example from AKS or EKS). Leave empty when using a service account JSON file.
-      required: false
+      helper-text: Workload Identity Federation configuration from `gcloud iam workload-identity-pools create-cred-config`.
+      visible-if:
+        auth-mode: credential-config
       type: textFile
     - name: dataset-filters
       type: schema-filters
