@@ -20,6 +20,7 @@
 
 (def ^:private login-a {:user "mb_wsm_test_a" :password "LoginAPassw0rd"})
 (def ^:private login-b {:user "mb_wsm_test_b" :password "LoginBPassw0rd"})
+(def ^:private login-weak {:user "mb_wsm_test_weak" :password "LoginWeakPassw0rd"})
 
 (defn- superuser-details [] (mt/dbdef->connection-details :postgres :db {:database-name db-name}))
 
@@ -29,7 +30,8 @@
 
 (defn- do-with-warehouse!
   "Calls `(f spec db-id)` with `db-id` a Database whose own login is the superuser and `spec` the superuser's spec,
-  with two other logins, [[login-a]] and [[login-b]], in its warehouse."
+  with two logins that can provision workspaces, [[login-a]] and [[login-b]], and one that cannot, [[login-weak]], in
+  its warehouse."
   [f]
   (mt/test-driver :postgres
     (tx/drop-if-exists-and-create-db! :postgres db-name)
@@ -38,7 +40,12 @@
         (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" user]))
           (exec! spec (format "DROP OWNED BY %s" user) (format "DROP ROLE %s" user))))
       (doseq [{:keys [user password]} [login-a login-b]]
-        (exec! spec (format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" user password)))
+        (exec! spec
+               (format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" user password)
+               (format "GRANT CREATE ON DATABASE %s TO %s" db-name user)))
+      (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" (:user login-weak)]))
+        (exec! spec (format "DROP OWNED BY %s" (:user login-weak)) (format "DROP ROLE %s" (:user login-weak))))
+      (exec! spec (format "CREATE ROLE %s LOGIN PASSWORD '%s'" (:user login-weak) (:password login-weak)))
       (mt/with-premium-features #{:workspaces}
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details (superuser-details)}]
           (f spec db-id))))))
@@ -76,13 +83,23 @@
 
 (deftest put-get-delete-test
   (do-with-warehouse!
-   (fn [_spec db-id]
+   (fn [spec db-id]
      (testing "nothing configured"
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "a login that cannot connect is a 400 and stores nothing"
        (is (=? {:message string?, :error-code "connection_failed"}
                (mt/user-http-request :crowberto :put 400 (url db-id) {:details (assoc login-a :password "wrong")})))
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
+     (testing "a login without CREATEROLE and CREATE on the database is a 412 naming both, and stores nothing"
+       (let [message (mt/user-http-request :crowberto :put 412 (url db-id) {:details login-weak})]
+         (is (str/includes? message (format "ALTER ROLE \"%s\" CREATEROLE" (:user login-weak))))
+         (is (str/includes? message (format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\"" db-name (:user login-weak)))))
+       (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
+     (testing "with CREATEROLE alone, the 412 names only CREATE on the database"
+       (exec! spec (format "ALTER ROLE %s CREATEROLE" (:user login-weak)))
+       (let [message (mt/user-http-request :crowberto :put 412 (url db-id) {:details login-weak})]
+         (is (not (str/includes? message "ALTER ROLE")))
+         (is (str/includes? message "GRANT CREATE ON DATABASE"))))
      (testing "details that are not a map are a 400"
        (mt/user-http-request :crowberto :put 400 (url db-id) {:details "nope"}))
      (testing "a working login is saved; GET shows its user and never its password"

@@ -4,11 +4,14 @@
   leave the server."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.warehouses.core :as warehouses]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,9 +55,10 @@
 
 (mu/defn save!
   "Store `details` as the provisioning connection of the Database with `database-id`, after a test connection with
-  them merged over the database's own details. Throws a 404 for an unknown Database, a 400 when the connection fails,
-  and a 409 listing the workspaces on the database when they exist and `details`, merged over the database's own,
-  differ from the stored connection in anything but the password; a new password for the same login is accepted."
+  them merged over the database's own details and the driver's privilege check. Throws a 404 for an unknown Database,
+  a 400 when the connection fails, a 412 naming the privileges the login lacks, and a 409 listing the workspaces on
+  the database when they exist and `details`, merged over the database's own, differ from the stored connection in
+  anything but the password; a new password for the same login is accepted."
   [database-id :- ::lib.schema.id/database
    details     :- ms/DatabaseDetails
    user-id     :- [:maybe ms/PositiveInt]]
@@ -72,7 +76,11 @@
                                                           :log-exception false)]
       (throw (ex-info (or (:message error) (tru "Unable to connect to the database."))
                       (assoc error :status-code 400, :error-code "connection_failed"))))
-    (ws.db/save-provisioning-connection! database-id details user-id)
+    (t2/with-transaction [_conn]
+      (ws.db/save-provisioning-connection! database-id details user-id)
+      ;; the check logs in through the :workspace-provisioning scope, which reads the login from the app DB on this
+      ;; thread, so inside this transaction it sees the new row; a 412 rolls the row back
+      (driver/check-workspace-provisioning! (keyword (:engine database)) (driver.u/lib-database database-id)))
     nil))
 
 (mu/defn delete!
@@ -83,3 +91,4 @@
   (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before its provisioning connection."))
   (ws.db/delete-provisioning-connection! database-id)
   nil)
+
