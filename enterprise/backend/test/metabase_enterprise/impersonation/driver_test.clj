@@ -29,6 +29,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secrets]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -160,12 +161,15 @@
                            mt/native-query
                            mt/process-query
                            mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"permission denied"
-                                      (-> {:query "SELECT * FROM \"table_without_access\";"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows)))))))))))
+                ;; the user gets a generic message; the database's denial is in the error log line
+                (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"An error occurred while running the query"
+                                        (-> {:query "SELECT * FROM \"table_without_access\";"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows)))
+                  (is (some #(re-find #"permission denied" (:message %)) (messages))))))))))))
 
 (defmulti impersonation-default-user
   "The database user that will be for the impersonation connection"
@@ -1192,10 +1196,10 @@
           (let [run-query (fn [sql]
                             (try
                               (qp/process-query (lib/native-query (mt/metadata-provider) sql))
+                              ;; a row-restricted user gets the refusal's message and type, without the cause
                               (catch ExceptionInfo e
-                                {:message         (ex-message e)
-                                 :refusal-message (ex-message (ex-cause e))
-                                 :refusal-data    (ex-data (ex-cause e))})))]
+                                {:message (ex-message e)
+                                 :data    (ex-data e)})))]
             (doseq [[result sql] [[:unparseable "SELECT ("]
                                   [:invalid "SELECT 1; SELECT 2"]
                                   [:unvalidatable (str "SELECT 1 WHERE 1 IN (" (str/join ", " (range 3000)) ")")]]]
@@ -1204,7 +1208,11 @@
                       uncached (mt/with-dynamic-fn-redefs [query-cache/validated-query (fn [_engine _allow-write? _admin? _native validate]
                                                                                          (validate))]
                                  (run-query sql))]
-                  (is (= result (get-in uncached [:refusal-data :impersonation/result])))
+                  (is (= {:message (ex-message (driver.sql/impersonated-query-refusal result sql false nil))
+                          :data    {:type                qp.error-type/invalid-query
+                                    :status-code         400
+                                    :query/error-logged? true}}
+                         uncached))
                   (is (= uncached (run-query sql)))
                   (is (t2/exists? :model/ImpersonationQueryCache :input_query sql))
                   (is (= uncached (run-query sql))))))))))))
@@ -1292,7 +1300,8 @@
                           (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table))))))))))))))
 
 (deftest impersonated-action-write-permission-denied-test
-  (testing "An impersonated custom action whose role lacks write grants surfaces the DB permission error and leaves the row unchanged"
+  (testing (str "An impersonated custom action whose role lacks write grants fails on the DB permission error and "
+                "leaves the row unchanged")
     (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -1323,11 +1332,16 @@
                                                                       :parameters    []}]
                               (actions.execution/execute-action! (action/select-action :id action-id) {})))]
                       (testing "write is denied for a role with only SELECT"
-                        (is (thrown-with-msg?
-                             java.lang.Exception
-                             #"(?i)permission denied|denied to user|not authorized"
-                             (execute-action-with-sql
-                              (format "UPDATE %s SET name = 'hacked' WHERE id = 1" venues-table)))))
+                        ;; the user gets a generic message; the database's denial is in the error log line
+                        (mt/with-log-messages-for-level [messages
+                                                         [metabase.query-processor.middleware.catch-exceptions :error]]
+                          (is (thrown-with-msg?
+                               java.lang.Exception
+                               #"An error occurred while running the query"
+                               (execute-action-with-sql
+                                (format "UPDATE %s SET name = 'hacked' WHERE id = 1" venues-table))))
+                          (is (some #(re-find #"(?i)permission denied|denied to user|not authorized" (:message %))
+                                    (messages)))))
                       (testing "the row is unchanged"
                         (is (= original-name (read-name)))))))))))))))
 
@@ -1358,6 +1372,38 @@
                        (-> (lib/native-query (mt/metadata-provider) "SHOW TIMEZONE")
                            (qp/process-query)
                            (mt/rows)))))))))))))
+
+(deftest impersonated-user-sees-query-validation-errors-test
+  (testing "An impersonated non-admin sees why their native query was refused, not a generic message"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a       (u/lower-case-en (mt/random-name))
+              run-native   (fn [sql]
+                             (-> (lib/native-query (mt/metadata-provider) sql)
+                                 (qp/process-query)
+                                 (mt/rows)))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (with-impersonation-db!
+              (impersonation.util-test/with-impersonations!
+                {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                 :attributes     {"impersonation_attr" role-a}}
+                (testing "a query that does not parse"
+                  (is (thrown-with-msg?
+                       java.lang.Exception
+                       #"Unable to parse native query"
+                       (run-native "with cte as (\n  select 1 as col\n), \nselect * from cte"))))
+                (testing "a query the validator cannot check"
+                  (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt
+                                              (constantly {:verdict :unknown, :reason "large-literal-list"})]
+                    (is (thrown-with-msg?
+                         java.lang.Exception
+                         #"Unable to validate this native query on an impersonated database"
+                         (run-native "SELECT 1")))))))))))))
 
 (deftest ^:parallel impersonated-query-parse-error-message-test
   (testing "When a native query fails to parse, the validator reports a parse error -- not a misleading 'must be a single select' message (#73593)"

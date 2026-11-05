@@ -2,20 +2,28 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format.
 
   The response carries only the client-facing part of each exception's ex-data (see [[metabase.util.api-error]]). The
-  error log line carries just the message, plus the ex-data keys listed under `:log/keys`, as log context:
+  error log line carries just the message, plus the ex-data keys listed under `:log/keys`, as log context (see
+  [[metabase.util.log-error]]):
 
     (throw (ex-info (tru \"Field is not available\")
                     {:status-code 400, :field-id id, :field-name field-name, :log/keys #{:field-id :field-name}}))
 
   responds without either key and logs `field-id` and `field-name` alongside the message. Don't list the query or
-  values from it."
+  values from it. The log line also gets the ids in [[query-log-context]].
+
+  A user whose row access is restricted on the query's database (by a sandbox, connection impersonation or database
+  routing) gets a generic message in place of each error message that could carry the compiled query, the sandbox
+  definition or column metadata such as fingerprints. See [[restricted-response-maps]]."
   (:refer-clojure :exclude [some get-in not-empty select-keys])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -25,8 +33,9 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.api-error :as api-error]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.log-error :as log-error]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some get-in not-empty select-keys]])
@@ -113,11 +122,74 @@
             {:error (first (str/split (get m :error "") #"\n\tat " 2))}))
         maps))
 
-(mu/defn exception-response :- [:map [:status :keyword]]
-  "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
-  [^Throwable e :- (lib.schema.common/instance-of-class Throwable)]
-  (let [[m & more :as maps] (for [e (exception-chain e)]
-                              (format-exception e))]
+;;; ------------------------------------------- Row-restricted users -------------------------------------------
+
+(defn- generic-error-message []
+  (tru "An error occurred while running the query."))
+
+(defn- row-restriction
+  "What restricts the current user's row access to database `database-id`: `:sandbox`, `:impersonation` or `:routing`,
+  or nil when nothing does. Such a user must not see the compiled query (which holds the sandbox) or column metadata
+  such as fingerprints (computed over every row). Fails closed: `:unknown` when the check itself throws."
+  [database-id]
+  (when (and api/*current-user-id*
+             (not api/*is-superuser?*))
+    (try
+      (cond
+        (perms/sandboxed-user-for-db? database-id)          :sandbox
+        (perms/impersonation-enforced-for-db? database-id)  :impersonation
+        (some? (perms/routing-token-for-db database-id))    :routing)
+      (catch Throwable _
+        :unknown))))
+
+(defn- sql-visible?
+  "Whether the current user may see the compiled native query of `query`: the same check as for the `:native` key."
+  [query]
+  (try
+    (boolean (qp.perms/current-user-has-adhoc-native-query-perms? query))
+    (catch Throwable _
+      false)))
+
+(defn- written-for-user?
+  "Whether formatted exception `m` has a message written for the user, which a row-restricted user may see: one of an
+  error type shown in embeds, a permission error, or one thrown with a 4xx `:status-code`."
+  [{error-type :error_type, {:keys [status-code]} :ex-data}]
+  (or (qp.error-type/show-in-embeds? error-type)
+      (qp.error-type/permission-error? error-type)
+      (and (int? status-code) (<= 400 status-code 499))))
+
+(defn- restricted-response-maps
+  "`maps`, the formatted exception chain, for a row-restricted user. Each message is replaced with a generic one, and
+  its ex-data reduced to `:status-code`, unless it is one of:
+
+  - a message [[written-for-user?]] that does not repeat a replaced message, or
+  - a database message (from a `SQLException`) when `sql-visible?`. The user could write that SQL themselves, so a
+    message quoting it shows them nothing new."
+  [maps sql-visible?]
+  (let [keep?   (fn [m]
+                  (or (written-for-user? m)
+                      (and sql-visible? (isa? (:class m) SQLException))))
+        hidden  (into []
+                      (comp (remove keep?) (keep :error) (remove str/blank?))
+                      maps)
+        repeats-hidden? (fn [{message :error}]
+                          (and (string? message)
+                               (some #(str/includes? message %) hidden)))]
+    (for [m maps]
+      (if (and (keep? m) (not (repeats-hidden? m)))
+        m
+        (-> m
+            (assoc :error (generic-error-message))
+            (dissoc :error_is_curated)
+            (u/assoc-dissoc :ex-data (not-empty (select-keys (:ex-data m) [:status-code]))))))))
+
+(defn- exception-response*
+  "The response map for `e`. For a `restricted?` user, the messages in it are restricted
+  by [[restricted-response-maps]]."
+  [^Throwable e {:keys [restricted? sql?]}]
+  (let [[m & more :as maps] (cond-> (for [e (exception-chain e)]
+                                      (format-exception e))
+                              restricted? (restricted-response-maps sql?))]
     (merge
      m
      (best-top-level-error maps)
@@ -127,8 +199,13 @@
      (when (seq more)
        {:via (vec more)}))))
 
+(mu/defn exception-response :- [:map [:status :keyword]]
+  "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
+  [^Throwable e :- (lib.schema.common/instance-of-class Throwable)]
+  (exception-response* e nil))
+
 (defn- query-info
-  "Map of about `query` to add to the exception response."
+  "Map of info about `query` to add to the exception response. `extra-info` holds only what the user may see."
   [{query-type :type, :as query} {:keys [preprocessed native]}]
   (merge
    {:json_query (dissoc query :info :driver)}
@@ -136,11 +213,11 @@
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
      {:preprocessed preprocessed
-      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
-                      native)})))
+      :native       native})))
 
 (mr/def ::query-execution-info
-  "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
+  "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be
+  saved, plus the query and start time."
   [:merge
    ::queries.schema/query-execution.update
    [:map {:closed true}
@@ -156,66 +233,139 @@
    [:native       {:optional true} [:maybe :metabase.query-processor.compile/compiled]]
    [:preprocessed {:optional true} [:maybe :metabase.lib.schema/query]]])
 
+(def ^:private Visibility
+  "What the current user may see of a failed query's internals; see [[error-visibility]]."
+  [:map {:closed true}
+   [:restricted?   :boolean]
+   [:sql?          :boolean]
+   [:preprocessed? {:optional true} :boolean]])
+
 (mu/defn- format-exception* :- [:map [:status :keyword]]
-  "Format a `Throwable` into the usual userland error-response format."
+  "Format a `Throwable` into the usual userland error-response format. For a `:restricted?` user, the messages are
+  restricted by [[restricted-response-maps]]."
   [query        :- ::qp.schema/any-query
    ^Throwable e :- (lib.schema.common/instance-of-class Throwable)
-   extra-info   :- [:maybe ExtraInfo]]
+   extra-info   :- [:maybe ExtraInfo]
+   visibility   :- Visibility]
   (try
     ;; [[metabase.query-processor.middleware.process-userland-query/process-userland-query-middleware]] wraps exceptions
     ;; to add query execution info, unwrap them and format the wrapped one
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
-             (format-exception* query (ex-cause e) extra-info))
+             (format-exception* query (ex-cause e) extra-info visibility))
       (merge
        {:data {:rows [], :cols []}, :row_count 0}
-       (exception-response e)
+       (exception-response* e visibility)
        (query-info query extra-info)))
     (catch Throwable e
-      (assoc (Throwable->map e) :status :failed))))
+      (if (:restricted? visibility)
+        {:status :failed, :error (generic-error-message)}
+        (assoc (api-error/throwable->map e) :status :failed)))))
 
-(defn- log-context
-  "The ex-data entries each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner
-  exception's entries win over an outer one's. Empty when a `:log/keys` is malformed, so that it can't mask `e`."
-  [e]
-  (try
-    (into {}
-          (map (fn [ex]
-                 (let [data (ex-data ex)]
-                   (select-keys data (:log/keys data)))))
-          (u/full-exception-chain e))
-    (catch Throwable _
-      {})))
+(defn- error-visibility
+  "What the current user, whose row access `restriction` restricts (see [[row-restriction]]), may see of a failed
+  `query`'s internals:
+
+  - `:restricted?`   whether messages are restricted, see [[restricted-response-maps]]
+  - `:sql?`          the compiled native query
+  - `:preprocessed?` the preprocessed query, which holds the compiled sandbox and column metadata"
+  [query restriction]
+  (let [restricted? (some? restriction)
+        sql?        (sql-visible? query)]
+    {:restricted?   restricted?
+     :sql?          sql?
+     :preprocessed? (and sql? (not restricted?))}))
+
+(defn- restricted-exception
+  "`e` as thrown to a row-restricted user by a non-userland query. When [[restricted-response-maps]] replaces any
+  message in its chain, an exception with the innermost message left, the `:type` and `:status-code` of the innermost
+  exception that has them, and no cause. It is marked `:query/error-logged?`, since [[catch-exceptions]] logs the
+  original, so that a caller does not log it a second time. Interrupts and cancelations are rethrown as they are,
+  since callers look for them in the chain."
+  ^Throwable [^Throwable e]
+  (let [chain      (reverse (u/full-exception-chain e))
+        maps       (for [ex chain]
+                     (format-exception ex))
+        restricted (restricted-response-maps maps false)]
+    (if (or (some #(instance? InterruptedException %) chain)
+            (some (comp :query/query-canceled? ex-data) chain)
+            (= (map :error maps) (map :error restricted)))
+      e
+      (ex-info (:error (first restricted))
+               (merge (some #(not-empty (select-keys (ex-data %) [:type])) chain)
+                      (some #(not-empty (select-keys (ex-data %) [:status-code])) chain)
+                      {:query/error-logged? true})))))
+
+(defn user-visible-message
+  "The message of `e`, thrown by a query against database `database-id`, that the current user may see. A
+  row-restricted user gets the generic message in place of one not written for them; see [[restricted-exception]].
+  For code that shows a query's exception to the user outside of a query response, such as Metabot's tools."
+  [^Throwable e database-id]
+  (ex-message (cond-> e
+                (row-restriction database-id) restricted-exception)))
+
+(defn- query-log-context
+  "Ids for the error log line that tie `query` to the user's report: the user, Database, Card, Dashboard and run
+  context, and the `restriction` on the user's row access, if any (their response then has a generic message in place
+  of the one logged). Ids only: never the query, its SQL, or values from it."
+  [{database-id :database, :keys [info]} restriction]
+  (m/assoc-some {}
+                :user-id             api/*current-user-id*
+                :database-id         database-id
+                :card-id             (:card-id info)
+                :dashboard-id        (:dashboard-id info)
+                :context             (:context info)
+                :response-restricted restriction))
 
 (mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
-  exceptions to the `result-chan`."
+  exceptions to the `result-chan`.
+
+  A non-userland query's exceptions are rethrown, with their messages hidden from a row-restricted user
+  (see [[restricted-exception]])."
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
     (if-not (get-in query [:middleware :userland-query?])
-      (qp query rff)
-      (let [extra-info (delay
-                         {:native       (u/ignore-exceptions
-                                          (qp.compile/compile query))
-                          :preprocessed (u/ignore-exceptions
-                                          (qp.preprocess/preprocess query))})]
-        (try
-          (qp query rff)
-          (catch Throwable e
-            (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
-            ;; format the Exception and return it
-            (let [formatted-exception (format-exception* query e @extra-info)
-                  query-canceled?     (some (comp :query/query-canceled? ex-data)
-                                            (u/full-exception-chain e))
-                  pool-saturated?     (qp.error-type/connection-pool-saturated?
-                                       (:error_type formatted-exception))]
-              (when-not (or query-canceled? pool-saturated?)
-                (log/with-thread-context (log-context e)
-                  (log/errorf "Error processing query: %s"
-                              (or (:error formatted-exception) "Error running query"))))
-              ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
-              (let [result (update formatted-exception
-                                   :error (fnil identity (trs "Error running query")))]
-                (assert (:status result))
-                (qp.pipeline/*result* result)))))))))
+      (try
+        (qp query rff)
+        (catch Throwable e
+          (let [restriction (row-restriction (:database query))
+                e'          (cond-> e
+                              restriction restricted-exception)]
+            (when-not (identical? e e')
+              (log/with-thread-context (merge (query-log-context query restriction) (log-error/log-data e))
+                (log/errorf "Error processing query: %s" (ex-message e))))
+            (throw e'))))
+      (try
+        (qp query rff)
+        (catch Throwable e
+          (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
+          ;; format the Exception and return it
+          (let [restriction         (row-restriction (:database query))
+                {:keys [restricted? sql? preprocessed?]
+                 :as visibility}    (error-visibility query restriction)
+                extra-info          {:native       (when sql?
+                                                     (u/ignore-exceptions
+                                                       (qp.compile/compile query)))
+                                     :preprocessed (when preprocessed?
+                                                     (u/ignore-exceptions
+                                                       (qp.preprocess/preprocess query)))}
+                formatted-exception (format-exception* query e extra-info visibility)
+                query-canceled?     (some (comp :query/query-canceled? ex-data)
+                                          (u/full-exception-chain e))
+                pool-saturated?     (qp.error-type/connection-pool-saturated?
+                                     (:error_type formatted-exception))]
+            (when-not (or query-canceled? pool-saturated?)
+              (log/with-thread-context (merge (query-log-context query restriction) (log-error/log-data e))
+                ;; the unrestricted message, which a row-restricted user's response leaves out
+                (log/errorf "Error processing query: %s"
+                            (or (:error (if restricted?
+                                          (exception-response e)
+                                          formatted-exception))
+                                "Error running query"))))
+            ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
+            (let [result (update formatted-exception
+                                 :error (fnil identity (trs "Error running query")))]
+              (assert (:status result))
+              (qp.pipeline/*result* result))))))))

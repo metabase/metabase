@@ -402,7 +402,9 @@
                   qp.reducible/default-rff)]
       {:values (-> result :data :rows)})
     (catch Throwable e
-      (log/errorf "Error fetching field values: %s" (ex-message e))
+      ;; the query processor logged the original message already
+      (when-not (some (comp :query/error-logged? ex-data) (u/full-exception-chain e))
+        (log/errorf "Error fetching field values: %s" (ex-message e)))
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
