@@ -542,7 +542,7 @@ function SignalAlert({
       >
         <Stack gap="sm">
           <Text>
-            {t`Most of its values match ${propertyLabel}'s in other casing, and they're on different ${noun.plural}. Merging treats them as one ${propertyLabel} property in checks and the suggested transform. You can undo it.`}
+            {t`Most of its values match ${propertyLabel}'s in other casing, and they're on different ${noun.plural}. Merging treats them as one ${propertyLabel} property in checks. You can undo it.`}
           </Text>
           <Group gap="sm">
             <Button

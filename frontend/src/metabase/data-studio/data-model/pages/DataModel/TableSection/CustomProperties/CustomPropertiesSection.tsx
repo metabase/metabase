@@ -40,7 +40,6 @@ import {
 import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
 import { RecognitionPreview } from "./RecognitionPreview";
-import { SuggestTransformInput } from "./SuggestTransformInput";
 import { useCustomPropertyChecks } from "./use-custom-property-checks";
 
 type CustomPropertiesSectionProps = {
@@ -131,16 +130,6 @@ export function CustomPropertiesSection({
           }
         />
         <ChecksRow table={table} />
-        <DetailsRow
-          label={t`Transform`}
-          value={
-            <SuggestTransformInput
-              table={table}
-              resolved={resolved}
-              disabled={disabled}
-            />
-          }
-        />
       </DetailsTable>
     </SidebarSection>
   );
