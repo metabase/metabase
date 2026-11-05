@@ -1171,6 +1171,7 @@ function ValueInput({
         text={text}
         placeholder={getValuePlaceholder(operator, values)}
         isMultiSelect={isMultiSelect}
+        hasTabHint={!widget.isTiles}
         emptyMessage={t`Press Enter to use “${text}”`}
         onTextChange={onTextChange}
         onOptionSubmit={handleOptionSubmit}

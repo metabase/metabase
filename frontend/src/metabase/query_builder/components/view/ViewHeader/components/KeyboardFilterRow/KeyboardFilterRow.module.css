@@ -311,6 +311,39 @@
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
+.optionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+
+  & > :first-child {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Prototype: the "Tab" key shows on the option that Tab picks: the highlighted
+   option, or the first option when no option is highlighted. */
+.tabHint {
+  display: none;
+  flex-shrink: 0;
+  padding: 0 0.25rem;
+  border: none;
+  border-radius: 2px;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-secondary);
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.optionRow[data-combobox-selected] .tabHint,
+.options:not(:has([data-combobox-selected]))
+  .optionRow[data-tab-target]
+  .tabHint {
+  display: inline-block;
+}
+
 .selectedOption,
 .selectedOption[data-combobox-selected] {
   background-color: var(--mb-color-background_surface-brand-strong);
