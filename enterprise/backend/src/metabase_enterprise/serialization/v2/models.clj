@@ -176,6 +176,7 @@
    "StoredResult"
    "StoredResultUse"
    "SupportAccessGrantLog"
+   "TableRemapping"
    "TaskHistory"
    "TaskRun"
    "Tenant"

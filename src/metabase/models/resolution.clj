@@ -78,6 +78,7 @@
     :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
     :model/Measure                           metabase.measures.models.measure
     :model/TableIndex                        metabase.indexes.models.table-index
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
