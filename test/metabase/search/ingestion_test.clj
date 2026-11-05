@@ -15,9 +15,14 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
+
+;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
+;; database.
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
