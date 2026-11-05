@@ -273,6 +273,7 @@ import telescope_component from "./telescope.svg?component";
 import test_tube_component from "./test_tube.svg?component";
 import text_bold_component from "./text_bold.svg?component";
 import text_italic_component from "./text_italic.svg?component";
+import text_quote_component from "./text_quote.svg?component";
 import text_strike_component from "./text_strike.svg?component";
 import thumbs_down_component from "./thumbs_down.svg?component";
 import thumbs_up_component from "./thumbs_up.svg?component";
@@ -577,6 +578,7 @@ export const Icons: Record<IconName, React.FC> = {
   telescope: telescope_component,
   text_bold: text_bold_component,
   text_italic: text_italic_component,
+  text_quote: text_quote_component,
   text_strike: text_strike_component,
   thumbs_down: thumbs_down_component,
   thumbs_up: thumbs_up_component,

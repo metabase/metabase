@@ -11,7 +11,14 @@ import {
 } from "metabase-lib/test-helpers";
 
 import { ExpressionBar } from "./ExpressionBar";
-import { toFilterClause } from "./tokens";
+import {
+  CLOSE_PAREN,
+  OPEN_PAREN,
+  filterToken,
+  opToken,
+  toFilterClause,
+  writeTokens,
+} from "./tokens";
 
 describe("ExpressionBar", () => {
   it.each([
@@ -49,6 +56,151 @@ describe("ExpressionBar", () => {
       expect(screen.queryAllByText("then")).toHaveLength(separators);
     },
   );
+
+  describe("row layout", () => {
+    /** total > 1 or (total > 2 and (total > 3 or total > 4)) */
+    const getNestedQuery = () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+      const column = columnFinder(query, Lib.filterableColumns(query, 0))(
+        "ORDERS",
+        "TOTAL",
+      );
+      const pill = (value: number) =>
+        filterToken(
+          toFilterClause(
+            query,
+            0,
+            Lib.numberFilterClause({ operator: ">", column, values: [value] }),
+          ),
+        );
+      return writeTokens(query, 0, [
+        pill(1),
+        opToken("or"),
+        OPEN_PAREN,
+        pill(2),
+        opToken("and"),
+        OPEN_PAREN,
+        pill(3),
+        opToken("or"),
+        pill(4),
+        CLOSE_PAREN,
+        CLOSE_PAREN,
+      ]);
+    };
+    const setup = ({
+      query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    }: { query?: Lib.Query } = {}) => {
+      fetchMock.get("path:/api/prototype/field-categories", []);
+      fetchMock.get("path:/api/prototype/filter-usage", []);
+      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
+      renderWithProviders(
+        <ExpressionBar
+          query={query}
+          stageIndex={0}
+          isAutoApply
+          onChange={jest.fn()}
+          openKey={0}
+        />,
+      );
+    };
+    const typeText = (text: string) =>
+      userEvent.type(screen.getByRole("textbox"), text);
+    const getBar = () => screen.getByTestId("filter-expression-bar");
+    const getToggle = () =>
+      screen.getByRole("button", { name: "Show on multiple rows" });
+    const queryToggle = () =>
+      screen.queryByRole("button", { name: "Show on multiple rows" });
+
+    it("offers the toggle only for nested parentheses, and stays on one line until it is on", async () => {
+      setup();
+      expect(queryToggle()).not.toBeInTheDocument();
+
+      await typeText("(");
+      expect(queryToggle()).not.toBeInTheDocument();
+
+      await typeText("(");
+      expect(getToggle()).toHaveAttribute("aria-pressed", "false");
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+    });
+
+    it("switches between rows and one line with the toggle", async () => {
+      setup();
+      await typeText("((");
+
+      await userEvent.click(getToggle());
+      expect(getToggle()).toHaveAttribute("aria-pressed", "true");
+      expect(getBar()).toHaveAttribute("data-layout", "rows");
+
+      await userEvent.click(getToggle());
+      expect(getToggle()).toHaveAttribute("aria-pressed", "false");
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+    });
+
+    it("keeps the layout when the bar loses the focus, whichever it is", async () => {
+      setup({ query: getNestedQuery() });
+      expect(getToggle()).toHaveAttribute("aria-pressed", "false");
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+
+      await userEvent.click(getToggle());
+      await userEvent.click(document.body);
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(getBar()).toHaveAttribute("data-layout", "rows");
+      expect(getToggle()).toHaveAttribute("aria-pressed", "true");
+
+      await userEvent.click(getToggle());
+      await userEvent.click(document.body);
+
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+      expect(getToggle()).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("goes back to one line and hides the toggle when the parentheses no longer nest", async () => {
+      setup();
+      await typeText("((");
+      await userEvent.click(getToggle());
+
+      await typeText("{Backspace}");
+
+      expect(queryToggle()).not.toBeInTheDocument();
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+
+      await typeText("(");
+      expect(getToggle()).toHaveAttribute("aria-pressed", "false");
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+    });
+
+    it("turns the rows on with Shift+Enter, without picking the highlighted option", async () => {
+      setup();
+      await typeText("((total");
+
+      await typeText("{Shift>}{Enter}{/Shift}");
+
+      expect(getBar()).toHaveAttribute("data-layout", "rows");
+      expect(getToggle()).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("textbox")).toHaveValue("total");
+      expect(screen.queryByPlaceholderText("Operator")).not.toBeInTheDocument();
+
+      await typeText("{Shift>}{Enter}{/Shift}");
+      expect(getBar()).toHaveAttribute("data-layout", "rows");
+    });
+
+    it("ignores Shift+Enter without nested parentheses, but a plain Enter still picks the option", async () => {
+      setup();
+      await typeText("total");
+
+      await typeText("{Shift>}{Enter}{/Shift}");
+
+      expect(queryToggle()).not.toBeInTheDocument();
+      expect(getBar()).toHaveAttribute("data-layout", "line");
+      expect(screen.queryByPlaceholderText("Operator")).not.toBeInTheDocument();
+
+      await typeText("{Enter}");
+      expect(
+        await screen.findByPlaceholderText("Operator"),
+      ).toBeInTheDocument();
+    });
+  });
 
   describe("typing a space", () => {
     const setup = () => {

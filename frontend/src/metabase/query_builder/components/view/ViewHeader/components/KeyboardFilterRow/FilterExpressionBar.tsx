@@ -35,6 +35,11 @@ export function FilterExpressionBar({
     setDraftQuery(undefined);
     setStageErrors({});
   }
+  // One toggle, in the rows bar, lays out the parentheses of every stage.
+  const [isRowLayoutOn, setIsRowLayoutOn] = useState(false);
+  const [stagesWithGroups, setStagesWithGroups] = useState<
+    Record<number, boolean>
+  >({});
   const summaryQuery = draftQuery ?? query;
   // Keep intermediate stages too: more than one summary can have filters.
   const filteredStages = Lib.stageIndexes(summaryQuery).filter(
@@ -67,6 +72,14 @@ export function FilterExpressionBar({
               : { ...errors, [stageIndex]: error },
           )
         }
+        onHasGroupsChange={(hasGroups) =>
+          setStagesWithGroups((stages) =>
+            Boolean(stages[stageIndex]) === hasGroups
+              ? stages
+              : { ...stages, [stageIndex]: hasGroups },
+          )
+        }
+        isRowLayoutOn={isRowLayoutOn}
         isAutoApply={isAutoApply}
         isNested
         trailing={trailing}
@@ -89,6 +102,11 @@ export function FilterExpressionBar({
         .map((stageIndex) => stageErrors[stageIndex])
         .find((error) => error != null)}
       trailing={trailing}
+      isRowLayoutOn={isRowLayoutOn}
+      onRowLayoutChange={setIsRowLayoutOn}
+      trailingHasGroups={filteredStages.some(
+        (stageIndex) => stagesWithGroups[stageIndex],
+      )}
       onClear={handleClear}
     />
   );

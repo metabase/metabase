@@ -44,7 +44,7 @@ export function FilterHeaderButton({
         label: ViewTitleHeaderS.ActionButtonLabel,
         section: ViewTitleHeaderS.ActionButtonSection,
       }}
-      leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
+      leftSection={<Icon name="filter" />}
       rightSection={
         hasFilters && (
           <Badge

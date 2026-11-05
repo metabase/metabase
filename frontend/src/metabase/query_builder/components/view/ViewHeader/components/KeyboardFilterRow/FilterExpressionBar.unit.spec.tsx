@@ -8,9 +8,74 @@ import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { FilterExpressionBar } from "./FilterExpressionBar";
-import { toFilterClause } from "./tokens";
+import {
+  CLOSE_PAREN,
+  OPEN_PAREN,
+  filterToken,
+  opToken,
+  toFilterClause,
+  writeTokens,
+} from "./tokens";
 
 describe("FilterExpressionBar", () => {
+  it("lays out nested parentheses of a summary bar with the toggle in the rows bar", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const count = checkNotNull(
+      Lib.availableAggregationOperators(query, 0).find(
+        (operator) => Lib.displayInfo(query, 0, operator).shortName === "count",
+      ),
+    );
+    const aggregatedQuery = Lib.appendStage(
+      Lib.aggregate(query, 0, Lib.aggregationClause(count)),
+    );
+    const column = Lib.filterableColumns(aggregatedQuery, 1)[0];
+    const pill = (value: number) =>
+      filterToken(
+        toFilterClause(
+          aggregatedQuery,
+          1,
+          Lib.numberFilterClause({ operator: ">", column, values: [value] }),
+        ),
+      );
+    const nestedQuery = writeTokens(aggregatedQuery, 1, [
+      pill(1),
+      opToken("or"),
+      OPEN_PAREN,
+      pill(2),
+      opToken("and"),
+      OPEN_PAREN,
+      pill(3),
+      opToken("or"),
+      pill(4),
+      CLOSE_PAREN,
+      CLOSE_PAREN,
+    ]);
+
+    renderWithProviders(
+      <FilterExpressionBar
+        query={nestedQuery}
+        isAutoApply
+        openKey={null}
+        onFold={jest.fn()}
+        onChange={jest.fn()}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", {
+      name: "Show on multiple rows",
+    });
+    const [rowsBar, summaryBar] = screen.getAllByTestId(
+      "filter-expression-bar",
+    );
+    expect(summaryBar).toHaveAttribute("data-layout", "line");
+
+    await userEvent.click(toggle);
+
+    expect(summaryBar).toHaveAttribute("data-layout", "rows");
+    // The rows bar has no nested parentheses of its own to lay out.
+    expect(rowsBar).toHaveAttribute("data-layout", "line");
+  });
+
   it.each([
     { hasSourceFilters: false, isAutoApply: true },
     { hasSourceFilters: true, isAutoApply: true },

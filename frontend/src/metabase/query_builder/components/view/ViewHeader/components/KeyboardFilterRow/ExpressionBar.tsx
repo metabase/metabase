@@ -1,3 +1,4 @@
+import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type CSSProperties,
@@ -13,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLatest } from "react-use";
+import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -119,11 +120,21 @@ export type ExpressionBarProps = {
    * shows a Clear button at its right end while it has anything to clear.
    */
   onClear?: () => void;
+  /**
+   * Whether nested parentheses lay out as indented rows. The bar keeps this
+   * itself unless a parent shares it with the bars in the trailing slot.
+   */
+  isRowLayoutOn?: boolean;
+  onRowLayoutChange?: (isOn: boolean) => void;
+  /** A nested bar reports its nested parentheses to the bar around it, which has the toggle. */
+  onHasGroupsChange?: (hasGroups: boolean) => void;
+  /** The trailing bars have nested parentheses, so this bar offers the toggle for them. */
+  trailingHasGroups?: boolean;
 };
 
 export type ExpressionBarVariant = "header" | "notebook";
 
-/** How deep the parentheses must nest before editing lays them out as rows. */
+/** How deep the parentheses must nest before the bar offers to lay them out as rows. */
 const ROWS_FROM_NESTING = 2;
 const INDENT_REM = 1.5;
 const FLASH_MS = 1600;
@@ -262,11 +273,67 @@ function useConnectors({
 }
 
 /**
+ * The bar stays on one line until the toggle or Shift+Enter asks for rows. The
+ * choice outlives the focus, and ends when the parentheses stop nesting. The
+ * button shows for nested parentheses, and while the rows are on without them.
+ */
+function useRowLayout({
+  hasGroups,
+  trailingHasGroups = false,
+  isRowLayoutOn,
+  onRowLayoutChange,
+  onHasGroupsChange,
+}: {
+  hasGroups: boolean;
+  trailingHasGroups?: boolean;
+  isRowLayoutOn?: boolean;
+  onRowLayoutChange?: (isOn: boolean) => void;
+  onHasGroupsChange?: (hasGroups: boolean) => void;
+}) {
+  const isNesting = hasGroups || trailingHasGroups;
+  const wasNesting = usePrevious(isNesting);
+  const [isOn, setIsOn] = useUncontrolled({
+    value: isRowLayoutOn,
+    defaultValue: false,
+    onChange: onRowLayoutChange,
+  });
+  useEffect(() => {
+    onHasGroupsChange?.(hasGroups);
+  }, [hasGroups, onHasGroupsChange]);
+  // Only when the nesting ends, as rows without nesting are a valid choice. A
+  // nested bar has no `onRowLayoutChange`, so only the bar with the toggle
+  // turns the rows off.
+  useEffect(() => {
+    if (isOn && wasNesting && !isNesting) {
+      setIsOn(false);
+    }
+  }, [isOn, wasNesting, isNesting, setIsOn]);
+
+  // In the capture phase, so that no input or popover in the bar, also those
+  // in a portal or the summary's bar, takes it as a plain Enter.
+  const handleKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" && event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsOn(!isOn);
+    }
+  };
+
+  return {
+    isAvailable: isNesting || isOn,
+    isOn,
+    layout: isOn ? ("rows" as const) : ("line" as const),
+    toggle: () => setIsOn(!isOn),
+    handleKeyDownCapture,
+  };
+}
+
+/**
  * Prototype: the stage's filters as one expression. You type in the bar
  * itself; the popover under the caret is the pill's column list with a
  * "Logic" option (or, parentheses) on top. ANDs are implicit: pills side by
- * side. Parentheses lay out as indented rows while you edit and fold back
- * into one line on blur.
+ * side. Nested parentheses can lay out as indented rows, with the toggle or
+ * Shift+Enter, and go back to one line when they are no longer nested.
  */
 export function ExpressionBar({
   query: queryProp,
@@ -285,6 +352,10 @@ export function ExpressionBar({
   variant = "header",
   placeholder: placeholderProp,
   onClear,
+  isRowLayoutOn: isRowLayoutOnProp,
+  onRowLayoutChange,
+  onHasGroupsChange,
+  trailingHasGroups,
 }: ExpressionBarProps) {
   const query = useStableQuery(queryProp, stageIndex);
   const committedTokens = useMemo(
@@ -425,7 +496,14 @@ export function ExpressionBar({
     ),
   );
   const hasGroups = nesting >= ROWS_FROM_NESTING;
-  useLayoutAnimation(barRef, isExpanded && hasGroups ? "rows" : "line");
+  const rowLayout = useRowLayout({
+    hasGroups,
+    trailingHasGroups,
+    isRowLayoutOn: isRowLayoutOnProp,
+    onRowLayoutChange,
+    onHasGroupsChange,
+  });
+  useLayoutAnimation(barRef, rowLayout.layout);
   const { areAndsVisible, onTypeAnd } = useConnectors({
     tokens,
     isExpanded,
@@ -435,7 +513,7 @@ export function ExpressionBar({
   const isHiddenAnd = (token: Token | undefined) =>
     !areAndsVisible && isOpToken(token, "and");
   const rowStart = (index: number) => {
-    if (!isExpanded || !hasGroups) {
+    if (rowLayout.layout !== "rows") {
       return [];
     }
     if (isParenToken(tokens[index], "open")) {
@@ -1352,11 +1430,36 @@ export function ExpressionBar({
   );
 
   return (
-    <Box className={cx(S.barRoot, { [S.barNestedRoot]: isNested })}>
+    <Box
+      className={cx(S.barRoot, { [S.barNestedRoot]: isNested })}
+      onKeyDownCapture={rowLayout.handleKeyDownCapture}
+      onMouseDown={(event) => {
+        startDragSelection(event);
+        isPointerInBarRef.current = true;
+        window.addEventListener(
+          "mouseup",
+          () => (isPointerInBarRef.current = false),
+          { once: true },
+        );
+        // Keep focus in the bar, so it doesn't fold mid-click and move the click target.
+        if (!(event.target instanceof HTMLInputElement)) {
+          event.preventDefault();
+        }
+      }}
+      onFocus={() => setHasFocus(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          fold();
+          if (isNested) {
+            close();
+          }
+        }
+      }}
+    >
       <Box
         ref={barRef}
         className={cx(S.bar, {
-          [S.barExpanded]: isExpanded && hasGroups,
+          [S.barRows]: rowLayout.layout === "rows",
           [S.barNested]: isNested,
         })}
         onClick={handleBarClick}
@@ -1367,31 +1470,10 @@ export function ExpressionBar({
             event.stopPropagation();
           }
         }}
-        onMouseDown={(event) => {
-          startDragSelection(event);
-          isPointerInBarRef.current = true;
-          window.addEventListener(
-            "mouseup",
-            () => (isPointerInBarRef.current = false),
-            { once: true },
-          );
-          // Keep focus in the bar, so it doesn't fold mid-click and move the click target.
-          if (!(event.target instanceof HTMLInputElement)) {
-            event.preventDefault();
-          }
-        }}
-        onFocus={() => setHasFocus(true)}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            fold();
-            if (isNested) {
-              close();
-            }
-          }
-        }}
         data-testid="filter-expression-bar"
         data-empty={tokens.length === 0 && !trailing ? true : undefined}
         data-variant={variant}
+        data-layout={rowLayout.layout}
         {...{ [BAR_ATTR]: true }}
       >
         {/* One keyed array holds the caret so React moves it instead of remounting it. */}
@@ -1555,34 +1637,75 @@ export function ExpressionBar({
           hasFocus={hasFocus}
           placeholder={placeholder}
         />
-        {!isNested && (
-          <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
-            <ClearButton
-              tokenCount={tokens.length}
-              hasTrailingFilters={canExitRight}
-              onReset={resetForClear}
-              onClear={onClear}
-            />
-            {shownError != null && (
-              <Text size="sm" c="feedback-negative" lh="1">
-                {shownError}
-              </Text>
-            )}
-            {canApply && !isAutoApply && (
-              <Button size="compact-sm" variant="filled" onClick={commit}>
-                {t`Apply`}
-              </Button>
-            )}
-          </Group>
-        )}
       </Box>
+      {/* Beside the tokens rather than among them: rows never move these. */}
+      {!isNested && (
+        <Group
+          className={S.barActions}
+          gap="xs"
+          pl="md"
+          wrap="nowrap"
+          data-variant={variant}
+        >
+          <RowLayoutButton
+            isAvailable={rowLayout.isAvailable}
+            isOn={rowLayout.isOn}
+            onToggle={rowLayout.toggle}
+          />
+          <ClearButton
+            tokenCount={tokens.length}
+            hasTrailingFilters={canExitRight}
+            onReset={resetForClear}
+            onClear={onClear}
+          />
+          {shownError != null && (
+            <Text size="sm" c="feedback-negative" lh="1">
+              {shownError}
+            </Text>
+          )}
+          {canApply && !isAutoApply && (
+            <Button size="compact-sm" variant="filled" onClick={commit}>
+              {t`Apply`}
+            </Button>
+          )}
+        </Group>
+      )}
     </Box>
   );
 }
 
+/** Next to the Clear button and styled like it, and filled when on. */
+function RowLayoutButton({
+  isAvailable,
+  isOn,
+  onToggle,
+}: {
+  isAvailable: boolean;
+  isOn: boolean;
+  onToggle: () => void;
+}) {
+  if (!isAvailable) {
+    return null;
+  }
+  return (
+    <Tooltip label={t`Show on multiple rows`}>
+      <ActionIcon
+        className={cx({ [S.barActionButton]: !isOn })}
+        variant={isOn ? "filled" : "subtle"}
+        size="md"
+        aria-label={t`Show on multiple rows`}
+        aria-pressed={isOn}
+        onClick={onToggle}
+      >
+        <Icon name="text_quote" />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
 /**
- * Prototype: the Clear button from Figma, a small round grey button with a
- * cross. It shows while the bar has anything to clear: pills or connectors,
+ * Prototype: the Clear button, a cross with no background until hovered.
+ * It shows while the bar has anything to clear: pills or connectors,
  * or the summary's filters after "then".
  */
 function ClearButton({
@@ -1608,10 +1731,9 @@ function ClearButton({
   return (
     <Tooltip label={t`Clear filters`}>
       <ActionIcon
-        className={S.clearButton}
+        className={S.barActionButton}
         variant="subtle"
-        size="sm"
-        radius="xl"
+        size="md"
         aria-label={t`Clear filters`}
         onClick={handleClick}
       >

@@ -269,6 +269,7 @@ export type IconName =
   | "telescope"
   | "text_bold"
   | "text_italic"
+  | "text_quote"
   | "text_strike"
   | "thumbs_down"
   | "thumbs_up"
