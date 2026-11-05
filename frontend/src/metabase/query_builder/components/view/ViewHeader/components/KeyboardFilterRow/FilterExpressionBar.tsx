@@ -46,6 +46,13 @@ export function FilterExpressionBar({
   const handleChange = (nextQuery: Lib.Query) =>
     onChange(Lib.dropEmptyStages(nextQuery));
 
+  // Prototype: the Clear button removes the filters of every stage at once.
+  const handleClear = () => {
+    setDraftQuery(undefined);
+    setStageErrors({});
+    handleChange(removeAllFilters(query));
+  };
+
   const trailing = filteredStages.reduceRight<ReactNode>(
     (trailing, stageIndex) => (
       <ExpressionBar
@@ -82,6 +89,18 @@ export function FilterExpressionBar({
         .map((stageIndex) => stageErrors[stageIndex])
         .find((error) => error != null)}
       trailing={trailing}
+      onClear={handleClear}
     />
+  );
+}
+
+function removeAllFilters(query: Lib.Query) {
+  return Lib.stageIndexes(query).reduce(
+    (query, stageIndex) =>
+      Lib.filters(query, stageIndex).reduce(
+        (query, filter) => Lib.removeClause(query, stageIndex, filter),
+        query,
+      ),
+    query,
   );
 }

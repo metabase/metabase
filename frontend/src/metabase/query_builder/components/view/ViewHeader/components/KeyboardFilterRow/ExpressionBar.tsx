@@ -19,7 +19,15 @@ import { noop } from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { TYPING_PAUSE_MS } from "metabase/querying/filters/components/FilterPicker/FilterAutoApplyContext";
-import { Box, Button, Group, Icon, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { areQueriesEqual } from "../../../FilterAutoApply/utils";
@@ -104,6 +112,11 @@ export type ExpressionBarProps = {
   variant?: ExpressionBarVariant;
   /** The text of the empty bar and of the idle caret at its end. */
   placeholder?: string;
+  /**
+   * Removes every filter, also the summary's after "then". With it, the bar
+   * shows a Clear button at its right end while it has anything to clear.
+   */
+  onClear?: () => void;
 };
 
 export type ExpressionBarVariant = "header" | "notebook";
@@ -269,6 +282,7 @@ export function ExpressionBar({
   hasSummaries = true,
   variant = "header",
   placeholder: placeholderProp,
+  onClear,
 }: ExpressionBarProps) {
   const query = useStableQuery(queryProp, stageIndex);
   const committedTokens = useMemo(
@@ -975,6 +989,17 @@ export function ExpressionBar({
     onChange,
   ]);
 
+  // Prototype: Clear empties the bar and opens a new pill at its start, as in
+  // an empty bar. The parent removes the filters of every stage in one
+  // change, so the auto-commit above skips the empty tokens: writing them
+  // too would race the parent's change.
+  const resetForClear = () => {
+    const emptyTokens: Token[] = [];
+    lastAutoCommitRef.current = emptyTokens;
+    setTokens(emptyTokens);
+    moveCaret(0);
+  };
+
   const commit = () => {
     // An expression that does not parse blocks the apply and shows why.
     if (error != null) {
@@ -1492,6 +1517,12 @@ export function ExpressionBar({
         />
         {!isNested && (
           <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
+            <ClearButton
+              tokenCount={tokens.length}
+              hasTrailingFilters={canExitRight}
+              onReset={resetForClear}
+              onClear={onClear}
+            />
             {shownError != null && (
               <Text size="sm" c="feedback-negative" lh="1">
                 {shownError}
@@ -1506,6 +1537,47 @@ export function ExpressionBar({
         )}
       </Box>
     </Box>
+  );
+}
+
+/**
+ * Prototype: the Clear button from Figma, a small round grey button with a
+ * cross. It shows while the bar has anything to clear: pills or connectors,
+ * or the summary's filters after "then".
+ */
+function ClearButton({
+  tokenCount,
+  hasTrailingFilters,
+  onReset,
+  onClear,
+}: {
+  tokenCount: number;
+  hasTrailingFilters: boolean;
+  /** Empties the bar and opens a new pill. */
+  onReset: () => void;
+  /** Removes the filters from the query. */
+  onClear: (() => void) | undefined;
+}) {
+  if (onClear == null || (tokenCount === 0 && !hasTrailingFilters)) {
+    return null;
+  }
+  const handleClick = () => {
+    onReset();
+    onClear();
+  };
+  return (
+    <Tooltip label={t`Clear filters`}>
+      <ActionIcon
+        className={S.clearButton}
+        variant="subtle"
+        size="sm"
+        radius="xl"
+        aria-label={t`Clear filters`}
+        onClick={handleClick}
+      >
+        <Icon name="close" />
+      </ActionIcon>
+    </Tooltip>
   );
 }
 

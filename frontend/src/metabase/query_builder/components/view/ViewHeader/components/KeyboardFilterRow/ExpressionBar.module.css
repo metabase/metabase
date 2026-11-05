@@ -425,3 +425,16 @@
     opacity: 0.8;
   }
 }
+
+/* Prototype: the Clear button at the right end of the bar, from Figma: a 24px
+   round grey button with a 12px cross (ActionIcon size "sm"). The classes are
+   repeated to win over the colors of the ActionIcon theme. */
+.clearButton.clearButton {
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+}
+
+.clearButton.clearButton.clearButton:hover:not([data-loading]) {
+  background-color: var(--mb-color-background_surface-secondary-hover);
+  color: var(--mb-color-text-primary);
+}
