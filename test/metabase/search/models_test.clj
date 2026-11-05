@@ -11,6 +11,7 @@
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -300,3 +301,38 @@
                                       (mdb/streaming-reducible-query ["SELECT no_such_column FROM report_card"]))]
           (is (= 1 (t2/delete! :model/Card :id card-id))))
         (is (false? (t2/exists? :model/Card :id card-id)))))))
+
+(deftest capture-fields-failure-keeps-the-delete-test
+  (testing "a search error while working out what to capture is logged, and the delete still succeeds uncaptured"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Capture Fields Failure Card"}]
+        (mt/with-dynamic-fn-redefs [search.spec/hook-where-fields (fn [_model] (throw (ex-info "spec bug" {})))]
+          (is (= 1 (t2/delete! :model/Card :id id))))
+        (is (false? (t2/exists? :model/Card :id id)))))))
+
+(deftest one-search-model-failure-keeps-the-others-test
+  (testing "an enumeration failure for one search-model leaves the others enumerated"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Partial Enumeration Model", :type :model}
+                     :model/Action {_ :id}       {:name "Still Enumerated Action", :model_id card-id, :type :query}]
+        (let [doc-ids search.ingestion/doc-ids]
+          (mt/with-dynamic-fn-redefs [search.ingestion/doc-ids (fn [search-model where-clause]
+                                                                 (if (= "indexed-entity" search-model)
+                                                                   (throw (ex-info "enumeration failed" {}))
+                                                                   (doc-ids search-model where-clause)))]
+            (is (contains? (cascading-documents-of card-id) "action")))))))
+  (testing "a reconcile failure for one search-model leaves the others reconciled"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id}   {:name "Partial Reconcile Model", :type :model}
+                     :model/Action {action-id :id} {:name "Purged Action", :model_id card-id, :type :query}]
+        (let [cascading        (array-map "indexed-entity" #{"0:0"}
+                                          "action"         (get (cascading-documents-of card-id) "action"))
+              existing-doc-ids search.ingestion/existing-doc-ids]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from :action, :where [:= :id action-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (if (= "indexed-entity" search-model)
+                                                                            (throw (ex-info "reconcile failed" {}))
+                                                                            (existing-doc-ids search-model ids)))]
+            (search/reconcile-cascading-documents! cascading))
+          (is (= 0 (indexed-count "action" action-id))))))))
