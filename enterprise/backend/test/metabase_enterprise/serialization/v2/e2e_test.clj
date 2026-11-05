@@ -497,6 +497,11 @@
                                    dash-eid  :entity_id}    {:name          "Linked Dashboard"
                                                              :collection_id coll-id
                                                              :description   "Linked Dashboard desc"}
+             :model/Document      {document-id   :id
+                                   document-name :name
+                                   document-eid  :entity_id} {:name         "Linked document"
+                                                              :document     {:type "doc" :content []}
+                                                              :content_type "application/json+vnd.prose-mirror"}
              :model/Dashboard     {dashboard-id   :id
                                    dashboard-name :name}    {:name          "Test Dashboard"
                                                              :collection_id coll-id}
@@ -517,7 +522,10 @@
                                                              :visualization_settings (link-card-viz-setting "card" card-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
                                                              :row                    5
-                                                             :visualization_settings (link-card-viz-setting "dataset" model-id)}]
+                                                             :visualization_settings (link-card-viz-setting "dataset" model-id)}
+             :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    6
+                                                             :visualization_settings (link-card-viz-setting "document" document-id)}]
             (testing "extract and store"
               (let [extraction          (serdes/with-cache (into [] (extract/extract {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
@@ -526,10 +534,12 @@
                         {:model "table"      :id ["Linked database" "Public" "Linked table"]}
                         {:model "dashboard"  :id dash-eid}
                         {:model "card"       :id card-eid}
-                        {:model "dataset"    :id model-eid}]
+                        {:model "dataset"    :id model-eid}
+                        {:model "document"   :id document-eid}]
                        (dashboard->link-cards extracted-dashboard)))
                 (is (= #{[{:id dash-eid          :model "Dashboard"}]
                          [{:id coll-eid          :model "Collection"}]
+                         [{:id document-eid      :model "Document"}]
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]}
                        (set (serdes/deserialization-dependencies extracted-dashboard))))
@@ -545,7 +555,8 @@
                          [table-name 'Table]
                          [card-name  'Card]
                          [model-name 'Card]
-                         [dash-name  'Dashboard]]]
+                         [dash-name  'Dashboard]
+                         [document-name 'Document]]]
                   (testing (format "model %s from link cards are loaded properly" model)
                     (is (some? (t2/select model :name name)))))
                 (testing "linkcards are loaded with correct fk"
@@ -554,13 +565,15 @@
                         new-card-id  (t2/select-one-pk :model/Card :name card-name)
                         new-model-id (t2/select-one-pk :model/Card :name model-name)
                         new-dash-id  (t2/select-one-pk :model/Dashboard :name dash-name)
-                        new-coll-id  (t2/select-one-pk :model/Collection :name coll-name)]
+                        new-coll-id  (t2/select-one-pk :model/Collection :name coll-name)
+                        new-doc-id   (t2/select-one-pk :model/Document :name document-name)]
                     (is (= [{:id new-coll-id  :model "collection"}
                             {:id new-db-id    :model "database"}
                             {:id new-table-id :model "table"}
                             {:id new-dash-id  :model "dashboard"}
                             {:id new-card-id  :model "card"}
-                            {:id new-model-id :model "dataset"}]
+                            {:id new-model-id :model "dataset"}
+                            {:id new-doc-id   :model "document"}]
                            (-> (t2/select-one :model/Dashboard :name dashboard-name)
                                (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
