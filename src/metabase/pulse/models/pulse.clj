@@ -313,7 +313,7 @@
 (mu/defn- cards* :- [:sequential HybridPulseCard]
   "The active Cards of the Pulses with `pulse-ids`. Archived Cards are left out."
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids false))
+  (pulse.db/pulse-cards-for-pulses pulse-ids))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
