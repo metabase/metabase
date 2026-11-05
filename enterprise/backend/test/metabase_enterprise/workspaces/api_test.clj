@@ -98,9 +98,14 @@
                                         {:name "w", :databases {db-name {:schemas schemas}}})))))
       (testing "a database whose engine workspaces don't support yet"
         (mt/with-temp [:model/Database {h2-name :name} {:name (mt/random-name), :engine :h2}]
-          (is (re-find #"support only Postgres-family"
+          (is (re-find #"support only Postgres databases"
                        (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
                                              (workspace-instance h2-name))))))
+      (testing "a Redshift database, which derives from Postgres but folds names differently"
+        (mt/with-temp [:model/Database {rs-name :name} {:name (mt/random-name), :engine :redshift}]
+          (is (re-find #"is a redshift database; workspaces support only Postgres databases"
+                       (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                             (workspace-instance rs-name))))))
       (testing "an empty map"
         (is (=? {:errors some?}
                 (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
