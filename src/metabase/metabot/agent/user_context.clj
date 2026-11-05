@@ -176,16 +176,18 @@
 
 (defmethod format-entity "model"
   [entity]
-  (fetch-and-format entity
-                    "The user is currently looking at the rows of a model:"
-                    #(do (resources-tools/check-card-resource-database (:id entity))
-                         (entity-details/get-table-details {:entity-type :model
-                                                            :entity-id (:id entity)
-                                                            :with-field-values? false
-                                                            :with-metrics? false
-                                                            :with-measures? true
-                                                            :with-segments? true}))
-                    llm-shape/model->xml))
+  ;; A model the user cannot read is omitted, together with its query ID.
+  (some-> (fetch-and-format entity
+                            "The user is currently looking at the rows of a model:"
+                            #(do (resources-tools/check-card-resource-database (:id entity))
+                                 (entity-details/get-table-details {:entity-type :model
+                                                                    :entity-id (:id entity)
+                                                                    :with-field-values? false
+                                                                    :with-metrics? false
+                                                                    :with-measures? true
+                                                                    :with-segments? true}))
+                            llm-shape/model->xml)
+          (te/lines (te/field "Query ID" (:query_id entity)))))
 
 (defn- format-chart-config-ids
   "Format chart config IDs for a viewing context item.
