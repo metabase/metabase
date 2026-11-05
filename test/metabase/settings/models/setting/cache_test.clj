@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.system.core :as system]
@@ -157,10 +158,25 @@
            (system/site-locale)))))
 
 (deftest per-app-db-cache-test
-  (testing "a bound app DB value gets its own settings cache, and the root's is still there after"
-    (let [root-cache (#'setting.cache/cache*)]
-      (is (= {:bound-has-own-cache? true
-              :root-cache-kept?     true}
-             {:bound-has-own-cache? (mdb/with-application-db (assoc (mdb/app-db) :id Integer/MAX_VALUE)
-                                      (not (identical? root-cache (#'setting.cache/cache*))))
-              :root-cache-kept?     (identical? root-cache (#'setting.cache/cache*))})))))
+  (testing "each bound app DB value gets its own settings cache, even one with the root's id, and the root's is kept"
+    (let [root-cache (#'setting.cache/cache*)
+          own-cache? (fn [app-db]
+                       (mdb/with-application-db app-db
+                         (not (identical? root-cache (#'setting.cache/cache*)))))]
+      (is (= {:other-id-has-own-cache? true
+              :same-id-has-own-cache?  true
+              :root-cache-kept?        true}
+             {:other-id-has-own-cache? (own-cache? (assoc (mdb/app-db) :id Integer/MAX_VALUE))
+              :same-id-has-own-cache?  (own-cache? (assoc (mdb/app-db) ::copy true))
+              :root-cache-kept?        (identical? root-cache (#'setting.cache/cache*))})))))
+
+(deftest ^:synchronized app-db-id-bump-flushes-cache-test
+  (testing "bumping the root app DB's id gives a thread with no bindings a fresh settings cache"
+    (mdb.test-util/with-application-db-as-root (mdb/app-db)
+      (let [before  (#'setting.cache/cache*)
+            _       (mdb/increment-app-db-unique-indentifier!)
+            seen    (promise)
+            unbound (Thread. ^Runnable (fn [] (deliver seen (#'setting.cache/cache*))))]
+        (.start unbound)
+        (.join unbound)
+        (is (not (identical? before @seen)))))))
