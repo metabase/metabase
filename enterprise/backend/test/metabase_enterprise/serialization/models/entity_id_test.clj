@@ -136,6 +136,8 @@
     :model/SsoRelayState
     :model/SupportAccessGrantLog
     :model/TableIndex
+    ;; a workspace sidecar's own state: which scratch table backs a main table
+    :model/TableRemapping
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant
