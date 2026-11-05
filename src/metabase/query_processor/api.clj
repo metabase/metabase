@@ -19,6 +19,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -268,6 +269,23 @@
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff))))
+
+(api.macros/defendpoint :post "/portable" :- ::lib.schema/external-query
+  "Convert a query to its portable form, where database, table, field, and card ids are replaced with names and entity
+  ids."
+  [_route-params
+   _query-params
+   {:keys [query]} :- [:map {:closed true}
+                       [:query ::lib-be.schema/maybe-legacy-query]]]
+  (serdes/export-mbql-strict query))
+
+(api.macros/defendpoint :post "/resolve" :- ::lib.schema/query
+  "Resolve the names and entity ids of a query in its portable form to database, table, field, and card ids."
+  [_route-params
+   _query-params
+   {:keys [query]} :- [:map {:closed true}
+                       [:query ::lib.schema/external-query]]]
+  (serdes/import-mbql-strict query))
 
 (defn- parameter-field-values
   [field-ids query]
