@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { updateIn } from "icepick";
-
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
 import {
   convertSavedQuestionToVirtualTable,
@@ -64,14 +62,17 @@ export function tablesReducer(
         virtualTable.schema !== virtualSchemaId ||
         virtualTable.schema_name !== virtualSchemaName
       ) {
-        state = updateIn(state, [virtualTableId], (table) => ({
-          ...table,
-          display_name: card.name,
-          moderated_status: card.moderated_status,
-          description: card.description,
-          schema: virtualSchemaId,
-          schema_name: virtualSchemaName,
-        }));
+        state = {
+          ...state,
+          [virtualTableId]: {
+            ...virtualTable,
+            display_name: card.name,
+            moderated_status: card.moderated_status,
+            description: card.description,
+            schema: virtualSchemaId,
+            schema_name: virtualSchemaName,
+          },
+        };
       }
 
       return state;

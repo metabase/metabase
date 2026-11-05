@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { getIn } from "icepick";
 import { t } from "ttag";
 
 import { color } from "metabase/ui/colors";
@@ -135,10 +134,9 @@ export function seriesSetting({
     color: {
       getDefault: (single, _settings, extra) => {
         // get the color for series key, computed in the setting
-        return getIn(extra?.settings, [
-          SERIES_COLORS_SETTING_KEY,
-          keyForSingleSeries(single),
-        ]);
+        return extra?.settings?.[SERIES_COLORS_SETTING_KEY]?.[
+          keyForSingleSeries(single)
+        ];
       },
     },
     "line.interpolate": {

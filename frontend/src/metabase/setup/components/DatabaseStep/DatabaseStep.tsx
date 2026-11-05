@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { updateIn } from "icepick";
 import type { JSX } from "react";
 import { c, t } from "ttag";
 
@@ -16,6 +14,7 @@ import {
 } from "metabase/setup";
 import { Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
+import { isObject } from "metabase-types/guards/common";
 
 import {
   skipDatabase,
@@ -127,7 +126,11 @@ const getStepTitle = (
 };
 
 const getSubmitError = (error: unknown): unknown => {
-  return updateIn(error, ["data", "errors"], (errors) => ({
-    details: errors,
-  }));
+  if (!isObject(error) || !isObject(error.data)) {
+    return error;
+  }
+  return {
+    ...error,
+    data: { ...error.data, errors: { details: error.data.errors } },
+  };
 };

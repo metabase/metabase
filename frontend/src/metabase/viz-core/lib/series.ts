@@ -1,5 +1,3 @@
-import { assocIn } from "icepick";
-
 import type {
   Card,
   Dataset,
@@ -23,11 +21,13 @@ export const updateSeriesColor = (
 ) => {
   const existing = settings[SERIES_SETTING_KEY]?.[seriesKey] ?? {};
 
-  return assocIn(
-    settings,
-    [SERIES_SETTING_KEY, seriesKey],
-    withColorName({ ...existing, color: hexValue }, colorName),
-  );
+  return {
+    ...settings,
+    [SERIES_SETTING_KEY]: {
+      ...settings[SERIES_SETTING_KEY],
+      [seriesKey]: withColorName({ ...existing, color: hexValue }, colorName),
+    },
+  };
 };
 
 // The first card decides the chart type, including for cards combined on a dashboard.

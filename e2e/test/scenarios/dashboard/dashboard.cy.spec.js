@@ -1,4 +1,3 @@
-import { assoc } from "icepick";
 import _ from "underscore";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -1274,14 +1273,12 @@ describe("scenarios > dashboard > permissions", () => {
           // update the perms for the just-created collection
           cy.request("PUT", "/api/collection/graph", {
             revision,
-            groups: _.mapObject(groups, (groupPerms, groupId) =>
-              assoc(
-                groupPerms,
-                collection_id,
+            groups: _.mapObject(groups, (groupPerms, groupId) => ({
+              ...groupPerms,
+              [collection_id]:
                 // 2 is admins, so leave that as "write"
                 groupId === "2" ? "write" : "none",
-              ),
-            ),
+            })),
           });
         },
       );

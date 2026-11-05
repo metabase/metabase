@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { thaw } from "icepick";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -87,7 +86,7 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
       onChange(update);
       setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
-        return new Question(thaw(newQuestion.card()), metadata);
+        return new Question(newQuestion.card(), metadata);
       });
     };
 

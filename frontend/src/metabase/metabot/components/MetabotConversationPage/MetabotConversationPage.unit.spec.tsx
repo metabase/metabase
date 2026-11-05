@@ -1,5 +1,4 @@
 import fetchMock, { type RouteResponse } from "fetch-mock";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -64,15 +63,21 @@ const stateWithConversation = ({
 }: {
   conversationId?: string;
   message?: string;
-} = {}) =>
-  assocIn(
-    getMetabotInitialState(),
-    ["conversations", conversationId],
-    createConversation({
-      conversationId,
-      messages: message ? [createMockMetabotTextMessage("user", message)] : [],
-    }),
-  );
+} = {}) => {
+  const state = getMetabotInitialState();
+  return {
+    ...state,
+    conversations: {
+      ...state.conversations,
+      [conversationId]: createConversation({
+        conversationId,
+        messages: message
+          ? [createMockMetabotTextMessage("user", message)]
+          : [],
+      }),
+    },
+  };
+};
 
 const TestConversationPage = () => (
   <MetabotProvider>

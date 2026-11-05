@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -13,6 +11,7 @@ import { useSetting } from "metabase/settings";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
+import { isObject } from "metabase-types/guards/common";
 
 import S from "./GoogleButton.module.css";
 
@@ -106,6 +105,9 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
 };
 
 const getErrors = (error: unknown): string[] => {
-  const errors = getIn(error, ["data", "errors"]);
-  return errors ? Object.values(errors) : [];
+  if (!isObject(error) || !isObject(error.data)) {
+    return [];
+  }
+  const errors = error.data.errors;
+  return isObject(errors) ? Object.values(errors).map(String) : [];
 };

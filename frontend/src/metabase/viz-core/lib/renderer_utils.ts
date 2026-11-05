@@ -1,4 +1,3 @@
-import { getIn } from "icepick";
 import _ from "underscore";
 
 import type { Dayjs } from "metabase/dayjs";
@@ -260,5 +259,4 @@ export const isRemappedToString = (series: RawSeries): boolean => {
 };
 
 export const hasClickBehavior = (series: Series): boolean =>
-  getIn(series, [0, "card", "visualization_settings", "click_behavior"]) !=
-  null;
+  series[0]?.card?.visualization_settings?.click_behavior != null;
