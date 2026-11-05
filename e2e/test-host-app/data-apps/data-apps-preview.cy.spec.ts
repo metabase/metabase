@@ -8,6 +8,7 @@ import {
 } from "e2e/support/helpers/e2e-data-app-dev-helpers";
 import {
   DATA_APP_DEV_APP_SRC_PATH,
+  DATA_APP_DEV_ENV_PATH,
   DATA_APP_DEV_MANIFEST_PATH,
   setUpDataAppDevServer,
   tearDownDataAppDevServer,
@@ -62,6 +63,76 @@ describe("Embedding SDK: data-app dev preview", () => {
       1,
     );
     cy.get("@blockedRequest.all").should("have.length", 0);
+  });
+
+  describe("the dev server's relay to the instance", () => {
+    // The key the e2e setup wrote; asserted on as a boolean so it stays out of the log.
+    const readApiKey = () =>
+      cy.readFile<string>(DATA_APP_DEV_ENV_PATH).then((env) => {
+        const apiKey = env.match(/^DATA_APP_MB_API_KEY=(.+)$/m)?.[1];
+
+        if (!apiKey) {
+          throw new Error(`no DATA_APP_MB_API_KEY in ${DATA_APP_DEV_ENV_PATH}`);
+        }
+
+        return apiKey;
+      });
+
+    it("keeps the API key and the instance out of the page", () => {
+      const mbOrigin = new URL(String(Cypress.config("baseUrl"))).origin;
+
+      readApiKey().then((apiKey) => {
+        cy.request({ url: CLIENT_HOST, headers: { Accept: "text/html" } }).then(
+          ({ body, headers }) => {
+            expect(
+              String(headers["content-security-policy"]).includes(mbOrigin),
+              "the CSP lets the page reach the instance",
+            ).to.equal(false);
+
+            const entry = String(body).match(
+              /src="([^"]*data-app-dev-entry[^"]*)"/,
+            )?.[1];
+            expect(entry, "the dev entry module").to.be.a("string");
+
+            cy.request(`${CLIENT_HOST}${entry}`).then((module) => {
+              expect(
+                String(module.body).includes(apiKey),
+                "the dev entry module holds the API key",
+              ).to.equal(false);
+            });
+          },
+        );
+      });
+    });
+
+    it("signs the page's API requests with the key, confined to the data-app endpoints", () => {
+      // The browser's Metabase session cookie also goes to the dev server: cookies
+      // ignore ports. The key's user, named after the key, shows which one counted.
+      cy.request(`${CLIENT_HOST}/api/user/current`)
+        .its("body.first_name")
+        .should("match", /^data-app-dev-e2e-/);
+
+      // Not a data-app endpoint, whichever client the caller claims to be.
+      cy.request({
+        method: "POST",
+        url: `${CLIENT_HOST}/api/user`,
+        headers: { "X-Metabase-Client": "embedding-sdk-react" },
+        body: { first_name: "Relayed", email: "relayed@example.com" },
+        failOnStatusCode: false,
+      })
+        .its("status")
+        .should("eq", 403);
+    });
+
+    it("refuses requests from other pages, which it would otherwise sign with the key", () => {
+      cy.request({
+        url: `${CLIENT_HOST}/api/user/current`,
+        headers: { Origin: "https://attacker.example" },
+        failOnStatusCode: false,
+      })
+        .its("status")
+        .should("eq", 404);
+    });
   });
 
   describe("dev diagnostics", () => {

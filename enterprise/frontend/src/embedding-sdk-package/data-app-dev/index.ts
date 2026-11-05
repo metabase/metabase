@@ -15,9 +15,14 @@ import {
 } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
 import { buildDevCsp } from "./config/dev-connect-src";
+import {
+  buildDevInstanceRelay,
+  dropInstanceOrigin,
+} from "./config/dev-instance-relay";
 import { dataAppEnvPrefix } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
 import { readManifest } from "./config/read-manifest";
+import { DATA_APP_MB_API_KEY_ENV, DATA_APP_MB_URL_ENV } from "./constants/env";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
 function dataAppVitePlugin(): PluginOption[] {
@@ -35,27 +40,35 @@ function dataAppVitePlugin(): PluginOption[] {
       name: "metabase-data-app",
       // Merged over the user's config, so these win — the bundle Metabase loads
       // always matches what dev runs.
-      config: (config: UserConfig, env: ConfigEnv): UserConfig => ({
-        define: getDataAppDefine(env.mode),
-        envDir,
-        envPrefix: dataAppEnvPrefix(env.command),
-        // The dev plugin serves a synthetic index.html; there's no file on disk.
-        appType: "custom",
-        build: {
-          outDir: dataAppOutDir(config),
-          emptyOutDir: true,
-          ...dataAppLibBuild("index.js"),
-        },
-        server: {
-          host: "localhost",
-          headers: {
-            "Content-Security-Policy": buildDevCsp(
-              allowedHosts,
-              loadEnv(env.mode, envDir, "").DATA_APP_MB_URL,
-            ),
+      config: (config: UserConfig, env: ConfigEnv): UserConfig => {
+        const vars = loadEnv(env.mode, envDir, "");
+        const instanceUrl = vars[DATA_APP_MB_URL_ENV];
+
+        return {
+          define: getDataAppDefine(env.mode),
+          envDir,
+          envPrefix: dataAppEnvPrefix(env.command),
+          // The dev plugin serves a synthetic index.html; there's no file on disk.
+          appType: "custom",
+          build: {
+            outDir: dataAppOutDir(config),
+            emptyOutDir: true,
+            ...dataAppLibBuild("index.js"),
           },
-        },
-      }),
+          server: {
+            host: "localhost",
+            headers: {
+              "Content-Security-Policy": buildDevCsp(
+                dropInstanceOrigin(allowedHosts, instanceUrl),
+              ),
+            },
+            proxy: buildDevInstanceRelay({
+              instanceUrl,
+              apiKey: vars[DATA_APP_MB_API_KEY_ENV],
+            }),
+          },
+        };
+      },
     },
   ];
 }

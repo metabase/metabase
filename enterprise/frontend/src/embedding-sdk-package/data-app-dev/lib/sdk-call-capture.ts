@@ -1,30 +1,19 @@
 import { devDiagnostics } from "../components/DevToolbar/diagnostics";
 import { MAX_INSPECTED_BODY_CHARS } from "../constants/diagnostics-channel";
 
+/** Where the dev server relays the instance's API; see `config/dev-instance-relay.ts`. */
+const INSTANCE_API_PATH = "/api/";
+
 /**
- * Records every request the preview makes to the instance — method, endpoint,
- * status, duration, and the reason on a failure.
+ * Records every request the preview makes to the instance's API — method,
+ * endpoint, status, duration, and the reason on a failure. The page reaches the
+ * instance through the dev server, so those are its own origin's `/api/` requests.
  *
  * Patching `window.fetch` keeps the capture inside the dev preview: hooking the
  * SDK's own client would put it within reach of any page embedding the SDK.
  */
 export class SdkCallCapture {
-  install(metabaseUrl: string | undefined): void {
-    if (!metabaseUrl) {
-      return;
-    }
-
-    let metabaseOrigin: string;
-    let basePath: string;
-    try {
-      const parsed = new URL(metabaseUrl);
-      metabaseOrigin = parsed.origin;
-      // A sub-path deployment prefixes every path; strip it.
-      basePath = parsed.pathname.replace(/\/+$/, "");
-    } catch {
-      return;
-    }
-
+  install(): void {
     const originalFetch = window.fetch;
 
     // Patching is the easiest option that works for now, and `fetch` alone is
@@ -33,14 +22,14 @@ export class SdkCallCapture {
       const url = this.resolveUrl(input);
 
       if (
-        url?.origin !== metabaseOrigin ||
-        (basePath && !url.pathname.startsWith(basePath))
+        url?.origin !== window.location.origin ||
+        !url.pathname.startsWith(INSTANCE_API_PATH)
       ) {
         return originalFetch(input, init);
       }
 
       const method = this.resolveMethod(input, init);
-      const endpoint = url.pathname.slice(basePath.length) || "/";
+      const endpoint = url.pathname;
       const startedAt = performance.now();
       const durationMs = () => Math.round(performance.now() - startedAt);
 

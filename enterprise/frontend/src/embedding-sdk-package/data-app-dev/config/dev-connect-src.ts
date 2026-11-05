@@ -1,23 +1,15 @@
-const toOrigin = (url: string | undefined): string | undefined => {
-  try {
-    return url ? new URL(url).origin : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-export const buildDevCsp = (
-  allowedHosts: string[],
-  metabaseUrl: string | undefined,
-): string => {
-  const instanceOrigin = toOrigin(metabaseUrl);
+/**
+ * The preview page's CSP. It reaches the instance only through the dev server's relay on its own origin, so the
+ * instance isn't listed: a direct request couldn't carry the key, but it would carry the developer's own Metabase
+ * cookies.
+ */
+export const buildDevCsp = (allowedHosts: string[]): string => {
   const sources = [
     "'self'",
     "ws://localhost:*",
     "wss://localhost:*",
     "ws://127.0.0.1:*",
     "wss://127.0.0.1:*",
-    ...(instanceOrigin ? [instanceOrigin] : []),
     ...allowedHosts,
   ];
 

@@ -1,10 +1,12 @@
 import path from "node:path";
 
-import type { Plugin } from "vite";
+import { type Plugin, loadEnv } from "vite";
 
+import { dropInstanceOrigin } from "../config/dev-instance-relay";
 import { validateDataAppManifest } from "../config/validate-manifest";
 import { DATA_APP_REBUILT_EVENT } from "../constants/bundle";
 import { DATA_APP_DIAGNOSTICS_CHANGED_EVENT } from "../constants/diagnostics-channel";
+import { DATA_APP_MB_URL_ENV } from "../constants/env";
 import { DATA_APP_MANIFEST_FILE_NAME } from "../constants/paths";
 
 import { createAppBundle } from "./app-bundle";
@@ -30,14 +32,28 @@ export function dataAppSandboxDevPlugin(
   allowedHosts: string[],
 ): Plugin {
   const diagnostics = new DiagnosticsStore();
+  let instanceUrl: string | null = null;
 
   return {
     name: "metabase-data-app-dev",
     apply: "serve",
 
+    configResolved: (config) => {
+      instanceUrl =
+        loadEnv(config.mode, config.envDir, "")[DATA_APP_MB_URL_ENV] || null;
+    },
+
     resolveId: (id) => resolveDataAppVirtualId(id),
 
-    load: (id) => loadDataAppVirtualModule(id, { appSlug, allowedHosts }),
+    load: (id) =>
+      loadDataAppVirtualModule(id, {
+        appSlug,
+        allowedHosts: dropInstanceOrigin(
+          allowedHosts,
+          instanceUrl ?? undefined,
+        ),
+        instanceUrl,
+      }),
 
     async configureServer(server) {
       const { root, mode } = server.config;

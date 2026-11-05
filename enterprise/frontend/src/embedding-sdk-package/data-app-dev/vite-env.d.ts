@@ -1,10 +1,4 @@
-interface ImportMetaEnv {
-  readonly DATA_APP_MB_URL: string | undefined;
-  readonly DATA_APP_MB_API_KEY: string | undefined;
-}
-
 interface ImportMeta {
-  readonly env: ImportMetaEnv;
   readonly hot?: {
     on(event: string, cb: (...args: unknown[]) => void): void;
     off(event: string, cb: (...args: unknown[]) => void): void;
@@ -15,6 +9,7 @@ interface ImportMeta {
 declare module "virtual:metabase-data-app-dev-config" {
   export const allowedHosts: string[];
   export const appSlug: string;
+  export const instanceUrl: string | null;
   export const bundleUrl: string;
   export const buildIdHeader: string;
   export const rebuiltEvent: string;

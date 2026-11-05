@@ -1,4 +1,8 @@
 import { devDiagnostics } from "../components/DevToolbar/diagnostics";
+import {
+  DATA_APP_DEV_INSTANCE_PING_URL,
+  DATA_APP_DEV_RELAY_ERROR_HEADER,
+} from "../constants/diagnostics-channel";
 import { DATA_APP_MB_URL_ENV } from "../constants/env";
 import type { InstanceConnectionStatus } from "../types/diagnostics-channel";
 
@@ -8,7 +12,9 @@ export interface InstanceConnectionCheckOptions {
 }
 
 /**
- * Answers one question — is the instance URL reachable — and nothing else.
+ * Answers one question — is the instance URL reachable — and nothing else. The
+ * page reaches the instance only through the dev server, so it asks the dev
+ * server to ping the instance's root.
  */
 export class InstanceConnectionCheck {
   async install({
@@ -41,10 +47,15 @@ export class InstanceConnectionCheck {
     }
 
     try {
-      await window.fetch(base, { mode: "no-cors" });
-      status.reachable = true;
+      const response = await window.fetch(DATA_APP_DEV_INSTANCE_PING_URL);
+
+      if (response.headers.has(DATA_APP_DEV_RELAY_ERROR_HEADER)) {
+        status.error = `Could not reach ${status.metabaseUrl}: ${await response.text()}`;
+      } else {
+        status.reachable = true;
+      }
     } catch (error) {
-      status.error = `Could not reach ${status.metabaseUrl}: ${this.describeFailure(error)}`;
+      status.error = `Could not reach ${status.metabaseUrl} through the dev server: ${this.describeFailure(error)}`;
     }
 
     devDiagnostics.setConnectionStatus(status);
