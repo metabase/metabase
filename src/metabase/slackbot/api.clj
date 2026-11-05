@@ -586,8 +586,7 @@
              (log/warnf "[slackbot] Feedback submission failed (external_id=%s user_id=%s): %s"
                         external-id user_id (ex-message e)))))))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/interactive"
+(api.macros/defendpoint :post "/interactive" :- [:map {:closed true} [:status [:= 200]] [:body [:= ""]]]
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params
    _query-params

@@ -1097,11 +1097,7 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1121,12 +1117,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/sync_schema"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/sync_schema" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1155,12 +1147,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/dismiss_spinner"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/dismiss_spinner" :- [:map {:closed true} [:status [:= :ok]]]
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [{:keys [id]} :- [:map {:closed true}
@@ -1188,12 +1176,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/rescan_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1220,12 +1204,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/discard_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/discard_values" :- [:map {:closed true} [:status [:= :ok]]]
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

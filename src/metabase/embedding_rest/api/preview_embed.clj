@@ -17,7 +17,9 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
+   [metabase.server.core :as server]
    [metabase.tiles.api :as api.tiles]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
@@ -48,11 +50,8 @@
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
   2000)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/query"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
@@ -163,11 +162,8 @@
   (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]
@@ -190,11 +186,8 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:token/query"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
@@ -210,11 +203,8 @@
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]

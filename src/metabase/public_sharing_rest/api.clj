@@ -38,6 +38,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
+   [metabase.server.core :as server]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -233,12 +234,9 @@
   (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
     (apply process-query-for-card-with-id card export-format parameters options)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:uuid/query"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map {:closed true}
@@ -251,12 +249,9 @@
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map {:closed true}
@@ -428,12 +423,9 @@
       (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
                                                   parameters zoom x y lat-field lon-field))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
@@ -454,12 +446,9 @@
      :export-format :api
      :parameters    parameters)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format qp.schema/export-formats-regex]
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map {:closed true}
@@ -697,12 +686,9 @@
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/pivot/card/:uuid/query"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map {:closed true}
@@ -713,12 +699,9 @@
   (process-query-for-card-with-public-uuid uuid :api parameters
                                            :qp qp.pivot/run-pivot-query))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
   sharing must be enabled."
   [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
@@ -904,11 +887,8 @@
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
   be enabled."
   [{:keys [uuid card-id]} :- [:map {:closed true}
@@ -926,11 +906,8 @@
               :constraints (qp.constraints/default-query-constraints))
       (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
   "Fetch a Card embedded in a public Document and return query results in the specified format.
   Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid card-id export-format]} :- [:map {:closed true}

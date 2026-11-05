@@ -100,11 +100,7 @@
     (u/prog1 (timeline.db/timeline-event id)
       (events/publish-event! :event/timeline-update {:object (timeline.db/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a [[TimelineEvent]]."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

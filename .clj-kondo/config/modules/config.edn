@@ -862,6 +862,7 @@
            query-processor
            request
            revisions
+           server
            util
            xrays}
    :model-imports #{:model/Action
@@ -947,6 +948,7 @@
            query-permissions
            query-processor
            search
+           server
            settings
            staleness
            util}
@@ -1069,6 +1071,7 @@
            queries
            query-processor
            request
+           server
            tiles
            util}
    :model-imports #{:model/Card
@@ -2132,6 +2135,7 @@
            queries
            query-processor
            request
+           server
            tiles
            util}
    :model-imports #{:model/Action
@@ -2275,6 +2279,7 @@
            request
            revisions
            search
+           server
            util}
    :model-imports #{:model/Action
                     :model/Card

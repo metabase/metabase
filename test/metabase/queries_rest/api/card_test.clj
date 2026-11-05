@@ -2992,25 +2992,33 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
+      (let [orig        (mt/original-fn #'qp.card/process-query-for-card)
+            constraints (atom ::not-run)
+            ;; The download endpoint must still return a streaming response, so record the constraints the query
+            ;; runs with and hand it to the real run fn.
+            run-with    (fn [status url]
+                          (reset! constraints ::not-run)
+                          (mt/user-http-request :rasta :post status url)
+                          @constraints)]
         (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
                                                                      (apply orig card export-format
-                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                                    {:constraints constraints}))
+                                                                            :make-run (fn [qp export-format]
+                                                                                        (let [run (qp.card/process-query-for-card-default-run-fn qp export-format)]
+                                                                                          (fn [query info]
+                                                                                            (reset! constraints (:constraints query))
+                                                                                            (run query info))))
                                                                             options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
-            (is (= {:constraints nil}
-                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
+            (is (nil? (run-with 200 (format "card/%d/query/csv" (u/the-id card))))))
           (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
-              (is (= {:constraints nil}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
+              (is (nil? (run-with 200 (format "card/%d/query/csv" (u/the-id card))))))
             (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                           "check to make sure the `with-redefs` in the test above actually works)")
-              (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
+              (is (= {:max-results 10, :max-results-bare-rows 10}
+                     (run-with 202 (format "card/%d/query" (u/the-id card))))))))))))
 
 (defn- test-download-response-headers
   [url]
