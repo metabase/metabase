@@ -41,9 +41,9 @@ export function getEmbeddedAppNameFromPath(path: string): string | undefined {
   return name;
 }
 
-const hasUnsafeCharacters = (path: string): boolean =>
-  // eslint-disable-next-line no-control-regex -- reject backslashes, ASCII control characters and spaces.
-  /[\\\x00-\x20]/.test(path);
+const hasUnsafeCharacters = (value: string): boolean =>
+  // eslint-disable-next-line no-control-regex -- Reject backslashes and ASCII control characters.
+  /[\\\x00-\x1f\x7f]/.test(value);
 
 /** Use one relative path for host settings and runtime URLs. */
 export const normalizeDataAppPath = (path: string): string =>

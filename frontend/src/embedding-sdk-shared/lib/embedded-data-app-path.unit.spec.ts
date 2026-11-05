@@ -10,10 +10,12 @@ const UNSAFE_PATHS = [
   "sales/../other",
   "sales/%2e%2e/other",
   "sales/%2fother",
+  "sales/%5cother",
   "sales/%",
   "sales\\other",
   "sales/\nother",
   "sales/%00other",
+  "sales/%7fother",
 ];
 
 describe("embedded data app route", () => {
@@ -28,6 +30,15 @@ describe("embedded data app route", () => {
       getEmbeddedAppNameFromPath("/sales/orders?active=true#details"),
     ).toBe("sales");
   });
+
+  it.each(["New York", "New%20York"])(
+    "allows spaces in nested routes: %s",
+    (region) => {
+      expect(getEmbeddedAppNameFromPath(`/sales/regions/${region}`)).toBe(
+        "sales",
+      );
+    },
+  );
 
   it.each<[string, string, boolean]>([
     ["/embed/embedded-apps/sales", "/", true],
@@ -72,6 +83,15 @@ describe("data app paths", () => {
       validateDataAppPath("///sales/orders?active=true#details"),
     ).not.toThrow();
   });
+
+  it.each(["New York", "New%20York"])(
+    "accepts spaces in nested routes: %s",
+    (region) => {
+      expect(() =>
+        validateDataAppPath(`///sales/regions/${region}?active=true#details`),
+      ).not.toThrow();
+    },
+  );
 
   it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
     expect(() => validateDataAppPath(path)).toThrow(
