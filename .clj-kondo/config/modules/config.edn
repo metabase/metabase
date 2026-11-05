@@ -4183,6 +4183,18 @@
            util.config}
    :model-imports #{:model/AuthIdentity :model/User}}
 
+  enterprise/monitor-relay
+  {:team "Cloud"
+   :api  #{metabase-enterprise.monitor-relay.api metabase-enterprise.monitor-relay.init}
+   :uses #{api
+           app-db
+           change-log
+           premium-features
+           settings
+           task
+           util
+           util.config}}
+
   enterprise/native-query-snippets
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.snippet-collections"

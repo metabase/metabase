@@ -129,6 +129,7 @@ export const createMockTokenFeatures = (
   hosting: false,
   "metabase-ai-managed": false,
   "metabot-v3": false,
+  monitor_relay: false,
   "multi-factor-auth": false,
   "offer-metabase-ai-managed": false,
   official_collections: false,

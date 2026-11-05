@@ -354,6 +354,7 @@ export const tokenFeatures = [
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabot-v3",
+  "monitor_relay",
   "multi-factor-auth",
   "official_collections",
   "sandboxes",
@@ -896,6 +897,7 @@ export interface EnterpriseSettings extends Settings {
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
   "transforms-meter-locked": boolean | null;
+  "metabase-monitor-url"?: string | null;
   /**
    * @deprecated
    */
