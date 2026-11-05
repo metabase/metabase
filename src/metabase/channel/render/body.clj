@@ -387,24 +387,6 @@
 
 ;;; --------------------------------------------------- simple pivot ---------------------------------------------------
 
-(defn- simple-pivot-indexes
-  "Column indexes `{:normal i, :pivot j, :cell k}` when the Table viz's \"Pivot table\" toggle applies to `cols`, else
-  nil. Mirrors the browser's `isPivoted` (viz-core/lib/settings/column.ts): `:table.pivot` is set, there are at least
-  three columns, and `:table.pivot_column` and `:table.cell_column` name two different columns. The first remaining
-  column is the normal one; its values become the row labels. Any other columns are ignored."
-  [cols viz-settings]
-  (when (and (setting-value viz-settings :table.pivot)
-             (<= 3 (count cols)))
-    (let [index-of  (fn [k]
-                      (let [col-name (setting-value viz-settings k)]
-                        (u/index-of #(= (:name %) col-name) cols)))
-          pivot-idx (index-of :table.pivot_column)
-          cell-idx  (index-of :table.cell_column)]
-      (when (and pivot-idx cell-idx (not= pivot-idx cell-idx))
-        {:normal (first (remove #{pivot-idx cell-idx} (range (count cols))))
-         :pivot  pivot-idx
-         :cell   cell-idx}))))
-
 (defn- compare-pivot-values
   "Like the browser's `DEFAULT_COMPARE` (visualizations/lib/data_grid.ts), but nil sorts first."
   [a b]
@@ -487,13 +469,13 @@
           normal-values)))
 
 (defn simple-pivot?
-  "Does the Table viz's \"Pivot table\" toggle apply to this query result? See [[simple-pivot-indexes]]."
+  "Does the Table viz's \"Pivot table\" toggle apply to this query result? See [[qp.streaming/simple-pivot-indexes]]."
   [{:keys [cols viz-settings]}]
-  (some? (simple-pivot-indexes cols viz-settings)))
+  (some? (qp.streaming/simple-pivot-indexes cols viz-settings)))
 
 (defn- simple-pivot-content
-  "Hiccup for a Table card whose \"Pivot table\" toggle applies (see [[simple-pivot-indexes]]). The grid is built from
-  every row and, like `render :pivot`, is not cut at the attachment row limit."
+  "Hiccup for a Table card whose \"Pivot table\" toggle applies (see [[qp.streaming/simple-pivot-indexes]]). The grid
+  is built from every row and, like `render :pivot`, is not cut at the attachment row limit."
   [timezone-id {:keys [cols viz-settings] :as data} {:keys [cell] :as indexes}]
   (pivot->hiccup (simple-pivot-grid timezone-id data indexes)
                  {:color-data     {:cols (mapv #(select-keys % [:name]) cols)
@@ -563,7 +545,7 @@
    card
    _dashcard
    {:keys [cols viz-settings] :as data}]
-  {:content     (if-let [indexes (simple-pivot-indexes cols viz-settings)]
+  {:content     (if-let [indexes (qp.streaming/simple-pivot-indexes cols viz-settings)]
                   (simple-pivot-content timezone-id data indexes)
                   (flat-table-content timezone-id card data))
    :attachments nil})
