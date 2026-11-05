@@ -392,3 +392,14 @@
                 (deliver release true)
                 (t2/delete! :model/Database :name database-name)
                 (ws/clear-instance-workspace!)))))))))
+
+;;; ------------------------------------------------ Review round 2 ------------------------------------------------
+(deftest scrub-leaves-short-values-test
+  (testing "strings shorter than 4 characters stay in the message, so it stays readable; the password does not"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details?
+                                    (fn [_ _ _] (throw (ex-info (str "user mb__isolation_k3f9q2xa on port 5432 has password " password) {})))]
+          (is (= "Could not apply the databases section of this config.yml: user **** on port 5432 has password ****"
+                 (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
+                                       {:config (config-yml (mt/random-name))}))))))))

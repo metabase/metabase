@@ -107,16 +107,21 @@
   (not= (get-method advanced-config/initialize-section! section-name)
         (get-method advanced-config/initialize-section! :default)))
 
+(def ^:private min-scrubbed-length
+  "Strings shorter than this are left in messages: replacing every `u` or `5` would garble them, and no password, key
+  or token is this short."
+  4)
+
 (defn- scrub
-  "`message` with the text of every scalar in `section` replaced by `****`, longest first: any of them may be a
-  secret."
+  "`message` with every string of at least [[min-scrubbed-length]] characters in `section` replaced by `****`, longest
+  first: any of them may be a secret."
   [message section]
   (reduce (fn [message secret]
             (str/replace message secret "****"))
           message
           (sort-by (comp - count)
                    (into #{}
-                         (comp (remove coll?) (remove nil?) (map str) (remove str/blank?))
+                         (filter #(and (string? %) (<= min-scrubbed-length (count %))))
                          (tree-seq coll? seq section)))))
 
 (defn- refuse!
