@@ -1,0 +1,1 @@
+export { TableSubjectRows } from "./TableSubject";

@@ -68,6 +68,7 @@ import {
 } from "../utils";
 
 import S from "./TablePickerTreeTable.module.css";
+import { TableSubjectCell } from "./TableSubjectCell";
 
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 
@@ -253,6 +254,15 @@ export function TablePickerTreeTable({
         cell: ({ row }) =>
           row.original.type === "table" && row.original.table ? (
             <TableRoleCell table={row.original.table} />
+          ) : null,
+      },
+      {
+        id: "subject",
+        header: t`Subject`,
+        width: 220,
+        cell: ({ row }) =>
+          row.original.type === "table" && row.original.table ? (
+            <TableSubjectCell table={row.original.table} />
           ) : null,
       },
       {
