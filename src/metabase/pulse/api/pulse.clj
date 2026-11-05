@@ -90,8 +90,9 @@
   "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.
 
   `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, the
-  permission check would demand write access to the request's collection. A user who has it would get the
-  subscription saved there, and `maybe-reconcile-collection-position!` would shift the pinned items in it."
+  permission check would demand write access to the collection in the request, even when it is the collection of the
+  dashboard. A user with view access only would get a 403. `check-dashboard-subscription-collection-keys!` rejects
+  any other collection."
   [{:keys [dashboard_id] :as pulse-data}]
   (cond-> pulse-data
     dashboard_id (assoc :collection_id nil :collection_position nil)))
