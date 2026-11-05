@@ -133,7 +133,8 @@
   [engine]
   (isa? driver/hierarchy (keyword engine) :postgres))
 
-(defn- check-supported-engine!
+(defn check-supported-engine!
+  "Throw a 400 unless the database `{:name, :engine}` has an engine workspaces support."
   [{database-name :name, :keys [engine]}]
   (when-not (supported-engine? engine)
     (throw (ex-info (tru "Database {0} is a {1} database; workspaces support only Postgres-family databases so far."
@@ -268,9 +269,10 @@
                     id)))
           rows)))
 
-(defn- in-one-transaction!
-  "Run `f`, which changes the remappings and the `instance-workspace` setting, in one app-DB transaction, so no query
-  sees the new map with the old remappings or the other way round. Writing the setting updates this instance's
+(defn in-one-transaction!
+  "Run `f`, which changes the remappings and the `instance-workspace` setting (and, applying a config.yml, whatever its
+  sections write), in one app-DB transaction, so no query sees the new map with the old remappings or the other way
+  round. Writing the setting updates this instance's
   in-memory settings cache at once, before the commit; when the transaction rolls back, the cache is reloaded from the
   app DB so it does not keep a value that was never committed."
   [f]

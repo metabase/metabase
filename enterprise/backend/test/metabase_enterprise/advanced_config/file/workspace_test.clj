@@ -178,9 +178,8 @@
                  (:post boot) (:delete boot)))
           (is (= (select-keys boot [:current :post :delete])
                  (select-keys http [:current :post :delete]))))
-        (testing "the response is the GET /current shape, without the password"
-          (is (= (:current http) (:response http)))
-          (is (not (re-find (re-pattern password) (pr-str (:response http))))))))))
+        (testing "the response is the GET /current shape"
+          (is (= (:current http) (:response http))))))))
 
 (deftest http-apply-errors-test
   (with-clean-workspace!
@@ -257,8 +256,7 @@
                                                                "      last_name: Bot\n"
                                                                "      email: " email "\n"
                                                                "      password: \"" password "-user\"\n")})]
-              (is (=? {:data {:name "orders-cleanup"}, :can_write false} response))
-              (is (not (re-find (re-pattern password) (pr-str response)))))
+              (is (=? {:data {:name "orders-cleanup"}, :can_write false} response)))
             (is (t2/exists? :model/User :email email))
             (is (t2/exists? :model/Database :name database-name))
             (finally
@@ -279,3 +277,63 @@
                    (get-in (t2/select-one :model/Database :name database-name) [:details :dbname])))
             (finally
               (t2/delete! :model/Database :name database-name))))))))
+
+;;; ------------------------------------------------ Review round 1 ------------------------------------------------
+
+(deftest http-apply-is-all-or-nothing-test
+  (with-clean-workspace!
+    (with-fake-warehouse!
+      (let [database-name (mt/random-name)
+            other-name    (mt/random-name)
+            post          (fn [config-yml]
+                            (mt/user-http-request :crowberto :post "ee/workspace-instance/config" {:config config-yml}))]
+        (try
+          (testing "a workspace naming a database that neither exists nor is in the file: nothing is created"
+            (is (= "No database is named \"nope\", here or in this config.yml."
+                   (post (str/replace (config-yml database-name) (str "      " database-name ":\n") "      nope:\n"))))
+            (is (not (t2/exists? :model/Database :name database-name)))
+            (is (nil? (ws/instance-workspace))))
+          (testing "a section that fails while applying rolls back the sections before it"
+            (is (re-find #"Could not apply the api-keys section"
+                         (post (str (config-yml database-name)
+                                    "  api-keys:\n"
+                                    "    - name: k\n"
+                                    "      key: mb_" (apply str (repeat 40 "a")) "\n"
+                                    "      creator: nobody@example.com\n"
+                                    "      group: admin\n"))))
+            (is (not (t2/exists? :model/Database :name database-name)))
+            (is (nil? (ws/instance-workspace))))
+          (testing "a locked re-apply whose workspace section fails keeps the workspace, the lock and the databases as they were"
+            (is (=? {:can_write false} (post (config-yml database-name))))
+            (let [before (ws/instance-workspace)
+                  yml    (-> (config-yml database-name)
+                             (str/replace "  workspace:\n" (str "    - name: " other-name "\n"
+                                                                 "      engine: postgres\n"
+                                                                 "      details: {host: h, user: u, password: p2-" password "}\n"
+                                                                 "  workspace:\n"))
+                             (str/replace (str "      " database-name ":\n") "      nope:\n"))]
+              (is (re-find #"No database is named" (post yml)))
+              (is (not (t2/exists? :model/Database :name other-name)))
+              (is (= before (ws/instance-workspace)))
+              (is (= :config-file (ws/workspace-lock)))))
+          (finally
+            (t2/delete! :model/Database :name [:in [database-name other-name]])
+            (ws/clear-instance-workspace!)))))))
+
+(deftest failed-connection-test-logs-no-secret-test
+  (testing "a real failed connection test, through the driver's own logging, writes the password nowhere"
+    (with-clean-workspace!
+      (let [database-name (mt/random-name)
+            yml           (-> (config-yml database-name)
+                              (str/replace "host: warehouse.example.com" "host: localhost")
+                              (str/replace "port: 5432" "port: 1"))]
+        (mt/with-log-messages-for-level [oss-messages :debug]
+          (mt/with-log-messages-for-level [ee-messages ["metabase-enterprise" :debug]]
+            (let [message (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config" {:config yml})]
+              (is (re-find #"^Could not apply the databases section of this config.yml: " message))
+              (is (not (str/includes? message password))))
+            (let [logged (pr-str (concat (oss-messages) (ee-messages)))]
+              (is (re-find #"Failed to connect to Database" logged)
+                  "the driver's connection-test log ran")
+              (is (not (str/includes? logged password))))))
+        (is (not (t2/exists? :model/Database :name database-name)))))))

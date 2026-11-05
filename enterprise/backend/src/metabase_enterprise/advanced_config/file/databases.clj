@@ -6,6 +6,7 @@
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.sync.core :as sync]
@@ -97,7 +98,10 @@
   "Kick off a sync of `database` when syncing databases from the config file is enabled."
   [database]
   (if (advanced-config.settings/config-from-file-sync-databases)
-    (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id database))))
+    ;; after the commit when an app-DB transaction is open (applying a config.yml over HTTP), so the sync's own
+    ;; connection sees the database; at once otherwise
+    (mdb/do-after-commit
+     (fn [] (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id database))))))
     (log/info "Sync on database creation when initializing from file is disabled. Skipping sync.")))
 
 (defn- init-from-config-file!

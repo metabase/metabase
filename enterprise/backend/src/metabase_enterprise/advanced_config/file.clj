@@ -138,8 +138,11 @@
   will fail and trigger an error. See ns documentation for [[metabase.config.file]] for more details."
   {:min 1.0, :max 1.999})
 
-(defn- supported-version? [n]
-  (<= (:min *supported-versions*) n (:max *supported-versions*)))
+(defn supported-version?
+  "True when `n` is a config file version this Metabase supports."
+  [n]
+  (and (number? n)
+       (<= (:min *supported-versions*) n (:max *supported-versions*))))
 
 (s/def :metabase.config.file.config/version
   (s/and number? supported-version?))

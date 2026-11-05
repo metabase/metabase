@@ -3572,8 +3572,7 @@
   enterprise/advanced-config
   {:team "UX West"
    :api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.file
-           metabase-enterprise.advanced-config.file.interface
+           metabase-enterprise.advanced-config.core
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
    :uses #{api
