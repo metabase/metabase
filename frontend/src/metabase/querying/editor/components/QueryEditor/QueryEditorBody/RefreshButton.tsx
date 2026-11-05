@@ -24,11 +24,7 @@ export function RefreshButton({
     return null;
   }
 
-  const getTooltip = () => {
-    const command = t`Refresh query`;
-    const shortcut = t`(${METAKEY} + enter)`;
-    return command + " " + shortcut;
-  };
+  const getTooltip = () => t`Refresh query (${METAKEY} + Enter)`;
 
   return (
     <RunButtonWithTooltip
