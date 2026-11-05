@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupDatabaseAutocompleteSuggestionsEndpoint } from "__support__/server-mocks";
 import {
   fireEvent,
   renderWithProviders,
@@ -32,17 +33,21 @@ const ORIGINAL =
   "SELECT *\nFROM orders\nWHERE id = 1\nGROUP BY id\nORDER BY id\nLIMIT 10";
 const PROPOSED = ORIGINAL.replace("WHERE id = 1", "WHERE id = 2");
 
+type SetupOpts = {
+  text?: string;
+  readOnly?: boolean;
+  snippets?: NativeQuerySnippet[];
+  proposedText?: string;
+  engine?: string;
+};
+
 function setup({
   text = "",
   readOnly = false,
   snippets = [],
   proposedText,
-}: {
-  text?: string;
-  readOnly?: boolean;
-  snippets?: NativeQuerySnippet[];
-  proposedText?: string;
-} = {}) {
+  engine,
+}: SetupOpts = {}) {
   const onChange = jest.fn();
   const onCursorMoveOverCardTag = jest.fn();
   const onRightClickSelection = jest.fn();
@@ -55,7 +60,7 @@ function setup({
     body: snippets,
   });
 
-  const database = createSampleDatabase();
+  const database = createSampleDatabase(engine ? { engine } : undefined);
   const metadata = createMockMetadata({
     databases: [database],
   });
@@ -99,6 +104,13 @@ function setup({
     rerender: (overrides: Partial<CodeMirrorEditorProps>) =>
       rerender(<CodeMirrorEditor {...props} {...overrides} />),
   };
+}
+
+async function findCompletions() {
+  const listbox = await screen.findByRole("listbox", { name: "Completions" });
+  return within(listbox)
+    .getAllByRole("option")
+    .map((option) => option.textContent ?? "");
 }
 
 describe("CodemirrorEditor", () => {
@@ -334,6 +346,102 @@ describe("CodemirrorEditor", () => {
     expect(
       await screen.findByRole("listbox", { name: "Completions" }),
     ).toHaveTextContent("#51-a-people-question");
+  });
+
+  it("lists tables, columns and keywords together in the completions", async () => {
+    setupDatabaseAutocompleteSuggestionsEndpoint({
+      databaseId: 1,
+      suggestions: [["SEATS", "ACCOUNTS :type/Integer"]],
+    });
+    setup();
+
+    await waitForRequestsToSettle();
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("se");
+
+    await waitFor(async () => {
+      const completions = await findCompletions();
+      expect(completions).toContain("SEATSACCOUNTS :type/Integer");
+    });
+    expect(await findCompletions()).toContain("SELECTkeyword");
+  });
+
+  it("lists a column once when several tables have it", async () => {
+    setupDatabaseAutocompleteSuggestionsEndpoint({
+      databaseId: 1,
+      suggestions: [
+        ["ACCOUNT_ID", "FEEDBACK :type/Integer :type/FK"],
+        ["ACCOUNT_ID", "INVOICES :type/Integer :type/FK"],
+        ["ACCOUNT_ID", "ANALYTIC_EVENTS :type/Integer :type/FK"],
+      ],
+    });
+    setup();
+
+    await waitForRequestsToSettle();
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("acc");
+
+    await waitFor(async () => {
+      const completions = await findCompletions();
+      expect(completions).toContain(
+        "ACCOUNT_IDFEEDBACK :type/Integer :type/FK",
+      );
+    });
+    const accountIds = (await findCompletions()).filter((completion) =>
+      completion.startsWith("ACCOUNT_ID"),
+    );
+    expect(accountIds).toHaveLength(1);
+  });
+
+  it("lists local aliases of the query in the completions", async () => {
+    setupDatabaseAutocompleteSuggestionsEndpoint({
+      databaseId: 1,
+      suggestions: [["order_mode", "ORDERS :type/Text"]],
+    });
+    setup({
+      text: "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY ",
+    });
+
+    await waitForRequestsToSettle();
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("{Control>}{End}{/Control}order_mo");
+
+    expect(await findCompletions()).toContain("order_monthlocal");
+  });
+
+  it("lists mongo keywords, tables and fields in the completions", async () => {
+    setupDatabaseAutocompleteSuggestionsEndpoint({
+      databaseId: 1,
+      suggestions: [
+        ["products", "Table"],
+        ["group_id", "orders :type/Integer"],
+        ["price", "products :type/Float"],
+        ["product_id", "orders :type/Integer"],
+      ],
+    });
+    setup({ engine: "mongo" });
+
+    await waitForRequestsToSettle();
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard('[[{{ "$grou');
+
+    const groupCompletions = (await findCompletions()).filter((completion) =>
+      completion.startsWith("$group"),
+    );
+    expect(groupCompletions).toEqual(["$groupkeyword"]);
+
+    await userEvent.keyboard('p": {{ "pr');
+
+    await waitFor(async () => {
+      const completions = await findCompletions();
+      expect(completions).toEqual(
+        expect.arrayContaining([
+          "priceproducts :type/Float",
+          "product_idorders :type/Integer",
+          "productsTable",
+        ]),
+      );
+    });
   });
 
   it("keeps read-only proposals read-only", async () => {
