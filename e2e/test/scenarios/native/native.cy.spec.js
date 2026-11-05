@@ -16,6 +16,29 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
+  it("runs and saves a SQL question with variables, then loads it with values from the URL", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type(
+      "select * from PRODUCTS where CATEGORY = {{cat}} and RATING >= {{stars}}",
+    );
+    cy.findByPlaceholderText("Cat").type("Gizmo");
+    cy.findByPlaceholderText("Stars").type("3");
+    runQuery();
+    H.assertQueryBuilderRowCount(45);
+
+    H.saveQuestion("SQL Products", { wrapId: true });
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.get("@questionId").then((questionId) => {
+      cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
+    });
+    cy.wait("@cardQuery");
+
+    cy.findByPlaceholderText("Cat").should("have.value", "Gizmo");
+    cy.findByPlaceholderText("Stars").should("have.value", "3");
+    H.assertQueryBuilderRowCount(45);
+  });
+
   it("should be able to handle two sidebars on different screen sizes", () => {
     const questionDetails = {
       name: "13332",
