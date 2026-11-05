@@ -85,7 +85,7 @@ jobs:
 
           # Install clj-nrepl-eval via bbin
           bbin install https://github.com/bhauman/clojure-mcp-light.git \
-            --tag v0.2.1 \
+            --git/tag v0.2.1 \
             --as clj-nrepl-eval \
             --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'
 
