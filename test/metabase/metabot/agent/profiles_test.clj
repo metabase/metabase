@@ -148,7 +148,8 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
+  (testing (str "nlq-fallback matches embedding_next's general search plus run_query and write_dashboard, which embedding "
+                "doesn't offer yet; "
                 "curated nlq swaps search for the library tool")
     (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
@@ -157,9 +158,9 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback (conj embedding "run_query")))
+      (is (= fallback (conj embedding "run_query" "write_dashboard")))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query"))))))
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query" "write_dashboard"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
