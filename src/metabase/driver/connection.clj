@@ -15,6 +15,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -79,8 +80,9 @@
      are taken into account when configured), but resolved through a separate connection pool
      whose c3p0 leak-detector tolerates transform-length runtimes. Set by
      [[with-transform-connection]] from the transform runner.
-   - `:workspace-provisioning` - the database's workspace provisioning login merged over `:details`
-     (if configured). Set by [[with-workspace-provisioning-connection]] around workspace DDL.
+   - `:workspace-provisioning` - the database's workspace provisioning login merged over `:details`.
+     Throws when none is configured, or when the database uses database routing. Set by
+     [[with-workspace-provisioning-connection]] around workspace DDL.
 
    Bind via [[with-write-connection]], [[with-transform-connection]] or
    [[with-workspace-provisioning-connection]], not directly."
@@ -126,9 +128,10 @@
 (defmacro with-workspace-provisioning-connection
   "Establishes a workspace-provisioning connection context for body.
 
-   [[effective-details]] calls within this scope take the database's workspace provisioning login
-   into account (if configured): the login that creates workspace users and scratch schemas and grants
-   them access, through a pool of its own."
+   [[effective-details]] calls within this scope resolve the database's workspace provisioning login: the
+   login that creates workspace users and scratch schemas and grants them access, through a pool of its own.
+   They throw, rather than fall back to `:details`, when the database has no provisioning login or uses
+   database routing."
   [& body]
   `(do-with-workspace-provisioning-connection (fn [] ~@body)))
 
@@ -158,6 +161,17 @@
   [_database]
   nil)
 
+(defn- workspace-provisioning-overlay
+  [database]
+  ;; a router's connections go to a database chosen per user, which is no place for workspace DDL
+  (when (database-routing/db-routing-enabled? database)
+    (throw (ex-info (tru "Workspaces are not supported on a database that uses database routing.")
+                    {:status-code 400, :database-id (u/id database)})))
+  ;; falling back to :details would run workspace DDL as the database's main login
+  (or (perf/not-empty (database-workspace-provisioning-details database))
+      (throw (ex-info (tru "This database has no workspace provisioning connection.")
+                      {:status-code 409, :database-id (u/id database)}))))
+
 (defn connection-database
   "The Database that a connection for `database` goes to in the current context: the current user's routing
   destination when `database` is a router, otherwise `database` itself."
@@ -177,7 +191,7 @@
     :default                nil
     :write-data             (database-write-data-details database)
     :transform              (database-write-data-details database)
-    :workspace-provisioning (database-workspace-provisioning-details database)))
+    :workspace-provisioning (workspace-provisioning-overlay database)))
 
 (defn- resolve-effective-type
   "Maps a requested `connection-type` plus whether an `overlay` was resolved to the effective

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.analytics.prometheus-test :as prometheus-test]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.connection :as driver.conn]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -98,10 +99,20 @@
         (testing "outside the scope the provisioning login is not used"
           (is (=? details (driver.conn/effective-details database)))
           (is (= :default (driver.conn/connection-pool-type database))))))
-    (testing "without a provisioning login, the scope resolves :details in the default pool"
+    (testing "without a provisioning login, the scope throws rather than use the main login"
       (driver.conn/with-workspace-provisioning-connection
-        (is (=? details (driver.conn/effective-details database)))
-        (is (= :default (driver.conn/connection-pool-type database)))))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no workspace provisioning connection"
+                              (driver.conn/effective-details database)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no workspace provisioning connection"
+                              (driver.conn/connection-pool-type database)))))
+    (testing "a database that uses database routing is refused, even with a provisioning login"
+      (mt/with-dynamic-fn-redefs [driver.conn/database-workspace-provisioning-details (constantly provisioning)
+                                  database-routing/db-routing-enabled?               (constantly true)]
+        (driver.conn/with-workspace-provisioning-connection
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"database routing"
+                                (driver.conn/effective-details database)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"database routing"
+                                (driver.conn/connection-pool-type database))))))))
 
 (deftest type-resolved-metric-test
   (mt/when-ee-evailable
