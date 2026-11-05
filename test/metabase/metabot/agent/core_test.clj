@@ -571,8 +571,9 @@
               (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
 
 (defn- edit-viewed-sql!
-  "Run an agent turn in which the mocked LLM changes `1` to `2` with `edit_sql_query`, in the query whose ID the
-  viewing context in `context` shows first. Return that query ID and the parts of the turn."
+  "Run an agent turn in which the mocked LLM edits the query on screen with `edit_sql_query`.
+  The LLM changes `1` to `2` in the query whose ID the viewing context in `context` shows first. Return that query ID
+  and the parts of the turn."
   [context]
   (let [shown-id (atom nil)
         calls    (atom 0)
@@ -631,25 +632,21 @@
 (deftest edit-sql-model-in-model-editor-test
   (testing "an edit of a SQL model's query goes to the SQL editor of the model editor"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
-        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                           llm-metabot-provider test-provider]
-          (let [{:keys [parts]} (edit-viewed-sql!
-                                 {:capabilities    ["permission:write_sql_queries"]
-                                  :user_is_viewing [{:type  "model"
-                                                     :id    157
-                                                     :query {:lib/type :mbql/query
-                                                             :database db-id
-                                                             :stages   [{:lib/type :mbql.stage/native
-                                                                         :native   "SELECT 1"}]}}
-                                                    {:type    "code_editor"
-                                                     :buffers [{:id     "qb"
-                                                                :source {:language "sql" :database_id db-id}
-                                                                :cursor {:line 1 :column 1}}]}]})
-                data-parts      (into {} (comp (filter :data-type) (map (juxt :data-type :data))) parts)]
-            (is (=? {:buffer_id "qb" :mode "rewrite" :value "SELECT 2"}
-                    (get data-parts "code_edit")))
-            (is (not (contains? data-parts "generated_entity")))))))))
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [{:keys [parts]} (edit-viewed-sql!
+                               {:capabilities    ["permission:write_sql_queries"]
+                                :user_is_viewing [{:type  "model"
+                                                   :id    157
+                                                   :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                  {:type    "code_editor"
+                                                   :buffers [{:id     "qb"
+                                                              :source {:language "sql" :database_id (mt/id)}
+                                                              :cursor {:line 1 :column 1}}]}]})
+              data-parts      (into {} (comp (filter :data-type) (map (juxt :data-type :data))) parts)]
+          (is (=? {:buffer_id "qb" :mode "rewrite" :value "SELECT 2"}
+                  (get data-parts "code_edit")))
+          (is (not (contains? data-parts "generated_entity"))))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
