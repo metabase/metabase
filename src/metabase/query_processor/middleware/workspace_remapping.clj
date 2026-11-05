@@ -11,6 +11,7 @@
   - [[bypass-cache-when-remapped]] keeps the result cache out of the way, since its key ignores remappings.
   - [[apply-workspace-sql-remapping]] rewrites the SQL that runs, native or compiled from MBQL, with SQLGlot. It fails
     closed: SQL it can't parse does not run."
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -35,8 +36,9 @@
   "The remappings QP setup read for `query`, or nil: setup reads them once per query and carries them on the metadata
   provider it binds, so every later step agrees on them."
   [query]
-  (when-let [metadata-provider (:lib/metadata query)]
-    (lib.metadata.protocols/cached-value metadata-provider ::remappings nil)))
+  (let [metadata-provider (:lib/metadata query)]
+    (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
+      (lib.metadata.protocols/cached-value metadata-provider ::remappings nil))))
 
 (defn rewrite-query
   "`query` with every reference to a remapped table rewritten to the scratch table, in the SQL that will run: each

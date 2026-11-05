@@ -13,6 +13,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.test-metadata :as meta]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.model-persistence.task.persist-refresh :as persist-refresh]
    [metabase.query-processor :as qp]
@@ -287,9 +289,11 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"could not parse" (ws/rewrite-sql :postgres remaps "SELEC * FRM public.orders")))))
 
 (deftest execution-middleware-test
-  (binding [driver/*driver* :postgres]
-    (let [carrying (lib.metadata/->metadata-provider
-                    (qp.workspace-remapping/carry-remappings (mt/metadata-provider) remaps))]
+  ;; the provider comes from the in-memory test metadata, not a test database: this test needs no warehouse, and
+  ;; `driver/*driver*` is bound to :postgres only so SQLGlot reads Postgres SQL
+  (let [mp       (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider)
+        carrying (qp.workspace-remapping/carry-remappings mp remaps)]
+    (binding [driver/*driver* :postgres]
       (testing "the native stage and the compiled SQL are rewritten, with the remappings setup carried"
         (is (=? {:stages      [{:native #"(?s).*mb__iso_public.*"}]
                  :qp/compiled {:query #"(?s).*mb__iso_public.*"}}
@@ -298,14 +302,14 @@
                   :stages       [{:lib/type :mbql.stage/native, :native "SELECT * FROM public.orders"}]
                   :qp/compiled  {:query "SELECT * FROM public.orders"}}))))
       (testing "a query setup found no remappings for is left alone"
-        (let [query {:lib/metadata (mt/metadata-provider), :qp/compiled {:query "SELECT * FROM public.orders"}}]
+        (let [query {:lib/metadata mp, :qp/compiled {:query "SELECT * FROM public.orders"}}]
           (is (= query (qp.workspace-remapping/rewrite-query query)))))
       (testing "a query with remappings bypasses the result cache"
         (let [seen (atom nil)
               qp   (qp.workspace-remapping/bypass-cache-when-remapped (fn [query _rff] (reset! seen query)))]
           (qp {:lib/metadata carrying, :cache-strategy {:type :ttl}} nil)
           (is (not (contains? @seen :cache-strategy)))
-          (qp {:lib/metadata (mt/metadata-provider), :cache-strategy {:type :ttl}} nil)
+          (qp {:lib/metadata mp, :cache-strategy {:type :ttl}} nil)
           (is (contains? @seen :cache-strategy)))))))
 
 (deftest rewrite-sql-statement-allowlist-test
