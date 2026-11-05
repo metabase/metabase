@@ -20,6 +20,7 @@
    [metabase.query-processor.middleware.workspace-remapping :as qp.workspace-remapping]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.writeback :as qp.writeback]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -301,12 +302,36 @@
           (is (contains? @seen :cache-strategy)))))))
 
 (deftest rewrite-sql-strictness-test
-  (testing "statements SQLGlot keeps as unstructured commands are refused"
+  (testing "anything but a query, INSERT, UPDATE, DELETE, MERGE or CREATE TABLE ... AS is refused, and so is a statement
+            with SQL the rewrite can't see into"
     (doseq [sql ["EXPLAIN SELECT * FROM public.orders"
                  "DECLARE c CURSOR FOR SELECT * FROM public.orders"
                  "PREPARE p AS SELECT * FROM public.orders; EXECUTE p"
-                 "DO $$ BEGIN PERFORM * FROM public.orders; END $$"]]
+                 "DO $$ BEGIN PERFORM * FROM public.orders; END $$"
+                 "CREATE FUNCTION f() RETURNS text LANGUAGE sql AS $$ SELECT src FROM public.orders $$"
+                 "CREATE RULE r AS ON INSERT TO public.customers DO ALSO SELECT 1"
+                 "COPY (SELECT * FROM public.orders) TO STDOUT"
+                 "SET statement_timeout = 1000; SELECT * FROM public.orders"
+                 "CREATE TABLE public.x AS EXECUTE p"
+                 "SELECT query_to_xml('select * from public.customers', true, true, '')"
+                 "SELECT * FROM dblink('dbname=x', 'select 1') AS t(a int)"
+                 "SELECT upper('select src from public.orders')"]]
       (is (thrown? clojure.lang.ExceptionInfo (ws/rewrite-sql :postgres remaps sql)) sql)))
+  (testing "allowed statements are rewritten"
+    (doseq [sql ["WITH x AS (SELECT 1) SELECT * FROM public.orders"
+                 "SELECT 1 UNION ALL SELECT id FROM public.orders"
+                 "INSERT INTO public.orders SELECT * FROM public.orders"
+                 "UPDATE public.orders SET id = 1"
+                 "DELETE FROM public.orders"
+                 "CREATE TABLE public.x AS SELECT * FROM public.orders"]]
+      (is (str/includes? (ws/rewrite-sql :postgres remaps sql) "mb__iso_public") sql))
+    (is (= "SELECT UPPER('select 1 from public.customers')"
+           (ws/rewrite-sql :postgres remaps "SELECT upper('select 1 from public.customers')"))
+        "a string literal naming no remapped table is fine"))
+  (testing "other replace-names callers, which don't ask for strictness, are unchanged"
+    (is (= "SELECT QUERY_TO_XML('select * from public.orders', TRUE, TRUE, '')"
+           (sql-tools/replace-names :postgres "SELECT query_to_xml('select * from public.orders', true, true, '')"
+                                    {:tables remaps} {:allow-unused? true}))))
   (testing "unquoted names fold to lower case, as on Postgres"
     (let [mixed {{:schema "public", :table "Mixed"} {:schema "mb__iso_public", :table "Mixed"}}]
       (is (str/includes? (ws/rewrite-sql :postgres mixed "SELECT * FROM public.\"Mixed\"") "mb__iso_public"))
