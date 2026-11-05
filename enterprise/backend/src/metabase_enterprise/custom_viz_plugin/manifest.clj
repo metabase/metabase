@@ -113,15 +113,19 @@
 
 ;;; ------------------------------------------------ Assets ------------------------------------------------
 
-(def ^:private image-extensions
-  "File extensions considered to be images for static asset serving."
-  #{".svg" ".png" ".jpg" ".jpeg" ".gif" ".webp" ".ico" ".avif"})
+(def ^:private icon-extension
+  "The one file type a plugin icon may have."
+  ".svg")
 
-(defn- image-file?
-  "Returns true if the file path has a recognized image extension."
+(defn- svg-file?
   [^String path]
-  (let [lower (u/lower-case-en path)]
-    (some #(str/ends-with? lower %) image-extensions)))
+  (str/ends-with? (u/lower-case-en path) icon-extension))
+
+(defn icon-error
+  "Why `icon` can't name a plugin's icon, or nil. The icon is the one asset an instance serves, and it must be an SVG file."
+  [icon]
+  (when (and (string? icon) (not (svg-file? icon)))
+    (format "Plugin icon \"%s\" must be an SVG file" icon)))
 
 (defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
@@ -133,17 +137,16 @@
 (defn asset-paths
   "List the static asset paths the backend will serve for a plugin.
    Custom viz plugins do not ship arbitrary assets — the only servable asset is the
-   plugin `icon` (when it's an image with a safe relative path). Authors who need
+   plugin `icon` (when it's an SVG file with a safe relative path). Authors who need
    images inline them (e.g. base64) into their single JS bundle."
   [manifest]
   (when-let [icon (:icon manifest)]
-    (when (and (image-file? icon) (safe-relative-path? icon))
+    (when (and (svg-file? icon) (safe-relative-path? icon))
       [icon])))
 
 (defn asset-content-type
-  "Return the MIME content type for an image asset file, or nil if not recognized.
-   Only the plugin icon is served, so only image types are allowed."
+  "Return the MIME content type for an asset file, or nil if not recognized.
+   Only the plugin icon is served, so only SVG is allowed."
   [^String path]
-  (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
-    (when (and ct (str/starts-with? ct "image/"))
-      ct)))
+  (when (svg-file? path)
+    "image/svg+xml"))

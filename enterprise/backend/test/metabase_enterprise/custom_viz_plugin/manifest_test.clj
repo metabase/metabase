@@ -171,32 +171,45 @@
 
 ;;; ------------------------------------------------ Asset Paths ------------------------------------------------
 
-(deftest asset-paths-test
-  (testing "returns the icon when it's a safe image"
+(deftest ^:parallel asset-paths-test
+  (testing "returns the icon when it's a safe SVG file"
     (is (= ["icon.svg"] (manifest/asset-paths {:icon "icon.svg"})))
-    (is (= ["icon.png"] (manifest/asset-paths {:icon "icon.png"}))))
+    (is (= ["Icon.SVG"] (manifest/asset-paths {:icon "Icon.SVG"}))))
   (testing "returns nil when there is no icon"
     (is (nil? (manifest/asset-paths {})))
     (is (nil? (manifest/asset-paths {:icon nil}))))
-  (testing "rejects a non-image icon"
-    (is (nil? (manifest/asset-paths {:icon "icon.js"}))))
+  (testing "rejects an icon that is not an SVG file, bitmaps included"
+    (is (nil? (manifest/asset-paths {:icon "icon.js"})))
+    (is (nil? (manifest/asset-paths {:icon "icon.png"}))))
   (testing "rejects an icon with path traversal"
     (is (nil? (manifest/asset-paths {:icon "../secret.svg"})))
     (is (nil? (manifest/asset-paths {:icon "/etc/passwd.svg"}))))
   (testing "ignores a stray assets array — only the icon is ever served"
     (is (= ["icon.svg"]
            (manifest/asset-paths {:icon   "icon.svg"
-                                  :assets ["thumbs-up.png" "thumbs-down.png" "en.json"]})))
-    (is (nil? (manifest/asset-paths {:assets ["thumbs-up.png"]})))))
+                                  :assets ["thumbs-up.svg" "thumbs-down.svg" "en.json"]})))
+    (is (nil? (manifest/asset-paths {:assets ["thumbs-up.svg"]})))))
+
+(deftest ^:parallel icon-error-test
+  (testing "an SVG icon passes"
+    (is (nil? (manifest/icon-error "icon.svg")))
+    (is (nil? (manifest/icon-error "./Icon.SVG"))))
+  (testing "a bitmap or any other file type is named in the error"
+    (is (= "Plugin icon \"icon.png\" must be an SVG file" (manifest/icon-error "icon.png")))
+    (is (= "Plugin icon \"icon.js\" must be an SVG file" (manifest/icon-error "icon.js"))))
+  (testing "no icon, or a non-string one, is someone else's problem"
+    (is (nil? (manifest/icon-error nil)))
+    (is (nil? (manifest/icon-error 42)))))
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 
-(deftest asset-content-type-test
-  (testing "recognizes image types"
+(deftest ^:parallel asset-content-type-test
+  (testing "recognizes the SVG icon"
     (is (= "image/svg+xml" (manifest/asset-content-type "icon.svg")))
-    (is (= "image/png" (manifest/asset-content-type "thumb.png")))
-    (is (= "image/jpeg" (manifest/asset-content-type "photo.jpg"))))
-  (testing "returns nil for non-image types — assets (incl. JSON) are no longer served"
+    (is (= "image/svg+xml" (manifest/asset-content-type "ICON.SVG"))))
+  (testing "returns nil for every other type — bitmaps are not icons and assets (incl. JSON) are not served"
+    (is (nil? (manifest/asset-content-type "thumb.png")))
+    (is (nil? (manifest/asset-content-type "photo.jpg")))
     (is (nil? (manifest/asset-content-type "en.json")))
     (is (nil? (manifest/asset-content-type "script.js")))
     (is (nil? (manifest/asset-content-type "style.css")))
