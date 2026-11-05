@@ -121,6 +121,8 @@
                 (is (str/includes? output (str "database_id=\"" db-id "\""))))
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions say that the query is not saved"
+                (is (str/includes? output "It is not saved")))
               (testing "instructions mention error-analysis flow"
                 (is (str/includes? output "If the returned SQL query is NOT correct"))
                 (is (str/includes? output "Make further refinements using this tool again"))))))))))
@@ -149,6 +151,8 @@
                 (is (str/includes? output (str "database_id=\"" db-id "\""))))
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions say that the query is not saved"
+                (is (str/includes? output "It is not saved")))
               (testing "instructions mention edit_sql_query as alternative"
                 (is (str/includes? output "this tool or edit_sql_query again"))))))))))
 
@@ -181,10 +185,13 @@
                       (is (= "card" (:type entity)))
                       (is (= :native (get-in entity [:query :query :type])))))
                   (testing "an open code-editor buffer receives a code_edit part"
-                    (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                      :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
+                    (let [result (run {:user_is_viewing [{:type    "code_editor"
+                                                          :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]})
+                          parts  (:data-parts result)]
                       (is (= 1 (count parts)))
-                      (is (= "code_edit" (:data-type (first parts)))))))))))))))
+                      (is (= "code_edit" (:data-type (first parts))))
+                      (testing "and the instructions do not say that the query is not saved"
+                        (is (not (str/includes? (:output result) "It is not saved")))))))))))))))
 
 (deftest edit-and-replace-sql-query-unexpected-error-test
   (mt/with-dynamic-fn-redefs [sql.edit/edit-sql-query (fn [_] (throw (ex-info "boom" {})))
