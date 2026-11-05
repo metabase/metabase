@@ -263,3 +263,23 @@
       (is (names-table? "public" {:schema nil :table "Account"} {:schema "public" :table "account"}))
       (is (not (names-table? "public" {:schema nil :table "account"} {:schema "core" :table "account"})))
       (is (not (names-table? "public" {:schema "public" :table "account"} {:schema "public" :table "orders"}))))))
+
+;;;; BigQuery wildcard tables
+
+(deftest ^:parallel existing-table?-wildcard-test
+  (let [existing-table? #'metabot.tools.sql.validation/existing-table?
+        known           [{:schema "analytics" :table "events_20240101"}]]
+    (testing "a BigQuery wildcard table exists when the name of a known table starts with its prefix"
+      (is (existing-table? :bigquery-cloud-sdk nil known {:schema "analytics" :table "events_*"}))
+      (is (existing-table? :bigquery-cloud-sdk nil known {:schema "analytics" :table "EVENTS_2024*"})))
+    (testing "a wildcard table that matches no known table, such as one with a typo, does not exist"
+      (is (not (existing-table? :bigquery-cloud-sdk nil known {:schema "analytics" :table "evnts_*"})))
+      (is (not (existing-table? :bigquery-cloud-sdk nil known {:schema "other" :table "events_*"}))))
+    (testing "only BigQuery has wildcard tables"
+      (is (not (existing-table? :snowflake "PUBLIC" [{:schema "PUBLIC" :table "events_1"}] {:table "events_*"}))))))
+
+(deftest known-tables-wildcard-test
+  (testing "a wildcard table finds the tables whose names start with its prefix"
+    (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "analytics" :name "events_20240101" :active true}]
+      (is (= [{:schema "analytics" :table "events_20240101"}]
+             (#'metabot.tools.sql.validation/known-tables (mt/id) [{:schema "analytics" :table "events_*"}]))))))

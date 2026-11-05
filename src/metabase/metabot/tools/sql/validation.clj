@@ -334,12 +334,27 @@
          (or (nil? spec-schema)
              (= (schema-of written) spec-schema)))))
 
+(defn- wildcard-prefix
+  "The name prefix of the table reference `written` when it has the shape of a wildcard table, or nil.
+
+    (wildcard-prefix {:schema \"analytics\" :table \"events_*\"})
+    ;; => \"events_\"
+
+  Only BigQuery has wildcard tables. A wildcard table reads every table of its dataset whose name starts with the
+  prefix, such as the daily `events_20240101` shards of a Google Analytics export."
+  [{table :table}]
+  (second (re-matches #"(?s)(.*)\*" table)))
+
 (defn- known-tables
-  "The active Tables of `database-id` with the name of one of the table references `written`, as `{:schema :table}`
-  specs. Hidden Tables are included."
+  "The active Tables of `database-id` that the table references `written` can name, as `{:schema :table}` specs:
+  those with the name of a reference, and, for a reference with the shape of a wildcard table, those whose name can
+  start with its prefix. Hidden Tables are included."
   [database-id written]
-  (for [{:keys [schema name]} (metabot.db/database-table-names database-id (mapv :table written))]
-    {:schema schema :table name}))
+  (let [prefixes (vec (keep wildcard-prefix written))]
+    (for [{:keys [schema name]} (concat (metabot.db/database-table-names database-id (mapv :table written))
+                                        (when (seq prefixes)
+                                          (metabot.db/database-table-names-like database-id prefixes)))]
+      {:schema schema :table name})))
 
 (defn- system-table?
   "Whether the table reference `written` names a catalog table of `driver`."
@@ -351,12 +366,24 @@
                     (re-matches pattern (written-name written))))
              system-tables))))
 
+(defn- matches-table?
+  "Whether the table reference `written` is the table `spec`, or is a wildcard table of `driver` that reads it."
+  [driver default-schema written spec]
+  (if-let [prefix (when (isa? driver/hierarchy driver :bigquery-cloud-sdk)
+                    (wildcard-prefix written))]
+    (and (str/starts-with? (u/lower-case-en (:table spec)) (u/lower-case-en prefix))
+         (names-table? default-schema (assoc written :table (:table spec)) spec))
+    (names-table? default-schema written spec)))
+
 (defn- existing-table?
-  "Whether the unresolved table reference `written` names a table that exists: a catalog table of `driver`, or one of
-  the `known` Tables, which do not resolve because they are hidden."
+  "Whether the unresolved table reference `written` names a table that exists: a catalog table of `driver`, one of
+  the `known` Tables, which do not resolve because they are hidden, or a wildcard table that reads one of them.
+
+  A wildcard table never resolves, so this is also where a wildcard that matches no table, such as one with a typo,
+  is told apart."
   [driver default-schema known written]
   (or (system-table? driver default-schema written)
-      (some #(names-table? default-schema written %) known)))
+      (some #(matches-table? driver default-schema written %) known)))
 
 (defn- table-names
   "The sorted, distinct names of the table references `written`, as the SQL writes them."
