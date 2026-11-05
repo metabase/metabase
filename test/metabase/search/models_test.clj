@@ -4,9 +4,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.dml-capture :as dml-capture]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
@@ -217,6 +219,15 @@
         (with-redefs [search.ingestion/max-enumerated-documents 0]
           (is (nil? (cascading-documents-of card-id))))))))
 
+(deftest cascade-enumeration-asks-for-one-past-the-ceiling-test
+  (testing "the enumeration query asks the database for at most one id past the ceiling"
+    (let [queries (atom [])]
+      (mt/with-dynamic-fn-redefs [mdb/streaming-reducible-query (fn [query] (swap! queries conj query) [])]
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+        (with-redefs [search.ingestion/max-enumerated-documents 2]
+          (search.ingestion/doc-ids "action" [:= 1 :this.model_id])))
+      (is (=? [{:limit 3}] @queries)))))
+
 (deftest reconcile-leaves-unenumerable-survivors-alone-test
   (testing "when the surviving documents cannot be enumerated, reconcile purges none of them"
     (search.tu/with-appdb-search-if-available-without-fallback
@@ -279,12 +290,13 @@
         (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
           (is (= 1 (t2/delete! :model/Card :id card-id))))
         (is (false? (t2/exists? :model/Card :id card-id))))))
-  (testing "a database error still fails the delete, since it has already aborted the transaction"
+  (testing "a database error inside the enumeration query leaves the delete able to run and commit"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {:name "Enumeration SQL Error Model", :type :model}]
-        (mt/with-dynamic-fn-redefs [search/cascading-documents
-                                    (fn [_instances]
-                                      (throw (ex-info "query failed" {} (java.sql.SQLException. "boom"))))]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"query failed"
-                                (t2/delete! :model/Card :id card-id))))
-        (is (true? (t2/exists? :model/Card :id card-id)))))))
+        ;; The bad column fails inside the enumeration's own nested transaction. On PostgreSQL, the delete below can
+        ;; only run if that savepoint rolled back cleanly.
+        (mt/with-dynamic-fn-redefs [search.db/spec-index-doc-ids-reducible
+                                    (fn [& _]
+                                      (mdb/streaming-reducible-query ["SELECT no_such_column FROM report_card"]))]
+          (is (= 1 (t2/delete! :model/Card :id card-id))))
+        (is (false? (t2/exists? :model/Card :id card-id)))))))
