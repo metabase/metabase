@@ -107,11 +107,16 @@
     (t2/delete! :model/Action :id [:in action-ids])
     0))
 
+;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
+;; another database in between.
 (mu/defn delete-cards!
-  "Delete the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
+  "Delete the Cards with `card-ids` that still belong to the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   card-ids    :- [:sequential ::lib.schema.id/card]]
   (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:in :id card-ids]}))
+             :where       [:and
+                           [:= :database_id database-id]
+                           [:in :id card-ids]]}))
 
 (mu/defn delete-transforms-for-database! :- :int
   "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number
