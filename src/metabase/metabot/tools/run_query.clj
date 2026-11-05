@@ -672,12 +672,17 @@
   "`{:output :returned :truncated?}`: the text the model reads for a page of rows, the number of rows that text
    shows, and whether the query has more rows than it shows.
    With `saved-card`, the saved question that ran under its own id, the text says so and how to link to it: its id
-   is no query the conversation holds, so a query link to it would open nothing."
+   is no query the conversation holds, so a query link to it would open nothing.
+   A truncated page of a query that the client supplied, such as the query or the saved question or model on the
+   user's screen, gets no advice to aggregate it and run it again: for the user's own query, that means building a
+   new one."
   [query-id {:keys [cols rows truncated?]} saved-card]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
         truncated?            (or truncated? (< shown (count rows)))
-        none-fit?             (and (zero? shown) (seq rows))]
+        none-fit?             (and (zero? shown) (seq rows))
+        ;; A viewed saved question or model is a client ID too, through the chart that seeding stores under its ID
+        client-query?         (contains? (shared/current-client-ids) query-id)]
     {:returned   shown
      :truncated? truncated?
      ;; Cells are XML-escaped, so no value can close <data> early and the tags need no random boundary.
@@ -705,7 +710,8 @@
 
                     truncated?
                     (str "Only the first " shown " rows are shown, so do not count or total them to answer."
-                         " Aggregate, filter, or limit the query and run it again.")))}))
+                         (when-not client-query?
+                           " Aggregate, filter, or limit the query and run it again."))))}))
 
 (defn- run-query
   "Run the stored query `query_id` names and return the tool's result.
