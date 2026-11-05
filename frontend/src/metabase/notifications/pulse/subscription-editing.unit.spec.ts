@@ -13,7 +13,6 @@ const createChannelSpec = (opts: Partial<ChannelSpec>): ChannelSpec => ({
   type: "email",
   name: "Email",
   schedules: ["hourly", "daily", "weekly", "monthly"],
-  schedule_type: "hourly",
   allows_recipients: true,
   configured: true,
   ...opts,
