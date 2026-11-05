@@ -1557,13 +1557,24 @@
   (driver.u/workspace-scratch-namespace-name
    (workspace-user-name wsd) (:id schema-row) (:main_schema schema-row) max-identifier-length))
 
+(defn- check-scratch-name!
+  "Throws unless `scratch` is one of `user`'s scratch namespaces, so a mixed-up argument never drops or grants on
+  another schema."
+  [user scratch]
+  (when-not (and (string? scratch) (str/starts-with? scratch (str user "_s")))
+    (throw (ex-info (format "%s is not a scratch namespace of workspace user %s." (pr-str scratch) (quote-role user))
+                    {:user user, :scratch scratch}))))
+
 (defn- run-workspace-ddl!
-  "In one transaction on `database`, call `(statements-fn conn)` for the statements to run, then run them as one batch.
-  `statements-fn` runs the preconditions first, so a failed one throws before any change. `after-fn` runs in the same
-  transaction once the batch has, and may throw to roll it back. Errors are rethrown with each of `secrets` scrubbed."
+  "In one transaction on `database`, as its workspace provisioning login, call `(statements-fn conn)` for the
+  statements to run, then run them as one batch. `statements-fn` runs the preconditions first, so a failed one throws
+  before any change. `after-fn` runs in the same transaction once the batch has, and may throw to roll it back. Errors
+  are rethrown with each of `secrets` scrubbed."
   [database secrets statements-fn after-fn]
   (try
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+    ;; bound here rather than trusted to the caller: outside it, the DDL would run as the database's main login
+    (jdbc/with-db-transaction [t-conn (driver.conn/with-workspace-provisioning-connection
+                                        (sql-jdbc.conn/db->pooled-connection-spec database))]
       (let [statements (statements-fn t-conn)]
         (with-open [stmt (.createStatement ^Connection (jdbc/db-connection t-conn))]
           (doseq [^String sql statements]
@@ -1586,7 +1597,8 @@
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database wsd]
-  (let [{:keys [user password]} (:database_details wsd)]
+  (let [user     (workspace-user-name wsd)
+        password (-> wsd :database_details :password)]
     (run-workspace-ddl!
      database [password]
      (fn [conn]
@@ -1622,25 +1634,66 @@
              (quote-schema schema) (quote-schema schema))
      {})))
 
+(def ^:private public-write-privileges
+  "Privileges that let a grantee change a table or act through its owner: TRIGGER runs the grantee's function as
+  whoever writes the table, and REFERENCES can block the owner's writes. MAINTAIN exists from Postgres 17."
+  "('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'TRIGGER', 'REFERENCES', 'MAINTAIN')")
+
+(defn- public-writes
+  "Every grant to PUBLIC that lets the workspace user write to a table in `schema`, now or once it is created: on a
+  table, on a column, or in the default privileges of the schema or, for one of `creators`, of the whole database."
+  [conn schema creators]
+  (let [privileges (str "string_agg(DISTINCT a.privilege_type, ', ' ORDER BY a.privilege_type) AS privileges ")
+        public     (str "a.grantee = 0 AND a.privilege_type IN " public-write-privileges " ")]
+    (->> (jdbc/query
+          conn
+          [(str "SELECT 'table' AS kind, c.relname AS object, NULL AS col, NULL AS for_role, " privileges
+                "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace CROSS JOIN LATERAL aclexplode(c.relacl) a "
+                "WHERE n.nspname = ? AND " public "GROUP BY c.relname "
+                "UNION ALL "
+                "SELECT 'column', c.relname, att.attname, NULL, " privileges
+                "FROM pg_attribute att JOIN pg_class c ON c.oid = att.attrelid "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace CROSS JOIN LATERAL aclexplode(att.attacl) a "
+                "WHERE n.nspname = ? AND NOT att.attisdropped AND " public "GROUP BY c.relname, att.attname "
+                "UNION ALL "
+                "SELECT CASE WHEN d.defaclnamespace = 0 THEN 'database default' ELSE 'schema default' END, "
+                "       NULL, NULL, pg_get_userbyid(d.defaclrole), " privileges
+                "FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a "
+                "WHERE d.defaclobjtype = 'r' AND " public
+                "  AND d.defaclnamespace IN (0, (SELECT oid FROM pg_namespace WHERE nspname = ?)) "
+                "GROUP BY d.defaclrole, d.defaclnamespace "
+                "ORDER BY 1, 2, 3, 4")
+           schema schema schema])
+         (filter #(or (not= "database default" (:kind %)) (contains? (set creators) (:for_role %)))))))
+
+(defn- public-write-label [{:keys [kind object col for_role]}]
+  (case kind
+    "table"            object
+    "column"           (str object "." col)
+    "schema default"   (str "default privileges for " for_role)
+    "database default" (str "database-wide default privileges for " for_role)))
+
+(defn- public-write-revoke [schema {:keys [kind object col for_role privileges]}]
+  (let [table #(str (quote-schema schema) "." (sql.u/quote-name :postgres :table object))]
+    (case kind
+      "table"            (format "REVOKE %s ON TABLE %s FROM PUBLIC;" privileges (table))
+      "column"           (format "REVOKE %s (%s) ON TABLE %s FROM PUBLIC;" privileges (quote-role col) (table))
+      "schema default"   (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s REVOKE %s ON TABLES FROM PUBLIC;"
+                                 (quote-role for_role) (quote-schema schema) privileges)
+      "database default" (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s REVOKE %s ON TABLES FROM PUBLIC;"
+                                 (quote-role for_role) privileges))))
+
 (defn- check-no-public-writes!
   "The workspace user can write to a table that grants a write privilege to PUBLIC, and no REVOKE from the workspace
   user takes that back."
-  [conn schema]
-  (when-let [tables (seq (map :object (jdbc/query conn [(str "SELECT DISTINCT c.relname AS object FROM pg_class c "
-                                                             "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                                                             "CROSS JOIN LATERAL aclexplode(c.relacl) a "
-                                                             "WHERE n.nspname = ? AND a.grantee = 0 AND a.privilege_type "
-                                                             "IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE') "
-                                                             "ORDER BY c.relname")
-                                                        schema])))]
+  [conn schema creators]
+  (when-let [grants (seq (public-writes conn schema creators))]
     (precondition-failed!
      schema
-     (format "%d table(s) in schema %s grant a write privilege to PUBLIC: %s. Run `%s` and retry."
-             (count tables) (quote-schema schema) (str/join ", " tables)
-             (str/join " " (for [table tables]
-                             (format "REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE %s.%s FROM PUBLIC;"
-                                     (quote-schema schema) (sql.u/quote-name :postgres :table table)))))
-     {:objects (vec tables)})))
+     (format "%d grant(s) let PUBLIC write to tables in schema %s: %s. Run `%s` and retry."
+             (count grants) (quote-schema schema) (str/join ", " (map public-write-label grants))
+             (str/join " " (map #(public-write-revoke schema %) grants)))
+     {:objects (mapv public-write-label grants)})))
 
 (defn- check-usage-grant-option!
   "Without USAGE WITH GRANT OPTION, `GRANT USAGE ON SCHEMA` succeeds with a warning and grants nothing."
@@ -1728,7 +1781,8 @@
 
 (defmethod driver/add-workspace-schema! :postgres
   [_driver database wsd main-schema scratch]
-  (let [user (-> wsd :database_details :user)]
+  (let [user (workspace-user-name wsd)]
+    (check-scratch-name! user scratch)
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
      (fn [conn]
@@ -1736,7 +1790,7 @@
        (let [login  (:current_user (first (jdbc/query conn ["SELECT current_user"])))
              owners (table-creators conn main-schema)]
          (check-no-public-create! conn main-schema)
-         (check-no-public-writes! conn main-schema)
+         (check-no-public-writes! conn main-schema (map :owner owners))
          (check-usage-grant-option! conn login main-schema)
          (check-select-grant-option! conn login main-schema)
          (check-default-privilege-owners! login main-schema owners)
@@ -1782,7 +1836,7 @@
 
 (defmethod driver/remove-workspace-schema! :postgres
   [_driver database wsd main-schema scratch]
-  (let [user        (-> wsd :database_details :user)
+  (let [user        (doto (workspace-user-name wsd) (check-scratch-name! scratch))
         main-grants (fn [conn]
                       (when (role-exists? conn user)
                         (filter #(= main-schema (:schema %)) (grants-to-role conn user))))]
@@ -1800,24 +1854,50 @@
                                  (str/join "; " (map #(revoke-statement user %) left)))
                          {:schema main-schema})))))))
 
+(defn- workspace-user-details
+  "`details` with the workspace user's login in place of the provisioning login, and no other way to authenticate: an
+  auth provider or a client certificate would log in as someone else."
+  [details user password]
+  (-> (into {} (remove (fn [[k _]]
+                         (let [n (name k)]
+                           (or (str/starts-with? n "ssl-key") (str/starts-with? n "ssl-client-cert")))))
+            details)
+      (dissoc :ssl-use-client-auth :use-auth-provider :auth-provider)
+      (assoc :user user, :password password)))
+
 (defn- drop-owned-as-workspace-user!
   "As the workspace user itself, drop everything it owns and every privilege granted to it in this database: tables it
   made outside scratch through a PUBLIC grant (such as `public` before Postgres 15) would otherwise make `DROP USER`
-  fail. Runs only when the user exists and its password is known."
+  fail. Runs only when the user exists and its password is known, and is skipped when the user cannot log in."
   [database user password]
-  (when (and password (role-exists? (sql-jdbc.conn/db->pooled-connection-spec database) user))
-    (try
-      (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
-       :postgres
-       (merge (driver.conn/effective-details database) {:user user, :password password})
-       ;; names the user rather than CURRENT_USER, so a connection that resolved to another login drops nothing
-       (fn [spec] (jdbc/execute! spec [(format "DROP OWNED BY %s" (quote-role user))])))
-      (catch Throwable t
-        (throw (driver.u/scrub-exceptions t [password]))))))
+  (when (and password
+             (role-exists? (driver.conn/with-workspace-provisioning-connection
+                             (sql-jdbc.conn/db->pooled-connection-spec database))
+                           user))
+    (let [connected? (volatile! false)]
+      (try
+        (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+         :postgres
+         (workspace-user-details (driver.conn/with-workspace-provisioning-connection
+                                   (driver.conn/effective-details database))
+                                 user password)
+         (fn [spec]
+           (jdbc/with-db-transaction [conn spec]
+             (vreset! connected? true)
+             (lock-main-schemas! conn (map :schema (grants-to-role conn user)))
+             ;; names the user rather than CURRENT_USER, so a connection that resolved to another login drops nothing
+             (jdbc/execute! conn [(format "DROP OWNED BY %s" (quote-role user))]))))
+        (catch Throwable t
+          (let [t (driver.u/scrub-exceptions t [password])]
+            (when @connected?
+              (throw t))
+            ;; DROP USER below still fails, naming what is left, if the user owns anything outside scratch
+            (log/warnf t "Workspace user %s could not log in; destroying it without DROP OWNED" user)))))))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database wsd]
-  (let [{:keys [user password]} (:database_details wsd)]
+  (let [user     (workspace-user-name wsd)
+        password (-> wsd :database_details :password)]
     (drop-owned-as-workspace-user! database user password)
     (run-workspace-ddl!
      database [(-> wsd :database_details :password)]
