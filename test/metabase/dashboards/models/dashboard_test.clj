@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -175,6 +176,33 @@
          (t2/delete! :model/Dashboard :id dash-id)
          (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
+
+(deftest delete-dashboard-is-atomic-test
+  (testing "a failure partway through deleting a Dashboard undoes the whole delete, even inside an outer transaction"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card      {card-id :id} {:dashboard_id dash-id}
+                   :model/Revision  _             {:model "Dashboard", :model_id dash-id
+                                                   :user_id (mt/user->id :crowberto), :object {}}]
+      (mt/with-dynamic-fn-redefs [dashboards.db/delete-pulses-for-dashboard! (fn [_] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (t2/delete! :model/Dashboard :id dash-id))))
+      (is (t2/exists? :model/Dashboard :id dash-id))
+      (is (t2/exists? :model/Card :id card-id))
+      (is (t2/exists? :model/Revision :model "Dashboard" :model_id dash-id)))))
+
+(deftest delete-dashboard-runs-card-delete-hooks-test
+  (testing "hard deleting a Dashboard deletes the Cards saved in it through the model, so their delete hooks run"
+    (mt/with-temp [:model/Dashboard dashboard {}
+                   :model/Card      card      {:dashboard_id (:id dashboard)}
+                   :model/Card      other     {}
+                   :model/Revision  _         {:model "Card", :model_id (:id card), :user_id (mt/user->id :crowberto), :object {}}
+                   :model/Revision  _         {:model "Card", :model_id (:id other), :user_id (mt/user->id :crowberto), :object {}}]
+      (t2/delete! :model/Dashboard :id (:id dashboard))
+      (is (not (t2/exists? :model/Card :id (:id card))))
+      (testing "the Card's revisions are deleted by its delete hook"
+        (is (not (t2/exists? :model/Revision :model "Card" :model_id (:id card)))))
+      (testing "other Cards are untouched"
+        (is (t2/exists? :model/Card :id (:id other)))
+        (is (t2/exists? :model/Revision :model "Card" :model_id (:id other)))))))
 
 (deftest delete-collection-deletes-trashed-dashboard-subscriptions-test
   (testing "hard deleting a Collection holding a directly trashed Dashboard deletes its Pulse and SendPulse triggers"
