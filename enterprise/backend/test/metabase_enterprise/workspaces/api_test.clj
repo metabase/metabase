@@ -50,8 +50,16 @@
         (exec! spec (format "DROP OWNED BY %s" (:user login-weak)) (format "DROP ROLE %s" (:user login-weak))))
       (exec! spec (format "CREATE ROLE %s LOGIN PASSWORD '%s'" (:user login-weak) (:password login-weak)))
       (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details (superuser-details)}]
-          (f spec db-id))))))
+        ;; a plain insert rather than mt/with-temp, which binds a connection that a `future` (and a test request
+        ;; handled on this thread) would share, so racing requests would run in one transaction
+        (let [db-id (t2/insert-returning-pk! :model/Database {:name    (mt/random-name)
+                                                              :engine  :postgres
+                                                              :details (superuser-details)})]
+          (try
+            (f spec db-id)
+            (finally
+              (t2/delete! :model/Workspace :id [:in (t2/select-fn-vec :workspace_id :model/WorkspaceDatabase :database_id db-id)])
+              (t2/delete! :model/Database :id db-id))))))))
 
 (defn- url [db-id] (format "ee/workspace-manager/database/%d/provisioning-connection" db-id))
 
