@@ -1,0 +1,314 @@
+## Desktop Workspaces, parent side: a workspace gives one warehouse user read access to main schemas and write access
+## to one scratch namespace per main schema. workspace_database holds that user per database, workspace_schema one row
+## per main schema, and workspace_provisioning_connection the login that creates and drops them.
+
+databaseChangeLog:
+  - changeSet:
+      id: kbrzhe
+      author: escherize
+      comment: Create the workspace table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: A set of warehouse users and scratch namespaces made for one session
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Display name; not unique
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created the workspace; null once that user is deleted
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the workspace was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the workspace was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: bglkj0
+      author: escherize
+      comment: Add the foreign key from workspace.creator_id to core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: qfdkh8
+      author: escherize
+      comment: Create the workspace_database table
+      changes:
+        - createTable:
+            tableName: workspace_database
+            remarks: The warehouse user of a workspace in one database
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace this row belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The database the workspace user is created in
+                  constraints:
+                    nullable: false
+              - column:
+                  name: isolation_id
+                  type: varchar(8)
+                  remarks: Random id in the names of the workspace user and its scratch namespaces
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON connection details of the workspace user, password included
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: 'provisioning, provisioned, deprovisioning or failed; changed only from an expected status'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row last changed; an in-flight status older than 10 minutes reads as failed
+                  constraints:
+                    nullable: false
+
+  # Before the foreign key on workspace_id, so MySQL uses this index for it rather than adding another.
+  - changeSet:
+      id: cdtlb5
+      author: escherize
+      comment: Add a unique constraint on workspace_database (workspace_id, database_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_database
+            columnNames: workspace_id, database_id
+            constraintName: idx_uq_workspace_database_workspace_id_database_id
+
+  - changeSet:
+      id: j0hllt
+      author: escherize
+      comment: Add a unique constraint on workspace_database.isolation_id
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_database
+            columnNames: isolation_id
+            constraintName: idx_uq_workspace_database_isolation_id
+
+  - changeSet:
+      id: iz6ude
+      author: escherize
+      comment: Add the foreign key from workspace_database.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: afan03
+      author: escherize
+      comment: Add the foreign key from workspace_database.database_id to metabase_database
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_database_id
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: k5lny5
+      author: escherize
+      comment: Create the workspace_schema table
+      changes:
+        - createTable:
+            tableName: workspace_schema
+            remarks: A main schema of a workspace database and the scratch namespace mapped to it
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID, part of the scratch namespace name
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_database_id
+                  type: int
+                  remarks: The workspace database this schema belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: main_schema
+                  type: varchar(254)
+                  remarks: The main schema the workspace user reads (a database on MySQL and ClickHouse)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scratch_namespace
+                  type: varchar(254)
+                  remarks: The scratch schema or database the workspace user writes to, stored when the row is inserted
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: 'adding, active, removing or failed'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error
+                  type: ${text.type}
+                  remarks: The scrubbed warehouse error, when status is failed
+                  constraints:
+                    nullable: true
+
+  # Before the foreign key on workspace_database_id, so MySQL uses this index for it rather than adding another.
+  - changeSet:
+      id: 7b6noi
+      author: escherize
+      comment: Add a unique constraint on workspace_schema (workspace_database_id, main_schema)
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_schema
+            columnNames: workspace_database_id, main_schema
+            constraintName: idx_uq_workspace_schema_workspace_database_id_main_schema
+
+  - changeSet:
+      id: 65kzkv
+      author: escherize
+      comment: Add a unique constraint on workspace_schema.scratch_namespace
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_schema
+            columnNames: scratch_namespace
+            constraintName: idx_uq_workspace_schema_scratch_namespace
+
+  - changeSet:
+      id: drkjl2
+      author: escherize
+      comment: Add the foreign key from workspace_schema.workspace_database_id to workspace_database
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_schema
+            baseColumnNames: workspace_database_id
+            referencedTableName: workspace_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_schema_workspace_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 8l6ftv
+      author: escherize
+      comment: Create the workspace_provisioning_connection table
+      changes:
+        - createTable:
+            tableName: workspace_provisioning_connection
+            remarks: The warehouse login that creates and drops the workspace users and scratch namespaces of a database
+            columns:
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The database this login provisions workspaces in
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: Encrypted JSON connection details merged over the database's own; never returned by the API
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the details were last saved
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: int
+                  remarks: The user who last saved the details; null once that user is deleted
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 3x1uau
+      author: escherize
+      comment: Add the foreign key from workspace_provisioning_connection.database_id to metabase_database
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_provisioning_connection
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_provisioning_connection_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: k8rq2d
+      author: escherize
+      comment: Add the foreign key from workspace_provisioning_connection.updated_by to core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_provisioning_connection
+            baseColumnNames: updated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_provisioning_connection_updated_by
+            onDelete: SET NULL
