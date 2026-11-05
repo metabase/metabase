@@ -252,8 +252,8 @@ export const getQueryResults = createSelector(
       if (!columnDiff) {
         return column;
       }
-      // Unjustified type cast: the diff only holds writable column properties
-      // that exist on both `DatasetColumn` and `Field`, so it is a partial of `T`.
+      // The diff only holds writable column properties that exist on both
+      // `DatasetColumn` and `Field`, so it is a partial of `T`.
       return deepMerge(column, columnDiff as DeepPartial<T>);
     }
 

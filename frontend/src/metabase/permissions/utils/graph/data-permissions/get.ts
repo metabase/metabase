@@ -105,7 +105,8 @@ const getPermission = ({
   if (!value) {
     return getOmittedPermissionValue(permission);
   }
-  // A non-object value in the graph is a permission value
+  // Objects are only expected here for controlled types (handled above), so
+  // any remaining truthy value is a permission value string
   return value as DataPermissionValue;
 };
 
