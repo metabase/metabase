@@ -1,6 +1,6 @@
 (ns metabase.metabot.summary-formula
   "Turn a natural-language phrase typed into a summarize sidebar well into a Metabase custom expression, using the
-  configured LLM. Prototype (DSN-754): the client compiles and validates the formula, so this only drafts it."
+  configured LLM. The client compiles and validates the formula, so this only drafts it."
   (:require
    [clojure.string :as str]
    [metabase.metabot.self :as metabot.self]
@@ -140,8 +140,8 @@
                                        nil
                                        formula-max-tokens
                                        {:request-id          (str (random-uuid))
-                                        ;; prototype: a new ai_usage_log source needs new analytics views and a
-                                        ;; migration, so usage is logged as "unknown"; `:tag` still names it in traces
+                                        ;; a new ai_usage_log source needs new analytics views and a migration, so
+                                        ;; usage is logged as "unknown"; `:tag` still names it in traces
                                         :source              "unknown"
                                         :tag                 "summary-formula"
                                         :required-permission required-permission})
