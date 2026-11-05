@@ -148,9 +148,7 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing (str "nlq-fallback matches embedding_next's general search plus run_query and write_dashboard, which embedding "
-                "doesn't offer yet; "
-                "curated nlq swaps search for the library tool")
+  (testing "NLQ profiles add run_query and write_dashboard to embedding_next's tools"
     (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))

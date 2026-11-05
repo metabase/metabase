@@ -108,6 +108,10 @@
    [:ops {:optional true}
     [:maybe [:sequential {:description "Edits applied in order and saved together."} op-schema]]]])
 
+(def ^:private plain-attribute-keys
+  "The dashboard attributes the writer takes as the model sends them. The `collection_id` and `clear` are resolved."
+  [:name :description :archived])
+
 (defn- without-nils
   "The map `m` without the keys whose value is nil."
   [m]
@@ -361,7 +365,7 @@
                     (and (not creating?)
                          (empty? ops)
                          (empty? clear)
-                         (not-any? #(contains? args %) [:name :description :collection_id :archived]))
+                         (not-any? #(contains? args %) (conj plain-attribute-keys :collection_id)))
                     :no-changes)]
     (when problem
       (invalid-request! {:problem problem}))))
@@ -435,7 +439,7 @@
 (defn- dashboard-attrs
   "The dashboard attributes `args` set. A create without a `collection_id` goes to the personal collection."
   [{:keys [clear] :as args} creating?]
-  (cond-> (select-keys args [:name :description :archived])
+  (cond-> (select-keys args plain-attribute-keys)
     (contains? args :collection_id)
     (assoc :collection_id (let [id (:collection_id args)] (when-not (= "root" id) id)))
 
@@ -452,16 +456,14 @@
   [dashboard attrs ops charts]
   (t2/with-transaction [_conn]
     (let [;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
-          target       (or dashboard
-                           (when (seq charts)
-                             (dashboard-write/write! {:attrs attrs})))
+          created      (when (and (nil? dashboard) (seq charts))
+                         (dashboard-write/write! {:attrs attrs}))
+          target       (or dashboard created)
           saved-charts (mapv (partial save-chart! (:id target)) charts)
           ops          (with-card-ids ops (into {} (map (juxt :chart-id :card-id)) saved-charts))]
-      {:dashboard    (if target
-                       (dashboard-write/write! {:dashboard target
-                                                :attrs     (if dashboard attrs {})
-                                                :ops       ops})
-                       (dashboard-write/write! {:attrs attrs, :ops ops}))
+      {:dashboard    (dashboard-write/write! (cond-> {:ops ops}
+                                               target        (assoc :dashboard target)
+                                               (not created) (assoc :attrs attrs)))
        :saved-charts saved-charts})))
 
 ;;; -------------------------------------------------- Results -----------------------------------------------------
@@ -487,32 +489,33 @@
                     :row row :col col :size_x size_x :size_y size_y)
          "/>")))
 
-(defn- dashboard-xml
-  "The saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards they connect to."
+(defn- dashboard-lines
+  "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
+  they connect to."
   [{:keys [id name description tabs dashcards parameters]}]
   (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
         connections (fn [parameter-id]
                       (not-empty (for [dc dashcards
                                        :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
                                    (:id dc))))
-        cards-xml   (fn [indent dcs] (str/join (for [dc dcs] (str indent (dashcard-xml dc) "\n"))))]
-    (str "  <dashboard" (xml-attrs :id id :name name) ">\n"
-         (when description
-           (str "    <description>" (llm-shape/escape-xml-content description) "</description>\n"))
-         (if (seq tabs)
-           (str/join (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
-                       (str "    <tab" (xml-attrs :id tab-id :name tab-name) ">\n"
-                            (cards-xml "      " (get by-tab tab-id))
-                            "    </tab>\n")))
-           (cards-xml "    " (get by-tab nil)))
-         (str/join (for [{parameter-id :id :as parameter} parameters]
-                     (str "    <filter"
-                          (xml-attrs :id parameter-id
-                                     :name (:name parameter)
-                                     :type (some-> (:type parameter) u/qualified-name)
-                                     :connected_dashcards (some->> (connections parameter-id) ids-text))
-                          "/>\n")))
-         "  </dashboard>\n")))
+        card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml dc))))]
+    [(str "  <dashboard" (xml-attrs :id id :name name) ">")
+     (when description
+       (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
+     (if (seq tabs)
+       (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
+         [(str "    <tab" (xml-attrs :id tab-id :name tab-name) ">")
+          (card-lines "      " (get by-tab tab-id))
+          "    </tab>"])
+       (card-lines "    " (get by-tab nil)))
+     (for [{parameter-id :id :as parameter} parameters]
+       (str "    <filter"
+            (xml-attrs :id parameter-id
+                       :name (:name parameter)
+                       :type (some-> (:type parameter) u/qualified-name)
+                       :connected_dashcards (some->> (connections parameter-id) ids-text))
+            "/>"))
+     "  </dashboard>"]))
 
 (defn- action
   "What saving `attrs` did to `dashboard`, which is nil on a create.
@@ -537,25 +540,24 @@
         layout?     (contains? #{"created" "updated"} action)
         chart-pairs (for [{:keys [chart-id card-id]} saved-charts]
                       {:chart_id chart-id, :card_id card-id})
-        output      (str "<dashboard_saved" (xml-attrs :action action :url link) ">\n"
-                         "  <collection" (xml-attrs :id collection_id
-                                                    :name (save-entity/collection-name collection_id))
-                         "/>\n"
-                         (when (seq chart-pairs)
-                           (str "  <saved_charts>\n"
-                                (str/join (for [{:keys [chart_id card_id]} chart-pairs]
-                                            (str "    <chart" (xml-attrs :chart_id chart_id :card_id card_id) "/>\n")))
-                                "  </saved_charts>\n"))
-                         (when layout?
-                           (dashboard-xml dashboard))
-                         "</dashboard_saved>\n"
-                         (te/lines
-                          (case action
-                            "trashed"  (str "Tell the user you moved it to the trash, and that they can restore it from"
-                                            " there.")
-                            "restored" "Tell the user you restored it."
-                            "Tell the user what you changed and where the dashboard is saved.")
-                          (str "Link it as " (te/link name link) ".")))]
+        output      (te/lines
+                     (str "<dashboard_saved" (xml-attrs :action action :url link) ">")
+                     (str "  <collection"
+                          (xml-attrs :id collection_id :name (save-entity/collection-name collection_id))
+                          "/>")
+                     (when (seq chart-pairs)
+                       ["  <saved_charts>"
+                        (for [{:keys [chart_id card_id]} chart-pairs]
+                          (str "    <chart" (xml-attrs :chart_id chart_id :card_id card_id) "/>"))
+                        "  </saved_charts>"])
+                     (when layout?
+                       (dashboard-lines dashboard))
+                     "</dashboard_saved>"
+                     (case action
+                       "trashed"  "Tell the user you moved it to the trash, and that they can restore it from there."
+                       "restored" "Tell the user you restored it."
+                       "Tell the user what you changed and where the dashboard is saved.")
+                     (str "Link it as " (te/link name link) "."))]
     {:output            output
      :structured-output {:result-type  :dashboard-saved
                          :dashboard-id id
