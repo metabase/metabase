@@ -494,6 +494,12 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uploads are not available on a workspace instance"
                             (upload/create-csv-upload! {:collection-id nil, :filename "x.csv", :file (java.io.File. "x.csv")
                                                         :db-id (mt/id), :schema-name "PUBLIC"})))))
+  (testing "deleting an upload, which drops its table, is refused on a workspace instance"
+    (mt/with-temp [:model/Table table {:db_id (mt/id), :schema "PUBLIC", :name "UPLOADED", :is_upload true}]
+      (mt/with-temporary-setting-values [instance-workspace (workspace-json "PUBLIC" "SCRATCH")]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uploads are not available on a workspace instance"
+                              (mt/with-current-user (mt/user->id :crowberto)
+                                (upload/delete-upload! table)))))))
   (testing "a row action on a remapped table is refused"
     (do-with-postgres-workspace!
      (fn [_scratch]

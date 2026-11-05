@@ -938,6 +938,10 @@
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))
     (cond
+      ;; deleting an upload drops its table, which on a workspace sidecar is a main table
+      (ws/workspace-mode?)
+      (workspace-upload-error)
+
       (not (:is_upload table))
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
