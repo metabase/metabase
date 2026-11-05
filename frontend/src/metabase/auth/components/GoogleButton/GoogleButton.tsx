@@ -11,9 +11,9 @@ import { useSetting } from "metabase/settings";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
-import { isObject } from "metabase-types/guards/common";
 
 import S from "./GoogleButton.module.css";
+import { getErrors } from "./utils";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -102,12 +102,4 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       )}
     </Box>
   );
-};
-
-const getErrors = (error: unknown): string[] => {
-  if (!isObject(error) || !isObject(error.data)) {
-    return [];
-  }
-  const errors = error.data.errors;
-  return isObject(errors) ? Object.values(errors).map(String) : [];
 };
