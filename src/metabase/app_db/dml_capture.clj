@@ -30,9 +30,6 @@
     This is a capture hole, and a loud one: the consumer's convergence backstop is what covers it.
   - DML that bypasses the model — `(t2/delete! (t2/table-name model) ...)`, raw `t2/query` — delivers no
     event, exactly as it bypasses every other Toucan 2 tool.
-  - A delete given an explicit connection (`:conn`) still takes its snapshot on the current connection, so it
-    cannot see rows that connection has not committed.
-    Nothing captured is deleted that way today.
   - A model mixing capture with `before-delete` selects the matching rows twice: once for the row-level hook,
     once for the narrow snapshot.
     Capture is deliberately the inner of the two.
@@ -86,7 +83,7 @@
   [model event]
   (try
     (captured! model event)
-    (catch Throwable e
+    (catch Exception e
       (log/errorf e "Error delivering DML capture event for %s %s" model (:op event)))))
 
 (defn- restatable-as-select?
@@ -107,7 +104,9 @@
          (contains? query :with)
          (contains? query :with-recursive)
          ;; Without an ORDER BY, a limited DELETE removes arbitrary rows, which a separate SELECT need not pick.
-         (contains? query :limit)))))
+         (contains? query :limit)
+         ;; RETURNING is DELETE-only syntax, and a SELECT carrying it fails to execute rather than to build.
+         (contains? query :returning)))))
 
 ;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
 ;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
