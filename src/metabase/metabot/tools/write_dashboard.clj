@@ -757,7 +757,6 @@
   [{:keys [id name collection_id] :as dashboard} action saved-charts profile-id]
   ;; Trashing doesn't navigate, so a trashed dashboard the user is viewing stays in view.
   (let [open?       (and (not= "trashed" action) (contains? opening-profiles profile-id))
-        url         (str "/dashboard/" id)
         link        (str "metabase://dashboard/" id)
         layout?     (contains? #{"created" "updated"} action)
         pushed      (dashboard-ops/pushed-dashcard-ids dashboard)
@@ -788,16 +787,14 @@
      :structured-output {:result-type  :dashboard-saved
                          :dashboard-id id
                          :action       action}
-     :data-parts        (cond-> [(streaming/dashboard-saved-part
-                                  {:dashboard_id  id
-                                   :action        action
-                                   :name          name
-                                   :url           url
-                                   :collection_id collection_id
-                                   :open          open?
-                                   :saved_charts  (vec chart-pairs)})]
-                          ;; The frontend navigates to a generated dashboard entity, the part X-rays use to open.
-                          open? (conj (streaming/dashboard-entity-part {:id id, :title name, :url url})))}))
+     :data-parts        [(streaming/dashboard-saved-part
+                          {:dashboard_id  id
+                           :action        action
+                           :name          name
+                           :url           (str "/dashboard/" id)
+                           :collection_id collection_id
+                           :open          open?
+                           :saved_charts  (vec chart-pairs)})]}))
 
 ;;; ---------------------------------------------------- Tool ------------------------------------------------------
 

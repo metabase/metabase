@@ -19,12 +19,13 @@ import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { navigate } from "metabase/router";
+import { getRouterLocation, matchPath, navigate } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import type {
+  DashboardId,
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -80,6 +81,7 @@ export const {
   setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
+  dashboardSaved,
   setProfileOverride,
   reasoningStart,
   reasoningDelta,
@@ -491,6 +493,12 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
+const isViewingDashboard = (dashboardId: DashboardId) => {
+  const pathname = getRouterLocation()?.pathname ?? "";
+  const match = matchPath({ path: "/dashboard/:slug", end: false }, pathname);
+  return Urls.extractEntityId(match?.params.slug) === dashboardId;
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { isFullPageMetabot: boolean },
@@ -599,6 +607,32 @@ export const sendAgentRequest = createAsyncThunk<
                   );
                 }
                 pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "data-dashboard_saved" }, (part) => {
+                const { dashboard_id, open, saved_charts, url } = part.data;
+                saved_charts.forEach(({ chart_id, card_id }) =>
+                  dispatch(
+                    markChartSaved({ entityId: chart_id, cardId: card_id }),
+                  ),
+                );
+                // the dashboard page reloads itself when this names the dashboard it shows
+                dispatch(
+                  dashboardSaved({
+                    dashboardId: dashboard_id,
+                    // the backend stamps every part with its tool call, though the wire type has it optional
+                    saveId: part.data.tool_call_id ?? uuid(),
+                  }),
+                );
+                pushDataPart({ type: "data_part", part });
+
+                const shouldOpen =
+                  open &&
+                  !isFullPageMetabot &&
+                  !isEmbeddingSdk() &&
+                  !isViewingDashboard(dashboard_id);
+                if (shouldOpen) {
+                  navigate(url);
+                }
               })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;

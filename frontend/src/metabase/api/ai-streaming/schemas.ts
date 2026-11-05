@@ -3,6 +3,9 @@ import * as Yup from "yup";
 import type {
   AddResearchGroupsResponse,
   CardDisplayType,
+  CardId,
+  CollectionId,
+  DashboardId,
   DatasetQuery,
   MetabotCodeEdit,
   MetabotTodoItem,
@@ -43,6 +46,7 @@ export const knownDataPartTypes = [
   "data-transform_suggestion",
   "data-generated_entity",
   "data-entity_saved",
+  "data-dashboard_saved",
   "data-adhoc_viz",
   "data-static_viz",
   "data-search_results",
@@ -119,6 +123,25 @@ export type EntitySavedValue = {
   title?: string;
 };
 
+export type DashboardSavedAction =
+  | "created"
+  | "updated"
+  | "trashed"
+  | "restored";
+
+// A dashboard the `write_dashboard` tool saved. `open` is set when the frontend should open it,
+// which the backend decides from the agent profile.
+export type DashboardSavedValue = {
+  dashboard_id: DashboardId;
+  action: DashboardSavedAction;
+  name: string;
+  url: string;
+  collection_id: CollectionId | null;
+  open: boolean;
+  saved_charts: { chart_id: string; card_id: CardId }[];
+  tool_call_id?: string;
+};
+
 export type ToolTitleData = {
   tool_call_id: string;
   title: string;
@@ -139,6 +162,7 @@ export type KnownDataPart =
   | { type: "data-code_edit"; data: MetabotCodeEdit }
   | { type: "data-generated_entity"; data: GeneratedEntity }
   | { type: "data-entity_saved"; data: EntitySavedValue }
+  | { type: "data-dashboard_saved"; data: DashboardSavedValue }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }

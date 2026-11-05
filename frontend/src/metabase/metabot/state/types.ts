@@ -5,6 +5,7 @@ import type {
 import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
+  DashboardId,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
@@ -168,8 +169,15 @@ export type MetabotChainStep =
       startedAtMs?: number;
     };
 
+// A dashboard Metabot saved. `saveId` tells two saves of the same dashboard apart.
+export type MetabotSavedDashboard = {
+  dashboardId: DashboardId;
+  saveId: string;
+};
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  savedDashboard: MetabotSavedDashboard | null;
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;

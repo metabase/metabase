@@ -73,6 +73,11 @@ export const getNavigateToPath = createSelector(
   (reactionsState) => reactionsState.navigateToPath,
 );
 
+export const getSavedDashboard = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.savedDashboard,
+);
+
 /*
  * Conversation Selectors
  */
