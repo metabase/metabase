@@ -114,6 +114,24 @@ describe("getDateFilterClause", () => {
     {
       value: {
         type: "relative",
+        value: -30,
+        unit: "day",
+        options: { includeCurrent: true },
+      },
+      displayName: "Created At is in the previous 30 days or today",
+    },
+    {
+      value: {
+        type: "relative",
+        value: 30,
+        unit: "year",
+        options: { includeCurrent: true },
+      },
+      displayName: "Created At is in the next 30 years or this year",
+    },
+    {
+      value: {
+        type: "relative",
         value: -2,
         unit: "year",
         offsetValue: -1,
@@ -338,6 +356,15 @@ describe("getDateFilterDisplayName", () => {
     {
       value: { type: "relative", value: 2, unit: "month" },
       displayName: "Next 2 months",
+    },
+    {
+      value: {
+        type: "relative",
+        value: 30,
+        unit: "year",
+        options: { includeCurrent: true },
+      },
+      displayName: "Next 30 years or this year",
     },
     {
       value: {

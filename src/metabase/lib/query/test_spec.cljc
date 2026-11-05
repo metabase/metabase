@@ -215,7 +215,11 @@
     :operator {:lib/type :mbql/expression-parts
                :operator (:operator expression-spec)
                :options {}
-               :args (mapv #(expression-spec->expression-parts query stage-number % available-columns)
+               :args (into []
+                           (mapcat (fn [{arg-type :type, value :value, :as arg}]
+                                     (if (and (= arg-type :literal) (sequential? value))
+                                       value
+                                       [(expression-spec->expression-parts query stage-number arg available-columns)])))
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean

@@ -824,7 +824,7 @@
       (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
       (is (str/includes? text "No table found matching portable FK"))
       (is (str/includes? text "metabase://database/<numeric id>/tables"))))
-  (testing "An exception without a declared `:error` code ends the turn, even if `:agent-error?` is true."
+  (testing "An exception without a declared `:error` code is `:internal`, even if `:agent-error?` is true."
     (doseq [[what e] {"stamped by the pipeline, no :error code"
                       (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
 

@@ -423,7 +423,8 @@
        [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
-                                               {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                                               {:error/fn    (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))
+                                                :json-schema {:type "array" :items {:type "integer" :minimum 1}}}
                                                (fn [ids]
                                                  (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
@@ -984,14 +985,11 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
-  {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]
    _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
+   _body]
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
@@ -1006,15 +1004,12 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  {:scope api-scope/data-app}
   [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]
    _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
+   _body]
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
@@ -1027,14 +1022,11 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
-  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
    {:keys [value]}        :- [:map {:closed true} [:value :string]]
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter id param-key))
+   _body]
   (binding [qp.perms/*param-values-query* true]
     (-> (api/read-check :model/Card id)
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))

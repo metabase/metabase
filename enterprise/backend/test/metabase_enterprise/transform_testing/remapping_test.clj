@@ -51,7 +51,8 @@
   "A transform whose target name appears in none of the SQL below, so its own replacement entry
   never interferes with an input's."
   []
-  {:source {:type "query"}
+  {:source {:type  :query
+            :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
    :target {:type "table" :schema nil :name "UNREFERENCED_TARGET"}})
 
 (defn- declared-input
@@ -281,8 +282,8 @@
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             target                        "mb_remapping_probe_case_mismatch"]
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:source {:type  "query"
+        (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                       {:source {:type  :query
                                  :query (lib/native-query
                                          mp (str "SELECT id, name FROM " schema "." (u/lower-case-en table)))}
                         :target {:type     "table"
@@ -301,7 +302,7 @@
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
             (let [outcome (try
-                            (transform-testing.runner/run-transform-test! transform-test)
+                            (transform-testing.runner/run-saved-test! transform transform-test)
                             (catch Exception e
                               {:refused (ex-message e)}))]
               (is (not= {:status :failed} outcome)
@@ -313,8 +314,8 @@
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             target                        "mb_remapping_probe_target"]
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:source {:type  "query"
+        (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                       {:source {:type  :query
                                  :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
                         :target {:type     "table"
                                  :schema   schema
@@ -328,5 +329,5 @@
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
                                         :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
-          (is (= :passed (:status (transform-testing.runner/run-transform-test! transform-test))))
+          (is (= :passed (:status (transform-testing.runner/run-saved-test! transform transform-test))))
           (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:schema schema :name target}))))))))
