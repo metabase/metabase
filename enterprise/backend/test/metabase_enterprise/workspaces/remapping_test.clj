@@ -308,7 +308,7 @@
           (qp {:lib/metadata (mt/metadata-provider), :cache-strategy {:type :ttl}} nil)
           (is (contains? @seen :cache-strategy)))))))
 
-(deftest rewrite-sql-strictness-test
+(deftest rewrite-sql-statement-allowlist-test
   (testing "anything but a query, INSERT, UPDATE, DELETE, MERGE or CREATE TABLE ... AS is refused"
     (doseq [sql ["EXPLAIN SELECT * FROM public.orders"
                  "DECLARE c CURSOR FOR SELECT * FROM public.orders"
@@ -321,7 +321,9 @@
                  "CREATE TABLE public.x AS EXECUTE p"]]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only queries, INSERT, UPDATE, DELETE, MERGE and CREATE TABLE"
                             (ws/rewrite-sql :postgres remaps sql))
-          sql)))
+          sql))))
+
+(deftest rewrite-sql-sql-running-functions-test
   (testing "a call to a function that runs SQL or reads a table named in text is refused, however its name is written"
     (doseq [[sql function] [["SELECT query_to_xml('select 1', true, true, '')" "query_to_xml"]
                             ["SELECT pg_catalog.\"query_to_xml\"('select 1', true, true, '')" "query_to_xml"]
@@ -344,7 +346,9 @@
           sql)))
   (testing "a function argument that is SQL text naming a remapped table is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"passes upper SQL text that names a remapped table"
-                          (ws/rewrite-sql :postgres remaps "SELECT upper('select src from public.orders')"))))
+                          (ws/rewrite-sql :postgres remaps "SELECT upper('select src from public.orders')")))))
+
+(deftest rewrite-sql-allowed-statements-test
   (testing "allowed statements are rewritten"
     (doseq [sql ["WITH x AS (SELECT 1) SELECT * FROM public.orders"
                  "SELECT 1 UNION ALL SELECT id FROM public.orders"
@@ -359,7 +363,9 @@
   (testing "other replace-names callers, which don't ask for strictness, are unchanged"
     (is (= "SELECT QUERY_TO_XML('select * from public.orders', TRUE, TRUE, '')"
            (sql-tools/replace-names :postgres "SELECT query_to_xml('select * from public.orders', true, true, '')"
-                                    {:tables remaps} {:allow-unused? true}))))
+                                    {:tables remaps} {:allow-unused? true})))))
+
+(deftest rewrite-sql-postgres-identifiers-test
   (testing "names match as Postgres stores them: unquoted ASCII letters lower-cased, every name cut to 63 bytes"
     (let [mixed {{:schema "public", :table "Mixed"} {:schema "mb__iso_public", :table "Mixed"}}]
       (is (str/includes? (ws/rewrite-sql :postgres mixed "SELECT * FROM public.\"Mixed\"") "mb__iso_public"))
