@@ -412,10 +412,19 @@
   [[refs]]
   (some #(and (not= ::nil %) (nil? (unweak %))) refs))
 
+(defn- matches?
+  "Whether the stored reference `r` is to `d`.
+  A collected reference matches nothing, nil included."
+  [r d]
+  (if (= ::nil r)
+    (nil? d)
+    (let [v (unweak r)]
+      (and (some? v) (identical? v d)))))
+
 (defn- made-for?
   "Whether `entry` was made for dependency values identical, one by one, to `deps`."
   [[refs] deps]
-  (every? true? (map (fn [r d] (identical? (unweak r) d)) refs deps)))
+  (every? true? (map matches? refs deps)))
 
 (defn- derived-entry
   "The `[dep-refs value]` entry in `entries` made for `deps`, or nil.
@@ -429,8 +438,10 @@
   (mapv #(if-let [entry (mc/root-entry %)] (val entry) ::no-root) dep-handles))
 
 (defn- add-entry
-  "`entries` with a new entry for `deps` first, dropping collected entries, and then the oldest beyond
-  [[max-derived-values]], except the entry made from the current roots."
+  "`entries` with a new entry for `deps` put first.
+  The entry made from the dependencies' current roots is always kept.
+  Entries whose dependency values have been collected are dropped.
+  Of the rest, the newest [[max-derived-values]] minus one are kept."
   [entries dep-handles make deps]
   (let [from-roots? #(made-for? % (root-values dep-handles))
         live        (remove collected? entries)]
