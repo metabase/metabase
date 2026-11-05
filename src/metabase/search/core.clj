@@ -275,12 +275,19 @@
 ;; delete ORs one selector per row into this query, inside the caller's transaction.
 (defn cascading-documents
   "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
-  Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits."
+  Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits.
+  A search-model whose enumeration fails is logged and left out."
   [instances]
   (when (supports-index?)
     (not-empty
      (into {} (for [[search-model selectors] (cascading-selectors instances)
-                    :let  [ids (search.ingestion/doc-ids search-model (into [:or] selectors))]
+                    :let  [ids (try
+                                 (search.ingestion/doc-ids search-model (into [:or] selectors))
+                                 ;; The id query runs in its own nested transaction, so a failure leaves the
+                                 ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
+                                 (catch Exception e
+                                   (log/errorf e "Skipping cascade enumeration for %s" search-model)
+                                   nil))]
                     :when (seq ids)]
                 [search-model ids])))))
 
@@ -291,28 +298,37 @@
   "Ids per re-derivation message."
   100)
 
+(defn- reconcile-search-model!
+  "Settle the enumerated `ids` of one `search-model`: re-derive the documents that still resolve, remove the rest."
+  [search-model ids]
+  ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
+  (when-some [alive (search.ingestion/existing-doc-ids search-model ids)]
+    (when (seq alive)
+      (search.ingestion/ingest-maybe-async!
+       (into #{}
+             (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
+             (partition-all reindex-batch-size alive))))
+    (when-let [gone (not-empty (set/difference ids alive))]
+      (doseq [engine (search.engine/active-engines)]
+        (try
+          (search.engine/delete! engine search-model (into #{} (map str) gone))
+          (catch Exception e
+            (log/errorf e "Failed to purge cascaded %s documents from %s" search-model engine)))))))
+
 ;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
 ;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
 (defn reconcile-cascading-documents!
   "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
-  A search-model whose surviving documents cannot be enumerated is left alone."
+  A search-model whose surviving documents cannot be enumerated is left alone.
+  A failure for one search-model, or one engine, is logged and does not stop the others."
   [cascading]
   (when (and (seq cascading) (supports-index?))
-    (doseq [[search-model ids] cascading
-            :let  [alive (search.ingestion/existing-doc-ids search-model ids)]
-            ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge
-            ;; live documents.
-            :when (some? alive)
-            :let  [gone (set/difference ids alive)]]
-      (when (seq alive)
-        (search.ingestion/ingest-maybe-async!
-         (into #{}
-               (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
-               (partition-all reindex-batch-size alive))))
-      (when (seq gone)
-        (doseq [e (search.engine/active-engines)]
-          (search.engine/delete! e search-model (into #{} (map str) gone)))))))
+    (doseq [[search-model ids] cascading]
+      (try
+        (reconcile-search-model! search-model ids)
+        (catch Exception e
+          (log/errorf e "Failed to reconcile cascaded %s documents" search-model))))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."

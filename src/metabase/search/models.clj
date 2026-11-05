@@ -35,14 +35,9 @@
 ;; The `:hook/search-index` keyword carries the row-level insert/update hooks as well, and some models that feed
 ;; search documents are deliberately kept out of it.
 ;; They still need their deletes captured, so delete capture hangs off its own keyword, which
-;; `:hook/search-index` derives from.
+;; `:hook/search-index` derives from, and which such models (ModelIndex, in its own namespace) derive directly.
 (derive :hook/search-index-delete dml-capture/hook)
 (derive :hook/search-index :hook/search-index-delete)
-
-;; ModelIndex is excluded from `:hook/search-index` because its *update* hook trips a toucan2 bug.
-;; Deleting one cascades its model_index_value rows away with no statement toucan can see, orphaning their
-;; indexed-entity documents, so it takes delete capture on its own.
-(derive :model/ModelIndex :hook/search-index-delete)
 
 ;; Tests that run against an old schema disable updates, and the snapshot select could read columns it lacks.
 ;; This runs inside the user's delete, so a search error must not fail it; the delete goes uncaptured instead.
@@ -80,8 +75,8 @@
 ;; `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
 ;; This runs inside the user's delete, so a search bug must not fail it: an error skips the enumeration and leaves
 ;; those documents to the scheduled reindex.
-;; Swallowing a database error here is safe, because the enumeration query runs in its own nested transaction.
-;; Its savepoint rollback leaves the caller's transaction usable, and a failed rollback marks it rollback-required.
+;; [[search/cascading-documents]] already catches each search-model's query failure once that query's own nested
+;; transaction has rolled back; this catch covers the rest, which runs no SQL.
 (defmethod dml-capture/dependents :hook/search-index-delete
   [model rows]
   (try
