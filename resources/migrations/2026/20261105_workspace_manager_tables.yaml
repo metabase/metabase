@@ -377,3 +377,16 @@ databaseChangeLog:
             referencedColumnNames: database_id
             constraintName: fk_workspace_database_provisioning_connection
             onDelete: RESTRICT
+
+  # The unique constraint on (workspace_id, database_id) cannot serve lookups by database_id alone on Postgres.
+  - changeSet:
+      id: bij8gc
+      author: escherize
+      comment: Index workspace_database.database_id
+      changes:
+        - createIndex:
+            tableName: workspace_database
+            indexName: idx_workspace_database_database_id
+            columns:
+              - column:
+                  name: database_id
