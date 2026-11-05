@@ -1,4 +1,8 @@
-import { type Timings, buildMatrix } from "./build-e2e-matrix";
+import {
+  type Timings,
+  buildMatrix,
+  specsMentionTags,
+} from "./build-e2e-matrix";
 
 const MINUTE_MS = 60_000;
 
@@ -13,7 +17,11 @@ const timingsFor = (count: number, minutesPerSpec: number): Timings => ({
   })),
 });
 
+// Spec sources for the tag search; specs not listed here have no tags.
+type Sources = Record<string, string>;
+
 type SetupOpts = {
+  sources?: Sources;
   specFiles?: string[] | null;
   maxJobs?: number;
   timings?: Timings;
@@ -21,6 +29,7 @@ type SetupOpts = {
 };
 
 const setup = ({
+  sources = {},
   specFiles = null,
   maxJobs = 50,
   timings = timingsFor(500, 1),
@@ -33,10 +42,11 @@ const setup = ({
     maxJobs,
     timings,
     targetRunnerMinutes,
+    readSpec: (file) => sources[file] ?? "",
   });
 
 describe("buildMatrix", () => {
-  it.each([0, 3, 3.5])("should reject an invalid job budget: %s", (maxJobs) => {
+  it.each([0, 2, 2.5])("should reject an invalid job budget: %s", (maxJobs) => {
     expect(() => setup({ specFiles: specs(1), maxJobs })).toThrow();
   });
 
@@ -51,7 +61,7 @@ describe("buildMatrix", () => {
     const result = setup({ timings: timingsFor(80, 1) });
 
     expect(result.regularChunks).toBe(10);
-    expect(result.config).toHaveLength(13);
+    expect(result.config).toHaveLength(12);
     expect(result.config[0]).toMatchObject({
       name: "e2e-group-01",
       edition: "ee",
@@ -63,7 +73,7 @@ describe("buildMatrix", () => {
   it("should cap the full suite at the job budget", () => {
     const result = setup({ timings: timingsFor(500, 1) });
 
-    expect(result.regularChunks).toBe(47);
+    expect(result.regularChunks).toBe(48);
     expect(result.config).toHaveLength(50);
   });
 
@@ -79,14 +89,14 @@ describe("buildMatrix", () => {
     [8, 1],
     [9, 2],
     [24, 3],
-    [500, 47],
+    [500, 48],
   ])(
     "should allocate %i selected one-minute specs to %i regular jobs",
     (count, regularChunks) => {
       const result = setup({ specFiles: specs(count) });
 
       expect(result.regularChunks).toBe(regularChunks);
-      expect(result.config).toHaveLength(regularChunks + 3);
+      expect(result.config).toHaveLength(regularChunks);
     },
   );
 
@@ -127,16 +137,49 @@ describe("buildMatrix", () => {
     expect(result.regularChunks).toBe(1);
   });
 
-  it.each([null, specs(1), specs(500)])(
-    "should retain every tagged variant",
-    (specFiles) => {
-      const result = setup({ specFiles });
+  it("should run every tagged job for the full suite", () => {
+    const result = setup();
 
-      expect(result.config.slice(-3)).toMatchObject([
-        { name: "oss-subset", edition: "oss", tags: "@OSS @prerelease+-@EE" },
-        { name: "mongo", edition: "ee", tags: "@mongo" },
-        { name: "python", edition: "ee", tags: "@python" },
-      ]);
+    expect(result.config.slice(-2)).toMatchObject([
+      { name: "oss-subset", edition: "oss", tags: "@OSS @prerelease+-@EE" },
+      { name: "python", edition: "ee", tags: "@python" },
+    ]);
+  });
+
+  it("should not create a Mongo job, since the regular jobs run @mongo tests", () => {
+    const names = setup().config.map((job) => job.name);
+
+    expect(names).not.toContain("mongo");
+  });
+
+  it("should skip tagged jobs when no selected spec carries their tags", () => {
+    const result = setup({
+      specFiles: specs(3),
+      sources: {
+        [specs(3)[0]]: 'describe("x", { tags: "@mongo" }, () => {});',
+      },
+    });
+
+    expect(result.config.map((job) => job.name)).toEqual(["e2e-group-01"]);
+  });
+
+  it.each([
+    ['{ tags: "@OSS" }', ["oss-subset"]],
+    ['{ tags: ["@prerelease"] }', ["oss-subset"]],
+    ["{ tags: ['@external', '@python'] }", ["python"]],
+    ['{ tags: "@OSS" } ... { tags: "@python" }', ["oss-subset", "python"]],
+  ])(
+    "should keep the tagged jobs a selected spec needs: %s",
+    (source, jobs) => {
+      const [first, second] = specs(2);
+      const result = setup({
+        specFiles: [first, second],
+        sources: { [second]: source },
+      });
+
+      expect(
+        result.config.slice(result.regularChunks).map((j) => j.name),
+      ).toEqual(jobs);
     },
   );
 
@@ -152,5 +195,30 @@ describe("buildMatrix", () => {
     for (const job of regularJobs) {
       expect(job.specs).toBeUndefined();
     }
+  });
+});
+
+describe("specsMentionTags", () => {
+  const read = (sources: Sources) => (file: string) => {
+    if (!(file in sources)) {
+      throw new Error(`ENOENT: ${file}`);
+    }
+    return sources[file];
+  };
+
+  it("should match whole tags only", () => {
+    expect(
+      specsMentionTags(["a"], ["@OSS"], read({ a: '{ tags: "@OSS-ish" }' })),
+    ).toBe(false);
+    expect(
+      specsMentionTags(["a"], ["@OSS"], read({ a: '{ tags: "@OSSified" }' })),
+    ).toBe(false);
+    expect(
+      specsMentionTags(["a"], ["@OSS"], read({ a: '{ tags: "@OSS" }' })),
+    ).toBe(true);
+  });
+
+  it("should keep the job when a spec cannot be read", () => {
+    expect(specsMentionTags(["missing"], ["@python"], read({}))).toBe(true);
   });
 });
