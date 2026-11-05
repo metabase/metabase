@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
-   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -136,19 +135,9 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
-   [:show_chart {:optional true
-                 :description (str "Pass false for a query you build only to read its values with run_query: "
-                                   "the user is then shown no chart. Defaults to true.")}
-    [:maybe :boolean]]
+   shared/show-chart-arg
    [:title :string]
    [:description :string]])
-
-(defn without-show-chart
-  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
-   model is not told about the argument."
-  [tool]
-  (update tool :schema (fn [[arrow [cat args-schema] output]]
-                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 

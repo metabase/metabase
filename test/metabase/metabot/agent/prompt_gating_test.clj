@@ -354,12 +354,14 @@
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
         (let [rendered (render-internal-template all-yes-perms tools)]
           (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"pass `show_chart: false` to `create_sql_query`" rendered)))
           (is (not (re-find #"write SQL with `create_sql_query` and run it" rendered))))))
     (testing "with SQL execution on the model is told to prefer the notebook and run SQL for shapes it can't express"
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
         (let [rendered (render-internal-template all-yes-perms tools)]
           (is (re-find #"Prefer a notebook query" rendered))
           (is (re-find #"write SQL with `create_sql_query` and run it with `run_query`" rendered))
+          (is (re-find #"pass `show_chart: false` to `create_sql_query`" rendered))
           (is (not (re-find #"notebook queries only" rendered)))
           (is (re-find #"A count or total of 0 is a real answer" rendered)))))
     (testing "without the SQL tools the setting does not tell the model to write SQL"
