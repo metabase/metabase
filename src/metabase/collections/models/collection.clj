@@ -336,27 +336,34 @@
   [collection]
   (library-entity-id? (:entity_id collection)))
 
+(defn- system-collection-name
+  "The translated name of a system-defined collection, or nil for a collection whose name is its own."
+  [collection]
+  (cond
+    (is-trash? collection)
+    (tru "Trash")
+
+    (and (is-library? collection) (library-root-collection? collection))
+    (tru "Library")
+
+    (and (is-library-data-collection? collection) (library-root-collection? collection))
+    (tru "Data")
+
+    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
+    (tru "Metrics")
+
+    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
+    (tru "Dashboards")))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
   Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
-  (cond-> collection
-    (is-trash? collection)
-    (assoc :name (tru "Trash"))
-
-    (and (is-library? collection) (library-root-collection? collection))
-    (assoc :name (tru "Library"))
-
-    (and (is-library-data-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Data"))
-
-    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Metrics"))
-
-    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Dashboards"))))
+  (if-let [localized-name (system-collection-name collection)]
+    (assoc collection :name localized-name)
+    collection))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -1811,7 +1818,7 @@
                                   current-parent-id)
         new-parent              (if new-parent-id
                                   (collections.db/collection new-parent-id)
-                                  root-collection)
+                                  (assoc root-collection :namespace (:namespace collection)))
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
@@ -2284,7 +2291,8 @@
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
-  {:copy [:archive_operation_id
+  {:schema    ::collections.schema/external-collection
+   :copy [:archive_operation_id
           :archived
           :archived_directly
           :authority_level
@@ -2307,6 +2315,11 @@
    :defaults {:archived         false
               :is_sample        false
               :is_remote_synced false}})
+
+(defmethod serdes/load-update! "Collection" [model-name ingested local]
+  (serdes/default-load-update! model-name
+                               (cond-> ingested (system-collection-name local) (dissoc :name))
+                               local))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

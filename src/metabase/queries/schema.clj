@@ -7,6 +7,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.query-permissions.schema :as query-permissions.schema]
@@ -187,7 +188,7 @@
    [:archived                                  {:optional true} [:maybe :boolean]]
    [:collection_id                             {:optional true} [:maybe ::lib.schema.id/collection]]
    [:public_uuid                               {:optional true} [:maybe :string]]
-   [:made_public_by_id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:made_public_by_id                         {:optional true} [:maybe ::lib.schema.id/user]]
    [:enable_embedding                          {:optional true} [:maybe :boolean]]
    [:embedding_params                          {:optional true} [:maybe ms/EmbeddingParams]]
    [:cache_ttl                                 {:optional true} [:maybe :int]]
@@ -210,7 +211,7 @@
    [:source_card_id                            {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id                              {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:card_schema                               {:optional true} [:maybe :int]]
-   [:document_id                               {:optional true} [:maybe ::documents.schema/document.id]]
+   [:document_id                               {:optional true} [:maybe ::lib.schema.id/document]]
    [:legacy_query                              {:optional true} [:maybe :string]]
    [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
@@ -373,3 +374,15 @@
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
+
+(mr/def ::external-card
+  "A Card as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::card [:archived :archived_directly :collection_position :collection_preview :description :display
+                          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
+                          :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
+                          :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
+                          :dashboard_id :made_public_by_id :document_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

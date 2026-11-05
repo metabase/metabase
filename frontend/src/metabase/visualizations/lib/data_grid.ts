@@ -12,7 +12,9 @@ import {
   type ComputedVisualizationSettings,
   type PivotedDatasetColumn,
   type PivotedRowValues,
+  type ShowWarning,
   makeCellBackgroundGetter,
+  unaggregatedDataWarningTablePivot,
 } from "metabase/viz-core";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
@@ -183,6 +185,7 @@ export function pivot(
   pivotCol: number,
   cellCol: number,
   settings?: ComputedVisualizationSettings,
+  showWarning?: ShowWarning,
 ): PivotedTableData {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
@@ -210,13 +213,26 @@ export function pivot(
   );
 
   // fill it up with the data
+  let hasDuplicateCells = false;
   for (let j = 0; j < data.rows.length; j++) {
     const normalColIdx = normalValues.lastIndexOf(data.rows[j][normalCol]);
     const pivotColIdx = pivotValues.lastIndexOf(data.rows[j][pivotCol]);
 
+    if (sourceRows[normalColIdx][pivotColIdx] !== null) {
+      hasDuplicateCells = true;
+    }
     pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
     pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][cellCol];
     sourceRows[normalColIdx][pivotColIdx] = j;
+  }
+
+  if (hasDuplicateCells) {
+    showWarning?.(
+      unaggregatedDataWarningTablePivot(
+        data.cols[normalCol],
+        data.cols[pivotCol],
+      ).text,
+    );
   }
 
   // Use the pivot column's full visualization settings (date_style, time_style, etc.)

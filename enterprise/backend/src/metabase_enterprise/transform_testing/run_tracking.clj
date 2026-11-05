@@ -20,10 +20,11 @@
   (atom #{}))
 
 (mu/defn start-run! :- ::transform-testing.schema/transform-test-run
-  "Create a started run for `transform-test-id` and register it as owned by this process."
-  ([transform-test-id :- ms/PositiveInt]
+  "Create a started run for `transform-test-id`, nil for a test that is not saved, and register it as owned by this
+  process."
+  ([transform-test-id :- [:maybe ms/PositiveInt]]
    (start-run! transform-test-id nil))
-  ([transform-test-id :- ms/PositiveInt
+  ([transform-test-id :- [:maybe ms/PositiveInt]
     initiated-by      :- [:maybe ::lib.schema.id/user]]
    (let [run (transform-testing.db/insert-transform-test-run! transform-test-id initiated-by)]
      (events/publish-event! :event/transform-test-run-start
