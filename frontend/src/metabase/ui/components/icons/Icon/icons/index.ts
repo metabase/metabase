@@ -44,6 +44,7 @@ import bubble_component from "./bubble.svg?component";
 import bug_component from "./bug.svg?component";
 import burger_component from "./burger.svg?component";
 import cake_component from "./cake.svg?component";
+import calculator_component from "./calculator.svg?component";
 import calendar_component from "./calendar.svg?component";
 import camera_component from "./camera.svg?component";
 import chart_layout_default_component from "./chart_layout_default.svg?component";
@@ -352,6 +353,7 @@ export const Icons: Record<IconName, React.FC> = {
   bubble: bubble_component,
   burger: burger_component,
   cake: cake_component,
+  calculator: calculator_component,
   calendar: calendar_component,
   camera: camera_component,
   chart_layout_default: chart_layout_default_component,

@@ -42,7 +42,7 @@ export function PopoverFilterPill({
 }: PopoverFilterPillProps) {
   const [isOpened, setIsOpenedState] = useState(false);
   const { columnName, rest } = getNameParts(query, stageIndex, filter);
-  // Prototype: the Figma "Opaque" and "Custom expression" pills.
+  // Prototype: the Figma "Opaque" pills.
   const isSegment = Lib.isSegmentFilter(query, stageIndex, filter);
   const isCustomExpression =
     !isSegment && !Lib.isStandardFilter(query, stageIndex, filter);
@@ -100,7 +100,9 @@ export function PopoverFilterPill({
       <Popover.Target>
         <div
           ref={pillRef}
-          className={cx(className ?? S.pill, { [S.opaquePill]: isSegment })}
+          className={cx(className ?? S.pill, {
+            [S.opaquePill]: isSegment || isCustomExpression,
+          })}
           data-testid="filter-pill"
           tabIndex={-1}
           onClick={() => setIsOpened(!isOpened)}
@@ -113,7 +115,10 @@ export function PopoverFilterPill({
               <span className={S.opaqueLabel}>{rest}</span>
             </>
           ) : isCustomExpression ? (
-            <span className={S.customExpression}>{rest}</span>
+            <>
+              <Icon className={S.opaqueIcon} name="function" size={10} />
+              <span className={S.opaqueLabel}>{t`Custom expression`}</span>
+            </>
           ) : (
             <>
               {columnName != null && (

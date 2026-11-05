@@ -42,6 +42,7 @@ export type IconName =
   | "bubble"
   | "broken_link"
   | "burger"
+  | "calculator"
   | "calendar"
   | "camera"
   | "chart_layout_default"

@@ -1,5 +1,11 @@
 import cx from "classnames";
-import type { KeyboardEvent, MouseEvent, ReactNode, Ref } from "react";
+import type {
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+  Ref,
+  RefObject,
+} from "react";
 import {
   Fragment,
   useEffect,
@@ -26,6 +32,11 @@ import { UNSCORED, getOptionScores } from "./fuzzy-search";
 import type { SuggestionGroup, SuggestionOption } from "./types";
 
 const DEFAULT_DROPDOWN_WIDTH = 280;
+/** Matches `.optionsScroll`, for lists that don't pass their own max height. */
+const DEFAULT_OPTIONS_MAX_HEIGHT = "20rem";
+/** Below this, the list stays usable and the container scrolls instead. */
+const MIN_OPTIONS_HEIGHT_PX = 160;
+const CLIPPING_MARGIN_PX = 16;
 
 /** The space between a dropdown and the right edge of the window. */
 const VIEWPORT_MARGIN = 16;
@@ -63,6 +74,66 @@ function useDropdownShift(isOpened: boolean) {
     };
   }, [isOpened]);
   return { dropdownRef, dropdownShift: shift };
+}
+
+function getClippingBottom(element: Element) {
+  for (
+    let ancestor = element.parentElement;
+    ancestor != null;
+    ancestor = ancestor.parentElement
+  ) {
+    if (getComputedStyle(ancestor).overflowY !== "visible") {
+      return Math.min(
+        ancestor.getBoundingClientRect().bottom,
+        window.innerHeight,
+      );
+    }
+  }
+  return window.innerHeight;
+}
+
+/**
+ * The height that keeps the whole list inside the nearest clipping ancestor,
+ * like the notebook's scroll container. The dropdown is not in a portal, so
+ * the rows at the end of a tall list could be cut off there otherwise.
+ */
+function useOptionsHeightLimit(
+  isOpened: boolean,
+  dropdownRef: RefObject<HTMLDivElement | null>,
+) {
+  const [heightLimitPx, setHeightLimitPx] = useState<number>();
+  useLayoutEffect(() => {
+    const dropdown = dropdownRef.current;
+    if (!isOpened || dropdown == null) {
+      return;
+    }
+    const update = () => {
+      const anchor = dropdown.parentElement;
+      const list = dropdown.querySelector(`.${S.optionsScroll}`);
+      if (anchor == null || !(list instanceof HTMLElement)) {
+        return;
+      }
+      const otherContentHeight = dropdown.offsetHeight - list.offsetHeight;
+      const availableHeight =
+        getClippingBottom(anchor) -
+        anchor.getBoundingClientRect().bottom -
+        otherContentHeight -
+        CLIPPING_MARGIN_PX;
+      setHeightLimitPx(Math.max(availableHeight, MIN_OPTIONS_HEIGHT_PX));
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(dropdown);
+    window.addEventListener("resize", update);
+    // Scrolling the notebook moves the pill relative to the clipping edge.
+    window.addEventListener("scroll", update, true);
+    update();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isOpened, dropdownRef]);
+  return heightLimitPx;
 }
 
 interface SuggestionInputProps {
@@ -143,6 +214,15 @@ export function SuggestionInput({
   const { dropdownRef, dropdownShift } = useDropdownShift(
     combobox.dropdownOpened,
   );
+  const heightLimitPx = useOptionsHeightLimit(
+    combobox.dropdownOpened,
+    dropdownRef,
+  );
+  // A dropdown with an aside panel has a fixed height of its own.
+  const optionsMaxHeightWithLimit =
+    heightLimitPx != null && aside == null
+      ? `calc(min(${optionsMaxHeight ?? DEFAULT_OPTIONS_MAX_HEIGHT}, ${heightLimitPx}px))`
+      : optionsMaxHeight;
 
   // The user is typing a search: the Tab hint shows on the option Tab picks.
   const isSearching = text.trim().length > 0;
@@ -391,7 +471,7 @@ export function SuggestionInput({
               <ScrollArea.Autosize
                 className={S.optionsScroll}
                 classNames={{ root: S.scrollbarRoot }}
-                mah={optionsMaxHeight}
+                mah={optionsMaxHeightWithLimit}
                 type="scroll"
                 scrollbars="y"
               >

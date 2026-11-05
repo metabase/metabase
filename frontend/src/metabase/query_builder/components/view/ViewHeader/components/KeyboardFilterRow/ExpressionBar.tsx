@@ -7,6 +7,8 @@ import {
   type ReactNode,
   type RefObject,
   type SetStateAction,
+  type SyntheticEvent,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -19,6 +21,11 @@ import { t } from "ttag";
 import { noop } from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+  prefetchExpressionWidget,
+} from "metabase/querying/components/expressions";
 import { TYPING_PAUSE_MS } from "metabase/querying/filters/components/FilterPicker/FilterAutoApplyContext";
 import {
   ActionIcon,
@@ -26,6 +33,7 @@ import {
   Button,
   Group,
   Icon,
+  Popover,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -201,6 +209,7 @@ function TrailingPlaceholder({
 const EXTRA_OPTION = (name: string) => `${EXTRA_OPTION_PREFIX}${name}:`;
 const LOGIC_OPTION_PREFIX = EXTRA_OPTION("logic");
 const SERIES_OPTION_PREFIX = EXTRA_OPTION("series");
+const CUSTOM_EXPRESSION_OPTION = EXTRA_OPTION("custom-expression");
 
 const LOGIC_LABELS: Record<string, string> = {
   AND: "AND",
@@ -644,6 +653,7 @@ export function ExpressionBar({
   // (`logicGroups`), so it isn't listed twice.
   const logicSectionGroup: SuggestionGroup = {
     section: t`Logic`,
+    sectionIcon: "calculator",
     options: LOGIC_KEYWORDS.filter(
       (keyword) => keyword.label !== logicMatch?.label,
     ).map((keyword) => ({
@@ -652,11 +662,34 @@ export function ExpressionBar({
       disabled: !isTokenAllowed(keyword.token),
     })),
   };
+  const customExpressionGroup: SuggestionGroup = {
+    hasDivider: true,
+    isUnfiltered: true,
+    options: [
+      {
+        value: CUSTOM_EXPRESSION_OPTION,
+        label: t`Custom expression`,
+        leftSection: <Icon className={RowS.sectionIcon} name="function" />,
+      },
+    ],
+  };
   const trailingGroups = [...seriesGroups, logicSectionGroup];
+  const lastGroups = [customExpressionGroup];
   const [pickedSeries, setPickedSeries] = useState<number>();
+  const [isCustomExpressionOpen, setIsCustomExpressionOpen] = useState(false);
+
+  // The widget is a separate chunk. Fetching it while the list is open, and
+  // switching in a transition, keeps the list on screen until the widget is ready.
+  useEffect(() => {
+    if (isOpen) {
+      prefetchExpressionWidget();
+    }
+  }, [isOpen]);
 
   const handleSelectExtra = (value: string) => {
-    if (value.startsWith(LOGIC_OPTION_PREFIX)) {
+    if (value === CUSTOM_EXPRESSION_OPTION) {
+      startTransition(() => setIsCustomExpressionOpen(true));
+    } else if (value.startsWith(LOGIC_OPTION_PREFIX)) {
       const label = value.slice(LOGIC_OPTION_PREFIX.length);
       const keyword = LOGIC_KEYWORDS.find((option) => option.label === label);
       if (keyword) {
@@ -676,6 +709,7 @@ export function ExpressionBar({
     setText("");
     setTyped("");
     setHasNavigated(false);
+    setIsCustomExpressionOpen(false);
     setPillKey((key) => key + 1);
   };
 
@@ -1365,6 +1399,14 @@ export function ExpressionBar({
         close({ keepFocus: true });
       }}
     />
+  ) : isCustomExpressionOpen ? (
+    <CustomExpressionDraft
+      query={query}
+      stageIndex={stageIndex}
+      onApply={handlePickFilter}
+      onBack={() => setIsCustomExpressionOpen(false)}
+      onCancel={() => handlePillCancel("click-outside")}
+    />
   ) : isOpen ? (
     <DraftFilterPill
       key={`${caretIndex}:${pillKey}`}
@@ -1375,6 +1417,7 @@ export function ExpressionBar({
       initialText={text}
       leadingGroups={logicGroups}
       trailingGroups={trailingGroups}
+      lastGroups={lastGroups}
       onSelectExtra={handleSelectExtra}
       onColumnTextChange={handleTypedChange}
       onColumnKeyDown={handleColumnKeyDown}
@@ -1836,6 +1879,68 @@ function SeriesFilterDraft({
       onCancel={onClose}
       onRemove={onClose}
     />
+  );
+}
+
+interface CustomExpressionDraftProps {
+  query: Lib.Query;
+  stageIndex: number;
+  onApply: (filterable: Lib.Filterable) => void;
+  onBack: () => void;
+  onCancel: () => void;
+}
+
+/** The custom expression editor, opened at the caret from the column list. */
+function CustomExpressionDraft({
+  query,
+  stageIndex,
+  onApply,
+  onBack,
+  onCancel,
+}: CustomExpressionDraftProps) {
+  const availableColumns = useMemo(
+    () => Lib.expressionableColumns(query, stageIndex),
+    [query, stageIndex],
+  );
+  // React events bubble out of the portal to the bar, whose handlers would
+  // block focus and text selection in the editor and fold the bar on blur.
+  const stopPropagation = (event: SyntheticEvent) => event.stopPropagation();
+  return (
+    <Popover
+      opened
+      position="bottom-start"
+      transitionProps={{ duration: 0 }}
+      onChange={(isOpened) => {
+        if (!isOpened) {
+          onCancel();
+        }
+      }}
+    >
+      <Popover.Target>
+        <span className={S.typing} />
+      </Popover.Target>
+      <Popover.Dropdown
+        className={RowS.popover}
+        data-testid="custom-expression-dropdown"
+      >
+        <Box
+          onMouseDown={stopPropagation}
+          onClick={stopPropagation}
+          onFocus={stopPropagation}
+          onBlur={stopPropagation}
+        >
+          <ExpressionWidget
+            query={query}
+            stageIndex={stageIndex}
+            availableColumns={availableColumns}
+            expressionMode="filter"
+            header={<ExpressionWidgetHeader onBack={onBack} />}
+            onChangeClause={(_name, clause) => onApply(clause)}
+            onClose={onBack}
+          />
+        </Box>
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

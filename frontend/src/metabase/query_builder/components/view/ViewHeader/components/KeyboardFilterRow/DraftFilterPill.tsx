@@ -125,6 +125,8 @@ interface DraftFilterPillProps {
   /** Extra options above and below the columns, picked with `onSelectExtra`. */
   leadingGroups?: SuggestionGroup[];
   trailingGroups?: SuggestionGroup[];
+  /** Extra options at the very end of the list, below the "Ask AI" option. */
+  lastGroups?: SuggestionGroup[];
   onSelectExtra?: (value: string) => void;
   /** The text typed in the column step, as it changes. */
   onColumnTextChange?: (text: string) => void;
@@ -172,6 +174,7 @@ export function DraftFilterPill({
   placeholder = getFilterPlaceholder(),
   leadingGroups,
   trailingGroups,
+  lastGroups,
   onSelectExtra,
   onColumnTextChange,
   onColumnKeyDown,
@@ -686,6 +689,7 @@ export function DraftFilterPill({
             onSelectSegment={onSubmit}
             leadingGroups={leadingGroups}
             trailingGroups={trailingGroups}
+            lastGroups={lastGroups}
             onSelectExtra={onSelectExtra}
             isAiMode={isAiFiltersMode}
             // A filter that the user edits keeps its place, so the AI only
@@ -890,6 +894,7 @@ interface ColumnInputProps {
   onSelectSegment: (segment: Lib.SegmentMetadata) => void;
   leadingGroups?: SuggestionGroup[];
   trailingGroups?: SuggestionGroup[];
+  lastGroups?: SuggestionGroup[];
   onSelectExtra?: (value: string) => void;
   /** The text is a request to the AI, so the pill shows no column list. */
   isAiMode: boolean;
@@ -913,6 +918,7 @@ function ColumnInput({
   onSelectSegment,
   leadingGroups = NO_GROUPS,
   trailingGroups = NO_GROUPS,
+  lastGroups = NO_GROUPS,
   onSelectExtra,
   isAiMode,
   onAskAi,
@@ -940,7 +946,7 @@ function ColumnInput({
     ];
     const trimmedText = text.trim();
     if (!isAiAvailable || trimmedText.length === 0) {
-      return searchGroups;
+      return [...searchGroups, ...lastGroups];
     }
     const aiGroup: SuggestionGroup = {
       section: t`AI`,
@@ -957,13 +963,14 @@ function ColumnInput({
     // first. Otherwise it comes after the columns, or alone when no column
     // matches.
     return isAiFiltersPrompt(trimmedText)
-      ? [aiGroup, ...searchGroups]
-      : [...searchGroups, aiGroup];
+      ? [aiGroup, ...searchGroups, ...lastGroups]
+      : [...searchGroups, aiGroup, ...lastGroups];
   }, [
     leadingGroups,
     columnSuggestionGroups,
     relatedGroup,
     trailingGroups,
+    lastGroups,
     text,
     isAiAvailable,
   ]);
