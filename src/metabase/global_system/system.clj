@@ -41,6 +41,16 @@
   []
   (merge @roots (update-vals *bound-boxes* deref)))
 
+(defn component-bound-fn
+  "A function that calls `f` with its arguments under this thread's component bindings, and no other bindings, for
+   handing `f` to another thread.
+   That thread shares the bindings, so its writes are seen here too."
+  [f]
+  (let [boxes *bound-boxes*]
+    (fn [& args]
+      (clojure.core/binding [*bound-boxes* boxes]
+        (apply f args)))))
+
 (defn- root-value
   "The root value of `k` in the roots map `rs`.
    Throws if `k` was never installed with [[mc/alter-root]]."

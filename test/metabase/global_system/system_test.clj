@@ -416,16 +416,37 @@
       (testing (name slot)
         (mc/alter-root db-handle :root-db)
         (run (fn []
-               (let [inside (promise)
-                     leave  (promise)
-                     holder (future (mc/with-slot-lock db-handle
-                                      (deliver inside true)
-                                      @leave
-                                      (mc/reset! db-handle :checked-value)))
-                     _      @inside
-                     writer (future (mc/reset! db-handle :plain-write))]
-                 (is (= ::still-waiting (deref writer 200 ::still-waiting)))
+               (let [inside        (promise)
+                     leave         (promise)
+                     writer-thread (promise)
+                     holder        (future (mc/with-slot-lock db-handle
+                                             (deliver inside true)
+                                             @leave
+                                             (mc/reset! db-handle :checked-value)))
+                     _             @inside
+                     writer        (future (deliver writer-thread (Thread/currentThread))
+                                           (mc/reset! db-handle :plain-write))]
+                 (testing "the writer is blocked on the lock, not just slow to start"
+                   (is (true? (loop [tries 0]
+                                (cond
+                                  (= Thread$State/BLOCKED (.getState ^Thread @writer-thread)) true
+                                  (< tries 400)                                              (do (Thread/sleep 5)
+                                                                                                 (recur (inc tries)))
+                                  :else                                                      false)))))
                  (deliver leave true)
                  @holder
                  (is (= {:writer :plain-write, :value :plain-write}
                         {:writer @writer, :value @db-handle})))))))))
+
+(deftest ^:synchronized component-bound-fn-test
+  (testing "a function made with component-bound-fn carries component bindings to another thread, and nothing else"
+    (mc/alter-root db-handle :root-db)
+    (let [seen (promise)]
+      (binding [*print-length* 3]
+        (mc/binding db-handle :bound-db
+                    (fn []
+                      (let [f      (system/component-bound-fn (fn [] [@db-handle *print-length*]))
+                            thread (Thread. ^Runnable (fn [] (deliver seen (f))))]
+                        (.start thread)
+                        (.join thread)))))
+      (is (= [:bound-db nil] @seen)))))
