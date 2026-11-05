@@ -11,13 +11,16 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.settings.core :as setting]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.workspaces.core :as ws]
@@ -240,18 +243,32 @@
       (throw (ex-info (tru "Several databases are named {0}: {1}." (pr-str database-name) (pr-str ids))
                       {:status-code 400, :database database-name, :database_ids ids})))))
 
-(defn- stale-remapping-ids
-  "Ids of the remapping `rows` that `instance` (with database names resolved to ids by `name->id`) no longer backs:
-  their database or main schema is gone from it, or it maps the schema to another scratch namespace."
+(defn- stale-remappings
+  "The remapping `rows` that `instance` (with database names resolved to ids by `name->id`) no longer backs: their
+  database or main schema is gone from it, or it maps the schema to another scratch namespace."
   [instance name->id rows]
   (let [schema-maps (into {}
                           (map (fn [[database-name {:keys [schemas]}]] [(name->id database-name) schemas]))
                           (:databases instance))]
-    (into #{}
-          (keep (fn [{:keys [id database_id from_schema to_schema]}]
-                  (when-not (= to_schema (get-in schema-maps [database_id from_schema]))
-                    id)))
-          rows)))
+    (filterv (fn [{:keys [database_id from_schema to_schema]}]
+               (not= to_schema (get-in schema-maps [database_id from_schema])))
+             rows)))
+
+(defn- resync-main-tables!
+  "Once the remapping `rows` are gone, point the app-DB rows of their main tables back at the main tables: sync each
+  one the warehouse has, so it loses its scratch columns, and deactivate the rest (a transform's output that only ever
+  existed in scratch). A failure is logged, not thrown: the remappings are already gone, and the next sync retries."
+  [rows]
+  (doseq [{:keys [database_id from_schema from_table_name]} rows
+          :let [table (ws.db/active-table database_id (not-empty from_schema) from_table_name)]
+          :when table]
+    (try
+      (let [{:keys [engine], :as database} (driver.u/lib-database database_id)]
+        (if (driver/table-exists? engine database {:schema (:schema table), :name (:name table)})
+          (sync/sync-table! table)
+          (ws.db/deactivate-table! (:id table))))
+      (catch Exception e
+        (log/warnf e "Could not re-sync table %s.%s after removing its workspace remapping" from_schema from_table_name)))))
 
 (defonce ^:private instance-workspace-lock (Object.))
 
@@ -285,22 +302,26 @@
 
 (mu/defn set-instance-workspace! :- ::workspace-instance
   "Install `instance` on this instance, after checking each of its database names names exactly one database. Deletes
-  the remappings the new schema maps no longer back. Returns the installed workspace."
+  the remappings the new schema maps no longer back, then re-syncs their main tables. Returns the installed workspace."
   [instance :- ::workspace-instance]
-  (let [name->id (into {} (map (juxt identity database-id-named)) (keys (:databases instance)))]
+  (let [name->id (into {} (map (juxt identity database-id-named)) (keys (:databases instance)))
+        stale    (stale-remappings instance name->id (ws.db/table-remappings))]
     (in-one-transaction!
      (fn []
-       (ws.db/delete-table-remappings! (stale-remapping-ids instance name->id (ws.db/table-remappings)))
+       (ws.db/delete-table-remappings! (into #{} (map :id) stale))
        (write-instance-workspace! (json/encode instance))))
+    (resync-main-tables! stale)
     (instance-workspace)))
 
 (defn clear-instance-workspace!
-  "Turn workspace mode off: remove the installed workspace and every remapping."
+  "Turn workspace mode off: remove the installed workspace and every remapping, then re-sync the main tables."
   []
-  (in-one-transaction!
-   (fn []
-     (write-instance-workspace! nil)
-     (ws.db/delete-all-table-remappings!)))
+  (let [removed (ws.db/table-remappings)]
+    (in-one-transaction!
+     (fn []
+       (write-instance-workspace! nil)
+       (ws.db/delete-all-table-remappings!)))
+    (resync-main-tables! removed))
   nil)
 
 (defn table-remapping-rows

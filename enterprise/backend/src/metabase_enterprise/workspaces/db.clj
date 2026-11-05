@@ -72,3 +72,19 @@
   "The `:name` and `:engine` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one [:model/Database :name :engine] :id [:auto/param database-id]))
+
+(mu/defn active-table :- [:maybe :map]
+  "The active Table `schema`.`table-name` of the Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database
+   schema      :- [:maybe :string]
+   table-name  :- :string]
+  (t2/select-one :model/Table
+                 :db_id  [:auto/param database-id]
+                 :schema schema
+                 :name   [:auto/param table-name]
+                 :active true))
+
+(mu/defn deactivate-table!
+  "Mark the Table with `table-id` inactive."
+  [table-id :- ::lib.schema.id/table]
+  (t2/update! :model/Table :id [:auto/param table-id] {:active false}))
