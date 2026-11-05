@@ -7,9 +7,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -86,17 +89,30 @@
     (lib.types.isa/string-or-string-like? column) "text"))
 
 (defn- formula-columns
-  "The columns a formula in `mode` can reference, for the last stage of `query`."
+  "The columns a formula in `mode` can reference, for the last stage of `query`, that the current user can see."
   [query mode]
-  (if (= mode "aggregation")
-    (lib/aggregable-columns query nil)
-    (lib/expressionable-columns query nil)))
+  (->> (if (= mode "aggregation")
+         (lib/aggregable-columns query nil)
+         (lib/expressionable-columns query nil))
+       ;; lib reads an unfiltered metadata provider, and the run check only accepts or rejects the query's sources
+       metabot.perms/permission-filter-columns
+       (remove (comp #{:hidden} :visibility-type))))
 
 (defn- formula-metrics
-  "The metrics a formula in `mode` can reference, for the last stage of `query`."
+  "The metrics a formula in `mode` can reference, for the last stage of `query`, that the current user can read."
   [query mode]
   (when (= mode "aggregation")
-    (lib/available-metrics query)))
+    (let [metrics  (lib/available-metrics query)
+          readable (metabot.tools.u/readable-source-cards (into #{} (map :id) metrics))]
+      (filter (comp readable :id) metrics))))
+
+(defn- check-can-run-query!
+  [query]
+  (when-not (query-perms/can-run-query? query)
+    (let [message "You don't have permission to run this query."]
+      (throw (ex-info message {:status-code 403
+                               :error-code  "query_permission_denied"
+                               :message     message})))))
 
 (defn- check-mbql-last-stage!
   [query]
@@ -236,6 +252,7 @@
   (metabot.usage/check-metabase-managed-free-limit!)
   (let [query                     (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
                                              dataset_query)
+        _                         (check-can-run-query! query)
         _                         (check-mbql-last-stage! query)
         {:keys [expression name]} (call-llm (llm-messages (assoc (formula-context query mode)
                                                                  :mode   mode
