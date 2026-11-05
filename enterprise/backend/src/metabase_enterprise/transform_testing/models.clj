@@ -2,13 +2,22 @@
   (:require
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,10 +29,10 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defn- json-column
+(mu/defn- json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
   way out."
-  [schema]
+  [schema :- :keyword]
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
@@ -52,6 +61,30 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
+(mu/defn can-run-test? :- :boolean
+  "Whether the current user may run test SQL they write against the source Database of `transform`, as an ad hoc
+  native query and a transform there need."
+  [transform :- ::transforms.schema/transform.definition]
+  (let [db-id (transforms-base.i/source-db-id transform)]
+    (boolean
+     (or api/*is-superuser?*
+         (and db-id
+              (transforms.u/source-readable? transform)
+              (perms/has-db-transforms-permission? api/*current-user-id* db-id)
+              (query-perms/can-run-query?
+               (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))))))
+
+(mu/defn- can-save-test? :- :boolean
+  "Whether the current user may save or delete a test of the Transform `transform-id`, while remote sync allows editing
+  transforms."
+  [transform-id :- ::lib.schema.id/transform]
+  (boolean
+   (and (remote-sync/transforms-editable?)
+        (when-let [transform (transform-testing.db/transform transform-id)]
+          (or api/*is-superuser?*
+              (and (transforms-base.i/source-db-id transform)
+                   (can-run-test? (transforms.u/->definition transform))))))))
+
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
    (mi/can-read? :model/Transform (:transform_id instance)))
@@ -61,14 +94,21 @@
 
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
-   (mi/can-write? :model/Transform (:transform_id instance)))
+   (can-save-test? (:transform_id instance)))
   ([_model pk]
    (when-let [transform-test (transform-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
-  (mi/can-write? :model/Transform (:transform_id instance)))
+  (can-save-test? (:transform_id instance)))
+
+(defmethod mi/can-update? :model/TransformTest
+  [instance changes]
+  (let [transform-id (:transform_id changes (:transform_id instance))]
+    (and (can-save-test? (:transform_id instance))
+         (or (= transform-id (:transform_id instance))
+             (can-save-test? transform-id)))))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -119,7 +159,8 @@
 
 (defmethod serdes/make-spec "TransformTest"
   [_model-name _opts]
-  {:copy      [:entity_id :name :description :inputs :expectations]
+  {:schema    ::transform-testing.schema/external-transform-test
+   :copy      [:entity_id :name :description :inputs :expectations]
    :transform {:transform_id (serdes/fk :model/Transform)
                :creator_id   (serdes/fk :model/User)}})
 

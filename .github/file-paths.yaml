@@ -195,7 +195,7 @@ project_tests_infra: &project_tests_infra
   - "mage/src/mage/shell.clj"
   - "mage/src/mage/util.clj"
 
-project_backend_checks:
+project_backend_checks: &project_backend_checks
   - *project_tests_infra
   - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
   - "modules/**/*.clj"
@@ -211,14 +211,14 @@ project_backend_checks:
   - "dev/resources/dev/modules_config_test/**"
 
 # Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
-project_ratchet_checks:
+project_ratchet_checks: &project_ratchet_checks
   - ".clj-kondo/ratchets.edn"
   - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
 # Inputs of the generated CODEOWNERS block.
-# Mage Tests run on every PR and catch a change that stops mage.modules from loading.
-project_codeowners_checks:
+# Mage Tests also run for these files and catch a change that stops mage.modules from loading.
+project_codeowners_checks: &project_codeowners_checks
   - *project_tests_infra
   - ".clj-kondo/config/modules/config.edn"
   - ".clj-kondo/src/hooks/common/modules.clj"
@@ -226,12 +226,40 @@ project_codeowners_checks:
   - ".github/team.json"
   - "mage/src/mage/modules.clj"
 
-project_migration_checks:
+project_migration_checks: &project_migration_checks
   - *project_tests_infra
   - "bin/lint-migrations-file/**"
   - "resources/migrations/**/*.{yaml,yml}"
   - "src/metabase/app_db/custom_migrations.clj"
   - "src/metabase/app_db/custom_migrations/**"
+
+mage_tests:
+  - *project_backend_checks
+  - *project_codeowners_checks
+  - *project_ratchet_checks
+  - *project_migration_checks
+  - "mage/**"
+  - "mise.toml"
+  - "bin/merge-kondo-ratchets"
+
+# What decides the app DB a migration run produces, plus the checked-in snapshot and the code that loads it.
+# app-db.yml compares snapshot-plus-replay against a full replay on every app DB when one of these changes.
+# Custom migrations and the Liquibase setup are listed because changing them leaves every changeset checksum as it
+# was, so Liquibase alone would not notice the snapshot no longer matches.
+app_db_snapshot:
+  - ".github/workflows/app-db.yml"
+  - "resources/migrations/**"
+  - "resources/liquibase*.yaml"
+  - "src/metabase/app_db/custom_migrations.clj"
+  - "src/metabase/app_db/custom_migrations/**"
+  - "src/metabase/app_db/liquibase.clj"
+  - "src/metabase/app_db/liquibase/**"
+  - "test_resources/app_db_snapshots/**"
+  - "test/metabase/app_db/snapshot_test_util.clj"
+  - "test/metabase/app_db/snapshot_test_util/**"
+  - "test/metabase/app_db/snapshot_test.clj"
+  - "test/metabase/app_db/schema_migrations_test/impl.clj"
+  - "test/metabase/app_db/test_util.clj"
 
 sources: &sources
   - *shared_sources
@@ -341,6 +369,12 @@ build_embedding_sdk_package:
   - *embedding_documentation
   - *frontend_sources
 
+cross_version: &cross_version
+  - "cross-version/**"
+  - ".github/workflows/cross-version.yml"
+  - ".github/scripts/build-cross-version-matrix.js"
+  - "release/src/cross-version-helpers.ts"
+
 # The uberjar only exists to feed e2e, the SDK suites that boot a Metabase instance, bundle-size and
 # containerize, so it is worth building exactly when one of them might run. The SDK's type checks run
 # against the package artifact alone, so embedding docs do not belong here.
@@ -351,6 +385,7 @@ build_uberjar:
   - *embedding_sdk_components
   - *embedding_sdk_host_sample_apps
   - *workflows
+  - *cross_version
 
 yaml:
   - "**/*.yml"

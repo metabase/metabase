@@ -233,6 +233,7 @@ export type {
   EChartsSeriesBrushEvent,
   EChartsSeriesBrushSelectedEvent,
   EChartsSeriesMouseEvent,
+  ShowWarning,
 } from "./echarts/types";
 export {
   runWithinExportGrant,
@@ -435,6 +436,7 @@ export { DEFAULT_VIZ_ORDER } from "./lib/viz-order";
 export {
   unaggregatedDataWarning,
   unaggregatedDataWarningMap,
+  unaggregatedDataWarningTablePivot,
 } from "./lib/warnings";
 export { getSettingsWidgets, getSettingsWidgetsForSeries } from "./lib/widgets";
 export { getSizeAdjustedSettings } from "./shared/settings-adjustments";

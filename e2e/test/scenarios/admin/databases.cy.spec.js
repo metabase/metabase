@@ -488,7 +488,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
-      cy.findByText("Delete this DB connection").click();
+      cy.findByText("Delete this content and the DB connection").click();
       cy.wait("@deleteDatabase");
     });
 

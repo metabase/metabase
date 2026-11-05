@@ -82,21 +82,18 @@ const DashboardActionMenuInner = ({
     refreshDashboard,
   );
 
-  // solely for the dependency list below, so we don't ever have an undefined
+  // The trash shortcut opens `<pathname>/archive`. Without a location, it does nothing.
   const pathname = location?.pathname ?? "";
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-send-to-trash",
-        perform: () => {
-          if (pathname) {
-            onChangeLocation(`${pathname}/archive`);
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "dashboard-send-to-trash",
+      perform: () => {
+        if (pathname) {
+          onChangeLocation(`${pathname}/archive`);
+        }
       },
-    ],
-    [pathname],
-  );
+    },
+  ]);
 
   if (!dashboard) {
     return null;

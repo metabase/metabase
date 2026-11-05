@@ -17,16 +17,19 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.parameters.values :as params.values]
    [metabase.query-processor.test :as qp]
+   [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -530,7 +533,80 @@
                  (:card-id exc-data))))
         (testing "tag"
           (is (= tag
-                 (:tag exc-data))))))))
+                 (:tag exc-data))))
+        (testing "error type"
+          (is (= :missing-required-parameter
+                 (:error_type (qp.catch-exceptions/exception-response e)))))))))
+
+(defn- reject-app-db-lookup
+  "Throw a real app DB error, the way a failed Toucan query does, without leaving the transaction aborted."
+  [& _]
+  (t2/with-transaction [_conn]
+    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+
+(defn- card-tag
+  "A `:card` template tag for Card 1."
+  []
+  {:name "#1", :display-name "#1", :type :card, :card-id 1})
+
+(defn- thrown-by
+  "Call `thunk` and return the exception it throws."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch Throwable e
+      e)))
+
+(defn- error-type
+  "The `:error_type` that the QP gives to a client for the exception `e`."
+  [e]
+  (:error_type (qp.catch-exceptions/exception-response e)))
+
+(deftest ^:parallel app-db-failure-in-persisted-cache-check-is-internal-test
+  (testing "An app DB failure while Metabase resolves a referenced question is an internal error, not a parameter error"
+    (mt/with-test-user :rasta
+      (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+                meta/metadata-provider
+                [{:database (meta/id), :type :native, :native {:query "SELECT 1"}}])
+            e  (mt/with-dynamic-fn-redefs [qp.persistence/can-substitute?                       (constantly true)
+                                           params.values/persisted-cache-allowed-for-current-user? reject-app-db-lookup]
+                 (thrown-by #(value-for-tag mp (card-tag) [])))]
+        (is (= :qp (error-type e)))
+        (testing "the chain still says which question failed"
+          (is (some #(= {:card-query-error? true, :card-id 1}
+                        (select-keys (ex-data %) [:card-query-error? :card-id]))
+                    (u/full-exception-chain e))))))))
+
+(deftest ^:parallel app-db-failure-in-card-lookup-is-internal-test
+  (testing "An app DB failure while the QP loads a referenced question is an internal error, not a parameter error"
+    (mt/with-test-user :rasta
+      (let [fetch-card (fn [& _]
+                         (try
+                           (reject-app-db-lookup)
+                           (catch Exception e
+                             (throw (ex-info "Error fetching metadata with spec" {} e)))))
+            e          (mt/with-dynamic-fn-redefs [lib.metadata/card fetch-card]
+                         (thrown-by #(value-for-tag (card-tag) [])))]
+        (is (= :qp (error-type e)))))))
+
+(deftest ^:parallel untyped-value-parse-error-stays-invalid-parameter-test
+  (testing "A value that does not parse is still a parameter error"
+    (let [e (thrown-by #(query->params-map
+                         {:native        "SELECT {{n}}"
+                          :template-tags {"n" {:id "n-tag", :name "n", :display-name "N", :type :number}}
+                          :parameters    [{:type :number, :target [:variable [:template-tag "n"]], :value "abc"}]}))]
+      (is (= :invalid-parameter (error-type e))))))
+
+(deftest ^:parallel typed-cause-keeps-its-type-test
+  (testing "A cause with its own `:type` keeps it, also when a SQLException is below it"
+    (let [e (mt/with-dynamic-fn-redefs [lib.metadata/card (fn [& _]
+                                                            (throw (ex-info "x"
+                                                                            {:type :missing-required-parameter}
+                                                                            (SQLException. "y"))))]
+              (thrown-by #(value-for-tag (card-tag) [])))]
+      (is (= :missing-required-parameter (:type (ex-data e))))
+      (is (= :missing-required-parameter (error-type e))))))
 
 (deftest ^:synchronized card-query-permissions-test
   (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"
