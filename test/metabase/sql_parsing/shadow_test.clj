@@ -20,6 +20,7 @@
     (validate-query [_ dialect sql schema sqlglot-schema] (f :validate-query [dialect sql schema sqlglot-schema]))
     (simple-query [_ dialect sql] (f :simple-query [dialect sql]))
     (add-into-clause [_ dialect sql table-name] (f :add-into-clause [dialect sql table-name]))
+    (add-insert-clause [_ dialect sql table-name] (f :add-insert-clause [dialect sql table-name]))
     (field-references [_ dialect sql] (f :field-references [dialect sql]))
     (replace-names [_ dialect sql replacements] (f :replace-names [dialect sql replacements]))
     (single-stmt-of-type [_ dialect sql stmt-type] (f :single-stmt-of-type [dialect sql stmt-type]))
@@ -56,6 +57,7 @@
    :validate-query           (protocol/validate-query parser "postgres" "sql" "public" {})
    :simple-query             (protocol/simple-query parser "postgres" "sql")
    :add-into-clause          (protocol/add-into-clause parser "postgres" "sql" "t")
+   :add-insert-clause        (protocol/add-insert-clause parser "postgres" "sql" "t")
    :field-references         (protocol/field-references parser "postgres" "sql")
    :replace-names            (protocol/replace-names parser "postgres" "sql" {})
    :single-stmt-of-type      (protocol/single-stmt-of-type parser "postgres" "sql" "read")
@@ -66,7 +68,7 @@
     (let [calls  (atom [])
           ;; the methods that rewrite SQL answer with SQL, the others with a map
           answer (fn [method args]
-                   (if (#{:add-into-clause :replace-names} method)
+                   (if (#{:add-into-clause :add-insert-clause :replace-names} method)
                      (pr-str {:method method, :args args})
                      {:method method, :args args}))
           parser (shadow-parser (stub-parser answer)

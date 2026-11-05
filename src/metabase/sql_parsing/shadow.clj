@@ -72,6 +72,7 @@
     :validate-query           (select-keys value [:status :type :column :table])
     :simple-query             (select-keys value [:is_simple])
     (:add-into-clause
+     :add-insert-clause
      :replace-names)          (sql-tokens value)
     :field-references         (sets-of-used-fields (results/field-references value))
     :single-stmt-of-type      (update value :sql sql-tokens)
@@ -219,6 +220,8 @@
         (run :simple-query dialect #(protocol/simple-query % dialect sql)))
       (add-into-clause [_ dialect sql table-name]
         (run :add-into-clause dialect #(protocol/add-into-clause % dialect sql table-name)))
+      (add-insert-clause [_ dialect sql table-name]
+        (run :add-insert-clause dialect #(protocol/add-insert-clause % dialect sql table-name)))
       (field-references [_ dialect sql]
         (run :field-references dialect #(protocol/field-references % dialect sql)))
       (replace-names [_ dialect sql replacements]
