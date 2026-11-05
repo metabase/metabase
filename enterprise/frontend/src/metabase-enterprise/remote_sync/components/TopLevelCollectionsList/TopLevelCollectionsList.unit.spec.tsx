@@ -392,29 +392,16 @@ describe("TopLevelCollectionsList", () => {
       });
     });
 
-    it("should handle toggling library collection", async () => {
-      const libraryCollection = createMockLibraryCollection({ id: 999 });
-      const { onSubmit } = setup({
+    it("should keep synced library collection locked on", async () => {
+      setup({
         collections: [],
-        libraryCollection,
-        initialSyncMap: { 999: false },
+        libraryCollection: createMockLibraryCollection({ id: 999 }),
+        initialSyncMap: { 999: true },
       });
 
-      await waitFor(() => {
-        expect(screen.getByRole("switch")).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByRole("switch"));
-      await userEvent.click(screen.getByText("Save"));
-
-      await waitFor(() => {
-        expect(onSubmit).toHaveBeenCalledWith(
-          expect.objectContaining({
-            [COLLECTIONS_KEY]: { 999: true },
-          }),
-          expect.anything(),
-        );
-      });
+      const libraryToggle = await screen.findByRole("switch");
+      expect(libraryToggle).toBeChecked();
+      expect(libraryToggle).toBeDisabled();
     });
   });
 

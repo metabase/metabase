@@ -12,7 +12,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -20,7 +19,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections rs.test/clean-remote-sync-state rs.test/commit-with-temp)
+  rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 (defn- venues-query []
   {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})

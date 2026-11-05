@@ -14,7 +14,6 @@
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -24,7 +23,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections test-helpers/commit-with-temp
+  test-helpers/commit-with-temp
   (fn [f]
     (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
       (test-helpers/clean-remote-sync-state f))))
