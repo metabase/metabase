@@ -135,7 +135,7 @@ describe("DashboardChartSettings trend line customization", () => {
     await userEvent.click(
       within(
         screen.getByTestId("chart-settings-widget-graph.trendline_style"),
-      ).getByRole("button", { name: /line_style_dashed/i }),
+      ).getByRole("radio", { name: "Dashed" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
 

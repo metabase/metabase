@@ -14,6 +14,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -227,6 +228,18 @@
                                "' group.")
                           {:status-code 400})))))))
 
+(def ^:private admin-only-write-namespaces
+  "The Collection namespaces only admins can write, so no group can be granted write on them."
+  #{"data-actions" "data-apps"})
+
+(defn- check-no-admin-only-namespace-write
+  "Throws a 400 when `changes` to the Collections of `collection-namespace` grant write in an admin-only namespace."
+  [collection-namespace changes]
+  (when (and (contains? admin-only-write-namespaces (some-> collection-namespace name))
+             (some #{:write} (mapcat vals (vals changes))))
+    (throw (ex-info (tru "You cannot grant write permissions on collections only admins can write.")
+                    {:status-code 400}))))
+
 (mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
@@ -273,6 +286,7 @@
                                                                 (filter (comp seq second))
                                                                 (into {})))]
      (check-data-analyst-library-permissions changes)
+     (check-no-admin-only-namespace-write collection-namespace changes)
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]

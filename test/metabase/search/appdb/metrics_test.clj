@@ -20,7 +20,7 @@
     (search.tu/with-temp-index-table
       (binding [search.ingestion/*force-sync* true]
         (mt/dataset test-data
-          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
+          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User :id 1) {:id 1})
                          :model/Collection {col-id :id} {:name "Collection"}
                          :model/Card       {}           {:name "Customer Satisfaction" :collection_id col-id}
                          :model/Card       {}           {:name "Projected Revenue"     :collection_id col-id}]
@@ -37,7 +37,7 @@
     (search.tu/with-temp-index-table
       (binding [search.ingestion/*force-sync* true]
         (mt/dataset test-data
-          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
+          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User :id 1) {:id 1})
                          :model/Collection {col-id :id} {:name "Collection"}
                          :model/Card       {}           {:name "Quarterly Forecast" :collection_id col-id}]
             ;; a full (not in-place) reindex populates a pending table, then activates it

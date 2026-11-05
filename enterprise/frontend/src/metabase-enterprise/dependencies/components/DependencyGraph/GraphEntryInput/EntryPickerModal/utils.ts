@@ -1,6 +1,7 @@
 import type {
   OmniPickerCollectionItem,
   OmniPickerCollectionItemValue,
+  OmniPickerDataAppValue,
   OmniPickerItem,
   OmniPickerQuestionItem,
   OmniPickerTableItem,
@@ -122,6 +123,15 @@ export function getActionPickerItem(
   };
 }
 
+export function getDataAppPickerItem(
+  node: DependencyNode,
+): OmniPickerDataAppValue | undefined {
+  if (node.type !== "data-app") {
+    return;
+  }
+  return { id: node.id, model: "data-app" };
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): OmniPickerValue | undefined {
@@ -133,7 +143,8 @@ export function getEntryPickerItem(
     getMetricPickerItem(node) ??
     getDashboardPickerItem(node) ??
     getSnippetPickerItem(node) ??
-    getActionPickerItem(node)
+    getActionPickerItem(node) ??
+    getDataAppPickerItem(node)
   );
 }
 

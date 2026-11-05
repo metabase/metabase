@@ -25,7 +25,7 @@ export function setTooltipRootProvider(provider: () => HTMLElement | null) {
 }
 
 export const getTooltipPositionFn =
-  (containerRef: React.RefObject<HTMLDivElement>) =>
+  (containerRef: React.RefObject<HTMLDivElement | null>) =>
   (
     relativePoint: [number, number],
     _params: unknown,
@@ -70,7 +70,7 @@ export const getTooltipPositionFn =
   };
 
 export const getTooltipBaseOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ) => {
   return {
     enterable: true,

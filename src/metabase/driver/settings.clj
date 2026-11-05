@@ -13,13 +13,13 @@
 (set! *warn-on-reflection* true)
 
 (defsetting warehouse-allowed-networks
-  (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
-                     "Options:\n"
-                     "- external-only (only globally reachable public addresses)\n"
-                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
-                     "- allow-all (no restrictions).\n"
-                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
-                     "Also covers the SSH tunnel host and the database auth-provider URLs."))
+  (str "Controls which networks Metabase may connect to for warehouse connections.\n"
+       "Options:\n"
+       "- external-only (only globally reachable public addresses)\n"
+       "- allow-private (external + private networks but NOT loopback or link-local)\n"
+       "- allow-all (no restrictions).\n"
+       "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+       "Also covers the SSH tunnel host and the database auth-provider URLs.")
   :type       :keyword
   :visibility :internal
   :export?    false
@@ -290,18 +290,17 @@
   :visibility :internal)
 
 (defsetting nested-field-columns-value-length-limit
-  (deferred-tru (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
-                     "too high it could lead to slow syncs or out of memory errors."))
+  (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
+       "too high it could lead to slow syncs or out of memory errors.")
   :visibility :internal
   :export?    true
   :type       :integer
   :default    50000)
 
 (defsetting sync-leaf-fields-limit
-  (deferred-tru
-   (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
-        " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
-        " from root to leaf are synced as well."))
+  (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
+       " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
+       " from root to leaf are synced as well.")
   :visibility :internal
   :export? true
   :type :integer

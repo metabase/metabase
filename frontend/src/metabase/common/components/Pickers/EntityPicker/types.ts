@@ -8,6 +8,7 @@ import type {
   CollectionNamespace,
   CollectionType,
   DashboardId,
+  DataAppId,
   DatabaseId,
   Measure,
   MeasureId,
@@ -24,6 +25,7 @@ export type EntityPickerOptions = {
   hasSearch?: boolean;
   hasRecents?: boolean;
   hasDatabases?: boolean;
+  hasDataApps?: boolean;
   hasLibrary?: boolean;
   hasRootCollection?: boolean;
   hasPersonalCollections?: boolean; // other users personal collections
@@ -164,6 +166,12 @@ export type OmniPickerSnippetItem = Pick<NativeQuerySnippet, "id" | "name"> & {
   model: "snippet";
 };
 
+export type OmniPickerDataAppItem = {
+  model: "data-app";
+  id: DataAppId;
+  name: string;
+};
+
 export enum OmniPickerFolderModel {
   Database = "database",
   Schema = "schema",
@@ -178,7 +186,7 @@ export type DbTreeItem =
   | OmniPickerTableItem
   | OmniPickerMeasureItem;
 
-export const isInDbTree = (item: OmniPickerItem): item is DbTreeItem => {
+const isInDbTree = (item: OmniPickerItem): item is DbTreeItem => {
   return (
     item.model === "database" ||
     item.model === "schema" ||
@@ -187,13 +195,19 @@ export const isInDbTree = (item: OmniPickerItem): item is DbTreeItem => {
   );
 };
 
+export const isInCollectionTree = (
+  item: OmniPickerItem,
+): item is OmniPickerCollectionItem =>
+  !isInDbTree(item) && item.model !== "data-app";
+
 // this includes all possible item types that can be shown in the mini picker
 export type OmniPickerItem =
   | OmniPickerCollectionItem
   | OmniPickerSchemaItem
   | OmniPickerTableItem
   | OmniPickerDatabaseItem
-  | OmniPickerMeasureItem;
+  | OmniPickerMeasureItem
+  | OmniPickerDataAppItem;
 
 export type OmniPickerDbValue = Pick<DbTreeItem, "model" | "id">;
 export type OmniPickerTableValue = Pick<OmniPickerTableItem, "model" | "id">;
@@ -201,8 +215,15 @@ export type OmniPickerCollectionItemValue = Pick<
   OmniPickerCollectionItem,
   "model" | "id" | "namespace"
 >;
+export type OmniPickerDataAppValue = Pick<
+  OmniPickerDataAppItem,
+  "model" | "id"
+>;
 
-export type OmniPickerValue = OmniPickerDbValue | OmniPickerCollectionItemValue;
+export type OmniPickerValue =
+  | OmniPickerDbValue
+  | OmniPickerCollectionItemValue
+  | OmniPickerDataAppValue;
 
 // this is only the intermediate/folder types that cannot ultimately be picked
 export type OmniPickerFolderItem =

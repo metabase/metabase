@@ -86,6 +86,7 @@ function createSearchResultItem(
       archived: result.archived ?? false,
       collection_position: result.collection_position,
       "last-edit-info": result["last-edit-info"],
+      can_write: result.can_write ?? false,
     },
   };
 }

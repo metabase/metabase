@@ -5,6 +5,8 @@
   (:import
    (java.sql SQLException)))
 
+(set! *warn-on-reflection* true)
+
 (deftest transient-error-h2-test
   (testing "H2 deadlock (error code 40001)"
     (is (transient-error/transient-error? :h2 (SQLException. "Deadlock" "40001" 40001))))

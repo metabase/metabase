@@ -28,6 +28,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -146,10 +147,6 @@
       (or (instance? java.net.UnknownHostException e)
           (instance? java.net.UnknownHostException (ex-cause e)))
       "Network error: Unable to reach git repository host"
-
-      ;; the validator names a file, whose path may hold any word the matches below look for
-      (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
-      (str "Failed to reload from git repository. " message)
 
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
@@ -330,11 +327,11 @@
       (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
                          (remove kept-tables)
                          (partition-all app-db-batch-size))]
-        (remote-sync.db/delete-table-user-settings! (vec batch)))
+        (warehouse-schema/delete-table-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
                          (remove kept-fields)
                          (partition-all app-db-batch-size))]
-        (remote-sync.db/delete-field-user-settings! (vec batch)))
+        (warehouse-schema/delete-field-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-dimensions table-ids)
                          (remove kept-dims)
                          (partition-all app-db-batch-size))]
@@ -650,10 +647,6 @@
     (try
       (let [snapshot-version      (source.p/version snapshot)
             last-imported-version (remote-sync.task/last-version)
-            ;; before anything is read for loading, the files of each data app's collection are checked; a pull of
-            ;; the commit already imported loads nothing, so there is nothing to check
-            _                     (when (or force? merge? (not= last-imported-version snapshot-version))
-                                    (source.ingestable/check-data-app-files! snapshot))
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
@@ -827,8 +820,7 @@
          :conflicts     labels
          :merge-summary summary
          :message       "Export blocked: the same content was changed both locally and on the remote branch."})
-      (let [_           (source.ingestable/check-data-app-files! (source/specs->snapshot merged))
-            [_ version] (commit-staged! snapshot message
+      (let [[_ version] (commit-staged! snapshot message
                                         (fn [commit]
                                           (source/replace-managed-files! commit snapshot) ; merged set replaces the managed files wholesale
                                           (run! #(source.p/stage-upsert! commit %) merged)))

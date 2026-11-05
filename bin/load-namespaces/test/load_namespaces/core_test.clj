@@ -29,7 +29,7 @@
 
 (deftest load-failures-are-counted-and-reported-test
   (let [err      (StringWriter.)
-        failures (binding [*err* err] (#'core/load-namespaces ["test-resources/broken"]))
+        failures (:failures (binding [*err* err] (#'core/load-namespaces ["test-resources/broken"])))
         output   (str err)]
     (is (= 1 failures))
     (is (str/includes? output "Failed to load broken-fixtures.boom"))
@@ -37,7 +37,7 @@
 
 (deftest already-loaded-namespaces-are-not-reloaded-test
   (let [err      (StringWriter.)
-        failures (binding [*err* err] (#'core/load-namespaces ["test-resources/protocol-reload"]))
+        failures (:failures (binding [*err* err] (#'core/load-namespaces ["test-resources/protocol-reload"])))
         output   (str err)]
     (is (zero? failures))
     (testing "the consumer pulled the protocol in, so the scan left it alone"
@@ -47,3 +47,14 @@
   (testing "reloading it redefines the protocol, breaking implementations compiled against the old one"
     (load "/reload_fixtures/proto")
     (is (thrown? IllegalArgumentException (greet-the-friend)))))
+
+(deftest reflection-in-our-files-is-reported-test
+  (let [err    (StringWriter.)
+        result (binding [*err* err] (#'core/load-namespaces ["test-resources/reflection"]))]
+    (is (zero? (:failures result)))
+    (testing "the warning in our file is reported, and still printed"
+      (is (= ["Reflection warning, reflection_fixtures/reflective.clj:4:3 - reference to field length can't be resolved."]
+             (:reflection result)))
+      (is (str/includes? (str err) "reflection_fixtures/reflective.clj:4:3")))
+    (testing "a warning in a library we pulled in is printed but not reported"
+      (is (str/includes? (str err) "Reflection warning, reflection_lib/sloppy.clj")))))

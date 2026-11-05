@@ -1,0 +1,7 @@
+.text {
+  color: var(--mb-color-text-brand-strong);
+}
+
+.link:hover .text {
+  color: var(--mb-color-text-brand-strong-hover);
+}

@@ -143,7 +143,7 @@
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
-  (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
+  (t2/update! :model/AuthIdentity :id auth-identity-id {:credentials credentials}))
 
 (mu/defn auth-identity-provider
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."

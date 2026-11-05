@@ -284,8 +284,8 @@
            (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                          driver.settings/*allow-testing-h2-connections* true
                          api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
-                                                         (fn [& args]
-                                                           (apply orig args)
+                                                         (fn [settings]
+                                                           (orig settings)
                                                            (throw (ex-info "Oops!" {}))))]
              (is (=? {:message "Oops!"}
                      (client/client :post 500 "setup" body))))

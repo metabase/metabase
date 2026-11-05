@@ -489,17 +489,20 @@ describe("StrategyEditorForDatabases (search)", () => {
 
     await userEvent.type(searchInput, "Database 10");
 
+    // The search filters asynchronously, and under React 19 the non-matching
+    // rows drop a render after the default policy row does. Wait for a
+    // non-matching row to leave before asserting the filtered result.
     await waitFor(() => {
       expect(
         screen.queryByLabelText(/Edit default policy/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Edit policy for database 'Database 11'/),
       ).not.toBeInTheDocument();
     });
     expect(
       screen.getByLabelText(/Edit policy for database 'Database 10'/),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(/Edit policy for database 'Database 11'/),
-    ).not.toBeInTheDocument();
   });
 });
 

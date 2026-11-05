@@ -5,13 +5,17 @@ import type {
   BaseEntityId,
   CardId,
   CollectionId,
+  DashCardId,
   DashboardId,
+  DashboardTabId,
 } from "metabase-types/api";
 
 type SUPPORTED_ENTITIES = {
   dashboard: DashboardId;
   card: CardId;
   collection: CollectionId;
+  "dashboard-tab": DashboardTabId;
+  "dashboard-card": DashCardId;
 };
 
 type EntityIdMappingParameter = Partial<{
@@ -24,47 +28,42 @@ type EntityIdMappingParameter = Partial<{
 export function setupEntityIdEndpoint(
   entityIdMappings: EntityIdMappingParameter,
 ) {
-  fetchMock.post(
-    "path:/api/eid-translation/translate",
-    async (_url: string, options: RequestInit) => {
-      // Unjustified type cast. FIXME
-      const body = JSON.parse(options.body as string) as {
-        entity_ids: TranslateEntityIdRequest;
-      };
-      const requestedIdMap = body?.entity_ids ?? {};
-      const allRequestedPairs = Object.entries(requestedIdMap).flatMap(
-        ([typeString, idArray]) =>
-          (idArray ?? []).map((id) => ({
-            entityType: typeString,
-            entityId: id,
-          })),
-      );
-      const resultMapEntries = allRequestedPairs.map(
-        ({
-          entityType,
-          entityId,
-        }: {
-          entityType: string;
-          entityId: BaseEntityId;
-        }) => {
-          const mappedValue =
-            // Unjustified type cast. FIXME
-            entityIdMappings[entityType as keyof SUPPORTED_ENTITIES]?.[
-              entityId
-            ];
-          const responseItem =
-            mappedValue !== undefined
-              ? { status: "ok", id: mappedValue, type: entityType }
-              : { status: "not-found", id: null, type: entityType };
-          return [entityId, responseItem];
-        },
-      );
+  fetchMock.post("path:/api/eid-translation/translate", async (call) => {
+    // translateEntityId in metabase/api/entity-id.ts sends this body
+    const body = (await call.request?.json()) as {
+      entity_ids: TranslateEntityIdRequest;
+    };
+    const requestedIdMap = body?.entity_ids ?? {};
+    const allRequestedPairs = Object.entries(requestedIdMap).flatMap(
+      ([typeString, idArray]) =>
+        (idArray ?? []).map((id) => ({
+          entityType: typeString,
+          entityId: id,
+        })),
+    );
+    const resultMapEntries = allRequestedPairs.map(
+      ({
+        entityType,
+        entityId,
+      }: {
+        entityType: string;
+        entityId: BaseEntityId;
+      }) => {
+        const mappedValue =
+          // Unjustified type cast. FIXME
+          entityIdMappings[entityType as keyof SUPPORTED_ENTITIES]?.[entityId];
+        const responseItem =
+          mappedValue !== undefined
+            ? { status: "ok", id: mappedValue, type: entityType }
+            : { status: "not-found", id: null, type: entityType };
+        return [entityId, responseItem];
+      },
+    );
 
-      const responseMap = Object.fromEntries(resultMapEntries);
+    const responseMap = Object.fromEntries(resultMapEntries);
 
-      return {
-        entity_ids: responseMap,
-      };
-    },
-  );
+    return {
+      entity_ids: responseMap,
+    };
+  });
 }

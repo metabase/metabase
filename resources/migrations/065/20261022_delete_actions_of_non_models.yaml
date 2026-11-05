@@ -1,0 +1,20 @@
+## A model's actions are never kept around: archiving a model or turning it into a question deletes its actions, and a
+## model's action can't be archived, only deleted. This deletes the ones left behind: actions of cards that are no longer
+## models, of archived models, and archived actions of models. Their dashboard cards and query_action/implicit_action
+## rows cascade. Actions without a model are left alone.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-22T02:00:00
+      author: ranquild
+      comment: Delete the actions of non-models and archived models, and the archived actions of models
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM action
+              WHERE EXISTS (SELECT 1 FROM report_card
+                            WHERE report_card.id = action.model_id
+                              AND (report_card.type <> 'model'
+                                   OR report_card.archived = TRUE
+                                   OR action.archived = TRUE));
+      rollback: # nothing to do; the deleted actions cannot be restored

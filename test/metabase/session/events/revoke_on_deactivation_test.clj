@@ -42,9 +42,9 @@
       (let [session-id (insert-session! user-id)]
         (is (nil? (:ended_at (t2/select-one :model/Session :id session-id)))
             "session is live while the user is active")
-        (t2/update! :model/User user-id {:is_active false})
+        (t2/update! :model/User :id user-id {:is_active false})
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "deactivation outside a request ends the session with no actor")
-        (t2/update! :model/User user-id {:is_active true})
+        (t2/update! :model/User :id user-id {:is_active true})
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "reactivation does not revive the pre-deactivation session")))))

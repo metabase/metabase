@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- visible-metric-cards-where
@@ -60,9 +59,9 @@
   "The id and `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field :id] columns) :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select (into [:model/Field :id] columns) :id [:in field-ids]))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))

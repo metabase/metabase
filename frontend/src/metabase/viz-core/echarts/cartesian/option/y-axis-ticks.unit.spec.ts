@@ -35,12 +35,10 @@ describe.each(scenarios)(
   "responsive Y-axis ticks with $name",
   ({ extent, axis }) => {
     it.each([
-      [199, 2, 3],
-      [200, 3, 3],
+      [95, 2, 3],
+      [96, 3, 3],
       [299, 3, 3],
-      [300, 3, 5],
-      [399, 3, 5],
-      [400, 5, 5],
+      [300, 5, 5],
     ])("renders %ipx density", (height, labelCount, lineCount) => {
       const baseAxis = {
         type: "value" as const,
@@ -100,7 +98,7 @@ describe.each(scenarios)(
   },
 );
 
-it("uses the specified quarter and midpoint ticks for a zero to 100 range", () => {
+it("labels every quarter tick of a zero to 100 range from the medium plot height", () => {
   const axis = getResponsiveYAxisTicks(
     [0, 100],
     { type: "value", splitNumber: 5 },
@@ -108,6 +106,17 @@ it("uses the specified quarter and midpoint ticks for a zero to 100 range", () =
   );
 
   expect(axis.axisTick?.customValues).toEqual([0, 25, 50, 75, 100]);
-  expect(axis.axisLabel?.customValues).toEqual([0, 50, 100]);
+  expect(axis.axisLabel?.customValues).toEqual([0, 25, 50, 75, 100]);
   expect(axis.minorSplitLine?.show).toBe(false);
+});
+
+it("labels the min and max ticks only below the small plot height", () => {
+  const axis = getResponsiveYAxisTicks(
+    [0, 100],
+    { type: "value", splitNumber: 5 },
+    95,
+  );
+
+  expect(axis.axisTick?.customValues).toEqual([0, 50, 100]);
+  expect(axis.axisLabel?.customValues).toEqual([0, 100]);
 });

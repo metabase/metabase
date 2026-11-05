@@ -1,14 +1,13 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
-import {
-  useGetDatabaseQuery,
-  useGetTableQuery,
-  useUpdateCardMutation,
-} from "metabase/api";
-import { DateTime } from "metabase/common/components/DateTime";
-import { EditableText } from "metabase/common/components/EditableText";
-import { Markdown } from "metabase/common/components/Markdown";
-import { useMetadataToasts } from "metabase/common/hooks";
+import { AboutSidebar } from "metabase/common/data-studio/components/AboutSidebar";
+import { AboutHeader } from "metabase/common/data-studio/components/AboutSidebar/AboutHeader";
+import { AboutSubSection } from "metabase/common/data-studio/components/AboutSidebar/AboutSubSection";
+import { CardDescription } from "metabase/common/data-studio/components/AboutSidebar/CardDescription";
+import { CardSourceSubSection } from "metabase/common/data-studio/components/AboutSidebar/CardSourceSubSection";
+import { MetadataCard } from "metabase/common/data-studio/components/AboutSidebar/MetadataCard";
+import { MetadataRow } from "metabase/common/data-studio/components/AboutSidebar/MetadataRow";
+import { MetadataRowLink } from "metabase/common/data-studio/components/AboutSidebar/MetadataRowLink";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import {
   getUserIsAdmin,
@@ -16,12 +15,7 @@ import {
 } from "metabase/current-user";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Box, Stack, Text, Tooltip } from "metabase/ui";
-import { getRelativeTime } from "metabase/utils/time-dayjs";
-import type { Card as CardApiType, CardType } from "metabase-types/api";
-
-import { MetadataCard, MetadataRow, MetadataRowLink } from "./MetadataCard";
-import { MetricSubSection } from "./MetricSubSection";
+import type { Card as CardApiType } from "metabase-types/api";
 
 interface DescriptionSectionProps {
   card: CardApiType;
@@ -29,23 +23,10 @@ interface DescriptionSectionProps {
 }
 
 export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
-  const [updateCard] = useUpdateCardMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
   const canSeeRelationships =
     useSelector(
       (state) => getUserIsAdmin(state) || getUserIsEntitledAnalyst(state),
     ) && PLUGIN_DEPENDENCIES.isEnabled;
-
-  const { data: database } = useGetDatabaseQuery(
-    { id: card.database_id! },
-    { skip: !card.database_id },
-  );
-
-  const { data: table } = useGetTableQuery(
-    { id: card.table_id! },
-    { skip: !card.table_id },
-  );
 
   const { dependentsCount, dependenciesCount } =
     PLUGIN_DEPENDENCIES.useGetDependenciesCount({
@@ -53,93 +34,16 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       type: "card",
     });
 
-  const handleChange = async (newValue: string) => {
-    const newDescription = newValue.trim();
-    const { error } = await updateCard({
-      id: card.id,
-      description: newDescription.length > 0 ? newDescription : null,
-    });
-    if (error) {
-      sendErrorToast(getErrorMessage(card.type));
-    } else {
-      sendSuccessToast(getSuccessMessage(card.type));
-    }
-  };
-
-  const hasSource = Boolean(database || table);
   const dependenciesUrl = urls.dependencies(card.id);
-  const databaseUrl = database && urls.database?.(database.id);
-  const tableUrl =
-    table && card.database_id != null
-      ? urls.table?.(card.database_id, table.id)
-      : undefined;
 
   return (
-    <Stack
-      p="lg"
-      gap={0}
-      align="stretch"
-      data-testid="metric-description-sidebar"
-    >
-      <Text fz="lg" fw={700}>{t`About`}</Text>
-      <Tooltip label={<DateTime value={card.updated_at} />} offset={8}>
-        <Text
-          size="sm"
-          c="text-secondary"
-          w="fit-content"
-          mt="sm"
-          data-testid="metric-last-updated"
-        >
-          {t`Last updated ${getRelativeTime(card.updated_at)}`}
-        </Text>
-      </Tooltip>
-      <Box mt="lg" data-testid="metric-description-section">
-        {card.can_write ? (
-          <EditableText
-            initialValue={card.description ?? ""}
-            placeholder={t`No description`}
-            isMarkdown
-            isOptional
-            isMultiline
-            onChange={handleChange}
-            px={0}
-          />
-        ) : (
-          <Markdown>{card.description || t`No description`}</Markdown>
-        )}
-      </Box>
-
-      {hasSource && (
-        <MetricSubSection title={t`Source`} mt="xxl">
-          <MetadataCard>
-            {database && (
-              <MetadataRow icon="database">
-                {databaseUrl ? (
-                  <MetadataRowLink to={databaseUrl}>
-                    {database.name}
-                  </MetadataRowLink>
-                ) : (
-                  database.name
-                )}
-              </MetadataRow>
-            )}
-            {table && (
-              <MetadataRow icon="table">
-                {tableUrl ? (
-                  <MetadataRowLink to={tableUrl}>
-                    {table.display_name || table.name}
-                  </MetadataRowLink>
-                ) : (
-                  (table.display_name ?? table.name)
-                )}
-              </MetadataRow>
-            )}
-          </MetadataCard>
-        </MetricSubSection>
-      )}
+    <AboutSidebar data-testid="metric-description-sidebar">
+      <AboutHeader updatedAt={card.updated_at} />
+      <CardDescription card={card} />
+      <CardSourceSubSection card={card} urls={urls} mt="xxl" />
 
       {canSeeRelationships && (
-        <MetricSubSection title={t`Relationships`} mt="xxl">
+        <AboutSubSection title={t`Relationships`} mt="xxl">
           <MetadataCard>
             <MetadataRow icon="dependencies" muted={dependenciesCount === 0}>
               {dependenciesCount > 0 ? (
@@ -168,30 +72,8 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
                 : t`No charts use this metric`}
             </MetadataRow>
           </MetadataCard>
-        </MetricSubSection>
+        </AboutSubSection>
       )}
-    </Stack>
+    </AboutSidebar>
   );
-}
-
-function getSuccessMessage(cardType: CardType) {
-  switch (cardType) {
-    case "question":
-      return t`Question description updated`;
-    case "model":
-      return t`Model description updated`;
-    case "metric":
-      return t`Metric description updated`;
-  }
-}
-
-function getErrorMessage(cardType: CardType) {
-  switch (cardType) {
-    case "question":
-      return t`Failed to update question description`;
-    case "model":
-      return t`Failed to update model description`;
-    case "metric":
-      return t`Failed to update metric description`;
-  }
 }

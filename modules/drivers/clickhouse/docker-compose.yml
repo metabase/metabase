@@ -1,5 +1,5 @@
 # Keep the current-version ClickHouse services on the same image.
-x-clickhouse-image: &clickhouse-image 'clickhouse/clickhouse-server:26.8-alpine'
+x-clickhouse-image: &clickhouse-image 'clickhouse/clickhouse-server:latest-alpine'
 
 services:
 

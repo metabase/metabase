@@ -10,13 +10,15 @@ Basic actions are "implicit" [actions](./introduction.md) that do things that pe
 
 If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](./custom.md).
 
+To add, update, or delete one row without a model, create a [data action from a table](../../data-actions.md#create-a-data-action-that-changes-one-row).
+
 ## Creating basic actions
 
-Once actions are enabled, you can create basic actions on a new or existing [model](../../../data-modeling/models/models.md) that only wraps a single database table.
+Only admins can create basic actions. Once an admin [turns on data actions](../../data-actions.md#turn-on-data-actions-for-a-database) for the database, you can create basic actions on a new or existing [model](../../../data-modeling/models/models.md) that only wraps a single database table.
 
-1. Select a model and click on the **info** button, then click on **Model detail**.
-2. On the model detail page, click on the **Actions** tab.
-3. Click on the **...** next to the **New Action** and select **Create basic actions**.
+1. Visit the model and click the **info** button.
+2. Click **Actions**.
+3. Click the **...** next to **New action**, and select **Create basic actions**.
 
 ### Basic action limitations
 
@@ -58,9 +60,15 @@ The Update basic action requires you to pass a value for the entity key.
 
 See [Actions in dashboards](../../../dashboards/actions.md).
 
-## Archiving basic actions
+## Disable basic actions
 
-Because basic actions are made of magic, you cannot archive them. You can just toggle them on or off. From the model detail page, next to the **New action** button, click on the **...** menu and click **Disable basic actions**.
+You can't archive basic actions, or delete them one at a time. Instead, admins can turn off all of a model's basic actions at once:
+
+1. Visit the model, click the **info** button, and click **Actions**.
+2. Click the **...** next to **New action**, and select **Disable basic actions**.
+3. Click **Disable**.
+
+Disabling basic actions also removes any dashboard buttons that use them.
 
 ## Basic actions from object detail view
 
@@ -70,6 +78,6 @@ If you have basic actions enabled for a model, you can click on an individual re
 
 ## Further reading
 
-- [Introduction to actions](./introduction.md)
+- [Introduction to model actions](./introduction.md)
 - [Custom actions](./custom.md)
 - [Actions in dashboards](../../../dashboards/actions.md)

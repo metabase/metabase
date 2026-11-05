@@ -3,9 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.test :as mt]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CyclicBarrier TimeUnit)))
@@ -60,3 +62,15 @@
               (is (=? {:result true} (finding card-id)))
               (is (zero? (t2/count :model/AnalysisFindingError :analyzed_entity_type "card"
                                    :analyzed_entity_id card-id))))))))))
+
+(deftest ^:synchronized malformed-source-id-does-not-break-the-finding-insert-test
+  (testing "an error naming a non-integer source (unchecked in prod) is recorded without the source (GHY-4956)"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Card {cid :id} {}]
+          (mu/disable-enforcement
+            (models.analysis-finding/upsert-analysis! :card cid false
+                                                      #{{:type :missing-card, :name "card__1"
+                                                         :source-entity-type :card, :source-entity-id "card__1"}}))
+          (is (=? [{:error_type :missing-card, :source_entity_type nil, :source_entity_id nil}]
+                  (models.analysis-finding-error/errors-for-entity :card cid))))))))

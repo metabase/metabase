@@ -97,16 +97,12 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
             {t`Explore`}
           </Button>
         )}
-        <Text fz="xl" fw={600} c="text-primary" mb="0.5rem">
-          {t`What do you want to research?`}
-        </Text>
-        <Paper
-          w="100%"
-          bd="1px solid border-neutral"
-          bdrs="0.75rem"
-          p="0.5rem 1rem 1rem"
-          className={S.inputContainer}
-        >
+        <Flex align="center" mih="2rem">
+          <Text fz="xl" fw={600} c="text-primary">
+            {t`What do you want to research?`}
+          </Text>
+        </Flex>
+        <Paper w="100%" p="0.5rem 1rem 1rem" className={S.inputContainer}>
           {canUseNlq ? (
             <MetabotPromptInput
               value={prompt}

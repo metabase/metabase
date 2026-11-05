@@ -10,6 +10,8 @@ import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
+import { trackDataActionArchived } from "../../../analytics";
+
 import { MoveActionModal } from "./MoveActionModal";
 
 type ActionMoreMenuProps = {
@@ -30,6 +32,7 @@ export function ActionMoreMenu({ action }: ActionMoreMenuProps) {
       sendErrorToast(t`Failed to archive action`);
       return;
     }
+    trackDataActionArchived(action.id);
     sendSuccessToast(t`Action archived`);
     navigate(Urls.dataStudioActions());
   };

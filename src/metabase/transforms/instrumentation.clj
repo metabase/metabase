@@ -4,7 +4,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -118,28 +119,36 @@
                         (assoc labels :type "processed")
                         rows-processed)))
 
-(defn record-job-start!
+(mu/defn record-job-start! :- :nil
   "Record the start of a transform job run."
-  [job-id run-method]
+  [job-id     :- ms/PositiveInt
+   run-method :- [:or :keyword :string]]
   (log/infof "Transform job started: job-id=%d run-method=%s" job-id (name run-method))
   (analytics/inc! :metabase-transforms/job-runs-total
-                  {:run-method (name run-method)}))
+                  {:run-method (name run-method)})
+  nil)
 
-(defn record-job-completion!
+(mu/defn record-job-completion! :- :nil
   "Record the successful completion of a transform job run."
-  [job-id run-method duration-ms]
+  [job-id      :- ms/PositiveInt
+   run-method  :- [:or :keyword :string]
+   duration-ms :- :int]
   (log/infof "Transform job completed: job-id=%d run-method=%s duration=%dms" job-id (name run-method) duration-ms)
   (let [labels {:run-method (name run-method)}]
     (analytics/inc! :metabase-transforms/job-runs-completed labels)
-    (analytics/observe! :metabase-transforms/job-run-duration-ms labels duration-ms)))
+    (analytics/observe! :metabase-transforms/job-run-duration-ms labels duration-ms))
+  nil)
 
-(defn record-job-failure!
+(mu/defn record-job-failure! :- :nil
   "Record the failure of a transform job run."
-  [job-id run-method duration-ms]
+  [job-id      :- ms/PositiveInt
+   run-method  :- [:or :keyword :string]
+   duration-ms :- :int]
   (log/warnf "Transform job failed: job-id=%d run-method=%s duration=%dms" job-id (name run-method) duration-ms)
   (let [labels {:run-method (name run-method)}]
     (analytics/inc! :metabase-transforms/job-runs-failed labels)
-    (analytics/observe! :metabase-transforms/job-run-duration-ms labels duration-ms)))
+    (analytics/observe! :metabase-transforms/job-run-duration-ms labels duration-ms))
+  nil)
 
 (defmacro with-job-timing
   "Execute body while timing a transform job run. Automatically records start, completion or failure.

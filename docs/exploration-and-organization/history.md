@@ -6,7 +6,7 @@ title: History
 
 Metabase keeps a version history for the previous fifteen versions for an entity. You can view changes, and revert to previous versions.
 
-On Metabase Pro and Enterprise plans, you can also version control most entities in Metabase, see [Remote Sync](../installation-and-operation/remote-sync.md).
+On Metabase Pro and Enterprise plans, you can also version control most entities in Metabase, see [Remote Sync](../data-modeling/semantic-layer/remote-sync.md).
 
 ## History for questions, dashboards, metrics, and models
 
