@@ -383,15 +383,27 @@
          (is (= 1 @calls))
          (is (premium-features/has-feature? :sandboxes)))))))
 
+(defn- do-with-fetch-for-every-thread!
+  "Run `thunk` with `fetch` as the store's HTTP fetch on every thread, the refresher's included."
+  [fetch thunk]
+  ;; the refresher thread does not inherit bindings, so `with-dynamic-fn-redefs` cannot reach it
+  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+  (with-redefs [token-check/http-fetch fetch]
+    (thunk)))
+
+(defmacro ^:private with-fetch-for-every-thread!
+  "Run `body` with `fetch` as the store's HTTP fetch on every thread. See [[do-with-fetch-for-every-thread!]]."
+  {:style/indent 1}
+  [fetch & body]
+  `(do-with-fetch-for-every-thread! ~fetch (fn [] ~@body)))
+
 (deftest read-for-a-newly-configured-token-ticks-early-test
   (do-with-refresher-started!
    (fn []
      (let [calls (atom 0)]
-       ;; the tick runs on the refresher thread, which does not see `with-dynamic-fn-redefs`
-       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-       (with-redefs [token-check/http-fetch (fn [& _]
-                                              (swap! calls inc)
-                                              {:status 200 :body (json/encode good-status)})]
+       (with-fetch-for-every-thread! (fn [& _]
+                                       (swap! calls inc)
+                                       {:status 200 :body (json/encode good-status)})
          (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
            (is (not (premium-features/has-feature? :sandboxes))
                "the read itself does not wait for the fetch")
@@ -408,10 +420,9 @@
        (testing "a token whose refresh already failed waits for the scheduled tick"
          (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
            ;; a tick, if one ran, would be on the refresher thread
-           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-           (with-redefs [token-check/http-fetch (fn [& _]
-                                                  (swap! calls inc)
-                                                  (throw (java.net.ConnectException. "Connection refused")))]
+           (with-fetch-for-every-thread! (fn [& _]
+                                           (swap! calls inc)
+                                           (throw (java.net.ConnectException. "Connection refused")))
              (premium-features/refresh-at-startup!)
              (reset! calls 0)
              (premium-features/has-feature? :sandboxes)
@@ -963,7 +974,7 @@
        (mc/binding (token-check/state-handle) (token-check/initial-state)
                    (fn []
                      (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
-                       (with-store [_ (constantly good-status)]
+                       (with-fetch-for-every-thread! (fn [& _] {:status 200 :body (json/encode good-status)})
                          (premium-features/has-feature? :sandboxes)
                          (is (= {:bound-filled? true, :root-entry nil}
                                 {:bound-filled? (u/poll {:thunk       #(some? (:entry @(token-check/state-handle)))

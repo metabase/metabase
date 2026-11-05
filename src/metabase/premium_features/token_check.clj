@@ -653,8 +653,9 @@
       (let [[previous] (swap-state! assoc :ticked-for-token-hash token-hash)]
         (when (not= token-hash (:ticked-for-token-hash previous))
           (try
-            ;; with the requester's bindings, so a tick asked for under a bound state runs against that state
-            (.execute exec ^Runnable (bound-fn* safe-tick!))
+            ;; with the requester's component bindings, and no others such as the requesting user's, so a tick asked
+            ;; for under a bound state runs against that state with the refresher's own permissions
+            (.execute exec ^Runnable (system/component-bound-fn safe-tick!))
             (catch RejectedExecutionException _e
               nil)))))))
 
