@@ -869,6 +869,33 @@
       (testing "and the calls whose input comes after the error are dropped"
         (is (not-any? #(= "late" (:toolCallId %)) result))))))
 
+(deftest tool-executor-xf-returns-results-in-call-order-test
+  (testing "calls that run at the same time and finish in reverse order return their results in call order"
+    (let [n        10
+          ids      (mapv #(str "call-" %) (range n))
+          all-in   (java.util.concurrent.CountDownLatch. n)
+          finished (vec (repeatedly n promise))
+          together (atom [])
+          order    (atom [])
+          tools    {"ordinary" {:tool-name "ordinary"
+                                :doc       "Waits until every call has started, then for the call after it to finish."
+                                :schema    [:=> [:cat [:map {:closed true} [:i :int]]] :any]
+                                :fn        (fn [{:keys [i]}]
+                                             (.countDown all-in)
+                                             (swap! together conj
+                                                    (.await all-in 5 java.util.concurrent.TimeUnit/SECONDS))
+                                             (some-> (get finished (inc i)) (deref 5000 nil))
+                                             (swap! order conj i)
+                                             (deliver (finished i) true)
+                                             {:output (str i)})}}
+          result   (into [] (self.core/tool-executor-xf tools)
+                         (test-util/parts->aisdk-chunks (for [i (range n)]
+                                                          {:type :tool-input :id (ids i) :function "ordinary"
+                                                           :arguments {:i i}})))]
+      (is (= (repeat n true) @together))
+      (is (= (reverse (range n)) @order))
+      (is (= ids (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result))))))
+
 ;;; tool argument validation tests
 
 (defn- validation-error

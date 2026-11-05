@@ -1118,7 +1118,7 @@
     after it start once it has finished
   - Once an :error chunk comes through, starts no more tools, the calls already waiting to start included, and drops
     the tool-input chunks after it
-  - At completion, waits for all tools and appends results, in call order once a call has run alone
+  - At completion, waits for all tools and appends their results in call order
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
@@ -1129,15 +1129,12 @@
           alone    (volatile! nil)] ;; the last of those tasks that runs alone
       (fn
         ([result]
-         (let [{tasks  true
-                chunks false} (group-by #(contains? (val %) :task) @active)]
+         (let [{chunks false} (group-by #(contains? (val %) :task) @active)]
            (when (seq chunks)
              (log/warn "Multiple tool calls were not collected fully before stream finish"
                        {:tool-calls (map first chunks)}))
            ;; The agent loop stores the queries in results in arrival order, so edits must arrive in call order
-           (if-let [tasks (if @alone
-                            (seq @started)
-                            (some->> (seq tasks) (map #(:task (second %)))))]
+           (if-let [tasks (seq @started)]
              (rf (reduce rf result (mapcat deref tasks)))
              (rf result))))
 
