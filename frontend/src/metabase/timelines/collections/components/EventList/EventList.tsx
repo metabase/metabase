@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { type JSX, memo } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
@@ -37,8 +37,8 @@ const EventList = ({
           <Box className={S.thread} />
         </Flex>
         <Flex gap="md" ml="md">
-          <Icon name="dyno" c="text-disabled" size={24} />
-          <Text c="text-disabled" mt="xs" lh="normal">
+          <Icon name="dyno" c="text-secondary" size={24} />
+          <Text c="text-secondary" mt="xs" lh="normal">
             {t`The Mesozoic era`}
           </Text>
         </Flex>

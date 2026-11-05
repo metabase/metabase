@@ -1,8 +1,27 @@
 import userEvent from "@testing-library/user-event";
 
+import { renderWithRegisterActionsSpy } from "__support__/kbar";
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { QuestionDisplayToggle } from "./QuestionDisplayToggle";
+import {
+  QuestionDisplayToggle,
+  type QuestionDisplayToggleProps,
+} from "./QuestionDisplayToggle";
+
+const setupWithKBar = (props: QuestionDisplayToggleProps) => {
+  const { rerender, getRegisterActions } = renderWithRegisterActionsSpy(
+    <QuestionDisplayToggle {...props} />,
+  );
+
+  return {
+    rerender: (props: QuestionDisplayToggleProps) =>
+      rerender(<QuestionDisplayToggle {...props} />),
+    getRegisterActions,
+  };
+};
+
+// `v` is the key of the "query-builder-toggle-visualization" shortcut.
+const pressToggleVisualizationKey = () => userEvent.keyboard("v");
 
 describe("QuestionDisplayToggle", () => {
   it("renders correctly", () => {
@@ -72,5 +91,43 @@ describe("QuestionDisplayToggle", () => {
     const button = screen.getByLabelText("Switch to visualization");
     await userEvent.type(button, " ");
     expect(onToggleRawTable).toHaveBeenCalledWith(false);
+  });
+
+  describe("keyboard shortcut", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("registers the shortcut once when the toggle renders again", () => {
+      const { rerender, getRegisterActions } = setupWithKBar({
+        isShowingRawTable: false,
+        onToggleRawTable: () => undefined,
+      });
+      expect(getRegisterActions()).toHaveBeenCalledTimes(1);
+      getRegisterActions()?.mockClear();
+
+      rerender({ isShowingRawTable: false, onToggleRawTable: () => undefined });
+
+      expect(getRegisterActions()).not.toHaveBeenCalled();
+    });
+
+    it("the shortcut uses the latest props", async () => {
+      const firstOnToggleRawTable = jest.fn<void, [boolean]>();
+      const latestOnToggleRawTable = jest.fn<void, [boolean]>();
+      const { rerender } = setupWithKBar({
+        isShowingRawTable: false,
+        onToggleRawTable: firstOnToggleRawTable,
+      });
+
+      rerender({
+        isShowingRawTable: true,
+        onToggleRawTable: latestOnToggleRawTable,
+      });
+      await pressToggleVisualizationKey();
+
+      expect(latestOnToggleRawTable).toHaveBeenCalledTimes(1);
+      expect(latestOnToggleRawTable).toHaveBeenCalledWith(false);
+      expect(firstOnToggleRawTable).not.toHaveBeenCalled();
+    });
   });
 });

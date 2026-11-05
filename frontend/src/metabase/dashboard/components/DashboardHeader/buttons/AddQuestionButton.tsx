@@ -17,25 +17,22 @@ export const AddQuestionButton = () => {
     ? t`Close sidebar`
     : t`Add questions`;
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-add-notebook-question",
-        perform: () =>
-          onChangeLocation(getNewQuestionUrl({ dashboard, type: "notebook" })),
-      },
-      {
-        id: "dashboard-add-native-question",
-        perform: () =>
-          onChangeLocation(getNewQuestionUrl({ dashboard, type: "native" })),
-      },
-      {
-        id: "dashboard-toggle-add-question-sidepanel",
-        perform: () => toggleSidebar(SIDEBAR_NAME.addQuestion),
-      },
-    ],
-    [sidebarOpen],
-  );
+  useRegisterShortcut([
+    {
+      id: "dashboard-add-notebook-question",
+      perform: () =>
+        onChangeLocation(getNewQuestionUrl({ dashboard, type: "notebook" })),
+    },
+    {
+      id: "dashboard-add-native-question",
+      perform: () =>
+        onChangeLocation(getNewQuestionUrl({ dashboard, type: "native" })),
+    },
+    {
+      id: "dashboard-toggle-add-question-sidepanel",
+      perform: () => toggleSidebar(SIDEBAR_NAME.addQuestion),
+    },
+  ]);
 
   return (
     <ToolbarButton

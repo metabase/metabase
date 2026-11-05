@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
@@ -40,16 +42,13 @@ export const DashboardBookmark = (): JSX.Element | null => {
     }
   };
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-bookmark",
-        perform: () =>
-          isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
-      },
-    ],
-    [isBookmarked],
-  );
+  useRegisterShortcut([
+    {
+      id: "dashboard-bookmark",
+      perform: () =>
+        isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
+    },
+  ]);
 
   return (
     <BookmarkToggle

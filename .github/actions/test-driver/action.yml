@@ -214,7 +214,7 @@ runs:
       # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
       if: ${{ steps.run-test.outcome != 'success' }}
       with:
-        path: "target/junit/**/*_test.xml"
+        path: "target/junit/**/*.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
         reporter: java-junit
         list-suites: failed

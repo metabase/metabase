@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { type JSX, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import {

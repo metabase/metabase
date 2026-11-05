@@ -28,7 +28,7 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),

@@ -98,7 +98,7 @@
             (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
 (defsetting attachment-table-row-limit
-  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  "Maximum number of rows to render in an alert or subscription image."
   :visibility :internal
   :type       :positive-integer
   :default    20
@@ -119,7 +119,7 @@
   :base       setting/uuid-nonce-base)
 
 (defsetting notification-link-base-url
-  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  "By default \"Site Url\" is used in notification links, but can be overridden."
   :encryption :when-encryption-key-set
   :visibility :internal
   :type       :string
@@ -316,7 +316,7 @@
   :doc        false)
 
 (defsetting surveys-enabled
-  (deferred-tru "Enable or disable surveys")
+  "Enable or disable surveys"
   :type       :boolean
   :default    true
   :export?    false
@@ -324,11 +324,11 @@
   :audit      :getter)
 
 (defsetting http-channel-allowed-networks
-  (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
-                     "Options:\n"
-                     "- external-only (default - only external hosts)\n"
-                     "- allow-private (external + private networks but NOT localhost)\n"
-                     "- allow-all (no restrictions including localhost).\n"))
+  (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
+       "Options:\n"
+       "- external-only (default - only external hosts)\n"
+       "- allow-private (external + private networks but NOT localhost)\n"
+       "- allow-all (no restrictions including localhost).\n")
   :type       :keyword
   :visibility :internal
   :default    :external-only

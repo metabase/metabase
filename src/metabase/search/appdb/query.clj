@@ -3,7 +3,7 @@
   `metabase.search.db` runs the queries, so this namespace must not require it (nor `metabase.search.appdb.index`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.app-db.core :as mdb]
+   [metabase.models.interface :as mi]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]))
@@ -12,10 +12,8 @@
   "Add a `WHERE` clause to the query to only return tables the current user has access to.
    Also adds any CTEs required for permission filtering."
   [search-ctx qry]
-  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
-                                                     :mysql :signed
-                                                     :integer)]
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
+  (let [{:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx
+                                                                          (mi/->integer :search_index.model_id))]
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
@@ -25,6 +23,15 @@
                    [:and
                     [:= :search_index.model "table"]
                     clause]]))))
+
+(defn add-data-app-where-clauses
+  "Add a `WHERE` clause to the query to only return data apps the current user can read."
+  [search-ctx qry]
+  (sql.helpers/where qry [:or
+                          [:= :search_index.model nil]
+                          [:!= :search_index.model "data-app"]
+                          (search.permissions/permitted-data-apps-clause search-ctx
+                                                                         (mi/->integer :search_index.model_id))]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -52,6 +59,7 @@
   (concat
    [[:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
     [:table-permissions      (partial add-table-where-clauses search-ctx)]
+    [:data-app-permissions   (partial add-data-app-where-clauses search-ctx)]
     [:transform-source-type  #(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                                     search-ctx
                                                     :search_index.model
@@ -80,13 +88,7 @@
   "The query returning the distinct `:model`s of the search index `index-table` with at least one visible result for
   `search-ctx`."
   [index-table search-ctx]
-  (->> (specialization/base-query index-table (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
-       (add-collection-join-and-where-clauses search-ctx)
-       (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                               search-ctx
-                               :search_index.model
-                               :search_index.source_type)))
-       (search.filter/with-filters search-ctx)))
+  (base-filtered-query index-table search-ctx (:search-string search-ctx) [[[:distinct :model] :model]]))
 
 (defn- restrict-to-row
   [model id qry]

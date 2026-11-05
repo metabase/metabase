@@ -81,7 +81,7 @@ export function checkFilterListSourceHasValue({ values }) {
   modal().within(() => {
     cy.findByText("Custom list").click();
     cy.findByRole("textbox").should("have.value", expectedString);
-    cy.icon("close").click();
+    cy.findByLabelText("Close").click();
   });
 }
 

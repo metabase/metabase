@@ -20,7 +20,7 @@ type BaseUpdateActionParams = {
 };
 
 export type CreateQueryActionParams = BaseCreateActionParams &
-  Pick<WritebackQueryAction, "type" | "dataset_query" | "database_id">;
+  Pick<WritebackQueryAction, "type" | "dataset_query">;
 
 export type UpdateQueryActionParams = Partial<CreateQueryActionParams> &
   BaseUpdateActionParams;

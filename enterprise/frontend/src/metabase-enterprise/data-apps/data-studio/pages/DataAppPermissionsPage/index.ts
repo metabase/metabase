@@ -1,0 +1,1 @@
+export { DataAppPermissionsPage } from "./DataAppPermissionsPage";

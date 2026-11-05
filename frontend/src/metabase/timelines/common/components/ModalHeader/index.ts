@@ -1,1 +1,0 @@
-export { ModalHeader } from "./ModalHeader";

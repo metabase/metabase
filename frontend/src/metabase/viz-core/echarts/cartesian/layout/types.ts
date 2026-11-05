@@ -23,6 +23,8 @@ export interface ChartLayout {
   negativeDataLabelsWidth?: number;
   negativeDataLabelsInset?: number;
   padding: Padding;
+  /** Empty space at the chart container's left and right edges, not `padding`. */
+  internalInset: Pick<Padding, "left" | "right">;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;
   boundaryWidth: number;

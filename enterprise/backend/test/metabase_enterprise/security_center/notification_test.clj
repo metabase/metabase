@@ -239,7 +239,7 @@
       (is (nil? (:last_notified_at advisory)))
       (with-send-redef (constantly nil)
         (notification/notify-advisory! advisory))
-      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
 
 (deftest notify-advisory-does-not-update-on-send-failure-test
   (testing "last_notified_at is NOT set when send-notification! throws"
@@ -250,7 +250,7 @@
       (with-send-redef (fn [& _] (throw (ex-info "boom" {})))
         (is (thrown-with-msg? Exception #"boom"
                               (notification/notify-advisory! advisory))))
-      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
 
 ;;; -------------------------------------------- Recipient resolution -------------------------------------------------
 
@@ -476,7 +476,7 @@
           (with-send-redef (fn [& _] (throw (delivery-failure :channel/slack)))
             (is (= {"email" "success" "slack" "failure"}
                    (tracked-results! #(notification/notify-advisory! advisory))))))
-        (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory)))))))))
+        (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory)))))))))
 
 (deftest notify-advisory-every-channel-failed-test
   (testing "when no channel delivers, notify-advisory! throws and last_notified_at stays unset, so the next sync retries"
@@ -490,7 +490,7 @@
             (is (= {"email" "failure" "slack" "failure"}
                    (tracked-results! #(is (thrown-with-msg? Exception #"Failed to deliver"
                                                             (notification/notify-advisory! advisory)))))))))
-      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
 
 (deftest notify-advisory-partial-delivery-through-the-pipeline-test
   (testing "the real send: email delivers, the Slack post fails, and the advisory counts as notified"
@@ -511,4 +511,4 @@
                                                                (swap! sent conj channel-type))]
               (notification/notify-advisory! advisory))
             (is (= [:channel/email] @sent)))))
-      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))

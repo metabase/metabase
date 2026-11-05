@@ -56,9 +56,17 @@
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
 (defn- directory-based-migration-file?
-  "Returns true if the file is a directory-based migration file (e.g., `060/20260905_mq_indexes.yaml`)."
+  "Returns true if the file is a directory-based migration file. This covers both the version-numbered directories
+  (e.g., `060/20260905_mq_indexes.yaml`) and the newer year-based directories (e.g., `2026/20260905_workspaces.yaml`)."
   [file]
-  (boolean (re-matches #".*\d{3}/\d{8}_[a-z0-9_]+\.yaml$" (str file))))
+  (boolean (re-matches #".*(\d{3}|\d{4})/\d{8}_[a-z0-9_]+\.yaml$" (str file))))
+
+(defn- year-dir-migration-file?
+  "Returns true if the file lives in a year-based migration directory (e.g., `2026/20260905_workspaces.yaml`). Unlike
+  version-numbered directories, year directories are not tied to a Metabase version: their changeset IDs are
+  version-less and the version a changeset ships with is decided by which branch it is merged into."
+  [file]
+  (boolean (re-find #"[/\\]\d{4}[/\\]\d{8}_[a-z0-9_]+\.yaml$" (str file))))
 
 (defn- file-version
   "Extracts the migration version number from a file.
@@ -98,18 +106,21 @@
                                  {:out-of-order-ids out-of-order-ids}))))))
 
 (defn- require-change-set-ids-in-correct-file [change-log file]
-  (let [fv  (file-version file)
-        ids (change-set-ids change-log)
-        wrong-file-ids
-        (->> ids
-             (filter (fn [id]
-                       (let [id-version (parse-long (re-find #"\d+" id))]
-                         (if (= fv 1)
-                           (> id-version 55)
-                           (not= fv id-version))))))]
-    (when (seq wrong-file-ids)
-      (throw (validation-error "Change set IDs are in the wrong file"
-                               {:wrong-file-ids wrong-file-ids})))))
+  ;; year-based directories are not tied to a version, so their version-less IDs are not bound to any file version.
+  (when-not (year-dir-migration-file? file)
+    (let [fv  (file-version file)
+          ids (change-set-ids change-log)
+          wrong-file-ids
+          (->> ids
+               (filter (fn [id]
+                         ;; a version-less id has no digits, so no version, and belongs in no versioned file
+                         (let [id-version (some-> (re-find #"\d+" id) parse-long)]
+                           (if (= fv 1)
+                             (some-> id-version (> 55))
+                             (not= fv id-version))))))]
+      (when (seq wrong-file-ids)
+        (throw (validation-error "Change set IDs are in the wrong file"
+                                 {:wrong-file-ids wrong-file-ids}))))))
 
 (defn- check-change-use-types?
   "Return `true` if change use any type in `types`."
@@ -147,7 +158,11 @@
                                           (let [cs-id (get-in change-set [:changeSet :id])]
                                             (and cs-id
                                                  (if version
-                                                   (changeset-at-or-after? file cs-id version id)
+                                                   ;; year-dir changesets have version-less ids that
+                                                   ;; `changeset-at-or-after?` cannot parse, but they are by
+                                                   ;; definition newer than every `vNN.` threshold
+                                                   (or (year-dir-migration-file? file)
+                                                       (changeset-at-or-after? file cs-id version id))
                                                    true)))))
                                 (filter #(check-change-set-use-types? target-types %))
                                 (map #(get-in % [:changeSet :id]))
@@ -214,6 +229,16 @@
   E.g., `v60.my-migration-name` or `v60.1`"
   #"^v\d{2,}\..+$")
 
+(defn valid-version-less-id?
+  "Whether `id` is a valid version-less changeset ID: lowercase letters/digits/underscores, at least one letter, and no
+  leading `v`. Binaries from before version-less support read the schema's major from the highest `id LIKE 'v%'` and
+  roll back by the number in those ids, so a `view_metrics` id would sort above every `vNN.` id there and break both."
+  [id]
+  (boolean (and (string? id)
+                (re-matches #"[a-z0-9_]+" id)
+                (re-find #"[a-z]" id)
+                (not (str/starts-with? id "v")))))
+
 (defn- require-change-set-ids-match-file-format
   "Enforces that changeset IDs use the correct format for the file type:
   - Directory-based files (v60+): IDs must be prefixed with v{version}. (e.g., v60.anything)
@@ -221,9 +246,36 @@
   - Other per-release files: IDs must match the timestamp format"
   [change-log file]
   (cond
+    ;; year-based directories use version-less IDs (e.g. `aeiagus09e`): lowercase letters/digits/underscores with at
+    ;; least one letter, and no leading `v`. This keeps out timestamp-style IDs (`2026-02-09T12:00:00`) and
+    ;; version-prefixed IDs (`v60.aeiagus09e`, `v60abc`) -- the version must not be encoded in the ID -- and all-digit
+    ;; IDs (`20260703`), which `decide-liquibase-file` would mistake for a pre-4.2 changeset if the year-directory
+    ;; filename signal were ever lost. A leading `v` would pollute the `id LIKE 'v%'` version scans that older
+    ;; binaries use for downgrade detection and rollback.
+    (year-dir-migration-file? file)
+    (let [ids          (change-set-ids change-log)
+          ;; the ISO date/timestamp the versioned ids were built from (`v50.2024-03-18T16:00:00`): checked first so
+          ;; the habit gets its own message rather than a generic character-set complaint
+          iso-date-id? (fn [id] (and (string? id) (re-find #"\d{4}-\d{2}-\d{2}" id)))
+          dated-ids    (filter iso-date-id? ids)
+          bad-ids      (remove valid-version-less-id? ids)]
+      (when (seq dated-ids)
+        (throw (validation-error
+                (format (str "Migration file contains changeset IDs that look like dates or timestamps; a version-less "
+                             "ID names the change instead (the file name already carries the date): %s")
+                        (str/join ", " dated-ids))
+                {:date-like-ids (vec dated-ids)})))
+      (when (seq bad-ids)
+        (throw (validation-error
+                (format (str "Migration file contains invalid changeset IDs (use a version-less ID: lowercase "
+                             "letters/digits/underscores with at least one letter, no leading 'v', and no "
+                             "timestamp or version prefix): %s")
+                        (str/join ", " bad-ids))
+                {:invalid-ids (vec bad-ids)}))))
+
     (directory-based-migration-file? file)
     (let [ids     (change-set-ids change-log)
-          bad-ids (remove #(re-matches directory-based-id-format-re %) ids)]
+          bad-ids (remove #(and (string? %) (re-matches directory-based-id-format-re %)) ids)]
       (when (seq bad-ids)
         (throw (validation-error
                 (format "Directory-based migration file contains IDs without v{version}. prefix: %s"
@@ -277,6 +329,36 @@
                     (:id changeSet) (name precondition) (name required))
             {:id (:id changeSet)}))))
 
+(defn require-no-run-always
+  "Refuses `runAlways: true` changesets. Liquibase lists a runAlways changeset as unrun on every update, which breaks
+  how Metabase runs and tracks migrations:
+
+  1. Every boot of every instance finds an unrun changeset, so it takes the migration lock and runs a migration. Each
+     run records a new deployment, adds a `databasechangelog_version` row and moves the legacy-version-tracking
+     marker row.
+  2. With `MB_DB_AUTOMIGRATE=false`, Metabase prints the migration SQL and refuses to start on every boot, even
+     after the SQL has been applied, because the changeset is still unrun.
+  3. Each run moves the changeset's changelog row into its own deployment. The deployment of the run before is then
+     left with no changelog rows, but its `databasechangelog_version` row stays until a rollback removes it: one more
+     row per boot.
+  4. An older patch booted against a newer patch's schema runs it too, so the newest deployment looks like it was
+     run by the older patch (the `migrate down` guard has to look at every deployment because of this).
+
+  Use `runOnChange` for objects that must follow their definition (views). To allow runAlways, first make
+  `metabase.app-db.liquibase/unrun-migrations` and the `migrate print` path ignore runAlways changesets when they
+  decide whether there is work to do (run them only with other migrations, or in a separate step that records no
+  deployment), and remove the version rows of deployments that a re-run leaves empty when it happens, not only at
+  rollback; then run the upgrade, downgrade and `MB_DB_AUTOMIGRATE=false` scenarios again."
+  [change-log]
+  (doseq [{:keys [changeSet]} change-log
+          :when (true? (:runAlways changeSet))]
+    (throw (validation-error
+            (format (str "Migration '%s' uses runAlways, which Metabase does not support: every boot would run it as a "
+                         "new migration, and with MB_DB_AUTOMIGRATE=false Metabase would never start. See "
+                         "require-no-run-always in bin/lint-migrations-file.")
+                    (:id changeSet))
+            {:id (:id changeSet)}))))
+
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
 
@@ -289,12 +371,40 @@
 (defn- major-version
   "Returns major version from id string, e.g. 44 from \"v44.00-034\".
   For directory-based migrations (file path matches `NNN/`), extracts
-  version from the file path. Otherwise parses from the id string."
+  version from the file path. Otherwise parses from the id string.
+  Returns nil for year-based directories, whose IDs are version-less and not tied to a version."
   [id-str file]
-  (if-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
-    (Integer/parseInt file-version)
-    (when (string? id-str)
-      (some-> (re-find #"\d+" id-str) Integer/parseInt))))
+  (cond
+    (and file (year-dir-migration-file? file))
+    nil
+
+    (string? id-str)
+    (if-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
+      (Integer/parseInt file-version)
+      (some-> (re-find #"\d+" id-str) Integer/parseInt))
+
+    :else
+    (when-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
+      (Integer/parseInt file-version))))
+
+(def first-versionless-major
+  "The first Metabase major whose changesets must all be version-less: they live in a year-based directory with a version-less ID"
+  67)
+
+(defn- require-no-versioned-changesets-from-first-versionless-major
+  "Ensures no `vNN.`-prefixed changeset for [[first-versionless-major]] or later exists, whichever kind of versioned
+  file it is in. Year-based directories are exempt: their IDs are version-less by construction."
+  [change-log file]
+  (when-not (year-dir-migration-file? file)
+    (let [versioned-ids (filter #(some-> (major-version % file) (>= first-versionless-major))
+                                (change-set-ids change-log))]
+      (when (seq versioned-ids)
+        (throw (validation-error
+                (str "Versioned changesets are not allowed from v" first-versionless-major " on; add new changesets "
+                     "to a year-based directory (e.g. migrations/2026/) with version-less IDs: "
+                     (str/join ", " versioned-ids))
+                {:versioned-ids           (vec versioned-ids)
+                 :first-versionless-major first-versionless-major}))))))
 
 (def change-types-supporting-rollback
   "This set was generated with a little grep and awk from the docs here:
@@ -345,6 +455,7 @@
 
   (require-distinct-change-set-ids change-log)
   (require-change-set-ids-in-correct-file change-log file)
+  (require-no-versioned-changesets-from-first-versionless-major change-log file)
   (require-change-set-ids-in-order change-log file)
   (require-change-set-ids-match-file-format change-log file)
   (require-no-bare-blob-or-text-types change-log)
@@ -352,6 +463,7 @@
   (require-no-datetime-type change-log file)
   (require-entity-id-type change-log file)
   (require-table-scoped-existence-preconditions change-log)
+  (require-no-run-always change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet :logicalFilePath})

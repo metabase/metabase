@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -18,7 +19,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private Column
@@ -51,7 +51,8 @@
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
     of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
-  - Transform: analysts can view any transform they have source view permission to."
+  - Transform: analysts can view any transform they have source view permission to.
+  - Data app: the apps the user can read, none without the data apps feature."
   [entity-type-field :- Column
    entity-id-field   :- Column
    {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
@@ -157,7 +158,14 @@
                                   (case include-archived-items
                                     :exclude [:= archived-column false]
                                     :only    [:= archived-column true]
-                                    :all     nil)]}]])))))
+                                    :all     nil)]}]])
+
+                    :model/DataApp
+                    (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id       user-id
+                                                                                      :is-superuser? is-superuser?})]
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field visible-ids]])))))
         deps.dependency-types/dependency-type->model))
 
 (mu/defn- broken-entities-expr :- ::h2x/honeysql-expr
@@ -333,7 +341,7 @@
                            nil))]
     {:table-name (case entity-type
                    :card :report_card
-                   :table (first (warehouse-schema-overlay/table-query))
+                   :table (t2/table-name :model/Table)
                    :transform :transform
                    :snippet :native_query_snippet
                    :dashboard :report_dashboard
@@ -341,9 +349,10 @@
                    :sandbox :sandboxes
                    :segment :segment
                    :measure :measure
-                   :action :action)
+                   :action :action
+                   :data-app :data_app)
      :name-column (case entity-type
-                    :table :entity.display_name
+                    (:table :data-app) :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                     :entity.name)
      :location-column (case entity-type
@@ -361,7 +370,8 @@
                                   :else
                                   (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                        (:segment :measure) :table.display_name)}))
+                        (:segment :measure) :table.display_name
+                        :data-app nil)}))
 
 (mu/defn- item-query-join :- [:map {:closed true}
                               [:join        [:sequential HoneySQLForm]]
@@ -504,7 +514,7 @@
     (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
     (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
     (:document joins) (conj :document [:= :entity.document_id :document.id])
-    (:table joins) (conj (warehouse-schema-overlay/table-query {:alias :table}) [:= :entity.table_id :table.id])))
+    (:table joins) (conj [(t2/table-name :model/Table) :table] [:= :entity.table_id :table.id])))
 
 (mu/defn- dependency-item-select :- ::h2x/honeysql-clause-opts
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
@@ -609,19 +619,24 @@
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
+(def ^:private narrow-columns
+  "The columns read for the entity types whose rows hold much more than dependency code needs: a data app's bundle
+  can be megabytes."
+  {:data-app [:id :resource_collection_id]})
+
 (mu/defn entities
-  "The entities of the entity type `entity-type` with `ids`."
+  "The entities of the entity type `entity-type` with `ids`: whole rows, except for the types in [[narrow-columns]],
+  whose rows hold only those columns."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
-  (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
+  (let [model (deps.dependency-types/dependency-type->model entity-type)]
+    (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
 
-(mu/defn- entity-source :- [:map {:closed true}
-                            [:from {:optional true} [:sequential HoneySQLForm]]]
-  "What a read of `entity-type` selects from: the overlay for a Table, else the model's own table."
-  [entity-type :- ::deps.dependency-types/dependency-types]
-  (if (= entity-type :table)
-    {:from [(warehouse-schema-overlay/table-query)]}
-    {}))
+(mu/defn entity
+  "The entity of the entity type `entity-type` with `id`, or nil, with the columns of [[entities]]."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   id          :- ::deps.dependency-types/entity-id]
+  (first (entities entity-type #{id})))
 
 (mu/defn entities-with-columns
   "The `columns` of the entities of the entity type `entity-type` with `ids`."
@@ -629,7 +644,7 @@
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
   (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-             :id [:in ids] (entity-source entity-type)))
+             :id [:in ids]))
 
 (mu/defn entity-with-columns
   "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
@@ -637,12 +652,23 @@
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-                 :id id (entity-source entity-type)))
+                 :id id))
+
+(mu/defn implicit-action-table-ids
+  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
 
 (mu/defn query-action-queries
   "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+
+(mu/defn ids-in-collections
+  "The `:id` and `:collection_id` of the `model` rows in the Collections with `collection-ids`."
+  [model          :- [:enum :model/Card :model/Action]
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -654,20 +680,10 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
 
-(mu/defn card-database-ids
-  "The `:id` and `:database_id` of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
-
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-database-ids
-  "The `:id` and `:db_id` of the Tables with `table-ids`."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
@@ -677,17 +693,7 @@
 (mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
   "The `:table_id` of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn transform-sources
-  "The `:id` and `:source` of the Transforms with `transform-ids`."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
-
-(mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
-  "The IDs of the Transforms reading from the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (or (t2/select-pks-set :model/Transform :source_database_id db-id) #{}))
+  (t2/select-one-fn :table_id :model/Field :id field-id))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -846,6 +852,18 @@
   [type->ids :- ::dependencies.schema/type->ids]
   (mark-stale! :model/DependencyStatus type->ids))
 
+(mu/defn mark-data-app-dependency-statuses-stale!
+  "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
+  `collection-ids` stale, in one UPDATE."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/query {:update (t2/table-name :model/DependencyStatus)
+             :set    (assoc fresh-attempts :stale one-more-write)
+             :where  [:and
+                      [:= :entity_type (name :data-app)]
+                      [:in :entity_id ^:allow-subquery {:select [:id]
+                                                        :from   [(t2/table-name :model/DataApp)]
+                                                        :where  [:in :resource_collection_id collection-ids]}]]}))
+
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of the entities `type->ids` stale, so the result metadata job re-derives them."
   [type->ids :- ::dependencies.schema/type->ids]
@@ -973,6 +991,13 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/DependencyStatus entity-type entity-id max-failures))
 
+(mu/defn given-up-dependency-statuses :- [:sequential [:map
+                                                       [:entity_type ::deps.dependency-types/dependency-types]
+                                                       [:entity_id   ms/PositiveInt]]]
+  "The entities whose dependencies the dependency job gave up computing until a write changes them."
+  []
+  (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
+
 (mu/defn clear-dependency-status! :- :boolean
   "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
   of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
@@ -1040,7 +1065,7 @@
   "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
   [field-ids :- [:set ::lib.schema.id/field]]
   (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
-                        {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
+                        {:from  [(t2/table-name :model/Field)]
                          :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
                          :where [:in :dimension.human_readable_field_id field-ids]})
       #{}))
@@ -1049,11 +1074,6 @@
   "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/Dimension :field_id field-id :type "internal"))
-
-(mu/defn native-card-ids :- [:set ::lib.schema.id/card]
-  "The IDs of the native Cards among `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (or (t2/select-pks-set :model/Card :id [:in card-ids] :query_type :native) #{}))
 
 (mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
   "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
@@ -1069,8 +1089,8 @@
   `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
+                                       :updated_at      :updated_at}))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 

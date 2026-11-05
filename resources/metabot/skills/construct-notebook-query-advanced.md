@@ -155,7 +155,7 @@ Instead of `source-table`, use `source-card` to query an existing question or mo
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`). Without `read_resource`: for a **model**, call `list_available_fields` with its numeric id in `model_ids` (`table_ids` and `metric_ids` are required too — pass `[]`). For a **saved question**, `list_available_fields` has no lookup — passing a question id in `model_ids` errors ("not a valid model id, it's a question"). Reuse the column names already visible from an earlier `search` or tool result instead of guessing.
+3. Reference the card's columns by their output **name** (a string in slot 3), not by portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`). If `read_resource` is unavailable, use `list_available_fields` for a **model**, with its numeric ID in `model_ids` and `[]` in the required `table_ids` and `metric_ids`. The tool cannot look up a **saved question**; passing a question ID in `model_ids` returns an error ("is a question, not a model"). Reuse column names from an earlier `search` or tool result rather than guessing.
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -170,11 +170,22 @@ A stage has either `source-table` **or** `source-card`, never both. The card mus
 
 > Before hand-building any named aggregation (a rate, ratio, or "X rate"/"average X"), check whether a published **metric** or table **measure** already defines it and reference that instead — see "A named measure is almost always a defined metric, measure, or segment" in the data-sources guidance. Only fall back to the two-stage rate recipe above when discovery finds no matching definition.
 
-A metric is a pre-defined aggregation attached to a base table. To use one:
+A metric is a predefined aggregation. Its `<metric>` tag identifies the source to use: a base table, saved question or model. Build the stage on that source. The tag carries at most one of these attributes:
 
-1. Put the metric's **base table** in `source-table`. Read it from the `base_table_fully_qualified_name` attribute on the `<metric>` tag (combine with `database_name` to form the portable FK). Never invent schema/table names.
+- `base_table_fully_qualified_name` names a base table. Combine it with `database_name` to form the portable FK for `source-table`.
+- `source_card_portable_entity_id` names a saved question or model. Copy the ID verbatim into `source-card`.
+- `source_unavailable="true"` means that the metric has no source available to you. Do not use it.
+
+To use a metric:
+
+1. Copy the source attribute into the stage. Never invent schema or table names, or substitute a base table for the source card. If the tag carries `source_unavailable="true"`, or carries neither source attribute, do not use the metric or guess its source. Say that the metric is not available to you and express the aggregation directly instead, or ask which source to use.
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
-3. Filters/breakouts on the same stage use portable FKs on the metric's base table.
+3. Use dimensions from the metric's **Dimensions** table for filters and breakouts on the same stage. Read the `Source table` column first. Names such as `id` and `created_at` can appear on several tables, and the table determines how to reference a dimension:
+   - Copy `Reference` verbatim for a dimension on the metric's own source. Its portable FK works on card and table stages.
+   - A dimension on an FK-related table can be used in `breakout:` when one foreign key reaches that table. This works on a `source-table` and a `source-card` stage alike. Otherwise, follow the tool's error: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's source, and break out on the field using the join alias.
+   - Use the output machine name for an expression or aggregation column computed by the card. These columns have no portable FK.
+
+A table metric with `base_table_fully_qualified_name="PUBLIC.ORDERS"`:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -184,29 +195,19 @@ A metric is a pre-defined aggregation attached to a base table. To use one:
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-Metrics are aggregations, **not sources** — never put a metric in `source-table` or `source-card`. The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
-
-### Breaking out a metric by a dimension on another table
-
-To group a metric by a field that lives on a **different** table, add an explicit `joins` entry and break out on the join-aliased field. Do **not** break out (or order) a metric by a field reached only through an implicit foreign-key reference — the query processor cannot resolve an implicit join against a metric aggregation and rejects the query with a 400. Source the metric's base table, reference the metric in `aggregation`, join the dimension table, and break out on the joined column:
+A card metric with `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", null, "ORDERS"],
- "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]],
- "joins": [{"alias": "Products",
-            "strategy": "left-join",
-            "stages": [{"lib/type": "mbql.stage/mbql",
-                        "source-table": ["Sample Database", null, "PRODUCTS"]}],
-            "conditions": [["=", {},
-                            ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
-                            ["field", {"join-alias": "Products"},
-                             ["Sample Database", null, "PRODUCTS", "ID"]]]]}],
- "breakout": [["field", {"join-alias": "Products"},
-               ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]}
+ "source-card": "T4wA_GPFwGb6R4FxIDGTo",
+ "filters": [[">", {}, ["field", {},
+                        ["Sample Database", null, "ORDERS", "TOTAL"]], 0]],
+ "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-When the breakout dimension lives on the metric's **own** base table, no join is needed — just break out on a portable FK as in the example above.
+A metric with `source_card_portable_entity_id` requires that exact card. Substituting its base table causes an `Incompatible metric` error. Some metrics whose definition starts from a card require a base table instead; their tags carry `base_table_fully_qualified_name`. Use the attribute provided by the tag.
+
+Metrics are aggregations. Put the metric's own `portable_entity_id` in its `aggregation` clause, never in `source-table` or `source-card`. The `source_card_portable_entity_id` identifies its source card and belongs in `source-card`. Use `metabase://metric/<id>` URIs to read metadata via `read_resource`; do not embed them in queries.
 
 ## Using measures and segments
 

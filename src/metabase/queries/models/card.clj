@@ -4,7 +4,6 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
-   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -35,6 +34,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
+   [metabase.queries.cached-result :as cached-result]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -156,6 +156,14 @@
     (:id card)                    (queries.db/card-document-id (:id card))
     :else                         ::not-adjudicable))
 
+(defn- summary-card-snapshots
+  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
+  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
+  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
+  [card document]
+  (when (and (:exploration_id document) (:id card))
+    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
+
 (defn- parent-document-permits?
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
 
@@ -165,14 +173,23 @@
   values discovered under the *creator's* data-access lens (see
   [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
   material — withholding it is the entire reason the Document's content gate exists — so a Card
-  that carries those values must be gated exactly as the document embedding it is."
+  that carries those values is gated by the document embedding it: on read, by its own snapshots
+  where it has any (see [[summary-card-snapshots]]) plus the Summary's collection-level read. A
+  Summary's cards are never writable, by anyone: each renders a stored snapshot, and editing the
+  card would desynchronise the two. Edits to a Summary chart save as new draft cards through the
+  document instead."
   [card read-or-write]
   (let [document-id (parent-document-id card)]
     (if (or (= ::not-adjudicable document-id) (nil? document-id))
       true
-      (case read-or-write
-        :read  (mi/can-read? :model/Document document-id)
-        :write (mi/can-write? :model/Document document-id)))))
+      (let [document (queries.db/document-collection-and-exploration document-id)]
+        (case read-or-write
+          :read  (if-let [snapshots (summary-card-snapshots card document)]
+                   (and (mi/current-user-has-full-permissions? :read document)
+                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                   (mi/can-read? document))
+          :write (and (nil? (:exploration_id document))
+                      (mi/can-write? document)))))))
 
 ;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
 ;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
@@ -585,14 +602,10 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions
-      (when (and (= (:type changes) :question)
-                 (= (:type old-card-info) :model))
-        (queries.db/delete-dashcards-for-model-actions! id)
-        (queries.db/archive-explicit-actions-for-model! id)
-        (queries.db/delete-implicit-actions-for-model! id))
-      (when (contains? changes :archived)
-        (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))
+      (when (or (:archived changes)
+                (and (= (:type changes) :question)
+                     (= (:type old-card-info) :model)))
+        (queries.db/delete-actions-of-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
@@ -995,33 +1008,53 @@
     :dashboard-question
     (:type card)))
 
+(defn- data-app-card-error
+  "A 400 error for a card in a data app's collection, with `message`."
+  [message]
+  (ex-info message {:status-code 400}))
+
+(defn- check-data-app-card-query
+  "Throws unless `dataset_query` is an MBQL query on a database of a single stage that reads a table, with no explicit
+  joins or custom columns; the metrics, segments and measures it names may be any."
+  [{:keys [dataset_query]}]
+  (when-not (:database dataset_query)
+    (throw (data-app-card-error (tru "A card in a data app''s collection must hold a query on a database."))))
+  (let [query (lib-be/normalize-query dataset_query)]
+    (when (lib/any-native-stage? query)
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be built with the query builder, not SQL."))))
+    (when (not= 1 (lib/stage-count query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be a query of a single stage."))))
+    (when (or (lib/primary-source-card-id query) (nil? (lib/primary-source-table-id query)))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must read a table, not a card."))))
+    (when (seq (lib/joins query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t join tables explicitly."))))
+    (when (seq (lib/expressions query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t have custom columns."))))))
+
 (defn- check-data-app-card
-  "Throws unless `card`, when it is in a data app's collection, is what a pull of the app accepts: a question or
-  metric that is not archived, public or embedded, reading no card outside the collection. The next export writes
-  the card into the app's files, and every pull refuses a file that says otherwise."
+  "Throws unless `card`, when it is in a data app's collection, is a question in no dashboard or document, not archived,
+  public or embedded, with no parameters, whose query reads a table in a single stage."
   [{:keys [collection_id] :as card}]
   (when (and (some? collection_id)
              (perms/data-app-collection? collection_id))
     ;; a new card without a type is a question, the column's default
-    (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
+    (when (or (not= :question (keyword (or (:type card) :question)))
+              (:dashboard_id card)
+              (:document_id card)
               (:archived card)
               (:public_uuid card)
               (:enable_embedding card)
               (:embedding_params card)
               (:embedding_type card))
-      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
-                      {:status-code 400})))
-    (let [card-ids (into #{}
-                         (keep (fn [path]
-                                 (let [{:keys [model id]} (last path)]
-                                   (when (= "Card" model) id))))
-                         (serdes/serialization-dependencies "Card" card))
-          outside  (when (seq card-ids)
-                     (queries.db/card-ids-outside-collection card-ids collection_id))]
-      (when (seq outside)
-        (throw (ex-info (str "A card in a data app's collection can read only the app's own cards, not card "
-                             (str/join ", " (sort outside)))
-                        {:status-code 400}))))))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be a question, in no dashboard or document, that is not archived, public or embedded."))))
+    (when (seq (:parameters card))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t have parameters."))))
+    (check-data-app-card-query card)))
+
+(def ^:private data-app-card-columns
+  "The columns [[check-data-app-card]] reads; an update that changes none of them leaves a card as it was checked."
+  #{:collection_id :dashboard_id :document_id :type :archived :public_uuid :enable_embedding :embedding_params
+    :embedding_type :dataset_query :parameters})
 
 (t2/define-before-insert :model/Card
   [card]
@@ -1049,13 +1082,6 @@
       (log/info "Card references Fields in params:" field-ids)
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
-
-(defn- move-model-actions
-  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
-  [card original]
-  (u/prog1 card
-    (when (not= (:collection_id card) (:collection_id original))
-      (queries.db/move-actions-of-models! #{(:id card)} (:collection_id card)))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -1121,13 +1147,16 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
-        ;; after the query's columns are set again: `source_card_id` is one of the references it reads
-        (doto check-data-app-card)
+        (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
-        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
+
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -1673,7 +1702,8 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
+  {:schema ::queries.schema/external-card
+   :copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
    :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the

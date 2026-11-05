@@ -623,6 +623,14 @@
   []
   (h2x/current-datetime-honeysql-form (mdb/db-type)))
 
+(defn ->integer
+  "Return a HoneySQL form casting `expr` to an integer in the app DB: `SIGNED` for MySQL/MariaDB, which have no
+  `INTEGER` cast type."
+  [expr]
+  [:cast expr (case (mdb/db-type)
+                :mysql :signed
+                :integer)])
+
 (defn current-timestamp
   "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
   []

@@ -100,6 +100,21 @@
       (is (=? [[:> {} [:field {} (meta/id :venues :price)] 3]]
               (lib/filters query))))))
 
+(deftest ^:parallel test-query-with-multiple-values-filter-test
+  (testing "a literal argument with several values passes each one as an argument"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source  {:type :table
+                                      :id   (meta/id :venues)}
+                            :filters [{:type     :operator
+                                       :operator :=
+                                       :args     [{:type :column
+                                                   :name "PRICE"}
+                                                  {:type  :literal
+                                                   :value [3 4]}]}]}]})]
+      (is (=? [[:= {} [:field {} (meta/id :venues :price)] 3 4]]
+              (lib/filters query))))))
+
 (deftest ^:parallel test-query-with-aggregations-test
   (testing "test-query adds aggregations to the query"
     (let [query (lib.query.test-spec/test-query

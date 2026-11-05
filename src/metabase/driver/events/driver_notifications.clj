@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -30,6 +31,6 @@
       (when (or details-changed?
                 (not= (remove-irrelevant-data database)
                       (remove-irrelevant-data previous-database)))
-        (driver/notify-database-updated (:engine database) database)))
+        (driver/notify-database-updated (:engine database) (driver.u/ensure-lib-database database))))
     (catch Throwable e
       (log/warnf "Failed to process driver notifications event %s: %s" topic (ex-message e)))))

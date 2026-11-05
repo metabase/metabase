@@ -165,6 +165,7 @@ export const useEntityData = (
     }
     case "indexed-entity":
     case "exploration":
+    case "data-app":
     case null:
       return { model, entity: null, isLoading: false, error: null };
     default:
