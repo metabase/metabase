@@ -1037,6 +1037,21 @@
                        {:text "### [https://metabase.com](https://metabase.com)"}]
                       (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
 
+(deftest document-link-card-test
+  (mt/with-temp [:model/Collection    {coll-id :id}      {}
+                 :model/Document      {doc-id :id}       {:name          "Linked document"
+                                                          :document      {:type "doc" :content []}
+                                                          :content_type  "application/json+vnd.prose-mirror"
+                                                          :collection_id coll-id}
+                 :model/Dashboard     {dashboard-id :id} {}
+                 :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                          :visualization_settings {:virtual_card {:display "link"}
+                                                                                   :link         {:entity {:id    doc-id
+                                                                                                           :model "document"}}}}]
+    (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+      (is (=? [{:text (format "### [Linked document](https://testmb.com/document/%d)" doc-id)}]
+              (execute-dashboard dashboard-id (mt/user->id :crowberto) nil))))))
+
 (deftest execute-dashboard-with-tabs-test
   (mt/with-temp
     [:model/Dashboard           {dashboard-id :id
