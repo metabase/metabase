@@ -170,6 +170,18 @@
           {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
       (is (=? {:returned 3, :truncated? false} structured-output)))))
 
+(deftest run-query-truncated-page-advice-test
+  (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+    (doseq [[client-ids rebuild-advice?] [[#{} true] [#{"q1"} false]]]
+      (testing (if rebuild-advice?
+                 "a query that Metabot built is to be aggregated and run again"
+                 "a query from the user's viewing context is not, since that would mean building a new query")
+        (let [output (:output (call-tool-in-conversation! {:state      {:queries {"q1" (venues-by-id)}}
+                                                           :client-ids client-ids}
+                                                          {:query_id "q1", :row_limit 2}))]
+          (is (str/includes? output "Only the first 2 rows are shown, so do not count or total them to answer."))
+          (is (= rebuild-advice? (str/includes? output "Aggregate, filter, or limit the query and run it again."))))))))
+
 (deftest run-query-records-a-metabot-run-test
   (let [info (atom nil)]
     (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]

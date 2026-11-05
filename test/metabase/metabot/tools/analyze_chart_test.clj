@@ -5,6 +5,7 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api-scope.core :as api-scope]
    [metabase.interestingness.core :as interestingness]
+   [metabase.lib.core :as lib]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.config :as metabot.config]
@@ -14,6 +15,7 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.analyze-chart :as analyze-chart]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.util :as metabot.u]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -53,11 +55,11 @@
                                            (memory chart-configs) nil :internal))]
     ((:fn (get entries "analyze_chart")) arguments)))
 
-(defn- agent-loop-outcome!
-  "Run a Metabot turn in `profile-id` in which the model calls `analyze_chart` on `chart-config`, the one chart that
-  the user is viewing, and return the call's outcome. An admin runs it in their own conversation with query
+(defn- agent-loop-parts!
+  "Run a Metabot turn in `profile-id` in which the model calls `analyze_chart` on the one chart of `viewed`, the item
+  that the user is viewing, and return the turn's parts. An admin runs it in their own conversation with query
   execution on, so the profile offers `run_query`."
-  [profile-id chart-config]
+  [profile-id viewed]
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
       (mt/with-temporary-setting-values [llm-providers                    llm.tu/default-connections
@@ -73,19 +75,27 @@
                                            [{:type      :tool-input
                                              :id        "t1"
                                              :function  "analyze_chart"
-                                             :arguments {:chart_config_id "c1"}}]
+                                             :arguments {:chart_config_id (str (:id viewed))}}]
                                            [{:type :text :text "Done."}])))]
-            (some #(when (= :tool-output (:type %)) (:result %))
-                  (into [] (agent/run-agent-loop
-                            {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
-                             :profile-id      profile-id
-                             :conversation-id conversation-id
-                             :messages        [{:role :user :content "What does this chart show?"}]
-                             :state           {}
-                             :context         {:capabilities    ["permission:write_sql_queries"]
-                                               :user_is_viewing [{:id            "c1"
-                                                                  :type          "adhoc"
-                                                                  :chart_configs [chart-config]}]}})))))))))
+            (into [] (agent/run-agent-loop
+                      {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                       :profile-id      profile-id
+                       :conversation-id conversation-id
+                       :messages        [{:role :user :content "What does this chart show?"}]
+                       :state           {}
+                       :context         {:capabilities    ["permission:write_sql_queries"]
+                                         :user_is_viewing [viewed]}}))))))))
+
+(defn- tool-outcome
+  "The outcome of the one tool call among a turn's `parts`."
+  [parts]
+  (some #(when (= :tool-output (:type %)) (:result %)) parts))
+
+(defn- agent-loop-outcome!
+  "Run [[agent-loop-parts!]] for an unsaved query on screen whose one chart is `chart-config`, and return the outcome
+  of the `analyze_chart` call."
+  [profile-id chart-config]
+  (tool-outcome (agent-loop-parts! profile-id {:id "c1" :type "adhoc" :chart_configs [chart-config]})))
 
 (defn- numeric-series-config
   "A well-formed single-series row chart config."
@@ -116,7 +126,7 @@
    :code  ::analyze-chart/no-series-data
    :text  (str "This chart has no series data to analyze.\n"
                "To read the chart's values instead, call `run_query` with the ID of the query or question that the"
-               " user is viewing.\n"
+               " user is viewing, and answer from its rows.\n"
                "If you can't read the chart's values, tell the user that this chart can't be analyzed.")})
 
 (deftest ^:parallel analyze-chart-tool-chart-not-found-test
@@ -200,7 +210,7 @@
              :text  (str "Series " quoted " has non-numeric y-values. "
                          "Chart analysis requires a numeric y-axis metric.\n"
                          "To read the chart's values instead, call `run_query` with the ID of the query or question"
-                         " that the user is viewing.\n"
+                         " that the user is viewing, and answer from its rows.\n"
                          "If you can't read the chart's values, tell the user that this chart can't be analyzed"
                          " because its y-axis values aren't numbers.")}
             (failure "c1" (text-series-config series-name)))
@@ -254,3 +264,17 @@
       (is (=? {:error  {:class :recoverable :code ::analyze-chart/non-numeric-series}
                :output #(str/includes? % sql-steps)}
               (agent-loop-outcome! :internal-sql (get (text-series-config "Count") "c1")))))))
+
+(deftest analyze-chart-tool-viewed-question-query-id-test
+  (testing "for a saved question on screen with no series, the step names the ID that the turn holds its query under"
+    (let [query    (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))
+          parts    (agent-loop-parts! :internal {:type          "question"
+                                                 :id            157
+                                                 :query         query
+                                                 :chart_configs [{:display_type "scalar" :title "Total" :series {}}]})
+          outcome  (tool-outcome parts)
+          query-id (second (re-find #"call `run_query` with query ID \"([^\"]+)\", and answer from its rows\."
+                                    (:output outcome)))
+          state    (some #(when (= "state" (:data-type %)) (:data %)) parts)]
+      (is (=? {:error {:class :recoverable :code ::analyze-chart/no-series-data}} outcome))
+      (is (= "SELECT 1" (some-> (get-in state [:queries query-id]) metabot.u/extract-sql-content))))))
