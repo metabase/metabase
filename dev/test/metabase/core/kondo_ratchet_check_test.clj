@@ -19,7 +19,7 @@
 (defn- report-lines
   "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
   [[kondo-ratchet/read-ratchets]] adds to a partial file. `ratchets` may also carry the module ratchets as
-  `:module-counts`, the `:attribute` result as `:attribution`, and the `:aliases` as `:aliases`."
+  `:module-counts` and the `:attribute` result as `:attribution`."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
@@ -29,10 +29,9 @@
          attribution     (merge {:actual {}, :unresolved []} (:attribution ratchets))]
      (vec (kondo-ratchet/check-report (-> {:config-counts {}, :comment-exempt #{}}
                                           (merge ratchets)
-                                          (dissoc :module-counts :attribution :aliases))
+                                          (dissoc :module-counts :attribution))
                                       module-ratchets occurrences attribution config-actual module-actual text
-                                      (kondo-ratchet/render-module-ratchets module-ratchets)
-                                      (:aliases ratchets {}))))))
+                                      (kondo-ratchet/render-module-ratchets module-ratchets))))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]

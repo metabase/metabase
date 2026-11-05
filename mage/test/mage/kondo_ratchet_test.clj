@@ -568,19 +568,6 @@
   (testing "an import-vars re-export points at the var it imports"
     (is (= '{oss.core/f oss.mirror/f}
            (kondo-ratchet/alias-edges {:var-definitions [{:ns "oss.core", :name "f", :imported-ns "oss.mirror"}]}))))
-  (testing "an import-fn re-export points at its source, through the file's alias, under a new name"
-    (is (= '{lib.core/parse-parameters lib.parameters.parse/parse}
-           (kondo-ratchet/alias-edges
-            {:var-definitions  [{:filename "core.cljc"
-                                 :lang     "clj"
-                                 :ns       "lib.core"
-                                 :name     "parse-parameters"
-                                 :meta     {:metabase/imports "parse/parse"}}]
-             :namespace-usages [{:filename "core.cljc", :lang "clj", :to "lib.parameters.parse", :alias "parse"}]}))))
-  (testing "an unqualified import-fn source is a var of the defining namespace"
-    (is (= '{a/middle a/source}
-           (kondo-ratchet/alias-edges
-            {:var-definitions [{:ns "a", :name "middle", :meta {:metabase/imports "source"}}]}))))
   (testing "an enterprise defenterprise points at the OSS var that dispatches to it"
     (is (= '{ee.core/f oss.mirror/f}
            (kondo-ratchet/alias-edges
@@ -611,17 +598,7 @@
                      {:var-definitions (mapcat (comp :var-definitions analyses) files)})]
       (is (= '{a/f b/f, b/f c/f}
              (kondo-ratchet/alias-edges! '#{a/f c/f} #(vector (str % ".clj")) analyze)))
-      (is (= [["a.clj" "c.clj"] ["b.clj"]] @linted))))
-  (testing "every file of a namespace is linted, so a re-export only in its .cljs file is found"
-    (let [analyses {"a.clj"  {:var-definitions [{:ns "a", :name "g"}]}
-                    "a.cljs" {:var-definitions [{:ns "a", :name "f", :imported-ns "b"}]}}
-          linted   (atom [])
-          analyze  (fn [files]
-                     (swap! linted into files)
-                     {:var-definitions (mapcat (comp :var-definitions analyses) files)})]
-      (is (= '{a/f b/f}
-             (kondo-ratchet/alias-edges! '#{a/f b/f} #(vector (str % ".clj") (str % ".cljs")) analyze)))
-      (is (= #{"a.clj" "a.cljs" "b.clj" "b.cljs"} (set @linted))))))
+      (is (= [["a.clj" "c.clj"] ["b.clj"]] @linted)))))
 
 (deftest attribute-discouraged-alias-test
   (testing "an ignore on a re-exported var counts under its source"
