@@ -623,7 +623,7 @@
               (is (every? (complement #(re-find (re-pattern token) %)) logs))
               (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))))
 
-(deftest ^:parallel extract-locks-test
+(deftest extract-locks-test
   (testing "empty :meters map yields empty result"
     (is (= {} (#'token-check/extract-locks {}))))
   (testing "meters without :is-locked are filtered out"
@@ -955,3 +955,20 @@
       (with-store [_ (constantly good-status)]
         (token-check/refresh-now!))
       (is (nil? (:last-failure @(token-check/state-handle)))))))
+
+(deftest early-tick-runs-against-the-requesters-state-test
+  (testing "an early tick asked for under a bound state fills that state, not the root's"
+    (do-with-refresher-started!
+     (fn []
+       (mc/binding (token-check/state-handle) (token-check/initial-state)
+                   (fn []
+                     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+                       (with-store [_ (constantly good-status)]
+                         (premium-features/has-feature? :sandboxes)
+                         (is (= {:bound-filled? true, :root-entry nil}
+                                {:bound-filled? (u/poll {:thunk       #(some? (:entry @(token-check/state-handle)))
+                                                         :done?       true?
+                                                         :timeout-ms  5000
+                                                         :interval-ms 10})
+                                 :root-entry    (mc/without-binding (token-check/state-handle)
+                                                                    #(:entry @(token-check/state-handle)))}))))))))))
