@@ -28,6 +28,7 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserId } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
@@ -74,6 +75,10 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 
 const store = getSdkStore();
 createSnowplowTracker(() => getUserId(store.getState()));
+initMetaplow({
+  hostUrl: getCollectorHostUrl(),
+  getUserId: () => getUserId(store.getState()),
+});
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({
