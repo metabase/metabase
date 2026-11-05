@@ -838,7 +838,7 @@
            (kondo-ratchet/discouraged-count-keys :discouraged-var config)))
     (testing "a symbol that counts under another has no key of its own"
       (is (= #{:a/x :a/y}
-             (kondo-ratchet/discouraged-count-keys :discouraged-var config '{metabase.b/x a/x}))))))
+             (kondo-ratchet/discouraged-count-keys :discouraged-var config {:b/x :a/x}))))))
 
 (deftest ^:parallel discouraged-count-field-test
   (is (= :discouraged-var-counts (kondo-ratchet/discouraged-count-field :discouraged-var)))
@@ -868,7 +868,7 @@
                             (#'kondo-ratchet/resolve-seed ":discouraged-var/" {}))))
     (testing "a symbol that counts under another seeds that one's budget"
       (is (= {:discouraged-var-counts [:a/x]}
-             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y" '{metabase-enterprise.b/y a/x}))))
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y" {:ee.b/y :a/x}))))
     (testing "nil seeds nothing"
       (is (= {} (#'kondo-ratchet/resolve-seed nil {}))))))
 
@@ -880,7 +880,7 @@
          (kondo-ratchet/unconfigured-budget-warnings "r.edn"
                                                      {:discouraged-var-counts {:a/x 1, :a/gone 1, :b/x 1}}
                                                      {:discouraged-var #{:a/x}, :discouraged-namespace #{}}
-                                                     '{metabase.b/x a/x}))))
+                                                     {:b/x :a/x}))))
 
 (deftest ^:parallel discouraged-count-keys-collision-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #":discouraged-var symbols a/x, metabase.a/x share the ratchet key :a/x"

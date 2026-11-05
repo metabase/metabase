@@ -119,15 +119,13 @@
   the last of `vars` on it."
   [var-definitions vars]
   (let [edges  (into {}
-                     (mapcat (fn [{:keys [ns name imported-ns meta]}]
-                               (let [sym (symbol (str ns) (str name))]
-                                 (cond-> []
-                                   imported-ns
-                                   (conj [sym (symbol (str imported-ns) (str name))])
-
-                                   (get meta enterprise-ns-key)
-                                   (conj [(symbol (str (get meta enterprise-ns-key)) (str name)) sym])))))
-                     var-definitions)
+                     (for [{:keys [ns name imported-ns meta]} var-definitions
+                           :let  [sym   (symbol (str ns) (str name))
+                                  ee-ns (get meta enterprise-ns-key)]
+                           edge  [(when imported-ns [sym (symbol (str imported-ns) (str name))])
+                                  (when ee-ns [(symbol (str ee-ns) (str name)) sym])]
+                           :when edge]
+                       edge))
         source (fn [sym]
                  (loop [sym sym, seen #{}, source sym]
                    (let [source (if (vars sym) sym source)
@@ -151,7 +149,7 @@
   An ignore counts once for each distinct symbol among the findings it covers, under the key of the symbol
   [[source-aliases]] says it counts under, from the `:var-definitions` in `output`.
   Returns `{:actual {linter {key count}}, :unattributed _, :unresolved _, :aliases _}`, with keys from
-  [[kondo-ratchet/discouraged-count-key]] and `:aliases` from [[source-aliases]].
+  [[kondo-ratchet/discouraged-count-key]]; `:aliases` is [[source-aliases]] as a map of those keys.
   The `:unattributed` ignores cover no finding, and the `:unresolved` findings have no configured symbol; both
   are `{:file _, :line _, :linters [linter]}` maps."
   [contents output baseline known]
@@ -166,7 +164,7 @@
   ;; around an existing one needs no budget.
   ;; TODO: charge each finding to the ignore that covers it alone. Also lint copies of files with nested
   ;; ignores, one ignore disabled per copy, and charge a finding that only copy i reveals to ignore i.
-  (let [aliases   (source-aliases (get-in output [:analysis :var-definitions]) (:discouraged-var known #{}))
+  (let [aliases   (source-aliases (get-in output [:analysis :var-definitions]) (:discouraged-var known))
         ignores   (update-vals contents discouraged-ignores)
         offsets   (update-vals contents offset-fn)
         reported? (set (map (juxt :filename :row :col :type) baseline))
@@ -207,7 +205,9 @@
      :unresolved   (vec (for [{:keys [file line linter symbol]} hits
                               :when (nil? symbol)]
                           {:file file, :line line, :linters [linter]}))
-     :aliases      aliases}))
+     :aliases      (-> aliases
+                       (update-keys kondo-ratchet/discouraged-count-key)
+                       (update-vals kondo-ratchet/discouraged-count-key))}))
 
 (defn- lint-with-ignores-disabled!
   "Kondo's JSON output, as [[attribute-discouraged]] takes it, for `contents` (a map of file to text) with

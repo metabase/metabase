@@ -316,30 +316,22 @@
     (keyword (drop-metabase-prefix ns-part) (name sym))
     (keyword (drop-metabase-prefix (name sym)))))
 
-(defn alias-keys
-  "`aliases`, a map from each configured symbol that is another one under a second name to the symbol it counts
-  under (the `:aliases` of an `:attribute` result -- see [[fix!]]), as a map of [[discouraged-count-key]]s."
-  [aliases]
-  (into {} (map (fn [[sym source]] [(discouraged-count-key sym) (discouraged-count-key source)])) aliases))
-
 (defn discouraged-count-keys
   "The ratchet keys of the symbols configured under `linter` ([[discouraged-symbols]]): each one's
-  [[discouraged-count-key]], or the key of the symbol it counts under in `aliases` (see [[alias-keys]]).
-  Throws when two symbols share a key without being aliases."
-  ([linter]
-   (discouraged-count-keys linter (kondo-config) {}))
+  [[discouraged-count-key]], or the key it counts under in `aliases`, the `:aliases` of an `:attribute` result
+  (see [[fix!]]).
+  Throws when two symbols share a key."
   ([linter config]
    (discouraged-count-keys linter config {}))
   ([linter config aliases]
-   (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))
-         sources (alias-keys aliases)]
+   (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
      ;; two symbols on one key would share a budget without anyone noticing
      (doseq [[k syms] by-key
              :when    (< 1 (count syms))]
        (throw (ex-info (format "%s symbols %s share the ratchet key %s"
                                linter (str/join ", " (sort-by str syms)) k)
                        {:linter linter, :key k, :symbols (vec syms)})))
-     (into #{} (map #(get sources % %)) (keys by-key)))))
+     (into #{} (map #(get aliases % %)) (keys by-key)))))
 
 (defn known-linters
   "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]]."
@@ -398,21 +390,20 @@
   its linter, or counts under another symbol's key. `configured` is [[configured-count-keys]] for `aliases`."
   [ratchets-file ratchets configured aliases]
   ;; Attribution never charges these keys, so fix! drops them at zero like any unused budget.
-  (let [sources (alias-keys aliases)]
-    (for [linter (sort discouragement-linters)
-          :let   [budgeted                          (keys (get ratchets (discouraged-count-field linter)))
-                  {aliased true, unknown false}      (group-by (comp boolean sources)
-                                                               (sort-by str (remove (configured linter) budgeted)))]
-          line   [(when (seq unknown)
-                    (format (str "WARNING: %s budgets %s symbols no longer configured in %s: %s"
-                                 " -- `./bin/mage kondo-ratchets-shrink` drops them")
-                            ratchets-file linter kondo-config-file (str/join ", " unknown)))
-                  (when (seq aliased)
-                    (format (str "WARNING: %s budgets %s symbols whose ignores count under the symbol they name: %s"
-                                 " -- `./bin/mage kondo-ratchets-shrink` drops them")
-                            ratchets-file linter (str/join ", " (map #(str % " -> " (sources %)) aliased))))]
-          :when  line]
-      line)))
+  (for [linter (sort discouragement-linters)
+        :let   [budgeted                      (keys (get ratchets (discouraged-count-field linter)))
+                stale                         (sort-by str (remove (configured linter) budgeted))
+                {aliased true, unknown false} (group-by (comp boolean aliases) stale)]
+        line   [(when (seq unknown)
+                  (format (str "WARNING: %s budgets %s symbols no longer configured in %s: %s"
+                               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+                          ratchets-file linter kondo-config-file (str/join ", " unknown)))
+                (when (seq aliased)
+                  (format (str "WARNING: %s budgets %s symbols whose ignores count under the symbol they name: %s"
+                               " -- `./bin/mage kondo-ratchets-shrink` drops them")
+                          ratchets-file linter (str/join ", " (map #(str % " -> " (aliases %)) aliased))))]
+        :when  line]
+    line))
 
 (defn- validate-test-config-counts!
   "Throw unless `test-ratchets` has an empty :config-counts -- config-level suppressions are tracked only
@@ -1233,7 +1224,7 @@
     by the configured symbol (`clojure.core/println`) or its ratchet key (`search.core/search`)
   - a bare `:discouraged-var` seeds every symbol configured under it, and names its field under `:bulk`
   - any other linter seeds its own `:ignore-counts` budget
-  A symbol that counts under another in `aliases` (see [[alias-keys]]) seeds that one's budget.
+  A symbol that counts under another key in `aliases` (see [[discouraged-count-keys]]) seeds that key's budget.
   Returns `{}` when `seed` is nil. Throws on a symbol not configured under its linter."
   [seed aliases]
   (if-not seed
@@ -1252,7 +1243,7 @@
                                     (pr-str sym) linter kondo-config-file)
                             {:linter linter, :symbol sym})))
           (if k
-            {(discouraged-count-field linter) [(get (alias-keys aliases) k k)]}
+            {(discouraged-count-field linter) [(get aliases k k)]}
             {(discouraged-count-field linter) (vec (sort-by str (discouraged-count-keys linter config aliases)))
              :bulk                            #{(discouraged-count-field linter)}}))))))
 
@@ -1270,7 +1261,7 @@
 (defn- attribution-aliases
   "The `:aliases` of the prod and test `:attribute` results, which come from one kondo run."
   [attribution test-attribution]
-  (merge (:aliases attribution) (:aliases test-attribution)))
+  (merge {} (:aliases attribution) (:aliases test-attribution)))
 
 (defn- lowered-policies
   "The inline-ignore budgets of `ratchets`, one ratchets file's policies, lowered to the counts in
@@ -1293,6 +1284,7 @@
   [ratchets]
   (let [known (known-linters)]
     (validate-linters! ratchets known)
+    ;; for its collision check: a shared key fails here, before the slow kondo run
     (configured-count-keys {})
     (let [test-ratchets (read-validated-test-ratchets known *ratchets-file*)]
       {:known           known
@@ -1320,8 +1312,8 @@
   seeding [[discouragement-linters]] budgets.
   `:attribute` (default [[no-attribution]]) takes a seq of occurrence seqs from [[scan]] and returns, for each
   in order, the per-symbol counts of the [[discouragement-linters]] ignores among them,
-  `{:actual {linter {key count}}, :unattributed _, :unresolved _, :aliases _}`; `:aliases` maps each configured
-  symbol that is another under a second name to the symbol whose key it counts under.
+  `{:actual {linter {key count}}, :unattributed _, :unresolved _, :aliases _}`; `:aliases` maps the key of each
+  configured symbol that is another under a second name to the key it counts under.
   Throws before writing when any `:unresolved` finding has no symbol to budget it under.
   Prints a [[change-report]] per file, or `unchanged` on a no-op.
   Does nothing, including seeding, when [[*ratchets-file*]] sets `:disabled` to `true`; the test ratchets
