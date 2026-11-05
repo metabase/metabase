@@ -647,8 +647,14 @@
           (let [drop-target (ws/transform-output-to-drop database-id (update target :type keyword))]
             (driver/drop-transform-target! driver database drop-target)
             (ws/forget-transform-output! database-id target)
-            (log/info "Deactivating  target " (pr-str target) "for transform" id)
-            (deactivate-table! database target))
+            (if (and (not= drop-target (update target :type keyword))
+                     (driver/table-exists? driver database target))
+              ;; on a workspace sidecar the main table is still there; its app-DB row goes back to describing it
+              (do (sync-table! database target)
+                  nil)
+              (do
+                (log/info "Deactivating  target " (pr-str target) "for transform" id)
+                (deactivate-table! database target))))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 
