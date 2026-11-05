@@ -166,10 +166,8 @@ const opaqueRedirectResponse = (url: string): Response =>
     url: { value: url },
   });
 
-async function brokeredFetch(
-  request: Request,
-  signal: AbortSignal | null,
-): Promise<Response> {
+async function brokeredFetch(request: Request): Promise<Response> {
+  const { signal } = request;
   const body = request.body ? await request.arrayBuffer() : null;
   const port = await untilAborted(hostPort.promise, signal);
 
@@ -212,6 +210,11 @@ async function brokeredFetch(
  * through the broker — the SDK's ApiClient, the bundle fetch, and any hand-rolled `fetch`
  * alike. Static assets and the app's third-party `allowed_hosts` fetches fall through to
  * the native fetch. A no-op same-origin (not in broker mode).
+ *
+ * This routes requests; it isn't what keeps the app from the session. A request that goes
+ * around it (the native `fetch`, `XMLHttpRequest`, an image) reaches either the isolated
+ * origin, which has no session and answers 404 to the API, or the main host, which refuses
+ * requests from the isolated origin.
  */
 export function installDataAppFetchBroker(): void {
   if (!isDataAppBrokerMode()) {
@@ -222,24 +225,11 @@ export function installDataAppFetchBroker(): void {
 
   // Async, so that an invalid request rejects, as `fetch` does, instead of throwing.
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    let url: URL;
-    try {
-      const href = input instanceof Request ? input.url : input.toString();
-      url = new URL(href, window.location.origin);
-    } catch {
-      return nativeFetch(input, init);
-    }
+    const request = new Request(input, init);
 
-    if (!isInstanceApiUrl(url)) {
-      return nativeFetch(input, init);
-    }
-
-    return brokeredFetch(
-      input instanceof Request
-        ? new Request(input, init)
-        : new Request(url.href, init),
-      init?.signal ?? (input instanceof Request ? input.signal : null),
-    );
+    return isInstanceApiUrl(new URL(request.url, window.location.origin))
+      ? brokeredFetch(request)
+      : nativeFetch(request);
   };
 }
 
