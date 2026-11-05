@@ -10,7 +10,8 @@
 
   Loaded at boot, after the `databases:` section has created or updated the databases it names. It installs the
   workspace through [[ws/set-instance-workspace!]], the path `POST /api/ee/workspace-instance/current` takes, and then
-  locks it: `POST` and `DELETE /api/ee/workspace-instance/current` refuse to change a workspace config.yml sets.
+  locks it: `POST` and `DELETE /api/ee/workspace-instance/current` refuse to change a workspace config.yml sets. When
+  `MB_INSTANCE_WORKSPACE` is set, the env var wins and the section is skipped.
 
   [[apply-config-yml!]] applies the same config.yml to a running instance, for `POST /api/ee/workspace-instance/config`,
   as a boot with that file would: every section through the boot loader's section code, then its `workspace:`
@@ -72,8 +73,12 @@
 
 (defmethod advanced-config/initialize-section! :workspace
   [_section-name section]
-  (ws/set-instance-workspace! (section->workspace-instance section))
-  (ws/lock-by-config-file!))
+  (if (= :env-var (ws/workspace-lock))
+    ;; installing would also prune the env var workspace's remappings, which it still reads
+    (log/warn "Skipping the workspace section of config.yml: MB_INSTANCE_WORKSPACE sets this instance's workspace, and the env var wins.")
+    (do
+      (ws/set-instance-workspace! (section->workspace-instance section))
+      (ws/lock-by-config-file!))))
 
 ;;; ------------------------------------------- Applying at runtime ----------------------------------------------
 

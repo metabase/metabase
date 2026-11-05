@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -337,3 +338,22 @@
                   "the driver's connection-test log ran")
               (is (not (str/includes? logged password))))))
         (is (not (t2/exists? :model/Database :name database-name)))))))
+
+(deftest boot-under-env-var-skips-the-workspace-section-test
+  (testing "MB_INSTANCE_WORKSPACE wins: the section neither installs, prunes the env var workspace's remappings, nor fails on unknown names"
+    (with-clean-workspace!
+      (mt/with-temp [:model/Database {db-id :id, db-name :name} {:name (mt/random-name), :engine :postgres}
+                     :model/TableRemapping _ {:database_id db-id, :from_db "", :from_schema "sales", :from_table_name "orders"
+                                              :to_db "", :to_schema "mb__isolation_env_sales", :to_table_name "orders"}]
+        (let [env-workspace {:name "env", :databases {db-name {:schemas {"sales" "mb__isolation_env_sales"}}}}]
+          (mt/with-temp-env-var-value! [:mb-instance-workspace (json/encode env-workspace)]
+            (mt/with-log-messages-for-level [messages ["metabase-enterprise.workspaces" :warn]]
+              (is (= :ok (advanced-config.file/initialize!
+                          {:version 1
+                           :config  {:workspace {:name      "from-config"
+                                                 :databases {(keyword db-name) {:schemas {:sales "mb__isolation_cfg_sales"}}
+                                                             :nope             {:schemas {:sales "x"}}}}}})))
+              (is (some #(re-find #"MB_INSTANCE_WORKSPACE .* the env var wins" (:message %)) (messages))))
+            (is (= env-workspace (ws/instance-workspace)))
+            (is (= :env-var (ws/workspace-lock)))
+            (is (= 1 (t2/count :model/TableRemapping :database_id db-id)))))))))
