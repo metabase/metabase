@@ -3,6 +3,10 @@
   configured LLM. The client compiles and validates the formula, so this only drafts it."
   (:require
    [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
@@ -73,6 +77,52 @@
    "\"has discount\" -> {\"expression\": \"notNull([Discount])\", \"name\": \"Has discount\"}\n"
    "\"weekend or weekday\" -> {\"expression\": \"case(weekday([Created At]) = 1 or weekday([Created At]) = 7, \\\"Weekend\\\", \\\"Weekday\\\")\", \"name\": \"Weekend or weekday\"}"))
 
+(defn- column-type
+  [column]
+  (cond
+    (lib.types.isa/boolean? column)               "boolean"
+    (lib.types.isa/numeric? column)               "number"
+    (lib.types.isa/temporal? column)              "date"
+    (lib.types.isa/string-or-string-like? column) "text"))
+
+(defn- formula-columns
+  "The columns a formula in `mode` can reference, for the last stage of `query`."
+  [query mode]
+  (if (= mode "aggregation")
+    (lib/aggregable-columns query nil)
+    (lib/expressionable-columns query nil)))
+
+(defn- formula-metrics
+  "The metrics a formula in `mode` can reference, for the last stage of `query`."
+  [query mode]
+  (when (= mode "aggregation")
+    (lib/available-metrics query)))
+
+(defn- check-mbql-last-stage!
+  [query]
+  (when (lib/native-stage? query -1)
+    (let [message "Formulas can't be suggested for a native query."]
+      (throw (ex-info message {:status-code 400
+                               :error-code  "native_query_not_supported"
+                               :message     message})))))
+
+(defn- primary-source
+  [query]
+  (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+      (some->> (lib/primary-source-card-id query) (lib.metadata/card query))))
+
+(defn- formula-context
+  "What the LLM is told about `query`: `:columns` as maps of `:name` (the column's name in expression syntax, without
+  brackets) and `:type`, `:metrics` as names, and `:table-name`."
+  [query mode]
+  (let [display-info #(lib/display-info query -1 %)]
+    {:columns    (for [column (formula-columns query mode)]
+                   ;; the formula editor resolves columns by their long display name
+                   {:name (:long-display-name (display-info column))
+                    :type (column-type column)})
+     :metrics    (map (comp :display-name display-info) (formula-metrics query mode))
+     :table-name (some-> (primary-source query) display-info :display-name)}))
+
 (defn- format-columns
   [columns]
   (str/join "\n" (for [{column-name :name column-type :type} columns]
@@ -80,10 +130,10 @@
                                               (str " (" column-type ")"))))))
 
 (defn- user-message
-  [{:keys [prompt columns metrics table_name]}]
+  [{:keys [prompt columns metrics table-name]}]
   (str "<columns>\n"
-       (when-not (str/blank? table_name)
-         (str "Table: " table_name "\n"))
+       (when-not (str/blank? table-name)
+         (str "Table: " table-name "\n"))
        (format-columns columns)
        (when (seq metrics)
          (str "\nMetrics:\n" (str/join "\n" (map #(str "[" % "]") metrics))))
@@ -170,16 +220,19 @@
 
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
-  `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. `columns` are maps
-  of `:name` (the column's name in expression syntax, without brackets) and an optional `:type`.
+  `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. The formula can
+  reference what's available at the last stage of `dataset_query`, an MBQL 5 query without a metadata provider.
 
   Returns `{:expression <source or nil> :name <name or nil> :error <message or nil>}`; `:expression` is nil, with an
-  `:error`, when nothing in the columns fits. Throws an HTTP error when the suggestion can't be made."
-  [request]
+  `:error`, when nothing in the query fits. Throws an HTTP error when the suggestion can't be made."
+  [{:keys [mode prompt dataset_query]}]
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
-  (let [{:keys [expression name]} (call-llm request)
+  (let [query                     (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
+                                             dataset_query)
+        _                         (check-mbql-last-stage! query)
+        {:keys [expression name]} (call-llm (assoc (formula-context query mode) :mode mode :prompt prompt))
         expression                (clean-expression expression)]
     {:expression expression
      :name       (when expression (clean-name name))

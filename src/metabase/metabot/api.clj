@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
@@ -467,18 +468,15 @@
                                                      [:name       [:maybe :string]]
                                                      [:error      [:maybe :string]]]
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summarize sidebar well. `mode` is
-  `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with an `error`, when nothing in
-  `columns` fits. Other failures are HTTP errors with an `error-code`. The client compiles and validates the formula."
+  `aggregation` for Values and `expression` for Rows and Columns. The formula can reference what's available at the
+  last stage of `dataset_query`. `expression` is nil, with an `error`, when nothing there fits. Other failures are HTTP
+  errors with an `error-code`. The client compiles and validates the formula."
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:prompt     ms/NonBlankString]
-            [:mode       [:enum "aggregation" "expression"]]
-            [:columns    [:sequential [:map {:closed true}
-                                       [:name ms/NonBlankString]
-                                       [:type {:optional true} [:maybe :string]]]]]
-            [:metrics    {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-            [:table_name {:optional true} [:maybe :string]]]]
+            [:mode          [:enum "aggregation" "expression"]]
+            [:prompt        ms/NonBlankString]
+            [:dataset_query ::lib.schema/query]]]
   (metabot.summary-formula/suggest-formula body))
 
 (def ^{:arglists '([request respond raise])} routes
