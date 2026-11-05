@@ -6,7 +6,8 @@
   ([sym]
    (import-var-expansion sym (-> sym name symbol)))
   ([sym new-name]
-   `(def ~new-name "docstring" ~sym)))
+   ;; :metabase/imports names the source var for the ratchet tooling (mage.kondo-ratchet/alias-edges)
+   `(def ~(vary-meta new-name assoc :metabase/imports (str sym)) "docstring" ~sym)))
 
 (defmacro import-def
   ([sym]          (import-var-expansion sym))

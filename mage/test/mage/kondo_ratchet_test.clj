@@ -568,6 +568,19 @@
   (testing "an import-vars re-export points at the var it imports"
     (is (= '{oss.core/f oss.mirror/f}
            (kondo-ratchet/alias-edges {:var-definitions [{:ns "oss.core", :name "f", :imported-ns "oss.mirror"}]}))))
+  (testing "an import-fn re-export points at its source, through the file's alias, under a new name"
+    (is (= '{lib.core/parse-parameters lib.parameters.parse/parse}
+           (kondo-ratchet/alias-edges
+            {:var-definitions  [{:filename "core.cljc"
+                                 :lang     "clj"
+                                 :ns       "lib.core"
+                                 :name     "parse-parameters"
+                                 :meta     {:metabase/imports "parse/parse"}}]
+             :namespace-usages [{:filename "core.cljc", :lang "clj", :to "lib.parameters.parse", :alias "parse"}]}))))
+  (testing "an unqualified import-fn source is a var of the defining namespace"
+    (is (= '{a/middle a/source}
+           (kondo-ratchet/alias-edges
+            {:var-definitions [{:ns "a", :name "middle", :meta {:metabase/imports "source"}}]}))))
   (testing "an enterprise defenterprise points at the OSS var that dispatches to it"
     (is (= '{ee.core/f oss.mirror/f}
            (kondo-ratchet/alias-edges
