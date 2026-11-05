@@ -82,10 +82,13 @@
    {:keys [config]} :- [:map {:closed true}
                         [:config [:string {:min 1}]]]]
   (api/check-superuser)
-  ;; another config.yml may replace what a config.yml set, as a boot with it would
-  (when (= :env-var (ws/workspace-lock))
-    (check-not-locked!))
-  (ws.config-file/apply-config-yml! config)
+  ;; the whole apply, its checks and connection tests included, so no POST or DELETE /current lands between them
+  (ws/call-with-instance-workspace-lock
+   (fn []
+     ;; another config.yml may replace what a config.yml set, as a boot with it would
+     (when (= :env-var (ws/workspace-lock))
+       (check-not-locked!))
+     (ws.config-file/apply-config-yml! config)))
   {:data      (ws/instance-workspace)
    :can_write (not (ws/workspace-locked?))})
 

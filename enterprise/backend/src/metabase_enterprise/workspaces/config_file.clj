@@ -73,12 +73,14 @@
 
 (defmethod advanced-config/initialize-section! :workspace
   [_section-name section]
-  (if (= :env-var (ws/workspace-lock))
-    ;; installing would also prune the env var workspace's remappings, which it still reads
-    (log/warn "Skipping the workspace section of config.yml: MB_INSTANCE_WORKSPACE sets this instance's workspace, and the env var wins.")
-    (do
-      (ws/set-instance-workspace! (section->workspace-instance section))
-      (ws/lock-by-config-file!))))
+  (ws/call-with-instance-workspace-lock
+   (fn []
+     (if (= :env-var (ws/workspace-lock))
+       ;; installing would also prune the env var workspace's remappings, which it still reads
+       (log/warn "Skipping the workspace section of config.yml: MB_INSTANCE_WORKSPACE sets this instance's workspace, and the env var wins.")
+       (do
+         (ws/set-instance-workspace! (section->workspace-instance section))
+         (ws/lock-by-config-file!))))))
 
 ;;; ------------------------------------------- Applying at runtime ----------------------------------------------
 

@@ -357,3 +357,36 @@
             (is (= env-workspace (ws/instance-workspace)))
             (is (= :env-var (ws/workspace-lock)))
             (is (= 1 (t2/count :model/TableRemapping :database_id db-id)))))))))
+
+(deftest lock-check-and-install-are-serialized-test
+  (testing "a POST /current that arrives while POST /config is applying waits, then sees the config.yml lock"
+    (with-clean-workspace!
+      (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+        (mt/with-temp [:model/Database {other-name :name} {:name (mt/random-name), :engine :postgres}]
+          (let [database-name (mt/random-name)
+                testing?      (promise)
+                release       (promise)
+                apply-config  (future
+                                (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details?
+                                                            (fn [& _]
+                                                              (deliver testing? true)
+                                                              @release
+                                                              true)]
+                                  (mt/user-http-request :crowberto :post "ee/workspace-instance/config"
+                                                        {:config (config-yml database-name)})))]
+            (try
+              (is (true? (deref testing? 10000 :timed-out)))
+              (let [post-current (future
+                                   (mt/user-http-request :crowberto :post "ee/workspace-instance/current"
+                                                         (workspace-instance other-name)))]
+                (is (= :waiting (deref post-current 1000 :waiting))
+                    "POST /current waits for the apply in progress")
+                (deliver release true)
+                (is (=? {:can_write false} (deref apply-config 10000 :timed-out)))
+                (is (= "This instance's workspace is locked by config.yml and can't be changed through the API."
+                       (deref post-current 10000 :timed-out))))
+              (is (= (workspace-instance database-name) (ws/instance-workspace)))
+              (finally
+                (deliver release true)
+                (t2/delete! :model/Database :name database-name)
+                (ws/clear-instance-workspace!)))))))))
