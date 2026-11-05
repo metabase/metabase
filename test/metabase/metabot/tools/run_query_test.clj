@@ -168,6 +168,39 @@
           {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
       (is (=? {:returned 3, :truncated? false} structured-output)))))
 
+(defn- run-while-viewing!
+  "Run a turn as rasta, in a conversation of rasta's own, while rasta views `viewed` as a table with no chart series.
+   The model calls `run_query` with `row_limit` 2 on the ID that `pick-id` returns for the model's request. Return the
+   call's output."
+  [viewed pick-id]
+  (let [llm-calls (atom 0)]
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [request]
+                                                            (mut/mock-llm-response
+                                                             (if (= 1 (swap! llm-calls inc))
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "run_query"
+                                                                 :arguments {:query_id  (pick-id (pr-str request))
+                                                                             :row_limit 2}}]
+                                                               [{:type :text, :text "Done."}])))]
+          (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+            (mt/with-current-user (mt/user->id :rasta)
+              (->> (agent/run-agent-loop
+                    {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                     :messages        [{:role :user, :content "What does this table show?"}]
+                     :profile-id      :internal
+                     :conversation-id conversation-id
+                     :state           {}
+                     :context         {:user_is_viewing [(assoc viewed :chart_configs [{:display_type "table"
+                                                                                        :title        "Venues"
+                                                                                        :series       {}}])]}})
+                   (into [])
+                   (some #(when (= :tool-output (:type %)) (:result %)))
+                   :output))))))))
+
 (deftest run-query-truncated-page-advice-test
   (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
     (doseq [[client-ids rebuild-advice?] [[#{} true] [#{"q1"} false]]]
@@ -178,7 +211,27 @@
                                                            :client-ids client-ids}
                                                           {:query_id "q1", :row_limit 2}))]
           (is (str/includes? output "Only the first 2 rows are shown, so do not count or total them to answer."))
-          (is (= rebuild-advice? (str/includes? output "Aggregate, filter, or limit the query and run it again."))))))))
+          (is (= rebuild-advice? (str/includes? output "Aggregate, filter, or limit the query and run it again."))))))
+    (mt/with-temp [:model/Card {question-id :id} {:dataset_query (venues-by-id)}
+                   :model/Card {model-id :id}    {:dataset_query (venues-by-id), :type :model}
+                   :model/Card {other-id :id}    {:dataset_query (venues-by-id)}]
+      (let [query            (lib/prepare-for-serialization (venues-by-id))
+            viewed-question  {:type "question", :id question-id, :query query}
+            advises-rebuild? (fn [output]
+                               (is (str/includes? output "Only the first 2 rows are shown"))
+                               (str/includes? output "Aggregate, filter, or limit the query and run it again."))]
+        (testing "a saved question or model on screen that runs by its own ID gets no advice to rebuild it"
+          (doseq [[viewed card-id] [[viewed-question question-id]
+                                    [{:type "model", :id model-id, :query query} model-id]]]
+            (testing (:type viewed)
+              (let [output (run-while-viewing! viewed (constantly (str card-id)))]
+                (is (str/includes? output "This ran the saved version"))
+                (is (not (advises-rebuild? output)))))))
+        (testing "nor does the query on screen of a saved question, run by its query ID"
+          (is (not (advises-rebuild? (run-while-viewing! viewed-question
+                                                         #(second (re-find #"Query ID: ([^\s\\\"]+)" %)))))))
+        (testing "a saved question that the user is not viewing keeps the advice"
+          (is (advises-rebuild? (run-while-viewing! viewed-question (constantly (str other-id))))))))))
 
 (deftest run-query-records-a-metabot-run-test
   (let [info (atom nil)]
