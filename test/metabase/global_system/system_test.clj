@@ -553,3 +553,84 @@
         (finally
           (system/stop! new)
           (mc/remove-root new))))))
+
+(defn- cleanup!
+  "Stop each of `handles` and remove its root."
+  [handles]
+  (doseq [handle handles]
+    (system/stop! handle)
+    (mc/remove-root handle)))
+
+(deftest ^:synchronized restart-keeps-halt-place-test
+  (testing "a component restarted after its dependents still halts after them"
+    (let [a (system/mutable-component-handle ::restart-a (constantly nil))
+          b (system/mutable-component-handle ::restart-b (constantly nil))]
+      (try
+        (system/ensure-started! a (constantly :a) (constantly nil))
+        (system/ensure-started! b (constantly :b) (constantly nil))
+        (system/stop! a)
+        (system/ensure-started! a (constantly :a-again) (constantly nil))
+        (is (= [b a] (filter #{a b} (#'system/halt-order))))
+        (finally
+          (cleanup! [a b]))))))
+
+(deftest ^:synchronized dependency-started-inside-start-halts-after-test
+  (testing "a component that start itself starts comes first in the start order, so it halts after"
+    (let [dep  (system/mutable-component-handle ::inner-dep (constantly nil))
+          user (system/mutable-component-handle ::inner-user (constantly nil))]
+      (try
+        (system/ensure-started! user
+                                #(do (system/ensure-started! dep (constantly :dep) (constantly nil)) :user)
+                                (constantly nil))
+        (is (= [user dep] (filter #{dep user} (#'system/halt-order))))
+        (finally
+          (cleanup! [user dep]))))))
+
+(deftest ^:synchronized start-ignores-bindings-test
+  (testing "start sees roots, not the bindings of the thread that triggered it"
+    (let [handle (system/mutable-component-handle ::start-unbound (constantly nil))]
+      (mc/alter-root other-handle :root-other)
+      (try
+        (mc/binding other-handle :bound-other
+                    (fn []
+                      (system/ensure-started! handle (fn [] [:made-from @other-handle]) (constantly nil))))
+        (is (= [:made-from :root-other] @handle))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized start-during-stop-throws-test
+  (testing "a start while the stop function runs throws instead of deadlocking on the component's lock"
+    (let [handle  (system/mutable-component-handle ::stopping (constantly nil))
+          during  (atom nil)
+          restart (fn []
+                    (try (system/ensure-started! handle (constantly :again) (constantly nil))
+                         (catch clojure.lang.ExceptionInfo e (ex-message e))))]
+      (try
+        (system/ensure-started! handle (constantly :running)
+                                (fn [_] (reset! during (deref (future (restart)) 2000 ::deadlocked))))
+        (system/stop! handle)
+        (is (re-find #"Component is stopping" (str @during)))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized start-that-starts-itself-throws-test
+  (testing "a start that starts its own component throws instead of recursing"
+    (let [handle (system/mutable-component-handle ::self-start (constantly nil))
+          start  (fn self [] (system/ensure-started! handle self (constantly nil)))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Starting component started itself"
+                              (system/ensure-started! handle start (constantly nil))))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized stop-uses-started-value-test
+  (testing "stop! stops the value that was started, and leaves a root someone replaced since"
+    (let [handle  (system/mutable-component-handle ::replaced (constantly nil))
+          stopped (atom [])]
+      (try
+        (system/ensure-started! handle (constantly :started) #(swap! stopped conj %))
+        (mc/alter-root handle :replaced)
+        (is (= {:stopped? true, :stopped [:started], :root :replaced}
+               {:stopped? (system/stop! handle), :stopped @stopped, :root @handle}))
+        (finally
+          (cleanup! [handle]))))))
