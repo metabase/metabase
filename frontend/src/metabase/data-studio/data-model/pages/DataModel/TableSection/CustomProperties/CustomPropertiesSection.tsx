@@ -10,12 +10,13 @@ import { Link } from "metabase/common/components/Link";
 import {
   type EavBinding,
   type PropertyRegistry,
+  type PropertySignal,
+  type RegistryProperty,
   type ResolvedEavBinding,
   useEavBinding,
   usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { GeneratedChecksSummary } from "metabase/metadata/table-structure/generated-checks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Badge,
@@ -40,7 +41,6 @@ import {
 import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
 
 import { RecognitionPreview } from "./RecognitionPreview";
-import { useCustomPropertyChecks } from "./use-custom-property-checks";
 
 type CustomPropertiesSectionProps = {
   table: Table;
@@ -129,27 +129,63 @@ export function CustomPropertiesSection({
             />
           }
         />
-        <ChecksRow table={table} />
+        <ChecksRow registry={registry} />
       </DetailsTable>
     </SidebarSection>
   );
 }
 
-function ChecksRow({ table }: { table: Table }) {
-  const generated = useCustomPropertyChecks(table);
+const DATA_QUALITY_URL = "https://github.com/metabase/data-quality";
+
+const hasSignal = (
+  properties: RegistryProperty[],
+  type: PropertySignal["type"],
+) =>
+  properties.some(({ signals }) =>
+    signals.some((signal) => signal.type === type),
+  );
+
+function countFailingChecks({ properties }: PropertyRegistry) {
+  const driftCount = properties.filter(({ signals }) =>
+    signals.some(({ type }) => type === "type-drift"),
+  ).length;
+  const tableWideFailures = [
+    hasSignal(properties, "undefined"),
+    hasSignal(properties, "duplicate"),
+  ].filter(Boolean).length;
+  return driftCount + tableWideFailures;
+}
+
+function ChecksRow({ registry }: { registry: PropertyRegistry | undefined }) {
+  const failingCount = registry ? countFailingChecks(registry) : null;
   return (
     <DetailsRow
       label={t`Checks`}
       value={
-        generated == null ? (
-          <Loader size="xs" />
-        ) : (
-          <GeneratedChecksSummary
-            table={generated.tableRef}
-            checks={generated.checks}
-            results={generated.results}
-          />
-        )
+        <Group gap="sm" justify="space-between" wrap="nowrap">
+          <Group gap="xs" miw={0}>
+            <Text>{t`In data quality`}</Text>
+            {failingCount == null && <Loader size="xs" />}
+            {failingCount != null && failingCount > 0 && (
+              <Badge color="warning" variant="light" flex="0 0 auto">
+                {t`${failingCount} failing`}
+              </Badge>
+            )}
+            {failingCount === 0 && (
+              <Text c="text-secondary">{t`all passing`}</Text>
+            )}
+          </Group>
+          <Button
+            component="a"
+            href={DATA_QUALITY_URL}
+            target="_blank"
+            rel="noreferrer"
+            size="compact-sm"
+            flex="0 0 auto"
+          >
+            {t`View in data quality`}
+          </Button>
+        </Group>
       }
     />
   );

@@ -8,5 +8,4 @@ export type CodeLanguage =
   | "python"
   | "ruby"
   | "sql"
-  | "typescript"
-  | "yaml";
+  | "typescript";
