@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1764,6 +1765,25 @@
                   (is (= [[9]]
                          (mt/rows result))))))))))))
 
+(deftest sandboxes-are-not-shared-between-users-in-one-metadata-cache-test
+  (testing "Two users whose queries share one metadata provider cache each get their own sandboxes"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {"cat" [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      (mt/with-group-for-user [group :lucky]
+        (data-perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! group (mt/id) :perms/create-queries :query-builder)
+        (let [row-count (fn [user]
+                          (mt/with-test-user user
+                            (ffirst (mt/rows (qp/process-query (mt/mbql-query venues {:aggregation [[:count]]}))))))]
+          (testing "sandboxed user first"
+            (lib-be/with-metadata-provider-cache
+              (is (= 10 (row-count :rasta)))
+              (is (= 100 (row-count :lucky)))))
+          (testing "unsandboxed user first"
+            (lib-be/with-metadata-provider-cache
+              (is (= 100 (row-count :lucky)))
+              (is (= 10 (row-count :rasta))))))))))
+
 (deftest jwt-attributes-different-param-names-test
   (mt/test-drivers (e2e-test-drivers)
     (testing "GTAP remapping with different parameter names works with jwt_attributes"
@@ -2073,6 +2093,43 @@
           (is (= #{1001 1002 1100 1200 1201 1202}
                  (set (map :id (lib/returned-columns result))))))))))
 
+(deftest ^:parallel project-only-columns-from-original-table-removes-foreign-columns-test
+  (testing "A sandbox query may only return columns of the sandboxed table; anything else is projected away"
+    (let [mp       (lib.tu/mock-metadata-provider
+                    {:database {:id 1 :name "db" :engine :h2}
+                     :tables   [{:id 100 :name "customers" :db-id 1}
+                                {:id 200 :name "orders" :db-id 1}]
+                     :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100 :semantic-type :type/PK}
+                                {:id 1002 :name "name" :base-type :type/Text :table-id 100}
+                                {:id 2001 :name "id" :base-type :type/Integer :table-id 200 :semantic-type :type/PK}
+                                {:id 2002 :name "customer_id" :base-type :type/Integer :table-id 200
+                                 :fk-target-field-id 1001 :semantic-type :type/FK}
+                                ;; same name and type as customers.name, so a lookup by name alone would accept it
+                                {:id 2003 :name "name" :base-type :type/Text :table-id 200}]})
+          base     (lib/query mp (lib.metadata/table mp 100))
+          customer (lib.metadata/field mp 1001)
+          project  #(#'sandboxing/project-only-columns-from-original-table mp % 100)
+          returned #(mapv (juxt :id :name) (lib/returned-columns %))]
+      (testing "a joined column named like a column of the sandboxed table"
+        (let [query (-> base
+                        (lib/join (-> (lib/join-clause (lib.metadata/table mp 200)
+                                                       [(lib/= customer (lib.metadata/field mp 2002))])
+                                      (lib/with-join-fields [(lib.metadata/field mp 2003)])))
+                        (lib/with-fields [customer]))]
+          (is (= [[1001 "id"] [2003 "name"]] (returned query)))
+          (is (= [[1001 "id"]] (returned (project query))))))
+      (testing "a column that matches no column of the sandboxed table"
+        (let [query (lib/expression base "extra" (lib/+ 1 1))]
+          (is (= [[1001 "id"] [1002 "name"] [nil "extra"]] (returned query)))
+          (is (= [[1001 "id"] [1002 "name"]] (returned (project query))))))
+      (testing "a column that takes a table column's name with a different type"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Sandbox Questions can't return columns that have different types than the Table they are sandboxing"
+             (project (-> base
+                          (lib/expression "name" (lib/+ 1 1))
+                          (lib/with-fields [customer])))))))))
+
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
@@ -2193,6 +2250,19 @@
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
                (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
+
+(deftest ^:parallel attr-remapping-target-with-options-test
+  (testing "A remapping target whose field ref carries options is still coerced to the field's type"
+    (let [attr-remapping->parameter #'sandboxing/attr-remapping->parameter
+          mp                        (mt/metadata-provider)
+          target                    [:variable [:field (mt/id :venues :price) {:base-type :type/Integer}]]]
+      (is (= {:type :number/=, :value [50]}
+             (select-keys (attr-remapping->parameter mp {"cat" "50"} ["cat" target]) [:type :value])))
+      (testing "and an attribute that cannot be coerced still throws instead of becoming a text filter"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"User attribute `cat` value `a` cannot be coerced"
+             (attr-remapping->parameter mp {"cat" "a"} ["cat" target])))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"
