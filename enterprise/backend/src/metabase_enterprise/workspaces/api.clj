@@ -31,9 +31,12 @@
       (update :to_schema not-empty)))
 
 (defn- check-not-locked! []
-  (when (ws/workspace-locked?)
-    (throw (ex-info (tru "This instance''s workspace is set by the MB_INSTANCE_WORKSPACE env var and can''t be changed through the API.")
-                    {:status-code 400}))))
+  (case (ws/workspace-lock)
+    nil          nil
+    :env-var     (throw (ex-info (tru "This instance''s workspace is set by the MB_INSTANCE_WORKSPACE env var and can''t be changed through the API.")
+                                 {:status-code 400}))
+    :config-file (throw (ex-info (tru "This instance''s workspace is locked by config.yml and can''t be changed through the API.")
+                                 {:status-code 400}))))
 
 (api.macros/defendpoint :get "/current" :- [:map {:closed true}
                                             [:data      [:maybe ::ws/workspace-instance]]

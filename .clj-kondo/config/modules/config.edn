@@ -3572,6 +3572,7 @@
   enterprise/advanced-config
   {:team "UX West"
    :api  #{metabase-enterprise.advanced-config.api.logs
+           metabase-enterprise.advanced-config.file.interface
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
    :uses #{api
@@ -4725,7 +4726,8 @@
            settings
            sql-tools
            util
-           workspaces}
+           workspaces
+           enterprise/advanced-config}
    :model-imports #{:model/Database}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

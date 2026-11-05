@@ -257,12 +257,15 @@
 
 (defn- sort-by-initialization-order
   "Sort the various config sections. The `:settings` section should always be applied first (important, since it can
-  affect the other sections)."
+  affect the other sections). The `:workspace` section goes last: it names databases the `:databases` section
+  creates."
   [config-sections]
-  (let [{settings-sections true, other-sections false} (group-by (fn [[section-name]]
-                                                                   (= section-name :settings))
-                                                                 config-sections)]
-    (concat settings-sections other-sections)))
+  (sort-by (fn [[section-name]]
+             (case section-name
+               :settings  0
+               :workspace 2
+               1))
+           config-sections))
 
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in `parsed-config` — a parsed

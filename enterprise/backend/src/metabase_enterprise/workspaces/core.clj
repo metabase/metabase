@@ -71,11 +71,26 @@
   []
   (some-> (ws.settings/instance-workspace) json->workspace-instance))
 
-(defn workspace-locked?
-  "True when the workspace comes from deployment config (the `MB_INSTANCE_WORKSPACE` env var), which the API must not
-  change."
+(defonce ^:private locked-by-config-file? (atom false))
+
+(defn lock-by-config-file!
+  "Record that config.yml installed the workspace at boot, so the API refuses to change it until the next boot, which
+  reads config.yml again."
   []
-  (some? (setting/env-var-value :instance-workspace)))
+  (reset! locked-by-config-file? true))
+
+(defn workspace-lock
+  "Which deployment config sets the workspace, so the API must not change it: `:env-var` (`MB_INSTANCE_WORKSPACE`),
+  `:config-file` (a `workspace:` section in config.yml at boot), or nil."
+  []
+  (cond
+    (some? (setting/env-var-value :instance-workspace)) :env-var
+    @locked-by-config-file?                             :config-file))
+
+(defn workspace-locked?
+  "True when deployment config sets the workspace, which the API must not change."
+  []
+  (some? (workspace-lock)))
 
 (defenterprise workspace-mode?
   "EE implementation: true when a workspace is installed."
