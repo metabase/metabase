@@ -43,6 +43,12 @@
      "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,
   this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`."}
     :boolean]
+   [:card-reference?
+    {:optional true
+     :description
+     "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside
+  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs."}
+    :boolean]
    [:userland-query?
     {:optional true
      :description
@@ -97,6 +103,12 @@
   `format_rows`/pivot download options and read by `metabase.query-processor.middleware.pivot-export` and the
   streaming writers; default `false`."}
     [:maybe :boolean]]
+   [:display
+    {:optional true
+     :description
+     "The `:display` of the Card or unsaved question whose results are being exported, e.g. `:table`. Used by
+     `metabase.query-processor.streaming` to leave the columns the table visualization hides out of exports."}
+    [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:pivot-options
     {:optional true
      :description
