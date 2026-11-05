@@ -195,8 +195,10 @@
   (let [{:keys [query-id query] :as action-result} (sql.common/validated-sql-action! operation-result {:edit? edit?})
         structured                                  (assoc action-result :result-type :query)
         buffer-id                                   (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+        ;; Readability reads the app DB, so it is checked only when it can change the delivery.
         delivery                                    (query-delivery buffer-id show-chart
                                                                     (and (not buffer-id)
+                                                                         (false? show-chart)
                                                                          (tools.run-query/sql-results-readable?)))]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
