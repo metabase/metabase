@@ -361,6 +361,23 @@
                                               [:field {} (meta/id :orders :quantity)]
                                               [:value {:base-type :type/BigInteger} big]]]}]}}))))
 
+(deftest ^:parallel quick-filter-negative-out-of-int64-value-test
+  (testing "quick-filter '=' on a negative cell value outside the int64 range keeps its full precision"
+    (let [big "-9223372036854775809"]
+      (lib.drill-thru.tu/test-drill-application
+       {:click-type     :cell
+        :query-type     :unaggregated
+        :query-kinds    [:mbql]
+        :column-name    "QUANTITY"
+        :drill-type     :drill-thru/quick-filter
+        :custom-row     (assoc (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])
+                               "QUANTITY" big)
+        :expected       {:type :drill-thru/quick-filter}
+        :drill-args     ["="]
+        :expected-query {:stages [{:filters [[:= {}
+                                              [:field {} (meta/id :orders :quantity)]
+                                              [:value {:base-type :type/BigInteger} big]]]}]}}))))
+
 (deftest ^:parallel quick-filter-drill-on-expression-column-test
   (testing "quick-filter on an expression column value produces a filter referencing the expression (#32032)"
     (lib.drill-thru.tu/test-drill-application

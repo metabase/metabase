@@ -7,8 +7,30 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Checkout metabase/python-runner-container
+      uses: actions/checkout@v7
+      with:
+        repository: metabase/python-runner-container
+        path: python-runner
+        token: ${{ inputs.metabase-automation-token }}
+        persist-credentials: false
+
     - name: Setup python-runner
-      run: ./.github/scripts/setup-python-runner.sh
+      id: setup
+      run: |
+        echo "Starting python-runner..."
+        cd python-runner
+        make run-ci 1> ../python-runner.out.log 2> ../python-runner.err.log
+        make logs 1>> ../python-runner.out.log 2>> ../python-runner.err.log &
       shell: bash
-      env:
-        METABASE_AUTOMATION_USER_TOKEN: ${{ inputs.metabase-automation-token }}
+
+    - name: Print python-runner logs
+      if: ${{ failure() && steps.setup.outcome == 'failure' }}
+      run: |
+        echo "::group::python-runner stdout"
+        cat python-runner.out.log || true
+        echo "::endgroup::"
+        echo "::group::python-runner stderr"
+        cat python-runner.err.log || true
+        echo "::endgroup::"
+      shell: bash

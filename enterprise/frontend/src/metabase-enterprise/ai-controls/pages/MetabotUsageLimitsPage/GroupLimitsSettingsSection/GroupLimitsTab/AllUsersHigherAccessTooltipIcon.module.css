@@ -1,5 +1,5 @@
 .InfoIcon {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   cursor: pointer;
   flex-shrink: 0;
   /* Nudge for SVG glyph offset within its bounding box. */

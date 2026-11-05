@@ -8,7 +8,7 @@ import { parseTimestampWithTimezone } from "../../utils";
 import { RunInfo } from "../RunInfo";
 
 type RunStatusSectionProps = {
-  run: TransformRun | null;
+  run: Pick<TransformRun, "status" | "end_time" | "message"> | null;
   neverRunMessage: string;
   runInfo?: React.ReactNode;
 };

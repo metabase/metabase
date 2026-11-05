@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useListJobRunTransformRunsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import {
   ActionIcon,

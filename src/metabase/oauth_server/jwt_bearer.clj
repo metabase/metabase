@@ -64,18 +64,30 @@
   "These `:error` values identify refused JWT logins whose `:message` was written by Metabase for the caller."
   #{:non-personal-user :missing-email :missing-exp-or-iat :future-iat :invalid-tenant})
 
+(defn- verified-login-refusal?
+  "Whether a refused JWT login `result` comes from an assertion that passed verification.
+
+  An allowlist, so an unrecognised failure counts toward the throttles rather than skipping them. Verified refusals
+  are the ones Metabase raises itself after the JWT library accepts the assertion: a returned failure in
+  [[own-reason-errors]], or an exception it throws with a 4xx status, such as user provisioning being off. A failed
+  verification returns `:invalid-jwt`, and anything else, including a caught exception with no `:error` or status,
+  is treated as unverified."
+  [{:keys [error status-code]}]
+  (and (not= :invalid-jwt error)
+       (boolean (or (own-reason-errors error)
+                    (<= 400 (or status-code 0) 499)))))
+
 (defn- refusal-description
   "Return `error_description` for a refused JWT login, or nil to use the token endpoint's generic one.
 
-  The login's `message` goes back only when Metabase wrote it for the caller: the login returned one of
-  [[own-reason-errors]], or threw with a 4xx `status-code`. A JWT that fails verification gets a fixed description,
-  since the verifier's message is library text."
-  [{:keys [error status-code message]}]
+  The login's `message` goes back only for a [[verified-login-refusal?]], whose message Metabase wrote for the caller.
+  A JWT that fails verification gets a fixed description, since the verifier's message is library text."
+  [{:keys [error message] :as result}]
   (cond
     (= :invalid-jwt error)
     "The JWT could not be verified."
 
-    (or (own-reason-errors error) (<= 400 (or status-code 0) 499))
+    (verified-login-refusal? result)
     (str message)))
 
 (defn- log-in!
@@ -96,7 +108,9 @@
              :status-code (:status-code (ex-data e))}))]
     (if success?
       user
-      (throw (ex-info (str message) {:error "invalid_grant", :error-description (refusal-description result)})))))
+      (throw (ex-info (str message) {:error             "invalid_grant"
+                                     :error-description (refusal-description result)
+                                     ::verified?        (verified-login-refusal? result)})))))
 
 (defn- check-mcp-access!
   "Throws `ex-info` carrying `unsupported_grant_type` unless the groups of the User with `user-id` allow MCP."
@@ -105,14 +119,23 @@
               (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
     (throw (ex-info (str "MCP access is not enabled for the groups of user " user-id)
                     {:error             "unsupported_grant_type"
-                     :error-description "MCP access is not enabled for this user's groups."}))))
+                     :error-description "MCP access is not enabled for this user's groups."
+                     ::verified?        true}))))
+
+(defn verified-refusal?
+  "Return whether `e` refuses a JWT bearer grant whose assertion passed verification.
+
+  These are the JWT login refusals that [[verified-login-refusal?]] accepts, and refusals of users whose groups don't
+  allow MCP."
+  [e]
+  (boolean (::verified? (ex-data e))))
 
 (defn exchange-jwt-for-token!
   "Issue an MCP access token to the user named in the JWT `assertion`.
 
   Return the RFC 6749 token response. The token carries `scopes`, or every MCP scope when `scopes` is nil,
   and is bound to the MCP endpoint, which `resource` must name when it is given.
-  Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused."
+  Throw `ex-info` carrying the RFC 6749 `:error` when the request is refused; see [[verified-refusal?]]."
   [provider request {:keys [assertion scopes resource]}]
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)

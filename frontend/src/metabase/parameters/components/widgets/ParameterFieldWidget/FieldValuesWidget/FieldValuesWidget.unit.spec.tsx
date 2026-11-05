@@ -2,16 +2,18 @@ import userEvent from "@testing-library/user-event";
 
 import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockParameter,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 
 import {
   FieldValuesWidget,
   type IFieldValuesWidgetProps,
 } from "./FieldValuesWidget";
-import { state } from "./testMocks.spec";
+import { metadata, state } from "./testMocks.spec";
 
 const setup = (props: Partial<IFieldValuesWidgetProps> = {}) => {
   const onChange = jest.fn();
@@ -80,6 +82,25 @@ describe("FieldValuesWidget", () => {
       await userEvent.type(await screen.findByRole("combobox"), "42{enter}");
 
       expect(onChange).toHaveBeenLastCalledWith([42]);
+    });
+
+    it("should keep the full precision of a big integer for an id parameter", async () => {
+      const { onChange } = setup({
+        multi: true,
+        placeholder: "Value",
+        fields: [checkNotNull(metadata.field(ORDERS.ID))],
+        parameter: createMockParameter({
+          type: "id",
+          values_query_type: "none",
+        }),
+      });
+
+      await userEvent.type(
+        await screen.findByRole("combobox"),
+        "9223372036854775807{enter}",
+      );
+
+      expect(onChange).toHaveBeenLastCalledWith(["9223372036854775807"]);
     });
   });
 

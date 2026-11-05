@@ -148,6 +148,14 @@ jobs:
             echo "**Triggered by:** @${{ github.actor }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Send release failure message
+        if: failure() || cancelled()
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Auto ${{ inputs.kind }} release for v${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+
   trigger-release:
     name: Release ${{ needs.prepare.outputs.version }}
     needs: prepare

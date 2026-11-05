@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
-   [metabase-enterprise.custom-viz-plugin.schema]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -69,7 +69,8 @@
 
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
+  {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
+   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
    :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
                :status :error_message
                ;; dev-only plugins are never served from another instance

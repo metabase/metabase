@@ -63,6 +63,7 @@ export const createMockImplicitQueryAction = ({
   id: 1,
   entity_id: createMockEntityId(),
   kind: "row/create",
+  table_id: null,
   name: "Create",
   description: "",
   model_id: 1,

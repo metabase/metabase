@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Box } from "metabase/ui";
 import type {
   DatasetColumn,

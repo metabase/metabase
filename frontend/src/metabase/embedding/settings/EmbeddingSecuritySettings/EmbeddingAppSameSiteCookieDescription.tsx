@@ -12,7 +12,7 @@ import S from "./EmbeddingAppSameSiteCookieDescription.module.css";
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector((state) =>
     getDocsUrl(state, {
-      page: "embedding/interactive-embedding",
+      page: "embedding/full-app-embedding",
       anchor: "embedding-metabase-in-a-different-domain",
     }),
   );

@@ -413,7 +413,7 @@
                 (is (t2/exists? :model/Session :user_id support-user-id :ended_at nil)))
               (testing "once the grant window has passed the sweep revokes access"
                 ;; Move the grant's end into the past; `revoked_at` stays nil, so nothing else cleans up.
-                (t2/update! :model/SupportAccessGrantLog (:id grant)
+                (t2/update! :model/SupportAccessGrantLog :id (:id grant)
                             {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
                 (grants/expire-ended-grants!)
                 (is (not (:is_superuser (t2/select-one :model/User :id support-user-id)))
@@ -442,7 +442,7 @@
               (t2/insert! :model/Session {:id          "otheruser001"
                                           :user_id     other-user-id
                                           :session_key (str (random-uuid))})
-              (t2/update! :model/SupportAccessGrantLog (:id grant)
+              (t2/update! :model/SupportAccessGrantLog :id (:id grant)
                           {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
               (grants/expire-ended-grants!)
               (is (:is_superuser (t2/select-one :model/User :id other-user-id)))
@@ -468,7 +468,7 @@
                 create-started               (promise)
                 original-revoke-user-access! (dynamic-redefs/original-fn
                                               #'sag.model/revoke-support-user-access!)]
-            (t2/update! :model/SupportAccessGrantLog (:id ended-grant)
+            (t2/update! :model/SupportAccessGrantLog :id (:id ended-grant)
                         {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
             (mt/with-dynamic-fn-redefs
               [sag.model/revoke-support-user-access!
@@ -490,7 +490,7 @@
                     (deliver allow-teardown true)
                     (is (not= ::timeout (deref expire-result 5000 ::timeout)))
                     (let [new-grant (deref create-result 5000 ::timeout)
-                          support-user (t2/select-one :model/User support-user-id)
+                          support-user (t2/select-one :model/User :id support-user-id)
                           auth-identity (t2/select-one :model/AuthIdentity
                                                        :user_id support-user-id
                                                        :provider "support-access-grant")]

@@ -94,11 +94,11 @@
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
-               (t2/update! table (u/the-id table) {:name new-name})))
+               (t2/update! table :id (u/the-id table) {:name new-name})))
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] :id (u/the-id table))))))))
 
 (deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
@@ -128,7 +128,7 @@
     (let [now (mi/current-timestamp)]
       (mt/with-temp [:model/Field field {:created_at now}]
         (is (= (u.date/format now)
-               (u.date/format (t2/select-one-fn :created_at :model/Field (:id field)))))))))
+               (u.date/format (t2/select-one-fn :created_at :model/Field :id (:id field)))))))))
 
 (defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
   #{:non_timestamped :other})
@@ -322,3 +322,7 @@
       (let [hydrated (t2/hydrate card :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
+
+(deftest ^:parallel ->integer-test
+  (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
+    (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))

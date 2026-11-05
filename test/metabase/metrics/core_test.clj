@@ -215,7 +215,7 @@
       (let [first-dim (first (:dimensions (t2/select-one :model/Card :id (:id metric))))
             dim-id (:id first-dim)]
         ;; Manually update the dimension to have a custom display name
-        (t2/update! :model/Card (:id metric)
+        (t2/update! :model/Card :id (:id metric)
                     {:dimensions [{:id dim-id
                                    :name (:name first-dim)
                                    :display-name "My Custom Metric Dimension"
@@ -234,7 +234,7 @@
                                        :database_id (mt/id)
                                        :table_id (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (t2/update! :model/Card (:id metric) {:dataset_query {}})
+      (t2/update! :model/Card :id (:id metric) {:dataset_query {}})
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [reloaded (t2/select-one :model/Card :id (:id metric))]
         (is (nil? (:dimensions reloaded))
@@ -284,7 +284,7 @@
         (is (>= (count dimensions) 2)
             "Venues should yield multiple dimensions to curate")
         ;; Simulate the user removing the first dimension (and its mapping).
-        (t2/update! :model/Card (:id metric)
+        (t2/update! :model/Card :id (:id metric)
                     {:dimensions         kept
                      :dimension_mappings kept-mappings})
         (metrics/sync-dimensions! :metadata/metric (:id metric))
@@ -304,8 +304,8 @@
                                        :dataset_query (metric-query)}]
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       ;; User removes every dimension; the empty `:dimensions` is authoritative, not "uninitialized".
-      (t2/update! :model/Card (:id metric) {:dimensions         []
-                                            :dimension_mappings []})
+      (t2/update! :model/Card :id (:id metric) {:dimensions         []
+                                                :dimension_mappings []})
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (is (zero? (count (t2/select-one-fn :dimensions :model/Card :id (:id metric))))
           "Emptied dimensions must not be re-seeded"))))
@@ -326,7 +326,7 @@
             ;; reachable from venues), simulating a deleted column — keeping the rest of the
             ;; field ref (incl. :lib/uuid) intact.
             orphan-mapping (assoc-in mapping [:target 2] (mt/id :users :name))]
-        (t2/update! :model/Card (:id metric)
+        (t2/update! :model/Card :id (:id metric)
                     {:dimensions         [dim]
                      :dimension_mappings [orphan-mapping]})
         (metrics/sync-dimensions! :metadata/metric (:id metric))
@@ -385,7 +385,7 @@
       (let [first-dim (first (:dimensions (t2/select-one :model/Measure :id (:id measure))))
             dim-id (:id first-dim)]
         ;; Manually update the dimension to have a custom display name
-        (t2/update! :model/Measure (:id measure)
+        (t2/update! :model/Measure :id (:id measure)
                     {:dimensions [{:id dim-id
                                    :name (:name first-dim)
                                    :display-name "My Custom Name"
@@ -413,7 +413,7 @@
         (is (>= (count dimensions) 2)
             "Venues should yield multiple dimensions")
         ;; Drop one dimension from storage; a full re-sync should bring it back.
-        (t2/update! :model/Measure (:id measure)
+        (t2/update! :model/Measure :id (:id measure)
                     {:dimensions         kept
                      :dimension_mappings kept-mappings})
         (metrics/sync-dimensions! :metadata/measure (:id measure))

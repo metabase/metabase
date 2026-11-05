@@ -1,4 +1,4 @@
-import type { UpdateDataPermissionParams } from "metabase/admin/permissions/permissions";
+import type { UpdateDataPermissionParams } from "metabase/permissions";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {

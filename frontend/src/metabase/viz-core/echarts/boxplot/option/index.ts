@@ -173,6 +173,13 @@ export const getBoxPlotOption = (
     settings,
   );
 
+  // echarts crashes building a cartesian coordinate system that has an x-axis
+  // but no y-axis, which happens when no y-axis model resolves on an empty
+  // render. Render an empty chart instead of emitting a lone x-axis.
+  if (yAxis.length === 0) {
+    return {};
+  }
+
   const boxDimensions = [
     X_AXIS_DATA_KEY,
     ...chartModel.seriesModels.flatMap((seriesModel) =>

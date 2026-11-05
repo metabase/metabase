@@ -20,7 +20,7 @@ describe("withCartesianChartSize", () => {
     expect(renderingContext.theme.cartesian.axisTitle).toEqual({
       fontSize: 12,
       fontWeight: 700,
-      marginX: 12,
+      marginX: 16,
       marginY: 16,
     });
   });

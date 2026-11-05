@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.charts
-  "Chart tool wrappers."
+  "The `create_chart` and `edit_chart` tools."
   (:require
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
@@ -7,11 +7,10 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,18 +32,19 @@
    [:title :string]
    [:description :string]])
 
-(mu/defn ^{:tool-name "create_chart"
-           :scope     scope/agent-viz-create}
-  create-chart-tool
-  "Create a chart from a query.
+(defrecord CreateChartTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "create_chart"
+     :description (str "Create a chart from a query.\n\n"
+                       "Provide a query_id in data_source, a chart_type in viz_settings, and a short, "
+                       "human-friendly `title` shown above the chart. Also provide a concise one- or two-sentence "
+                       "`description` explaining what the chart shows (the metric, the grouping, and any notable "
+                       "filter); it is used as the saved question's description.")
+     :scope       scope/agent-viz-create
+     :args        create-chart-schema})
 
-  Provide a query_id in data_source, a chart_type in viz_settings, and a short,
-  human-friendly `title` shown above the chart. Also provide a concise one- or
-  two-sentence `description` explaining what the chart shows (the metric, the
-  grouping, and any notable filter); it is used as the saved question's
-  description."
-  [{:keys [data_source viz_settings title description]} :- create-chart-schema]
-  (try
+  (handle [_ {:keys [data_source viz_settings title description]} _ctx]
     (let [result     (create-chart-tools/create-chart
                       {:query-id      (get data_source :query_id)
                        :chart-type    (keyword (get viz_settings :chart_type))
@@ -58,9 +58,11 @@
                              :query       (links/->frontend-query (:query result))
                              :display     (:chart-type result)
                              :title       title
-                             :description description})]})
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+                             :description description})]})))
+
+(def create-chart-tool
+  "`create_chart`: chart a query that this conversation holds."
+  (->CreateChartTool))
 
 (def ^:private edit-chart-schema
   [:map {:closed true}
@@ -70,16 +72,18 @@
    [:title :string]
    [:description :string]])
 
-(mu/defn ^{:tool-name "edit_chart"
-           :scope     scope/agent-viz-edit}
-  edit-chart-tool
-  "Edit an existing chart's visualization type.
+(defrecord EditChartTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "edit_chart"
+     :description (str "Edit an existing chart's visualization type.\n\n"
+                       "Provide a new chart_type in new_viz_settings and a short, human-friendly `title` shown above "
+                       "the chart. Also provide a concise `description` of what the chart shows; it is used as the "
+                       "saved question's description.")
+     :scope       scope/agent-viz-edit
+     :args        edit-chart-schema})
 
-  Provide a new chart_type in new_viz_settings and a short, human-friendly `title`
-  shown above the chart. Also provide a concise `description` of what the chart
-  shows; it is used as the saved question's description."
-  [{:keys [chart_id new_viz_settings title description]} :- edit-chart-schema]
-  (try
+  (handle [_ {:keys [chart_id new_viz_settings title description]} _ctx]
     (let [new-viz (keyword (get new_viz_settings :chart_type))
           chart (get (shared/current-charts-state) chart_id)
           query (or (first (:queries chart))
@@ -104,6 +108,8 @@
                       :query       (links/->frontend-query query)
                       :display     new-viz
                       :title       title
-                      :description description})]})
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+                      :description description})]})))
+
+(def edit-chart-tool
+  "`edit_chart`: give a chart from this conversation a new chart type, as a new chart."
+  (->EditChartTool))

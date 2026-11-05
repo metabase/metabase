@@ -27,6 +27,15 @@ describe("ActionCreator > Query Actions", () => {
       ).toBeInTheDocument();
     });
 
+    it("doesn't let non-admins create an action", async () => {
+      await setup({ isAdmin: false });
+
+      expect(screen.getByText(/New action/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should disable submit by default", async () => {
       await setup();
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();

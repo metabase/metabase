@@ -53,7 +53,9 @@
   execute-dashcard!
   fetch-values]
  [metabase.actions.models
+  adhoc-action
   check-action-databases-enabled
+  check-implicit-action-table-pk
   check-implicit-actions-supported
   dashcard->action
   insert!

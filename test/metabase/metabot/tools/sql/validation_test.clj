@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
+   [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.test :as mt]))
 
 ;;;; contains-template-tags?
 
@@ -61,6 +63,30 @@
    {:context "Snippet references should skip validation"
     :dialect "postgres" :sql "SELECT * FROM {{snippet: common_user_joins}}"
     :expected {:valid? true :dialect "postgres"}}
+   {:context "An unclosed optional clause should fail validation"
+    :dialect "postgres" :sql "SELECT count(*) FROM products [[WHERE category = {{cat}}"
+    :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
+               :error-message #(str/includes? % "with no matching")}}
+   {:context "An unclosed variable should fail validation when no dialect is provided"
+    :dialect nil :sql "SELECT * FROM products WHERE category = {{cat"
+    :expected {:valid? false :dialect nil :reason :invalid-template-syntax}}
+   {:context "An empty variable in SQL with template tags should fail validation"
+    :dialect "postgres" :sql "SELECT * FROM products WHERE category = {{cat}} AND price = {{}}"
+    :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
+               :error-message #(str/includes? % "expected a param name")}}
+   {:context "An optional clause without a variable in SQL with template tags should fail validation"
+    :dialect "postgres" :sql "SELECT * FROM products WHERE price > {{min}} [[AND category = 'Widget']]"
+    :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
+               :error-message #(str/includes? % "must contain at least one")}}
+   {:context "A nested array literal without template tags should pass validation"
+    :dialect "postgres" :sql "SELECT ARRAY[[1,2],[3,4]] AS m"
+    :expected {:valid? true :dialect "postgres"}}
+   {:context "Brackets in a quoted identifier without template tags should pass validation"
+    :dialect nil :sql "SELECT 1 AS \"[[x]]\""
+    :expected {:valid? true :dialect nil}}
+   {:context "Brackets in a string literal should not fail validation"
+    :dialect "postgres" :sql "SELECT '[[' AS a, '{{' AS b FROM products"
+    :expected {:valid? true :dialect "postgres"}}
    {:context "Validation should be skipped when no dialect is provided"
     :dialect nil :sql "SELECT * FROM users"
     :expected {:valid? true :dialect nil}}
@@ -83,6 +109,18 @@
       (is (=? expected
               (metabot.tools.sql.validation/validate-sql dialect sql))))))
 
+(deftest template-syntax-error-is-english-test
+  (testing "The parser message is English for a user with another locale"
+    (mt/with-mock-i18n-bundles! {"zz" {:messages {"Invalid query: found ''[['' or '''{{''' with no matching '']]'' or ''}}''"
+                                                  "TRANSLATED PARSER MESSAGE"}}}
+      (mt/with-user-locale "zz"
+        (testing "the parser itself returns the translation"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"TRANSLATED PARSER MESSAGE"
+                                (lib/parse-parameters "SELECT {{x"))))
+        (is (=? {:valid? false
+                 :error-message "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'"}
+                (metabot.tools.sql.validation/validate-sql "postgres" "SELECT {{x")))))))
+
 (def ^:private transpilation-cases
   "Testing _context_ describe a test case. Apart from that, pretty formatting is checked by comparisons of raw output
   strings in `:transpiled-sql`."
@@ -98,6 +136,7 @@
    {:context "Multiple SQL statements should be rejected"
     :dialect "postgres" :sql "SELECT 1; SELECT 2"
     :expected {:valid? false
+               :reason :multiple-statements
                :error-message "Multiple SQL statements are not supported. Please provide a single query."}}
    {:context "Transpilation should preserve the query's logical structure"
     :dialect "snowflake" :sql "SELECT a, b FROM t WHERE x > 1 ORDER BY a"
