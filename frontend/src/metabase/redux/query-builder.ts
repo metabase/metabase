@@ -6,6 +6,7 @@
 import { createAction } from "redux-actions";
 
 import { createThunkAction } from "metabase/redux";
+import type { PendingAutoRun } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -28,6 +29,15 @@ export const setIsNativeEditorOpen = createThunkAction(
         dispatch(setUIControls({ isNativeEditorOpen }));
       }
     },
+);
+
+export const SET_PENDING_AUTO_RUN = "metabase/qb/SET_PENDING_AUTO_RUN";
+/**
+ * Asks the next query builder init of `url` to run the question once.
+ * `initializeQB` clears it after it uses it; a reload or a shared link never has it.
+ */
+export const setPendingAutoRun = createAction<PendingAutoRun | null>(
+  SET_PENDING_AUTO_RUN,
 );
 
 export const EDIT_SUMMARY = "metabase/qb/EDIT_SUMMARY";

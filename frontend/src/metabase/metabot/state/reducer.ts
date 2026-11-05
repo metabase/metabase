@@ -48,7 +48,9 @@ import type {
   MetabotAgentId,
   MetabotMessage,
   MetabotMessagePart,
+  MetabotSqlModeEntry,
   MetabotState,
+  MetabotSuggestedCodeEdit,
   MetabotToolCall,
   MetabotUserTextChatMessage,
 } from "./types";
@@ -92,6 +94,20 @@ const attachAgent = (
   agent.conversationId = conversationId;
   resetReactionState(state, agentId);
   evictConversationIfUnused(state, previousConversationId);
+};
+
+const getOmnibotSqlModeEntry = (state: WritableDraft<MetabotState>) => {
+  const conversationId = state.agents.omnibot?.conversationId;
+  return conversationId ? state.reactions.sqlModes[conversationId] : undefined;
+};
+
+const showSql = (
+  entry: WritableDraft<MetabotSqlModeEntry>,
+  isSqlShown: boolean,
+) => {
+  if (isSqlShown && entry.mode === "chart") {
+    entry.mode = "sql-shown";
+  }
 };
 
 export const metabot = createSlice({
@@ -372,9 +388,70 @@ export const metabot = createSlice({
     },
     addSuggestedCodeEdit: (
       state,
-      { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
+      { payload: codeEdit }: PayloadAction<MetabotSuggestedCodeEdit>,
     ) => {
       state.reactions.suggestedCodeEdits[codeEdit.buffer_id] = codeEdit;
+    },
+    metabotSqlStarted: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        sql: string;
+        isSqlShown: boolean;
+      }>,
+    ) => {
+      const { conversationId, sql, isSqlShown } = action.payload;
+      const entry = state.reactions.sqlModes[conversationId];
+      if (entry) {
+        entry.lastAppliedSql = sql;
+        showSql(entry, isSqlShown);
+      } else {
+        state.reactions.sqlModes[conversationId] = {
+          mode: isSqlShown ? "sql-shown" : "chart",
+          lastAppliedSql: sql,
+        };
+      }
+    },
+    /** Records the SQL of the question that the query builder loaded for a Metabot card. */
+    metabotSqlLoaded: (
+      state,
+      action: PayloadAction<{ conversationId: string; sql: string }>,
+    ) => {
+      const entry = state.reactions.sqlModes[action.payload.conversationId];
+      if (entry) {
+        entry.lastAppliedSql = action.payload.sql;
+      }
+    },
+    metabotSqlApplied: (
+      state,
+      action: PayloadAction<{ sql: string; isSqlShown: boolean }>,
+    ) => {
+      const entry = getOmnibotSqlModeEntry(state);
+      if (entry) {
+        entry.lastAppliedSql = action.payload.sql;
+        showSql(entry, action.payload.isSqlShown);
+      }
+    },
+    metabotSqlShown: (state, action: PayloadAction<{ sql: string }>) => {
+      const entry = getOmnibotSqlModeEntry(state);
+      if (entry?.lastAppliedSql === action.payload.sql) {
+        showSql(entry, true);
+      }
+    },
+    metabotSqlHidden: (state, action: PayloadAction<{ sql: string }>) => {
+      const entry = getOmnibotSqlModeEntry(state);
+      if (
+        entry?.lastAppliedSql === action.payload.sql &&
+        entry.mode === "sql-shown"
+      ) {
+        entry.mode = "chart";
+      }
+    },
+    metabotSqlEditedByUser: (state) => {
+      const entry = getOmnibotSqlModeEntry(state);
+      if (entry) {
+        entry.mode = "user-in-control";
+      }
     },
     removeSuggestedCodeEdit: (
       state,

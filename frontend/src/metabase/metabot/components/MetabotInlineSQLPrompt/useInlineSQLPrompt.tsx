@@ -14,6 +14,12 @@ import { createPortal } from "react-dom";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useMetabotSQLSuggestion } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
+import {
+  getMetabotSuggestedCodeEdit,
+  getOmnibotSqlModeEntry,
+  metabotSqlEditedByUser,
+} from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
@@ -81,7 +87,7 @@ export function useInlineSQLPrompt(
   );
 
   const {
-    source: generatedSource,
+    source: suggestedSource,
     isLoading,
     error,
     generate,
@@ -91,6 +97,26 @@ export function useInlineSQLPrompt(
     reject,
     suggestionModels,
   } = useMetabotSQLSuggestion({ databaseId, bufferId, onGenerated });
+
+  // The query builder applies an auto-apply edit itself; it is not a proposal.
+  const isAutoApplyEdit = useSelector(
+    (state) => getMetabotSuggestedCodeEdit(state, bufferId)?.autoApply ?? false,
+  );
+  const generatedSource = isAutoApplyEdit ? undefined : suggestedSource;
+
+  const dispatch = useDispatch();
+  // Only the first hand edit changes the mode, so typing does not dispatch.
+  const isSidebarSqlInAutoMode = useSelector((state) => {
+    const mode =
+      bufferId === "qb" ? getOmnibotSqlModeEntry(state)?.mode : undefined;
+    return mode != null && mode !== "user-in-control";
+  });
+  const onHandEditRef = useRef(() => {});
+  onHandEditRef.current = () => {
+    if (isSidebarSqlInAutoMode) {
+      dispatch(metabotSqlEditedByUser());
+    }
+  };
 
   const getSourceSql = useCallback(() => {
     return viewRef.current?.state.doc.toString() ?? "";
@@ -238,6 +264,15 @@ export function useInlineSQLPrompt(
         setIsPromptOpen(isVisible);
         if (!isVisible) {
           setPortalTarget(null);
+        }
+
+        const isHandEdit =
+          update.docChanged &&
+          update.transactions.some(
+            (tr) => tr.isUserEvent("input") || tr.isUserEvent("delete"),
+          );
+        if (isHandEdit) {
+          onHandEditRef.current();
         }
 
         if (!update.docChanged || !generatedSqlRef.current) {

@@ -41,6 +41,8 @@ export type MetabotCodeEditorBufferContext = {
     start: { line: number; column: number };
     end: { line: number; column: number };
   };
+  /** Tells the backend that the frontend applies a `code_edit` for this buffer without a review. */
+  auto_apply?: boolean;
 };
 
 export type MetabotCodeEditorContext = {
@@ -150,6 +152,8 @@ export type MetabotCodeEdit = {
   mode: "rewrite";
   value: string;
   active?: boolean;
+  /** Present, and true, when the user asked Metabot to show the SQL. */
+  show_sql?: boolean;
 };
 
 /* Metabot v3 - API Request Types */

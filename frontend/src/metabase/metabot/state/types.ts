@@ -168,11 +168,33 @@ export type MetabotChainStep =
       startedAtMs?: number;
     };
 
+export type MetabotSuggestedCodeEdit = MetabotCodeEdit & {
+  /** The query builder applies and runs the edit, with no diff to review. */
+  autoApply?: boolean;
+};
+
+/**
+ * How the sidebar treats the SQL that Metabot started in the query builder:
+ * - "chart": the editor stays closed; Metabot edits apply and run.
+ * - "sql-shown": the user asked to see the SQL, and did not close the editor
+ *   since; Metabot edits apply and run.
+ * - "user-in-control": the user edited the SQL; Metabot edits show as a diff.
+ */
+export type MetabotSqlMode = "chart" | "sql-shown" | "user-in-control";
+
+export type MetabotSqlModeEntry = {
+  mode: MetabotSqlMode;
+  /** The SQL text of the query builder question after the last Metabot change. */
+  lastAppliedSql: string;
+};
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
   suggestedCodeEdits: Partial<
-    Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
+    Record<MetabotCodeEdit["buffer_id"], MetabotSuggestedCodeEdit>
   >;
+  /** Keyed by conversation id. A conversation without an entry uses today's diff flow. */
+  sqlModes: Partial<Record<string, MetabotSqlModeEntry>>;
 };
 
 export interface MetabotConversationState {
