@@ -198,23 +198,18 @@
         (finally
           (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original))))))
 
-(deftest ^:parallel direct-hook-where-fields-test
-  (testing "single-key :id joins collapse to #{:id}"
-    (are [model] (= #{:id} (search.spec/hook-where-fields model))
-      :model/Card
-      :model/Collection
-      :model/Database
-      :model/Table)))
-
-(deftest ^:parallel joined-hook-where-fields-test
-  (testing "multi-clause joins collect every :updated-qualified column referenced in the where"
-    (is (= #{:most_recent :model_id :model} (search.spec/hook-where-fields :model/Revision)))
-    (is (= #{:most_recent :moderated_item_id :moderated_item_type}
-           (search.spec/hook-where-fields :model/ModerationReview)))))
-
-(deftest ^:parallel model-without-hooks-has-no-where-fields-test
-  (testing "a model that feeds no search-model hooks has nothing to capture"
-    (is (nil? (search.spec/hook-where-fields :model/User)))))
+(deftest ^:parallel hook-where-fields-test
+  (are [model fields] (= fields (search.spec/hook-where-fields model))
+    ;; single-key :id joins collapse to #{:id}
+    :model/Card             #{:id}
+    :model/Collection       #{:id}
+    :model/Database         #{:id}
+    :model/Table            #{:id}
+    ;; multi-clause joins collect every :updated-qualified column in the where
+    :model/ModerationReview #{:moderated_item_id :moderated_item_type :most_recent}
+    :model/Revision         #{:model :model_id :most_recent}
+    ;; a model that feeds no search-model hooks has nothing to capture
+    :model/User             nil))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"
