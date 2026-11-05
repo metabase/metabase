@@ -30,6 +30,9 @@
     This is a capture hole, and a loud one: the consumer's convergence backstop is what covers it.
   - DML that bypasses the model — `(t2/delete! (t2/table-name model) ...)`, raw `t2/query` — delivers no
     event, exactly as it bypasses every other Toucan 2 tool.
+  - A delete given an explicit connection (`:conn`) still takes its snapshot on the current connection, so it
+    cannot see rows that connection has not committed.
+    Nothing captured is deleted that way today.
   - A model mixing capture with `before-delete` selects the matching rows twice: once for the row-level hook,
     once for the narrow snapshot.
     Capture is deliberately the inner of the two.
