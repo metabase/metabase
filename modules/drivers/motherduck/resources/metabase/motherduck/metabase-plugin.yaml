@@ -24,6 +24,9 @@ driver:
         - placeholder: my_db
           helper-text: The name of a database in your MotherDuck account, or of a share attached to it.
           required: true
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
     # The endpoint takes the token as the password and ignores the user name, so there's no user field; the driver
     # sends the user name MotherDuck documents. It always uses TLS, so there's no SSL toggle either.
     - name: token-info

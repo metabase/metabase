@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    ;; Register the parent before registering :motherduck.
    [metabase.driver.postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -19,10 +20,12 @@
    [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sync :as driver.s]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -56,17 +59,18 @@
 ;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
 ;; lasts for the session. Metabase qualifies tables with only the schema, so later queries and syncs that reuse the
 ;; pooled connection would read the other database. Switch back to the connection's own database at every checkout.
-;; `getCatalog` is the database the connection opened with, whatever SQL has switched to since.
-;; Downloads stay read-only here: `sql-jdbc.execute/set-default-connection-options!` exempts only `:postgres` itself,
-;; not its children, and the endpoint enforces read-only mode, so a native download that writes fails.
-(defmethod sql-jdbc.execute/do-with-connection-with-options :motherduck
-  [driver db-or-id-or-spec options f]
-  ((get-method sql-jdbc.execute/do-with-connection-with-options :postgres)
-   driver db-or-id-or-spec options
-   (fn [^Connection conn]
-     (with-open [stmt (.createStatement conn)]
-       (.execute stmt (str "USE " (sql.u/quote-name driver :database (.getCatalog conn)))))
-     (f conn))))
+;; c3p0 already makes a round trip at each checkout to test the connection, and a `USE` tests it as well as
+;; `isValid()` does, so make that the test query. The reset then adds no round trip of its own, unlike a `USE` per
+;; query, which cost Snowflake users (#63040). Tests normally skip the checkout test and check idle connections in the
+;; background instead, so turn the checkout test on for them too, and the idle test off, as in production.
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :motherduck
+  [driver database]
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :postgres) driver database)
+   {"preferredTestQuery"       (str "USE " (sql.u/quote-name driver :database
+                                                             (:dbname (driver.conn/effective-details database))))
+    "testConnectionOnCheckout" true
+    "idleConnectionTestPeriod" 0}))
 
 ;; The endpoint's messages for a bad token or database name don't match Postgres's, so map them here to highlight the
 ;; field in the connection form.
@@ -159,7 +163,28 @@
 
 (defmethod driver/describe-database* :motherduck
   [_driver database]
-  {:tables (into #{} (sql-jdbc.execute/reducible-query database describe-database-tables-sql))})
+  (let [[inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
+    {:tables (into #{}
+                   (filter #(sql-jdbc.describe-database/include-schema-logging-exclusion
+                             inclusion-patterns exclusion-patterns (:schema %)))
+                   (sql-jdbc.execute/reducible-query database describe-database-tables-sql))}))
+
+;; JDBC's `getSchemas()` lists the schemas of every database the connection can see, so `main` appears once for each.
+;; List only the current database's. `duckdb_schemas()` has no system schemas for it, and marks `main` as internal, so
+;; don't filter on that.
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :motherduck
+  [driver ^Connection conn _metadata inclusion-patterns exclusion-patterns]
+  (with-open [stmt (sql-jdbc.sync.common/prepare-statement
+                    driver conn "SELECT schema_name FROM duckdb_schemas() WHERE database_name = current_database()" [])
+              rs   (.executeQuery stmt)]
+    (loop [schemas (transient [])]
+      (if (.next rs)
+        (let [schema (.getString rs 1)]
+          (recur (cond-> schemas
+                   (sql-jdbc.describe-database/include-schema-logging-exclusion
+                    inclusion-patterns exclusion-patterns schema)
+                   (conj! schema))))
+        (persistent! schemas)))))
 
 ;; Based on the Postgres query, with three changes:
 ;; - Primary keys come from duckdb_constraints(), scoped to the current database. The endpoint's

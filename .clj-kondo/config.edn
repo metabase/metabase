@@ -285,6 +285,7 @@
               :googleanalytics
               :hive-like
               :mongo
+              :motherduck
               :oracle
               :presto-jdbc
               :redshift
@@ -293,8 +294,7 @@
               :sqlite
               :sqlserver
               :starburst
-              :vertica
-              :motherduck}}
+              :vertica}}
 
   ;;
   ;; misc config for built-in linters

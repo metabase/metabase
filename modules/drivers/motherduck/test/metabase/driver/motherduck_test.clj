@@ -475,6 +475,33 @@
                           (driver/describe-database :motherduck)
                           :tables))))))))
 
+(mt/defdataset schema-filters
+  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+
+(deftest schema-filters-test
+  (mt/test-driver :motherduck
+    (mt/dataset schema-filters
+      (execute-statements! "CREATE SCHEMA IF NOT EXISTS other"
+                           "CREATE OR REPLACE TABLE other.other_table (x INTEGER)")
+      (let [database      (lib.metadata/database (mt/metadata-provider))
+            with-filter   (fn [filter-type patterns]
+                            (update database :details assoc
+                                    :schema-filters-type     filter-type
+                                    :schema-filters-patterns patterns))
+            table-schemas (fn [database]
+                            (into #{} (map :schema) (:tables (driver/describe-database :motherduck database))))]
+        (testing "without filters, only the connected database's schemas are listed, not other databases'"
+          (is (= #{"main" "other"} (driver/syncable-schemas :motherduck database)))
+          (is (= #{"main" "other"} (table-schemas database))))
+        (testing "an inclusion filter limits schemas and tables"
+          (let [database (with-filter "inclusion" "oth*")]
+            (is (= #{"other"} (driver/syncable-schemas :motherduck database)))
+            (is (= #{"other"} (table-schemas database)))))
+        (testing "an exclusion filter removes schemas and tables"
+          (let [database (with-filter "exclusion" "other")]
+            (is (= #{"main"} (driver/syncable-schemas :motherduck database)))
+            (is (= #{"main"} (table-schemas database)))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                MotherDuck copies of Postgres-only tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
