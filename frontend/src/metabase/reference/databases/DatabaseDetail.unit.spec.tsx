@@ -95,5 +95,27 @@ describe("DatabaseDetail", () => {
     expect(screen.getByPlaceholderText("Nothing interesting yet")).toHaveValue(
       "Original note",
     );
+
+    // Cancel must reset the form, so the cancelled text is not saved later
+    await userEvent.type(
+      screen.getByPlaceholderText("No description yet"),
+      "A pretty ok store",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/database/${database.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+    const [call] = fetchMock.callHistory.calls(
+      `path:/api/database/${database.id}`,
+      { method: "PUT" },
+    );
+    expect(JSON.parse(String(call.options.body))).toEqual({
+      description: "A pretty ok store",
+    });
   });
 });
