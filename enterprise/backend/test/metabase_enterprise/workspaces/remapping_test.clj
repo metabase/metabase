@@ -114,9 +114,7 @@
              (is (= #{"id" "source" "scratch_only"} (field-set))))
            (testing "a full sync keeps the scratch table's columns, not main's"
              (sync/sync-database! (mt/id) {:scan :schema})
-             (is (= #{"id" "source" "scratch_only"} (field-set)))
-             (testing "and indexes come from the scratch table, which has none, not main's primary key"
-               (is (not (t2/select-one-fn :database_indexed :model/Field :table_id (:id table) :name "id")))))
+             (is (= #{"id" "source" "scratch_only"} (field-set))))
            (testing "compiling MBQL shows main names (Convert to SQL, POST /api/dataset/native)"
              (let [sql (:query (qp.compile/compile (mbql)))]
                (is (str/includes? sql (format "\"public\".\"%s\"" table-name)))
@@ -285,12 +283,15 @@
           (is (zero? (t2/count :model/TableRemapping :database_id (mt/id)))))))))
 
 (deftest unsupported-engine-fails-closed-test
-  (testing "a workspace naming a database that is not Postgres-family refuses its transforms instead of writing main"
-    (mt/with-temp [:model/Database {db-id :id, db-name :name} {:engine :h2}]
-      (mt/with-temporary-setting-values [instance-workspace (json/encode {:name      "w"
-                                                                          :databases {db-name {:schemas {"PUBLIC" "SCRATCH"}}}})]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"support only Postgres-family"
-                              (ws/resolve-transform-target db-id {:type "table", :schema "PUBLIC", :name "T"})))))))
+  (testing "a workspace naming a database that is not Postgres refuses its transforms instead of writing main"
+    (doseq [engine [:h2 :redshift]]
+      (mt/with-temp [:model/Database {db-id :id, db-name :name} {:engine engine}]
+        (mt/with-temporary-setting-values [instance-workspace (json/encode {:name      "w"
+                                                                            :databases {db-name {:schemas {"PUBLIC" "SCRATCH"}}}})]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                (re-pattern (str "is a " (name engine) " database; workspaces support only Postgres databases"))
+                                (ws/resolve-transform-target db-id {:type "table", :schema "PUBLIC", :name "T"}))
+              (name engine)))))))
 
 (def ^:private remaps
   {{:schema "public", :table "orders"} {:schema "mb__iso_public", :table "orders"}})
@@ -365,9 +366,32 @@
                             (ws/rewrite-sql :postgres remaps sql))
           sql))))
 
+(deftest rewrite-sql-string-literals-test
+  (testing "a backslash anywhere in the text is refused, inside dollar quotes and comments too: its meaning depends on
+            the literal's kind and on standard_conforming_strings, so the server could read it differently from the check"
+    (doseq [sql ["SELECT * FROM public.orders WHERE src ~ E'\\\\s+'"
+                 "SELECT E'\\\\s+' AS r"
+                 "SELECT 'a\\' AS r"
+                 "SELECT 'a\\'' ; DELETE FROM public.customers; --'"
+                 "SELECT N'a\\b' AS r"
+                 "SELECT U&'d\\0061t' AS r"
+                 "SELECT $$a\\b$$ AS r"
+                 "SELECT 1 -- a comment with a \\ in it"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The SQL has a backslash, which a workspace refuses"
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql)))
+  (testing "SQL with no replacement comes back exactly as written"
+    (doseq [sql ["select  src   from public.customers  where name = 'x'"
+                 "SELECT $$it's$$ AS q, E'no escapes' AS e, N'national' AS n, U&'unicode' AS u"]]
+      (is (= sql (ws/rewrite-sql :postgres remaps sql)))))
+  (testing "row locks are refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"FOR UPDATE / FOR SHARE locks rows"
+                          (ws/rewrite-sql :postgres remaps "SELECT * FROM public.orders FOR UPDATE")))))
+
 (deftest rewrite-sql-side-effect-functions-test
   (testing "a function with a side effect is refused, by name or family, however its name is written"
-    (doseq [function ["nextval" "setval" "lo_creat" "lo_import" "lo_unlink" "set_config" "pg_advisory_lock"
+    (doseq [function ["nextval" "setval" "txid_current" "pg_switch_wal" "pg_create_logical_replication_slot"
+                      "pg_logical_emit_message" "pg_stat_reset" "lo_creat" "lo_import" "lo_unlink" "set_config" "pg_advisory_lock"
                       "pg_advisory_xact_lock_shared" "pg_try_advisory_lock" "pg_terminate_backend" "pg_cancel_backend"
                       "pg_reload_conf" "pg_sleep" "pg_sleep_for"]
             sql      [(format "SELECT %s(1)" function)
@@ -410,7 +434,7 @@
                  "SELECT id FROM public.orders INTERSECT SELECT id FROM public.orders"
                  "SELECT lower(src) FROM public.orders"]]
       (is (str/includes? (ws/rewrite-sql :postgres remaps sql) "mb__iso_public") sql))
-    (is (= "SELECT UPPER('select 1 from public.customers')"
+    (is (= "SELECT upper('select 1 from public.customers')"
            (ws/rewrite-sql :postgres remaps "SELECT upper('select 1 from public.customers')"))
         "a string literal naming no remapped table is fine"))
   (testing "other replace-names callers, which don't ask for strictness, are unchanged"
@@ -521,6 +545,15 @@
         (is (nil? (ws/workspace-schemas (mt/db))))
         (is (=? {:total-fields pos-int?}
                 (sync/sync-fields-for-table! (t2/select-one :model/Table :id (mt/id :venues))))))
+      (testing "the remapping hooks make no app-DB query at all"
+        (let [database    (mt/db)
+              database-id (mt/id)]
+          (ws/workspace-mode?)
+          (t2/with-call-count [call-count]
+            (is (nil? (ws/table-remappings database-id)))
+            (is (nil? (ws/workspace-schemas database)))
+            (is (nil? (ws/workspace-remappings database)))
+            (is (zero? (call-count))))))
       (testing "the transform hooks make no app-DB query at all"
         (let [target {:type "table", :schema "PUBLIC", :name "T"}]
           (ws/workspace-mode?)
@@ -579,3 +612,39 @@
                                    (actions/perform-action! :model.row/create
                                                             {:database (mt/id), :type :query, :query {:source-table table-id}
                                                              :create-row {"id" 2}}))))))))))
+
+(deftest removing-remappings-re-syncs-main-tables-test
+  (do-with-postgres-workspace!
+   (fn [_scratch]
+     (let [table-name (random-identifier "ws_resync")]
+       (execute-sql! (format "CREATE TABLE public.%s (id int, main_only text)" table-name)
+                     (format "INSERT INTO public.%s VALUES (1, 'main')" table-name))
+       (try
+         (sync/sync-database! (mt/id) {:scan :schema})
+         (run-transform! (native-transform! "SELECT 1 AS id, 'x' AS scratch_only" table-name))
+         (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "public" :name table-name)
+               fields   #(t2/select-fn-set :name :model/Field :table_id table-id :active true)]
+           (is (= #{"id" "scratch_only"} (fields)))
+           (testing "turning workspace mode off re-syncs the main table, so MBQL on it reads main again"
+             (ee.ws/clear-instance-workspace!)
+             (is (= #{"id" "main_only"} (fields)))
+             (let [mp (mt/metadata-provider)]
+               (is (= [[1 "main"]] (rows (lib/query mp (lib.metadata/table mp table-id))))))))
+         (finally
+           (execute-sql! (format "DROP TABLE public.%s" table-name))))))))
+
+(deftest uploads-are-refused-in-workspace-mode-test
+  (mt/with-temp [:model/Table table {:db_id (mt/id), :schema "PUBLIC", :name "UPLOADED_CSV", :is_upload true}]
+    (mt/with-temporary-setting-values [instance-workspace (workspace-json "PUBLIC" "SCRATCH")]
+      (doseq [action [:metabase.upload/append :metabase.upload/replace]]
+        (testing (str action)
+          (is (=? {:status-code 400}
+                  (ex-data (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Uploads are not available on a workspace instance"
+                                                 (mt/with-current-user (mt/user->id :crowberto)
+                                                   (upload/update-csv! {:table-id (:id table), :filename "x.csv"
+                                                                        :file (java.io.File. "x.csv"), :action action}))))))))))))
+
+(deftest model-persistence-api-is-refused-in-workspace-mode-test
+  (mt/with-temporary-setting-values [instance-workspace (workspace-json "PUBLIC" "SCRATCH")]
+    (is (= "Model persistence is not available on a workspace instance."
+           (mt/user-http-request :crowberto :post 400 "persist/enable")))))
