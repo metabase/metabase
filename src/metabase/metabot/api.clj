@@ -467,8 +467,8 @@
                                                      [:name       [:maybe :string]]
                                                      [:error      [:maybe :string]]]
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summarize sidebar well. `mode` is
-  `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with an `error`, when no LLM is
-  available or nothing in `columns` fits; the client compiles and validates the formula."
+  `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with an `error`, when nothing in
+  `columns` fits. Other failures are HTTP errors with an `error-code`. The client compiles and validates the formula."
   [_route-params
    _query-params
    body :- [:map {:closed true}

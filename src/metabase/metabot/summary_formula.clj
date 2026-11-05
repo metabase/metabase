@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -110,43 +111,76 @@
             u/not-blank
             (u/truncate name-max-chars))))
 
-(def ^:private unavailable-messages
-  {:metabot-disabled  "AI features are turned off."
-   :no-llm            "No AI provider is connected."
-   :usage-limit       "The AI usage limit has been reached."
-   :permission-denied "You don't have access to AI features."})
+(def ^:private unavailable-errors
+  {:metabot-disabled  {:status-code 403
+                       :error-code  "metabot_disabled"
+                       :message     "AI features are turned off."}
+   :no-llm            {:status-code 503
+                       :error-code  "ai_provider_not_configured"
+                       :message     "No AI provider is connected."}
+   :usage-limit       {:status-code 429
+                       :error-code  "ai_usage_limit_reached"
+                       :message     "The AI usage limit has been reached."}
+   :permission-denied {:status-code 403
+                       :error-code  "metabot_permission_denied"
+                       :message     "You don't have access to AI features."}})
+
+(defn- unavailable-error
+  ([reason]
+   (unavailable-error reason nil))
+  ([reason cause]
+   (let [{:keys [message] :as error} (unavailable-errors reason)]
+     (ex-info message error cause))))
+
+(defn- llm-call-error
+  "The HTTP error for `e`, an exception from the LLM call. The usage limit and permission can change after the
+  pre-flight check, so the call repeats those checks and can fail them."
+  [e]
+  (case (:type (ex-data e))
+    :metabot/usage-limit-reached (unavailable-error :usage-limit e)
+    :metabot/permission-denied   (unavailable-error :permission-denied e)
+    (let [{:keys [message] :as error} (merge {:status-code 502
+                                              :error-code  "ai_provider_error"
+                                              :message     "Couldn't generate a formula."}
+                                             (metabot.self/provider-error e))]
+      (log/warn e "Unable to suggest a summary formula")
+      (ex-info message error e))))
+
+(defn- call-llm
+  [{:keys [mode] :as request}]
+  (try
+    (metabot.self/call-llm-structured
+     (metabot.settings/llm-mini-model)
+     [{:role    "system"
+       :content (if (= mode "expression")
+                  expression-system-prompt
+                  aggregation-system-prompt)}
+      {:role "user" :content (user-message request)}]
+     formula-json-schema
+     nil
+     formula-max-tokens
+     {:request-id          (str (random-uuid))
+      ;; a new ai_usage_log source needs new analytics views and a migration, so usage is logged as "unknown"; `:tag`
+      ;; still names it in traces
+      :source              "unknown"
+      :tag                 "summary-formula"
+      :required-permission required-permission})
+    (catch Exception e
+      (throw (llm-call-error e)))))
 
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
   `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. `columns` are maps
   of `:name` (the column's name in expression syntax, without brackets) and an optional `:type`.
 
-  Returns `{:expression <source or nil> :name <name or nil> :error <message or nil>}`; `:expression` is nil when no
-  LLM is available, the call fails, or nothing in the columns fits."
-  [{:keys [mode] :as request}]
-  (if-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
-    {:expression nil :name nil :error (get unavailable-messages reason "AI isn't available.")}
-    (try
-      (let [{:keys [expression name]} (metabot.self/call-llm-structured
-                                       (metabot.settings/llm-mini-model)
-                                       [{:role    "system"
-                                         :content (if (= mode "expression")
-                                                    expression-system-prompt
-                                                    aggregation-system-prompt)}
-                                        {:role "user" :content (user-message request)}]
-                                       formula-json-schema
-                                       nil
-                                       formula-max-tokens
-                                       {:request-id          (str (random-uuid))
-                                        ;; a new ai_usage_log source needs new analytics views and a migration, so
-                                        ;; usage is logged as "unknown"; `:tag` still names it in traces
-                                        :source              "unknown"
-                                        :tag                 "summary-formula"
-                                        :required-permission required-permission})
-            expression (clean-expression expression)]
-        {:expression expression
-         :name       (when expression (clean-name name))
-         :error      (when-not expression "Nothing in this data matches that.")})
-      (catch Exception e
-        (log/warn e "Unable to suggest a summary formula")
-        {:expression nil :name nil :error "Couldn't generate a formula."}))))
+  Returns `{:expression <source or nil> :name <name or nil> :error <message or nil>}`; `:expression` is nil, with an
+  `:error`, when nothing in the columns fits. Throws an HTTP error when the suggestion can't be made."
+  [request]
+  (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
+    (throw (unavailable-error reason)))
+  (metabot.usage/check-metabase-managed-free-limit!)
+  (let [{:keys [expression name]} (call-llm request)
+        expression                (clean-expression expression)]
+    {:expression expression
+     :name       (when expression (clean-name name))
+     :error      (when-not expression "Nothing in this data matches that.")}))
