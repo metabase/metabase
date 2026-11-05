@@ -810,6 +810,80 @@
         (testing "and a warning names the call that never ran"
           (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
 
+(defn- releasable-tool
+  "A tool entry named `tool-name` whose call delivers `started`, then waits until `release` is delivered."
+  [tool-name runs-alone? started release]
+  {:tool-name   tool-name
+   :doc         "Waits until the test releases it."
+   :schema      [:=> [:cat [:map {:closed true}]] :any]
+   :runs-alone? runs-alone?
+   :fn          (fn [_]
+                  (deliver started true)
+                  @release
+                  {:output "ok"})})
+
+(defn- response-chunks
+  "The chunks of one model response that calls each tool in `tool-names`, in order, with the call IDs `call-0`,
+   `call-1` and so on."
+  [tool-names]
+  (test-util/parts->aisdk-chunks
+   (map-indexed (fn [i tool-name]
+                  {:type :tool-input :id (str "call-" i) :function tool-name :arguments {}})
+                tool-names)))
+
+(defn- tool-output-count
+  "How many tool results `chunks` holds."
+  [chunks]
+  (count (filter #(= :tool-output-available (:type %)) chunks)))
+
+(deftest ^:parallel tool-executor-xf-runs-alone-test
+  (testing "a call that runs alone starts after the calls before it in the response, and the calls after it wait for it"
+    (let [calls    ["before" "alone" "after"]
+          started  (zipmap calls (repeatedly promise))
+          release  (zipmap calls (repeatedly promise))
+          tools    (into {} (for [tool-name calls]
+                              [tool-name (releasable-tool tool-name (= "alone" tool-name)
+                                                          (started tool-name) (release tool-name))]))
+          response (future (into [] (self.core/tool-executor-xf tools) (response-chunks calls)))
+          starts?  #(deref (started %) 5000 false)
+          waits?   #(not (deref (started %) 100 false))]
+      (try
+        (is (starts? "before"))
+        (is (waits? "alone"))
+        (deliver (release "before") true)
+        (is (starts? "alone"))
+        (is (waits? "after"))
+        (deliver (release "alone") true)
+        (is (starts? "after"))
+        (finally
+          (run! #(deliver % true) (vals release))))
+      (is (= 3 (tool-output-count (deref response 5000 nil)))))))
+
+(deftest tool-executor-xf-waiting-calls-leave-the-pool-free-test
+  (testing "calls that wait for a call that runs alone take no thread from the pool that every conversation shares"
+    (let [release   (promise)
+          done      (doto (promise) (deliver true))
+          tools     {"slow"  (releasable-tool "slow" false (promise) release)
+                     "alone" (releasable-tool "alone" true (promise) done)
+                     "after" (releasable-tool "after" false (promise) done)}
+          ;; If the waiting calls held threads, they and the slow call would take all 20 threads of the pool
+          calls     (concat ["slow" "alone"] (repeat 18 "after"))
+          scheduled (promise)
+          response  (future (into [] (comp (self.core/tool-executor-xf tools)
+                                           (map (fn [chunk]
+                                                  (when (= :text-delta (:type chunk))
+                                                    (deliver scheduled true))
+                                                  chunk)))
+                                  (concat (response-chunks calls) [{:type :text-delta :id "text" :delta "Done."}])))
+          unrelated (promise)]
+      (try
+        (is (deref scheduled 5000 false))
+        (.execute ^java.util.concurrent.Executor @#'self.core/tool-executor ^Runnable #(deliver unrelated true))
+        (is (deref unrelated 5000 false))
+        (finally
+          (deliver release true)))
+      (is (= 20 (tool-output-count (deref response 5000 nil)))))))
+
 ;;; tool argument validation tests
 
 (defn- validation-error

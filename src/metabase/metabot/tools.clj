@@ -133,9 +133,9 @@
 
   An entry keeps the keys the adapters and the system-message builder already read (`:tool-name`,
   `:doc`, `:schema`, `:title-fn`, `:prompt`, `:system-instructions`, `:capabilities`, `:scope`), and
-  its `:fn` performs the whole call through `metabase.metabot.tools.runtime/invoke`. So argument
-  coercion, argument validation, the scope check, the result check and error rendering all happen in
-  one place, and `:fn` never throws.
+  `:runs-alone?`, which the tool executor reads. Its `:fn` performs the whole call through
+  `metabase.metabot.tools.runtime/invoke`. So argument coercion, argument validation, the scope
+  check, the result check and error rendering all happen in one place, and `:fn` never throws.
 
   `:schema` is synthesised as `[:=> [:cat args] :any]` because that is the shape
   `metabase.metabot.self.schema/tool-function` reads. It is the declaration's `:args` either way."
@@ -162,5 +162,6 @@
           :title-fn            (:metabot/title-fn declaration)
           :prompt              (:metabot/prompt declaration)
           :system-instructions (:metabot/system-instructions declaration)
+          :runs-alone?         (:metabot/runs-alone? declaration)
           :fn                  (fn [arguments]
                                  (tools.runtime/invoke entries ctx tool-name arguments))})))))
