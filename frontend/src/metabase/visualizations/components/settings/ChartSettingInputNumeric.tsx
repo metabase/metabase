@@ -116,9 +116,10 @@ export const ChartSettingInputNumeric = ({
       error={inputValue && isNaN(Number(inputValue))}
       value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
-          setInputValue(e.target.value);
-          processValueDebounced(e.target.value);
+        const value = e.target.value.replaceAll(",", ".");
+        if (value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
+          setInputValue(value);
+          processValueDebounced(value);
         }
       }}
       onFocus={handleFocus}
