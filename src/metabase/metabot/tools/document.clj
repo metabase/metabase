@@ -227,11 +227,11 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 sql-chart-schema})
   (handle [_ {:keys [database_id name description analysis approach sql viz_settings]} _ctx]
-    ;; No field check: this tool drops warnings and runs the query, so the database reports a bad reference.
+    ;; No table check: this tool drops warnings and runs the query, so the database reports a bad reference.
     (let [{:keys [query-id query]} (sql.common/validated-sql-action!
                                     (create-sql-query-tools/create-sql-query {:database-id   database_id
                                                                               :sql           sql
-                                                                              :check-fields? false}))
+                                                                              :check-tables? false}))
           chart-type (get viz_settings :chart_type)]
       (check-query! query)
       {:output            "Draft chart payload generated from SQL query."
