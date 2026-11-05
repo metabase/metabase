@@ -655,12 +655,13 @@ export class UnconnectedDataSelector extends Component<
 
     // A card that can't be picked here (left out by the entity types, or
     // needing nested queries) opens where a fresh pick starts, as a table does
-    // when tables are left out
-    const freshPickStep = this.getFreshPickStep();
-    await this.switchToStep(
-      freshPickStep,
-      this.getClearedStateForStep(freshPickStep),
-    );
+    // when tables are left out. A join, when tables can be picked, opens the
+    // source database's schemas or tables, as a fresh join does.
+    const step =
+      this.isJoinStep() && this.props.canSelectTable
+        ? SCHEMA_STEP
+        : this.getFreshPickStep();
+    await this.switchToStep(step, this.getClearedStateForStep(step));
   }
 
   // The checks the buckets use

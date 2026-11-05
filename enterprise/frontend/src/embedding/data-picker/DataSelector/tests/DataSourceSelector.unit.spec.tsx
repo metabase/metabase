@@ -898,7 +898,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
-    it("should open the tables, not the models, when a join on a model is reopened with nested queries disabled", async () => {
+    it("should open the source database's tables, not the data types, when a join on a model is reopened with nested queries disabled", async () => {
       const model = createMockCard({
         id: 140,
         name: "Orders model",
@@ -916,6 +916,8 @@ describe("DataSourceSelector", () => {
         ...setupOpts,
         hasNestedQueriesEnabled: false,
         isJoinStep: true,
+        // The Library as a second data type, so the data types don't skip to the tables
+        libraryCollection: LIBRARY_COLLECTION,
         querySourceType: "model",
         selectedDatabaseId: SAMPLE_DB_ID,
         selectedTable: {
@@ -925,7 +927,41 @@ describe("DataSourceSelector", () => {
       });
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+
+    it('should open the source database\'s tables, not the data types, when a join on a model is reopened and `entityTypes` = ["table", "question"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        // Saved Questions as a second data type, so the data types don't skip to the tables
+        availableModels: ["table", "dataset", "card"],
+        entityTypes: ["table", "question"],
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAMPLE_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
     it("should only show data from the selected database when joining data", async () => {
@@ -1234,6 +1270,37 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the source database's tables when a join on a question is reopened with nested queries disabled and a Library", async () => {
+      const question = createMockCard({ id: 140, name: "Orders question" });
+      setupCardEndpoints(question);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(question.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        // Without nested queries, the backend leaves out the Saved Questions database
+        availableModels: ["table"],
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        // The Library as a second data type, so the data types don't skip to the tables
+        libraryCollection: LIBRARY_COLLECTION,
+        querySourceType: "question",
+        selectedDatabaseId: SAMPLE_DB_ID,
+        selectedTable: {
+          id: getQuestionVirtualTableId(question.id),
+          databaseId: SAMPLE_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
     });
 
     it("should open the saved questions, not the tables, when joining data on a question before the database list has loaded", async () => {
