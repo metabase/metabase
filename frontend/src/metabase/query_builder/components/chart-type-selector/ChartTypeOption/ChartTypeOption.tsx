@@ -74,6 +74,7 @@ export const ChartTypeOption = ({
             right="-0.6rem"
             radius="xl"
             className={ChartTypeOptionS.SettingsButton}
+            aria-label={t`Open visualization settings`}
             onClick={() => onOpenSettings?.()}
           >
             <Icon name="gear" size={16} />
