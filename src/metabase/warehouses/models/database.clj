@@ -433,9 +433,8 @@
                  ;; Index mutations must see committed state. The shared ingestion queue serializes these
                  ;; tombstones after any older re-index that may already have read a soon-to-be-deleted card.
                  (search/after-commit! "database delete"
-                                       (fn []
-                                         (search/delete! :model/Card ids)
-                                         (search/reconcile-cascading-documents! cascading)))))))
+                                       (fn [] (search/delete! :model/Card ids))
+                                       (fn [] (search/reconcile-cascading-documents! cascading)))))))
   (try
     (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
