@@ -53,6 +53,18 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id [:auto/param database-id]))
 
+(mu/defn databases
+  "`:id`, `:name` and `:engine` of the Databases with ids in `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select [:model/Database :id :name :engine] :id [:in database-ids]))
+
+;;; --------------------------------------------------- User ---------------------------------------------------
+
+(mu/defn users
+  "`:id`, `:email`, `:first_name`, `:last_name` and `:common_name` of the Users with ids in `user-ids`."
+  [user-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
 ;;; ------------------------------------------------- Workspace ------------------------------------------------
 
 (mu/defn insert-workspace!
@@ -62,12 +74,29 @@
   (t2/insert-returning-pk! :model/Workspace {:name workspace-name, :creator_id creator-id}))
 
 (mu/defn workspaces-page
-  "Up to `limit` Workspaces after skipping `offset`, in id order."
-  [limit  :- ms/PositiveInt
+  "Up to `limit` Workspaces, or all of them when `limit` is nil, after skipping `offset`, in id order."
+  [limit  :- [:maybe ms/PositiveInt]
    offset :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select :model/Workspace {:order-by [[:id :asc]]
-                               :limit    limit
-                               :offset   offset}))
+  (t2/select :model/Workspace (cond-> {:order-by [[:id :asc]]
+                                       :offset   offset}
+                                limit (assoc :limit limit))))
+
+(mu/defn workspace
+  "The Workspace with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/Workspace :id [:auto/param id]))
+
+(mu/defn rename-workspace!
+  "Set the name of the Workspace with `id`, returning the number of rows updated."
+  [id             :- ms/PositiveInt
+   workspace-name :- ms/NonBlankString]
+  (t2/update! :model/Workspace :id [:auto/param id] {:name workspace-name}))
+
+(mu/defn delete-workspace!
+  "Delete the Workspace with `id`, and with it its WorkspaceDatabases and WorkspaceSchemas, returning the number of
+  Workspaces deleted."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/Workspace :id [:auto/param id]))
 
 (mu/defn workspace-count
   "The number of Workspaces."
@@ -105,6 +134,11 @@
   [workspace-ids :- [:sequential ms/PositiveInt]
    staleness     :- ::staleness]
   (t2/select (workspace-database-columns staleness) :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
+
+(mu/defn delete-workspace-database!
+  "Delete the WorkspaceDatabase with `id`, and with it its WorkspaceSchemas, returning the number deleted."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/WorkspaceDatabase :id [:auto/param id]))
 
 (mu/defn take-status!
   "Set the status of the row of `table` with `id` to `to` and its lock token to `new-token`, but only while its status

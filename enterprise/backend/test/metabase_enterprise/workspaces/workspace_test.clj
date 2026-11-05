@@ -93,15 +93,25 @@
             (is (= (subvec ws-ids 0 2) (ids (page 2 offset))))
             (is (= [(last ws-ids)] (ids (page 2 (+ offset 2)))))
             (is (= [] (:data (page 2 total))))))
-        (testing "each workspace carries its databases and schemas, never a database password"
+        (testing "no limit is every workspace"
+          (is (= ws-ids (ids (page nil 0)))))
+        (testing "each workspace carries its databases and schemas, never a database password or lock token"
           (let [ws (some #(when (= (second ws-ids) (:id %)) %) (:data (page 1000 0)))]
-            (is (=? {:databases [{:id      (:id wsd)
-                                  :status  :provisioned
-                                  :schemas [{:id (:id schema), :main_schema "sales", :status :active}]}]}
-                    ws))
-            (is (not (contains? (first (:databases ws)) :database_details)))
-            (is (not (contains? (first (:databases ws)) :lock_token)))
-            (is (not (str/includes? (pr-str (page 1000 0)) "SecretPassw0rd")))))
+            (is (= {:id         (second ws-ids)
+                    :name       "page 1"
+                    :creator    nil
+                    :created_at (:created_at ws)
+                    :updated_at (:updated_at ws)
+                    :databases  [{:database_id (mt/id)
+                                  :database    (select-keys (mt/db) [:id :name :engine])
+                                  :status      :provisioned
+                                  :schemas     [{:main_schema       "sales"
+                                                 :scratch_namespace (:scratch_namespace schema)
+                                                 :status            :active}]}]}
+                   ws))
+            (is (= ws (ws.workspace/workspace (second ws-ids))))
+            (is (not (str/includes? (pr-str (page 1000 0)) "SecretPassw0rd")))
+            (is (not (str/includes? (pr-str (page 1000 0)) (:lock_token wsd))))))
         (t2/delete! :model/Workspace :id [:in ws-ids])))))
 
 (deftest delete-database-with-workspaces-test

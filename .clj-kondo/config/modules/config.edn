@@ -4705,14 +4705,16 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.core}
    :uses #{api
+           api-scope
            app-db
            driver
            lib.schema
            models
            premium-features
+           request
            util
            warehouses}
-   :model-imports #{:model/Database}}}
+   :model-imports #{:model/Database :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

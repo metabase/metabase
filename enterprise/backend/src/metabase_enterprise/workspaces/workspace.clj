@@ -56,27 +56,61 @@
       (assoc :status (ws.status/effective-status (:status row) (:stale row)))
       (dissoc :stale)))
 
-(defn- workspace-with-databases
-  [workspace databases-by-workspace schemas-by-database]
-  (assoc workspace :databases
-         (vec (for [wsd (databases-by-workspace (:id workspace))]
-                (assoc (with-effective-status wsd)
-                       :schemas (mapv with-effective-status (schemas-by-database (:id wsd))))))))
+(defn- present-schema
+  [{:keys [status error] :as schema}]
+  (cond-> (select-keys schema [:main_schema :scratch_namespace :status])
+    (and (= :failed status) error) (assoc :error error)))
+
+(defn- present-database
+  [wsd schemas database]
+  {:database_id (:database_id wsd)
+   :database    (select-keys database [:id :name :engine])
+   :status      (:status wsd)
+   :schemas     (mapv present-schema schemas)})
+
+(defn- present-workspace
+  "The API's `Workspace`: `workspace` with its creator from `users-by-id`, its databases from `databases-by-workspace`
+  with each Database from `database-by-id`, and their schemas from `schemas-by-database`. Never a password or lock
+  token: `databases-by-workspace` and `schemas-by-database` hold rows read without them."
+  [workspace users-by-id databases-by-workspace schemas-by-database database-by-id]
+  {:id         (:id workspace)
+   :name       (:name workspace)
+   :creator    (some-> (users-by-id (:creator_id workspace)) (select-keys [:id :email :common_name]))
+   :created_at (:created_at workspace)
+   :updated_at (:updated_at workspace)
+   :databases  (vec (for [wsd (databases-by-workspace (:id workspace))]
+                      (present-database (with-effective-status wsd)
+                                        (map with-effective-status (schemas-by-database (:id wsd)))
+                                        (database-by-id (:database_id wsd)))))})
+
+(defn- present-workspaces
+  "[[present-workspace]] for each of `workspaces`, reading their databases, schemas, creators and Databases."
+  [workspaces]
+  (let [databases (when (seq workspaces)
+                    (ws.db/workspace-databases-of-workspaces (mapv :id workspaces) (ws.status/staleness :database)))
+        schemas   (when (seq databases)
+                    (ws.db/workspace-schemas-of-workspace-databases (mapv :id databases)
+                                                              (ws.status/staleness :schema)))
+        users     (when-let [ids (seq (keep :creator_id workspaces))]
+                    (ws.db/users (vec (distinct ids))))
+        dbs       (when (seq databases)
+                    (ws.db/databases (vec (distinct (map :database_id databases)))))
+        by-id     (fn [rows] (into {} (map (juxt :id identity)) rows))
+        by-ws     (group-by :workspace_id databases)
+        by-wsd    (group-by :workspace_database_id schemas)]
+    (mapv #(present-workspace % (by-id users) by-ws by-wsd (by-id dbs)) workspaces)))
 
 (mu/defn workspaces-page :- [:map [:data [:sequential :map]] [:total :int]]
-  "One page of Workspaces, in id order, each with its `:databases` and their `:schemas`, never with a
-  `:database_details`: `{:data <up to limit workspaces after offset>, :total <number of workspaces>}`. A database's
-  `:status`, and each schema's, is the status it reads as (see [[ws.status/effective-status]])."
+  "One page of Workspaces as the API shows them (see [[present-workspace]]), in id order:
+  `{:data <up to limit workspaces after offset, or all when limit is nil>, :total <number of workspaces>}`. A
+  database's `:status`, and each schema's, is the status it reads as (see [[ws.status/effective-status]])."
   [{:keys [limit offset]} :- [:map {:closed true}
-                              [:limit  ms/PositiveInt]
+                              [:limit  [:maybe ms/PositiveInt]]
                               [:offset ms/IntGreaterThanOrEqualToZero]]]
-  (let [workspaces (ws.db/workspaces-page limit offset)
-        databases  (when (seq workspaces)
-                     (ws.db/workspace-databases-of-workspaces (mapv :id workspaces) (ws.status/staleness :database)))
-        schemas    (when (seq databases)
-                     (ws.db/workspace-schemas-of-workspace-databases (mapv :id databases)
-                                                               (ws.status/staleness :schema)))
-        by-ws      (group-by :workspace_id databases)
-        by-wsd     (group-by :workspace_database_id schemas)]
-    {:data  (mapv #(workspace-with-databases % by-ws by-wsd) workspaces)
-     :total (ws.db/workspace-count)}))
+  {:data  (present-workspaces (ws.db/workspaces-page limit offset))
+   :total (ws.db/workspace-count)})
+
+(mu/defn workspace :- [:maybe :map]
+  "The Workspace with `id` as the API shows it (see [[present-workspace]]), or nil."
+  [id :- ms/PositiveInt]
+  (some-> (ws.db/workspace id) vector present-workspaces first))
