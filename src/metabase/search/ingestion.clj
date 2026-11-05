@@ -315,43 +315,59 @@
   (when (seq ids)
     (doc-ids search-model (doc-id-selector search-model ids))))
 
+;; Tombstones share ingestion's single worker with re-index messages, so an update that read a row before its delete
+;; committed is applied before, never after, the removal.
 (defn tombstone
-  "A queue message that removes these document ids after all earlier re-index messages.
-  Tombstones share ingestion's single worker with updates: an update that read a row before its delete commits
-  is therefore applied before, never after, its corresponding removal."
+  "A queue message that removes `search-model`'s documents with these `ids`, in queue order with re-index messages."
   [search-model ids]
   {:op :delete, :search-model search-model, :ids (set (map str ids))})
 
+(defn- tombstone?
+  "Whether a queued `message` is a [[tombstone]] rather than a re-index message."
+  [message]
+  (= :delete (:op message)))
+
+(defn- apply-tombstones!
+  "Remove the documents a run of [[tombstone]] messages names from every active engine."
+  [tombstones]
+  (update! [] (mapcat (fn [{:keys [search-model ids]}]
+                        (map (fn [id] [search-model id]) ids))
+                      tombstones)))
+
+(defn- ingest-updates!
+  "Re-index the documents a run of re-index messages selects, and purge the ones that no longer resolve."
+  [updates]
+  (let [documents        (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                                (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                              ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                              (reduce u/rconcat [])
+                              query->documents)
+        passed-documents (map extract-model-and-id updates)
+        ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
+        ;; The eduction will replay the streaming query when passed to update!.
+        indexed-pairs    (into #{} (map (juxt :model (comp str :id))) documents)
+        ;; TODO: The list of documents to delete is not completely accurate.
+        ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the
+        ;; rows that were actually indexed.
+        ;; This will not work for cases like indexed-entries with compound PKs,
+        ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during
+        ;; an update.
+        ;; Long-term, we should find a better approach to knowing what to purge.
+        to-delete        (remove indexed-pairs passed-documents)]
+    (update! documents to-delete)))
+
 (defn bulk-ingest!
-  "Process the given search model updates."
+  "Process the given search model updates and tombstones, in queue order."
   [updates]
   (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
     (lib-be/with-metadata-provider-cache
-      (if (seq (search.engine/active-engines))
-        (doseq [messages (partition-by #(= :delete (:op %)) updates)]
-          (if (= :delete (:op (first messages)))
-            ;; Preserve the queue's relative ordering: an update after this tombstone is authoritative, while
-            ;; a prior update must finish before the delete. We only coalesce contiguous update messages.
-            (update! [] (mapcat (fn [{:keys [search-model ids]}]
-                                  (map (fn [id] [search-model id]) ids))
-                                messages))
-            (let [documents (->> (for [[search-model where-clauses] (u/group-by first second messages)]
-                                   (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                                 ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                                 (reduce u/rconcat [])
-                                 query->documents)
-                  passed-documents (map extract-model-and-id messages)
-                  ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
-                  ;; The eduction will replay the streaming query when passed to update!.
-                  indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
-                  ;; TODO: The list of documents to delete is not completely accurate.
-                  ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-                  ;; This will not work for cases like indexed-entries with compound PKs,
-                  ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-                  ;; Long-term, we should find a better approach to knowing what to purge.
-                  to-delete (remove indexed-pairs passed-documents)]
-              (update! documents to-delete))))
-        {}))))
+      (when (seq (search.engine/active-engines))
+        ;; Preserve the queue's relative ordering: an update after a tombstone is authoritative, while a prior update
+        ;; must finish before the delete. Only contiguous re-index messages are coalesced.
+        (doseq [messages (partition-by tombstone? updates)]
+          (if (tombstone? (first messages))
+            (apply-tombstones! messages)
+            (ingest-updates! messages)))))))
 
 (defn- track-queue-size! []
   (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
