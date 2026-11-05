@@ -12,24 +12,23 @@ import type { ActionIconProps } from "metabase/ui";
 export const DashboardInfoButton = (
   props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
 ) => {
-  const { closeSidebar, setSidebar } = useDashboardContext();
+  const { setSidebar } = useDashboardContext();
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
   );
 
-  const handleClick = () => {
-    if (isShowingDashboardInfoSidebar) {
-      closeSidebar();
-    } else {
-      setSidebar({ name: SIDEBAR_NAME.info });
-    }
-  };
+  const openInfoSidebar = () => setSidebar({ name: SIDEBAR_NAME.info });
 
   useRegisterShortcut(
     [
       {
         id: "dashboard-toggle-info-sidebar",
-        perform: handleClick,
+        // Closing is the open sheet's own hotkey, so its exit transition plays
+        perform: () => {
+          if (!isShowingDashboardInfoSidebar) {
+            openInfoSidebar();
+          }
+        },
       },
     ],
     [isShowingDashboardInfoSidebar],
@@ -42,7 +41,7 @@ export const DashboardInfoButton = (
       icon="info"
       isActive={isShowingDashboardInfoSidebar}
       disabled={isShowingDashboardInfoSidebar}
-      onClick={handleClick}
+      onClick={openInfoSidebar}
       {...props}
     />
   );

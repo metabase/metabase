@@ -57,7 +57,12 @@ export const QuestionActions = ({
     [
       {
         id: "query-builder-info-sidebar",
-        perform: onInfoClick,
+        // Closing is the open sheet's own hotkey, so its exit transition plays
+        perform: () => {
+          if (!isShowingQuestionInfoSidebar) {
+            onInfoClick();
+          }
+        },
       },
       {
         id: "query-builder-bookmark",

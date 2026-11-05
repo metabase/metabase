@@ -61,6 +61,8 @@ interface SetupOpts {
   hasDataPermissions?: boolean;
   hasAcknowledgedModelModal?: boolean;
   cardsBasedOnUploadTable?: Card[];
+  isShowingQuestionInfoSidebar?: boolean;
+  withKBar?: boolean;
 }
 
 function setup({
@@ -68,6 +70,8 @@ function setup({
   hasDataPermissions = true,
   hasAcknowledgedModelModal = false,
   cardsBasedOnUploadTable = [card],
+  isShowingQuestionInfoSidebar = false,
+  withKBar = false,
 }: SetupOpts) {
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
@@ -97,21 +101,22 @@ function setup({
   const question = metadata.question(card.id) as Question;
   const onOpenModal = jest.fn();
   const onSetQueryBuilderMode = jest.fn();
+  const onInfoClick = jest.fn();
 
   renderWithProviders(
     <QuestionActions
       question={question}
       isBookmarked={false}
-      isShowingQuestionInfoSidebar={false}
+      isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
       onOpenModal={onOpenModal}
       onToggleBookmark={jest.fn()}
       onSetQueryBuilderMode={onSetQueryBuilderMode}
-      onInfoClick={jest.fn()}
+      onInfoClick={onInfoClick}
     />,
-    { storeInitialState: state },
+    { storeInitialState: state, withKBar },
   );
 
-  return { onOpenModal, onSetQueryBuilderMode };
+  return { onOpenModal, onSetQueryBuilderMode, onInfoClick };
 }
 
 describe("QuestionActions", () => {
@@ -392,6 +397,28 @@ describe("QuestionActions", () => {
 
     expect(getIcon("info")).toBeInTheDocument();
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  describe("] shortcut", () => {
+    it("opens the info sidebar while it is closed", async () => {
+      const { onInfoClick } = setup({ card: createMockCard(), withKBar: true });
+
+      await userEvent.keyboard("]");
+
+      expect(onInfoClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves closing the open sidebar to the sheet's own hotkey", async () => {
+      const { onInfoClick } = setup({
+        card: createMockCard(),
+        isShowingQuestionInfoSidebar: true,
+        withKBar: true,
+      });
+
+      await userEvent.keyboard("]");
+
+      expect(onInfoClick).not.toHaveBeenCalled();
+    });
   });
 });
 
