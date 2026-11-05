@@ -3,9 +3,12 @@
 
   To regenerate, start a REPL with the `:dev` and `:test` aliases and Docker running, and call [[generate!]] once for
   each of [[metabase.app-db.snapshot-test-util/flavors]].
-  Regenerate when the drift test in [[metabase.app-db.snapshot-test]] fails, or when moving the boundary.
+  Regenerate after editing a changeset or custom migration the snapshot already records, after changing the dumpers,
+  or when moving the boundary.
   A changeset that lands before the boundary after the snapshot was cut needs no regeneration: it runs after the
   snapshot loads, as it would on an upgrading install.
+  If the drift test in [[metabase.app-db.snapshot-test]] then fails, that changeset gives a different result when it
+  runs late, as it will on existing installs, so fix the changeset rather than regenerate.
   The check in [[metabase.app-db.snapshot-regeneration-test]] shows whether regenerating would change a file.
   It runs only with `MB_APP_DB_SNAPSHOT_REGENERATION_TEST=true`, and needs Docker.
 
