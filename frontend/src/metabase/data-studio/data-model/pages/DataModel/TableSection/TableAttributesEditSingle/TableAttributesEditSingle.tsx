@@ -9,11 +9,7 @@ import {
 } from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
-import {
-  DataSourceInput,
-  EntityTypeInput,
-  UserInput,
-} from "metabase/metadata/components";
+import { DataSourceInput, UserInput } from "metabase/metadata/components";
 import {
   DATA_LAYER_VISIBILITY_ICONS,
   useDataLayers,
@@ -23,6 +19,7 @@ import * as Urls from "metabase/urls";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
+import { TableSubjectRows } from "../TableSubject";
 
 import S from "./TableAttributesEditSingle.module.css";
 
@@ -114,25 +111,6 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     }
   };
 
-  const handleEntityTypeChange = async (entityType: Table["entity_type"]) => {
-    const { error } = await updateTable({
-      id: table.id,
-      entity_type: entityType,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update entity type`);
-    } else {
-      sendSuccessToast(t`Entity type updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          entity_type: table.entity_type,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const isOwnerSpecified = table.owner_email || table.owner_user_id;
   const readOnly = !table.can_write;
 
@@ -165,20 +143,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
 
         <TableDataLayerRow table={table} disabled={readOnly} />
 
-        <DetailsRow
-          label={t`Entity type`}
-          fillValue
-          value={
-            <EntityTypeInput
-              value={table.entity_type ?? "entity/GenericTable"}
-              label={undefined}
-              aria-label={t`Entity type`}
-              disabled={readOnly}
-              onChange={handleEntityTypeChange}
-              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-            />
-          }
-        />
+        <TableSubjectRows table={table} disabled={readOnly} />
 
         <DetailsRow
           label={t`Source`}
