@@ -67,6 +67,11 @@ export type DraftOperator = {
   /** The pill shows no operator, like "Created At previous 30 days". */
   hasNoPillOperator?: boolean;
   /**
+   * Prototype: the value input has no dropdown of values, like "contains",
+   * because the user types a part of a value.
+   */
+  hasNoValueSuggestions?: boolean;
+  /**
    * Operators with different groups are split by a divider in the list, like
    * the values and the empty checks of a boolean column.
    */

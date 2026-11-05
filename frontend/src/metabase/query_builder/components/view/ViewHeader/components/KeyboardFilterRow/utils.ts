@@ -315,6 +315,7 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
         valueKind:
           STRING_OPERATORS[operator].type === "empty" ? "none" : "multi",
         isNumeric: false,
+        hasNoValueSuggestions: STRING_OPERATORS[operator].type === "partial",
         formatValue: Lib.isCountry(column)
           ? getCountryName
           : Lib.isState(column)
@@ -450,6 +451,42 @@ export function getOperatorHint(operator: DraftOperator) {
 /** Symbols that find an operator in the operator search, like "!=". */
 export function getOperatorAliases(operator: DraftOperator) {
   return OPERATOR_ALIASES[operator.key];
+}
+
+/**
+ * The item whose name is the typed text, ignoring case, for a space after the
+ * text to pick it. No item is found while another name continues the text
+ * with another word: "is" finds nothing when "is not" exists, so that "is
+ * not" can still be typed.
+ */
+export function findItemByTypedName<T>(
+  items: T[],
+  getNames: (item: T) => string[],
+  typedText: string,
+): T | undefined {
+  const name = typedText.trim().toLowerCase();
+  if (name.length === 0) {
+    return undefined;
+  }
+  const lowerNames = items.map((item) =>
+    getNames(item).map((itemName) => itemName.toLowerCase()),
+  );
+  const isContinued = lowerNames.some((names) =>
+    names.some((itemName) => itemName.startsWith(`${name} `)),
+  );
+  if (isContinued) {
+    return undefined;
+  }
+  const index = lowerNames.findIndex((names) => names.includes(name));
+  return index === -1 ? undefined : items[index];
+}
+
+/** The names that a space after them selects an operator by. */
+export function getOperatorNames(operator: DraftOperator): string[] {
+  return [
+    operator.label,
+    ...(operator.isNumeric ? (getOperatorAliases(operator) ?? []) : []),
+  ];
 }
 
 export function getMaxValueCount(valueKind: ValueKind): number {
@@ -600,9 +637,25 @@ export function formatDraftValue(operator: DraftOperator, value: string) {
 }
 
 /** The operator as the pill shows it in a sentence, like "is between". */
+/** Prototype: the math symbol of a number operator, shown in the pill. */
+const PILL_OPERATOR_SYMBOLS: Partial<Record<string, string>> = {
+  "=": "=",
+  "!=": "≠",
+  ">": ">",
+  ">=": "≥",
+  "<": "<",
+  "<=": "≤",
+};
+
 export function getPillOperatorLabel(operator: DraftOperator) {
   if (operator.hasNoPillOperator) {
     return "";
+  }
+  const symbol = operator.isNumeric
+    ? PILL_OPERATOR_SYMBOLS[operator.key]
+    : undefined;
+  if (symbol != null) {
+    return symbol;
   }
   if (operator.pillValueLabel != null) {
     return t`is`;

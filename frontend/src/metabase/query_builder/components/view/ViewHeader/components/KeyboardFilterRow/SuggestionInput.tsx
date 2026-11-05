@@ -15,6 +15,7 @@ import {
   Combobox,
   Flex,
   Icon,
+  Kbd,
   ScrollArea,
   useCombobox,
 } from "metabase/ui";
@@ -76,6 +77,12 @@ interface SuggestionInputProps {
    * Tab picks it at once.
    */
   isFirstOptionHighlighted?: boolean;
+  /**
+   * Prototype: with typed text, the option that Tab picks shows a "Tab" key.
+   * It is the highlighted option, or the first option when no option is
+   * highlighted.
+   */
+  hasTabHint?: boolean;
   /** Options are a grid of tiles instead of a list. */
   isTiles?: boolean;
   /** Number of option columns in the list. */
@@ -117,6 +124,7 @@ export function SuggestionInput({
   placeholder,
   isMultiSelect = false,
   isFirstOptionHighlighted = false,
+  hasTabHint = false,
   isTiles = false,
   columns = 1,
   dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
@@ -136,6 +144,8 @@ export function SuggestionInput({
     combobox.dropdownOpened,
   );
 
+  // The user is typing a search: the Tab hint shows on the option Tab picks.
+  const isSearching = text.trim().length > 0;
   const { selectFirstOption, resetSelectedOption } = combobox;
 
   const filteredGroups = useMemo(() => {
@@ -208,6 +218,8 @@ export function SuggestionInput({
     text,
   ]);
 
+  const firstOptionValue = filteredGroups[0]?.options[0]?.value;
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const hasSelectedOption =
       combobox.dropdownOpened && combobox.getSelectedOptionIndex() !== -1;
@@ -217,7 +229,6 @@ export function SuggestionInput({
     if (event.key === "ArrowUp" && combobox.getSelectedOptionIndex() === 0) {
       queueMicrotask(() => combobox.resetSelectedOption());
     }
-    const firstOptionValue = filteredGroups[0]?.options[0]?.value;
     if (onKeyDown?.(event, hasSelectedOption, firstOptionValue)) {
       event.preventDefault();
       event.stopPropagation();
@@ -284,11 +295,12 @@ export function SuggestionInput({
       <Combobox.Option
         key={option.value}
         value={option.value}
-        className={cx({
+        className={cx(S.optionRow, {
           [S.selectedOption]: !isMultiSelect && option.isChecked,
         })}
         active={option.isChecked}
         disabled={option.disabled}
+        data-tab-target={option.value === firstOptionValue || undefined}
       >
         {isMultiSelect ? (
           <Checkbox
@@ -306,6 +318,9 @@ export function SuggestionInput({
           />
         ) : (
           <OptionLabel option={option} />
+        )}
+        {hasTabHint && isSearching && !option.disabled && (
+          <Kbd className={S.tabHint}>{t`Tab`}</Kbd>
         )}
       </Combobox.Option>
     );
