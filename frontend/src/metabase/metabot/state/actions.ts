@@ -13,10 +13,14 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import type { GeneratedEntity } from "metabase/api/ai-streaming/schemas";
+import type {
+  GeneratedCard,
+  GeneratedEntity,
+} from "metabase/api/ai-streaming/schemas";
 import { idTag, listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { selectQuestionFromOpts } from "metabase/metadata-store";
 import {
   setIsNativeEditorOpen,
   setPendingMetabotCard,
@@ -36,12 +40,15 @@ import * as Urls from "metabase/urls";
 import { getBasename } from "metabase/utils/basename";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
+import * as Lib from "metabase-lib";
 import type {
   DashboardId,
+  DatasetQuery,
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotChatContext,
+  MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
 } from "metabase-types/api";
@@ -67,6 +74,7 @@ import {
   getMessageIdToRewind,
   getMessages,
   getMetabotConversationId,
+  getMetabotSqlModeEntry,
   getPromptText,
   getUserPromptMessage,
 } from "./selectors";
@@ -110,6 +118,12 @@ export const {
   startNewConversation,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
+  metabotSqlStarted,
+  metabotSqlLoaded,
+  metabotSqlApplied,
+  metabotSqlShown,
+  metabotSqlHidden,
+  metabotSqlEditedByUser,
   setIsPollingForTitle,
   markChartSaved,
 } = metabot.actions;
@@ -418,6 +432,7 @@ export const submitInput = createAsyncThunk<
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
+          context: data.context,
           message: promptWithDevMessage,
           conversation_id: conversationId,
           ...agentMetadata,
@@ -493,6 +508,8 @@ type SendAgentRequestResult = MetabotAgentResponse & {
   processedResponse: ProcessedChatResponse;
 };
 
+const QB_BUFFER_ID = "qb";
+
 const findCodeEditBuffer = (
   context: MetabotChatContext,
   bufferId: string,
@@ -504,6 +521,169 @@ const findCodeEditBuffer = (
 
   return buffers.find((buffer) => buffer.id === bufferId);
 };
+
+/**
+ * The sidebar conversation applies and runs Metabot SQL edits in the query
+ * builder, when Metabot started that SQL and the user did not edit it.
+ */
+const isSidebarSqlAutoMode = (state: State, conversationId: string) => {
+  const isSidebarConversation =
+    conversationId === getMetabotConversationId(state, "omnibot");
+  const mode = getMetabotSqlModeEntry(state, conversationId)?.mode;
+  return isSidebarConversation && mode != null && mode !== "user-in-control";
+};
+
+/** The SQL text of a native query, as the query builder reads it; `null` for other queries. */
+const getNativeSql = (
+  datasetQuery: DatasetQuery,
+  state: State,
+): string | null => {
+  try {
+    const query = selectQuestionFromOpts(state, {
+      dataset_query: datasetQuery,
+    }).query();
+    return Lib.queryDisplayInfo(query).isNative
+      ? Lib.rawNativeQuery(query)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+/** The question that the query builder shows, as the request context describes it. */
+const getViewedQuestion = (context: MetabotChatContext) => {
+  for (const item of context.user_is_viewing) {
+    if (
+      item.type === "adhoc" ||
+      item.type === "question" ||
+      item.type === "model" ||
+      item.type === "metric"
+    ) {
+      return item;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Metabot edits apply with no review only while the query builder still shows
+ * the SQL of the last Metabot change. Else the backend tells the model that
+ * the edit waits for the user.
+ */
+const canAutoApplyQbEdits = (
+  state: State,
+  conversationId: string,
+  context: MetabotChatContext,
+) => {
+  const viewedQuery = getViewedQuestion(context)?.query;
+  const viewedSql = viewedQuery ? getNativeSql(viewedQuery, state) : null;
+  return (
+    isSidebarSqlAutoMode(state, conversationId) &&
+    viewedSql != null &&
+    viewedSql === getMetabotSqlModeEntry(state, conversationId)?.lastAppliedSql
+  );
+};
+
+const withQbAutoApply = (context: MetabotChatContext): MetabotChatContext => ({
+  ...context,
+  user_is_viewing: context.user_is_viewing.map((item) =>
+    item.type === "code_editor"
+      ? {
+          ...item,
+          buffers: item.buffers.map((buffer) =>
+            buffer.id === QB_BUFFER_ID
+              ? { ...buffer, auto_apply: true }
+              : buffer,
+          ),
+        }
+      : item,
+  ),
+});
+
+const hasQbAutoApply = (context: MetabotChatContext) =>
+  findCodeEditBuffer(context, QB_BUFFER_ID)?.auto_apply === true;
+
+type MetabotSqlCard = {
+  entity: GeneratedCard;
+  sql: string;
+  isSqlShown: boolean;
+};
+
+/**
+ * The native card of a sidebar turn, or `null` for other entities. A card with
+ * no display keeps the chart that the user sees.
+ */
+const toMetabotSqlCard = (
+  entity: GeneratedEntity,
+  context: MetabotChatContext,
+  previousCard: MetabotSqlCard | undefined,
+  state: State,
+): MetabotSqlCard | null => {
+  if (entity.type !== "card") {
+    return null;
+  }
+  const sql = getNativeSql(entity.query.query, state);
+  if (sql == null) {
+    return null;
+  }
+  const viewedDisplay =
+    getViewedQuestion(context)?.chart_configs?.[0]?.display_type;
+  return {
+    entity: entity.display ? entity : { ...entity, display: viewedDisplay },
+    sql,
+    isSqlShown: Boolean(previousCard?.isSqlShown) || entity.show_sql === true,
+  };
+};
+
+/** The card with the SQL of a Metabot edit, for an edit that comes in the same turn. */
+const withEditedSql = (
+  card: MetabotSqlCard,
+  codeEdit: MetabotCodeEdit,
+  state: State,
+): MetabotSqlCard => {
+  const query = Lib.withNativeQuery(
+    selectQuestionFromOpts(state, {
+      dataset_query: card.entity.query.query,
+    }).query(),
+    codeEdit.value,
+  );
+  return {
+    entity: {
+      ...card.entity,
+      query: { ...card.entity.query, query: Lib.toJsQuery(query) },
+    },
+    sql: Lib.rawNativeQuery(query),
+    isSqlShown: card.isSqlShown || codeEdit.show_sql === true,
+  };
+};
+
+/**
+ * Opens the native card of a sidebar turn, which the query builder runs once.
+ * A card with a pending Metabot diff opens with the editor open and no run, so
+ * the user sees Accept and Reject.
+ */
+const openMetabotSqlCard =
+  (
+    conversationId: string,
+    { entity, sql, isSqlShown }: MetabotSqlCard,
+    { hasPendingDiff }: { hasPendingDiff: boolean },
+  ) =>
+  (dispatch: Dispatch, getState: () => State) => {
+    dispatch(metabotSqlStarted({ conversationId, sql, isSqlShown }));
+    const mode = getMetabotSqlModeEntry(getState(), conversationId)?.mode;
+    const url = Urls.generatedEntity(entity);
+    dispatch(
+      setPendingMetabotCard({
+        url,
+        autoRun: {
+          conversationId,
+          isNativeEditorOpen: mode !== "chart" || hasPendingDiff,
+          shouldRun: !hasPendingDiff,
+        },
+      }),
+    );
+    navigate(url);
+  };
 
 /** The URL the user is on, with its search and hash. */
 const getRouterUrl = (): string | undefined => {
@@ -538,6 +718,12 @@ const openGeneratedEntity =
 /** Where a sidebar turn proposed to take the user. */
 type TurnDestination =
   | { type: "generated-entity"; entity: GeneratedEntity }
+  | {
+      type: "metabot-sql-card";
+      conversationId: string;
+      card: MetabotSqlCard;
+      hasPendingDiff: boolean;
+    }
   | { type: "saved-dashboard"; dashboardId: DashboardId; url: string };
 
 /**
@@ -556,10 +742,11 @@ const openTurnDestination =
     // ad-hoc questions share a pathname and differ in the hash
     const hasUserMoved =
       getRouterUrl() !== startUrl || getIsNavigationPending();
-    const isChartWhileOnDashboard =
-      destination.type === "generated-entity" &&
-      destination.entity.type === "card" &&
-      viewedDashboardId != null;
+    const isCard =
+      destination.type === "metabot-sql-card" ||
+      (destination.type === "generated-entity" &&
+        destination.entity.type === "card");
+    const isChartWhileOnDashboard = isCard && viewedDashboardId != null;
     const isViewingDestination =
       destination.type === "saved-dashboard" &&
       destination.dashboardId === viewedDashboardId;
@@ -571,11 +758,19 @@ const openTurnDestination =
     if (shouldStay) {
       return;
     }
-    if (destination.type === "generated-entity") {
-      dispatch(openGeneratedEntity(destination.entity));
-    } else {
-      navigate(destination.url);
-    }
+    match(destination)
+      .with({ type: "generated-entity" }, ({ entity }) =>
+        dispatch(openGeneratedEntity(entity)),
+      )
+      .with(
+        { type: "metabot-sql-card" },
+        ({ conversationId, card, hasPendingDiff }) =>
+          dispatch(
+            openMetabotSqlCard(conversationId, card, { hasPendingDiff }),
+          ),
+      )
+      .with({ type: "saved-dashboard" }, ({ url }) => navigate(url))
+      .exhaustive();
   };
 
 export const sendAgentRequest = createAsyncThunk<
@@ -588,8 +783,15 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { isFullPageMetabot, ...request } = payload;
-    const conversationId = request.conversation_id;
+    const { isFullPageMetabot, ...requestPayload } = payload;
+    const conversationId = requestPayload.conversation_id;
+    const request = canAutoApplyQbEdits(
+      getState(),
+      conversationId,
+      requestPayload.context,
+    )
+      ? { ...requestPayload, context: withQbAutoApply(requestPayload.context) }
+      : requestPayload;
     // full-page Metabot and the embedding SDK don't open saved dashboards
     const canOpenDashboards = !isFullPageMetabot && !isEmbeddingSdk();
     const startUrl = getRouterUrl();
@@ -600,6 +802,12 @@ export const sendAgentRequest = createAsyncThunk<
     let response: ProcessedChatResponse | undefined;
     let receivedTitle = false;
     let serverStarted = false;
+    // The last native card of a sidebar turn, kept so later edits in the turn apply to it.
+    let sidebarSqlCard: MetabotSqlCard | undefined;
+    // A Metabot edit of `sidebarSqlCard` that waits as a diff.
+    let hasSidebarSqlCardDiff = false;
+    const isSidebarConversation =
+      conversationId === getMetabotConversationId(getState(), "omnibot");
     const hadTitleBeforeTurn = Boolean(
       getConversationTitle(getState(), conversationId),
     );
@@ -639,10 +847,36 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
+                const isQbEdit = part.data.buffer_id === QB_BUFFER_ID;
+                const autoApply =
+                  isQbEdit &&
+                  hasQbAutoApply(request.context) &&
+                  isSidebarSqlAutoMode(getState(), conversationId);
 
-                if (part.data.buffer_id === "qb") {
-                  dispatch(setIsNativeEditorOpen(true));
+                if (autoApply && sidebarSqlCard) {
+                  // The edit is for the native card of this turn, which opens at the end.
+                  sidebarSqlCard = withEditedSql(
+                    sidebarSqlCard,
+                    part.data,
+                    getState(),
+                  );
+                } else {
+                  dispatch(
+                    addSuggestedCodeEdit({
+                      ...part.data,
+                      active: true,
+                      autoApply,
+                    }),
+                  );
+                  const isSqlShown =
+                    getMetabotSqlModeEntry(getState(), conversationId)?.mode ===
+                      "sql-shown" || part.data.show_sql === true;
+                  if (isQbEdit && (!autoApply || isSqlShown)) {
+                    dispatch(setIsNativeEditorOpen(true));
+                  }
+                  if (isQbEdit && !autoApply && sidebarSqlCard) {
+                    hasSidebarSqlCardDiff = true;
+                  }
                 }
                 pushDataPart({
                   type: "data_part",
@@ -671,6 +905,22 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
+                const sqlCard = isSidebarConversation
+                  ? toMetabotSqlCard(
+                      part.data,
+                      request.context,
+                      sidebarSqlCard,
+                      getState(),
+                    )
+                  : null;
+                if (sqlCard) {
+                  sidebarSqlCard = sqlCard;
+                  hasSidebarSqlCardDiff = false;
+                  destination = undefined;
+                  return;
+                }
+
+                sidebarSqlCard = undefined;
                 destination = { type: "generated-entity", entity: part.data };
               })
               .with({ type: "data-entity_saved" }, (part) => {
@@ -718,6 +968,7 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
 
                 if (open && canOpenDashboards) {
+                  sidebarSqlCard = undefined;
                   destination = {
                     type: "saved-dashboard",
                     dashboardId: dashboard_id,
@@ -852,8 +1103,16 @@ export const sendAgentRequest = createAsyncThunk<
         });
       }
 
-      if (destination) {
-        dispatch(openTurnDestination(destination, startUrl));
+      const turnDestination: TurnDestination | undefined =
+        destination ??
+        (sidebarSqlCard && {
+          type: "metabot-sql-card",
+          conversationId,
+          card: sidebarSqlCard,
+          hasPendingDiff: hasSidebarSqlCardDiff,
+        });
+      if (turnDestination) {
+        dispatch(openTurnDestination(turnDestination, startUrl));
       }
 
       const shouldPollForTitle =

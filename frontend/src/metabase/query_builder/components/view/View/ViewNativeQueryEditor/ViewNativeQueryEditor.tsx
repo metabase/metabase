@@ -1,11 +1,24 @@
+import { useEffect, useMemo } from "react";
+import { useLatest } from "react-use";
+
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { MetabotPromptButton } from "metabase/metabot/components/MetabotPromptButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { getMetabotVisible } from "metabase/metabot/state";
+import {
+  addSuggestedCodeEdit,
+  getMetabotSuggestedCodeEdit,
+  getMetabotVisible,
+  getOmnibotSqlModeEntry,
+  metabotSqlApplied,
+  metabotSqlHidden,
+  metabotSqlShown,
+  removeSuggestedCodeEdit,
+} from "metabase/metabot/state";
 import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type { SelectionRange } from "metabase/querying/editor/types";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setIsNativeEditorOpen as setIsNativeEditorOpenAction } from "metabase/redux/query-builder";
 import type { QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -60,7 +73,10 @@ interface ViewNativeQueryEditorProps {
   openDataReferenceAtQuestion: (id: CardId) => void;
   openSnippetModalWithSelectedText: () => void;
   insertSnippet: (snippet: NativeQuerySnippet) => void;
-  setIsNativeEditorOpen?: (isOpen: boolean) => void;
+  setIsNativeEditorOpen?: (
+    isOpen: boolean,
+    toggleDataReference?: boolean,
+  ) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
   onOpenModal: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
@@ -72,8 +88,118 @@ interface ViewNativeQueryEditorProps {
   availableHeight?: number;
 }
 
+const QB_BUFFER_ID = "qb";
+
+const getNativeSql = (question: Question) =>
+  Lib.rawNativeQuery(question.query());
+
+/**
+ * Applies and runs a Metabot SQL edit that the sidebar marked as auto-apply.
+ * When the SQL changed since the last Metabot change, the edit shows as a diff.
+ */
+function useMetabotAutoApply({
+  question,
+  setQuery,
+  runQuestionQuery,
+}: Pick<
+  ViewNativeQueryEditorProps,
+  "question" | "setQuery" | "runQuestionQuery"
+>) {
+  const dispatch = useDispatch();
+  const codeEdit = useSelector((state) =>
+    getMetabotSuggestedCodeEdit(state, QB_BUFFER_ID),
+  );
+  const lastAppliedSql = useSelector(
+    (state) => getOmnibotSqlModeEntry(state)?.lastAppliedSql,
+  );
+
+  useEffect(() => {
+    if (!codeEdit?.autoApply) {
+      return;
+    }
+    const query = question.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    const sql = isNative ? Lib.rawNativeQuery(query) : null;
+    if (sql == null || sql !== lastAppliedSql) {
+      dispatch(addSuggestedCodeEdit({ ...codeEdit, autoApply: false }));
+      dispatch(setIsNativeEditorOpenAction(true));
+      return;
+    }
+
+    // Remove the edit first, so that a rerender does not apply it twice.
+    dispatch(removeSuggestedCodeEdit(QB_BUFFER_ID));
+    const isSqlShown = codeEdit.show_sql === true;
+    if (codeEdit.value === sql) {
+      // The SQL does not change ("show me the SQL"), so the results stay.
+      dispatch(metabotSqlApplied({ sql, isSqlShown }));
+      return;
+    }
+
+    const nextQuery = Lib.withNativeQuery(query, codeEdit.value);
+    // `setQuery` returns nothing, so build the same question here.
+    const nextQuestion = question.setQuery(nextQuery);
+    setQuery(nextQuery);
+    dispatch(
+      metabotSqlApplied({ sql: Lib.rawNativeQuery(nextQuery), isSqlShown }),
+    );
+    if (nextQuestion.canRun()) {
+      // `setQuery` updates the store question before it returns. So this
+      // runs that question, and updates the URL, as the Run button does.
+      runQuestionQuery();
+    }
+  }, [
+    codeEdit,
+    lastAppliedSql,
+    question,
+    setQuery,
+    runQuestionQuery,
+    dispatch,
+  ]);
+}
+
+/**
+ * Wraps `setIsNativeEditorOpen`: opening the editor by hand asks to see the SQL,
+ * and closing it asks for the chart again. The wrapper keeps its identity
+ * while the user types.
+ */
+function useSetIsNativeEditorOpen({
+  question,
+  isNativeEditorOpen,
+  setIsNativeEditorOpen,
+}: Pick<
+  ViewNativeQueryEditorProps,
+  "question" | "isNativeEditorOpen" | "setIsNativeEditorOpen"
+>) {
+  const dispatch = useDispatch();
+  const questionRef = useLatest(question);
+  const isNativeEditorOpenRef = useLatest(isNativeEditorOpen);
+
+  return useMemo(
+    () =>
+      setIsNativeEditorOpen &&
+      ((isOpen: boolean, toggleDataReference?: boolean) => {
+        const wasOpen = isNativeEditorOpenRef.current;
+        if (isOpen !== wasOpen) {
+          const sql = getNativeSql(questionRef.current);
+          dispatch(
+            isOpen ? metabotSqlShown({ sql }) : metabotSqlHidden({ sql }),
+          );
+        }
+        setIsNativeEditorOpen(isOpen, toggleDataReference);
+      }),
+    [setIsNativeEditorOpen, dispatch, questionRef, isNativeEditorOpenRef],
+  );
+}
+
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   const { question, isNativeEditorOpen, onSetDatabaseId } = props;
+  useMetabotAutoApply(props);
+
+  const setIsNativeEditorOpen = useSetIsNativeEditorOpen({
+    question,
+    isNativeEditorOpen,
+    setIsNativeEditorOpen: props.setIsNativeEditorOpen,
+  });
 
   const highlightedLineNumbers = useSelector(
     getHighlightedNativeQueryLineNumbers,
@@ -110,6 +236,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
         onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
         hasSqlGenerationAccess={hasSqlGenerationAccess}
+        setIsNativeEditorOpen={setIsNativeEditorOpen}
       >
         <NativeQueryEditor.TopBar leftContent={<NativeQueryParametersList />}>
           <NativeQueryEditor.Sidebar

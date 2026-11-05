@@ -7,6 +7,7 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
+import { metabotSqlLoaded } from "metabase/metabot/state";
 import {
   getShallowTables,
   paramFieldsFetched,
@@ -31,6 +32,8 @@ import {
 import type {
   Dispatch,
   GetState,
+  MetabotAutoRun,
+  PendingMetabotCard,
   QueryBuilderUIControls,
 } from "metabase/redux/store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
@@ -278,6 +281,38 @@ export async function updateTemplateTagNames(
   return query;
 }
 
+/**
+ * Records a native question Metabot opened at `location`: its baseline, so it
+ * is not unsaved work until changed, and the SQL a sidebar turn's auto-run
+ * compares its next edit with. Returns the auto-run, if the card has one.
+ */
+function loadMetabotCard(
+  dispatch: Dispatch,
+  location: Location,
+  pendingMetabotCard: PendingMetabotCard | null,
+  question: Question,
+): MetabotAutoRun | undefined {
+  const isMetabotCard =
+    pendingMetabotCard?.url === `${location.pathname}${location.hash}`;
+  if (!pendingMetabotCard || !isMetabotCard) {
+    return undefined;
+  }
+  // after the tag renames, so it matches the question as loaded
+  dispatch(addMetabotCardBaseline(getMetabotCardBaseline(question)));
+  const { autoRun } = pendingMetabotCard;
+  if (autoRun) {
+    // The init renames model and snippet tags, so Metabot compares its next
+    // edit with the SQL of this question, not with the SQL that it sent.
+    dispatch(
+      metabotSqlLoaded({
+        conversationId: autoRun.conversationId,
+        sql: Lib.rawNativeQuery(question.query()),
+      }),
+    );
+  }
+  return autoRun;
+}
+
 // Tracks the most recent initializeQB invocation so that stale, in-flight
 // calls (whose location has been superseded by a newer navigation before they
 // finished awaiting metadata) don't overwrite the QB state with results
@@ -491,11 +526,11 @@ async function handleQBInit(
     return;
   }
 
-  const isMetabotCard =
-    pendingMetabotCard?.url === `${location.pathname}${location.hash}`;
-  if (isNative && isMetabotCard) {
-    // after the tag renames above, so it matches the question as loaded
-    dispatch(addMetabotCardBaseline(getMetabotCardBaseline(question)));
+  const autoRun = isNative
+    ? loadMetabotCard(dispatch, location, pendingMetabotCard, question)
+    : undefined;
+  if (autoRun) {
+    uiControls.isNativeEditorOpen = autoRun.isNativeEditorOpen;
   }
 
   dispatch({
@@ -511,7 +546,9 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode !== "notebook") {
     const { isNative } = Lib.queryDisplayInfo(question.query());
-    if (question.canRun() && (question.isSaved() || !isNative)) {
+    const canAutoRun =
+      question.isSaved() || !isNative || autoRun?.shouldRun === true;
+    if (question.canRun() && canAutoRun) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),

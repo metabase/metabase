@@ -126,17 +126,20 @@ Reference items using: [name](metabase://type/id)")
 
 (defn- delivery-instruction
   "The delivery line for an updated query, by how it reached the user.
-   That is `:editor` when it is proposed in their open editor buffer for them to accept or reject.
+   That is `:applied` when it is applied in the user's query, which runs without an approval step, and `:editor`
+   when it is proposed in their open editor buffer for them to accept or reject.
    It is `:link` when it is handed back as a query they open themselves, and `:hidden` when it is not shown at all."
   [query-id delivery]
   (case delivery
-    :editor (str "- The updated query is proposed in the user's SQL editor for them to accept or reject — "
-                 "tell them it's waiting there, do not offer a link")
-    :link   (str "- Always provide a direct link using: "
-                 "`[Updated Query](metabase://query/" query-id ")` "
-                 "where Updated Query is a meaningful link text\n"
-                 not-saved-instruction)
-    :hidden (query-hidden-instructions-for query-id)))
+    :applied (str "- The updated query is already applied in the user's query and runs there — "
+                  "tell them it's applied, do not ask them to accept it, do not offer a link")
+    :editor  (str "- The updated query is proposed in the user's SQL editor for them to accept or reject — "
+                  "tell them it's waiting there, do not offer a link")
+    :link    (str "- Always provide a direct link using: "
+                  "`[Updated Query](metabase://query/" query-id ")` "
+                  "where Updated Query is a meaningful link text\n"
+                  not-saved-instruction)
+    :hidden  (query-hidden-instructions-for query-id)))
 
 (defn edit-sql-query-instructions-for
   "Generate instructions for an edited SQL query.

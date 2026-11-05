@@ -346,3 +346,20 @@
 (deftest viewing-dashboard-tab-test
   (testing "a dashboard in view can name its open tab"
     (is (mr/validate ::context/context {:user_is_viewing [{:type "dashboard", :id 42, :tab_id 101}]}))))
+
+(deftest ^:parallel code-editor-buffer-auto-apply-schema-test
+  (testing "a code-editor buffer may carry an optional boolean `auto_apply`"
+    (let [buffer        {:id "qb" :source {:language "sql" :database_id 1} :cursor {:line 0 :column 0}}
+          with-buffer   (fn [buffer]
+                          {:user_is_viewing [{:type "code_editor" :buffers [buffer]}]
+                           :code_editor     {:type "code_editor" :buffers [buffer]}})]
+      (doseq [[auto-apply valid?] [[::absent true]
+                                   [true     true]
+                                   [false    true]
+                                   [nil      true]
+                                   ["yes"    false]]]
+        (testing (pr-str auto-apply)
+          (is (= valid?
+                 (mr/validate ::context/context
+                              (with-buffer (cond-> buffer
+                                             (not= auto-apply ::absent) (assoc :auto_apply auto-apply)))))))))))

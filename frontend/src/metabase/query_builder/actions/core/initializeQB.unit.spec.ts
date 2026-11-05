@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import { P, match } from "ts-pattern";
 
 import {
   createMockMetadata,
@@ -16,7 +17,7 @@ import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
-import type { PendingMetabotCard } from "metabase/redux/store";
+import type { PendingMetabotCard, State } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
@@ -64,6 +65,15 @@ type BaseSetupOpts = {
 
 const SEGMENT = createMockSegment();
 
+const autoRunCardFor = (url: string): PendingMetabotCard => ({
+  url,
+  autoRun: {
+    conversationId: "conversation-1",
+    isNativeEditorOpen: false,
+    shouldRun: true,
+  },
+});
+
 async function baseSetup({
   user,
   location,
@@ -72,7 +82,7 @@ async function baseSetup({
   pendingMetabotCard = null,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
-  const state = createMockState({
+  let state: State = createMockState({
     qb: createMockQueryBuilderState({ pendingMetabotCard }),
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
@@ -94,8 +104,12 @@ async function baseSetup({
   // Pass actions through verbatim so callers that capture the result of
   // `dispatch(thunk)` (e.g. RTK Query's `endpoint.initiate(...)`) can still
   // call methods on it in tests where the snippet endpoint is mocked.
-  const dispatch = jest.fn((action) => action);
-  await initializeQB(location, params)(dispatch, getState);
+  const dispatch = jest.fn((action) => {
+    state = withPendingMetabotCardAction(state, action);
+    return action;
+  });
+  const runInit = () => initializeQB(location, params)(dispatch, getState);
+  await runInit();
   jest.runOnlyPendingTimers();
 
   const actions = dispatch.mock.calls.find(
@@ -104,7 +118,24 @@ async function baseSetup({
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
 
-  return { dispatch, state, result, metadata };
+  return { dispatch, getState, result, metadata, runInit };
+}
+
+// The mocked dispatch has no reducers; this one action must update the state,
+// so that a later init sees a consumed key.
+function withPendingMetabotCardAction(state: State, action: unknown): State {
+  return match(action)
+    .with(
+      {
+        type: sharedQB.SET_PENDING_METABOT_CARD,
+        payload: P.union(null, { url: P.string }),
+      },
+      ({ payload }) => ({
+        ...state,
+        qb: { ...state.qb, pendingMetabotCard: payload },
+      }),
+    )
+    .otherwise(() => state);
 }
 
 function getLocationForCard(
@@ -661,6 +692,83 @@ describe("QB Actions > initializeQB", () => {
           ([action]) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
         ),
       ).toEqual([]);
+    });
+  });
+
+  describe("pending auto-run of a Metabot native question", () => {
+    const { card } = TEST_CASE.UNSAVED_NATIVE_QUESTION;
+    const location = getLocationForCard(card);
+    const url = `${location.pathname}${location.hash}`;
+
+    const getRunCount = () =>
+      jest.mocked(querying.runQuestionQuery).mock.calls.length;
+
+    beforeEach(() => {
+      jest.spyOn(querying, "runQuestionQuery");
+    });
+
+    it("does not run on a reload of the Metabot URL, and opens the editor", async () => {
+      const { result } = await setup({ card, pendingMetabotCard: null });
+
+      expect(getRunCount()).toBe(0);
+      expect(result.uiControls.isNativeEditorOpen).toBe(true);
+    });
+
+    it("runs once with the editor state of the key, and clears the key", async () => {
+      const { result, getState } = await setup({
+        card,
+        pendingMetabotCard: autoRunCardFor(url),
+      });
+
+      expect(getRunCount()).toBe(1);
+      expect(result.uiControls.isNativeEditorOpen).toBe(false);
+      expect(getState().qb.pendingMetabotCard).toBeNull();
+    });
+
+    it("does not run for a key of another URL, and clears the key", async () => {
+      const otherKey = autoRunCardFor("/question#other");
+      const { result, getState } = await setup({
+        card,
+        pendingMetabotCard: otherKey,
+      });
+
+      expect(getRunCount()).toBe(0);
+      expect(result.uiControls.isNativeEditorOpen).toBe(true);
+      expect(getState().qb.pendingMetabotCard).toBeNull();
+    });
+
+    it("does not let a stale init use the key", async () => {
+      const { runInit, dispatch, getState } = await setup({
+        card,
+        pendingMetabotCard: null,
+      });
+      jest.mocked(querying.runQuestionQuery).mockClear();
+      dispatch(sharedQB.setPendingMetabotCard(autoRunCardFor(url)));
+
+      await Promise.all([runInit(), runInit()]);
+      jest.runOnlyPendingTimers();
+
+      expect(getRunCount()).toBe(1);
+      expect(getState().qb.pendingMetabotCard).toBeNull();
+    });
+
+    it("does not run twice for a consumed key", async () => {
+      const { runInit, dispatch, getState } = await setup({
+        card,
+        pendingMetabotCard: autoRunCardFor(url),
+      });
+      expect(getRunCount()).toBe(1);
+
+      dispatch.mockClear();
+      await runInit();
+      jest.runOnlyPendingTimers();
+
+      expect(getRunCount()).toBe(1);
+      const initAction = dispatch.mock.calls.find(
+        (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
+      );
+      expect(initAction?.[0].payload.uiControls.isNativeEditorOpen).toBe(true);
+      expect(getState().qb.pendingMetabotCard).toBeNull();
     });
   });
 

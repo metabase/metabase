@@ -95,6 +95,16 @@ export type MetabotCardBaseline = Pick<
 export type PendingMetabotCard = {
   /** `pathname + hash` of the location the init must match. */
   url: string;
+  /** Set when a sidebar turn opens its SQL card, which runs once on open. */
+  autoRun?: MetabotAutoRun;
+};
+
+export type MetabotAutoRun = {
+  /** The Metabot conversation that opened the question. */
+  conversationId: string;
+  isNativeEditorOpen: boolean;
+  /** `false` with a pending Metabot diff: the question opens with no run. */
+  shouldRun: boolean;
 };
 
 export interface QueryBuilderLoadingControls {
