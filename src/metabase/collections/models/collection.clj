@@ -1818,7 +1818,7 @@
                                   current-parent-id)
         new-parent              (if new-parent-id
                                   (collections.db/collection new-parent-id)
-                                  root-collection)
+                                  (assoc root-collection :namespace (:namespace collection)))
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
