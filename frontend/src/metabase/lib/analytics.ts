@@ -1,6 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
 import { shouldLogAnalytics } from "metabase/env";
+import { trackMetaplowEvent } from "metabase/lib/metaplow";
 import Settings from "metabase/lib/settings";
 import type {
   SchemaEvent,
@@ -64,5 +65,10 @@ export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
         data: event,
       },
     });
+  }
+
+  if (Settings.trackingEnabled() && Settings.get("metaplow-tracking-enabled")) {
+    const { event: name, ...data } = event;
+    trackMetaplowEvent(name, data);
   }
 }

@@ -3227,6 +3227,11 @@
   dependencies:
     "@types/mdx" "^2.0.0"
 
+"@metabase/track@1.0.0-alpha.1":
+  version "1.0.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/@metabase/track/-/track-1.0.0-alpha.1.tgz#5faa47756356be23abc48787ea399c4e93aaa6b9"
+  integrity sha512-LPpoNCyBoqUX1TNAdHQMswJETC6bPs7YNpKQp17n5+mCpeDcbP40o+V1DulVsOSWIbwg/RWX770d1s4ec7kPlw==
+
 "@microsoft/api-extractor-model@7.30.5":
   version "7.30.5"
   resolved "https://registry.yarnpkg.com/@microsoft/api-extractor-model/-/api-extractor-model-7.30.5.tgz#09b4412a3344ce8e6b58114bf350d6d0b8c86b63"

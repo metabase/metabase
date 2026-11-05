@@ -1,5 +1,10 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
+import {
+  getCollectorHostUrl,
+  initMetaplow,
+  trackMetaplowPageView,
+} from "metabase/lib/metaplow";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
 
@@ -11,11 +16,19 @@ export const trackPageView = (url) => {
   if (Settings.snowplowEnabled()) {
     trackSnowplowPageView(getSanitizedUrl(url));
   }
+
+  if (Settings.get("metaplow-tracking-enabled")) {
+    trackMetaplowPageView(url);
+  }
 };
 export const createTracker = (store) => {
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
   }
+  initMetaplow({
+    hostUrl: getCollectorHostUrl(),
+    getUserId: () => getUserId(store.getState()),
+  });
 };
 
 const createSnowplowPlugin = (store) => {
