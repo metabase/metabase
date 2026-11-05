@@ -2875,6 +2875,54 @@
                            [:source :source-incremental-strategy :checkpoint-filter-field-id]))
                 "the stale numeric id survives the import unchanged")))))))
 
+(defn- root-cause-message [^Throwable e]
+  (ex-message (last (take-while some? (iterate ex-cause e)))))
+
+(deftest archived-transforms-folder-load-test
+  (testing "An import refuses an archived transforms folder, and so the transforms in it"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db      (ts/create! :model/Database :name "my-db")
+                  table   (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  folder! (fn [folder-name archived? transform-name]
+                            (let [folder (ts/create! :model/Collection
+                                                     :name folder-name
+                                                     :namespace "transforms"
+                                                     :archived archived?
+                                                     :archived_directly (when archived? true))]
+                              (ts/create! :model/Transform
+                                          :name transform-name
+                                          :collection_id (:id folder)
+                                          :source {:type "query" :query (mbql5-query (:id db) (:id table))}
+                                          :target {:database (:id db) :type "table" :schema "public" :name transform-name})))]
+              (folder! "Archived folder" true "archived_transform")
+              (folder! "Live folder" false "live_transform")
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (testing "without continue-on-error the import fails and names the folder"
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))))]
+                (is (= "Transforms folder \"Archived folder\" is archived and cannot be imported. Delete it in the source, or unarchive it there, and export again."
+                       (root-cause-message e)))))
+            (testing "with continue-on-error the rest loads"
+              (let [{:keys [errors]} (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized)
+                                                                 :continue-on-error true)]
+                (is (= 2 (count errors))
+                    "one error for the folder's own file and one for its transform")
+                (is (= #{"Live folder"}
+                       (t2/select-fn-set :name :model/Collection :namespace "transforms")))
+                (is (= #{"live_transform"}
+                       (t2/select-fn-set :name :model/Transform))))))
+          (testing "a local folder that is unarchived stays unarchived"
+            (ts/with-db source-db
+              (t2/update! :model/Collection :name "Archived folder" {:archived false :archived_directly nil})
+              (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized) :continue-on-error true)
+              (is (false? (t2/select-one-fn :archived :model/Collection :name "Archived folder"))))))))))
+
 (deftest transform-with-deleted-source-database-load-test
   (testing "An orphaned transform (source database was deleted before export) round-trips through serdes as a tombstone (GDGT-2447)"
     (mt/with-premium-features #{:transforms-basic}
