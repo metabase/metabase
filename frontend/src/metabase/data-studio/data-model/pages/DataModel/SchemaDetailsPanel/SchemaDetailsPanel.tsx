@@ -46,6 +46,7 @@ import {
   DetailsEditableText,
   SchemaDetailsSkeleton,
 } from "../DetailPanel";
+import { SegmentSettingsSection } from "../SegmentSettingsSection";
 import {
   getLastSyncedAt,
   getLastSyncedValue,
@@ -320,6 +321,11 @@ function SchemaDetails({
           />
         </DetailsTable>
       </SidebarSection>
+
+      <SegmentSettingsSection
+        databaseId={database.id}
+        schemaName={schemaName}
+      />
 
       <SidebarSection title={t`Stats`}>
         <DetailsTable>

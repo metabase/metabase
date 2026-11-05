@@ -29,6 +29,7 @@ import {
   DetailPanelHeader,
   DetailsEditableText,
 } from "../DetailPanel";
+import { SegmentSettingsSection } from "../SegmentSettingsSection";
 import {
   getLastSyncedAt,
   getLastSyncedValue,
@@ -235,6 +236,8 @@ function DatabaseDetails({
           />
         </DetailsTable>
       </SidebarSection>
+
+      <SegmentSettingsSection databaseId={database.id} />
 
       <SidebarSection title={t`Stats`}>
         <DetailsTable>

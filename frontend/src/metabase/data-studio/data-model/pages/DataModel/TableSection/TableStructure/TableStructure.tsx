@@ -23,17 +23,7 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import {
-  Badge,
-  Button,
-  Group,
-  Icon,
-  Pill,
-  Select,
-  Switch,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Group, Pill, Select, Switch, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -42,6 +32,11 @@ import {
   DETAILS_CELL_INPUT_CLASS_NAMES,
   DetailsEditableText,
 } from "../../DetailPanel";
+import {
+  InferredIcon,
+  NeedsReviewBadge,
+  ReviewValue,
+} from "../InferenceReview";
 
 import S from "./TableStructure.module.css";
 
@@ -226,59 +221,6 @@ function isRoleUnderReview(
   return needsReview && !disabled && inference.role != null;
 }
 
-function NeedsReviewBadge() {
-  return (
-    <Badge color="warning" variant="light" flex="0 0 auto">
-      {t`Needs review`}
-    </Badge>
-  );
-}
-
-/**
- * A weak guess as plain text with its AI icon, to confirm or change.
- * Either choice records it as the admin's, so the caller swaps in its select.
- */
-function ReviewValue({
-  value,
-  inference,
-  onConfirm,
-  onChange,
-  "data-testid": dataTestId,
-}: {
-  value: string;
-  /** Why sync guessed it, shown on the AI icon */
-  inference: string | null;
-  onConfirm: () => void;
-  /** Confirms, then opens the select so another value can be picked */
-  onChange: () => void;
-  "data-testid"?: string;
-}) {
-  return (
-    <Group
-      flex={1}
-      justify="space-between"
-      gap="sm"
-      wrap="nowrap"
-      px="lg"
-      py="sm"
-      data-testid={dataTestId}
-    >
-      <Group gap="xs" wrap="nowrap" miw={0}>
-        <Text truncate>{value}</Text>
-        <InferredIcon description={inference} />
-      </Group>
-      <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-        <Button size="compact-sm" variant="filled" onClick={onConfirm}>
-          {t`Confirm`}
-        </Button>
-        <Button size="compact-sm" onClick={onChange}>
-          {t`Change`}
-        </Button>
-      </Group>
-    </Group>
-  );
-}
-
 /** The role, or its weak guess to confirm or change */
 function RoleValue({ structure, disabled, onChange }: RoleInputProps) {
   const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
@@ -364,23 +306,6 @@ function getMainDateInference({
   isMainDateOverridden,
 }: TableStructureValue): string | null {
   return isMainDateOverridden ? null : t`Inferred: ${mainDateInference.signal}`;
-}
-
-/** An AI icon for an inferred value, explained on hover */
-function InferredIcon({ description }: { description: string | null }) {
-  if (description == null) {
-    return null;
-  }
-  return (
-    <Tooltip label={description} maw={280} multiline>
-      <Icon
-        name="ai"
-        c="text-secondary"
-        aria-label={description}
-        flex="0 0 auto"
-      />
-    </Tooltip>
-  );
 }
 
 function GrainFields({

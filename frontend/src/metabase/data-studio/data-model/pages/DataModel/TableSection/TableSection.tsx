@@ -26,6 +26,7 @@ import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
+import { TableFiltering } from "./TableFiltering";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import S from "./TableSection.module.css";
 import { TableStructure } from "./TableStructure";
@@ -105,6 +106,8 @@ const TableSectionBase = ({
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
               <TableStructure table={table} readOnly={readOnly} />
+
+              <TableFiltering table={table} readOnly={readOnly} />
 
               {table.is_published && <TableCollection table={table} />}
 
