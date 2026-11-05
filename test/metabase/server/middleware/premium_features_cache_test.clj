@@ -132,7 +132,7 @@
                                                                                           :status   "ok"
                                                                                           :features ["sandboxes"]})})]
                 ;; not a feature read: that would tick early on the refresher thread
-                (is (nil? (:entry @(token-check/state-handle))))
+                (is (nil? (:entry @@(token-check/state-handle))))
                 (run-middleware (request-with-cookie (str (Instant/now))) {:status 200})
                 (is (= 1 @calls))
                 (is (true? (premium-features/has-feature? :sandboxes))))))
