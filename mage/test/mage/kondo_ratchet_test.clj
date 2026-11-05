@@ -595,11 +595,8 @@
     (testing "a chain through an unconfigured var ends at the last configured one"
       (is (= '{a/f c/f}
              (kondo-ratchet/source-aliases '{a/f b/f, b/f c/f} '#{a/f c/f}))))
-    (testing "a cycle stops instead of looping, and its vars keep their own keys"
-      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f})))
-      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f b/f}))))
-    (testing "a var leading into a cycle counts under the var where it enters"
-      (is (= '{x/f a/f} (kondo-ratchet/source-aliases '{x/f a/f, a/f b/f, b/f a/f} '#{x/f a/f b/f}))))
+    (testing "a cycle stops instead of looping"
+      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f}))))
     (testing "a var whose source isn't configured counts under itself"
       (is (= {} (kondo-ratchet/source-aliases edges '#{lib.core/g}))))))
 

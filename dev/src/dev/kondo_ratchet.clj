@@ -316,11 +316,6 @@
     (keyword (drop-metabase-prefix ns-part) (name sym))
     (keyword (drop-metabase-prefix (name sym)))))
 
-(defn- var-aliases
-  "`aliases` (see [[fix!]]) if `linter` is :discouraged-var, else none: only vars are re-exported."
-  [linter aliases]
-  (if (= :discouraged-var linter) aliases {}))
-
 (defn- alias-note
   "` (also counts a, b)` for the keys in `aliases` that count under `k`, or an empty string."
   [aliases k]
@@ -342,7 +337,7 @@
        (throw (ex-info (format "%s symbols %s share the ratchet key %s"
                                linter (str/join ", " (sort-by str syms)) k)
                        {:linter linter, :key k, :symbols (vec syms)})))
-     (into #{} (map #(get (var-aliases linter aliases) % %)) (keys by-key)))))
+     (into #{} (map #(get aliases % %)) (keys by-key)))))
 
 (defn- validate-count-keys!
   "Throw when two symbols configured under one of the [[discouragement-linters]] share a ratchet key."
@@ -410,8 +405,7 @@
   (for [linter (sort discouragement-linters)
         :let   [budgeted                      (keys (get ratchets (discouraged-count-field linter)))
                 stale                         (sort-by str (remove (configured linter) budgeted))
-                sources                       (var-aliases linter aliases)
-                {aliased true, unknown false} (group-by (comp boolean sources) stale)]
+                {aliased true, unknown false} (group-by (comp boolean aliases) stale)]
         line   [(when (seq unknown)
                   (format (str "WARNING: %s budgets %s symbols no longer configured in %s: %s"
                                " -- `./bin/mage kondo-ratchets-shrink` drops them")
@@ -419,7 +413,7 @@
                 (when (seq aliased)
                   (format (str "WARNING: %s budgets %s symbols that count under another symbol's key: %s"
                                " -- `./bin/mage kondo-ratchets-shrink` drops them")
-                          ratchets-file linter (str/join ", " (map #(str % " -> " (sources %)) aliased))))]
+                          ratchets-file linter (str/join ", " (map #(str % " -> " (aliases %)) aliased))))]
         :when  line]
     line))
 
@@ -1099,7 +1093,7 @@
                      actual    (get-in attribution [:actual linter] {})
                      seeded    (get seeds field [])
                      seed-hint (partial discouraged-seed-name linter)
-                     label     #(str % (alias-note (var-aliases linter aliases) %))
+                     label     #(str % (alias-note aliases %))
                      ;; a bulk seed names every configured symbol, so only those it changes are worth a line
                      reported  (cond->> seeded
                                  (contains? (:bulk seeds) field)
@@ -1423,7 +1417,7 @@
                             " increase in the PR:")
                        (map (fn [[k v]]
                               (str (budget-line [(discouraged-seed-name linter k) v])
-                                   (alias-note (var-aliases linter aliases) k)))
+                                   (alias-note aliases k)))
                             over))))
              (sort discouragement-linters))
      (when (seq unresolved)

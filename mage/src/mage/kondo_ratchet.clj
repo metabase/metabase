@@ -154,14 +154,12 @@
             edge))))
 
 (defn- chain
-  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`. A chain that reaches a cycle
-  stops where it enters it, so every var on a cycle is a chain of its own."
+  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`, stopping before a repeat."
   [edges sym]
   (loop [sym sym, seen []]
-    (cond
-      (nil? sym)          seen
-      (some #{sym} seen)  (conj (vec (take-while #(not= sym %) seen)) sym)
-      :else               (recur (edges sym) (conj seen sym)))))
+    (if (or (nil? sym) (some #{sym} seen))
+      seen
+      (recur (edges sym) (conj seen sym)))))
 
 (defn source-aliases
   "A map from each of `vars` that is another of them under a second name to the one it counts under, following
