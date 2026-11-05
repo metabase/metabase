@@ -17,7 +17,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.db :as premium-features.db]
@@ -403,7 +402,7 @@
                           :on-close          (fn [_] (log/info "Token Check restored"))}))
 
 (defn initial-state
-  "The token check's state before any refresh:
+  "A fresh token check state: an atom holding, before any refresh,
 
     {:entry                 {:token-hash, :status, :status-hash, :fetched-at} or nil
      :last-failure          {:token-hash, :message} of the latest failed refresh, or nil
@@ -412,14 +411,16 @@
      :ticked-for-token-hash the hash of the last token [[tick-for-new-token!]] ticked for, or nil
      :breaker               the circuit breaker guarding the store}
 
-  Bind [[state-handle]] to a fresh one to run code against a token check of its own."
+  Bind [[state-handle]] to a fresh one to run code against a token check of its own.
+  The component holds the atom, which never changes, so an operation that reads the atom once keeps working on that
+  state even if the component is rebound or its root replaced midway."
   []
-  {:entry                 nil
-   :last-failure          nil
-   :in-flight             {}
-   :refresh-requested?    false
-   :ticked-for-token-hash nil
-   :breaker               (make-breaker)})
+  (atom {:entry                 nil
+         :last-failure          nil
+         :in-flight             {}
+         :refresh-requested?    false
+         :ticked-for-token-hash nil
+         :breaker               (make-breaker)}))
 
 (def ^:private state-component
   (system/mutable-component-handle ::state initial-state))
@@ -429,15 +430,20 @@
   []
   state-component)
 
-(defn- state
-  "The token check's state as this thread sees it."
+(defn- state-box
+  "The atom holding the token check's state, as this thread sees it."
   []
   @state-component)
 
+(defn- state
+  "The token check's state as this thread sees it."
+  []
+  @(state-box))
+
 (defn- swap-state!
-  "Apply `f` and `args` to the token check's state, and return `[old new]`."
-  [f & args]
-  (apply mc/swap-vals! state-component f args))
+  "Apply `f` and `args` to the token check state in `box`, and return `[old new]`."
+  [box f & args]
+  (apply swap-vals! box f args))
 
 ;; The executor running [[tick!]]; started by [[start-refresher!]] and stopped with the global system.
 (def ^:private refresher-component
@@ -448,9 +454,9 @@
   (u/seconds->ms 10))
 
 (defn- fetch-status
-  [token & {:keys [retry?] :or {retry? true}}]
+  [box token & {:keys [retry?] :or {retry? true}}]
   (try
-    (dh/with-circuit-breaker (:breaker (state))
+    (dh/with-circuit-breaker (:breaker @box)
       (dh/with-timeout {:timeout-ms fetch-timeout-ms
                         :interrupt? true}
         (if retry?
@@ -467,12 +473,12 @@
       (throw (or (ex-cause e) e)))))
 
 (defn- install!
-  [token status]
+  [box token status]
   ;; the token may have been replaced while its status was being fetched
   (when (= token (premium-features.settings/premium-embedding-token))
     (let [token-hash  (hash-token token)
           status-hash (hash-token-status status)]
-      (swap-state! assoc
+      (swap-state! box assoc
                    :entry        {:token-hash  token-hash
                                   :status      status
                                   :status-hash status-hash
@@ -488,22 +494,24 @@
 (defn- refresh!
   [fetch-opts]
   (when-let [token (premium-features.settings/premium-embedding-token)]
-    (let [token-hash (hash-token token)
+    ;; the state is read once, so the fetch, the install and the cleanup all work on the state this refresh began on
+    (let [box        (state-box)
+          token-hash (hash-token token)
           mine       (promise)
-          [before]   (swap-state! update :in-flight
+          [before]   (swap-state! box update :in-flight
                                   (fn [m] (cond-> m (not (contains? m token-hash)) (assoc token-hash mine))))
           shared     (get-in before [:in-flight token-hash])]
       (when-not shared
         (try
-          (deliver mine {:status (install! token (fetch-status token fetch-opts))})
+          (deliver mine {:status (install! box token (fetch-status box token fetch-opts))})
           (log/info "Refreshed the premium features token status.")
           (catch Throwable e
             (log/errorf "Error refreshing the premium features token status: %s" (ex-message e))
             (analytics/inc! :metabase-token-check/attempt {:status :failure})
-            (swap-state! assoc :last-failure {:token-hash token-hash :message (ex-message e)})
+            (swap-state! box assoc :last-failure {:token-hash token-hash :message (ex-message e)})
             (deliver mine {:error e}))
           (finally
-            (swap-state! update :in-flight dissoc token-hash))))
+            (swap-state! box update :in-flight dissoc token-hash))))
       (let [{:keys [status error]} @(or shared mine)]
         (if error
           (throw error)
@@ -541,7 +549,7 @@
 (defn request-refresh!
   "Have the next [[tick!]] refresh the token status, for a caller that should not wait for the fetch itself."
   []
-  (swap-state! assoc :refresh-requested? true)
+  (swap-state! (state-box) assoc :refresh-requested? true)
   nil)
 
 (defn- shared-status-differs?
@@ -570,7 +578,8 @@
   "Refresh the token status if one is due. Never throws, so a scheduler keeps calling it. A requested refresh that
   fails stays requested."
   []
-  (let [[{requested? :refresh-requested?}] (swap-state! assoc :refresh-requested? false)]
+  (let [box                                (state-box)
+        [{requested? :refresh-requested?}] (swap-state! box assoc :refresh-requested? false)]
     (try
       (when-let [token (premium-features.settings/premium-embedding-token)]
         (when-let [reason (refresh-reason token requested?)]
@@ -579,7 +588,7 @@
       nil
       (catch Throwable e
         (when requested?
-          (swap-state! assoc :refresh-requested? true))
+          (swap-state! box assoc :refresh-requested? true))
         (log/errorf "Premium features token tick failed: %s" (ex-message e))
         nil))))
 
@@ -649,15 +658,19 @@
   [token-hash]
   ;; `:ticked-for-token-hash` gives each new token one early tick
   (when-let [^ScheduledExecutorService exec @refresher-component]
-    (when (not= token-hash (get-in (state) [:last-failure :token-hash]))
-      (let [[previous] (swap-state! assoc :ticked-for-token-hash token-hash)]
-        (when (not= token-hash (:ticked-for-token-hash previous))
-          (try
-            ;; with the requester's component bindings, and no others such as the requesting user's, so a tick asked
-            ;; for under a bound state runs against that state with the refresher's own permissions
-            (.execute exec ^Runnable (system/component-bound-fn safe-tick!))
-            (catch RejectedExecutionException _e
-              nil)))))))
+    (let [box                                          (state-box)
+          {:keys [last-failure ticked-for-token-hash]} @box]
+      ;; checked before the swap too, so the reads that follow a tick do not each write the state
+      (when (and (not= token-hash (:token-hash last-failure))
+                 (not= token-hash ticked-for-token-hash))
+        (let [[previous] (swap-state! box assoc :ticked-for-token-hash token-hash)]
+          (when (not= token-hash (:ticked-for-token-hash previous))
+            (try
+              ;; with the requester's component bindings, and no others such as the requesting user's, so a tick
+              ;; asked for under a bound state runs against that state with the refresher's own permissions
+              (.execute exec ^Runnable (system/component-bound-fn safe-tick!))
+              (catch RejectedExecutionException _e
+                nil))))))))
 
 (defn- current-status
   []
@@ -692,7 +705,7 @@
                      :error-details "Token should be 64 hexadecimal characters."
                      :response/keys #{:error-details}})))
   (let [status (try
-                 (fetch-status token)
+                 (fetch-status (state-box) token)
                  (catch Throwable e
                    (throw (ex-info (tru "Unable to validate token")
                                    {:error-details (ex-message e)
@@ -716,7 +729,7 @@
                    (validated-status new-value))]
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (when status
-        (install! new-value status)))
+        (install! (state-box) new-value status)))
     ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update))
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
