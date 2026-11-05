@@ -24,8 +24,7 @@
 ;; The dynamic var is the one place thread-local component values live, which is what lets a binding of one component
 ;; leave every other component reading its root.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^{:doc "Component key -> atom holding that component's value on this thread and on threads that inherit its
-             bindings.
+(def ^{:doc "Component key -> atom holding that component's bound value, shared with threads that inherit the binding.
              Holds only the components bound here; everything else resolves against [[roots]]."
        :dynamic true
        :private true}
@@ -33,8 +32,9 @@
   {})
 
 (defn snapshot
-  "Every component's value as this thread sees it, so `(get (snapshot) k)` agrees with dereferencing the handle for `k`.
-   Roots are read in one step, so components nobody has bound here are consistent with each other.
+  "Every component's value as this thread sees it.
+   For an installed component, `(get (snapshot) k)` is what dereferencing its handle returns.
+   Roots are read in one step, so the components nobody has bound here are consistent with each other.
    Bound components are read one at a time, and a thread that inherited a binding can change one mid-read."
   []
   (merge @roots (update-vals *bound-boxes* deref)))

@@ -60,10 +60,11 @@
     (do-with-encrypted-app-db! secret-key thunk)))
 
 (defmacro with-encrypted-app-db
-  "Run `body` against the namespace's prepared encrypted app DB (see [[with-encrypted-app-db-fixture]]) with the
-  encryption key active. The isolated DB is installed as the root app DB (not bound) so it is visible on the
-  server/`future` threads that serve `mt/client`; the opt-in test must therefore be marked `^:synchronized`. Use for a
-  test that activates an encryption key, so its strict decrypting reads meet only the settings in this
+  "Run `body` against the namespace's prepared encrypted app DB, with its encryption key active.
+  The DB comes from [[with-encrypted-app-db-fixture]], and is installed as the root app DB rather than bound, so the
+  server and `future` threads that serve `mt/client` see it.
+  A test that uses it must therefore be `^:synchronized`.
+  Use it for a test that activates an encryption key, so its strict decrypting reads meet only the settings in this
   already-encrypted DB."
   [& body]
   `(let [prepared# (or @prepared-encrypted-db

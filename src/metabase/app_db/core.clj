@@ -183,8 +183,8 @@
     assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
-  "Increment the [[unique-identifier]] of the application DB this thread sees: the bound one inside
-  [[with-application-db]], otherwise the root.
+  "Increment the [[unique-identifier]] of the application DB this thread sees.
+  That is the bound one inside [[with-application-db]], otherwise the root.
   This flushes every cache keyed on it, including [[memoize-for-application-db]] caches such as the Settings cache.
   For testing only."
   []
