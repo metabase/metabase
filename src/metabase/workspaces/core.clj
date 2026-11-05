@@ -51,11 +51,35 @@
 
 (defenterprise resolve-transform-target
   "The target a transform targeting `target` on the database with id `database-id` writes to. In workspace mode that is
-  the same table in the scratch namespace mapped to the target's schema, and the remapping is recorded so reads of the
-  main table go there. Otherwise `target` itself."
+  the same table in the scratch namespace mapped to the target's schema; a schema the workspace does not map is
+  refused. Otherwise `target` itself. Records nothing: see [[record-transform-output!]]."
   metabase-enterprise.workspaces.core
   [_database-id target]
   target)
+
+(defenterprise record-transform-output!
+  "Called once a transform has written `target` (as [[resolve-transform-target]] returned it) on the database with id
+  `database-id`. In workspace mode, records that the main table now lives in the scratch namespace, so reads of the
+  main table go there. Recording only after the write succeeds keeps a failed run from pointing reads at a scratch
+  table that does not exist."
+  metabase-enterprise.workspaces.core
+  [_database-id _target]
+  nil)
+
+(defenterprise transform-output-to-drop
+  "The table to drop when deleting the output of a transform that targets `target` on the database with id
+  `database-id`. In workspace mode that is the scratch table; a schema the workspace does not map is refused, so the
+  main table is never dropped. Otherwise `target` itself. Call [[forget-transform-output!]] once it is dropped."
+  metabase-enterprise.workspaces.core
+  [_database-id target]
+  target)
+
+(defenterprise forget-transform-output!
+  "Called once the output of a transform that targets `target` has been dropped. In workspace mode, deletes the
+  remapping of `target`'s main table, so reads of it go to the main table again."
+  metabase-enterprise.workspaces.core
+  [_database-id _target]
+  nil)
 
 (defenterprise rewrite-sql
   "Rewrite every reference in `sql` to a main table in `remappings` to its scratch table. Throws when `sql` can't be

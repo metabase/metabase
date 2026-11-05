@@ -643,8 +643,10 @@
       (when database-id
         (if-let [{driver :engine :as database} (when (transforms-base.db/database-exists? database-id)
                                                  (driver.u/lib-database database-id))]
-          (let [drop-target (update target :type keyword)]
+          ;; on a workspace sidecar the output is the scratch table; the main table must never be dropped
+          (let [drop-target (ws/transform-output-to-drop database-id (update target :type keyword))]
             (driver/drop-transform-target! driver database drop-target)
+            (ws/forget-transform-output! database-id target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
             (deactivate-table! database target))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
@@ -822,6 +824,9 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (driver.u/lib-database db-id)
+        ;; on a workspace sidecar, reads of the main table go to the scratch table from now on; recorded only here, once
+        ;; the run has written it
+        _     (ws/record-transform-output! db-id target)
         table (sync-target! target database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table

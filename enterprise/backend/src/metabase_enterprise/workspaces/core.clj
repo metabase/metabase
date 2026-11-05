@@ -9,6 +9,7 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.settings.core :as setting]
@@ -102,28 +103,83 @@
   (when (workspace-mode?)
     (get-in (instance-workspace) [:databases (:name database) :schemas])))
 
+(defn- supported-engine?
+  "Engines whose workspace namespaces are schemas in `schema.table` SQL: the Postgres family. On MySQL and ClickHouse a
+  scratch namespace is a database, and SQL Server, Snowflake and BigQuery name tables in three parts; their remapping
+  comes with their own engine work."
+  [engine]
+  (isa? driver/hierarchy (keyword engine) :postgres))
+
+(defn- check-supported-engine!
+  [{database-name :name, :keys [engine]}]
+  (when-not (supported-engine? engine)
+    (throw (ex-info (tru "Database {0} is a {1} database; workspaces support only Postgres-family databases so far."
+                         (pr-str database-name) (name engine))
+                    {:status-code 400, :database database-name, :engine engine}))))
+
+(defn- workspace-scratch-target
+  "On a workspace database, `target` moved to the scratch namespace mapped to its schema, with the main target it came
+  from; nil outside workspace mode or on a database the workspace does not cover. Refuses (400) a target whose schema
+  the workspace does not map and an engine it does not support: the main table must never be written or dropped."
+  [database-id target]
+  ;; the database lookup comes after the workspace-mode check, so an instance outside workspace mode reads nothing
+  (when (workspace-mode?)
+    (let [database (ws.db/database-name-and-engine database-id)]
+      (when-let [schema-map (ws/workspace-schemas database)]
+        (check-supported-engine! database)
+        (let [main-schema (:schema target)
+              scratch     (or (get schema-map main-schema)
+                              (throw (ex-info (tru "This workspace can''t write to schema {0}: it maps only {1}."
+                                                   (pr-str main-schema) (pr-str (vec (sort (keys schema-map)))))
+                                              {:status-code 400, :schema main-schema})))]
+          {:main target, :scratch (assoc target :schema scratch)})))))
+
 (defenterprise resolve-transform-target
-  "EE implementation: on a workspace database, record that the target table lives in the scratch namespace mapped to
-  its schema and return the target moved there. A target whose schema the workspace does not map is refused: the
-  workspace user can't write it, and content must name main tables."
+  "EE implementation: the target moved to its scratch namespace on a workspace database. Records nothing."
   :feature :none
   [database-id target]
-  (if-let [schema-map (when (workspace-mode?)
-                        (ws/workspace-schemas {:name (ws.db/database-name database-id)}))]
-    (let [{main-schema :schema table-name :name} target
-          scratch (or (get schema-map main-schema)
-                      (throw (ex-info (tru "This workspace can''t write to schema {0}: it maps only {1}."
-                                           (pr-str main-schema) (pr-str (vec (sort (keys schema-map)))))
-                                      {:status-code 400, :schema main-schema})))]
-      (ws.db/upsert-table-remapping! {:database_id     database-id
-                                      :from_db         ""
-                                      :from_schema     main-schema
-                                      :from_table_name table-name}
-                                     {:to_db         ""
-                                      :to_schema     scratch
-                                      :to_table_name table-name})
-      (assoc target :schema scratch))
-    target))
+  (or (:scratch (workspace-scratch-target database-id target))
+      target))
+
+(defenterprise record-transform-output!
+  "EE implementation: on a workspace database, record that the main table of the scratch `target` a transform just
+  wrote lives in the scratch namespace."
+  :feature :none
+  [database-id target]
+  (when (workspace-mode?)
+    (when-let [schema-map (ws/workspace-schemas (ws.db/database-name-and-engine database-id))]
+      (let [main (ws/canonical-target schema-map target)]
+        (when-not (= main target)
+          (ws.db/upsert-table-remapping! {:database_id     database-id
+                                          :from_db         ""
+                                          :from_schema     (:schema main)
+                                          :from_table_name (:name main)}
+                                         {:to_db         ""
+                                          :to_schema     (:schema target)
+                                          :to_table_name (:name target)}))))))
+
+(defenterprise transform-output-to-drop
+  "EE implementation: on a workspace database, the scratch table."
+  :feature :none
+  [database-id target]
+  (or (:scratch (workspace-scratch-target database-id target))
+      target))
+
+(defenterprise forget-transform-output!
+  "EE implementation: delete the remapping of the main table `target`."
+  :feature :none
+  [database-id target]
+  (when (and (workspace-mode?) (:schema target))
+    (ws.db/delete-table-remapping! database-id (:schema target) (:name target))))
+
+(defn- unqualified-references-to-remapped-tables
+  "The tables `sql` names without a schema whose name (ignoring case) is the name of a remapped main table."
+  [driver remappings sql]
+  (let [remapped-names (into #{} (map (comp u/lower-case-en :table)) (keys remappings))]
+    (into []
+          (filter (fn [{:keys [schema table]}]
+                    (and (nil? schema) (contains? remapped-names (u/lower-case-en table)))))
+          (sql-tools/referenced-tables-raw driver sql {:fail-on-parse-error? true}))))
 
 (defenterprise rewrite-sql
   "EE implementation: rewrite with SQLGlot's `replace-names`, failing closed."
@@ -139,11 +195,14 @@
 ;;; ---------------------------------------------- Install / remove -----------------------------------------------
 
 (defn- database-id-named
-  "The id of the one database named `database-name`; throws a 400 when none or several are."
+  "The id of the one database named `database-name`; throws a 400 when none or several are, or when its engine is not
+  supported."
   [database-name]
   (let [ids (ws.db/database-ids-named database-name)]
     (case (count ids)
-      1 (first ids)
+      1 (let [id (first ids)]
+          (check-supported-engine! (ws.db/database-name-and-engine id))
+          id)
       0 (throw (ex-info (tru "No database is named {0}." (pr-str database-name))
                         {:status-code 400, :database database-name}))
       (throw (ex-info (tru "Several databases are named {0}: {1}." (pr-str database-name) (pr-str ids))

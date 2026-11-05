@@ -41,6 +41,18 @@
    target :- ::remapping-target]
   (mdb/update-or-insert! :model/TableRemapping source (constantly target)))
 
+(mu/defn delete-table-remapping!
+  "Delete the TableRemapping of the main table `from-schema`.`from-table` in the Database with `database-id`, returning
+  the number deleted."
+  [database-id :- ::lib.schema.id/database
+   from-schema :- :string
+   from-table  :- :string]
+  (t2/delete! :model/TableRemapping
+              :database_id     [:auto/param database-id]
+              :from_db         ""
+              :from_schema     [:auto/param from-schema]
+              :from_table_name [:auto/param from-table]))
+
 (mu/defn delete-table-remappings!
   "Delete the TableRemappings with `ids`, returning the number deleted."
   [ids :- [:set :int]]
@@ -56,7 +68,7 @@
   [database-name :- :string]
   (t2/select-pks-vec :model/Database :name [:auto/param database-name] {:order-by [[:id :asc]]}))
 
-(mu/defn database-name :- [:maybe :string]
-  "The name of the Database with `database-id`, or nil."
+(mu/defn database-name-and-engine :- [:maybe [:map [:name :string] [:engine :keyword]]]
+  "The `:name` and `:engine` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :name :model/Database :id [:auto/param database-id]))
+  (t2/select-one [:model/Database :name :engine] :id [:auto/param database-id]))

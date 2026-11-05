@@ -4715,6 +4715,7 @@
           metabase-enterprise.workspaces.init}
    :uses #{api
            app-db
+           driver
            lib.schema
            premium-features
            query-processor
