@@ -83,10 +83,10 @@
   (getDelay [_ unit]
     (.convert unit (- (.toEpochMilli ready-at) (System/currentTimeMillis)) TimeUnit/MILLISECONDS))
   (compareTo [_ other]
-    (let [ready-order (Long/compare (.toEpochMilli ready-at)
-                                    (.toEpochMilli ^Instant (:ready-at other)))]
+    (let [^DelayValue other other
+          ready-order       (Long/compare (.toEpochMilli ready-at) (.toEpochMilli ^Instant (.-ready-at other)))]
       (if (zero? ready-order)
-        (Long/compare sequence ^long (:sequence other))
+        (Long/compare sequence (.-sequence other))
         ready-order))))
 
 (defn delay-queue
