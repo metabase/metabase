@@ -135,7 +135,10 @@ export function PopoverFilterPill({
           />
         </div>
       </Popover.Target>
-      <Popover.Dropdown data-testid="filter-picker-dropdown">
+      <Popover.Dropdown
+        className={S.popover}
+        data-testid="filter-picker-dropdown"
+      >
         <FilterPicker
           query={query}
           stageIndex={stageIndex}

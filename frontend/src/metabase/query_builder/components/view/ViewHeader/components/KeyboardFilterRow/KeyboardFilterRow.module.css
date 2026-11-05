@@ -260,9 +260,31 @@
   font-weight: bold;
 }
 
-.options {
+/* The list of options. Its padding moves into the scroll area, so the
+   scrollbar sits at the very right edge of the dropdown. The class is doubled
+   to win over the padding of the Combobox theme. */
+.options.options {
+  padding: 0;
+}
+
+/* The scroll area of the list: a Mantine ScrollArea, whose scrollbar shows
+   only while the list scrolls. 20rem tall at most; the column and operator
+   lists pass their own max height. */
+.optionsScroll {
   max-height: 20rem;
-  overflow-y: auto;
+}
+
+/* The width of the scrollbar. Mantine's default is 12px. The track has a
+   padding of a fifth of it on each side, so 8px gives a thumb of about 5px.
+   The class is doubled to win over Mantine's default. */
+.scrollbarRoot.scrollbarRoot {
+  --scrollarea-scrollbar-size: 8px;
+}
+
+/* The padding of the list, inside the scroll area: `md`, which the full-width
+   dividers and the footer line up with. */
+.optionsContent {
+  padding: var(--mantine-spacing-md);
 }
 
 .groupLabel {
@@ -277,11 +299,18 @@
   padding: 0.25rem var(--mantine-spacing-sm);
 }
 
-/* Prototype: the table icon is blue, also in a collapsible header, whose
-   icons are grey. */
-.sectionIcon,
-.sectionHeader .sectionIcon,
-.sectionToggle:hover .sectionIcon {
+/* Prototype: the mouse highlights an option the same way as the arrow keys,
+   with `data-combobox-selected` (see SuggestionInput), so a hover draws
+   nothing of its own. Otherwise the option under the mouse and the option of
+   the arrow keys are both highlighted. This undoes the hover of the Combobox
+   theme; the tiles and the checked option have their own rules below. */
+.option.option:not(.tile, .selectedOption):hover:not([data-combobox-selected]) {
+  background-color: transparent;
+  color: inherit;
+}
+
+/* Prototype: the table icon is blue. */
+.sectionIcon {
   flex-shrink: 0;
   color: var(--mb-color-core-brand);
 }
@@ -293,57 +322,52 @@
   font-weight: bold;
 }
 
-/* The list has a padding of `md`, so the line spans the whole width, and the
-   header text stays where it is. With `.sectionHeader`, it wins over the
-   width of `.sectionToggle`. */
+/* The line between two sections, like two tables. The list has a padding of
+   `md`, so the line spans the whole width, and the header text stays where it
+   is. 0.5px, like the line between groups of options below. */
 .sectionHeader.sectionDivider {
   margin-top: var(--mantine-spacing-sm);
   box-sizing: border-box;
   width: calc(100% + 2 * var(--mantine-spacing-md));
   margin-inline: calc(-1 * var(--mantine-spacing-md));
   padding-inline: calc(var(--mantine-spacing-sm) + var(--mantine-spacing-md));
-  border-top: 1px solid var(--mb-color-border-neutral);
+  border-top: 0.5px solid var(--mb-color-border-neutral);
 }
 
+/* Selected: the current value of the pill, like its operator. Light blue. */
 .selectedOption,
-.selectedOption[data-combobox-selected] {
+.selectedOption.selectedOption:hover {
+  background-color: var(--mb-color-background_surface-hover);
+  color: var(--mb-color-core-brand);
+}
+
+/* Hover: the option under the mouse or the arrow keys. Dark blue, also over
+   the selected option. The tiles have their own hover. The class is doubled
+   to win over the highlight of the Combobox theme. */
+.option.option:not(.tile)[data-combobox-selected] {
   background-color: var(--mb-color-background_surface-brand-strong);
   color: var(--mb-color-text-primary-inverse);
 }
 
-/* The list has a padding of `md`, so the line spans the whole width. */
-.groupDivider {
-  margin: var(--mantine-spacing-sm) calc(-1 * var(--mantine-spacing-md));
-  border-top: 1px solid var(--mb-color-border-neutral);
+/* The grey parts of a hovered option, like the "=" of an operator, stay
+   readable on the dark blue. */
+.option.option[data-combobox-selected] .optionHint,
+.option.option[data-combobox-selected] .optionDescription {
+  color: var(--mb-color-text-secondary-inverse);
 }
 
-.sectionToggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mantine-spacing-sm);
-  width: 100%;
-  border-right: none;
-  border-bottom: none;
-  border-left: none;
-  background: none;
-  font: inherit;
-  font-weight: bold;
-  text-align: left;
-  cursor: pointer;
+/* The label of a checkbox in a hovered option, like "June", is white on the
+   dark blue too. The Checkbox sets its own label color. */
+.option.option[data-combobox-selected] .optionCheckbox label {
+  color: inherit;
+}
 
-  &:not(.sectionDivider) {
-    border-top: none;
-  }
-
-  & svg {
-    flex-shrink: 0;
-    color: var(--mb-color-text-secondary);
-  }
-
-  &:hover svg {
-    color: var(--mb-color-text-primary);
-  }
+/* The line between groups of options, like the groups of operators. The list
+   has a padding of `md`, so the line spans the whole width. 0.5px, like the
+   line between sections above. */
+.groupDivider {
+  margin: var(--mantine-spacing-sm) calc(-1 * var(--mantine-spacing-md));
+  border-top: 0.5px solid var(--mb-color-border-neutral);
 }
 
 .sectionTitle {
@@ -378,18 +402,24 @@
   font: inherit;
   cursor: pointer;
 
-  &:hover,
+  /* A hover alone looks like no hover, also over the hover of the Combobox
+     theme. The mouse highlights a tile with `data-combobox-selected`. */
+  &.tile:hover:not([data-combobox-selected]) {
+    background-color: var(--mb-color-background_surface-secondary);
+    color: var(--mb-color-text-primary);
+  }
+
   &[data-combobox-selected] {
     background-color: var(--mb-color-background_surface-secondary-hover);
   }
 
-  &[aria-pressed="true"] {
+  &[aria-pressed="true"],
+  &.tile[aria-pressed="true"]:hover:not([data-combobox-selected]) {
     background-color: var(--mb-color-background_surface-brand-subtle);
     color: var(--mb-color-text-brand);
     font-weight: bold;
   }
 
-  &[aria-pressed="true"]:hover,
   &[aria-pressed="true"][data-combobox-selected] {
     background-color: var(--mb-color-background_surface-brand-subtle-hover);
   }
@@ -515,6 +545,24 @@
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
+/* Every popover of the filter bar: the column, operator and value lists, the
+   date picker, the histogram, and the filter picker of a finished pill. No
+   border, only the shadow. The class is doubled to win over the Mantine theme,
+   which sets a border and its own shadow. */
+.popover.popover {
+  border: none;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.07),
+    0 1px 4px 0 rgba(0, 0, 0, 0.05),
+    0 5px 15px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* In dark mode the shadow barely shows on the dark background, so the popovers
+   get a hairline border too, like the other Metabase popovers. */
+[data-mantine-color-scheme="dark"] .popover.popover {
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+}
+
 /* Prototype: the dropdowns of a pill start at its left edge, not at its input.
    The input moves right when the user adds values, and the dropdown must stay
    in place. The pill is the containing block of the dropdown. */
@@ -554,6 +602,13 @@
 }
 
 .dropdownWithAside .options {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dropdownWithAside .optionsScroll {
   flex: 1;
   min-height: 0;
   max-height: none;

@@ -2,7 +2,7 @@ import { useClickOutside } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query/react";
 import cx from "classnames";
 import type { KeyboardEvent, ReactNode } from "react";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -11,7 +11,6 @@ import {
   useSearchFieldValuesQuery,
 } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { ExcludeDatePicker } from "metabase/querying/common/components/DatePicker/ExcludeDatePicker";
 import { RelativeDatePicker } from "metabase/querying/common/components/DatePicker/RelativeDatePicker";
 import { SpecificDatePicker } from "metabase/querying/common/components/DatePicker/SpecificDatePicker";
 import {
@@ -37,6 +36,7 @@ import { Flex, Icon, Kbd, Loader, Popover, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
+import { ExcludeDateValueInput } from "./ExcludeDateValueInput";
 import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
 import {
@@ -52,6 +52,7 @@ import {
   useAiFilters,
 } from "./ai-filters";
 import { useColumnSuggestions } from "./column-picker";
+import { useDatePickerKeyboard } from "./date-picker-keyboard";
 import { useSemanticColumnMatches } from "./semantic-column-search";
 import type {
   DraftColumn,
@@ -582,7 +583,7 @@ export function DraftFilterPill({
             <RemoveIcon onClick={onRemove} />
           </div>
         </Popover.Target>
-        <Popover.Dropdown>
+        <Popover.Dropdown className={S.popover}>
           <FilterPickerBody
             query={query}
             stageIndex={stageIndex}
@@ -730,6 +731,12 @@ export function DraftFilterPill({
                 }
               }}
               onBack={() => editPart("operator")}
+              onCancel={() => onCancel("escape")}
+              onDraftChange={(value) =>
+                setFixedValues(
+                  value != null ? [stringifyDatePickerValue(value)] : [],
+                )
+              }
               onClear={() => updateDraft({ ...draft, values: [] })}
             />
           )}
@@ -888,6 +895,7 @@ function ColumnInput({
   onKeyDown,
 }: ColumnInputProps) {
   const columnInputRef = useRef<HTMLInputElement>(null);
+  const isLogicHintShown = useLogicOperatorsHintOnce();
 
   const columnGroups = useMemo(
     () => getColumnGroups(query, stageIndex),
@@ -961,7 +969,9 @@ function ColumnInput({
     <SuggestionInput
       groups={isAiMode ? NO_GROUPS : groups}
       inputRef={columnInputRef}
-      footer={isAiMode ? undefined : <LogicOperatorsHint />}
+      footer={
+        isAiMode || !isLogicHintShown ? undefined : <LogicOperatorsHint />
+      }
       dropdownWidth={COLUMN_DROPDOWN_WIDTH}
       optionsMaxHeight={COLUMN_OPTIONS_MAX_HEIGHT}
       text={text}
@@ -972,6 +982,26 @@ function ColumnInput({
       onKeyDown={onKeyDown}
     />
   );
+}
+
+const LOGIC_HINT_SEEN_KEY = "metabase-prototype-filter-logic-hint-seen";
+
+/**
+ * Prototype: the logic operators hint shows in the first column list of the
+ * browser session only, while the user adds their first filter. The list
+ * keeps it until it closes; the lists after it don't show it. The session
+ * storage keeps this across page loads in the same tab.
+ */
+function useLogicOperatorsHintOnce() {
+  const [isShown] = useState(
+    () => window.sessionStorage.getItem(LOGIC_HINT_SEEN_KEY) == null,
+  );
+  useEffect(() => {
+    if (isShown) {
+      window.sessionStorage.setItem(LOGIC_HINT_SEEN_KEY, "true");
+    }
+  }, [isShown]);
+  return isShown;
 }
 
 /**
@@ -1344,6 +1374,10 @@ interface DatePickerValueInputProps {
   label: string | null;
   onChange: (value: DatePickerValue) => void;
   onBack: () => void;
+  /** Escape in the exclude list. */
+  onCancel: () => void;
+  /** The value of the exclude list so far, for a click outside the pill. */
+  onDraftChange: (value: DatePickerValue | undefined) => void;
   /** Removes the value, like the cross of a value token. */
   onClear: () => void;
 }
@@ -1362,17 +1396,35 @@ function DatePickerValueInput({
   label,
   onChange,
   onBack,
+  onCancel,
+  onDraftChange,
   onClear,
 }: DatePickerValueInputProps) {
   const availableUnits = useMemo(
     () => getDatePickerUnits(query, stageIndex, column),
     [query, stageIndex, column],
   );
+  const keyboard = useDatePickerKeyboard();
   const pickerProps = {
     availableOperators: DATE_PICKER_OPERATORS,
     availableUnits,
     onBack,
   };
+
+  // Prototype: the exclude values are a list of the pill, like its other
+  // lists, not the exclude picker of the filter picker.
+  if (type === "exclude") {
+    return (
+      <ExcludeDateValueInput
+        availableUnits={availableUnits}
+        value={value}
+        onChange={onChange}
+        onBack={onBack}
+        onCancel={onCancel}
+        onDraftChange={onDraftChange}
+      />
+    );
+  }
 
   return (
     <Popover opened position="bottom-start" withinPortal={false} shadow="md">
@@ -1394,7 +1446,11 @@ function DatePickerValueInput({
           )}
         </span>
       </Popover.Target>
-      <Popover.Dropdown className={S.datePickerDropdown}>
+      <Popover.Dropdown
+        ref={keyboard.ref}
+        className={cx(S.datePickerDropdown, S.popover)}
+        onKeyDown={keyboard.onKeyDown}
+      >
         {type === "specific" && (
           <SpecificDatePicker
             {...pickerProps}
@@ -1407,13 +1463,6 @@ function DatePickerValueInput({
             {...pickerProps}
             availableDirections={DATE_PICKER_DIRECTIONS}
             value={value?.type === "relative" ? value : undefined}
-            onChange={onChange}
-          />
-        )}
-        {type === "exclude" && (
-          <ExcludeDatePicker
-            {...pickerProps}
-            value={value?.type === "exclude" ? value : undefined}
             onChange={onChange}
           />
         )}
@@ -1460,13 +1509,13 @@ function NumberHistogramPopover({
         <span className={S.fixedValues}>{children}</span>
       </Popover.Target>
       {isUnavailable && numberOperator != null && (
-        <Popover.Dropdown className={S.histogramDropdown}>
+        <Popover.Dropdown className={cx(S.histogramDropdown, S.popover)}>
           <UnavailableNote />
         </Popover.Dropdown>
       )}
       {result != null && numberOperator != null && (
         <Popover.Dropdown
-          className={S.histogramDropdown}
+          className={cx(S.histogramDropdown, S.popover)}
           // Clicks on the histogram keep the focus in the input.
           onMouseDown={(event) => event.preventDefault()}
         >

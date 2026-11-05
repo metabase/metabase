@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { KeyboardEvent, ReactNode, Ref } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode, Ref } from "react";
 import {
   Fragment,
   useEffect,
@@ -10,7 +10,14 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { Checkbox, Combobox, Flex, Icon, useCombobox } from "metabase/ui";
+import {
+  Checkbox,
+  Combobox,
+  Flex,
+  Icon,
+  ScrollArea,
+  useCombobox,
+} from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./KeyboardFilterRow.module.css";
@@ -128,22 +135,6 @@ export function SuggestionInput({
   const { dropdownRef, dropdownShift } = useDropdownShift(
     combobox.dropdownOpened,
   );
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
-    () => new Set(),
-  );
-  // A search shows its matches in all the sections, also in collapsed ones.
-  const isSearching = text.trim().length > 0;
-  const isCollapsed = (section: string | undefined) =>
-    section != null && !isSearching && collapsedSections.has(section);
-  const toggleSection = (section: string) => {
-    const newSections = new Set(collapsedSections);
-    if (newSections.has(section)) {
-      newSections.delete(section);
-    } else {
-      newSections.add(section);
-    }
-    setCollapsedSections(newSections);
-  };
 
   const { selectFirstOption, resetSelectedOption } = combobox;
 
@@ -237,6 +228,35 @@ export function SuggestionInput({
     }
   };
 
+  // Prototype: the mouse highlights an option the same way as the arrow keys,
+  // so only one option is ever highlighted, and Enter picks the one the user
+  // sees. The CSS draws no hover of its own. The highlight changes without a
+  // scroll: the option is already under the mouse.
+  const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  const handleOptionsMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    // When the arrow keys scroll the list, the options move under a mouse
+    // that stays still. Only a real move of the mouse takes the highlight.
+    const lastPosition = lastMousePositionRef.current;
+    const hasMoved =
+      lastPosition?.x !== event.clientX || lastPosition?.y !== event.clientY;
+    lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+    const option =
+      event.target instanceof Element
+        ? event.target.closest("[data-combobox-option]")
+        : null;
+    const canHighlight =
+      hasMoved &&
+      option != null &&
+      !option.hasAttribute("data-combobox-selected") &&
+      !option.hasAttribute("data-combobox-disabled");
+    if (canHighlight) {
+      combobox.resetSelectedOption();
+      option.setAttribute("data-combobox-selected", "true");
+      option.setAttribute("aria-selected", "true");
+      combobox.updateSelectedOptionIndex("selected");
+    }
+  };
+
   const renderOption = (option: SuggestionOption) => {
     if (isTiles) {
       return (
@@ -298,7 +318,7 @@ export function SuggestionInput({
       width={dropdownWidth}
       withinPortal={false}
       classNames={{
-        dropdown: S.pillDropdown,
+        dropdown: cx(S.pillDropdown, S.popover),
         groupLabel: S.groupLabel,
         option: S.option,
       }}
@@ -351,44 +371,53 @@ export function SuggestionInput({
                 {header}
               </div>
             )}
-            <Combobox.Options className={S.options} mah={optionsMaxHeight}>
-              {hasOptions ? (
-                filteredGroups.map((group, groupIndex) => (
-                  <Fragment key={groupIndex}>
-                    {group.section != null &&
-                      group.section !==
-                        filteredGroups[groupIndex - 1]?.section && (
-                        <SectionHeader
-                          section={group.section}
-                          icon={group.sectionIcon}
-                          isCollapsed={isCollapsed(group.section)}
-                          isCollapsible={!isSearching}
-                          hasDivider={groupIndex > 0}
-                          onToggle={toggleSection}
-                        />
-                      )}
-                    {group.hasDivider && groupIndex > 0 && (
-                      <div className={S.groupDivider} />
-                    )}
-                    {!isCollapsed(group.section) && (
-                      <Combobox.Group label={group.label}>
-                        <div
-                          className={cx({
-                            [S.optionGrid]: isTiles || columns > 1,
-                          })}
-                          style={{
-                            gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
-                          }}
-                        >
-                          {group.options.map(renderOption)}
-                        </div>
-                      </Combobox.Group>
-                    )}
-                  </Fragment>
-                ))
-              ) : (
-                <Combobox.Empty>{emptyMessage}</Combobox.Empty>
-              )}
+            <Combobox.Options className={S.options}>
+              {/* Prototype: thin scrollbars that show only while scrolling. */}
+              <ScrollArea.Autosize
+                className={S.optionsScroll}
+                classNames={{ root: S.scrollbarRoot }}
+                mah={optionsMaxHeight}
+                type="scroll"
+                scrollbars="y"
+              >
+                <div
+                  className={S.optionsContent}
+                  onMouseMove={handleOptionsMouseMove}
+                >
+                  {hasOptions ? (
+                    filteredGroups.map((group, groupIndex) => (
+                      <Fragment key={groupIndex}>
+                        {group.section != null &&
+                          group.section !==
+                            filteredGroups[groupIndex - 1]?.section && (
+                            <SectionHeader
+                              section={group.section}
+                              icon={group.sectionIcon}
+                              hasDivider={groupIndex > 0}
+                            />
+                          )}
+                        {group.hasDivider && groupIndex > 0 && (
+                          <div className={S.groupDivider} />
+                        )}
+                        <Combobox.Group label={group.label}>
+                          <div
+                            className={cx({
+                              [S.optionGrid]: isTiles || columns > 1,
+                            })}
+                            style={{
+                              gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
+                            }}
+                          >
+                            {group.options.map(renderOption)}
+                          </div>
+                        </Combobox.Group>
+                      </Fragment>
+                    ))
+                  ) : (
+                    <Combobox.Empty>{emptyMessage}</Combobox.Empty>
+                  )}
+                </div>
+              </ScrollArea.Autosize>
             </Combobox.Options>
             {footer != null && <div className={S.dropdownFooter}>{footer}</div>}
           </div>
@@ -410,45 +439,20 @@ export function SuggestionInput({
 interface SectionHeaderProps {
   section: string;
   icon?: IconName;
-  isCollapsed: boolean;
-  isCollapsible: boolean;
   hasDivider: boolean;
-  onToggle: (section: string) => void;
 }
 
-/** A header of a section, like a table. A click collapses the section. */
-function SectionHeader({
-  section,
-  icon,
-  isCollapsed,
-  isCollapsible,
-  hasDivider,
-  onToggle,
-}: SectionHeaderProps) {
-  const className = cx(S.sectionHeader, { [S.sectionDivider]: hasDivider });
-  if (!isCollapsible) {
-    return (
-      <Flex className={className} align="center" gap="sm">
-        {icon && <Icon className={S.sectionIcon} name={icon} />}
-        {section}
-      </Flex>
-    );
-  }
+/** A header of a section, like a table. */
+function SectionHeader({ section, icon, hasDivider }: SectionHeaderProps) {
   return (
-    <button
-      className={cx(className, S.sectionToggle)}
-      type="button"
-      aria-expanded={!isCollapsed}
-      // The click keeps the focus in the input.
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => onToggle(section)}
+    <Flex
+      className={cx(S.sectionHeader, { [S.sectionDivider]: hasDivider })}
+      align="center"
+      gap="sm"
     >
-      <Flex align="center" gap="sm" miw={0}>
-        {icon && <Icon className={S.sectionIcon} name={icon} />}
-        <span className={S.sectionTitle}>{section}</span>
-      </Flex>
-      <Icon name={isCollapsed ? "chevronright" : "chevrondown"} size={12} />
-    </button>
+      {icon && <Icon className={S.sectionIcon} name={icon} />}
+      <span className={S.sectionTitle}>{section}</span>
+    </Flex>
   );
 }
 

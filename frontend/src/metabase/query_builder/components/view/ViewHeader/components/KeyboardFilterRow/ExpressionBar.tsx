@@ -478,6 +478,20 @@ export function ExpressionBar({
           },
         ]
       : [];
+  // Prototype: the logic operators as a section at the bottom of the column
+  // list. A keyword that the user is typing shows above the columns
+  // (`logicGroups`), so it isn't listed twice.
+  const logicSectionGroup: SuggestionGroup = {
+    section: t`Logic`,
+    options: LOGIC_KEYWORDS.filter(
+      (keyword) => keyword.label !== logicMatch?.label,
+    ).map((keyword) => ({
+      value: `${LOGIC_OPTION_PREFIX}${keyword.label}`,
+      label: keyword.label,
+      disabled: !isTokenAllowed(keyword.token),
+    })),
+  };
+  const trailingGroups = [...seriesGroups, logicSectionGroup];
   const [pickedSeries, setPickedSeries] = useState<number>();
 
   const handleSelectExtra = (value: string) => {
@@ -1153,7 +1167,7 @@ export function ExpressionBar({
       stageIndex={stageIndex}
       initialText={text}
       leadingGroups={logicGroups}
-      trailingGroups={seriesGroups}
+      trailingGroups={trailingGroups}
       onSelectExtra={handleSelectExtra}
       onColumnTextChange={handleTypedChange}
       onColumnKeyDown={handleColumnKeyDown}
