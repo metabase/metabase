@@ -397,6 +397,7 @@
                 (ws/clear-instance-workspace!)))))))))
 
 ;;; ------------------------------------------------ Review round 2 ------------------------------------------------
+
 (def ^:private failing-api-keys
   "An `api-keys:` section that passes its spec and fails while applying: its creator does not exist."
   (str "  api-keys:\n"
@@ -404,7 +405,6 @@
        "      key: mb_" (apply str (repeat 40 "a")) "\n"
        "      creator: nobody@example.com\n"
        "      group: admin\n"))
-
 
 (defn- sync-triggers
   "The keys of the scheduled sync triggers of the database with `database-id`."
@@ -415,7 +415,6 @@
        (filter #(str/ends-with? % (str ".trigger." database-id)))
        sort
        vec))
-
 
 (deftest rollback-reschedules-surviving-databases-test
   (testing "a deletion the rollback undoes gets its database's sync triggers back: Quartz is outside the transaction"
@@ -446,7 +445,6 @@
               (finally
                 (t2/delete! :model/Database :id [:in [workspace-id victim-id]])))))))))
 
-
 (deftest scrub-leaves-short-values-test
   (testing "strings shorter than 4 characters stay in the message, so it stays readable; the password does not"
     (with-clean-workspace!
@@ -456,7 +454,6 @@
           (is (= "Could not apply the databases section of this config.yml: user **** on port 5432 has password ****"
                  (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
                                        {:config (config-yml (mt/random-name))}))))))))
-
 
 (deftest connections-are-tested-once-outside-the-transaction-test
   (with-clean-workspace!
@@ -470,7 +467,6 @@
           (finally
             (t2/delete! :model/Database :name database-name)
             (ws/clear-instance-workspace!)))))))
-
 
 (deftest stale-remappings-resync-after-the-commit-test
   (testing "the main tables of the remappings a re-apply drops are re-synced on a task after the commit, not inside it"
@@ -494,7 +490,6 @@
               (t2/delete! :model/Database :name database-name)
               (ws/clear-instance-workspace!))))))))
 
-
 (deftest stub-entry-checks-the-existing-database-engine-test
   (testing "a stub entry never overwrites an existing database, so the check uses the existing one's engine"
     (with-clean-workspace!
@@ -504,3 +499,41 @@
                  (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/config"
                                        {:config (str/replace (config-yml h2-name) "      engine: postgres\n"
                                                              "      engine: postgres\n      is_stub: true\n")}))))))))
+
+(deftest sync-is-submitted-after-the-commit-test
+  (with-clean-workspace!
+    (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (constantly true)]
+      (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+        (doseq [fail? [false true]]
+          (testing (if fail? "a rollback submits no sync" "a success submits one sync, which sees the committed database")
+            (let [database-name (mt/random-name)
+                  calls         (atom [])]
+              (try
+                (mt/with-dynamic-fn-redefs [quick-task/submit-task!
+                                            (fn [_] (swap! calls conj @(future (t2/exists? :model/Database :name database-name))))]
+                  (mt/user-http-request :crowberto :post (if fail? 400 200) "ee/workspace-instance/config"
+                                        {:config (cond-> (config-yml database-name)
+                                                   fail? (str failing-api-keys))}))
+                (is (= (if fail? [] [true]) @calls))
+                (finally
+                  (t2/delete! :model/Database :name database-name)
+                  (ws/clear-instance-workspace!)
+                  (unlock!))))))))))
+
+(deftest mixed-case-email-test
+  (testing "a users entry with a mixed-case email is stored lower-cased, as at boot"
+    (with-clean-workspace!
+      (with-fake-warehouse!
+        (let [database-name (mt/random-name)
+              email         (str "Ci" (mt/random-name) "@Example.com")]
+          (try
+            (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/config"
+                                  {:config (str (config-yml database-name)
+                                                "  users:\n    - first_name: Ci\n      last_name: Bot\n"
+                                                "      email: " email "\n"
+                                                "      password: \"" password "-user\"\n")})
+            (is (= (u/lower-case-en email) (t2/select-one-fn :email :model/User :email (u/lower-case-en email))))
+            (finally
+              (t2/delete! :model/User :email (u/lower-case-en email))
+              (t2/delete! :model/Database :name database-name)
+              (ws/clear-instance-workspace!))))))))
