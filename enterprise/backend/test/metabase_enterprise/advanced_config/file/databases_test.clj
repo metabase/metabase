@@ -163,12 +163,16 @@
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
       (let [db-type      (mdb/db-type)
             details      (:details (mt/with-driver db-type (mt/db)))
-            submit-calls (atom 0)]
-        (mt/with-temp [:model/Database stub {:name                test-db-name
-                                             :engine              (if (= db-type :postgres) "mysql" "postgres")
-                                             :details             {}
-                                             :is_stub             true
-                                             :initial_sync_status "complete"}]
+            submit-calls (atom 0)
+            ;; not `mt/with-temp`, which runs its body in a transaction it rolls back: the sync is submitted after
+            ;; the commit, so inside that transaction it would never be
+            stub         (t2/insert-returning-instance! :model/Database
+                                                        {:name                test-db-name
+                                                         :engine              (if (= db-type :postgres) "mysql" "postgres")
+                                                         :details             {}
+                                                         :is_stub             true
+                                                         :initial_sync_status "complete"})]
+        (try
           (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
             (is (= :ok
                    (advanced-config.file/initialize!
@@ -181,7 +185,9 @@
                    :is_stub             false
                    :initial_sync_status "incomplete"}
                   (t2/select-one :model/Database :id (:id stub))))
-          (is (= 1 @submit-calls)))))))
+          (is (= 1 @submit-calls))
+          (finally
+            (t2/delete! :model/Database :id (:id stub))))))))
 
 (deftest init-from-config-file-sample-recreates-missing-test
   (testing "An is_sample entry triggers recreation of the Sample Database when one is not present."
