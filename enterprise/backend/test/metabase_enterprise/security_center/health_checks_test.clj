@@ -266,12 +266,12 @@
         (mt/with-no-data-perms-for-all-users!
           (is (=? {:status :pass
                    :items  [{:status      :pass
-                             :message     "All Users cannot curate Our analytics"
+                             :message     "All Users can't curate Our analytics"
                              :entity_type :collection
                              :entity_id   "root"
                              :entity_name "Our analytics"}
                             {:status      :pass
-                             :message     "All Users cannot query any database"
+                             :message     "All Users can't query any database"
                              :entity_type :group
                              :entity_id   group-id
                              :entity_name "All Users"}]}
@@ -282,22 +282,24 @@
                  :items  [{:status :fail, :message "All Users can curate Our analytics", :entity_id "root"}
                           {:status :pass}]}
                 (run-check-by-id :all-users-permissions)))))
-    (testing "fails on the group item, naming the databases, when All Users can query a database"
+    (testing "fails with one group item per database All Users can query"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Database _ {:name "Warehouse"}]
-          (is (=? {:status :fail
-                   :items  [{:status :pass}
-                            {:status      :fail
-                             :message     #"All Users can query: .*Warehouse.*"
-                             :entity_type :group
-                             :entity_id   group-id}]}
-                  (run-check-by-id :all-users-permissions))))
+          (let [{:keys [status items]} (run-check-by-id :all-users-permissions)
+                group-items             (filter #(= :group (:entity_type %)) items)]
+            (is (= :fail status))
+            (is (=? {:status :pass, :entity_type :collection} (first items)))
+            (is (every? #(and (= :fail (:status %)) (= group-id (:entity_id %)) (= "All Users" (:entity_name %)))
+                        group-items))
+            (is (contains? (set (map :message group-items)) "All Users can query Warehouse"))
+            (is (= (count group-items) (count (set (map :message group-items))))
+                "one item per database")))
         (testing "also for query access on one table only"
           (mt/with-no-data-perms-for-all-users!
             (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
             (is (=? {:status :fail
                      :items  [{:status :pass}
-                              {:status :fail, :message #"All Users can query: .*test-data.*"}]}
+                              {:status :fail, :message "All Users can query test-data (h2)", :entity_type :group}]}
                     (run-check-by-id :all-users-permissions)))))))))
 
 ;;; The supported-version check
