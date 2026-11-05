@@ -173,12 +173,14 @@
   (sql-parsing/add-insert-clause (driver->dialect driver) sql table-name))
 
 (defmethod sql-tools/replace-names-impl :sqlglot
-  [_parser driver sql-string replacements _opts]
+  [_parser driver sql-string replacements {:keys [refuse-commands? unquoted-identifiers-fold-to-lower?]}]
   ;; Convert map keys to list-of-pairs for JSON serialization
   ;; {:tables {{:table "a"} "b"}} -> {:tables [[{:table "a"} "b"]]}
   (let [replacements' (-> replacements
                           (update :tables #(when % (vec %)))
-                          (update :columns #(when % (vec %))))]
+                          (update :columns #(when % (vec %)))
+                          (assoc :options {:refuse_commands                    (boolean refuse-commands?)
+                                           :unquoted_identifiers_fold_to_lower (boolean unquoted-identifiers-fold-to-lower?)}))]
     (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
 
 (defmethod sql-tools/transpile-sql-impl :sqlglot

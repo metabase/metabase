@@ -683,6 +683,14 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
         => 'SELECT user_id FROM orders'
     """
     replacements = json.loads(replacements_json)
+    # Opt-in strictness, off unless a caller asks for it, so no other caller's behaviour changes:
+    # - refuse_commands: raise on a statement sqlglot keeps as an unstructured command (EXPLAIN, DECLARE ... CURSOR,
+    #   PREPARE, EXECUTE, DO), whose table references it can't see and so can't rewrite.
+    # - unquoted_identifiers_fold_to_lower: an unquoted reference names the lower-cased identifier, as on Postgres, so
+    #   `public.mixed` does not match a key for the table `"Mixed"`.
+    options = replacements.get("options") or {}
+    refuse_commands = options.get("refuse_commands")
+    fold_to_lower = options.get("unquoted_identifiers_fold_to_lower")
     schemas = replacements.get("schemas") or {}
     # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
     # None when the key doesn't name one.
@@ -709,6 +717,15 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             return key_part == ref_part if quoted else key_part.lower() == ref_part.lower()
 
         def find_table_replacement(db, schema, table, quoted):
+            if fold_to_lower:
+                # Fold each unquoted part as the engine does, then match exactly.
+                key = tuple(part if was_quoted or part is None else part.lower()
+                            for part, was_quoted in zip((db, schema, table), quoted))
+                for shape in (key, (None,) + key[1:], (None, None, key[2])):
+                    replacement = table_map.get(shape)
+                    if replacement:
+                        return replacement
+                return None
             # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
             # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
             # Each shape is tried as written before it is tried part by part, so an exact key always wins, and keys that
@@ -814,7 +831,11 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             rename_fn(column_node)
         return ast.sql(dialect=dialect)
 
-    rewritten = [rewrite(ast) for ast in statements(sql, dialect)]
+    asts = statements(sql, dialect)
+    if refuse_commands and any(isinstance(ast, exp.Command) for ast in asts):
+        raise ValueError("The SQL contains a statement whose table references can't be read (for example EXPLAIN, "
+                         "DECLARE, PREPARE, EXECUTE or DO), so its tables can't be rewritten.")
+    rewritten = [rewrite(ast) for ast in asts]
     return "; ".join(rewritten) if rewritten else sql
 
 
