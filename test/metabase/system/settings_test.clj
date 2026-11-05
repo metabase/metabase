@@ -17,6 +17,11 @@
       (is (= "http://localhost:3000"
              (system.settings/site-url))))))
 
+(deftest site-path-keeps-the-path-encoded-test
+  (testing "`site-path` is the path as it is written, which is what request URIs are compared to"
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com/my%20bi/"]
+      (is (= "/my%20bi" (system.settings/site-path))))))
+
 (deftest site-url-settings-prepend-http
   (testing "double-check that setting the `site-url` setting will prepend `http://` if no protocol was specified"
     (mt/discard-setting-changes [site-url]

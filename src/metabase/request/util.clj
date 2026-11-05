@@ -10,6 +10,7 @@
    [metabase.request.current :as request.current]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -53,9 +54,7 @@
   (re-pattern (str "^" data-app-embed-prefix "/.*$")))
 
 (defn data-app?
-  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?
-   It is only ever framed by the same-origin Metabase app, so it gets
-   `frame-ancestors 'self'` rather than the open embedding `*`."
+  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?"
   [{:keys [uri]}]
   (re-matches data-app-uri-regex uri))
 
@@ -103,6 +102,24 @@
   `Referrer-Policy: no-referrer` or cross-origin restrictions."
   [request]
   (get-in request [:headers "referer"]))
+
+(defn host-names
+  "The host names `request` may have reached Metabase under: the first `X-Forwarded-Host` entry, which a proxy sets
+  and a client can forge, then `Host`."
+  [{:keys [headers]}]
+  (keep u.http/host-name [(some-> (get headers "x-forwarded-host") (str/split #",") first)
+                          (get headers "host")]))
+
+(defn cookie-header-entries
+  "The `[name value]` pairs of `request`'s `Cookie` header in order, or nil when it has none. Ring's `:cookies` keeps
+  only the last value of a name, and also splits on `,`, which a value may contain; a browser separates cookies with
+  `;` only. An entry without `=` is a cookie with no name, which a browser sends as its value alone."
+  [request]
+  (when-let [header (get-in request [:headers "cookie"])]
+    (vec (for [entry (map str/trim (str/split header #";"))
+               :when (seq entry)
+               :let  [[cookie-name value] (str/split entry #"=" 2)]]
+           (if value [cookie-name value] ["" cookie-name])))))
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
