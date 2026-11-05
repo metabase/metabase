@@ -583,6 +583,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  /** Origin, on a host name of its own, that data apps are served from (MB_ISOLATED_ORIGIN); null when unset (same-origin) or unusable (data apps are refused). */
+  "isolated-origin": string | null;
   "csp-img-allowed-hosts": string;
   "csp-img-enabled": boolean;
   "ai-features-enabled?": boolean;
