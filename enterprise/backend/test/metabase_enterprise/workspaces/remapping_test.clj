@@ -10,6 +10,7 @@
    [metabase.actions.core :as actions]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -382,11 +383,43 @@
           sql)))
   (testing "SQL with no replacement comes back exactly as written"
     (doseq [sql ["select  src   from public.customers  where name = 'x'"
-                 "SELECT $$it's$$ AS q, E'no escapes' AS e, N'national' AS n, U&'unicode' AS u"]]
+                 "SELECT $$it's$$ AS q, E'no escapes' AS e, N'national' AS n"]]
       (is (= sql (ws/rewrite-sql :postgres remaps sql)))))
   (testing "row locks are refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"FOR UPDATE / FOR SHARE locks rows"
                           (ws/rewrite-sql :postgres remaps "SELECT * FROM public.orders FOR UPDATE")))))
+
+(deftest rewrite-sql-dollar-and-unicode-test
+  (testing "a $ followed by a digit is refused: Postgres reads $1 as a parameter where sqlglot reads $1a$ as a quote"
+    (doseq [sql ["SELECT length(?), $1a$; DELETE FROM public.customers; SELECT length(?), $1a$"
+                 "SELECT $1"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a \$ followed by a digit"
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql)))
+  (testing "a $ outside a valid dollar quote is refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"isn't part of a valid dollar quote"
+                          (ws/rewrite-sql :postgres remaps "SELECT 'costs $ 5' AS c"))))
+  (testing "valid dollar quotes run as written"
+    (doseq [sql ["SELECT $$x$$ AS a, $tag$y$tag$ AS b, $_t1$z$_t1$ AS c"]]
+      (is (= sql (ws/rewrite-sql :postgres remaps sql)))))
+  (testing "SQL returned as written must keep its string literals through sqlglot's round trip"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"string literals don't survive sqlglot's round trip"
+                          (ws/rewrite-sql :postgres remaps "SELECT INTERVAL '1' DAY")))
+    (doseq [sql ["SELECT INTERVAL '1 day' AS i, date_trunc('month', now()) AS m"
+                 "SELECT 'x' 'y' AS r, '{1,2}'::int[] AS a"]]
+      (is (= sql (ws/rewrite-sql :postgres remaps sql)))))
+  (testing "Unicode escapes are refused, with or without a backslash"
+    (doseq [sql ["SELECT U&'d!0061t' UESCAPE '!' AS r"
+                 "SELECT U&'data' AS r"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a Unicode escape"
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql))
+    (testing "(forms sqlglot can't parse at all are refused before that check)"
+      (doseq [sql ["SELECT 1 AS U&\"x\""
+                   "SELECT name FROM public.customers WHERE name = 'a' UESCAPE '!'"]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a Unicode escape|could not parse"
+                              (ws/rewrite-sql :postgres remaps sql))
+            sql)))))
 
 (deftest rewrite-sql-side-effect-functions-test
   (testing "a function with a side effect is refused, by name or family, however its name is written"
@@ -648,3 +681,20 @@
   (mt/with-temporary-setting-values [instance-workspace (workspace-json "PUBLIC" "SCRATCH")]
     (is (= "Model persistence is not available on a workspace instance."
            (mt/user-http-request :crowberto :post 400 "persist/enable")))))
+
+(deftest workspace-queries-run-in-a-read-only-transaction-test
+  (do-with-postgres-workspace!
+   (fn [_scratch]
+     (testing "a query on a workspace database runs in a READ ONLY transaction the server enforces"
+       (is (= [["on"]] (rows (mt/native-query {:query "SELECT current_setting('transaction_read_only')"})))))
+     (testing "the server refuses a write on such a connection, whatever the SQL check let through"
+       (is (thrown-with-msg? Exception #"read-only transaction"
+                             (sql-jdbc.execute/do-with-connection-with-options
+                              :postgres (lib.metadata/database (mt/metadata-provider)) {:read-only-transaction? true}
+                              (fn [^java.sql.Connection conn]
+                                (with-open [stmt (.createStatement conn)]
+                                  (.execute stmt "CREATE TEMPORARY TABLE ws_never (a int)")))))))))
+  (testing "outside workspace mode it does not"
+    (mt/test-driver :postgres
+      (mt/with-temporary-setting-values [instance-workspace nil]
+        (is (= [["off"]] (rows (mt/native-query {:query "SELECT current_setting('transaction_read_only')"}))))))))

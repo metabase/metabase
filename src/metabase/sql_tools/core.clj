@@ -57,8 +57,9 @@
    [:allow-unused? {:optional true} :boolean]
    ;; Opt-in strictness for callers that must not let a reference slip through (workspace remapping); SQLGlot only.
    ;; Rewrite only a read-only query (SELECT, WITH ... SELECT, UNION) whose table references SQLGlot can all see, with
-   ;; no write, command, row lock, side-effect or SQL-running function, or backslash in a string literal; refuse
-   ;; anything else. SQL with no replacement comes back as written.
+   ;; no write, command, row lock, side-effect or SQL-running function; refuse anything else, and anywhere in the
+   ;; text any backslash, Unicode escape (U&, UESCAPE) or `$` outside a valid dollar quote. SQL with no replacement
+   ;; comes back as written, once its string literals survive a round trip.
    [:strict-statements? {:optional true} :boolean]
    ;; Match a reference as the identifier Postgres stores: unquoted ASCII letters lower-cased, cut to 63 bytes.
    [:postgres-identifiers? {:optional true} :boolean]])
