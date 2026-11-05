@@ -577,7 +577,7 @@
                 ;; Only the tool result holds this text: the tool arguments hold the table and column names too.
                 holds-warning?                     (fn [request]
                                                      (some #(and (string? %)
-                                                                 (str/includes? % "checking its table and column references"))
+                                                                 (str/includes? % "checking its table references"))
                                                            (tree-seq coll? seq (:input request))))]
             (is (= 2 llm-calls))
             (is (= [true nil] (map #(get-in % [:result :non-terminal?]) outputs)))

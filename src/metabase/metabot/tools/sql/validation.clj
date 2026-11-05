@@ -10,7 +10,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.shared :as shared]
@@ -108,7 +107,7 @@
    ;; with `:reason :missing-references`
    [:missing-card-ids {:optional true} [:sequential :int]]
    [:missing-snippet-names {:optional true} [:sequential :string]]
-   ;; table and column references that did not resolve, on valid SQL
+   ;; table references that did not resolve, on valid SQL
    [:warnings {:optional true} [:sequential :string]]
    ;; this turn has already shown each of the warnings
    [:repeated-warnings? {:optional true} :boolean]])
@@ -168,10 +167,14 @@
 ;;;; Reference checks
 ;;;
 ;;; [[validate-sql]] checks syntax only. [[validate-database-sql]] also checks that the cards and snippets the SQL
-;;; references exist and can be read, and checks its table and column names against the database metadata.
+;;; references exist and can be read, and checks its table names against the database metadata.
 ;;;
-;;; Table and column problems are warnings, not errors: the checker reports false positives on some working queries,
-;;; so an error would leave the agent stuck on valid SQL. Design from github.com/metabase/metabase/pull/83035.
+;;; A table that does not resolve is a warning, not an error: it can exist in the warehouse but not be synced yet, so
+;;; an error would leave the agent stuck on valid SQL. Design from github.com/metabase/metabase/pull/83035.
+;;;
+;;; Column names are not checked. The field checker of [[driver/validate-native-query-fields]] reports false positives
+;;; on working SQL, such as the column list of a CTE, a column alias list, a qualifier in another letter case, or a
+;;; BigQuery struct field, and each false warning costs the agent a turn.
 
 (mr/def ::query-template-tags
   "The template tags of every native stage of a query, as [[lib/all-template-tags]] returns them."
@@ -187,42 +190,6 @@
    [:status   [:enum :ran :skipped :failed]]
    [:warnings [:sequential :string]]
    [:missing  {:optional true} ::missing-references]])
-
-(defn- error->warning
-  "The model-facing warning for a [[driver/validate-native-query-fields]] error, or nil when it is not worth reporting."
-  [{error-type :type error-name :name}]
-  (case (keyword error-type)
-    :missing-column
-    (str "Column " (quoting/quoted error-name) " was not found in any table, model, or question this query reads from.")
-
-    ;; Also reported for a table that does not exist, under the name the SQL uses.
-    :missing-table-alias
-    (str "Table or alias " (quoting/quoted error-name) " was not found.")
-
-    :missing-table
-    "This query references a table that does not exist."
-
-    :missing-card
-    "This query references a model or question that does not exist."
-
-    ;; Metabase renames repeated output columns (`id`, `id_2`), so these queries run.
-    :duplicate-column
-    nil
-
-    :syntax-error
-    "The reference check could not parse the SQL after expanding its model, question, and snippet references."
-
-    (str "The reference check reported a problem of type " (quoting/quoted (str error-type)) ".")))
-
-(defn- checker-failure?
-  "Whether the field checker `error` says that the check itself failed, not that the SQL is wrong."
-  [templated? {error-type :type}]
-  (case (keyword error-type)
-    ;; For example a parse timeout.
-    :validation-exception-error true
-    ;; [[validate-sql]] has already parsed SQL without template tags, so here the two parsers disagree.
-    :syntax-error               (not templated?)
-    false))
 
 (defn- readable-ids
   "The `:id` of each of `rows` that the current user can read."
@@ -268,7 +235,7 @@
   compile. The result is for parsing only, not to run."
   [query]
   (try
-    ;; A persisted model's cache table is not synced, so the checker could not resolve its columns: expand the model.
+    ;; A persisted model's cache table is not synced, so the check would report it as missing: expand the model.
     (model-persistence/with-persisted-substituion-disabled
       (let [with-params (lib/add-parameters-for-template-tags query)]
         (lib/native-query with-params (:query (qp.compile/compile-with-inline-parameters with-params)))))
@@ -278,7 +245,7 @@
       nil)))
 
 (defn- checkable-query
-  "`query` in a form the field checker can read, or nil when the check must be skipped.
+  "`query` in a form the table check can read, or nil when the check must be skipped.
 
   A table tag names its table only when the query runs, so a query with one is not checked."
   [query tags]
@@ -389,106 +356,44 @@
   [written]
   (->> written (map written-name) distinct sort))
 
-(mu/defn- unresolved-tables :- [:maybe [:map
-                                        [:missing  [:sequential :string]]
-                                        [:existing [:sequential ::sql-tools/table-spec]]]]
-  "The tables that `query` reads and that do not resolve. `:missing` lists the names, as the SQL writes them, of the
-  tables that do not exist. `:existing` lists the references, as the SQL writes them, of the tables that exist but do
-  not resolve."
+(mu/defn- missing-tables :- [:sequential :string]
+  "The sorted names, as the SQL writes them, of the tables that `query` reads and that do not exist. A table that
+  exists but does not resolve, such as a hidden or catalog table, or a wildcard table that reads a synced table, is
+  not missing: [[existing-table?]] decides."
   [driver :- :keyword
    query  :- ::lib.schema/query]
   ;; A resolved spec can carry the default schema of an unqualified name, so take the names from the raw references.
-  (when-let [unresolved (seq (keep :unresolved-table (sql-tools/referenced-tables driver query)))]
+  (if-let [unresolved (seq (keep :unresolved-table (sql-tools/referenced-tables driver query)))]
     (let [{database-id :id :keys [default-schema]} (lib.metadata/database query)
           written (filter (fn [written] (some #(names-table? default-schema written %) unresolved))
                           (sql-tools/referenced-tables-raw driver (lib/raw-native-query query)))
-          known   (when (seq written) (known-tables database-id written))
-          {existing true missing false} (group-by #(boolean (existing-table? driver default-schema known %)) written)]
-      {:missing (table-names missing) :existing (vec existing)})))
+          known   (when (seq written) (known-tables database-id written))]
+      (table-names (remove #(existing-table? driver default-schema known %) written)))
+    []))
 
-(defn- same-table?
-  "Whether the table references `a` and `b` in the SQL name the same table. An unqualified name is in
-  `default-schema`."
-  [default-schema a b]
-  (names-table? default-schema a (update b :schema #(or % default-schema))))
-
-(defn- source-tables
-  "The table references that the field reference `field-ref` of [[sql-tools/field-references]] can read from."
-  [field-ref]
-  (->> (tree-seq coll? seq field-ref)
-       (filter #(= :all-columns (:type %)))
-       (map :table)))
-
-(defn- existing-table-columns
-  "The lower-cased names of the columns of `query` that can come from one of the table references `existing`. These
-  tables do not resolve, so the field checker cannot tell whether they have the column."
-  [driver query existing]
-  (when (seq existing)
-    (let [default-schema (:default-schema (lib.metadata/database query))
-          existing?      (fn [table] (some #(same-table? default-schema table %) existing))
-          {:keys [used-fields returned-fields]} (sql-tools/field-references driver (lib/raw-native-query query))]
-      ;; Walk the whole tree: a column can sit inside a custom field, such as `upper(name)`.
-      (->> (tree-seq coll? seq [used-fields returned-fields])
-           (filter #(= :single-column (:type %)))
-           (filter #(some existing? (source-tables %)))
-           (into #{} (map (comp u/lower-case-en :column)))))))
-
-(defn- ignored-error?
-  "Whether the field checker `error` is about one of the lower-cased `table-names`, or is a missing column with one of
-  the lower-cased `column-names`."
-  [table-names column-names {error-type :type error-name :name}]
-  (let [names (case (keyword error-type)
-                :missing-table-alias table-names
-                :missing-column      column-names
-                #{})]
-    (contains? names (some-> error-name u/lower-case-en))))
-
-(defn- field-warnings
-  "The sorted, distinct warnings for the field checker `errors`. A table alias with one of `table-names` is left
-  out: its table warning covers it, or its table exists. A missing column with one of `column-names` is left out: it
-  can come from a table that exists but does not resolve."
-  [errors table-names column-names]
-  (let [lower-names (into #{} (map u/lower-case-en) table-names)]
-    (->> errors
-         (remove #(ignored-error? lower-names column-names %))
-         (keep error->warning)
-         distinct
-         sort)))
-
-(mu/defn- field-check :- ::reference-check
-  "The check of the table and column references of `query` against `mp`. The warnings for tables that do not exist
-  come first. A checker failure gives `:status :failed` and no warnings."
-  [mp         :- ::lib.schema.metadata/metadata-provider
-   query      :- ::lib.schema/query
-   templated? :- :boolean]
-  (let [driver (:engine (lib.metadata/database mp))
-        errors (driver/validate-native-query-fields driver query)]
-    (if (some #(checker-failure? templated? %) errors)
-      {:status :failed, :warnings []}
-      (let [{:keys [missing existing]} (unresolved-tables driver query)
-            alias-names  (concat missing (table-names existing))
-            column-names (existing-table-columns driver query existing)]
-        {:status   :ran
-         :warnings (into (mapv table-warning missing) (field-warnings errors alias-names column-names))}))))
+(mu/defn- table-check :- ::reference-check
+  "The check of the table references of `query`: a warning for each table that does not exist."
+  [query :- ::lib.schema/query]
+  {:status   :ran
+   :warnings (mapv table-warning (missing-tables (:engine (lib.metadata/database query)) query))})
 
 (mu/defn- run-reference-check :- ::reference-check
-  "The [[check-references]] result for `query`, with template `tags`, against `mp`."
+  "The [[check-references]] result for `query`, with template `tags`."
   [database-id   :- ::lib.schema.id/database
-   mp            :- ::lib.schema.metadata/metadata-provider
    query         :- ::lib.schema/query
    tags          :- ::query-template-tags
-   check-fields? :- :boolean]
+   check-tables? :- :boolean]
   (if-let [missing (missing-references database-id tags)]
     {:status :ran, :warnings [], :missing missing}
-    (if-let [checkable (when check-fields? (checkable-query query tags))]
-      (field-check mp checkable (boolean (seq tags)))
+    (if-let [checkable (when check-tables? (checkable-query query tags))]
+      (table-check checkable)
       {:status :skipped, :warnings []})))
 
 (defn- check-key
   "The key of a reference check in the turn cache."
-  [database-id sql tags check-fields?]
+  [database-id sql tags check-tables?]
   ;; Each parse gives a tag that the SQL defines a new random `:id`, so the same tags differ only in it.
-  [database-id sql check-fields? (into #{} (map #(dissoc % :id)) tags)])
+  [database-id sql check-tables? (into #{} (map #(dissoc % :id)) tags)])
 
 (defn- cached-in-turn
   "The value of `k` in this turn's reference check cache, or the result of `f`, which is then cached."
@@ -508,20 +413,20 @@
 (mu/defn- check-references :- ::reference-check
   "Check the references of `sql` against the metadata of `database-id`.
 
-  `:missing` lists the cards and snippets that cannot be used. `:warnings` lists table and column problems; they are
-  checked only when `check-fields?`. A check that throws gives `:status :failed` and no findings. The same check
+  `:missing` lists the cards and snippets that cannot be used. `:warnings` lists the tables that do not exist; they
+  are checked only when `check-tables?`. A check that throws gives `:status :failed` and no findings. The same check
   again in this turn gives the cached result."
   [database-id   :- :int
    sql           :- :string
    existing-tags :- [:maybe ::lib.schema.template-tag/template-tags]
-   check-fields? :- :boolean]
+   check-tables? :- :boolean]
   (try
     (lib-be/with-metadata-provider-cache
       (let [mp    (lib-be/application-database-metadata-provider database-id)
             query (templated-query mp sql existing-tags)
             tags  (lib/all-template-tags query)]
-        (cached-in-turn (check-key database-id sql tags check-fields?)
-                        #(counted (run-reference-check database-id mp query tags check-fields?)))))
+        (cached-in-turn (check-key database-id sql tags check-tables?)
+                        #(counted (run-reference-check database-id query tags check-tables?)))))
     (catch Exception e
       ;; Fail open: the check must never block SQL. Message only, as in [[compile-templated-query]].
       (log/warnf "Reference check failed for database %d: %s" database-id (ex-message e))
@@ -547,15 +452,15 @@
 (mu/defn validate-database-sql :- ::validation-result
   "[[validate-sql]] for `sql` against `database-id`, then a check of its references.
 
-    (validate-database-sql 1 \"SELECT v.nme FROM {{#5}} AS v\")
+    (validate-database-sql 1 \"SELECT a.name FROM {{#5}} AS v JOIN account a ON a.id = v.id\")
     ;; => {:valid? true, :dialect \"postgres\", :transpiled-sql \"…\",
-    ;;     :warnings [\"Column \\\"nme\\\" was not found in any table, model, or question this query reads from.\"]}
+    ;;     :warnings [\"Table \\\"account\\\" was not found in the table metadata that Metabase has synced. …\"]}
 
   A card or snippet that does not exist or that the current user cannot read makes the result invalid, with
-  `:reason :missing-references`. Unresolved tables and columns are `:warnings` on a valid result; they are checked
-  only for dialects that [[dialect-mapping]] parses, and only when `check-fields?` (default true). `existing-tags` are
-  the template tags of the stored query whose SQL `sql` replaces, if any. `:repeated-warnings?` is set when this turn
-  has already shown each of the warnings."
+  `:reason :missing-references`. Tables that do not exist are `:warnings` on a valid result; they are checked only
+  for dialects that [[dialect-mapping]] parses, and only when `check-tables?` (default true). Column names are not
+  checked. `existing-tags` are the template tags of the stored query whose SQL `sql` replaces, if any.
+  `:repeated-warnings?` is set when this turn has already shown each of the warnings."
   ([database-id :- :int
     sql         :- :string]
    (validate-database-sql database-id sql nil))
@@ -566,10 +471,10 @@
   ([database-id   :- :int
     sql           :- :string
     existing-tags :- [:maybe ::lib.schema.template-tag/template-tags]
-    check-fields? :- :boolean]
+    check-tables? :- :boolean]
    (let [dialect                                    (database-id->dialect database-id)
          {:keys [valid? transpiled-sql] :as result} (validate-sql dialect sql)]
      (if valid?
        (with-reference-check result (check-references database-id (or transpiled-sql sql) existing-tags
-                                                      (and check-fields? (some? (get dialect-mapping dialect)))))
+                                                      (and check-tables? (some? (get dialect-mapping dialect)))))
        result))))

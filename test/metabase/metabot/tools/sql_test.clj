@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
@@ -716,7 +717,7 @@
   (invoke-sql-tool :internal {} "create_sql_query" {:database_id (mt/id) :sql_query sql}))
 
 (def ^:private warning-intro
-  "checking its table and column references")
+  "checking its table references")
 
 (defn- warns-about?
   "Whether `result` succeeded with a reference warning that names `identifier`."
@@ -747,11 +748,10 @@
           (let [result (create-sql (str "SELECT v.name, a.customer_name FROM {{#" card-id "}} AS v "
                                         "LEFT JOIN no_such_account a ON v.id = a.id"))]
             (is (warns-about? "no_such_account" result))
-            (testing "the table warning comes first and names `fully_qualified_name`"
+            (testing "the table warning is the only warning and names `fully_qualified_name`"
+              (is (= 1 (count (warning-lines result))))
               (is (str/starts-with? (first (warning-lines result)) (table-warning "no_such_account")))
               (is (str/includes? (first (warning-lines result)) "`fully_qualified_name`")))
-            (testing "the column warnings stay"
-              (is (warns-about? "customer_name" result)))
             (is (some? (get-in result [:structured-output :query-id])))
             (is (true? (:non-terminal? result)))))))))
 
@@ -779,10 +779,10 @@
         (testing "a schema-qualified table that does not exist is named as the SQL writes it"
           (let [result (create-sql "SELECT v.name, a.x FROM venues v JOIN dbt_models.venues a ON v.id = a.id")]
             (is (str/starts-with? (first (warning-lines result)) (table-warning "dbt_models.venues")))))
-        (testing "a bare table name that resolves in the default schema gets no table warning"
-          (let [result (create-sql "SELECT v.name, v.x FROM venues v")]
-            (is (warns-about? "x" result))
-            (is (not (str/includes? (:output result) "Table \"")))))))))
+        (testing "a bare table name that resolves in the default schema gets no warning"
+          (let [result (create-sql "SELECT v.name FROM venues v")]
+            (is (not (str/includes? (:output result) warning-intro)))
+            (is (not (contains? result :non-terminal?)))))))))
 
 (deftest create-sql-query-table-warning-without-columns-test
   (testing "an unknown table warns also when the query names none of its columns"
@@ -845,7 +845,7 @@
               (is (not (contains? result :non-terminal?))))))))))
 
 (deftest create-sql-query-known-unsynced-table-star-no-warning-test
-  (testing "`SELECT *` from a table that exists but does not resolve gives no table or alias warning"
+  (testing "`SELECT *` from a table that exists but does not resolve gives no warning"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "a system table"
@@ -862,40 +862,66 @@
             (is (= 1 (count lines)))
             (is (str/starts-with? (first lines) (table-warning "no_such_account")))))))))
 
-(deftest create-sql-query-known-unsynced-table-column-no-warning-test
-  (testing "a column of a table that exists but does not resolve gives no column warning"
-    (mt/test-drivers #{:postgres}
-      (mt/with-current-user (mt/user->id :crowberto)
-        (testing "a system table"
-          (let [result (create-sql "SELECT table_name FROM information_schema.tables")]
-            (is (= [] (warning-lines result)))
-            (is (not (contains? result :non-terminal?)))))
-        (testing "a hidden synced table"
-          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:visibility_type "hidden"}
-            (let [result (create-sql "SELECT name FROM venues")]
-              (is (= [] (warning-lines result)))
-              (is (not (contains? result :non-terminal?))))))
-        (testing "a join with a synced table keeps the warning for a column of the synced table only"
-          (let [result (create-sql (str "SELECT t.table_name, c.no_such_column FROM information_schema.tables t "
-                                        "JOIN categories c ON c.name = t.table_name"))]
-            (is (warns-about? "no_such_column" result))
-            (is (not (str/includes? (:output result) "\"table_name\"")))
-            (is (true? (:non-terminal? result)))))))))
-
-(deftest create-sql-query-unknown-column-warning-test
-  (testing "a column the referenced model does not have is a warning, not an error"
+(deftest create-sql-query-templated-unknown-table-warning-test
+  (testing "an unknown table in SQL with template tags is a warning, not an error"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card {card-id :id} (venues-model)]
-          (let [from-v (str " FROM {{#" card-id "}} AS v")]
-            (doseq [[situation sql] [["a model reference" (str "SELECT v.customer_name" from-v)]
-                                     ["a variable"        (str "SELECT v.customer_name" from-v " WHERE v.id = {{venue_id}}")]
-                                     ["an optional clause" (str "SELECT v.customer_name" from-v
+          (let [from-v (str " FROM {{#" card-id "}} AS v JOIN no_such_account a ON a.id = v.id")]
+            (doseq [[situation sql] [["a model reference" (str "SELECT v.name" from-v)]
+                                     ["a variable"        (str "SELECT v.name" from-v " WHERE v.id = {{venue_id}}")]
+                                     ["an optional clause" (str "SELECT v.name" from-v
                                                                 " WHERE TRUE [[AND v.id = {{venue_id}}]]")]]]
               (testing situation
                 (let [result (create-sql sql)]
-                  (is (warns-about? "customer_name" result))
+                  (is (warns-about? "no_such_account" result))
                   (is (true? (:non-terminal? result))))))))))))
+
+(deftest create-sql-query-column-references-no-warning-test
+  (testing "column names are not checked: checker false positives and a real wrong column get no warning"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (doseq [[situation sql] [["the column list of a CTE"
+                                    "WITH foo(x) AS (SELECT id FROM venues) SELECT x FROM foo"]
+                                   ["a column alias list"
+                                    "SELECT q.x FROM (SELECT id FROM venues) AS q(x)"]
+                                   ["a qualifier in another letter case"
+                                    "SELECT V.ID FROM venues v"]
+                                   ["a column the model does not have"
+                                    (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")]]]
+            (testing situation
+              (let [result (create-sql sql)]
+                (is (nil? (:error result)))
+                (is (= [] (warning-lines result)))
+                (is (not (contains? result :non-terminal?)))))))))))
+
+(deftest bigquery-struct-field-no-warning-test
+  (testing (str "a BigQuery struct field, `UNNEST` alias or wildcard table gets no warning, and an unknown table "
+                "still does")
+    ;; Needs the BigQuery driver on the classpath (`--drivers=bigquery-cloud-sdk`). Without it the check fails open,
+    ;; so the test would prove nothing.
+    (when (try (driver/the-initialized-driver :bigquery-cloud-sdk) (catch Exception _ nil))
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; `validate-database-sql` does not run the query, so the database needs no connection.
+        (mt/with-temp [:model/Database {db-id :id}    {:engine :bigquery-cloud-sdk :details {}}
+                       :model/Table    {table-id :id} {:db_id db-id :schema "analytics" :name "events_20240101"}
+                       :model/Field    {geo-id :id}   {:table_id table-id :name "geo" :base_type :type/Dictionary
+                                                       :database_type "RECORD"}
+                       :model/Field    _              {:table_id table-id :name "country" :parent_id geo-id
+                                                       :nfc_path ["geo" "country"] :base_type :type/Text
+                                                       :database_type "STRING"}]
+          (doseq [sql ["SELECT e.geo.country FROM analytics.events_20240101 e"
+                       "SELECT geo.country FROM analytics.events_20240101"
+                       "SELECT p.key FROM analytics.events_20240101 e, UNNEST(e.event_params) AS p"
+                       ;; A GA4 export: the wildcard reads the daily shards, and `_table_suffix` is a pseudo-column.
+                       "SELECT event_name, _table_suffix FROM analytics.events_* WHERE _table_suffix >= '20240101'"]]
+            (testing sql
+              (is (nil? (:warnings (sql.validation/validate-database-sql db-id sql))))))
+          (is (= [(str (table-warning "analytics.no_such_events") " If you meant a synced table, refer to it by its "
+                       "schema-qualified name, the `fully_qualified_name` in the table metadata.")]
+                 (:warnings (sql.validation/validate-database-sql
+                             db-id "SELECT e.geo.country FROM analytics.no_such_events e")))))))))
 
 (deftest create-sql-query-missing-card-error-test
   (testing "a reference to a card that does not exist is a recoverable error, and no query is created"
@@ -964,20 +990,19 @@
           (let [memory-atom (atom editor-memory)
                 create      #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
                                                                {:database_id (mt/id) :sql_query %})
-                warned-sql  (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")]
+                warned-sql  (str "SELECT v.name FROM {{#" card-id "}} AS v JOIN no_such_account a ON a.id = v.id")]
             (testing "the first send warns and keeps the turn open"
               (is (true? (:non-terminal? (create warned-sql)))))
             (testing "the second send of the same SQL still warns, and is accepted"
               (let [result (create warned-sql)]
-                (is (warns-about? "customer_name" result))
+                (is (warns-about? "no_such_account" result))
                 (is (not (contains? result :non-terminal?)))))
             (testing "changed SQL with the same warning is accepted"
               (let [result (create (str warned-sql " WHERE v.id = 1"))]
-                (is (warns-about? "customer_name" result))
+                (is (warns-about? "no_such_account" result))
                 (is (not (contains? result :non-terminal?)))))
             (testing "changed SQL with a new warning keeps the turn open"
-              (is (true? (:non-terminal? (create (str "SELECT v.customer_name, v.nickname FROM {{#" card-id
-                                                      "}} AS v")))))))))))
+              (is (true? (:non-terminal? (create (str warned-sql " JOIN no_such_order o ON o.id = v.id")))))))))))
   (testing "a wrong schema guess for an unknown table keeps the turn open, because the table warning is new"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -998,11 +1023,11 @@
           (let [memory-atom (atom editor-memory)
                 create      #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
                                                                {:database_id (mt/id) :sql_query %})
-                warned-sql  (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")
+                warned-sql  (str "SELECT v.name FROM {{#" card-id "}} AS v JOIN no_such_account a ON a.id = v.id")
                 first-send  (create warned-sql)
                 second-send (create warned-sql)]
             (is (str/includes? (:output first-send) "send the same complete SQL again"))
-            (is (warns-about? "customer_name" second-send))
+            (is (warns-about? "no_such_account" second-send))
             (is (str/includes? (:output second-send) "The query was created and accepted"))
             (is (not (str/includes? (:output second-send) "send the same complete SQL again")))
             (is (not (str/includes? (:output second-send) "fix any that are wrong")))))))))
@@ -1012,7 +1037,8 @@
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card {card-id :id} (venues-model)]
-          (let [warned-sql (str "SELECT v.name, m.customer_name FROM venues v JOIN {{#" card-id "}} AS m ON v.id = m.id")
+          (let [joins      (str " JOIN {{#" card-id "}} AS m ON v.id = m.id JOIN no_such_account a ON a.id = v.id")
+                warned-sql (str "SELECT v.name, m.name FROM venues v" joins)
                 ;; What the agent loop does after each call (`extract-queries`): store the saved query.
                 store!     (fn [memory-atom query-id result]
                              (swap! memory-atom assoc-in [:state :queries query-id]
@@ -1027,12 +1053,11 @@
                     edited      (invoke-sql-tool-with-memory-atom
                                  :sql memory-atom "edit_sql_query"
                                  {:edits [{:old_string "v.name FROM venues v"
-                                           :new_string (str "v.name, m.customer_name FROM venues v JOIN {{#" card-id
-                                                            "}} AS m ON v.id = m.id")}]})]
+                                           :new_string (str "v.name, m.name FROM venues v" joins)}]})]
                 (is (true? (:non-terminal? edited)))
                 (store! memory-atom "q1" edited)
                 (let [result (replace memory-atom "q1" (get-in edited [:structured-output :query-content]))]
-                  (is (warns-about? "customer_name" result))
+                  (is (warns-about? "no_such_account" result))
                   (is (not (contains? result :non-terminal?))))))
             (testing "after a create"
               (let [memory-atom (atom editor-memory)
@@ -1042,7 +1067,7 @@
                 (is (true? (:non-terminal? created)))
                 (store! memory-atom query-id created)
                 (let [result (replace memory-atom query-id warned-sql)]
-                  (is (warns-about? "customer_name" result))
+                  (is (warns-about? "no_such_account" result))
                   (is (not (contains? result :non-terminal?))))))))))))
 
 (deftest edit-and-replace-reference-warnings-test
@@ -1083,42 +1108,28 @@
 (deftest reference-check-failure-is-not-fatal-test
   (mt/test-drivers #{:postgres}
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card {card-id :id}   (venues-model)
-                     :model/Card {broken-id :id} (broken-card)]
+      (mt/with-temp [:model/Card {broken-id :id} (broken-card)]
         (let [accepted-without-warning? (fn [result]
                                           (and (nil? (:error result))
                                                (some? (get-in result [:structured-output :query-id]))
                                                (not (str/includes? (:output result) warning-intro))
                                                (not (contains? result :non-terminal?))))]
-          (testing "a checker that throws does not fail the tool call"
-            (mt/with-dynamic-fn-redefs [sql-tools/validate-query (fn [& _] (throw (ex-info "boom" {})))]
-              (is (accepted-without-warning? (create-sql (str "SELECT v.customer_name FROM {{#" card-id "}} AS v"))))))
+          (testing "a check that throws does not fail the tool call"
+            (mt/with-dynamic-fn-redefs [sql-tools/referenced-tables (fn [& _] (throw (ex-info "boom" {})))]
+              (is (accepted-without-warning? (create-sql "SELECT * FROM no_such_account")))))
           (testing "a referenced card that fails to compile does not fail the tool call"
-            (is (accepted-without-warning? (create-sql (str "SELECT * FROM {{#" broken-id "}} AS b")))))
-          (testing "a checker error is not a warning"
-            (doseq [[situation error sql] [["a timeout" (lib/validation-exception-error "Timed out")
-                                            (str "SELECT v.name FROM {{#" card-id "}} AS v")]
-                                           ["a syntax error on SQL that already parsed" (lib/syntax-error)
-                                            "SELECT name FROM venues"]]]
-              (testing situation
-                (mt/with-dynamic-fn-redefs [sql-tools/validate-query (constantly #{error})]
-                  (is (accepted-without-warning? (create-sql sql)))))))
-          (testing "a syntax error after expanding the references is still a warning"
-            (mt/with-dynamic-fn-redefs [sql-tools/validate-query (constantly #{(lib/syntax-error)})]
-              (is (str/includes? (:output (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")))
-                                 "could not parse the SQL after expanding")))))))))
+            (is (accepted-without-warning? (create-sql (str "SELECT * FROM {{#" broken-id "}} AS b"))))))))))
 
 (deftest unmapped-dialect-checks-only-cards-and-snippets-test
-  (testing "a driver that the parser does not map gets the card and snippet check, but no field check"
+  (testing "a driver that the parser does not map gets the card and snippet check, but no table check"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
-          (mt/with-dynamic-fn-redefs [sql.validation/database-id->dialect (constantly "no-such-dialect")]
-            (let [result (create-sql (str "SELECT v.customer_name FROM {{#" card-id "}} AS v"))]
-              (is (nil? (:error result)))
-              (is (not (str/includes? (:output result) warning-intro))))
-            (is (= ::sql.common/missing-references
-                   (get-in (create-sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")) [:error :code])))))))))
+        (mt/with-dynamic-fn-redefs [sql.validation/database-id->dialect (constantly "no-such-dialect")]
+          (let [result (create-sql "SELECT * FROM no_such_account")]
+            (is (nil? (:error result)))
+            (is (not (str/includes? (:output result) warning-intro))))
+          (is (= ::sql.common/missing-references
+                 (get-in (create-sql (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")) [:error :code]))))))))
 
 (deftest reference-check-counter-test
   (testing "each reference check counts its outcome"
@@ -1135,18 +1146,12 @@
               (create-sql (str "SELECT * FROM {{#" broken-id "}} AS b"))
               (is (= 1.0 (checks system "skipped"))))
             (mt/with-prometheus-system! [_ system]
-              (mt/with-dynamic-fn-redefs [sql-tools/validate-query (fn [& _] (throw (ex-info "boom" {})))]
+              (mt/with-dynamic-fn-redefs [sql-tools/referenced-tables (fn [& _] (throw (ex-info "boom" {})))]
                 (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")))
-              (is (= 1.0 (checks system "failed"))))
-            (testing "a checker timeout counts as failed"
-              (mt/with-prometheus-system! [_ system]
-                (mt/with-dynamic-fn-redefs [sql-tools/validate-query
-                                            (constantly #{(lib/validation-exception-error "Timed out")})]
-                  (create-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")))
-                (is (= 1.0 (checks system "failed")))))))))))
+              (is (= 1.0 (checks system "failed"))))))))))
 
-(deftest table-tag-skips-field-check-test
-  (testing "a stored query's table tag skips the field check: its table is not known until the query runs"
+(deftest table-tag-skips-table-check-test
+  (testing "a stored query's table tag skips the table check: its table is not known until the query runs"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
         (let [stored (-> (lib/native-query (mt/metadata-provider) "SELECT name FROM {{t}}")
@@ -1156,17 +1161,16 @@
                                                    :id           (str (random-uuid))
                                                    :table-id     (mt/id :venues)}]))
               result (invoke-sql-tool :internal {:state {:queries {"q1" stored}}} "replace_sql_query"
-                                      {:new_query "SELECT no_such_column FROM {{t}}"})]
+                                      {:new_query "SELECT * FROM {{t}} JOIN no_such_account a ON TRUE"})]
           (is (nil? (:error result)))
           (is (not (str/includes? (:output result) warning-intro)))
           (is (not (contains? result :non-terminal?))))))))
 
-(deftest dialect-without-field-checks-test
-  (testing "H2 gets no field check, so an unknown column does not warn"
+(deftest dialect-without-table-check-test
+  (testing "H2 gets no table check, so an unknown table does not warn"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
-          (let [result (create-sql (str "SELECT v.customer_name FROM {{#" card-id "}} AS v"))]
-            (is (nil? (:error result)))
-            (is (not (str/includes? (:output result) warning-intro)))
-            (is (not (contains? result :non-terminal?)))))))))
+        (let [result (create-sql "SELECT * FROM no_such_account")]
+          (is (nil? (:error result)))
+          (is (not (str/includes? (:output result) warning-intro)))
+          (is (not (contains? result :non-terminal?))))))))

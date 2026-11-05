@@ -847,9 +847,9 @@
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
    (prometheus/counter :metabase-metabot/sql-reference-checks
-                       {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no field check "
+                       {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
                                           "for the dialect, a table tag, or SQL that does not compile), or `failed` "
-                                          "(the check threw, timed out, or its parser disagreed with the syntax check).")
+                                          "(the check threw).")
                         :labels [:status]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth

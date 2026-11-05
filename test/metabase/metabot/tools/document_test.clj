@@ -228,24 +228,18 @@
         (is (= {:class :recoverable :code ::sql.common/missing-references} (:error result)))
         (is (nil? (:structured-output result)))))))
 
-(deftest document-construct-sql-chart-skips-field-check-test
-  (testing "a column the model does not have records no reference warning, because the tool does not show warnings"
+(deftest document-construct-sql-chart-skips-table-check-test
+  (testing "a table that does not exist records no reference warning, because the tool does not show warnings"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card {card-id :id} {:type          :model
-                                                    :database_id   (mt/id)
-                                                    :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-            (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _] nil)]
-              (let [memory-atom (atom {})
-                    result      (invoke-document-tool-with-memory-atom
-                                 "document_construct_sql_chart"
-                                 (assoc sql-chart-args
-                                        :database_id (mt/id)
-                                        :sql (str "SELECT v.customer_name FROM {{#" card-id "}} AS v"))
-                                 memory-atom)]
-                (is (nil? (:error result)))
-                (is (empty? (::sql.validation/shown-reference-warnings @memory-atom)))))))))))
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& _] nil)]
+          (let [memory-atom (atom {})
+                result      (invoke-document-tool-with-memory-atom
+                             "document_construct_sql_chart"
+                             (assoc sql-chart-args :database_id (mt/id) :sql "SELECT * FROM no_such_account")
+                             memory-atom)]
+            (is (nil? (:error result)))
+            (is (empty? (::sql.validation/shown-reference-warnings @memory-atom)))))))))
 
 (deftest document-construct-sql-chart-blank-sql-test
   (testing "blank SQL gets the SQL tools' recovery step instead of a draft"
