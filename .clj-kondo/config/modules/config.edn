@@ -1189,7 +1189,7 @@
   {:team "Metabot"
    :api #{metabase.global-system.mutable-component
           metabase.global-system.system}
-   :uses #{}}
+   :uses #{util}}
 
   glossary
   {:team "Gadget"
