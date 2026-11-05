@@ -310,15 +310,10 @@
    :id
    {:default []}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *allow-hydrate-archived-cards*
-  "By default the :cards hydration method only return active cards,
-  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
-  false)
-
 (mu/defn- cards* :- [:sequential HybridPulseCard]
+  "The active Cards of the Pulses with `pulse-ids`. Archived Cards are left out."
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  (pulse.db/pulse-cards-for-pulses pulse-ids false))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]

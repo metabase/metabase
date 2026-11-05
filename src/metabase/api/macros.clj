@@ -447,20 +447,18 @@
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *enable-response-validation*
+(def enable-response-validation
   "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
-  for prod for performance purposes. You can change this binding if you want to disable it for weird test reasons or
-  whatever.
+  for prod for performance purposes.
 
-  Not that encoding is still applied regardless of this value, i.e. even in prod."
+  Note that encoding is still applied regardless of this value, i.e. even in prod."
   (not config/is-prod?))
 
 (mu/defn validate-and-encode-response :- any?
   "Impl for [[endpoint-core-fn]]; validate the endpoint response against `schema` "
   [schema   :- ::schema-form-or-instance
    response :- ::response]
-  (when *enable-response-validation*
+  (when enable-response-validation
     (when-not (mr/validate schema response)
       (throw (ex-info "Invalid response" ; TODO -- better error message?
                       {:status-code 400
