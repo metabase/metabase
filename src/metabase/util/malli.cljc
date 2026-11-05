@@ -38,7 +38,7 @@
 
 (def localized-string-schema
   "Schema for localized string."
-  #?(:clj  [:fn {:error/message "must be a localized string"}
+  #?(:clj  [:fn {:error/message "must be a localized string", :json-schema {:type "string"}}
             i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
@@ -172,9 +172,15 @@
       :and (some map-schema-keys (mc/children schema))
       nil)))
 
+(core/defn never
+  "A schema that never validates, with `properties` such as its `:error/message`, and whose JSON Schema accepts nothing."
+  ([]
+   (never {}))
+  ([properties]
+   [:fn (merge {:json-schema {:not {}}} properties) (constantly false)]))
+
 (core/defn refuse
   "A schema that never validates; its `:decode/api` throws a 400 with `(message-fn)`. Intended as the last branch of
   an `[:or ...]`."
   [message-fn]
-  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
-   (constantly false)])
+  (never {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}))

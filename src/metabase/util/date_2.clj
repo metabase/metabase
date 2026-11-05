@@ -22,7 +22,8 @@
 
 (def ^:private TemporalInstance
   [:fn
-   {:error/message "Instance of a java.time.temporal.Temporal"}
+   {:error/message "Instance of a java.time.temporal.Temporal"
+    :json-schema   {:type "string"}}
    (partial instance? Temporal)])
 
 (defn- add-zone-to-local
