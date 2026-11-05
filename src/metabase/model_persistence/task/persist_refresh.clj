@@ -231,7 +231,10 @@
 
 (defn- prune-job-fn!
   [_job-context]
-  (prune-all-deletable! dispatching-refresher))
+  ;; pruning drops cache tables, which a workspace sidecar neither creates nor may drop
+  (if (ws/workspace-mode?)
+    (log/info "Skipping persisted model prune: this instance is a workspace.")
+    (prune-all-deletable! dispatching-refresher)))
 
 (task/defjob PersistenceRefresh
   "Refresh persisted tables job"

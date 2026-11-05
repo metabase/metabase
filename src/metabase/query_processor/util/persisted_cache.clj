@@ -11,14 +11,17 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.system.core :as system]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as ws]))
 
 (mu/defn can-substitute?
   "Taking a card and a persisted-info record (possibly nil), returns whether the card's query can be substituted for a
-  persisted version."
+  persisted version. Never on a workspace sidecar."
   [card           :- ::lib.schema.metadata/card
    persisted-info :- [:maybe ::lib.schema.metadata/persisted-info]]
   (and persisted-info
+       ;; a persisted table is computed from main tables, never a workspace's scratch copies
+       (not (ws/workspace-mode?))
        (model-persistence/allow-persisted-substitution?)
        (:active persisted-info)
        (= (:state persisted-info) "persisted")

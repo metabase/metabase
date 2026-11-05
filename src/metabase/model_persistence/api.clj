@@ -22,9 +22,18 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- check-not-workspace!
+  "A workspace sidecar does not persist models: a persisted table would be computed from main tables, outside the
+  workspace's scratch namespaces."
+  []
+  (api/check (not (ws/workspace-mode?))
+             400
+             (tru "Model persistence is not available on a workspace instance.")))
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
@@ -126,6 +135,7 @@
   "Enable global setting to allow databases to persist models."
   []
   (perms/check-has-application-permission :setting)
+  (check-not-workspace!)
   (log/info "Enabling model persistence")
   (model-persistence.settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
@@ -246,6 +256,7 @@
   (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
+  (check-not-workspace!)
   (api/let-404 [database (model-persistence.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
