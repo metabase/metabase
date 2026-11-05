@@ -660,3 +660,14 @@
                                    (into #{}))]
               (is (= #{"Normal Collection" "Shared Tenant Collection" "Tenant Specific Collection"}
                      trash-items)))))))))
+
+(deftest can-move-shared-tenant-collection-within-shared-tenant-namespace-test
+  (testing "PUT /api/collection/:id can nest a shared-tenant collection and move it back to root"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}
+                       :model/Collection {child-id :id}  {:namespace collection/shared-tenant-ns}]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id parent-id})
+          (is (= (format "/%d/" parent-id) (t2/select-one-fn :location :model/Collection :id child-id)))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id nil})
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id child-id))))))))
