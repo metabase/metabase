@@ -1,0 +1,23 @@
+(ns metabase.server.middleware.exceptions
+  "Ring middleware turning an exception into an API response body. Exercises `throwable-map-outside-sanitizer`:
+  the exception-to-data step happening here, where every cause's ex-data -- the query a permission check refused,
+  the SQL it compiled to -- goes out with it."
+  (:require
+   [metabase.api.response :as api.response]))
+
+;; an exception's whole map, every ex-data in the chain included, into the body: an error
+(defn- api-exception-response [e]
+  (merge {:message (ex-message e)} (Throwable->map e)))
+
+;; the same through the sanitizer, which keeps the contract keys and nothing else: not reported
+(defn- api-exception-response-sanitized [e]
+  (api.response/throwable->response-map e))
+
+(defn wrap-api-exceptions
+  "Applied to the whole app handler."
+  [handler]
+  (fn [request respond raise]
+    (handler request
+             respond
+             (fn [e]
+               (respond {:status 500 :body (merge (api-exception-response e) (api-exception-response-sanitized e))})))))

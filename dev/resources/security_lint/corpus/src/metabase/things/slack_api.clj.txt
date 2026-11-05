@@ -1,0 +1,24 @@
+(ns metabase.things.slack-api
+  "Security-lint test example: an admin namespace where every endpoint checks an application permission but one.
+  Exercises `namespace-authz-outlier`."
+  (:require
+   [metabase.api.macros :as api.macros]
+   [metabase.permissions.core :as perms]))
+
+(api.macros/defendpoint :put "/settings"
+  "Updates the Slack settings."
+  [_route _query _body]
+  (perms/check-has-application-permission :setting)
+  1)
+
+(api.macros/defendpoint :get "/manifest"
+  "The app manifest."
+  [_route _query _body]
+  (perms/check-has-application-permission :setting)
+  1)
+
+;; the one endpoint with no check: any user posts into the org's Slack as the bot
+(api.macros/defendpoint :post "/bug-report"
+  "Posts a bug report."
+  [_route _query _body]
+  1)
