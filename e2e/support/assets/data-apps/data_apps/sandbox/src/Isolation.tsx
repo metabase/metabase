@@ -1,3 +1,4 @@
+import { copy } from "@metabase/embedding-sdk-react/data-app";
 import { useEffect, useState } from "react";
 
 import { describeError } from "./utils";
@@ -7,6 +8,7 @@ const PROBE_COLOR = "rgb(0, 128, 0)";
 export function Isolation() {
   const [cssInjected, setCssInjected] = useState("pending");
   const [jsMarker, setJsMarker] = useState("pending");
+  const [clipboardStatus, setClipboardStatus] = useState("");
 
   useEffect(() => {
     // `createElement("style")` is the one tag the data-app sandbox permits, so
@@ -37,6 +39,19 @@ export function Isolation() {
         css probe
       </div>
       <div data-testid="js-marker">{jsMarker}</div>
+      <button
+        type="button"
+        data-testid="clipboard-copy"
+        onClick={() =>
+          copy("data-app-clipboard-payload").then(
+            () => setClipboardStatus("copied"),
+            (err) => setClipboardStatus(`failed: ${describeError(err)}`),
+          )
+        }
+      >
+        Copy
+      </button>
+      <div data-testid="clipboard-status">{clipboardStatus}</div>
     </div>
   );
 }
