@@ -10,6 +10,8 @@
     store, the batch (rows on export, entities on import), the column's values in that batch, and the import options
     (empty on export), returning the transformed values in the same order. An `:as` key exports the column under
     another key. A transform with no `:export` is never exported.
+  - `:after-export`, a fn of an exported entity returning it, to add what no column holds, like the paths of the
+    resource files beside it.
   - `:defaults`, the default `true` or `false` of boolean columns. An export leaves out the columns that are nil or at
     their default, and an import sets each column the spec copies or exports that an entity lacks to its default, or
     to nil.

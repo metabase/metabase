@@ -56,6 +56,14 @@
       (is (thrown-with-msg? Exception #"metabase-plugin\.json"
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-rejects-entry-paths-an-export-cannot-unpack-test
+  (doseq [path ["dist//index.js" "dist/icons/../index.js"]]
+    (testing path
+      (let [bytes (cvp.tu/make-tgz-bytes [["metabase-plugin.json" (json/encode {:name "my-viz"})]
+                                          [path "console.log('hi')"]])]
+        (is (thrown-with-msg? Exception #"invalid path"
+                              (cache/validate-bundle! bytes)))))))
+
 (deftest validate-bundle-requires-index-js-test
   (testing "archive without dist/index.js is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes
@@ -93,12 +101,31 @@
                                   (cache/check-bundle-icon! {:manifest {:name "thumbs" :icon "icon.png"}})))]
       (is (= 400 (:status-code (ex-data e)))))))
 
+(deftest validate-bundle-accepts-name-that-cannot-name-a-directory-test
+  (testing "a name a repository can't use as a directory still validates: registration refuses it, a replacement of a
+            plugin registered before the rule does not"
+    (let [bytes (cvp.tu/make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name "a b"})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (= "a b" (get-in (cache/validate-bundle! bytes) [:manifest :name]))))))
+
 (deftest validate-bundle-rejects-invalid-json-manifest-test
   (testing "non-JSON manifest is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" "not json at all"]
                   ["dist/index.js" "console.log('hi')"]])]
       (is (thrown-with-msg? Exception #"not valid JSON"
+                            (cache/validate-bundle! bytes))))))
+
+(deftest validate-bundle-rejects-oversized-archive-test
+  (testing "an archive over the upload limit is refused however it arrived, an import packs one from files"
+    (let [incompressible (doto (byte-array (inc cache/max-bundle-bytes))
+                           (->> (.nextBytes (java.util.Random. 1))))
+          bytes          (cvp.tu/make-tgz-bytes
+                          [["metabase-plugin.json" (json/encode {:name "big"})]
+                           ["dist/index.js" incompressible]])]
+      (is (> (alength bytes) cache/max-bundle-bytes))
+      (is (thrown-with-msg? Exception #"Bundle must be less than 5MB"
                             (cache/validate-bundle! bytes))))))
 
 (deftest validate-bundle-rejects-tar-bomb-test

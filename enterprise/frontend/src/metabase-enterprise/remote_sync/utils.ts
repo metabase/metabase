@@ -20,6 +20,7 @@ const MODEL_ICONS: Record<RemoteSyncEntityModel, IconName> = {
   card: "table2",
   cardtest: "list",
   collection: "folder",
+  customvizplugin: "lineandbar",
   dashboard: "dashboard",
   dataapp: "app",
   document: "document",
@@ -73,6 +74,8 @@ export const getEntityUrl = ({
         : Urls.dataStudioAction(id);
     case "dataapp":
       return Urls.dataStudioDataApp(name);
+    case "customvizplugin":
+      return Urls.customViz();
     case "nativequerysnippet":
       return Urls.dataStudioSnippet(id);
     case "glossary":

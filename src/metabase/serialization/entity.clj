@@ -83,13 +83,14 @@
                                :when (not (:import-only? (serialization.spec/parent child-model)))]
                            [k (serialize-children model child-model store rows)]))
         exported (fn [i row]
-                   (reduce (fn [entity [k values]]
-                             (let [v (nth values i)]
-                               (cond-> entity
-                                 (exported? defaults k v) (assoc k v))))
-                           (-> (into {} (filter (fn [[k v]] (exported? defaults k v))) (select-keys row (:copy spec)))
-                               (assoc :serdes/meta (meta-of model)))
-                           columns))]
+                   ((:after-export spec identity)
+                    (reduce (fn [entity [k values]]
+                              (let [v (nth values i)]
+                                (cond-> entity
+                                  (exported? defaults k v) (assoc k v))))
+                            (-> (into {} (filter (fn [[k v]] (exported? defaults k v))) (select-keys row (:copy spec)))
+                                (assoc :serdes/meta (meta-of model)))
+                            columns)))]
     (vec (map-indexed exported rows))))
 
 (defn deserialize-entities
