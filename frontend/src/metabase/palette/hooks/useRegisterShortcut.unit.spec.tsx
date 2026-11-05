@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { type ActionImpl, type KBarQuery, useKBar } from "kbar";
+import { type ActionImpl, useKBar } from "kbar";
 import type { DependencyList } from "react";
 
+import { renderWithRegisterActionsSpy } from "__support__/kbar";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import type { KeyboardShortcutId } from "../shortcuts";
@@ -24,16 +25,12 @@ const Harness = ({ shortcutsToRegister, deps }: HarnessProps) => {
   return null;
 };
 
-type ProbeProps = {
-  onQuery: (query: KBarQuery) => void;
+type ActionNamesProps = {
   onActions: (actions: Record<string, ActionImpl>) => void;
 };
 
-// Renders before `Harness`, so `onQuery` sees the kbar query before any
-// effect registers an action.
-const ActionNames = ({ onQuery, onActions }: ProbeProps) => {
-  const { query, actions } = useKBar((state) => ({ actions: state.actions }));
-  onQuery(query);
+const ActionNames = ({ onActions }: ActionNamesProps) => {
+  const { actions } = useKBar((state) => ({ actions: state.actions }));
   onActions(actions);
 
   return (
@@ -48,12 +45,6 @@ const ActionNames = ({ onQuery, onActions }: ProbeProps) => {
 type SetupOpts = HarnessProps;
 
 const setup = async ({ shortcutsToRegister, deps }: SetupOpts) => {
-  let registerActions:
-    | jest.SpiedFunction<KBarQuery["registerActions"]>
-    | undefined;
-  const onQuery = (query: KBarQuery) => {
-    registerActions ??= jest.spyOn(query, "registerActions");
-  };
   const registeredActions = new Map<string, ActionImpl>();
   const onActions = (actions: Record<string, ActionImpl>) => {
     Object.values(actions).forEach((action) =>
@@ -63,20 +54,20 @@ const setup = async ({ shortcutsToRegister, deps }: SetupOpts) => {
 
   const ui = (props: HarnessProps) => (
     <>
-      <ActionNames onQuery={onQuery} onActions={onActions} />
+      <ActionNames onActions={onActions} />
       <Harness {...props} />
     </>
   );
 
-  const { rerender } = renderWithProviders(ui({ shortcutsToRegister, deps }), {
-    withKBar: true,
-  });
+  const { rerender, getRegisterActions } = renderWithRegisterActionsSpy(
+    ui({ shortcutsToRegister, deps }),
+  );
 
   await screen.findByRole("list");
 
   return {
     rerender: (props: HarnessProps) => rerender(ui(props)),
-    getRegisterActions: () => registerActions,
+    getRegisterActions,
     getRegisteredAction: (id: string) => registeredActions.get(id),
   };
 };

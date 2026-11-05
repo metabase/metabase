@@ -26,7 +26,6 @@ import { QuestionMoreActionsMenu } from "./QuestionMoreActionsMenu";
 
 interface Props {
   isBookmarked: boolean;
-  isShowingQuestionInfoSidebar: boolean;
   onToggleBookmark: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
@@ -42,7 +41,6 @@ interface Props {
 
 export const QuestionActions = ({
   isBookmarked,
-  isShowingQuestionInfoSidebar,
   onToggleBookmark,
   onOpenModal,
   question,
@@ -53,24 +51,16 @@ export const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-info-sidebar",
-        // Closing is the open sheet's own hotkey, so its exit transition plays
-        perform: () => {
-          if (!isShowingQuestionInfoSidebar) {
-            onInfoClick();
-          }
-        },
-      },
-      {
-        id: "query-builder-bookmark",
-        perform: onToggleBookmark,
-      },
-    ],
-    [isShowingQuestionInfoSidebar, isBookmarked],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-info-sidebar",
+      perform: onInfoClick,
+    },
+    {
+      id: "query-builder-bookmark",
+      perform: onToggleBookmark,
+    },
+  ]);
 
   const hasCollectionPermissions = question.canWrite();
   const uploadTableId = question._card.based_on_upload;
