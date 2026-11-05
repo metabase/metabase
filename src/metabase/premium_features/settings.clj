@@ -397,6 +397,10 @@
   "Should we allow users to manage workspaces?"
   :workspaces)
 
+(define-premium-feature enable-change-log?
+  "Should we log which rows each write changes (the change log)?"
+  :change-log)
+
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
