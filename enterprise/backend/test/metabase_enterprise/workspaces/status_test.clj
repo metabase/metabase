@@ -4,25 +4,34 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once (fixtures/initialize :db))
+
 (defn- do-with-workspace-database!
-  "Calls `(f wsd-id token)` with a new `workspace_database` row in `status`, whose lock `token` holds."
+  "Calls `(f wsd-id token)` with a new `workspace_database` row in `status`, whose lock `token` holds. Plain inserts
+  rather than `mt/with-temp`, whose bound connection `future`s would inherit, so concurrent callers really contend."
   [status f]
-  (let [token (ws.status/new-lock-token)]
-    (mt/with-temp [:model/WorkspaceProvisioningConnection _ {:database_id (mt/id), :details {}}
-                   :model/Workspace                       {ws-id :id}  {:name "status test"}
-                   :model/WorkspaceDatabase               {wsd-id :id} {:workspace_id     ws-id
-                                                                        :database_id      (mt/id)
-                                                                        :isolation_id     "statuste"
-                                                                        :database_details {:user "u", :password "p"}
-                                                                        :status           status
-                                                                        :lock_token       token}]
-      (f wsd-id token))))
+  (let [token  (ws.status/new-lock-token)
+        db-id  (t2/insert-returning-pk! :model/Database {:name (mt/random-name), :engine :postgres, :details {}})
+        ws-id  (ws.db/insert-workspace! "status test" nil)]
+    (try
+      (ws.db/save-provisioning-connection! db-id {} nil)
+      (let [wsd-id (:id (ws.db/insert-workspace-database! {:workspace_id     ws-id
+                                                           :database_id      db-id
+                                                           :isolation_id     (subs (str (random-uuid)) 0 8)
+                                                           :database_details {:user "u", :password "p"}
+                                                           :status           status
+                                                           :lock_token       token}))]
+        (f wsd-id token))
+      (finally
+        (t2/delete! :model/Workspace :id ws-id)
+        (t2/delete! :model/Database :id db-id)))))
 
 (defn- age-minutes!
   "Move the `updated_at` of the row of `table` back by `minutes`, through the table rather than the model, whose
@@ -136,7 +145,7 @@
                                (fn [wsd-id _token]
                                  (let [schema (ws.db/insert-workspace-schema! {:workspace_database_id wsd-id
                                                                                :main_schema           "sales"
-                                                                               :scratch_namespace     "mb__isolation_statuste_s1_sales"
+                                                                               :scratch_namespace     (str "mb__isolation_" (subs (str (random-uuid)) 0 8) "_s1_sales")
                                                                                :status                :adding
                                                                                :lock_token            (ws.status/new-lock-token)})
                                        id     (:id schema)]
@@ -153,3 +162,21 @@
                                    (testing "a failed row never goes stale"
                                      (age-minutes! :workspace_schema id 600)
                                      (is (= :failed (reads-as :schema id))))))))
+
+(deftest stale-takeover-leaves-settled-rows-alone-test
+  (testing "a take from failed does not take over a settled row, however old"
+    (do-with-workspace-database! :provisioned
+                                 (fn [wsd-id _token]
+                                   (age-minutes! :workspace_database wsd-id 11)
+                                   (is (= {:status-code 409, :status :provisioned}
+                                          (attempt #(ws.status/take-lock! :database wsd-id #{:failed} :deprovisioning))))
+                                   (is (= :provisioned (reads-as :database wsd-id)))
+                                   (let [schema (ws.db/insert-workspace-schema! {:workspace_database_id wsd-id
+                                                                                 :main_schema           "sales"
+                                                                                 :scratch_namespace     (str "mb__isolation_" (subs (str (random-uuid)) 0 8) "_s1_sales")
+                                                                                 :status                :active
+                                                                                 :lock_token            (ws.status/new-lock-token)})]
+                                     (age-minutes! :workspace_schema (:id schema) 11)
+                                     (is (= {:status-code 409, :status :active}
+                                            (attempt #(ws.status/take-lock! :schema (:id schema) #{:failed} :removing))))
+                                     (is (= :active (reads-as :schema (:id schema)))))))))

@@ -1618,6 +1618,9 @@
   Retries the whole transaction, with backoff, when it collides with a concurrent catalog update. Errors are rethrown
   through [[workspace-error]]."
   [database secrets f]
+  ;; the audit database's pool is Metabase's own app DB, whatever the connection type
+  (when (:is-audit database)
+    (throw (ex-info "Workspaces are not supported on the audit database." {:status-code 400})))
   (loop [attempt 1]
     (let [result (try
                    ;; bound here rather than trusted to the caller: outside it, the DDL would run as the database's main
