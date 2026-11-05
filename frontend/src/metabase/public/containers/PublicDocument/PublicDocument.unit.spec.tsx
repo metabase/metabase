@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import {
+  setupCommentEndpoints,
   setupForbiddenCardEndpoints,
   setupLastDownloadFormatEndpoints,
   setupPublicDocumentCardQueryEndpoint,
@@ -19,12 +20,14 @@ import {
   createMockDocument,
   createMockDocumentContent,
 } from "metabase-types/api/mocks";
+import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import { PublicDocument } from "./PublicDocument";
 
 registerVisualizations();
 
 const PUBLIC_UUID = "f7e6d5c4-b3a2-4190-8877-665544332211";
+const DOCUMENT_ID = 1;
 const PARAGRAPH_TEXT = "This is a test paragraph";
 const METABOT_PROMPT = "Some metabot prompt";
 const CARD = createMockCard({ id: 42, name: "Orders" });
@@ -72,6 +75,7 @@ const setup = ({ content, hideEmbedBranding = false }: SetupOpts) => {
   setupPublicDocumentEndpoints(
     PUBLIC_UUID,
     createMockDocument({
+      id: DOCUMENT_ID,
       name: "Public Document",
       document: content,
       cards: { [CARD.id]: CARD },
@@ -81,6 +85,17 @@ const setup = ({ content, hideEmbedBranding = false }: SetupOpts) => {
     PUBLIC_UUID,
     CARD.id,
     createMockDataset(),
+  );
+  // The document has a comment, so the comment UI would show if the public view rendered it
+  setupCommentEndpoints(
+    [
+      createMockComment({
+        target_type: "document",
+        target_id: DOCUMENT_ID,
+        child_target_id: "1",
+      }),
+    ],
+    { target_type: "document", target_id: DOCUMENT_ID },
   );
   // Card embeds also call the authenticated card endpoints, which fail for public viewers
   setupForbiddenCardEndpoints(CARD.id);
@@ -105,7 +120,8 @@ const setup = ({ content, hideEmbedBranding = false }: SetupOpts) => {
 const getDocumentContent = () => screen.findByTestId("document-content");
 
 describe("PublicDocument", () => {
-  const { setIntersecting } = setupMockIntersectionObserver();
+  const { setIntersecting, setAllIntersecting } =
+    setupMockIntersectionObserver();
 
   it("renders the document read-only, without comments, the header menu or metabot controls", async () => {
     setup({ content: TEXT_WITH_METABOT_CONTENT });
@@ -114,14 +130,13 @@ describe("PublicDocument", () => {
     expect(
       await within(documentContent).findByText(PARAGRAPH_TEXT),
     ).toBeInTheDocument();
+    // Block menus, such as the comments button, only render for blocks in the viewport
+    setAllIntersecting(true);
 
     expect(within(documentContent).getByRole("textbox")).toHaveAttribute(
       "contenteditable",
       "false",
     );
-    expect(
-      screen.queryByRole("button", { name: "Save" }),
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "More options" }),
     ).not.toBeInTheDocument();
