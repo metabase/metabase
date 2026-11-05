@@ -6,7 +6,7 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { ActionIcon, Box, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
@@ -15,6 +15,7 @@ import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./QueryVisualization.module.css";
+import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { useRuntimeEstimateHint } from "./RuntimeEstimate";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
@@ -163,6 +164,7 @@ type VisualizationDirtyStateProps = {
 export const VisualizationDirtyState = ({
   className,
   isRunning,
+  isResultDirty,
   runQuestionQuery,
   cancelQuery,
   hidden,
@@ -184,34 +186,27 @@ export const VisualizationDirtyState = ({
       className={cx(className, QueryBuilderS.Overlay, {
         [QueryBuilderS.OverlayActive]: !hidden,
         [QueryBuilderS.OverlayHidden]: hidden,
-        [S.dirtyTint]: !hidden,
       })}
       direction="column"
       justify="center"
       align="center"
       gap="sm"
       data-testid="run-button-overlay"
+      onClick={handleClick}
     >
-      {/* Prototype: a white play button on a tinted result, with the
-          shortcut in its tooltip. */}
-      {!hidden && (
-        <Tooltip label={keyboardShortcut}>
-          <ActionIcon
-            className={S.runButton}
-            variant="default"
-            size="lg"
-            aria-label={t`Refresh`}
-            data-testid="run-button"
-            onClick={handleClick}
-          >
-            <Icon name="play" size={24} c="icon-brand" />
-          </ActionIcon>
-        </Tooltip>
-      )}
+      <RunButtonWithTooltip
+        className={S.shadowed}
+        iconSize={32}
+        circular
+        hidden={hidden}
+        isRunning={Boolean(isRunning)}
+        isDirty={Boolean(isResultDirty)}
+      />
+      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>
   );
 };
 
 function getRunQueryShortcut() {
-  return isMac() ? t`⌘ + Return` : t`Ctrl + Enter`;
+  return isMac() ? t`⌘ + return` : t`Ctrl + enter`;
 }
