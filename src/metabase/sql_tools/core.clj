@@ -56,9 +56,10 @@
   [:map {:closed true}
    [:allow-unused? {:optional true} :boolean]
    ;; Opt-in strictness for callers that must not let a reference slip through (workspace remapping); SQLGlot only.
-   ;; Refuse a statement SQLGlot keeps as an unstructured command (EXPLAIN, DECLARE ... CURSOR, PREPARE, DO), whose
-   ;; table references it can't see.
-   [:refuse-commands? {:optional true} :boolean]
+   ;; Rewrite only a query, INSERT, UPDATE, DELETE, MERGE or CREATE TABLE ... AS whose table references SQLGlot can all
+   ;; see: no unstructured command anywhere in it and no SQL-running function (query_to_xml, dblink, ...); refuse
+   ;; anything else.
+   [:strict-statements? {:optional true} :boolean]
    ;; Match an unquoted reference as the lower-cased identifier, as Postgres folds it.
    [:unquoted-identifiers-fold-to-lower? {:optional true} :boolean]])
 

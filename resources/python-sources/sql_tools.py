@@ -655,6 +655,11 @@ def fold_lookup(folded, key):
     return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
 
 
+# Functions that run SQL given to them as text, which a rewrite can't see into.
+SQL_RUNNING_FUNCTIONS = {"query_to_xml", "query_to_xml_and_xmlschema", "query_to_xmlschema", "cursor_to_xml",
+                         "cursor_to_xmlschema"}
+
+
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
@@ -684,12 +689,12 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     replacements = json.loads(replacements_json)
     # Opt-in strictness, off unless a caller asks for it, so no other caller's behaviour changes:
-    # - refuse_commands: raise on a statement sqlglot keeps as an unstructured command (EXPLAIN, DECLARE ... CURSOR,
-    #   PREPARE, EXECUTE, DO), whose table references it can't see and so can't rewrite.
+    # - strict_statements: rewrite only statements whose every table reference sqlglot can see (see
+    #   `check_strict_statement`), and raise on anything else.
     # - unquoted_identifiers_fold_to_lower: an unquoted reference names the lower-cased identifier, as on Postgres, so
     #   `public.mixed` does not match a key for the table `"Mixed"`.
     options = replacements.get("options") or {}
-    refuse_commands = options.get("refuse_commands")
+    strict_statements = options.get("strict_statements")
     fold_to_lower = options.get("unquoted_identifiers_fold_to_lower")
     schemas = replacements.get("schemas") or {}
     # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
@@ -825,16 +830,60 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
         # Mutated in place rather than through `ast.transform`, whose copy detaches a node from its parents while the
         # function runs — and a CTE only shadows a table for the query that declares it, which is a question about
         # ancestors.
+        if strict_statements:
+            check_strict_statement(ast)
         for table_node in list(ast.find_all(exp.Table)):
             rename_fn(table_node)
         for column_node in list(ast.find_all(exp.Column)):
             rename_fn(column_node)
         return ast.sql(dialect=dialect)
 
+    def names_replaced_table(sql_text):
+        """Whether `sql_text`, parsed as SQL, names a table a replacement key matches. False when it doesn't parse."""
+        try:
+            asts = statements(sql_text, dialect)
+        except Exception:
+            return False
+        return any(table_map_matches(table) for ast in asts for table in table_references(ast))
+
+    def table_map_matches(table):
+        """Whether a replacement key could name `table`, ignoring case and treating a part the reference leaves out as
+        matching: deciding to refuse, a false match costs less than a missed one."""
+        ref = tuple(part.lower() if isinstance(part, str) else None for part in table_parts(table))
+        return any(all(key_part is None or ref_part is None or key_part.lower() == ref_part
+                       for key_part, ref_part in zip(key, ref))
+                   for key in table_map)
+
+    def check_strict_statement(ast):
+        """Raise unless every table `ast` reads is one sqlglot can see, so the rewrite can't miss one:
+        - the statement is a query, an INSERT, UPDATE, DELETE or MERGE, or a CREATE TABLE ... AS query (WITH-wrapped
+          versions included, since sqlglot keeps WITH on the statement);
+        - nothing in it is an unstructured command, whose text sqlglot does not look into;
+        - it calls no function that runs SQL handed to it as text (query_to_xml, dblink, ...), and passes no function
+          a string literal that parses as SQL naming a replaced table.
+        SQL inside other string literals is not looked at."""
+        allowed = isinstance(ast, (exp.Query, exp.Insert, exp.Update, exp.Delete, exp.Merge)) or (
+            isinstance(ast, exp.Create)
+            and str(ast.args.get("kind") or "").upper() == "TABLE"
+            and isinstance(ast.expression, exp.Query))
+        if not allowed:
+            raise ValueError(f"Only queries, INSERT, UPDATE, DELETE, MERGE and CREATE TABLE ... AS can be rewritten, "
+                             f"not {type(ast).__name__.upper()}.")
+        # Defense in depth: no allowed statement we have found parses with a command inside it.
+        if ast.find(exp.Command):
+            raise ValueError("The SQL contains a statement sqlglot can't read into (for example EXPLAIN, DECLARE, "
+                             "PREPARE, EXECUTE or DO), so its tables can't be rewritten.")
+        for func in ast.find_all(exp.Func):
+            name = func.this if isinstance(func, exp.Anonymous) and isinstance(func.this, str) else func.sql_name()
+            name = name.lower()
+            if name in SQL_RUNNING_FUNCTIONS or name.startswith("dblink"):
+                raise ValueError(f"The SQL calls {name}, which runs SQL given as text, so its tables can't be rewritten.")
+            for arg in func.iter_expressions():
+                if isinstance(arg, exp.Literal) and arg.is_string and names_replaced_table(arg.this):
+                    raise ValueError(f"The SQL passes {name} SQL text that names a remapped table, which can't be "
+                                     f"rewritten.")
+
     asts = statements(sql, dialect)
-    if refuse_commands and any(isinstance(ast, exp.Command) for ast in asts):
-        raise ValueError("The SQL contains a statement whose table references can't be read (for example EXPLAIN, "
-                         "DECLARE, PREPARE, EXECUTE or DO), so its tables can't be rewritten.")
     rewritten = [rewrite(ast) for ast in asts]
     return "; ".join(rewritten) if rewritten else sql
 

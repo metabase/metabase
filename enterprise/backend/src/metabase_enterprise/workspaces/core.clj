@@ -199,10 +199,10 @@
                            (pr-str (:table (first unqualified))) (:table (first unqualified)))
                       {:type qp.error-type/invalid-query})))
     (try
-      ;; strict: refuse statements whose tables SQLGlot can't see, and fold unquoted names as Postgres does (workspaces
-      ;; support only the Postgres family)
+      ;; strict: rewrite only statements whose tables SQLGlot can all see, and fold unquoted names as Postgres
+      ;; does (workspaces support only the Postgres family)
       (sql-tools/replace-names driver sql {:tables remappings} {:allow-unused?                       true
-                                                                :refuse-commands?                    true
+                                                                :strict-statements?                  true
                                                                 :unquoted-identifiers-fold-to-lower? true})
       (catch Exception e
         (throw (ex-info (tru "This instance is a workspace, which must read remapped tables from their scratch copies, and it could not read which tables this SQL uses: {0}" (ex-message e))
