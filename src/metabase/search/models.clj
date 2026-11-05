@@ -34,12 +34,17 @@
 (derive :hook/search-index dml-capture/hook)
 
 ;; Tests that run against an old schema disable updates, and the snapshot select could read columns it lacks.
+;; This runs inside the user's delete, so a search error must not fail it; the delete goes uncaptured instead.
 (defmethod dml-capture/capture-fields :hook/search-index
   [model op]
   (when (and (= op :delete)
-             (not search.ingestion/*disable-updates*)
-             (search/supports-index?))
-    (search.spec/hook-where-fields model)))
+             (not search.ingestion/*disable-updates*))
+    (try
+      (when (search/supports-index?)
+        (search.spec/hook-where-fields model))
+      (catch Exception e
+        (log/errorf e "Skipping search delete capture for %s" model)
+        nil))))
 
 ;; Capture rows are plain raw-value maps; [[search.spec/search-models-to-update]] needs the model attached.
 (defn- rows->instances
