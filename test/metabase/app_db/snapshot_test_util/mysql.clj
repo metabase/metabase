@@ -101,6 +101,7 @@
           (into (view-statements conn db))))))
 
 (defn dumper
-  "Dumps the MySQL-family app DB of dialect `flavor`, which decides only whether the MySQL-only flags are passed."
+  "Dumps the MySQL-family app DB of dialect `flavor`, which picks the dump client and whether the MySQL-only flags are
+  passed."
   [flavor]
   (->MysqlDumper flavor))

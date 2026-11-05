@@ -497,7 +497,7 @@
                            (:data from-snapshot)))))))))))))
 
 (deftest snapshot-is-what-generating-it-today-writes-test
-  (testing "the checked-in snapshot is the file a regeneration would write, so nobody has to guess whether it is stale"
+  (testing "the checked-in snapshot is the file a regeneration would write"
     ;; Opt-in, and not run in CI. A changeset that lands before the boundary after the snapshot was cut also makes the
     ;; two differ, since regenerating would fold it in, and the drift test already shows that such a snapshot is still
     ;; correct. So a difference here says only that regenerating would change the file. Use it when changing the

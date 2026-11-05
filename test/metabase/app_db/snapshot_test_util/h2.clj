@@ -10,7 +10,7 @@
 
 (defrecord H2Dumper []
   dump/Dumper
-  (dump-statements [_dumper _details conn]
+  (dump-statements [_dumper _server conn]
     ;; H2's `SCRIPT` already returns one statement per row, so no parsing is needed. The MEMORY or CACHED keyword is
     ;; dropped so the loading DB picks its own default (in-memory DBs get MEMORY, file-backed ones CACHED). The SET and
     ;; CREATE USER statements and the version banner describe the DB the dump came from, not the schema.
@@ -35,5 +35,6 @@
       (into (vec others) views))))
 
 (def dumper
-  "Dumps an H2 app DB. Reads everything through the connection, so it ignores the connection details."
+  "Dumps an H2 app DB.
+  It reads everything through the connection, so it is called without a server."
   (->H2Dumper))

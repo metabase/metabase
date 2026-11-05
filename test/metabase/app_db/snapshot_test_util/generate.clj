@@ -6,7 +6,8 @@
   Regenerate when the drift test in [[metabase.app-db.snapshot-test]] fails, or when moving the boundary.
   A changeset that lands before the boundary after the snapshot was cut needs no regeneration: it runs after the
   snapshot loads, as it would on an upgrading install.
-  The opt-in regeneration check in the same namespace shows whether regenerating would change a file.
+  The regeneration check in the same namespace shows whether regenerating would change a file.
+  It runs only with `MB_APP_DB_SNAPSHOT_REGENERATION_TEST=true`, and needs Docker.
 
   To move the boundary to a newer changeset:
 
