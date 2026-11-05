@@ -1,5 +1,8 @@
-const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { DocumentId } from "metabase-types/api";
+
+const { H } = cy;
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -100,5 +103,85 @@ describe("document permissions", () => {
       "contain.text",
       "Original content and some new content",
     );
+  });
+});
+
+describe("document permissions > public links", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", true);
+
+    H.createDocument({
+      name: "Public Document",
+      document: {
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Test content" }],
+            attrs: { _id: "1" },
+          },
+          {
+            type: "resizeNode",
+            attrs: { height: 400, minHeight: 280 },
+            content: [
+              {
+                type: "cardEmbed",
+                attrs: { id: ORDERS_QUESTION_ID, name: null, _id: "2" },
+              },
+            ],
+          },
+          { type: "paragraph", attrs: { _id: "3" } },
+        ],
+        type: "doc",
+      },
+      collection_id: null,
+      idAlias: "documentId",
+    });
+
+    cy.get<DocumentId>("@documentId")
+      .then((documentId) => H.createPublicDocumentLink(documentId))
+      .then(({ body: { uuid } }) => cy.wrap(uuid).as("publicUuid"));
+  });
+
+  function visitPublicDocument() {
+    cy.get("@publicUuid").then((uuid) => cy.visit(`/public/document/${uuid}`));
+  }
+
+  function verifyErrorMessage(expectedMessage: string) {
+    cy.contains(expectedMessage).should("be.visible");
+    H.documentContent().should("not.exist");
+  }
+
+  it("should be accessible anonymously, and inaccessible once public sharing is disabled", () => {
+    cy.signOut();
+    visitPublicDocument();
+
+    H.documentContent().should("contain", "Test content");
+    H.getDocumentCard("Orders").findByTestId("table-root").should("exist");
+    cy.location("pathname").should("match", /^\/public\/document\//);
+    cy.findByRole("button", { name: "Sign in" }).should("not.exist");
+
+    cy.log("Disable public sharing");
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", false);
+    cy.signOut();
+
+    visitPublicDocument();
+    verifyErrorMessage("An error occurred.");
+  });
+
+  it("should not be accessible once the document is trashed", () => {
+    visitPublicDocument();
+    H.documentContent().should("contain", "Test content");
+
+    cy.intercept("PUT", "/api/document/*").as("updateDocument");
+    H.visitDocument("@documentId");
+    cy.findByRole("button", { name: "More options" }).click();
+    H.popover().findByText("Move to trash").click();
+    cy.wait("@updateDocument");
+
+    visitPublicDocument();
+    verifyErrorMessage("Not found");
   });
 });
