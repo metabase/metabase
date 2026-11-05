@@ -5,6 +5,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [environ.core :as env]
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
@@ -20,6 +21,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
@@ -54,6 +56,30 @@
   (let [exp (:exp (jwt-claims jwt))]
     (when (number? exp)
       (long (* exp 1000)))))
+
+(def ^:private wif-provider->env-key
+  {"AWS"   :aws-web-identity-token-file
+   "AZURE" :azure-federated-token-file})
+
+(defn- env-key->env-var ^String [k]
+  (-> k name u/upper-case-en (str/replace \- \_)))
+
+(defn wif-ambient-token-file
+  "Trimmed contents of the file named by the conventional env var for WIF `provider`; see
+  [[wif-provider->env-key]] for supported providers. Throws for an unsupported provider, an unset
+  env var, or a path not in `readable-paths`."
+  [provider]
+  (let [env-key (or (get wif-provider->env-key provider)
+                    (throw (ex-info (format "Unsupported WIF provider for file-based acquisition: %s"
+                                            (pr-str provider))
+                                    {:provider provider
+                                     :supported-providers (set (keys wif-provider->env-key))})))
+        path    (or (not-empty (env/env env-key))
+                    (let [env-var (env-key->env-var env-key)]
+                      (throw (ex-info (format "WIF %s requires %s to name the projected-token file"
+                                              provider env-var)
+                                      {:provider provider :env-var env-var}))))]
+    (-> path system/ensure-readable-path! slurp str/trim)))
 
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation
