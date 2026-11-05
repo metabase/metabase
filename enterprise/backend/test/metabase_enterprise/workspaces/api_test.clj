@@ -1,0 +1,140 @@
+(ns ^:mb/driver-tests metabase-enterprise.workspaces.api-test
+  "The provisioning connection endpoints against a real Postgres warehouse, whose test connection logs in as the
+  stored login."
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [next.jdbc :as next.jdbc]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private db-name "workspace_manager_api_test")
+
+(def ^:private login-a {:user "mb_wsm_test_a" :password "LoginAPassw0rd"})
+(def ^:private login-b {:user "mb_wsm_test_b" :password "LoginBPassw0rd"})
+
+(defn- superuser-details [] (mt/dbdef->connection-details :postgres :db {:database-name db-name}))
+
+(defn- exec! [spec & sqls]
+  (doseq [sql sqls]
+    (jdbc/execute! spec [sql])))
+
+(defn- do-with-warehouse!
+  "Calls `(f spec db-id)` with `db-id` a Database whose own login is the superuser and `spec` the superuser's spec,
+  with two other logins, [[login-a]] and [[login-b]], in its warehouse."
+  [f]
+  (mt/test-driver :postgres
+    (tx/drop-if-exists-and-create-db! :postgres db-name)
+    (let [spec (sql-jdbc.conn/connection-details->spec :postgres (superuser-details))]
+      (doseq [{:keys [user]} [login-a login-b]]
+        (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" user]))
+          (exec! spec (format "DROP OWNED BY %s" user) (format "DROP ROLE %s" user))))
+      (doseq [{:keys [user password]} [login-a login-b]]
+        (exec! spec (format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" user password)))
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details (superuser-details)}]
+          (f spec db-id))))))
+
+(defn- url [db-id] (format "ee/workspace-manager/database/%d/provisioning-connection" db-id))
+
+(defn- current-user! [db-id]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :postgres (driver.u/lib-database db-id) nil
+   (fn [conn] (:u (next.jdbc/execute-one! conn ["SELECT current_user AS u"])))))
+
+(defn- current-user-in-provisioning-scope! [db-id]
+  (driver.conn/with-workspace-provisioning-connection
+    (current-user! db-id)))
+
+(deftest superuser-only-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (url db-id))))
+     (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :put 403 (url db-id) {:details login-a})))
+     (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :delete 403 (url db-id)))))))
+
+(deftest requires-workspaces-feature-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (mt/with-premium-features #{}
+       (is (str/includes? (mt/user-http-request :crowberto :get 402 (url db-id)) "Workspaces"))))))
+
+(deftest unknown-database-test
+  (mt/with-premium-features #{:workspaces}
+    (doseq [method [:get :delete]]
+      (is (= "Database 2147483647 not found." (mt/user-http-request :crowberto method 404 (url Integer/MAX_VALUE)))))
+    (is (= "Database 2147483647 not found."
+           (mt/user-http-request :crowberto :put 404 (url Integer/MAX_VALUE) {:details login-a})))))
+
+(deftest put-get-delete-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (testing "nothing configured"
+       (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
+     (testing "a login that cannot connect is a 400 and stores nothing"
+       (is (=? {:message string?}
+               (mt/user-http-request :crowberto :put 400 (url db-id) {:details (assoc login-a :password "wrong")})))
+       (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
+     (testing "details that are not a map are a 400"
+       (mt/user-http-request :crowberto :put 400 (url db-id) {:details "nope"}))
+     (testing "a working login is saved; GET shows its user and never its password"
+       (is (nil? (mt/user-http-request :crowberto :put 204 (url db-id) {:details login-a})))
+       (let [response (mt/user-http-request :crowberto :get 200 (url db-id))]
+         (is (=? {:configured true, :user (:user login-a), :updated_at some?} response))
+         (is (= #{:configured :user :updated_at} (set (keys response))))
+         (is (not (str/includes? (pr-str response) (:password login-a))))))
+     (testing "the provisioning scope connects as the stored login, the default scope as the database's own"
+       (is (= (:user login-a) (current-user-in-provisioning-scope! db-id)))
+       (is (not= (:user login-a) (current-user! db-id))))
+     (testing "the scope still finds the login without the :workspaces feature, so workspaces can be deleted"
+       (mt/with-premium-features #{}
+         (is (= (:user login-a) (current-user-in-provisioning-scope! db-id)))))
+     (testing "with no workspaces, a different login replaces it"
+       (is (nil? (mt/user-http-request :crowberto :put 204 (url db-id) {:details login-b})))
+       (is (= (:user login-b) (:user (mt/user-http-request :crowberto :get 200 (url db-id)))))
+       (is (= (:user login-b) (current-user-in-provisioning-scope! db-id))))
+     (testing "DELETE removes it; the scope then refuses to fall back to the database's own login"
+       (is (nil? (mt/user-http-request :crowberto :delete 204 (url db-id))))
+       (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id))))
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no workspace provisioning connection"
+                             (current-user-in-provisioning-scope! db-id))))
+     (testing "DELETE with nothing configured is a 204"
+       (is (nil? (mt/user-http-request :crowberto :delete 204 (url db-id))))))))
+
+(deftest live-workspaces-test
+  (do-with-warehouse!
+   (fn [spec db-id]
+     (mt/user-http-request :crowberto :put 204 (url db-id) {:details login-a})
+     (mt/with-temp [:model/Workspace         {ws-id :id} {:name "live"}
+                    :model/WorkspaceDatabase _           {:workspace_id     ws-id
+                                                          :database_id      db-id
+                                                          :isolation_id     "livetest"
+                                                          :database_details {}
+                                                          :status           :failed}]
+       (testing "a different login is a 409 listing the workspaces, and changes nothing"
+         (is (= {:message    (str "Workspaces on this database were made with the user " (:user login-a)
+                                  "; delete them before you change the user.")
+                 :error-code "workspaces_exist"
+                 :workspaces [{:id ws-id, :name "live"}]}
+                (mt/user-http-request :crowberto :put 409 (url db-id) {:details login-b})))
+         (is (= (:user login-a) (:user (mt/user-http-request :crowberto :get 200 (url db-id))))))
+       (testing "the same login with a new password is saved"
+         (exec! spec (format "ALTER ROLE %s PASSWORD 'LoginANewPassw0rd'" (:user login-a)))
+         (is (nil? (mt/user-http-request :crowberto :put 204 (url db-id)
+                                         {:details (assoc login-a :password "LoginANewPassw0rd")})))
+         (is (= "LoginANewPassw0rd" (:password (:details (ws.db/provisioning-connection db-id)))))
+         (is (= (:user login-a) (current-user-in-provisioning-scope! db-id))))
+       (testing "DELETE is a 409 listing the workspaces"
+         (is (=? {:error-code "workspaces_exist", :workspaces [{:id ws-id, :name "live"}]}
+                 (mt/user-http-request :crowberto :delete 409 (url db-id))))
+         (is (true? (:configured (mt/user-http-request :crowberto :get 200 (url db-id)))))))
+     (testing "once the workspace is gone, DELETE works"
+       (is (nil? (mt/user-http-request :crowberto :delete 204 (url db-id))))))))

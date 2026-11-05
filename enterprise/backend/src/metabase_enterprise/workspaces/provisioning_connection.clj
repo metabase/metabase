@@ -1,0 +1,82 @@
+(ns metabase-enterprise.workspaces.provisioning-connection
+  "The workspace provisioning connection of a database: the warehouse login that creates and drops workspace users
+  and scratch namespaces. Its details are merged over the database's own `:details`, are stored encrypted, and never
+  leave the server."
+  (:require
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.core :as warehouses]))
+
+(set! *warn-on-reflection* true)
+
+(mu/defn provisioning-details :- [:maybe ms/DatabaseDetails]
+  "The stored provisioning details of the Database with `database-id`, or nil when it has none."
+  [database-id :- ::lib.schema.id/database]
+  (:details (ws.db/provisioning-connection database-id)))
+
+(defn- database-or-404
+  [database-id]
+  (or (ws.db/database database-id)
+      (throw (ex-info (tru "Database {0} not found." (str database-id))
+                      {:status-code 404, :database-id database-id}))))
+
+(defn- login
+  "The warehouse user that provisioning `details` log in as on `database`."
+  [database details]
+  (:user (merge (:details database) details)))
+
+(defn- throw-if-live-workspaces!
+  [database-id message]
+  (when-let [workspaces (not-empty (ws.db/live-workspaces-of-database database-id))]
+    (throw (ex-info message
+                    {:status-code   409
+                     :error-code    "workspaces_exist"
+                     :database-id   database-id
+                     :workspaces    (mapv #(into {} (select-keys % [:id :name])) workspaces)
+                     :response/keys #{:workspaces}}))))
+
+(mu/defn connection-info :- [:map {:closed true}
+                             [:configured :boolean]
+                             [:user       {:optional true} [:maybe :string]]
+                             [:updated_at {:optional true} :some]]
+  "What the API shows of the provisioning connection of the Database with `database-id`: whether one is configured,
+  and if so its login and when it was last saved. Never the password. Throws a 404 for an unknown Database."
+  [database-id :- ::lib.schema.id/database]
+  (let [database (database-or-404 database-id)]
+    (if-let [{:keys [details updated_at]} (ws.db/provisioning-connection database-id)]
+      {:configured true, :user (login database details), :updated_at updated_at}
+      {:configured false})))
+
+(mu/defn save!
+  "Store `details` as the provisioning connection of the Database with `database-id`, after a test connection with
+  them merged over the database's own details. Throws a 404 for an unknown Database, a 400 when the connection fails,
+  and a 409 listing the workspaces on the database when they exist and `details` log in as a different user than the
+  stored connection; a new password for the same user is accepted."
+  [database-id :- ::lib.schema.id/database
+   details     :- ms/DatabaseDetails
+   user-id     :- [:maybe ms/PositiveInt]]
+  (let [database (database-or-404 database-id)]
+    (when-let [existing (provisioning-details database-id)]
+      (when (not= (login database existing) (login database details))
+        (throw-if-live-workspaces!
+         database-id
+         (tru "Workspaces on this database were made with the user {0}; delete them before you change the user."
+              (login database existing)))))
+    (when-let [error (warehouses/test-database-connection (:engine database) (merge (:details database) details)
+                                                          :log-exception false)]
+      (throw (ex-info (or (:message error) (tru "Unable to connect to the database."))
+                      (assoc error :status-code 400))))
+    (ws.db/save-provisioning-connection! database-id details user-id)
+    nil))
+
+(mu/defn delete!
+  "Delete the provisioning connection of the Database with `database-id`. Throws a 404 for an unknown Database and a
+  409 listing the workspaces on the database when there are any."
+  [database-id :- ::lib.schema.id/database]
+  (database-or-404 database-id)
+  (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before its provisioning connection."))
+  (ws.db/delete-provisioning-connection! database-id)
+  nil)
