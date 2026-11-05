@@ -237,22 +237,21 @@
     (doseq [e (search.engine/active-engines)]
       (search.engine/sync-from-restored-db! e))))
 
+(defn- hook-selectors
+  "The `[search-model where-clause]` pairs that `instances` feed, without conditions that can never match.
+  With `always?` false, an instance contributes only to hooks whose indexed fields its changes touch."
+  [instances always?]
+  (into #{}
+        (comp (mapcat #(search.spec/search-models-to-update % always?))
+              (remove (comp search.util/impossible-condition? second)))
+        instances))
+
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
   (when (supports-index?)
-    (when-let [updates (->> (search.spec/search-models-to-update instance always?)
-                            (remove (comp search.util/impossible-condition? second))
-                            seq)]
+    (when-let [updates (seq (hook-selectors [instance] always?))]
       (search.ingestion/ingest-maybe-async! updates))))
-
-(defn- hook-selectors
-  "The `[search-model where-clause]` pairs that `instances` feed, without conditions that can never match."
-  [instances]
-  (into #{}
-        (comp (mapcat #(search.spec/search-models-to-update % true))
-              (remove (comp search.util/impossible-condition? second)))
-        instances))
 
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
@@ -260,7 +259,7 @@
   satisfy their spec's query are purged by ingestion's asked-for-but-not-indexed diff."
   [instances]
   (when (supports-index?)
-    (when-let [updates (seq (hook-selectors instances))]
+    (when-let [updates (seq (hook-selectors instances true))]
       (search.ingestion/ingest-maybe-async! updates))))
 
 (defn delete!
