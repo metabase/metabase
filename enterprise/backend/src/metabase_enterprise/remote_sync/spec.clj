@@ -51,10 +51,11 @@
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
                        :type       - :collection, :published-table, :parent-table, :parent, :setting,
-                                     :library-synced, or :always (:parent follows :parent-fk to a :parent-model
-                                     instance)
+                                     :library-synced, :non-nil-column, or :always (:parent follows :parent-fk to a
+                                     :parent-model instance)
                        :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
+                       :column     - For :non-nil-column type: the instance is eligible while this column is non-nil
                        (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
    - :archived-key   - Key to check for archived status (nil if model has no archived concept)
    - :tracking       - RemoteSyncObject field configuration:
@@ -399,6 +400,25 @@
     :archived-key   nil
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
+    :removal        {:statuses #{"removed" "delete"}}
+    :resources?     true
+    :export-scope   :all
+    :enabled?       true}
+
+   :model/CustomVizPlugin
+   {:model-type     "CustomVizPlugin"
+    :model-key      :model/CustomVizPlugin
+    :identity       :entity-id
+    :events         {:prefix :event/custom-viz-plugin
+                     :types  [:create :update :delete]}
+    ;; a dev-only plugin has no stored bundle: it is this instance's alone, an export has nothing to write for it,
+    ;; and a pull must not remove it
+    :eligibility    {:type :non-nil-column :column :bundle_hash}
+    :archived-key   nil
+    :tracking       {:select-fields  [:identifier]
+                     :field-mappings {:model_name :identifier}}
+    :export-conditions  {:bundle_hash [:not= nil]}
+    :removal-conditions {:bundle_hash [:not= nil]}
     :removal        {:statuses #{"removed" "delete"}}
     :resources?     true
     :export-scope   :all
@@ -948,6 +968,10 @@
   [_spec _object]
   (rs-settings/library-is-remote-synced?))
 
+(defmethod check-eligibility-by-type :non-nil-column
+  [{:keys [eligibility]} object]
+  (some? (get object (:column eligibility))))
+
 (defmethod check-eligibility-by-type :always
   [_ _]
   true)
@@ -1314,7 +1338,9 @@
             (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
       nil)))
 
-(defmethod query-export-roots :always
+(defn- all-instances-export-roots
+  "The `[model-type id]` export roots of every instance of `spec`'s model matching its export conditions, for an
+  `:export-scope` of `:all`."
   [{:keys [export-scope model-key model-type] :as spec}]
   (case export-scope
     :all
@@ -1322,6 +1348,15 @@
           (map (fn [id] [model-type id]))
           (remote-sync.db/ids-where model-key (export-conditions spec)))
     nil))
+
+(defmethod query-export-roots :always
+  [spec]
+  (all-instances-export-roots spec))
+
+;; the column condition is the spec's export conditions, so the roots are every matching instance
+(defmethod query-export-roots :non-nil-column
+  [spec]
+  (all-instances-export-roots spec))
 
 (defmethod query-export-roots :default [_] nil)
 

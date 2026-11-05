@@ -75,14 +75,19 @@
                    :model/Action             _        {:type :query :name "Library action" :model_id nil}
                    :model/NativeQuerySnippet _        {}
                    :model/Glossary           _        {:term "Term" :definition "A definition"}
-                   :model/DataApp            _        {:name "app" :display_name "App" :bundle_path "app.js"}]
-      (is (=? {:remote-sync-action-count         1
-               :remote-sync-dashboard-count      1
-               :remote-sync-data-app-count       1
-               :remote-sync-document-count       1
-               :remote-sync-glossary-entry-count 1
-               :remote-sync-snippet-count        1
-               :remote-sync-timeline-count       1}
+                   :model/DataApp            _        {:name "app" :display_name "App" :bundle_path "app.js"}
+                   :model/CustomVizPlugin    _        {:identifier "thumbs" :display_name "Thumbs" :status :active
+                                                       :bundle (byte-array [1]) :bundle_hash "hash"}
+                   :model/CustomVizPlugin    _        {:identifier "dev-only" :display_name "Dev" :status :active
+                                                       :dev_bundle_url "http://localhost:5173"}]
+      (is (=? {:remote-sync-action-count            1
+               :remote-sync-custom-viz-plugin-count 1
+               :remote-sync-dashboard-count         1
+               :remote-sync-data-app-count          1
+               :remote-sync-document-count          1
+               :remote-sync-glossary-entry-count    1
+               :remote-sync-snippet-count           1
+               :remote-sync-timeline-count          1}
               (stats/remote-sync-stats))))))
 
 (deftest content-total-test

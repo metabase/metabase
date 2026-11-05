@@ -285,4 +285,25 @@
          (#'init/remote-sync-init)
          (is (zero? (glossary-rso-count))))))))
 
-;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
+;;; --------------------------------------- Custom viz plugin ledger backfill ---------------------------------------
+
+(deftest remote-sync-init-backfills-custom-viz-plugin-tracking-test
+  (testing "read-write init tracks every untracked bundled plugin as 'create', once; a dev-only plugin is never tracked"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (mt/with-temp [:model/CustomVizPlugin {bundled :id} {:identifier "bundled" :display_name "Bundled" :status :active
+                                                             :bundle (byte-array [1]) :bundle_hash "hash"}
+                       :model/CustomVizPlugin _            {:identifier "dev-only" :display_name "Dev" :status :active
+                                                            :dev_bundle_url "http://localhost:5173"}]
+          (t2/delete! :model/RemoteSyncObject :model_type "CustomVizPlugin")
+          (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                      remote-sync.object/dirty? (constantly false)]
+            (#'init/remote-sync-init)
+            (is (= {bundled "create"}
+                   (t2/select-fn->fn :model_id :status :model/RemoteSyncObject :model_type "CustomVizPlugin")))
+            (is (=? {:model_name "bundled"}
+                    (t2/select-one :model/RemoteSyncObject :model_type "CustomVizPlugin" :model_id bundled)))
+            (testing "a second run inserts nothing"
+              (is (= 0 (rs-events/backfill-custom-viz-plugin-tracking!))))))))))

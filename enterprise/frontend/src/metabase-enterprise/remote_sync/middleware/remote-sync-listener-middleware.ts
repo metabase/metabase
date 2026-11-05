@@ -43,7 +43,8 @@ const ALL_INVALIDATION_TAGS = [
   tag("collection"),
   tag("collection-tree"),
   tag("content-translation"),
-  // data apps are materialized as part of the import, so refresh their list too
+  // data apps and custom viz plugins are materialized as part of the import, so refresh their lists too
+  tag("custom-viz-plugin"),
   tag("data-app"),
   tag("dashboard"),
   tag("dashboard-question-candidates"),

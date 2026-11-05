@@ -44,7 +44,7 @@
                    sdk-version      (assoc-in [:sdk :version] sdk-version))]
     (make-tgz-bytes
      [["metabase-plugin.json" (json/encode manifest)]
-      ["dist/index.js" "console.log('hi')"]])))
+      ["dist/index.js" "{}"]])))
 
 (defn bundle-hash
   "The sha256 hex of `bundle-bytes`, as stored in `custom_viz_plugin.bundle_hash`."

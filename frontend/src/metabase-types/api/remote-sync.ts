@@ -23,7 +23,8 @@ export type RemoteSyncEntityModel =
   | "transformtest"
   | "pythonlibrary"
   | "glossary"
-  | "dataapp";
+  | "dataapp"
+  | "customvizplugin";
 
 export type RemoteSyncEntityStatus =
   | "create"

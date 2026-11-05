@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase.models.serialization :as serdes]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -127,6 +128,71 @@
                (set (keys entities))))
         (is (= "in.yaml" (.getName ^java.io.File (val (first entities)))))
         (is (empty? errors))))))
+
+(deftest shared-top-level-paths-test
+  (is (not (contains? ingest/replaced-top-level-paths "custom_viz_plugins")))
+  (is (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml"))
+  (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml"))))
+
+(deftest read-resources-test
+  (let [app-entity    {:serdes/meta [{:model "DataApp" :id "x"}] :path "dist/index.js"}
+        plugin-entity {:serdes/meta [{:model "CustomVizPlugin" :id "x"}]
+                       :files ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]}
+        files         {"metabase-plugin.json" "{\"name\": \"x\", \"icon\": \"icon.svg\"}"
+                       "dist/index.js"        "{}"
+                       "dist/assets/icon.svg" "<svg/>"}
+        app-result    (ingest/read-resources app-entity "sales" files)
+        plugin-result (ingest/read-resources plugin-entity "thumbs" files)]
+    (is (= {"dist/index.js" "{}"} (:serdes/resources app-result)))
+    (is (= files (:serdes/resources plugin-result)))
+    (is (= "thumbs" (:serdes/directory plugin-result)))
+    (testing "entities without resources are unchanged"
+      (let [entity {:serdes/meta [{:model "Card" :id "x"}]}]
+        (is (identical? entity (ingest/read-resources entity "main" files)))))))
+
+(deftest declared-resource-paths-test
+  (let [files  {"dist/assets/extra.svg" "<svg/>"}
+        entity {:serdes/meta [{:model "CustomVizPlugin" :id "x"}]
+                :files ["dist/assets/extra.svg"]}]
+    (testing "only YAML-declared files are read, without reading a manifest"
+      (is (= files (:serdes/resources (ingest/read-resources entity "x" files)))))
+    (testing "files must be a list, rather than a scalar or map"
+      (doseq [value ["dist/index.js" 42 false {"path" "dist/index.js"}]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"CustomVizPlugin files must be a list of paths"
+                              (ingest/read-resources (assoc entity :files value) "x" files)))))
+    (testing "invalid entries are named in the error"
+      (doseq [value [42 nil {}]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid resource file path:"
+                              (ingest/read-resources (assoc entity :files [value]) "x" files)))))
+    (testing "declared paths cannot escape the entity directory"
+      (doseq [path ["../outside" "/absolute" "dist/../outside"]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid resource file path"
+                              (ingest/read-resources (assoc entity :files [path]) "x" files)))))))
+
+(deftest ingest-one-attaches-the-directory-and-reads-resources-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (let [plugin-dir (io/file dump-dir "custom_viz_plugins" "thumbs")
+          icon       "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>Daumen hoch – 👍</title></svg>"]
+      (.mkdirs plugin-dir)
+      (spit (io/file plugin-dir "custom_viz_plugin.yaml")
+            (yaml/generate-string {:entity_id "tHuMbSpLuGiN00000001x"
+                                   :identifier "thumbs"
+                                   :files ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
+                                   :serdes/meta [{:model "CustomVizPlugin"}]}))
+      (spit (io/file plugin-dir "metabase-plugin.json") "{\"name\": \"thumbs\", \"icon\": \"icon.svg\"}")
+      (io/make-parents (io/file plugin-dir "dist" "assets" "icon.svg"))
+      (spit (io/file plugin-dir "dist" "assets" "icon.svg") icon)
+      (let [ingested (ingest/ingest-one (ingest/ingest-yaml dump-dir) [{:model "CustomVizPlugin" :id "tHuMbSpLuGiN00000001x"}])]
+        (is (= "thumbs" (:serdes/directory ingested)))
+        (is (= icon (get-in ingested [:serdes/resources "dist/assets/icon.svg"])) "a declared file is read as UTF-8")
+        (is (contains? (:serdes/resources ingested) "dist/index.js") "missing resources retain their keys")
+        (is (nil? (get-in ingested [:serdes/resources "dist/index.js"])))
+        (testing "directory metadata is not stored"
+          (is (= {:entity_id "tHuMbSpLuGiN00000001x"
+                  :identifier "thumbs"
+                  :files ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
+                  :serdes/meta [{:model "CustomVizPlugin"}]}
+                 (serdes/storable (dissoc ingested :serdes/resources)))))))))
 
 (deftest keyword-reconstruction-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

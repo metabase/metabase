@@ -91,14 +91,17 @@
     (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
 
 (defn read-resources
-  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
-  [entity read-fn]
+  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`, and
+  the name of the directory it was read from as `:serdes/directory`."
+  [entity ^String directory-name read-fn]
   (if-let [paths (seq (serdes/resource-paths entity))]
-    (assoc entity :serdes/resources (into {}
-                                          (map (fn [path]
-                                                 (check-resource-path! path)
-                                                 [path (read-fn path)]))
-                                          paths))
+    (assoc entity
+           :serdes/directory directory-name
+           :serdes/resources (into {}
+                                   (map (fn [path]
+                                          (check-resource-path! path)
+                                          [path (read-fn path)]))
+                                   paths))
     entity))
 
 (def legal-top-level-paths
@@ -108,8 +111,9 @@
 
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
-  source code, to the name of the entity files in them."
-  {"data_apps" "data_app.yaml"})
+  or a custom viz plugin's source code, to the name of the entity files in them."
+  {"data_apps"          "data_app.yaml"
+   "custom_viz_plugins" "custom_viz_plugin.yaml"})
 
 (def replaced-top-level-paths
   "The [[legal-top-level-paths]] a full export may replace wholesale."
@@ -204,13 +208,15 @@
       (if (= ["Setting"] (mapv :model serdes-meta))
         (when (contains? settings kw-id)
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [file (get @cache (strip-labels serdes-meta))]
+        (when-let [^File file (get @cache (strip-labels serdes-meta))]
           (try
-            (read-resources (ingest-file file)
-                            (fn [path]
-                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
-                                (when (.isFile resource)
-                                  (slurp resource)))))
+            (let [dir (.getParentFile file)]
+              (read-resources (ingest-file file)
+                              (.getName dir)
+                              (fn [^String path]
+                                (let [resource (io/file dir path)]
+                                  (when (.isFile resource)
+                                    (slurp resource))))))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))

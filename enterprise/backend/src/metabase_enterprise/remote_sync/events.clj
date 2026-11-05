@@ -15,7 +15,8 @@
    - FieldUserSettings and Dimension, keyed by their Field (when its Table is published in a remote-synced collection)
    - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
-   - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
+   - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)
+   - DataApp, and CustomVizPlugin while it has a stored bundle"
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
@@ -105,6 +106,24 @@
                                    :status            "create"
                                    :status_changed_at timestamp}
                                   (spec/build-sync-object-fields action-spec action))))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn backfill-custom-viz-plugin-tracking!
+  "Insert a 'create' ledger row for every bundled CustomVizPlugin that has none, returning the number of rows
+  inserted. Dev-only plugins have no bundle and are never synced."
+  []
+  (let [plugin-spec (spec/spec-for-model-key :model/CustomVizPlugin)
+        tracked     (remote-sync.db/tracked-model-ids "CustomVizPlugin")
+        timestamp   (t/offset-date-time)
+        rows        (for [plugin (remote-sync.db/instances-where :model/CustomVizPlugin (spec/export-conditions plugin-spec))
+                          :when (not (contains? tracked (:id plugin)))]
+                      (merge {:model_type        "CustomVizPlugin"
+                              :model_id          (:id plugin)
+                              :status            "create"
+                              :status_changed_at timestamp}
+                             (spec/build-sync-object-fields plugin-spec plugin)))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))

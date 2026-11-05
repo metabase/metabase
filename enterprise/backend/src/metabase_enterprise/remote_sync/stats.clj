@@ -11,6 +11,7 @@
 
 (def ^:private model-count-keys
   {"Action"             :remote-sync-action-count
+   "CustomVizPlugin"    :remote-sync-custom-viz-plugin-count
    "Dashboard"          :remote-sync-dashboard-count
    "DataApp"            :remote-sync-data-app-count
    "Dimension"          :remote-sync-dimension-count

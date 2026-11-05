@@ -68,7 +68,10 @@
     (when (= :read-write (settings/remote-sync-type))
       (let [n (events/backfill-action-tracking!)]
         (when (pos? n)
-          (log/infof "Tracking %d existing actions for remote sync" n))))
+          (log/infof "Tracking %d existing actions for remote sync" n)))
+      (let [n (events/backfill-custom-viz-plugin-tracking!)]
+        (when (pos? n)
+          (log/infof "Tracking %d existing custom viz plugins for remote sync" n))))
     (when-not (collection/has-remote-synced-collection?)
       (if (nil? (settings/remote-sync-branch))
         (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
