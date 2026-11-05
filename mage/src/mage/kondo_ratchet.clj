@@ -268,14 +268,17 @@
         (fs/delete-tree dir)))))
 
 (def ^:private source-dirs
-  ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"])
+  (delay (into ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"]
+               (map str)
+               (fs/glob "modules/drivers" "*/{src,test}"))))
 
 (defn- namespace-files
-  "The files defining the namespace `ns-name` in [[source-dirs]], or none for a namespace outside them."
+  "The files defining the namespace `ns-name` in [[source-dirs]]: more than one when it has separate `.clj` and
+  `.cljs` files, and none for a namespace outside them."
   [ns-name]
   (let [path (-> (str ns-name) (str/replace "-" "_") (str/replace "." "/"))]
-    (for [dir   source-dirs
-          ext   [".clj" ".cljc"]
+    (for [dir   @source-dirs
+          ext   [".clj" ".cljc" ".cljs"]
           :let  [file (str dir "/" path ext)]
           :when (fs/exists? file)]
       file)))
