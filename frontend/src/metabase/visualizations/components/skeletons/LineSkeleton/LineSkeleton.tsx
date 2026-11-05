@@ -1,9 +1,15 @@
-import { SkeletonImage } from "./LineSkeleton.styled";
+import type { JSX } from "react";
+
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
+
+import S from "./LineSkeleton.module.css";
 
 const LineSkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
-      xmlns="http://www.w3.org/2000/svg"
+    <ChartSkeletonImage
+      className={S.root}
+      mt="lg"
+      pb="sm"
       viewBox="0 0 371 113"
       fill="none"
       preserveAspectRatio="none"
@@ -13,7 +19,7 @@ const LineSkeleton = (): JSX.Element => {
         stroke="currentColor"
         strokeWidth="2"
       />
-    </SkeletonImage>
+    </ChartSkeletonImage>
   );
 };
 

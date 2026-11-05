@@ -38,6 +38,38 @@
    #_{:clj-kondo/ignore [:deprecated-var]}
    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
 
+(def ^:private formula-trigger-chars
+  "Leading characters that make Excel/Google Sheets/LibreOffice parse an imported cell as a formula rather than as
+  text. Tab and carriage return are included because spreadsheet apps strip them, promoting the next character to the
+  front."
+  #{\= \+ \- \@ \tab \return})
+
+(def ^:private plain-number-re
+  "Matches values a spreadsheet reads as an ordinary number, so a leading `-`/`+` on them is harmless (`-1,234.56` is
+  the number, not a formula). Deliberately conservative: only digits, group/decimal separators, whitespace, currency
+  symbols, an exponent and a trailing `%`. Nothing that matches this can carry formula syntax, so exempting it can't
+  reopen the injection."
+  #"[-+]?\p{Sc}?\s?\d[\d,\s.]*(?:[eE][-+]?\d+)?\s?\p{Sc}?\s?%?")
+
+(defn escape-spreadsheet-formula
+  "Neutralize spreadsheet formula (a.k.a. CSV/DDE) injection in an exported cell value: a value an attacker planted in
+  a queried table -- e.g. `=cmd|' /C calc'!A0` -- would otherwise be evaluated when the export is opened in Excel or
+  Sheets. Prefixes a single quote so the leading character is no longer a formula trigger.
+
+  This applies to *text* export formats only. XLSX does not need it: POI writes cell values as string-typed cells
+  (`t=\"inlineStr\"`, no `<f>` element), which Excel renders literally, and the prefix would be a real character in the
+  cell rather than a text marker -- visible junk for no security gain.
+
+  Only strings are candidates; everything else (numbers, booleans, temporal values) is written as a typed value and
+  passes through untouched. Values that are plainly numeric are left alone so exports stay faithful. See SEC-763."
+  [v]
+  (if (and (string? v)
+           (pos? (count v))
+           (contains? formula-trigger-chars (nth v 0))
+           (not (re-matches plain-number-re v)))
+    (str "'" v)
+    v))
+
 (defprotocol FormatValue
   "Protocol for specifying how objects of various classes in QP result rows should be formatted in various download
   results formats (e.g. CSV, as opposed to the 'normal' API response format, which doesn't use this logic)."

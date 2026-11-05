@@ -15,6 +15,10 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
+import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -22,12 +26,9 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -92,12 +93,19 @@ const setup = async (
   originalQuestion: Question | null = null,
   {
     collectionEndpoints,
+    createError,
   }: {
     collectionEndpoints?: CollectionEndpoints;
+    createError?: unknown;
   } = {},
 ) => {
-  const onCreateMock = jest.fn((question, _options) =>
-    Promise.resolve(question),
+  const onCreateMock = jest.fn<
+    ReturnType<SaveQuestionProps["onCreate"]>,
+    Parameters<SaveQuestionProps["onCreate"]>
+  >((question) =>
+    createError === undefined
+      ? Promise.resolve(question)
+      : Promise.reject(createError),
   );
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
@@ -302,7 +310,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -326,7 +334,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -368,7 +376,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -391,7 +399,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -465,7 +473,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -490,7 +498,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -539,6 +547,33 @@ describe("SaveQuestionModal", () => {
       expect(inputEl).toHaveAttribute("aria-invalid", "true");
       expect(inputEl).toHaveAttribute("aria-describedby", alertEl.id);
       expect(alertEl).toHaveTextContent("required");
+    });
+
+    it("should show the server error message when saving fails (metabase#21597)", async () => {
+      const message =
+        'Invalid Field Filter: Field 164574 "PRODUCTS"."CATEGORY" belongs to Database 2276 "sample-dataset", but the query is against Database 2275 "test-data"';
+      const { onCreateMock, onCloseMock } = await setup(
+        new Question(
+          {
+            dataset_query: {
+              type: "native",
+              database: SAMPLE_DB_ID,
+              native: { query: "SELECT 1" },
+            },
+            display: "table",
+          },
+          metadata,
+        ),
+        null,
+        { createError: { status: 400, data: { message } } },
+      );
+
+      await userEvent.type(screen.getByLabelText("Name"), "The question name");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(onCloseMock).not.toHaveBeenCalled();
     });
 
     it("should show humanized validation message for saving a structured query question", async () => {

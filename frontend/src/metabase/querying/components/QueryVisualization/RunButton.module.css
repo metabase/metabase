@@ -5,7 +5,7 @@
   padding: 0.5rem 0.75rem;
   font-weight: bold;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
   opacity: 1;
   transition:
     transform 0.25s,
@@ -30,13 +30,13 @@
 
 .primary {
   color: var(--mb-color-text-primary-inverse);
-  background: var(--mb-color-core-brand);
-  border-color: var(--mb-color-core-brand);
+  background: var(--mb-color-button-filled-brand-default);
+  border-color: var(--mb-color-button-filled-brand-default);
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    border-color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-core-brand-hover);
+    border-color: var(--mb-color-button-filled-brand-hover);
+    background-color: var(--mb-color-button-filled-brand-hover);
   }
 }
 

@@ -8,8 +8,9 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { render, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { useListRecentsQuery } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CollectionId, User } from "metabase-types/api";
 import {
@@ -29,8 +30,12 @@ import {
 const TestComponent = () => {
   const { values, saveToDashboard, targetCollection } =
     useSaveQuestionContext();
+  const { data: recentItems } = useListRecentsQuery({
+    context: ["selections"],
+  });
   return (
     <div>
+      {recentItems && <div data-testid="recentsLoaded" />}
       {values.collection_id && (
         <div data-testid="collectionId">{values.collection_id}</div>
       )}
@@ -179,6 +184,29 @@ describe("SaveQuestionContext", () => {
             "42",
           ),
         );
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it("should keep the collection a new question was started in over a recently selected dashboard (#51851)", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "dashboard", id: 10 })],
+          ["selections"],
+        );
+
+        setup({
+          question: new Question({
+            ...createMockCard({
+              collection_id: 7,
+              collection: undefined,
+              dashboard_id: undefined,
+            }),
+            creationType: "custom_question",
+          }),
+        });
+
+        await screen.findByTestId("recentsLoaded");
+
+        expect(screen.getByTestId("collectionId")).toHaveTextContent("7");
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
 

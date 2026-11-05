@@ -38,7 +38,8 @@
                            :required   ["id"]
                            :properties {"id" {:type :integer}}}}
             (#'defendpoint.open-api/fix-json-schema
-             (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id)))))))
+             (#'defendpoint.open-api/normalize-raw-json-schema
+              (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id))))))))
 
 (deftest ^:parallel default-params-are-optional-test
   (testing "a param carrying a :default is advertised as optional, since omitting it is safe"
@@ -60,9 +61,11 @@
 
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
-    (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
+    (is (=? {:properties {"value" {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
             (#'defendpoint.open-api/mjs-collect-definitions [:map [:value ::lib.schema.common/non-blank-string]])))
-    (is (= [{"metabase.lib.schema.common.non-blank-string" {:type :string, :minLength 1}}]
+    (is (= [{"metabase.lib.schema.common.non-blank-string" {:type        :string
+                                                            :minLength   1
+                                                            :description "Schema for a string that cannot be blank."}}]
            @@#'defendpoint.open-api/*definitions*))))
 
 (deftest ^:parallel deprecated-endpoint-test

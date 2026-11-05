@@ -24,8 +24,8 @@ You can export the results of a question as:
 
 You can choose between downloading the results as:
 
-- **Formatted**: With any [formatting changes](../data-modeling/formatting.md) you've applied in Metabase.
-- **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
+- **Formatted**: With any [formatting changes](../data-modeling/metadata/formatting.md) you've applied in Metabase.
+- **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../data-modeling/metadata/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
 
 If you don't see the option to export results, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
 
@@ -45,7 +45,7 @@ By default, Metabase will export the pivoted results, but you'll have the option
 
 ![Pivoted results](./images/pivoted-results.png)
 
-The pivoted results will display as a flat table in Excel, not a native [Excel PivotTable](https://support.microsoft.com/en-us/office/overview-of-pivottables-and-pivotcharts-527c8fa3-02c0-445a-a2db-7794676bce96).
+The pivoted results will display as a flat table in Excel, not a native [Excel PivotTable](https://support.microsoft.com/en-us/excel/overview-of-pivottables-and-pivotcharts).
 
 If you want to use a native Excel PivotTable, you'll instead want to export the raw, unaggregated rows of data that you'll need. That is, you'll want to undo any of the summarizations and groupings in your question, _then_ export the results.
 
@@ -61,14 +61,14 @@ The reason Metabase doesn't try to export results as a native Excel PivotTable i
 
 ### Row limit
 
-By default, Metabase will export first 1048575 rows of results.
+By default, Metabase will export the first 1048575 rows of results.
 
 - For CSV exports, you can increase this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_download_row_limit). Increasing this limit, however, may impact your Metabase's performance.
 - XLSX exports will always be limited to Excel's maximum of 1048575 rows (plus the header row).
 
 ### Cell character limit in Excel exports
 
-When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/office/excel-specifications-and-limit-1672b34d-7043-467e-8e27-269d656771c3). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
+When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/excel/excel-specifications-and-limits). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
 
 ## Exporting results from document cards
 
@@ -138,7 +138,7 @@ By default, data exports (PDFs, PNGs, alert and subscription emails, etc.) featu
 
 ![Question with Metabase logo](./images/question-with-metabase-logo.png)
 
-To remove the Metabase logo and branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+To remove the Metabase logo and branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
 ## Further reading
 

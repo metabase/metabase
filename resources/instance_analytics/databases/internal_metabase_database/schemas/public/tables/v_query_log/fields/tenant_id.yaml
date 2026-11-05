@@ -17,7 +17,6 @@ dimensions:
   serdes/meta:
   - {id: SrWQEQU3lWK9qZX0VI2lN, label: tenant, model: Dimension}
 position: 33
-custom_position: 0
 database_position: 33
 has_field_values: auto-list
 serdes/meta:

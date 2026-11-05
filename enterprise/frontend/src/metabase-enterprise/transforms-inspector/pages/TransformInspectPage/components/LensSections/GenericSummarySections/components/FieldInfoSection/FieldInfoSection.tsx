@@ -57,8 +57,8 @@ export const FieldInfoSection = ({
   });
 
   return (
-    <SimpleGrid cols={2} spacing="lg" data-testid="generic-summary-fields">
-      <Stack gap="md">
+    <SimpleGrid cols={2} spacing="xl" data-testid="generic-summary-fields">
+      <Stack gap="lg">
         <Title order={4}>{t`Input fields`}</Title>
         {sources.length > 0 ? (
           <Card p={0} shadow="none" withBorder>
@@ -77,7 +77,7 @@ export const FieldInfoSection = ({
         )}
       </Stack>
 
-      <Stack gap="md">
+      <Stack gap="lg">
         <Title order={4}>{t`Output fields`}</Title>
         {target ? (
           <Card p={0} shadow="none" withBorder>

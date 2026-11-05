@@ -1,11 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUpdateCollectionEndpoint } from "__support__/server-mocks";
+import {
+  setupCollectionByIdEndpoint,
+  setupUpdateCollectionEndpoint,
+  setupUpdateCollectionEndpointWithError,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks/state";
+import { createMockState } from "__support__/state/state";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Collection, EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
@@ -13,21 +18,51 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "../CollectionRowModal";
+
 import { CollectionRowMenu } from "./CollectionRowMenu";
+
+type CollectionRowMenusWithModalProps = {
+  collections: Collection[];
+  customArchiveMessage?: string;
+};
+
+function CollectionRowMenusWithModal({
+  collections,
+  customArchiveMessage,
+}: CollectionRowMenusWithModalProps) {
+  const [modal, setModal] = useState<CollectionRowModalState>();
+  return (
+    <>
+      {collections.map((collection) => (
+        <CollectionRowMenu
+          key={collection.id}
+          collection={collection}
+          customArchiveMessage={customArchiveMessage}
+          onOpenModal={setModal}
+        />
+      ))}
+      <CollectionRowModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 interface SetupOptions {
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   collection?: Partial<Collection>;
+  otherCollection?: Partial<Collection>;
   isAdmin?: boolean;
-  onArchiveSuccess?: () => void;
   customArchiveMessage?: string;
 }
 
 const setup = ({
   remoteSyncType,
   collection,
+  otherCollection,
   isAdmin = true,
-  onArchiveSuccess,
   customArchiveMessage,
 }: SetupOptions = {}) => {
   const state = createMockState({
@@ -37,21 +72,26 @@ const setup = ({
       "token-features": createMockTokenFeatures({
         library: true,
         remote_sync: true,
+        snippet_collections: true,
       }),
     }),
     currentUser: createMockUser({ is_superuser: isAdmin }),
   });
   setupEnterpriseOnlyPlugin("library");
   setupEnterpriseOnlyPlugin("remote_sync");
+  setupEnterpriseOnlyPlugin("snippets");
 
   return renderWithProviders(
-    <CollectionRowMenu
-      collection={createMockCollection(collection)}
+    <CollectionRowMenusWithModal
+      collections={[
+        createMockCollection(collection),
+        ...(otherCollection ? [createMockCollection(otherCollection)] : []),
+      ]}
       customArchiveMessage={customArchiveMessage}
-      onArchiveSuccess={onArchiveSuccess}
     />,
     {
       storeInitialState: state,
+      withUndos: true,
     },
   );
 };
@@ -78,19 +118,35 @@ describe("CollectionRowMenu", () => {
     expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
   });
 
-  it("renders nothing if collection is not writable", () => {
-    setup({ collection: { can_write: false } });
+  it("renders nothing for non-admins if collection is not writable", () => {
+    setup({ collection: { can_write: false }, isAdmin: false });
     expect(
       screen.queryByRole("button", { name: "Collection options" }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders nothing if remote sync is set to read-only", () => {
-    setup({ remoteSyncType: "read-only" });
+  it("renders nothing for non-admins if remote sync is set to read-only", () => {
+    setup({ remoteSyncType: "read-only", isAdmin: false });
     expect(
       screen.queryByRole("button", { name: "Collection options" }),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    { namespace: "snippets", label: "Snippet folder options" },
+    { namespace: "data-actions", label: "Folder options" },
+  ] as const)(
+    "renders only the permissions option for $namespace folders if remote sync is set to read-only",
+    async ({ namespace, label }) => {
+      setup({ remoteSyncType: "read-only", collection: { namespace } });
+
+      await userEvent.click(screen.getByRole("button", { name: label }));
+
+      expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
+      expect(queryMenuItem(/Edit folder details/)).not.toBeInTheDocument();
+      expect(queryMenuItem(/Archive/)).not.toBeInTheDocument();
+    },
+  );
 
   it("uses snippet folder labels for snippet collections", async () => {
     setup({ collection: { namespace: "snippets" } });
@@ -110,14 +166,22 @@ describe("CollectionRowMenu", () => {
     expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
   });
 
+  it("renders the permissions option for data actions folders", async () => {
+    setup({ collection: { namespace: "data-actions" } });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Folder options" }),
+    );
+
+    expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
+  });
+
   it("archives a collection after confirmation", async () => {
     const collection = createMockCollection({ id: 1, name: "Archived soon" });
-    const onArchiveSuccess = jest.fn();
     setupUpdateCollectionEndpoint(collection);
     setup({
       collection,
       customArchiveMessage: "Custom archive warning",
-      onArchiveSuccess,
     });
 
     await openMenu();
@@ -129,7 +193,9 @@ describe("CollectionRowMenu", () => {
     expect(screen.getByText("Custom archive warning")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
-    await waitFor(() => expect(onArchiveSuccess).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("update-collection-1")).toBe(true),
+    );
     const request = fetchMock.callHistory.lastCall(
       "update-collection-1",
     )?.request;
@@ -156,6 +222,66 @@ describe("CollectionRowMenu", () => {
       "update-collection-1",
     )?.request;
     expect(await request?.json()).toEqual({ archived: false });
+  });
+
+  it("keeps a modal opened for another collection when an earlier edit finishes", async () => {
+    const collection = createMockCollection({ id: 1, name: "First" });
+    let finishUpdate: (collection: Collection) => void = () => undefined;
+    setupUpdateCollectionEndpoint(
+      collection,
+      new Promise((resolve) => {
+        finishUpdate = resolve;
+      }),
+    );
+    setupCollectionByIdEndpoint({
+      collections: [
+        createMockCollection({ id: "root", name: "Our analytics" }),
+      ],
+    });
+    setup({ collection, otherCollection: { id: 2, name: "Second" } });
+
+    const [firstMenu, secondMenu] = screen.getAllByRole("button", {
+      name: "Collection options",
+    });
+    await userEvent.click(firstMenu);
+    await userEvent.click(getMenuItem(/Edit collection details/));
+    await userEvent.type(screen.getByLabelText("Name"), " renamed");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(secondMenu);
+    await userEvent.click(getMenuItem(/Archive/));
+    expect(screen.getByText('Archive "Second"?')).toBeInTheDocument();
+
+    await act(async () => {
+      finishUpdate(collection);
+      await fetchMock.callHistory.flush(true);
+    });
+
+    expect(screen.getByText('Archive "Second"?')).toBeInTheDocument();
+  });
+
+  it("reports a failed undo of an unarchive", async () => {
+    const collection = createMockCollection({
+      id: 1,
+      name: "Archived collection",
+      archived: true,
+    });
+    setupUpdateCollectionEndpoint(collection);
+    setup({ collection });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Unarchive collection" }),
+    );
+    expect(
+      await screen.findByText('"Archived collection" has been unarchived'),
+    ).toBeInTheDocument();
+    fetchMock.removeRoute(`update-collection-${collection.id}`);
+    setupUpdateCollectionEndpointWithError(collection.id);
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(
+      await screen.findByText('"Archived collection" could not be archived'),
+    ).toBeInTheDocument();
   });
 });
 

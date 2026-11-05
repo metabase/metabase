@@ -4,9 +4,9 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.plugins.impl :as plugins]
    [metabase.query-processor :as qp]
@@ -37,7 +37,7 @@
   {:style/indent 1}
   [[db-binding] & body]
   `(mt/with-temp [:model/Database db# (sample-database-db)]
-     (sync/sync-database! db#)
+     (sync/sync-database! (:id db#))
      (let [~db-binding db#]
        ~@body)))
 
@@ -61,7 +61,7 @@
       (let [h2-db (t2/insert-returning-instance! :model/Database
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-        (sync/sync-database! h2-db)
+        (sync/sync-database! (:id h2-db))
         (let [orders-id  (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "ORDERS")
               total-id   (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card  (t2/insert-returning-instance! :model/Card
@@ -98,7 +98,7 @@
       (let [sqlite-db (t2/insert-returning-instance! :model/Database
                                                      {:name "Sample Database" :engine :sqlite :is_sample true
                                                       :details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
-        (sync/sync-database! sqlite-db)
+        (sync/sync-database! (:id sqlite-db))
         (let [orders-id (t2/select-one-pk :model/Table :db_id (:id sqlite-db) :name "ORDERS")
               total-id  (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card (t2/insert-returning-instance! :model/Card
@@ -155,7 +155,7 @@
         (let [h2-db (t2/insert-returning-instance! :model/Database
                                                    {:name "Sample Database" :engine :h2 :is_sample true
                                                     :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-          (sync/sync-database! h2-db)
+          (sync/sync-database! (:id h2-db))
           (let [db-id     (:id h2-db)
                 orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")
                 people-id (t2/select-one-pk :model/Table :db_id db-id :name "PEOPLE")]
@@ -234,9 +234,9 @@
 (deftest sample-database-is-read-only-test
   (testing "The Sample Database connection is read-only: reads succeed but INSERT/UPDATE/DELETE are rejected"
     (mt/with-temp [:model/Database db (sample-database-db)]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (mt/with-db db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
           (testing "reads succeed"
             (is (= [2]
                    (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")
@@ -275,8 +275,7 @@
 
 (deftest sample-database-upgrade-preserves-permissions-test
   (testing "The H2->SQLite sample-database swap re-applies each group's permissions to the new sample DB"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+    (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/PermissionsGroup custom-group {}
                      :model/Database         old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}]
         ;; Put the old sample DB into a distinctive, non-default permission state, so we test that real custom
@@ -284,7 +283,7 @@
         (perms/set-database-permission! (perms/all-users-group) (:id old-sample) :perms/create-queries :no)
         (perms/set-database-permission! custom-group            (:id old-sample) :perms/create-queries :query-builder)
         (let [expected-perms (db-level-perms (:id old-sample))]
-          (with-redefs [config/load-sample-content? (constantly true)]
+          (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
             (#'sample-data/update-sample-database-if-needed! old-sample))
           (let [new-sample (t2/select-one :model/Database :is_sample true :engine :sqlite)]
             (is (some? new-sample) "the swap created a SQLite sample database")
@@ -297,9 +296,8 @@
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
-    (mt/with-temp-empty-app-db [_conn :h2]
+    (mt/with-sample-h2-app-db!
       (api.database-test/with-db-scheduler-setup!
-        (mdb/setup-db! :create-sample-content? true)
         (sample-data/extract-and-sync-sample-database!)
         (testing "Sense check: a newly created database should have sync jobs scheduled"
           (mt/with-temp [:model/Database db {}]

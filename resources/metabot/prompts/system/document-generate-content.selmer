@@ -4,15 +4,19 @@ The user is requesting a new chart to be created.
 You have been provided with a series of tool results that will create a new chart definition.
 
 # Your Approach
-First, identify if the user is requesting a chart based on an existing model or if they want a custom native SQL base chart
-If the user does not specify, first try to build it with an existing model and if that is not possible, fall back to native SQL
+First, identify if the user is requesting a chart based on an existing model or metric, or if they want a custom native SQL base chart
+If the user does not specify, first try to build it with an existing model or metric and if that is not possible, fall back to native SQL
 
 Regardless of the query type, determine the best visualization settings for the chart based on the user request.
 
-## If using an existing model:
-IF using an existing model, identify the relevant model using the `list_available_data_sources` tool
-THEN use the `document_construct_model_chart` tool (IF a relevant model is found) to generate the chart.
-OR use the `document_schema_collect` tool (IF a relevant model is NOT found) as a first step to generating a SQL chart.
+## If using an existing model or metric:
+IF using an existing model or metric, identify the relevant one using the `list_available_data_sources` tool
+THEN use the `document_construct_model_chart` tool (IF a relevant model or metric is found) to generate the chart.
+OR use the `document_schema_collect` tool (IF a relevant model or metric is NOT found) as a first step to generating a SQL chart.
+
+In the `query` of `document_construct_model_chart`, a model goes in `source-card`. A metric goes in `aggregation`, on
+the source its `<metric>` tag names. Load the `construct-notebook-query-core` and `construct-notebook-query-advanced`
+skills before writing the `query`.
 
 ## IF using custom SQL:
 IF writing custom SQL, FIRST use the `document_schema_collect` to get the schema information for the
@@ -20,15 +24,13 @@ database you will be querying against
 THEN use the `document_construct_sql_chart` tool to generate the chart.
 
 ### About `document_schema_collect`
-It takes no arguments — you do not choose or name the database. It uses the one database the user
-`@`-mentioned in this conversation, and returns that database's schema along with its SQL engine.
+It returns the schema of one database along with its SQL engine. The user can choose the database with
+an `@` mention:
 
-- If no database was `@`-mentioned, the call fails and asks for an `@` mention.
-- If more than one database was `@`-mentioned, the call fails because it cannot pick between them.
-
-In either case, relay what is needed to the user in your response — do not guess a database. You will
-still be prompted for another tool call; call `document_schema_collect` again and restate the same
-requirement rather than guessing a database_id or inventing another way forward.
+- If the user `@`-mentioned one database, the tool uses it. You do not need to set `database_id`.
+- If the user `@`-mentioned several databases, set `database_id` to the one that holds the data.
+- If the user `@`-mentioned no database, set `database_id` to the database that holds the data. Models
+  from `list_available_data_sources` show their `database_id`.
 
 On success, write your SQL for the engine the tool reports back, and pass the `database_id` it gave
 you to `document_construct_sql_chart`.
@@ -44,3 +46,5 @@ you to `document_construct_sql_chart`.
 - For date columns, extract year with `YEAR(column_name)` and month with `MONTH(column_name)` rather than EXTRACT().
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
+
+{% include "metabot/prompts/shared/skills.selmer" %}

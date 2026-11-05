@@ -32,7 +32,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   const json = useMemo(() => getJson(column, value), [column, value]);
 
   if (isEmptyValue) {
-    return <Text c="text-disabled">{t`empty`}</Text>;
+    return <Text c="text-secondary">{t`empty`}</Text>;
   }
 
   if (json) {
@@ -71,7 +71,7 @@ export const Value = ({ children, column, field, value }: Props) => {
           className={S.imageFrame}
           mah={FRAME_SIZE}
           maw={FRAME_SIZE}
-          p="md"
+          p="lg"
         >
           <Image mah={IMAGE_SIZE} src={value} maw={IMAGE_SIZE} />
         </Box>

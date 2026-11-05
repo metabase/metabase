@@ -281,10 +281,17 @@
     (.setDataFormat (. data-format getFormat ^String format-string))))
 
 (defn- compute-column-cell-styles
-  "Compute a sequence of cell styles for each column"
-  [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows?]
+  "Compute a sequence of cell styles for each column. When `inline-currency?` is true, currency columns render the
+  symbol in the cell (used for pivot exports, whose measures have no column header to carry it) -- expressed by
+  forcing `currency-in-header` off for the column."
+  [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows? inline-currency?]
   (for [col cols]
-    (let [settings       (streaming.common/viz-settings-for-col col viz-settings)
+    (let [base-settings  (streaming.common/viz-settings-for-col col viz-settings)
+          ;; Scope the override to currency columns only -- injecting `currency-in-header` into a non-currency
+          ;; column's settings would perturb the number-formatting heuristics that inspect the setting keys.
+          settings       (cond-> base-settings
+                           (and inline-currency? (streaming.common/currency-settings? base-settings))
+                           (assoc ::mb.viz/currency-in-header false))
           format-strings (format-settings->format-strings settings col format-rows?)]
       (when (seq format-strings)
         (mapv
@@ -366,6 +373,7 @@
   [^Cell cell t styles typed-styles]
   (set-cell! cell (t/offset-date-time t) styles typed-styles))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *number-of-characters-cell*
   "Total number of characters that a cell can contain, 32767 is the maximum number supported by the cell."
   ;; See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
@@ -418,8 +426,8 @@
   (when (isa? semantic_type :type/Coordinate)
     (try (formatter/format-geographic-coordinates semantic_type value)
          ;; Fallback to plain string value if it couldn't be parsed
-         (catch Exception _ value
-                value))))
+         (catch Exception _
+           value))))
 
 (defn- maybe-parse-temporal-value
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
@@ -434,8 +442,8 @@
              (string? value))
     (try (u.date/parse value)
          ;; Fallback to plain string value if it couldn't be parsed
-         (catch Exception _ value
-                value))))
+         (catch Exception _
+           value))))
 
 ;; ColumnHelper hack.
 ;;
@@ -563,6 +571,7 @@
                                scaled-val)]
           (set-cell! cell parsed-value styles typed-cell-styles))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
   of large datasets will be prohibitively slow."
@@ -656,9 +665,10 @@
    :val-formatters (create-formatters cell-styles cols val-indexes timezone settings format-rows?)})
 
 (defn- generate-styles
-  [workbook viz-settings non-pivot-cols format-rows?]
+  [workbook viz-settings non-pivot-cols format-rows? & {:keys [inline-currency?]}]
   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
-    {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
+    {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?
+                                              inline-currency?)
      :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)}))
 
 (defmethod qp.si/streaming-results-writer :xlsx
@@ -726,7 +736,7 @@
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
 
                 {:keys [cell-styles typed-cell-styles]}
-                (generate-styles workbook settings non-pivot-cols format-rows?)
+                (generate-styles workbook settings non-pivot-cols format-rows? :inline-currency? true)
 
                 formatters (make-formatters cell-styles
                                             non-pivot-cols
@@ -754,5 +764,7 @@
         (try
           (spreadsheet/save-workbook-into-stream! os workbook)
           (finally
-            (.dispose ^SXSSFWorkbook workbook)
-            (.close os)))))))
+            (try
+              (.close ^SXSSFWorkbook workbook)
+              (finally
+                (.close os)))))))))

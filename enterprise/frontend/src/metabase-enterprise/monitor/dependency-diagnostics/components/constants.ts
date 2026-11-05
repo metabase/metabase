@@ -7,7 +7,6 @@ export const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
   "table",
   "question",
   "model",
-  "transform",
 ];
 
 export const BROKEN_DEPENDENTS_GROUP_TYPES: DependencyGroupType[] = [
@@ -34,5 +33,3 @@ export const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
   "measure",
   "snippet",
 ];
-
-export const PAGE_SIZE = 25;

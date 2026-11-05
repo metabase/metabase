@@ -62,19 +62,25 @@ export function isMentionableUser(value: unknown): value is MentionableUser {
   return isObject(value) && typeof value.common_name === "string";
 }
 
-export function mbProtocolModelToSuggestionModel(inputModel: string): string {
-  // dom nodes record strings and it's better to not to error the input with invalid
-  // data. casting here still afford some amount of internal type awareness as these
-  // two types might diverge in the future.
-  const model: SuggestionModel = match(
-    // Unjustified type cast. FIXME
-    inputModel as MetabaseProtocolEntityModel,
-  )
+export function mbProtocolModelToSuggestionModel(
+  model: MetabaseProtocolEntityModel,
+): SuggestionModel {
+  return match(model)
     .with("model", () => "dataset" as const)
     .with("question", () => "card" as const)
-    .otherwise((x) => x);
-
-  return model;
+    .with(
+      "collection",
+      "dashboard",
+      "database",
+      "document",
+      "measure",
+      "metric",
+      "segment",
+      "table",
+      "transform",
+      (model) => model,
+    )
+    .exhaustive();
 }
 
 export function getBrowseAllItemIndex(

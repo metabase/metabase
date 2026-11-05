@@ -31,6 +31,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     isNativeEditorOpen,
     isDirtyStateShownForError,
     result,
+    errorAction,
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
 
@@ -76,9 +77,9 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             className={S.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via ?? []}
             question={question}
             duration={result.duration ?? 0}
+            errorAction={errorAction}
           />
         ) : result?.data ? (
           <VisualizationResult

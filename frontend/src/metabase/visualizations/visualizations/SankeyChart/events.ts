@@ -17,7 +17,7 @@ import {
 } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { Card, RawSeries, RowValue } from "metabase-types/api";
+import type { RawSeries, RowValue, SeriesCard } from "metabase-types/api";
 
 const getSankeyClickData = (
   [
@@ -44,7 +44,7 @@ const isSankeyNodeEvent = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
 
-const isNativeQuery = (card: Card) => {
+const isNativeQuery = (card: SeriesCard) => {
   const question = new Question(card);
   return question.isNative();
 };

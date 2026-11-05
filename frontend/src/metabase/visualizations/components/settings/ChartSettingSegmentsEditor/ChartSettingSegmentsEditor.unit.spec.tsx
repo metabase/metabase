@@ -4,7 +4,10 @@ import { fireEvent, render, screen, within } from "__support__/ui";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
-import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
+import {
+  ChartSettingSegmentsEditor,
+  getColorPalette,
+} from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
@@ -139,6 +142,13 @@ it("Should not call onChange when blurring without changing value", async () => 
   fireEvent.blur(min);
 
   expect(onChange).not.toHaveBeenCalled();
+});
+
+it("should list each palette color once", () => {
+  const palette = getColorPalette();
+
+  expect(palette.length).toBeGreaterThan(0);
+  expect(palette).toEqual([...new Set(palette)]);
 });
 
 it("should show a placeholder if there are no segments", async () => {

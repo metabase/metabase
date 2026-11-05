@@ -1,4 +1,5 @@
 import type { StoryFn } from "@storybook/react";
+import { updateIn } from "icepick";
 
 import {
   measureTextHeight,
@@ -36,6 +37,7 @@ const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
@@ -217,5 +219,24 @@ export const Watermark = {
     rawSeries: data.default as any,
     renderingContext,
     hasDevWatermark: true,
+  },
+};
+
+export const CustomYAxisRangeOffScreen = {
+  render: Template,
+
+  args: {
+    // Unjustified type cast. FIXME
+    rawSeries: updateIn(
+      data.default,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 100000,
+        "graph.y_axis.max": 200000,
+      }),
+    ) as any,
+    renderingContext,
   },
 };

@@ -8,6 +8,8 @@
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Various Datasets                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -81,8 +83,8 @@
       LocalTime      (throw (Exception. "Cannot convert a time to a date"))
       OffsetTime     (throw (Exception. "Cannot convert a time to a date"))
       ;; since there is no `OffsetDate` class use `OffsetDateTime`, but truncated to day
-      OffsetDateTime (u.date/truncate :day)
-      ZonedDateTime  (u.date/truncate :day))))
+      OffsetDateTime (u.date/truncate {:start-of-week :sunday} t :day)
+      ZonedDateTime  (u.date/truncate {:start-of-week :sunday} t :day))))
 
 (defn- time-only
   "Convert time or datetime temporal value to `t` to an appropriate time type, discarding date information."

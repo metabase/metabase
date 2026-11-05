@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Divider, Icon, Tooltip } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
 type FilterSubmitButtonProps = {
   isNew?: boolean;
@@ -29,7 +29,6 @@ export function FilterSubmitButton({
       <Button type="submit" variant="filled" disabled={isDisabled}>
         {t`Apply filter`}
       </Button>
-      <Divider orientation="vertical" />
       <Tooltip label={addButtonLabel}>
         <Button
           type="button"

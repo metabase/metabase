@@ -17,7 +17,6 @@ describe("scenarios > organization > timelines > collection", () => {
     cy.intercept("POST", "/api/timeline-event").as("createEvent");
     cy.intercept("PUT", "/api/timeline-event/*").as("updateEvent");
     cy.intercept("DELETE", "/api/timeline-event/*").as("deleteEvent");
-    cy.intercept("GET", "/api/timeline/*").as("getTimeline");
   });
 
   describe("as admin", () => {
@@ -397,7 +396,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       H.modal().within(() => {
         cy.findByText("Our analytics events").should("be.visible");
-        cy.button(/close/).click();
+        cy.button(/close/i).click();
       });
       H.main()
         .findByText(`${H.getFullName(admin)}'s Personal Collection`)
@@ -540,7 +539,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection events");
       cy.wait("@createTimeline");
-      cy.icon("close").click();
+      H.modal().findByLabelText("Close").click();
 
       cy.findByDisplayValue("First collection")
         .clear()
@@ -594,7 +593,6 @@ describe("scenarios > organization > timelines > collection", () => {
         "type/Temporal": { time_style: "HH:mm" },
       });
       cy.visit("/collection/root/timelines");
-      cy.wait("@getTimeline");
 
       cy.findByTestId("event-list")
         .findByText("October 12, 2022, 18:15")

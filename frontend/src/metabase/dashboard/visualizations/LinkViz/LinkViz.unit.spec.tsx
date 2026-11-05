@@ -6,6 +6,7 @@ import {
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import {
   fireEvent,
   getIcon,
@@ -14,7 +15,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
@@ -35,6 +35,13 @@ import {
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
 
 registerVisualizations();
 

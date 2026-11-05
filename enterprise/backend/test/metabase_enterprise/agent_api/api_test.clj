@@ -1,13 +1,13 @@
 (ns metabase-enterprise.agent-api.api-test
   "Integration tests for CLI usage recording via the `wrap-record-cli-usage` middleware in
-  `metabase.agent-api.usage`. Drives the middleware directly so recording fires on the same
+  `metabase.metabot.agent-api.usage`. Drives the middleware directly so recording fires on the same
   synchronous thread, where identity, status, duration, and PII are all in scope. Recording
   runs on every EE instance (`:feature :none`); PII is gated by `analytics-pii-retention-enabled`
   (itself `:audit-app`-gated)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.api.common :as api]
+   [metabase.metabot.agent-api.usage :as agent-api.usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

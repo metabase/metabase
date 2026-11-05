@@ -3,7 +3,9 @@
   either encode the image inline in a URL (when `render-type` is `:inline`), or create the hashes/references needed
   for an attached image (`render-type` of `:attachment`)"
   (:require
-   [clojure.java.io :as io])
+   [clojure.java.io :as io]
+   [metabase.appearance.core :as appearance]
+   [metabase.util :as u])
   (:import
    (java.util Arrays)
    (org.apache.commons.io IOUtils)
@@ -29,7 +31,7 @@
 
 (defn- write-byte-array-to-temp-file
   [^bytes img-bytes]
-  (let [f (doto (java.io.File/createTempFile "metabase_channel_image_" ".png")
+  (let [f (doto (java.io.File/createTempFile (str (u/slugify (appearance/application-name)) "_channel_image_") ".png")
             .deleteOnExit)]
     (with-open [fos (java.io.FileOutputStream. f)]
       (.write fos img-bytes))

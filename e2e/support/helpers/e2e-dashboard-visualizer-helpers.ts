@@ -107,9 +107,29 @@ export function deselectDatasetFromColumnList(datasetName: string) {
     .click({ force: true });
 }
 
-export function selectDataset(datasetName: string) {
+type SelectDatasetOptions = {
+  searchAlias?: string;
+};
+
+export function selectDataset(
+  datasetName: string,
+  { searchAlias }: SelectDatasetOptions = {},
+) {
+  if (searchAlias) {
+    cy.intercept("GET", "/api/search*", (request) => {
+      if (request.query.q === datasetName) {
+        request.alias = searchAlias;
+      }
+    });
+  }
+
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
+  if (searchAlias) {
+    cy.wait(`@${searchAlias}`).its("response.statusCode").should("eq", 200);
+  }
+  dataImporter()
+    .findByTestId("datasets-list")
+    .findAllByText(datasetName)
     .first()
     .closest("[data-testid='swap-dataset-button']")
     .should("not.have.attr", "aria-pressed", "true")

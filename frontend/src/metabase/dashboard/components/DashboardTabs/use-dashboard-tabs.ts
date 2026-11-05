@@ -1,13 +1,8 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import { t } from "ttag";
 
 import { trackTabDuplicated } from "metabase/dashboard/analytics";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useDispatch } from "metabase/redux";
 import type { SelectedTabId } from "metabase/redux/store";
-import { addUndo } from "metabase/redux/undo";
-
-let tabDeletionId = 1;
 
 function isTabIdType(id: unknown): id is SelectedTabId {
   return typeof id === "number" || id === null;
@@ -19,15 +14,12 @@ export function useDashboardTabs() {
     tabs,
     selectedTabId,
     duplicateTab: duplicateTabAction,
-    deleteTab: deleteTabAction,
-    undoDeleteTab,
+    deleteTab: deleteTabById,
     moveTab: moveTabAction,
     selectTab,
     renameTab,
     createNewTab,
   } = useDashboardContext();
-
-  const dispatch = useDispatch();
 
   const duplicateTab = (tabId: UniqueIdentifier | null) => {
     if (!isTabIdType(tabId)) {
@@ -45,19 +37,7 @@ export function useDashboardTabs() {
       throw Error("deleteTab was called but tab id is invalid");
     }
 
-    const tabName = tabs.find(({ id }) => id === tabId)?.name;
-    if (!tabName) {
-      throw Error(`deleteTab was called but no tab with id ${tabId} was found`);
-    }
-    const id = tabDeletionId++;
-
-    deleteTabAction({ tabId, tabDeletionId: id });
-    dispatch(
-      addUndo({
-        message: t`Deleted "${tabName}"`,
-        action: () => undoDeleteTab({ tabDeletionId: id }),
-      }),
-    );
+    deleteTabById(tabId);
   };
 
   const moveTab = (activeId: UniqueIdentifier, overId: UniqueIdentifier) =>

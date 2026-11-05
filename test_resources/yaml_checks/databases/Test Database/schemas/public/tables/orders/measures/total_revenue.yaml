@@ -16,5 +16,4 @@ definition:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 serdes/meta:
-- id: total-revenue-measure
-  model: Measure
+- model: Measure

@@ -10,10 +10,12 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (deftest extract-model-and-id
@@ -32,7 +34,7 @@
                    :name        "Test Name"
                    :description "Test Description"
                    :other-field "Other Value"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "Test Name Test Description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text with map format and transforms"
@@ -41,7 +43,7 @@
           record               {:model       "test"
                                 :name        "CamelCaseTest"
                                 :description "Simple description"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "CamelCaseTest Camel Case Test Simple description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text filters out blank values"
@@ -50,7 +52,7 @@
                    :name        "Test Name"
                    :description "  " ;; whitespace only
                    :empty-field nil}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "Test Name"
                (#'search.ingestion/searchable-text record)))))))
 
@@ -61,7 +63,7 @@
                    :name        "Sales Dashboard"
                    :description "Shows quarterly sales data"
                    :other-field "Other Value"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text with map format"
@@ -70,7 +72,7 @@
           record  {:model       "dashboard"
                    :name        "Test Dashboard"
                    :description "A test dashboard"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text filters out blank values"
@@ -79,14 +81,14 @@
                    :name        "Test Card"
                    :description "  "
                    :empty-field nil}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Test Card"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
                    :name  "CamelCaseTest"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search"))))
@@ -96,7 +98,7 @@
           record  {:model    "document"
                    :name     "Q3 Planning"
                    :document "the full document body"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[document]\nname: Q3 Planning"
                (#'search.ingestion/embeddable-text record))
             "Excluded fields must not appear in the semantic-search embedding text")
@@ -145,7 +147,7 @@
             :type :metric
             :dataset_query (metric-query a-id)}]
           ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
@@ -157,11 +159,11 @@
 (deftest search-term-columns-test
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}
-           (set (#'search.ingestion/search-term-columns [:name :description])))))
+           (set (#'search.ingestion.query/search-term-columns [:name :description])))))
   (testing "search-term-columns with map format"
     (is (= #{:name :description}
-           (set (#'search.ingestion/search-term-columns {:name identity
-                                                         :description nil}))))))
+           (set (#'search.ingestion.query/search-term-columns {:name identity
+                                                               :description nil}))))))
 
 (deftest search-items-count-test
   (testing "search-items-count returns correct count with various searchable items"
@@ -202,10 +204,12 @@
 (deftest bulk-ingest!-caches-metadata-providers-test
   (testing "bulk-ingest! caches metadata providers so the factory is only called once per database-id"
     (let [factory-calls (atom 0)]
-      (with-redefs [search.engine/active-engines                                (fn []
-                                                                                  (simulate-metadata-lookups)
-                                                                                  nil)
-                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines
+         (fn []
+           (simulate-metadata-lookups)
+           nil)
+         metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
         (search.ingestion/bulk-ingest! [])
         (is (= 1 @factory-calls)
             "Factory should be called once, not once per metadata-provider lookup")))))
@@ -214,10 +218,12 @@
   (testing "bulk-ingest! reuses an outer cache and does not rebuild providers already in it"
     (let [factory-calls  (atom 0)
           existing-cache (atom (cache/basic-cache-factory {}))]
-      (with-redefs [search.engine/active-engines (fn []
-                                                   (simulate-metadata-lookups)
-                                                   nil)
-                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines
+         (fn []
+           (simulate-metadata-lookups)
+           nil)
+         metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
         (binding [metadata.jvm/*metadata-provider-cache* existing-cache]
           (metadata.jvm/application-database-metadata-provider 1)
           (let [pre-calls @factory-calls]
@@ -258,3 +264,104 @@
                           first)]
           (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
                   result)))))))
+
+(defn- queued-updates!
+  "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."
+  [f]
+  (let [test-queue (queue/delay-queue)]
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates (atom 0)]
+      (f test-queue))
+    (mapv :value test-queue)))
+
+(deftest await-pending-updates-waits-for-in-flight-batch-test
+  (let [test-queue     (queue/delay-queue)
+        listener-name (str (random-uuid))
+        processing    (promise)
+        release-batch (promise)
+        indexed       (atom [])
+        update        ["card" [:= :this.id 1]]
+        later-update  ["card" [:= :this.id 2]]]
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates (atom 0)
+                  search.ingestion/listener-name   listener-name]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines (constantly [:search.engine/appdb])
+         search.ingestion/bulk-ingest! (fn [updates]
+                                         (deliver processing true)
+                                         (deref release-batch 5000 ::timeout)
+                                         (swap! indexed into updates))]
+        (search.ingestion/start-listener!)
+        (try
+          (search.ingestion/ingest-maybe-async! [update] false)
+          (is (true? (deref processing 2000 ::timeout)))
+          (is (empty? test-queue))
+          (is (false? (search.ingestion/await-pending-updates! 10))
+              "An empty queue does not mean the worker finished indexing")
+          (mt/with-log-messages-for-level [messages [metabase.search.ingestion :warn]]
+            (search.ingestion/wait-for-idle! :settle-ms 0 :timeout-ms 10 :poll-ms 1)
+            (is (=? [{:message #"wait-for-idle! timed out.*"}] (messages))
+                "The running batch prevents the queue from being idle"))
+          (testing "Discarding queued work preserves the running batch"
+            (search.ingestion/ingest-maybe-async! [later-update later-update] false)
+            (search.ingestion/clear-queue!)
+            (is (empty? test-queue))
+            (is (false? (search.ingestion/await-pending-updates! 10))))
+          (deliver release-batch true)
+          (is (true? (search.ingestion/await-pending-updates! 2000)))
+          (is (= [update] @indexed))
+          (testing "New updates remain tracked after clearing the queue"
+            (search.ingestion/ingest-maybe-async! [later-update] false)
+            (is (true? (search.ingestion/await-pending-updates! 2000)))
+            (is (= [update later-update] @indexed)))
+          (finally
+            (deliver release-batch true)
+            (queue/stop-listening! listener-name)))))))
+
+(deftest await-pending-updates-after-ingestion-error-test
+  (let [listener-name (str (random-uuid))
+        attempted     (promise)]
+    (with-redefs [search.ingestion/queue           (queue/delay-queue)
+                  search.ingestion/pending-updates (atom 0)
+                  search.ingestion/listener-name   listener-name]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines (constantly [:search.engine/appdb])
+         search.ingestion/bulk-ingest! (fn [_updates]
+                                         (deliver attempted true)
+                                         (throw (ex-info "Indexing failed" {})))]
+        (search.ingestion/start-listener!)
+        (try
+          (search.ingestion/ingest-maybe-async! [["card" [:= :this.id 1]]] false)
+          (is (true? (search.ingestion/await-pending-updates! 2000)))
+          (is (true? (deref attempted 2000 ::timeout)))
+          (finally
+            (queue/stop-listening! listener-name)))))))
+
+(deftest ingest-maybe-async!-queues-after-commit-test
+  ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
+  ;; commits, and the transaction takes longer than the queue delay, the worker finds no row and the entity is
+  ;; silently left out of the index (GDGT-3326).
+  (let [update ["collection" [:= 1 :this.id]]]
+    (testing "async updates made inside a transaction are only queued once it commits"
+      (let [queued (queued-updates!
+                    (fn [test-queue]
+                      (t2/with-transaction [_conn]
+                        (search.ingestion/ingest-maybe-async! [update] false)
+                        (testing "nothing is queued while the transaction is still open"
+                          (is (empty? test-queue))
+                          (is (true? (search.ingestion/await-pending-updates! 0)))))))]
+        (is (= [update] queued))))
+    (testing "nothing is queued when the transaction rolls back"
+      (let [queued (queued-updates!
+                    (fn [_test-queue]
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback"
+                                            (t2/with-transaction [_conn]
+                                              (search.ingestion/ingest-maybe-async! [update] false)
+                                              (throw (ex-info "rollback" {})))))
+                      (is (true? (search.ingestion/await-pending-updates! 0)))))]
+        (is (= [] queued))))
+    (testing "outside a transaction the update is queued immediately"
+      (is (= [update]
+             (queued-updates!
+              (fn [_test-queue]
+                (search.ingestion/ingest-maybe-async! [update] false))))))))

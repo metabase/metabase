@@ -2,8 +2,9 @@ import fetchMock from "fetch-mock";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { waitForRequestsToSettle } from "__support__/utils";
 import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import {
@@ -61,28 +62,28 @@ describe("SecurityCenterBanner", () => {
   it("does not render when there is no active advisory", async () => {
     setup();
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when email is configured", async () => {
     setup({ emailConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when slack is configured", async () => {
     setup({ slackConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render for non-pro-self-hosted plans", async () => {
     setup({ isProSelfHosted: false });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForRequestsToSettle();
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 

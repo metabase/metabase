@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.fn :as mu.fn]
+       ([metabase.util.malli.closed-schemas]
+        [metabase.util.malli.fn :as mu.fn]
         [metabase.util.malli.defn :as mu.defn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
@@ -38,16 +39,37 @@
 
 (def localized-string-schema
   "Schema for localized string."
-  #?(:clj  [:fn {:error/message "must be a localized string"}
+  #?(:clj  [:fn {:error/message "must be a localized string", :json-schema {:type "string"}}
             i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
 
+(mr/def ::json-schema-doc
+  "A hand-authored JSON Schema document: only ever echoed to an LLM or OpenAPI consumer, never read by key."
+  [:map {:closed true}
+   [:type        {:optional true} :string]
+   [:const       {:optional true} :string]
+   [:description {:optional true} :string]
+   [:required    {:optional true} [:sequential :string]]
+   [:minItems    {:optional true} :int]
+   [:maxItems    {:optional true} :int]
+   [:items       {:optional true} [:ref ::json-schema-doc]]
+   [:properties  {:optional true} [:map-of :string [:ref ::json-schema-doc]]]])
+
+(def ^:private SchemaProperties
+  "The malli schema properties [[with]] is actually asked to attach."
+  [:map {:closed true}
+   [:description          {:optional true} [:or :string localized-string-schema]]
+   [:decode/api           {:optional true} ifn?]
+   [:json-schema          {:optional true} ::json-schema-doc]
+   [::mr/deliberately-open {:optional true} :boolean]])
+
 (metabase.util.malli/defn with
   "Update a malli schema with an arbitrary map of properties"
   {:style/indent [:form]}
-  [mschema props]
+  [mschema :- Schema
+   props   :- SchemaProperties]
   (mut/update-properties (mc/schema mschema) merge props))
 
 ;; Kondo gets confused by :refer [defn] on this, so it's referenced fully qualified.
@@ -62,7 +84,7 @@
   {:style/indent [:form]}
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
-  ([mschema                :- :any
+  ([mschema                :- Schema
     description-message    :- localized-string-schema
     specific-error-message :- localized-string-schema]
    (mut/update-properties (mc/schema mschema) assoc
@@ -118,7 +140,7 @@
        :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
 
 #?(:clj
-   (defn validate-throw
+   (core/defn validate-throw
      "Returns the value if it matches the schema, else throw an exception."
      [schema-or-validator value]
      (let [is-validator? (fn? schema-or-validator)]
@@ -151,9 +173,15 @@
       :and (some map-schema-keys (mc/children schema))
       nil)))
 
+(core/defn never
+  "A schema that never validates, with `properties` such as its `:error/message`, and whose JSON Schema accepts nothing."
+  ([]
+   (never {}))
+  ([properties]
+   [:fn (merge {:json-schema {:not {}}} properties) (constantly false)]))
+
 (core/defn refuse
   "A schema that never validates; its `:decode/api` throws a 400 with `(message-fn)`. Intended as the last branch of
   an `[:or ...]`."
   [message-fn]
-  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
-   (constantly false)])
+  (never {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}))

@@ -80,7 +80,7 @@ export const AlertListItem = ({
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
         {formatTitle(alert.payload?.send_condition)}
       </Text>
-      <Group gap="xs" align="center" c="text-secondary">
+      <Group gap="xxs" align="center" c="text-secondary">
         {subscription && (
           <Text size="sm" c="inherit">
             {formatNotificationSchedule(subscription)}
@@ -88,7 +88,7 @@ export const AlertListItem = ({
         )}
         {user && (
           <>
-            <Text size="sm" c="text-disabled">
+            <Text size="sm" c="text-secondary">
               •
             </Text>
             <Text size="sm" c="inherit">

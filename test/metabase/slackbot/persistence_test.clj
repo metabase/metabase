@@ -365,25 +365,25 @@
         (is (= {} (state-of))))
       (testing "a finished assistant turn's state becomes the baseline"
         (insert! "assistant" {:queries {"q1" {:database 1}} :todos [{:id "a"}]})
-        (is (= {:queries {:q1 {:database 1}} :todos [{:id "a"}]}
+        (is (= {:queries {"q1" {:database 1}} :todos [{:id "a"}]}
                (state-of))))
       (testing "user rows are ignored even when they carry state"
         (insert! "user" {:queries {"nope" {:database 99}}} :finished nil)
-        (is (= {:queries {:q1 {:database 1}} :todos [{:id "a"}]}
+        (is (= {:queries {"q1" {:database 1}} :todos [{:id "a"}]}
                (state-of))))
       (testing "later turns merge in order -- maps merge entry-wise, vectors take the latest"
         (insert! "assistant" {:queries {"q2" {:database 2}} :todos [{:id "b"}]})
-        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:database 1} "q2" {:database 2}} :todos [{:id "b"}]}
                (state-of))))
       (testing "errored turns never leak into the baseline"
         (insert! "assistant" {:todos [{:id "errored"}]} :error "boom")
-        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:database 1} "q2" {:database 2}} :todos [{:id "b"}]}
                (state-of))))
       (testing "in-flight turns contribute nothing"
         (insert! "assistant" {:todos [{:id "in-flight"}]} :finished nil)
-        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:database 1} "q2" {:database 2}} :todos [{:id "b"}]}
                (state-of))))
       (testing "a response deleted from Slack rewinds its state back out"
         (insert! "assistant" {:todos [{:id "deleted"}]} :deleted? true)
-        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:database 1} "q2" {:database 2}} :todos [{:id "b"}]}
                (state-of)))))))

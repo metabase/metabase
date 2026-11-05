@@ -112,7 +112,7 @@ describe("AdminDataTable", () => {
 
     // the column with a sortKey exposes an interactive control...
     expect(
-      screen.getByRole("button", { name: "Sortable" }),
+      screen.getByRole("button", { name: /Sortable/ }),
     ).toBeInTheDocument();
     // ...while the column without one stays a static header, not a button.
     expect(

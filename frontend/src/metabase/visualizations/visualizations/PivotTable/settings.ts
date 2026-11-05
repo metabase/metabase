@@ -32,7 +32,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { getPartitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -90,7 +90,7 @@ export const settings = {
         settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
         data?.cols ?? [],
       ),
-      partitions,
+      partitions: getPartitions(),
       columns: data == null ? [] : data.cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {
@@ -114,6 +114,12 @@ export const settings = {
           columnsToPartition,
           isDimension,
         );
+        // The cols of a run whose rows are restricted by a sandbox, an
+        // impersonation role or database routing carry no fingerprint, since
+        // it describes rows the user cannot see. The sort then keeps the
+        // breakout order, so a card saved with `pivot_table.column_split`
+        // (which the query builder persists on save) keeps its layout for
+        // every viewer, while an unsaved split can differ between viewers.
         const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
           getIn(col, ["fingerprint", "global", "distinct-count"]),
         );

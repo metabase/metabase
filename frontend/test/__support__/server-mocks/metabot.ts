@@ -3,11 +3,20 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
-import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import type { MetabotConversationDetail } from "metabase/metabot/api";
+import type {
+  MetabotAgentChainOfThoughtMessage,
+  MetabotAgentDataPartMessage,
+  MetabotAgentTextChatMessage,
+  MetabotDebugToolCallMessage,
+  MetabotMessage,
+} from "metabase/metabot/state/types";
+import type { ParentedMessage } from "metabase/metabot/utils/message-tree";
 import type {
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
+  McpToolPermissionsResponse,
   MetabotConversation,
   MetabotConversationTitleResponse,
   MetabotGroupLimit,
@@ -22,6 +31,7 @@ import type {
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createMockLlmProviderConnection } from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
@@ -74,6 +84,114 @@ export function setupGetMetabotConversationTitleEndpoint(
   );
 }
 
+let messageCount = 0;
+
+export function createMockMetabotMessage(
+  opts?: Partial<MetabotMessage>,
+): MetabotMessage {
+  return {
+    id: `message-${++messageCount}`,
+    role: "agent",
+    parts: [],
+    status: { type: "done" },
+    ...opts,
+  };
+}
+
+export function createMockMetabotTextMessage(
+  role: "user" | "agent",
+  text: string,
+  opts?: Partial<MetabotMessage>,
+): MetabotMessage {
+  const message = createMockMetabotMessage({ role, ...opts });
+  return {
+    ...message,
+    parts: [{ id: `${message.id}-text`, role, type: "text", message: text }],
+  };
+}
+
+let partCount = 0;
+
+export function createMockParentedMessage(
+  id: string,
+  parentMessageId: string | null,
+  opts?: Partial<Omit<MetabotMessage, "id">>,
+): ParentedMessage {
+  return {
+    ...createMockMetabotMessage({ ...opts, id }),
+    parent_message_id: parentMessageId,
+  };
+}
+
+export function createMockMetabotTextPart(
+  opts?: Partial<MetabotAgentTextChatMessage>,
+): MetabotAgentTextChatMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "text",
+    message: "answer",
+    ...opts,
+  };
+}
+
+export function createMockMetabotToolCallPart(
+  opts?: Partial<MetabotDebugToolCallMessage>,
+): MetabotDebugToolCallMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "tool_call",
+    name: "search",
+    status: "ended",
+    ...opts,
+  };
+}
+
+export function createMockMetabotChainOfThoughtPart(
+  opts?: Partial<MetabotAgentChainOfThoughtMessage>,
+): MetabotAgentChainOfThoughtMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "chain_of_thought",
+    steps: [],
+    finished: true,
+    ...opts,
+  };
+}
+
+export function createMockMetabotGeneratedCardPart({
+  databaseId = 1,
+  tableId = 2,
+  ...opts
+}: Partial<MetabotAgentDataPartMessage> & {
+  databaseId?: number;
+  tableId?: number;
+} = {}): MetabotAgentDataPartMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "data_part",
+    part: {
+      type: "data-generated_entity",
+      data: {
+        type: "card",
+        id: "card-1",
+        title: "Orders",
+        query: {
+          id: "query-1",
+          query: createMockStructuredDatasetQuery({
+            database: databaseId,
+            query: { "source-table": tableId },
+          }),
+        },
+      },
+    },
+    ...opts,
+  };
+}
+
 export function createMockMetabotConversationDetail(
   opts?: Partial<MetabotConversationDetail>,
 ): MetabotConversationDetail {
@@ -120,6 +238,17 @@ export function setupMetabotPromptSuggestionsEndpointError(
   fetchMock.get(`path:/api/metabot/metabot/${metabotId}/prompt-suggestions`, {
     status: 500,
   });
+}
+
+/** Mocks the prompt suggestions the chat samples for its empty state. */
+export function setupMetabotSamplePromptSuggestionsEndpoint(
+  metabotEntityId: MetabotInfo["entity_id"],
+  prompts: SuggestedMetabotPromptsResponse["prompts"] = [],
+) {
+  fetchMock.get(
+    `path:/api/metabot/metabot/${metabotEntityId}/prompt-suggestions`,
+    { prompts, limit: prompts.length, offset: 0, total: prompts.length },
+  );
 }
 
 export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
@@ -389,6 +518,58 @@ export function setupUpdateMetabotGroupPermissionsEndpoint() {
   fetchMock.put("path:/api/ee/ai-controls/permissions", 200, {
     name: UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME,
   });
+}
+
+const MCP_TOOL_PERMISSIONS_ROUTE_NAME = "mcp-tool-permissions";
+
+export function setupMcpToolPermissionsEndpoint(
+  response: McpToolPermissionsResponse,
+) {
+  fetchMock.removeRoute(MCP_TOOL_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/mcp-permissions", response, {
+    name: MCP_TOOL_PERMISSIONS_ROUTE_NAME,
+  });
+}
+
+const UPDATE_MCP_TOOL_PERMISSIONS_ROUTE_NAME = "update-mcp-tool-permissions";
+
+export function setupUpdateMcpToolPermissionsEndpoint(
+  response: McpToolPermissionsResponse,
+) {
+  fetchMock.removeRoute(UPDATE_MCP_TOOL_PERMISSIONS_ROUTE_NAME);
+  fetchMock.put("path:/api/ee/ai-controls/mcp-permissions", response, {
+    name: UPDATE_MCP_TOOL_PERMISSIONS_ROUTE_NAME,
+  });
+}
+
+const ENABLE_ADVANCED_MCP_TOOL_PERMISSIONS_ROUTE_NAME =
+  "enable-advanced-mcp-tool-permissions";
+
+export function setupEnableAdvancedMcpToolPermissionsEndpoint(
+  response: McpToolPermissionsResponse,
+) {
+  fetchMock.removeRoute(ENABLE_ADVANCED_MCP_TOOL_PERMISSIONS_ROUTE_NAME);
+  fetchMock.post(
+    "path:/api/ee/ai-controls/mcp-permissions/advanced",
+    response,
+    {
+      name: ENABLE_ADVANCED_MCP_TOOL_PERMISSIONS_ROUTE_NAME,
+    },
+  );
+}
+
+const DISABLE_ADVANCED_MCP_TOOL_PERMISSIONS_ROUTE_NAME =
+  "disable-advanced-mcp-tool-permissions";
+
+export function setupDisableAdvancedMcpToolPermissionsEndpoint(
+  response: McpToolPermissionsResponse,
+) {
+  fetchMock.removeRoute(DISABLE_ADVANCED_MCP_TOOL_PERMISSIONS_ROUTE_NAME);
+  fetchMock.delete(
+    "path:/api/ee/ai-controls/mcp-permissions/advanced",
+    response,
+    { name: DISABLE_ADVANCED_MCP_TOOL_PERMISSIONS_ROUTE_NAME },
+  );
 }
 
 const AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME = "ai-controls-instance-limit";

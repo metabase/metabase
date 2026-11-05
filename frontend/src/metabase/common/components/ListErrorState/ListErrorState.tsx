@@ -11,7 +11,7 @@ type ListErrorStateProps = {
 
 export function ListErrorState({ error }: ListErrorStateProps) {
   return (
-    <Box p="xl">
+    <Box p="xxl">
       <EmptyState
         message={getErrorMessage(error, t`An error occurred`)}
         spacing="sm"

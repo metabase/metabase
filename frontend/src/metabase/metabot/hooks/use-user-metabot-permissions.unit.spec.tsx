@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { UserMetabotPermissionsResponse } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -79,10 +79,16 @@ describe("useUserMetabotPermissions", () => {
     setup({ isMetabotEnabled: false });
     const perms = await getPerms();
     expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);
     expect(perms.canUseOtherTools).toBe(false);
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/metabot/permissions/user-permissions",
+      ),
+    ).toBe(false);
   });
 
   it("does not fetch user permissions without an authenticated user", async () => {
@@ -142,6 +148,7 @@ describe("useUserMetabotPermissions", () => {
     });
     const perms = await getPerms();
     expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);

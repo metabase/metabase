@@ -1,5 +1,3 @@
-import { memoize } from "underscore";
-
 import * as Lib from "metabase-lib";
 import type {
   ErdEdge,
@@ -12,6 +10,11 @@ import type {
 
 import { HEADER_HEIGHT_PX, NODE_WIDTH_PX, ROW_HEIGHT_PX } from "../constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
+
+type FlowGraph = {
+  nodes: SchemaViewerFlowNode[];
+  edges: SchemaViewerFlowEdge[];
+};
 
 export function getNodeId(node: { table_id: TableId } | TableId): string {
   const tableId = typeof node === "object" ? node.table_id : node;
@@ -121,42 +124,7 @@ function toFlowEdge(edge: ErdEdge): SchemaViewerFlowEdge {
   };
 }
 
-function getFlowGraphMemoKey(data: ErdResponse): string {
-  const nodeKey = data.nodes
-    .map((node) => {
-      const fieldKey = node.fields
-        .map(
-          (f) =>
-            `${f.id}:${f.name}:${f.display_name}:${f.database_type}:${f.base_type}:${f.effective_type ?? ""}:${f.semantic_type ?? ""}:${f.fk_target_field_id ?? ""}:${f.fk_target_table_id ?? ""}`,
-        )
-        .join("|");
-      return `${node.table_id}:${node.name}:${node.display_name}:${node.description ?? ""}:${getOwnerKey(node.owner)}:${node.schema ?? ""}:${node.visibility_type ?? ""}:${fieldKey}`;
-    })
-    .sort()
-    .join(";");
-
-  const edgeKey = data.edges
-    .map(
-      (edge) =>
-        `${edge.source_table_id}:${edge.source_field_id}->${edge.target_table_id}:${edge.target_field_id}:${edge.relationship}`,
-    )
-    .sort()
-    .join(";");
-
-  return `${nodeKey}__${edgeKey}`;
-}
-
-function getOwnerKey(owner: ErdNode["owner"]): string {
-  if (owner == null) {
-    return "";
-  }
-  if ("id" in owner && owner.id != null) {
-    return `u_${owner.id}`;
-  }
-  return `e_${owner.email}`;
-}
-
-const memoizedToFlowGraph = memoize((data: ErdResponse) => {
+function buildFlowGraph(data: ErdResponse): FlowGraph {
   // Per-table field roles: which fields act as source, target, or self-ref target
   // of any edge. Handles rendering is based on this (not on semantic_type) so an
   // edge whose target field isn't tagged as a PK still gets a matching handle.
@@ -190,11 +158,25 @@ const memoizedToFlowGraph = memoize((data: ErdResponse) => {
     ),
     edges: data.edges.map((edge) => toFlowEdge(edge)),
   };
-}, getFlowGraphMemoKey);
+}
 
-export function toFlowGraph(data: ErdResponse): {
-  nodes: SchemaViewerFlowNode[];
-  edges: SchemaViewerFlowEdge[];
-} {
-  return memoizedToFlowGraph(data);
+/**
+ * Keyed on the response object, not on a serialization of the whole schema.
+ * RTK Query returns a stable reference per cache entry, so remounting the
+ * viewer still hits, and the entry is released when the query cache drops the
+ * response. Returning the identical graph matters beyond the compute it saves:
+ * useGraphSync takes the graph as an effect dependency, and a fresh object
+ * re-runs the layout and resets the viewport.
+ */
+const flowGraphs = new WeakMap<ErdResponse, FlowGraph>();
+
+export function toFlowGraph(data: ErdResponse): FlowGraph {
+  const cached = flowGraphs.get(data);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const graph = buildFlowGraph(data);
+  flowGraphs.set(data, graph);
+  return graph;
 }

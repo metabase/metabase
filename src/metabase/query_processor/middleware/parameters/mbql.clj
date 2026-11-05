@@ -53,7 +53,7 @@
   [query       :- ::lib.schema/query
    stage-path  :- ::lib.walk/path
    param-type  :- ::lib.schema.parameter/type
-   param-value
+   param-value :- ::lib.schema.parameter/parameter.value.scalar
    a-ref       :- [:or :mbql.clause/field :mbql.clause/expression]]
   (cond
     ;; LEGACY: :id and :category are widget-types misused as parameter types.

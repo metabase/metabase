@@ -3,7 +3,7 @@ import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { usePublishedTableSegmentPage } from "../../hooks";
+import { usePublishedTableSegmentPage } from "../../hooks/use-published-table-segment-page";
 import { SegmentDetailPage } from "../SegmentDetailPage";
 
 type PublishedTableSegmentDetailPageParams = {
@@ -27,6 +27,7 @@ export function PublishedTableSegmentDetailPage() {
   return (
     <SegmentDetailPage
       segment={segment}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <PublishedTableSegmentBreadcrumbs table={table} segment={segment} />

@@ -46,7 +46,9 @@ The group won't see this collection listed, and they'll lack access to any of th
 
 Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
 
-There is one, important exception: when a group has their data permission set to [Block](./data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
+View access to a collection includes access to the query definition of each item saved in it, including the SQL of native questions. If a group can view a question, they can see how that question was built, including through the [Metabase API](../api.html). This is true even if they lack [Create queries](./data.md#create-queries-permissions) permissions for the underlying data, and even if they can't run the query themselves. If you don't want a group to see a query, don't give them access to the collection where that query is saved.
+
+When a group has their data permission set to [Blocked](./data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved. 
 
 ## Dashboards with questions from multiple collections
 
@@ -92,7 +94,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing/), admins can designate [Official Collections][official-collections].
+Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][official-collections].
 
 ## Special collections
 
@@ -114,7 +116,7 @@ A personal collection works just like any other collection except that its permi
 
 ### Library collection
 
-See [Permissions for the Library and its subcollections](../data-studio/library.md#library-permissions).
+See [Permissions for the Library and its subcollections](../data-modeling/semantic-layer/library.md#library-permissions).
 
 Do not use collection permissions for **Library > Data** to control access to data in published tables. Use [Data permissions](data.md) instead.
 

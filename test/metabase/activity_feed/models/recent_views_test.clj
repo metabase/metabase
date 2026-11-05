@@ -1,4 +1,4 @@
-(ns metabase.activity-feed.models.recent-views-test
+(ns ^:synchronized metabase.activity-feed.models.recent-views-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -20,7 +20,8 @@
 (use-fixtures
   :each (fn [f]
           (clear-test-user-recent-views)
-          (f)))
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (f))))
 
 (defn fixup [list-item]
   (-> list-item
@@ -379,7 +380,7 @@
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
       (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
       (testing "archived dashboards are not returned (#45223)"
-        (t2/update! :model/Dashboard dash-id-3 {:archived true})
+        (t2/update! :model/Dashboard :id dash-id-3 {:archived true})
         (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
 (deftest id-pruning-test

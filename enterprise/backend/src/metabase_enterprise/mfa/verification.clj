@@ -4,7 +4,7 @@
   one-time code, atomically consuming whichever credential is presented so a replayed or
   concurrently submitted credential can never pass twice.
 
-  Row-level helpers (`provider-name`, `totp-identity`, `confirmed?`, `stored-secret`) live here
+  Row-level helpers (`totp-identity`, `confirmed?`, `stored-secret`) live here
   as the lower layer; `metabase-enterprise.mfa.enrollment` requires this namespace for them.
 
   One-time-use state lives in the same `:credentials` JSON column as the enrollment secret:
@@ -13,8 +13,10 @@
   - `:recovery_codes` — bcrypt hashes of unused recovery codes; removed on use.
   - `:email_otp`      — `{:hash ... :exp ...}` bcrypt hash of a pending emailed code; removed on use."
   (:require
+   [metabase-enterprise.mfa.db :as mfa.db]
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2])
   (:import
@@ -24,14 +26,12 @@
 
 ;; Register "totp" in the AuthIdentity provider hierarchy so the model's before-insert/-update
 ;; validation accepts its rows (the default `validate` method applies).
-(derive :provider/totp :metabase.auth-identity.provider/provider)
-
-(def ^:private provider-name "totp")
+(auth-identity/derive! :provider/totp :metabase.auth-identity.provider/provider)
 
 (defn totp-identity
   "The AuthIdentity row for `user-id`'s TOTP enrollment, or nil."
   [user-id]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name))
+  (mfa.db/totp-identity user-id))
 
 (defn confirmed?
   "Has `auth-identity` been confirmed (i.e. is it a usable second factor)?
@@ -47,7 +47,10 @@
   [auth-identity]
   (get-in auth-identity [:credentials :secret]))
 
-(defn- jti-used? [credentials jti]
+(defn jti-used?
+  "Given the `:credentials` and a candidate `jti`, return true if that `jti` has been previously used for these
+  credentials. Prevents reuse of a single password entry for multiple challenges or enrollments."
+  [credentials jti]
   (boolean (some #(= (:jti %) jti) (:used_jtis credentials))))
 
 (defn jti-consumed?
@@ -55,7 +58,7 @@
   [user-id jti]
   (boolean (some-> (totp-identity user-id) :credentials (jti-used? jti))))
 
-(defn- consume-jti
+(defn consume-jti
   "Record `jti` as used (nil jti = session re-auth, nothing to record), pruning expired entries."
   [credentials jti]
   (if-not jti
@@ -71,8 +74,7 @@
   the successful verification — otherwise it would stay valid for its remaining ~10-minute TTL,
   including as re-auth for disable/regenerate."
   [auth-identity credentials jti]
-  (t2/update! :model/AuthIdentity (:id auth-identity)
-              {:credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}))
+  (mfa.db/update-auth-identity! (:id auth-identity) {:credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}))
 
 (defn- totp-attempt!
   "When `code` is a valid, not-yet-used TOTP code: consume its time step (RFC 6238 §5.2) and return
@@ -120,21 +122,20 @@
   recovery code, or the emailed code, plus the challenge `jti` when one is given (pass nil for
   session re-auth, where no challenge token exists).
 
-  True only for a confirmed enrollment with an unused jti and an unconsumed code. Runs in a
+  Verification succeeds only for a confirmed enrollment with an unused jti and an unconsumed code. Runs in a
   transaction with the enrollment row locked so a concurrently replayed code, recovery code, or
-  token cannot pass twice."
+  token cannot pass twice.
+
+  On successful verification the AuthIdentity associated with the second factor is returned, else nil"
   [user-id code jti]
   (t2/with-transaction [_conn]
-    (boolean
-     (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                             :user_id user-id
-                                             :provider provider-name
-                                             {:for :update})]
-       (when (and (confirmed? auth-identity)
-                  (not (jti-used? (:credentials auth-identity) jti)))
-         (or (totp-attempt! auth-identity code jti)
-             (recovery-attempt! auth-identity code jti)
-             (email-otp-attempt! auth-identity code jti)))))))
+    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
+      (when (and (confirmed? auth-identity)
+                 (not (jti-used? (:credentials auth-identity) jti)))
+        (when (or (totp-attempt! auth-identity code jti)
+                  (recovery-attempt! auth-identity code jti)
+                  (email-otp-attempt! auth-identity code jti))
+          auth-identity)))))
 
 (defn set-email-otp!
   "Generate a 6-digit emailed one-time code for `user-id`'s confirmed enrollment, replacing any
@@ -142,15 +143,12 @@
   code for the caller to email, or nil when the user has no confirmed enrollment."
   [user-id]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider provider-name
-                                            {:for :update})]
+    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (confirmed? auth-identity)
         (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]
-          (t2/update! :model/AuthIdentity (:id auth-identity)
-                      {:credentials (assoc (:credentials auth-identity)
-                                           :email_otp {:hash (u.password/hash-bcrypt code)
-                                                       :exp  (+ (quot (System/currentTimeMillis) 1000)
-                                                                (* 10 60))})})
+          (mfa.db/update-auth-identity! (:id auth-identity)
+                                        {:credentials (assoc (:credentials auth-identity)
+                                                             :email_otp {:hash (u.password/hash-bcrypt code)
+                                                                         :exp  (+ (quot (System/currentTimeMillis) 1000)
+                                                                                  (* 10 60))})})
           code)))))

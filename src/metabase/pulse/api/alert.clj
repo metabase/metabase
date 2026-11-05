@@ -6,24 +6,19 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.notification.api :as notification.api]
+   [metabase.pulse.db :as pulse.db]
    [metabase.util.cron :as u.cron]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
-
-(when config/ee-available?
-  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 (defn- notification->pulse
   "Convert a notification to the legacy pulse structure for backward compatibility."
   [notification]
   (let [subscription      (-> notification :subscriptions first)
         notification-card (-> notification :payload)
-        card              (->> notification :payload :card_id (t2/select-one :model/Card))]
+        card              (->> notification :payload :card_id pulse.db/card)]
     (merge
      (select-keys notification [:id :creator_id :creator :created_at :updated_at])
      {:name                nil
@@ -87,7 +82,7 @@
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
   [_route-params
-   {:keys [archived user_id]} :- [:map
+   {:keys [archived user_id]} :- [:map {:closed true}
                                   [:archived {:default false} [:maybe ms/BooleanValue]]
                                   [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [user-id (if api/*is-superuser?*
@@ -106,7 +101,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch an alert by ID"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (notification.api/get-notification id)
       api/read-check
@@ -118,7 +113,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (notification.api/unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)

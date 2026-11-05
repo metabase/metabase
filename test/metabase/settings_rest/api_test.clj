@@ -2,14 +2,17 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
    [metabase.permissions.validation :as validation]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting-test :as models.setting-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   [toucan2.core :as t2]))
 
 (comment h2/keep-me)
 
@@ -146,6 +149,19 @@
       (is (true? (fetch-setting :test-api-setting-boolean 200)))
       (test-api-setting-integer! 42)
       (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
+
+(deftest ^:parallel include-in-list-false-test
+  (testing "a setting marked :include-in-list? false is left out of the bulk payloads but still readable by key"
+    (let [properties (mt/user-http-request :crowberto :get 200 "session/properties")
+          listed     (into #{} (map (comp keyword :key)) (mt/user-http-request :crowberto :get 200 "setting"))]
+      (doseq [setting-key [:engines :available-timezones]]
+        (testing setting-key
+          (testing "left out of GET /api/session/properties, which is the payload the page inlines"
+            (is (not (contains? properties setting-key))))
+          (testing "left out of GET /api/setting"
+            (is (not (contains? listed setting-key))))
+          (testing "still served by GET /api/setting/:key"
+            (is (some? (fetch-setting setting-key 200)))))))))
 
 (deftest ^:parallel engines-mark-h2-superseded-test
   (testing "GET /api/setting/:key"
@@ -425,3 +441,31 @@
         (let [site-name-setting (some #(when (= "site-name" (:key %)) %)
                                       (mt/user-http-request :crowberto :get 200 "setting"))]
           (is (str/includes? (:description site-name-setting) "New Test Co")))))))
+
+(deftest set-user-local-setting-with-unparseable-settings-column-test
+  (testing "PUT /api/setting/:key"
+    (testing "works when the user's `settings` column can't be decrypted or parsed"
+      (mt/with-temp [:model/User {user-id :id} {}]
+        ;; a `settings` column that is encrypted the way the column expects but whose contents aren't JSON: the
+        ;; transform hands back the raw column value (a String) instead of a map
+        (t2/query {:update :core_user
+                   :set    {:settings (encryption/maybe-encrypt "not-json")}
+                   :where  [:= :id user-id]})
+        (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})
+        (is (= "NEW"
+               (mt/user-http-request user-id :get 200 "setting/test-user-local-only-setting")))))))
+
+(deftest set-setting-read-from-app-db-test
+  (testing "PUT /api/setting/:key inserts, updates and deletes the row that GET reads back from the app DB (GHY-4589)"
+    ;; With the cache off, GET reads the row by key rather than from memory, so the filter on the key is exercised.
+    (binding [config/*disable-setting-cache* true]
+      (mt/with-temporary-setting-values [test-setting-1 nil]
+        (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "first"})
+        (is (= "first" (fetch-setting :test-setting-1 200)))
+        (testing "a value that looks like SQL is stored and read back as a string"
+          (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "x' OR '1'='1"})
+          (is (= "x' OR '1'='1" (fetch-setting :test-setting-1 200))))
+        (testing "clearing the value deletes the row"
+          (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value nil})
+          (is (nil? (fetch-setting :test-setting-1 204)))
+          (is (not (t2/exists? :model/Setting :key "test-setting-1"))))))))

@@ -179,7 +179,7 @@
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
   [base-context      :- ::ads/context
-   card-templates
+   card-templates    :- [:sequential ::ads/card-template]
    ground-dimensions :- ::ads/dim-name->matching-fields
    ground-filters   :- [:sequential ::ads/grounded-filter]
    grounded-metrics :- [:sequential ::ads/grounded-metric]]

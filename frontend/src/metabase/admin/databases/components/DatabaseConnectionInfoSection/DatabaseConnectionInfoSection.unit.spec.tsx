@@ -1,4 +1,6 @@
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -6,9 +8,9 @@ import {
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -100,6 +102,7 @@ describe("DatabaseConnectionInfoSection", () => {
           ),
         ).toBe(true);
       });
+      expect(await screen.findByText("Sync triggered!")).toBeInTheDocument();
     });
 
     it("shows an error when a schema sync fails", async () => {
@@ -134,6 +137,7 @@ describe("DatabaseConnectionInfoSection", () => {
           ),
         ).toBe(true);
       });
+      expect(await screen.findByText("Scan triggered!")).toBeInTheDocument();
     });
 
     describe("sync indicator", () => {
@@ -178,6 +182,33 @@ describe("DatabaseConnectionInfoSection", () => {
     });
   });
 
+  describe("sync failure cause", () => {
+    it("shows why the initial sync aborted (GHY-3856)", () => {
+      setup({
+        database: createMockDatabase({
+          initial_sync_status: "aborted",
+          initial_sync_error:
+            "User is not authorized to perform: glue:GetDatabases",
+        }),
+      });
+
+      expect(screen.getByText("Sync failed")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "User is not authorized to perform: glue:GetDatabases",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("isn't shown when the database has no recorded sync error", () => {
+      setup({
+        database: createMockDatabase({ initial_sync_status: "aborted" }),
+      });
+
+      expect(screen.queryByText("Sync failed")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Cloud-attached databases", () => {
     it("should not show the sync actions", async () => {
       setup({ database: createMockDatabase({ is_attached_dwh: true }) });
@@ -190,12 +221,45 @@ describe("DatabaseConnectionInfoSection", () => {
     });
   });
 
+  describe("Stub databases", () => {
+    it("should hide the sync actions but allow editing the connection details", async () => {
+      setup({ database: createMockDatabase({ is_stub: true }) });
+      expect(
+        screen.queryByText(/Sync database schema/i),
+      ).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: /Edit connection details/i }),
+      ).toBeEnabled();
+    });
+  });
+
   describe("Sample database", () => {
     it("should disable editing the connection details", async () => {
       setup({ database: createMockDatabase({ is_sample: true }) });
       expect(
         await screen.findByRole("button", { name: /Edit connection details/i }),
       ).toBeDisabled();
+    });
+
+    it("should explain why a cloud-attached sample database without details cannot be edited", async () => {
+      setup({
+        database: createMockDatabase({
+          is_sample: true,
+          is_attached_dwh: true,
+          details: undefined,
+        }),
+      });
+      const editButton = await screen.findByRole("button", {
+        name: /Edit connection details/i,
+      });
+      expect(editButton).toBeDisabled();
+
+      await userEvent.hover(editButton, {
+        pointerEventsCheck: PointerEventsCheckLevel.Never,
+      });
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "The sample database cannot be edited.",
+      );
     });
   });
 });

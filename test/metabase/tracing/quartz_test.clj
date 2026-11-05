@@ -1,7 +1,7 @@
 (ns metabase.tracing.quartz-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.task.bootstrap :as task.bootstrap]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.tracing.core :as tracing]
    [metabase.tracing.quartz :as tracing.quartz])
   (:import
@@ -58,7 +58,8 @@
       (swap! stmt-calls-atom conj :rollback))
     (commit [_]
       (swap! stmt-calls-atom conj :commit))
-    (close [_])
+    (close [_]
+      (swap! stmt-calls-atom conj :close-connection))
     (isClosed [_] false)))
 
 (defn- mock-job-execution-context
@@ -114,8 +115,7 @@
             traced (#'tracing.quartz/traced-connection conn)]
         (testing "close delegates to original"
           (.close ^Connection traced)
-          ;; no exception means the method was delegated
-          (is true))
+          (is (= [:close-connection] @calls)))
         (testing "isClosed delegates to original"
           (is (false? (.isClosed ^Connection traced)))))
       (finally
@@ -247,12 +247,12 @@
 
 (deftest set-connection-interceptor-test
   (testing "set-connection-interceptor! installs and removes interceptors"
-    (let [the-atom @#'task.bootstrap/connection-interceptor
+    (let [the-atom @#'app-db.quartz/connection-interceptor
           original @the-atom]
       (try
-        (task.bootstrap/set-connection-interceptor! identity)
+        (app-db.quartz/set-connection-interceptor! identity)
         (is (some? @the-atom))
-        (task.bootstrap/set-connection-interceptor! nil)
+        (app-db.quartz/set-connection-interceptor! nil)
         (is (nil? @the-atom))
         (finally
           (reset! the-atom original))))))

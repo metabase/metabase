@@ -3,6 +3,7 @@
   (:require
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -26,17 +27,18 @@
   [:ref ::DatabaseMetadataTable])
 
 (mr/def ::DatabaseMetadata
-  [:map
+  [:map {:closed true}
    [:tables [:fn {:error/message "a set, sequential, or reducible collection of tables"}
              (fn [x] (or (set? x) (sequential? x) (instance? clojure.lang.IReduceInit x)))]]
-   [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:metabase-metadata-tables {:optional true} (ms/InstanceOfClass clojure.lang.Volatile)]])
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
   [:ref ::DatabaseMetadata])
 
 (mr/def ::TableMetadataField
-  [:map
+  [:map {:closed true}
    [:name              ::lib.schema.common/non-blank-string]
    [:database-type     [:maybe ::lib.schema.common/non-blank-string]] ; blank if the Field is all NULL & untyped, i.e. in Mongo
    [:base-type         ::lib.schema.common/base-type]
@@ -51,7 +53,7 @@
    [:json-unfolding             {:optional true} :boolean]
    ;; TODO (Cam 8/11/25) -- this should be required to be a sequence of strings but we'll need to go fix some code
    [:nfc-path                   {:optional true} [:maybe [:sequential [:or :keyword :string]]]]
-   [:custom                     {:optional true} :map]
+   [:custom                     {:optional true} ms/OpaqueJSONObject]
    [:database-default           {:optional true} :string]
    [:database-is-auto-increment {:optional true} :boolean]
    [:database-is-generated      {:optional true} :boolean]
@@ -59,7 +61,11 @@
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]
-   [:visibility-type            {:optional true} [:maybe :keyword]]])
+   [:visibility-type            {:optional true} [:maybe :keyword]]
+   [:jdbc-type                  {:optional true} [:maybe :int]]
+   [:preview-display            {:optional true} :boolean]
+   [:table-name                 {:optional true} ::lib.schema.common/non-blank-string]
+   [:table-schema               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
@@ -116,7 +122,7 @@
   [:ref ::TableFKMetadataEntry])
 
 (mr/def ::FKMetadataEntry
-  [:map
+  [:map {:closed true}
    [:fk-table-name   ::lib.schema.common/non-blank-string]
    [:fk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
    [:fk-column-name  ::lib.schema.common/non-blank-string]
@@ -136,12 +142,10 @@
 (mr/def ::no-kebab-case-keys (ms/MapWithNoKebabKeys))
 
 (mr/def ::DatabaseInstance
-  [:and
-   (ms/InstanceOf :model/Database)
-   ::no-kebab-case-keys])
+  [:ref ::lib.schema.metadata/database])
 
 (def DatabaseInstance
-  "Schema for a valid instance of a Metabase Database."
+  "Schema for the Lib metadata of a Database, the only form of a Database inside sync."
   [:ref ::DatabaseInstance])
 
 (mr/def ::TableInstance
@@ -186,6 +190,7 @@
 ;; v3 that includes new "global" fingerprint info, both the v2-fingerprinted numeric Fields and the v1-fingerprinted
 ;; textual Fields can be upgraded to v3.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fingerprint-version->types-that-should-be-re-fingerprinted*
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
@@ -196,6 +201,7 @@
    5 #{:type/Text}
    6 #{:type/Number :type/Text :type/DateTime}})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *latest-fingerprint-version*
   "The newest (highest-numbered) version of our Field fingerprints."
   (apply max (keys *fingerprint-version->types-that-should-be-re-fingerprinted*)))

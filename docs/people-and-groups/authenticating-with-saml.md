@@ -20,15 +20,15 @@ Before setting up SAML, make sure you know the password for your Metabase admin 
 
 ## Setting up SAML with your IdP in Metabase
 
-Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click on the **Authentication** tab. Click the **Set up** button in the SAML section of the Authentication page, and you'll see this form:
+After you [confirm the password for your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), go to **Admin** > **Settings** > **Authentication**. In the **SAML** section, click **Set up**. You can also click **SAML** in the sidebar under **Authentication**.
 
-![SAML form](images/saml-form.png)
+The form includes the following sections:
 
-The form includes three sections:
-
-1. [Metabase info that you'll have to input into your identity provider (IdP)](#generic-saml-configuration).
-2. [IdP info that you'll need to tell Metabase about](#enabling-saml-authentication-in-metabase).
-3. [Signing SSO requests (optional)](#settings-for-signing-sso-requests-optional).
+1. [Identity provider (IdP) configuration](#identity-provider-idp-configuration)
+2. [Identity provider info](#identity-provider-info)
+3. [User provisioning](#user-provisioning)
+4. [Sign SSO requests](#sign-sso-requests)
+5. [Group mapping](#group-mapping)
 
 ## SAML guides
 
@@ -46,17 +46,17 @@ If you don't see your IdP listed here:
 
 - Refer to your IdP's reference docs on configuring SAML. You'll be looking for something like this [OneLogin SAML guide](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970).
 - Using the information found on the Metabase SAML form, fill out your IdP's SAML form.
-- For more information, see the next section on [Generic SAML configuration](#generic-saml-configuration).
+- For more information, see the next section on [Identity provider (IdP) configuration](#identity-provider-idp-configuration).
 
 ## User provisioning
 
-User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via SAML SSO.
+User provisioning is enabled by default. When someone logs in via SAML SSO, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save and enable** after you change it.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
-If you've set up [User provisioning with SCIM](./user-provisioning.md), you'll want to turn this setting off so that Metabase doesn't automatically create a new account for anyone who authenticates successfully, as you may want to use SCIM to determine who can and can't create an account in Metabase.
+If you manage user provisioning with [SCIM](./user-provisioning.md), you can't turn on SAML user provisioning.
 
-## Generic SAML configuration
+## Identity provider (IdP) configuration
 
 The top portion of the SAML form in Metabase has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
 
@@ -82,21 +82,17 @@ Different IdPs use different names for the redirect URL. Here are some common ex
 | [Okta](saml-okta.md)   | Single Sign On URL       |
 | OneLogin               | ACS (Consumer) URL       |
 
-### User attributes
+### SAML attributes
 
 Metabase will automatically log in people who've been authenticated by your SAML identity provider. To do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each person's first name, last name, and email.
 
 Most IdPs already include these assertions by default, but some (such as [Okta](./saml-okta.md)) must be configured to include them.
 
-Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
+Metabase shows the values for **User's email attribute**, **User's first name attribute**, and **User's last name attribute**. Copy each one into an input box labeled "Name" in your IdP's attribute statements section.
 
 > If you allow people to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
 
-### Settings for signing SSO requests (optional)
-
-These are additional settings you can fill in to sign SSO requests to ensure they don’t get tampered with.
-
-## Enabling SAML authentication in Metabase
+## Identity provider info
 
 Metabase will now need to know some things about your IdP. Here's a breakdown of each of the settings:
 
@@ -112,18 +108,6 @@ Different IdPs use different names for the Identity Provider URL. Here are some 
 | [Okta](saml-okta.md)   | Identity Provider Single-Sign On URL |
 | OneLogin               | SAML 2.0 Endpoint (HTTP)             |
 
-### SAML identity provider issuer
-
-The SAML identity provider issuer is a unique identifier for the IdP. You might also see "Issuer" referred to as "Entity ID". Assertions from the IdP will contain this information, and Metabase will verify that the issuer matches the value you set.
-
-We recommend that you set this value to make your SAML configuration more secure.
-
-| Provider               | Name                        |
-| ---------------------- | --------------------------- |
-| [Auth0](saml-auth0.md) | Identity Provider Login URL |
-| [Okta](saml-okta.md)   | Identity Provider Issuer    |
-| OneLogin               | Issuer URL                  |
-
 ### SAML identity provider certificate
 
 The SAML identity provider certificate is an encoded certificate that Metabase will use when connecting to the IdP URI. The certificate will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
@@ -138,7 +122,21 @@ Note that your certificate text may include header and footer comments that look
 | [Okta](saml-okta.md)   | X.509 Certificate   |
 | OneLogin               | X.509 Certificate   |
 
-### Settings for signing SSO requests (optional)
+### SAML application name
+
+Metabase uses the application name in requests to your IdP. The default is `Metabase`.
+
+### SAML identity provider issuer
+
+The SAML identity provider issuer is a required unique identifier for the IdP. You might also see the issuer called "Entity ID." Assertions from the IdP include the issuer, and Metabase verifies that it matches the value you enter.
+
+| Provider               | Name                        |
+| ---------------------- | --------------------------- |
+| [Auth0](saml-auth0.md) | Identity Provider Login URL |
+| [Okta](saml-okta.md)   | Identity Provider Issuer    |
+| OneLogin               | Issuer URL                  |
+
+### Sign SSO requests
 
 To sign requests so that they can't be tampered with, you'll need to provide additional settings.
 
@@ -172,25 +170,44 @@ SLO isn’t configurable from the Metabase interface. To enable it, you’ll nee
 
 For the `MB_SESSION_COOKIE_SAMESITE` setting to work with `none`, Metabase must be served over HTTPS. Browsers like Chrome will block cookies in cross-site requests if SSL is not enabled. Without HTTPS, logout requests from your IdP (such as Okta) won’t include the session cookie, which means Metabase won’t be able to end the session properly.
 
-## Synchronizing group membership with your IdP
+## Group mapping
 
-This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. This setting may not correlate to group functionality provided by your IdP; you may need to create a separate user attribute to set people's Metabase groups, like `metabaseGroups`.
+Group mapping lets you assign people to Metabase groups based on an attribute of your users in your IdP. This setting may not correlate to group functionality provided by your IdP; you may need to create a separate user attribute to set people's Metabase groups, like `metabaseGroups`.
 
-First, you will need to create a SAML user attribute that you will use to indicate which Metabase groups the person should be a part of. This created user attribute can be a XML string or a list of XML strings. Different IdPs have different ways of handling this, but you will likely need to edit your user profiles or find a way to map a user's groups to a list of Metabase group names.
+First, you will need to create a SAML user attribute that you will use to indicate which Metabase groups the person should be a part of. This created user attribute can be an XML string or a list of XML strings. Different IdPs have different ways of handling this, but you will likely need to edit your user profiles or find a way to map a user's groups to a list of Metabase group names.
 
-## Configuring the group schema in Metabase
+## Configuring group mappings in Metabase
 
-Once you've gotten everything set up in your SAML provider, you'll need to configure the group schema in Metabase.
+After you set up the group attribute in your IdP, configure group mappings:
 
-1. Turn on the **Synchronize group memberships** setting.
-2. Click **Edit mappings**.
-3. Click **Create a mapping**.
-4. Enter in the name of one of the groups you entered as your `metabaseGroups` attribute values, then click the **Add** button.
-5. Click the dropdown that appears under the `Groups` heading to select the Metabase group(s) that users with this particular `metabaseGroups` value should be added to.
-6. Click **Save**.
-7. After that, type in the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
+1. In the **Group mapping** section, turn on the toggle.
+2. Next to **Manual group mappings**, click **New**.
+3. Enter one of the values from your `metabaseGroups` attribute.
+4. Select the Metabase groups that people with this value should be added to.
+5. Click **Add mapping**.
+6. Repeat steps 2 to 5 for each group you want to map.
+7. In **Group attribute name**, enter the name of the SAML attribute that contains the group names. For example, if you named the attribute `MetabaseGroupName` in Okta, enter `MetabaseGroupName`.
+8. Click **Save and enable**.
 
-![Group schema](images/saml-okta-groups.png)
+**Group attribute name** is required. Until you set it, Metabase assigns no groups.
+
+Metabase saves each mapping as soon as you add, edit, or remove it. To edit a mapping, hover over it and click the pencil icon.
+
+![Group mapping](images/saml-okta-groups.png)
+
+### Remove a group mapping
+
+To remove a mapping, hover over it and click the trash icon. Metabase asks what should happen to the Metabase group:
+
+- **Nothing, just remove the mapping**
+- **Also remove all members from this group**. Members keep their Metabase accounts.
+- **Also delete the group**
+
+Then click **Remove mapping**. Removing members or deleting a group takes effect immediately and can't be undone.
+
+If the mapping points to a built-in group such as Administrators, Metabase doesn't offer these options. It removes the mapping without changing the group or its members.
+
+**Also delete the group** isn't available when another mapping uses the same Metabase group.
 
 ## Creating Metabase accounts with SSO
 
@@ -204,13 +221,13 @@ Metabase accounts created with an external identity provider login don't have pa
 
 > **Avoid locking yourself out of your Metabase!** Turning off password logins applies to all Metabase accounts, _including your Metabase admin account_. Before turning off password logins, make sure you can log in to your admin account using SSO.
 
-To _require_ people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**. Turn off the **Enable Password Authentication** toggle.
+To require people to log in with SSO, go to **Admin** > **Settings** > **Authentication** > **Overview** and disable the **Enable password authentication** toggle.
 
 ![Password disable](images/password-disable.png)
 
 ## New account notification emails
 
-When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, go to **Admin settings > Authentication > User provisioning**, and toggle off **"Notify admins of new users provisioned from SSO"**
+When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, go to **Admin** > **Settings** > **Authentication** > **User provisioning**, and toggle off **"Notify admins of new users provisioned from SSO"**
 
 ## Example code using SAML
 

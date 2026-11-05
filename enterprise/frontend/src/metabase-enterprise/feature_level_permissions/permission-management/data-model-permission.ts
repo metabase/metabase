@@ -1,23 +1,19 @@
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
-import { navigateToGranularPermissions } from "metabase/admin/permissions/permissions";
 import {
-  getPermissionWarning,
-  getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
-import {
-  DataPermissionType,
+  Messages,
   type PermissionOption,
   type PermissionSectionConfig,
-} from "metabase/admin/permissions/types";
-import {
   getFieldsPermission,
+  getPermissionWarning,
+  getPermissionWarningModal,
   getSchemasPermission,
   getTablesPermission,
-} from "metabase/admin/permissions/utils/graph";
+  navigateToGranularPermissions,
+} from "metabase/permissions";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
@@ -30,22 +26,25 @@ import {
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NONE,
     icon: "close",
     iconColor: "feedback-negative",
   },
   edit: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Yes`,
+    get label() {
+      return t`Yes`;
+    },
     value: DataPermissionValue.ALL,
     icon: "check",
     iconColor: "feedback-positive",
   },
   controlled: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Granular`,
+    get label() {
+      return t`Granular`;
+    },
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
     iconColor: "feedback-warning",

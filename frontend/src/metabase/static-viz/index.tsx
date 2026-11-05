@@ -1,9 +1,7 @@
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
-// eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -13,8 +11,10 @@ import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticCh
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
+import { mutateColors } from "metabase/ui/colors/colors";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
@@ -28,6 +28,7 @@ import {
   isCartesianChart,
   makeCellBackgroundGetter,
 } from "metabase/viz-core";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   DashCardVisualizationSettings,
@@ -35,7 +36,7 @@ import type {
   DatasetData,
   GeoJSONData,
   RawSeries,
-  SettingKey,
+  SeriesCard,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
@@ -102,11 +103,11 @@ function getVisualizerRawSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
-        display,
+        display: display ?? DEFAULT_VISUALIZER_DISPLAY,
         visualization_settings: settings,
-      } as Card,
+        dataset_query: STRUCTURED_QUERY_TEMPLATE,
+      },
       // Unjustified type cast. FIXME
       data: mergeVisualizerData({
         columns,
@@ -120,16 +121,16 @@ function getVisualizerRawSeries(
 }
 
 function RenderChart(
-  rawSeries: RawSeries,
+  rawSeries: RawSeries<Card>,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
 ) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    // Unjustified type cast. FIXME
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
+  MetabaseSettings.set("application-colors", options.applicationColors);
+  // The app loads the instance's colors from the page bootstrap, which this
+  // context has no access to. Without them, a palette color looked up by name
+  // would resolve to the default value rather than the instance's.
+  mutateColors(options.applicationColors ?? {});
 
   if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();
@@ -141,7 +142,7 @@ function RenderChart(
     options.applicationColors,
   );
 
-  let seriesForRender = rawSeries;
+  let seriesForRender: RawSeries<SeriesCard> = rawSeries;
   if (dashcardSettings.visualization) {
     const { visualization } = dashcardSettings;
     const dataSources = rawSeries.map((series) =>
@@ -214,6 +215,7 @@ function RenderChart(
       width={options.width}
       height={options.height}
       fitWithinBounds={options.fitWithinBounds}
+      gridSize={options.gridSize}
     />,
   );
 }

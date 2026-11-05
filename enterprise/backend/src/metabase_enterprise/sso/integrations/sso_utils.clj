@@ -68,13 +68,13 @@
           our-host (some-> (system/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url)
                          (relative-uri? redirect)
-                         (= (.getHost redirect) our-host)))
+                         (and our-host (= (.getHost redirect) our-host))))
       redirect-url)
     (catch Exception e
       (log/errorf "Invalid redirect URL: %s" (ex-message e))
+      ;; Keep the ex-data to `:status-code` only, so the exceptions middleware returns the message as the body.
       (throw (ex-info (tru "Invalid redirect URL")
-                      {:status-code  400
-                       :redirect-url redirect-url})))))
+                      {:status-code 400})))))
 
 (defn group-names->strings
   "Coerce a group-names value (a single string or a collection) into a sequence of the string names it contains.

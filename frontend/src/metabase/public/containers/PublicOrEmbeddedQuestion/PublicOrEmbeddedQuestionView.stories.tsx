@@ -3,11 +3,14 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ComponentType } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
-import { createMockMetadata } from "__support__/metadata";
-import { createWaitForResizeToStopDecorator } from "__support__/storybook";
+import { createMockSettingsState, createMockState } from "__support__/state";
+import {
+  createWaitForChartsDecorator,
+  createWaitForResizeToStopDecorator,
+} from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import {
   DateTimeColumn,
@@ -15,10 +18,6 @@ import {
   StringColumn,
 } from "__support__/visualizations";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
@@ -47,7 +46,11 @@ registerVisualization(Table);
 export default {
   title: "App/Embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
-  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
+  decorators: [
+    ReduxDecorator,
+    createWaitForChartsDecorator(),
+    createWaitForResizeToStopDecorator(),
+  ],
   parameters: {
     layout: "fullscreen",
     msw: {
@@ -73,7 +76,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn) {
+function ReduxDecorator(Story: ComponentType) {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -98,7 +101,6 @@ const defaultArgs: Partial<
   ComponentProps<typeof PublicOrEmbeddedQuestionView>
 > = {
   card: createMockCard({ id: CARD_BAR_ID, name: "Bar", display: "bar" }),
-  metadata: createMockMetadata({}),
   titled: true,
   bordered: true,
   getParameters: () => [],
@@ -191,7 +193,7 @@ export const TransparentThemeDefault = {
   decorators: [LightBackgroundDecorator],
 };
 
-function LightBackgroundDecorator(Story: StoryFn) {
+function LightBackgroundDecorator(Story: ComponentType) {
   return (
     <Box bg="background_page-primary" h="100%">
       <Story />
@@ -448,7 +450,7 @@ export const TableLightTheme = {
   },
 };
 
-function NarrowContainer(Story: StoryFn) {
+function NarrowContainer(Story: ComponentType) {
   return (
     <Box w="300px" h="250px" pos="relative">
       <Story />

@@ -6,6 +6,7 @@ import type {
   CardId,
   DatasetColumn,
   DateTimeAbsoluteUnit,
+  LineStyle,
   RowValue,
   VisualizationSettingKey,
 } from "metabase-types/api";
@@ -74,6 +75,7 @@ export type ScatterSeriesModel = (RegularSeriesModel | BreakoutSeriesModel) & {
 
 export type TrendLineSeriesModel = BaseSeriesModel & {
   sourceDataKey: DataKey;
+  style: LineStyle;
 };
 
 export type SeriesModel =
@@ -88,6 +90,8 @@ export type DimensionModel = {
   columnIndex: number;
   // All dimension columns by their card id
   columnByCardId: Record<CardId, DatasetColumn>;
+  // all cards' dimension columns
+  columns: DatasetColumn[];
 };
 
 export type Datum = Record<DataKey, RowValue> & {
@@ -183,17 +187,24 @@ export type YAxisModel = {
   formatter: AxisFormatter;
   formatGoal: AxisFormatter;
   splitNumber?: number;
+  hasResponsiveTicks?: boolean;
   isNormalized?: boolean;
 };
 
 export type TrendLinesModel = {
   dataset: ChartDataset;
   seriesModels: TrendLineSeriesModel[];
+  extents: SeriesExtents;
 };
+
+export type YAxisSide = "left" | "right";
+
+/** Series names on each y-axis, `null` for a side with no axis. */
+export type YAxisSeriesNames = Record<YAxisSide, string[] | null>;
 
 export type StackDisplay = "bar" | "area";
 export type StackModel = {
-  axis: "left" | "right";
+  axis: YAxisSide;
   display: StackDisplay;
   seriesKeys: DataKey[];
 };
@@ -220,6 +231,7 @@ export type ComboChartDataDensity = BaseChartDataDensity & {
 };
 
 export type BaseCartesianChartModel = {
+  isRowChart?: boolean;
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
@@ -244,6 +256,9 @@ export type BaseCartesianChartModel = {
 
   // For `graph.max_categories` setting
   groupedSeriesModels?: SeriesModel[];
+
+  // Row chart rows summed into the folded "Other" row
+  foldedDataset?: ChartDataset;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

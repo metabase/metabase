@@ -1,13 +1,18 @@
+import cx from "classnames";
 import type {
+  HTMLAttributes,
   KeyboardEvent,
   MouseEvent,
   ReactNode,
   SyntheticEvent,
 } from "react";
+import { forwardRef } from "react";
 
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
+import CS from "metabase/css/core/index.css";
+import { Box } from "metabase/ui";
 
-import { BaseItemRoot } from "./SelectListItem.styled";
+import S from "./SelectListItem.module.css";
 
 export interface BaseSelectListItemProps {
   id: string | number;
@@ -17,10 +22,36 @@ export interface BaseSelectListItemProps {
   isSelected?: boolean;
   size?: "small" | "medium";
   className?: string;
-  hasLeftIcon?: boolean;
-  hasRightIcon?: boolean;
   as?: any;
 }
+
+type BaseItemRootProps = HTMLAttributes<HTMLLIElement> & {
+  size: "small" | "medium";
+  isSelected: boolean;
+};
+
+const BaseItemRoot = forwardRef<HTMLLIElement, BaseItemRootProps>(
+  function BaseItemRoot({ size, isSelected, className, ...props }, ref) {
+    return (
+      <Box
+        component="li"
+        ref={ref}
+        display="grid"
+        bdrs="xs"
+        className={cx(
+          CS.cursorPointer,
+          CS.alignCenter,
+          size === "small" ? S.small : S.medium,
+          S.itemSpacing,
+          S.highlight,
+          { [S.selected]: isSelected },
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 
 export function BaseSelectListItem({
   id,

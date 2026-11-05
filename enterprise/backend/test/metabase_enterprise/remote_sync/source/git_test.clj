@@ -506,9 +506,9 @@
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
     (mt/with-temp-dir [remote-dir nil]
-      (let [[_master _remote] (init-source! "master" remote-dir
-                                            :files {"master.txt" "File in master"
-                                                    (str subdir-path "path.txt") "File in subdir"})]))))
+      (init-source! "master" remote-dir
+                    :files {"master.txt" "File in master"
+                            (str subdir-path "path.txt") "File in subdir"}))))
 
 (deftest concurrent-access
   (mt/with-temp-dir [remote-dir nil]

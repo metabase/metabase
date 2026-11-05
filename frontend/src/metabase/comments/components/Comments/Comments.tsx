@@ -174,8 +174,7 @@ export const Comments = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     }
@@ -189,7 +188,7 @@ export const Comments = ({
     <Stack gap={0} h="100%">
       {(title || showCloseButton) && (
         <Flex
-          px="xl"
+          px="xxl"
           pt="1.25rem"
           pb="sm"
           justify="space-between"
@@ -197,7 +196,11 @@ export const Comments = ({
         >
           {title && <Title order={3}>{title}</Title>}
           {showCloseButton && (
-            <ActionIcon aria-label={t`Close`} onClick={closeSidebar}>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Close`}
+              onClick={closeSidebar}
+            >
               <Icon name="close" c="text-primary" />
             </ActionIcon>
           )}
@@ -235,12 +238,12 @@ export const Comments = ({
 
           {activeComments.length === 0 && childTargetId === "all" && (
             <Flex
-              p="xl"
+              p="xxl"
               pt="5rem"
               align="center"
               color="muted"
               direction="column"
-              gap="md"
+              gap="lg"
             >
               <Image
                 w={120}
@@ -249,12 +252,12 @@ export const Comments = ({
                 alt={t`No comments`}
               />
 
-              <Text fw="700" c="text-disabled">{t`No comments`}</Text>
+              <Text fw="700" c="text-secondary">{t`No comments`}</Text>
             </Flex>
           )}
 
           {childTargetId !== "all" && (
-            <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
+            <Box px="xl" py={activeComments.length === 0 ? "xl" : "xxs"}>
               <CommentEditor
                 autoFocus={activeComments.length === 0 && !disableAutoFocus}
                 data-testid="new-thread-editor"

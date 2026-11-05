@@ -7,7 +7,8 @@ import { useUserSetting } from "metabase/settings";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 
-import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
+import { SidebarHeading } from "../Sidebar";
+import { SidebarLink } from "../SidebarItems";
 import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
@@ -53,8 +54,8 @@ export const BrowseNavSection = ({
         showAddDataButton ? (
           <Tooltip label={t`Add data`}>
             <ActionIcon
+              variant="subtle"
               aria-label={t`Add data`}
-              color="text-secondary"
               onClick={() => {
                 trackAddDataModalOpened("left-nav");
                 onAddDataModalOpen();
@@ -70,7 +71,7 @@ export const BrowseNavSection = ({
     >
       {hasDataAccess &&
         (!isEmbeddingIframe || entityTypes.includes("table")) && (
-          <PaddedSidebarLink
+          <SidebarLink
             icon="database"
             url={BROWSE_DATA_URL}
             isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
@@ -78,11 +79,11 @@ export const BrowseNavSection = ({
             aria-label={t`Browse databases`}
           >
             {t`Databases`}
-          </PaddedSidebarLink>
+          </SidebarLink>
         )}
 
       {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-        <PaddedSidebarLink
+        <SidebarLink
           icon="model"
           url={BROWSE_MODELS_URL}
           isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
@@ -90,11 +91,11 @@ export const BrowseNavSection = ({
           aria-label={t`Browse models`}
         >
           {t`Models`}
-        </PaddedSidebarLink>
+        </SidebarLink>
       )}
 
       {!isEmbeddingIframe && (
-        <PaddedSidebarLink
+        <SidebarLink
           icon="metric"
           url={BROWSE_METRICS_URL}
           isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
@@ -102,7 +103,7 @@ export const BrowseNavSection = ({
           aria-label={t`Browse metrics`}
         >
           {t`Metrics`}
-        </PaddedSidebarLink>
+        </SidebarLink>
       )}
     </CollapseSection>
   );

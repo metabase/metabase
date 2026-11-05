@@ -34,6 +34,7 @@ const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
@@ -464,6 +465,25 @@ export const WithGoalLine = {
           "graph.goal_label": "Target",
         };
       },
+    ) as any,
+    renderingContext,
+  },
+};
+
+export const CustomYAxisRangeOffScreen = {
+  render: Template,
+
+  args: {
+    // Unjustified type cast. FIXME
+    rawSeries: updateIn(
+      data.ordinalXScale,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 30000,
+        "graph.y_axis.max": 40000,
+      }),
     ) as any,
     renderingContext,
   },

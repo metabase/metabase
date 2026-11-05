@@ -7,7 +7,7 @@ import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMergedRef } from "@mantine/hooks";
-import type { ReactNode, Ref } from "react";
+import type { JSX, ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { useDndSensors } from "metabase/common/hooks";

@@ -20,6 +20,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -79,6 +80,7 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
+                              :transforms/testing               true
                               :transforms/index-ddl             false
                               :uuid-type                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
@@ -165,17 +167,33 @@
        "\n"
        (remove
         nil?
+        ;; The two per-relation privilege calls live in the outer select list, not the `where`, and the caller
+        ;; drops rows where `selectable` is false. In a `where` the planner hoists them above the schema filter
+        ;; and evaluates them across the whole catalog: `has_any_column_privilege` alone then costs ~10s on a
+        ;; shared cluster, flat in how many relations survive. A select-list expression is computed only on rows
+        ;; that already passed the `where`, so the same calls cost nothing measurable. Filtering on `selectable`
+        ;; in SQL instead of in the caller puts the expression back in a predicate and brings the whole cost
+        ;; back -- measured, not assumed.
         ["select"
-         "  c.relname as name,"
-         "  n.nspname as schema,"
-         "  case c.relkind"
-         "    when 'r' then 'table'"
-         "    when 'p' then 'partitioned table'"
-         "    when 'v' then 'view'"
-         "    when 'f' then 'foreign table'"
-         "    when 'm' then 'materialized view'"
-         "    end as type,"
-         "  d.description"
+         "  s.name,"
+         "  s.schema,"
+         "  s.type,"
+         "  s.description,"
+         "  pg_catalog.has_table_privilege(s.oid, 'SELECT')"
+         "    or pg_catalog.has_any_column_privilege(s.oid, 'SELECT') as selectable"
+         "from ("
+         "  select"
+         "    c.oid,"
+         "    c.relname as name,"
+         "    n.nspname as schema,"
+         "    case c.relkind"
+         "      when 'r' then 'table'"
+         "      when 'p' then 'partitioned table'"
+         "      when 'v' then 'view'"
+         "      when 'f' then 'foreign table'"
+         "      when 'm' then 'materialized view'"
+         "      end as type,"
+         "    d.description"
          "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
          "  left join pg_catalog.pg_description d on c.oid = d.objoid and d.objsubid = 0"
          "  left join pg_catalog.pg_class dc on d.classoid=dc.oid and dc.relname='pg_class'"
@@ -184,16 +202,18 @@
          "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
          "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
          (when placeholders (str "    and n.nspname in " placeholders))
+         ;; per-schema, so cheap enough to stay a predicate
          "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
-         "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
-         "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
+         ") s"
          "union all"
          "select"
          "  tablename as name,"
          "  schemaname as schema,"
          "  'EXTERNAL TABLE' as type,"
          ;; external tables don't have descriptions
-         "  null as description"
+         "  null as description,"
+         ;; the USAGE predicate below is this branch's whole privilege test
+         "  true as selectable"
          "from svv_external_tables t"
          "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
          (when placeholders (str "  and t.schemaname in " placeholders))
@@ -209,10 +229,14 @@
         syncable? (fn [schema]
                     (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
     (eduction
-     ;; kept over the narrowed query too: `syncable?` stays the definition of what syncs, and an exclusion filter
-     ;; still arrives here with every schema.
-     (comp (filter (comp syncable? :schema))
-           (map #(dissoc % :type)))
+     ;; `selectable` is filtered here rather than in the SQL on purpose; `get-tables-sql` says why. `true?` rather
+     ;; than truthiness so that a driver someday handing back the string "false" fails closed.
+     ;;
+     ;; `syncable?` is kept over the narrowed query too: it stays the definition of what syncs, and an exclusion
+     ;; filter still arrives here with every schema.
+     (comp (filter (comp true? :selectable))
+           (filter (comp syncable? :schema))
+           (map #(dissoc % :type :selectable)))
      (sql-jdbc.execute/reducible-query database (get-tables-sql (exactly-named-schemas inclusion-patterns))))))
 
 (defmethod driver/describe-database* :redshift
@@ -424,7 +448,7 @@
   ;; Same as the inherited `:sql-jdbc` impl, but inlines a sortkey when one is present. Non-transform callers
   ;; (e.g. uploads) pass no `:indexes`, so the rendered SQL is unchanged for them.
   (let [sql (create-table-sql driver table-name column-definitions opts)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -538,10 +562,6 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                  (driver-api/database (driver-api/metadata-provider)))
-                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
@@ -774,15 +794,16 @@
         user-parameters))
 
 (defmethod driver-api/query->remark :redshift
-  [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
-  (str "/* partner: \"metabase\", "
-       (json/encode {:dashboard_id        dashboard-id
-                     :chart_id            card-id
-                     :optional_user_id    executed-by
-                     :optional_account_id (driver-api/site-uuid)
-                     :filter_values       (field->parameter-value query)})
-       " */ "
-       (driver-api/default-query->remark query)))
+  [_ query]
+  (let [{:keys [user-id card-id dashboard-id account-id]} (driver-api/query->remark-data query)]
+    (str "/* partner: \"metabase\", "
+         (json/encode {:dashboard_id        dashboard-id
+                       :chart_id            card-id
+                       :optional_user_id    user-id
+                       :optional_account_id account-id
+                       :filter_values       (field->parameter-value query)})
+         " */ "
+         (driver-api/default-query->remark query))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

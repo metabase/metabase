@@ -17,6 +17,15 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest prompt-suggestions-metabot-id-test
+  (mt/with-temp [:model/Metabot {:keys [id entity_id]} {:name "Prompt sources"}]
+    (doseq [metabot-id [id entity_id]]
+      (is (=? {:prompts [] :total 0}
+              (mt/user-http-request :rasta :get 200
+                                    (format "metabot/metabot/%s/prompt-suggestions" metabot-id))))))
+  (is (= "Unknown Metabot."
+         (mt/user-http-request :rasta :get 404 "metabot/metabot/nonexistent-entity-id/prompt-suggestions"))))
+
 (defmacro with-clean-metabots
   "Macro to reset the Metabots table to an empty state before a test and restore it after the test runs."
   [& body]
@@ -68,8 +77,9 @@
                                                        :tables :table_questions})))]
           ;; --------------------------- Generating sample prompts ---------------------------
           (testing "should generate prompt suggestions for metabot"
-            (let [response (with-redefs [metabot.example-question-generator/generate-example-questions
-                                         prompt-generator]
+            (let [response (mt/with-dynamic-fn-redefs
+                             [metabot.example-question-generator/generate-example-questions
+                              prompt-generator]
                              ;; Trigger prompt generation by calling the regenerate endpoint
                              (mt/user-http-request
                               :crowberto :post 200
@@ -151,7 +161,8 @@
                     (mt/user-http-request :rasta :post 403 url)
                     (is (= remaining-prompt-ids (current-prompt-ids))))
                   (testing "admin users are allowed"
-                    (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
+                    (mt/with-dynamic-fn-redefs
+                      [metabot.example-question-generator/generate-example-questions prompt-generator]
                       (is (=? {:status "generated" :prompt_count pos-int?}
                               (mt/user-http-request :crowberto :post 200 url)))))))
               (let [new-prompt-ids (current-prompt-ids)]

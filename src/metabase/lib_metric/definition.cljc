@@ -5,6 +5,8 @@
    [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.ast.schema :as ast.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
@@ -66,7 +68,8 @@
 (mu/defn from-metric-metadata :- ::lib-metric.schema/metric-definition
   "Create a MetricDefinition from MetricMetadata.
    Dimensions and dimension-mappings are derived from source metadata when building the AST."
-  [provider metric-metadata]
+  [provider        :- [:maybe ::lib.metadata.protocols/metadata-providerable]
+   metric-metadata :- ::lib.schema.metadata/metric]
   (let [uuid (str (random-uuid))]
     {:lib/type          :metric/definition
      :expression        [:metric {:lib/uuid uuid} (:id metric-metadata)]
@@ -77,7 +80,8 @@
 (mu/defn from-measure-metadata :- ::lib-metric.schema/metric-definition
   "Create a MetricDefinition from MeasureMetadata.
    Dimensions and dimension-mappings are derived from source metadata when building the AST."
-  [provider measure-metadata]
+  [provider         :- [:maybe ::lib.metadata.protocols/metadata-providerable]
+   measure-metadata :- ::lib.schema.metadata/measure]
   (let [uuid (str (random-uuid))]
     {:lib/type          :metric/definition
      :expression        [:measure {:lib/uuid uuid} (:id measure-metadata)]
@@ -157,6 +161,8 @@
   ([definition :- ::lib-metric.schema/metric-definition]
    (->query-plan definition {}))
   ([definition :- ::lib-metric.schema/metric-definition
-    opts]
+    opts       :- [:map {:closed true}
+                   [:limit       {:optional true} [:maybe pos-int?]]
+                   [:values-only {:optional true} [:maybe :boolean]]]]
    (let [ast (->ast definition)]
      (ast.plan/plan-from-ast ast opts))))

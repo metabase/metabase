@@ -31,7 +31,7 @@ export function SortOptionsPicker({
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <ActionIcon aria-label={t`Sort`} onClick={toggle}>
+        <ActionIcon variant="subtle" aria-label={t`Sort`} onClick={toggle}>
           <FixedSizeIcon c="text-primary" name="sort" />
         </ActionIcon>
       </Popover.Target>
@@ -78,7 +78,7 @@ function SortOptionsPopover({
   };
 
   return (
-    <Stack w="15rem" p="md" gap="lg">
+    <Stack w="15rem" p="lg" gap="xl">
       <Radio.Group
         value={sortOptions.column}
         label={t`Sort by`}
@@ -97,7 +97,6 @@ function SortOptionsPopover({
       <SegmentedControl
         value={sortOptions.direction}
         data={getSortDirectionItems()}
-        size="sm"
         fullWidth
         onChange={handleDirectionChange}
       />

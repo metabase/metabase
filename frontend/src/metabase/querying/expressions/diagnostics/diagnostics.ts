@@ -1,5 +1,5 @@
 import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import { compileExpression } from "../compile-expression";
 import type { ExpressionError } from "../errors";
@@ -16,7 +16,7 @@ type Options = {
   expressionIndex?: number;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
-  metadata?: Metadata;
+  database?: Pick<Database, "features">;
 };
 
 export type SyntaxDiagnoser = (tokens: Token[]) => void;

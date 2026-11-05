@@ -32,10 +32,10 @@ export const Discussions = ({
   );
 
   return (
-    <Stack pt="lg" gap={0}>
+    <Stack pt="xl" gap={0}>
       {threads.map((thread) => (
         <Fragment key={thread.id}>
-          <Box px="lg" pb="lg">
+          <Box px="xl" pb="xl">
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}

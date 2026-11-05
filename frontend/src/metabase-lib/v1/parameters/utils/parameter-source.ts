@@ -1,13 +1,18 @@
-import Field from "metabase-lib/v1/metadata/Field";
+import {
+  getSearchField,
+  getSharedRemappedField,
+} from "metabase-lib/v1/metadata/utils/remapping";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
+import type {
+  ParameterField,
+  ParameterWithTemplateTagTarget,
+} from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-
-import type { ParameterWithTemplateTagTarget } from "../types";
 
 import { deriveFieldOperatorFromParameter } from "./operators";
 import { getFields } from "./parameter-fields";
@@ -46,9 +51,9 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
  */
 export const hasRemappedParameterValues = (
   parameter: Parameter | null | undefined,
-  fields: Field[],
+  fields: ParameterField[],
 ): boolean => {
-  if (Field.remappedField(fields) != null) {
+  if (getSharedRemappedField(fields) != null) {
     return true;
   }
 
@@ -122,10 +127,10 @@ export const canListParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canListFields;
 };
 
-export const canListFieldValues = (fields: Field[]) => {
+export const canListFieldValues = (fields: ParameterField[]) => {
   const hasFields = fields.length > 0;
   const hasFieldValues = fields
-    .filter((field) => !field.isVirtual())
+    .filter((field) => typeof field.id === "number")
     .every((field) => field.has_field_values === "list");
 
   return hasFields && hasFieldValues;
@@ -151,12 +156,12 @@ export const canSearchParameterValues = (
 };
 
 export const canSearchFieldValues = (
-  fields: Field[],
+  fields: ParameterField[],
   disablePKRemapping = false,
 ) => {
   const hasFields = fields.length > 0;
   const canSearch = fields.every((field) =>
-    field.searchField(disablePKRemapping),
+    getSearchField(field, disablePKRemapping),
   );
   const hasFieldValues = fields.some(
     (field) =>

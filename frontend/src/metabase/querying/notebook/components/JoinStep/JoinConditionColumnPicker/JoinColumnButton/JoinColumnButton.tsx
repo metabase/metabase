@@ -6,8 +6,8 @@ import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import { isTouchDevice } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
@@ -90,7 +90,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           display="block"
           fz={11}
           lh={1}
-          c={isEmpty ? "core-brand" : "text-primary-inverse"}
+          c={isEmpty ? "text-brand-strong" : "text-primary-inverse"}
           ta="left"
           fw={400}
         >
@@ -100,7 +100,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       <Text
         className={S.joinCellContent}
         display="block"
-        c={isEmpty ? "core-brand" : "text-primary-inverse"}
+        c={isEmpty ? "text-brand-strong" : "text-primary-inverse"}
         ta="left"
         fw={700}
         lh={1}

@@ -16,6 +16,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -61,6 +62,13 @@ import {
 
 import { DataModel } from "./DataModel";
 import type { ParsedRouteParams } from "./types";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
 
 registerVisualizations();
 
@@ -322,7 +330,7 @@ describe("DataModel", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(async () => {
         expect(
@@ -611,6 +619,70 @@ describe("DataModel", () => {
   });
 
   describe("multi schema database", () => {
+    it("switches between single-table and bulk editing as selection changes", async () => {
+      await setup({
+        databases: [SAMPLE_DB_MULTI_SCHEMA],
+        waitForTable: false,
+      });
+
+      await userEvent.click(
+        await findTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      );
+      expect(
+        await findTablePickerTable(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        await findTablePickerSchemaCheckbox(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      );
+
+      expect(
+        await screen.findByPlaceholderText("Give this table a name"),
+      ).toHaveValue(PEOPLE_TABLE_MULTI_SCHEMA.display_name);
+      expect(
+        await findTablePickerSchemaCheckbox(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeChecked();
+
+      await userEvent.click(
+        await findTablePickerSchema(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      );
+      expect(
+        await findTablePickerTable(REVIEWS_TABLE_MULTI_SCHEMA.display_name),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        await findTablePickerSchemaCheckbox(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      );
+
+      expect(
+        await findTablePickerSchemaCheckbox(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeChecked();
+      expect(
+        await findTablePickerSchemaCheckbox(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).toBeChecked();
+      expect(
+        await screen.findByRole("heading", { name: /2 tables selected/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Give this table a name"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        await findTablePickerSchemaCheckbox(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      );
+
+      expect(
+        await screen.findByPlaceholderText("Give this table a name"),
+      ).toHaveValue(PEOPLE_TABLE_MULTI_SCHEMA.display_name);
+      expect(
+        screen.queryByRole("heading", { name: /tables selected/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        await findTablePickerSchemaCheckbox(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeChecked();
+      expect(
+        await findTablePickerSchemaCheckbox(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).not.toBeChecked();
+    });
+
     it("should not select the first schema if there are multiple schemas", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA], waitForTable: false });
 
@@ -719,7 +791,9 @@ describe("DataModel", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        router?.back();
+        act(() => {
+          router?.back();
+        });
 
         await waitFor(() => {
           expect(
@@ -1089,6 +1163,10 @@ async function findTablePickerSchema(name: string) {
 
 async function findTablePickerTable(name: string) {
   return await findTablePickerItem("table", name);
+}
+
+async function findTablePickerSchemaCheckbox(name: string) {
+  return within(await findTablePickerSchema(name)).getByRole("checkbox");
 }
 
 async function findTablePickerItem(

@@ -40,11 +40,11 @@ Metabase offers several options for authentication.
 
 ### SSO for Metabase Pro and Enterprise plans
 
-With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have more options to help orchestrate lots of people and groups.
+With [Pro and Enterprise plans](https://www.metabase.com/pricing), you have more options to help orchestrate lots of people and groups.
 
 - [JWT][jwt]
 - LDAP advanced features
-  - [Group membership filter](./ldap.md#ldap-group-membership-filter)
+  - [Group membership filter](./ldap.md#group-membership-filter)
   - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
 - [OIDC][oidc]
   - [Keycloak][oidc-keycloak]

@@ -1,14 +1,12 @@
 import type { StoryFn } from "@storybook/react";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
+  createWaitForChartsDecorator,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
@@ -21,6 +19,7 @@ import { data } from "./stories-data";
 export default {
   title: "viz/PieChart",
   component: PieChart,
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };
 
 registerVisualization(PieChart);

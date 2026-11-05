@@ -1,0 +1,18 @@
+.hoverTarget {
+  flex-shrink: 0;
+  display: none;
+}
+
+.defaultIcon {
+  display: block;
+}
+
+[aria-expanded="true"] .hoverTarget,
+.hoverParent:hover .hoverTarget {
+  display: block;
+}
+
+[aria-expanded="true"] .defaultIcon,
+.hoverParent:hover .defaultIcon {
+  display: none;
+}

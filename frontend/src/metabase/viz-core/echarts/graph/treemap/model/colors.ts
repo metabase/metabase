@@ -3,6 +3,8 @@ import Color from "color";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { TreemapRow } from "metabase-types/api";
 
+import { getChartColor } from "../../../../lib/color-name";
+
 import { getTreemapNodeKey } from "./data";
 import type { TreemapTree } from "./types";
 
@@ -15,7 +17,7 @@ export function getTreemapColors(
 ): Record<string, string> {
   const colors = getColorsForValues(tree.map(getTreemapNodeKey));
   treemapRows?.forEach((row) => {
-    colors[row.key] = row.color;
+    colors[row.key] = getChartColor(row.color, row.color_name);
   });
   return colors;
 }

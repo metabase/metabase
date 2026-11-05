@@ -18,8 +18,6 @@ export const UserListElement = ({
     data-testid="user-list-element"
     onClick={() => onClick(value)}
     data-is-selected={isSelected}
-    px="sm"
-    py="xs"
     variant="subtle"
     bg={isSelected ? "core-brand" : undefined}
     justify="start"

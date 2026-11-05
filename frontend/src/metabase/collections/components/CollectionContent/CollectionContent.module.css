@@ -5,8 +5,3 @@
 .main {
   overflow-y: auto;
 }
-
-.table {
-  container-name: ItemsTableContainer;
-  container-type: inline-size;
-}

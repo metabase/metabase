@@ -50,7 +50,11 @@ digest() {
 }
 
 shopt -s nullglob
-DEPS_FILES=(deps.edn modules/drivers/deps.edn modules/drivers/*/deps.edn)
+DEPS_FILES=(deps.edn
+            bin/lint-migrations-file/deps.edn
+            bin/load-namespaces/deps.edn
+            modules/drivers/deps.edn
+            modules/drivers/*/deps.edn)
 shopt -u nullglob
 
 DEPS_HASH="$(digest "${DEPS_FILES[@]}")"
@@ -73,10 +77,6 @@ CYPRESS_VERSION="$CYPRESS_VERSIONS"
 # The Clojure CLI version CI installs. It lives here rather than in prepare-backend so that the version
 # and the key that identifies its cache entry cannot drift apart.
 CLOJURE_VERSION="1.12.0.1488"
-
-# An incremental lint cache is only ever an accelerator, so it keys on the commit and always falls back
-# to the newest entry on the prefix. The exact key never pre-exists, which keeps the entry current.
-ESLINT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
 
 emit_multiline() {
   local name="$1"; shift
@@ -112,10 +112,6 @@ spec() {
   echo "cypress-path=$HOME/.cache/Cypress"
   echo "cypress-key=cypress-$OS-$CYPRESS_VERSION"
   echo "cypress-restore-key=cypress-$OS-"
-
-  echo "eslint-path=.eslintcache"
-  echo "eslint-key=eslint-$OS-$ESLINT_SHA"
-  echo "eslint-restore-key=eslint-$OS-"
 }
 
 # Print one output's value, including the multiline form, and fail on a name that does not exist. A

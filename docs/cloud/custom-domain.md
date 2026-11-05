@@ -14,7 +14,9 @@ redirect_from:
 
 By default, Metabase will automatically provision a domain name for your Metabase that ends in metabaseapp.com (e.g., yourcompany.metabaseapp.com).
 
-[Pro and Enterprise](https://www.metabase.com/pricing/) plans allow you to add a custom domain. Setting a custom domain will update your instance's [Site URL](../configuring-metabase/settings.md#site-url). The Site URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios.
+[Pro and Enterprise](https://www.metabase.com/pricing) plans allow you to add a custom domain. Setting a custom domain will update your instance's [Site URL](../configuring-metabase/settings.md#site-url). The Site URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios.
+
+> This page is about the web address of your Metabase Cloud instance. To control which sites dashboards can embed iframes and images from, see [Allow iframes and images from other domains](../configuring-metabase/domains.md).
 
 ## Add a custom domain to your Metabase
 

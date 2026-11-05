@@ -39,7 +39,7 @@
 
     (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
     (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
-  ([s]
+  ([s :- :string]
    (truncate-alias s truncate-alias-max-length-bytes))
 
   ([s         :- :string
@@ -70,7 +70,7 @@
     :string]
    ;; (f id str) => unique-str
    [:=>
-    [:cat :any :string]
+    [:cat symbol? :string]
     :string]])
 
 (mu/defn- untruncated-unique-alias :- :string

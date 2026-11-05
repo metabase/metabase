@@ -14,6 +14,13 @@ interface QuestionSummarizeWidgetProps {
   onCloseSummary: () => void;
 }
 
+const SUMMARIZE_ACTIVE_VARS = {
+  "--button-bg": "var(--mb-color-core-summarize)",
+  "--button-hover":
+    "color-mix(in srgb, var(--mb-color-core-summarize) 88%, transparent)",
+  "--button-pressed": "var(--mb-color-core-summarize)",
+};
+
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
   editSummary,
@@ -27,20 +34,19 @@ export function QuestionSummarizeWidget({
     }
   };
 
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-summarize-sidebar",
-        perform: handleClick,
-      },
-    ],
-    [isShowingSummarySidebar],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-toggle-summarize-sidebar",
+      perform: handleClick,
+    },
+  ]);
 
   return (
     <Button
-      color="core-summarize"
       variant={isShowingSummarySidebar ? "filled" : "default"}
+      vars={() => ({
+        root: isShowingSummarySidebar ? SUMMARIZE_ACTIVE_VARS : {},
+      })}
       leftSection={<Icon name="sum" />}
       onClick={handleClick}
       data-active={isShowingSummarySidebar}

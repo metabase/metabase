@@ -89,7 +89,7 @@ export function TransformsUpsellPage() {
       style={{ display: "flex", flexDirection: "column" }}
     >
       <TransformsHeader showTabs={false} />
-      <Flex justify="center" pos="relative" flex={1} mt="lg">
+      <Flex justify="center" pos="relative" flex={1} mt="xl">
         <LineDecorator pos="absolute" mah="100%">
           <EnableTransformsCard
             onEnableClick={onEnableClick}
@@ -127,7 +127,8 @@ export function TransformsUpsellPage() {
                       >{t`We'll notify you when you've hit ${NOTIFICATION_THRESHOLD * 100}% of your allotment.`}</Text>
                       <Button
                         loading={isPurchasing}
-                        variant="primary"
+                        variant="filled"
+                        size="lg"
                         onClick={handlePurchase}
                       >{t`Agree and continue`}</Button>
                       <Text c="text-secondary" lh={1.4}>

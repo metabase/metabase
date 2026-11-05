@@ -1,16 +1,17 @@
 import { assoc } from "icepick";
 
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import type {
   QueryBuilderState,
   QueryBuilderUIControls,
   Range,
 } from "metabase/redux/store";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -40,6 +41,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
+  getEmbeddedParameterVisibilityGetter,
   getIsResultDirty,
   getIsVisualized,
   getNativeEditorCursorOffset,
@@ -47,6 +49,7 @@ import {
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
   getShouldShowUnsavedChangesWarning,
+  getSubmittableQuestion,
 } from "./selectors";
 
 registerVisualizations();
@@ -584,5 +587,140 @@ describe("getShouldShowUnsavedChangesWarning", () => {
       });
       expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
     });
+  });
+});
+
+describe("getSubmittableQuestion", () => {
+  function getTimeseriesCard(opts?: Parameters<typeof createMockCard>[0]) {
+    return createMockCard({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      ...opts,
+    });
+  }
+
+  it("sets the default display when the question has never been run (metabase#83091)", () => {
+    const card = getTimeseriesCard();
+    const state = getBaseState({ card });
+    const question = checkNotNull(getQuestion(state));
+
+    expect(getSubmittableQuestion(state, question).display()).toBe("line");
+  });
+
+  it("does not change the display after the question has been run", () => {
+    const card = getTimeseriesCard();
+    const state = getBaseState({
+      card,
+      lastRunCard: createMockCard(),
+    });
+    const question = checkNotNull(getQuestion(state));
+
+    expect(getSubmittableQuestion(state, question).display()).toBe("table");
+  });
+
+  it("does not change the display for a question with a locked display", () => {
+    // displayIsLocked is true for saved cards or if the user explicitly picks a display
+    const card = getTimeseriesCard({ displayIsLocked: true });
+    const state = getBaseState({ card });
+    const question = checkNotNull(getQuestion(state));
+
+    expect(getSubmittableQuestion(state, question).display()).toBe("table");
+  });
+});
+
+describe("getEmbeddedParameterVisibilityGetter", () => {
+  it("returns the same function for the same card", () => {
+    const card = createMockCard();
+    const state = getBaseState({ card });
+    const nextState = getBaseState({ card });
+
+    expect(nextState).not.toBe(state);
+    expect(getEmbeddedParameterVisibilityGetter(nextState)).toBe(
+      getEmbeddedParameterVisibilityGetter(state),
+    );
+  });
+
+  it("returns a new function when the card changes", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+    const nextState = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: { category: "locked" },
+      }),
+    });
+
+    const getVisibility = getEmbeddedParameterVisibilityGetter(state);
+    const getNextVisibility = getEmbeddedParameterVisibilityGetter(nextState);
+
+    expect(getNextVisibility).not.toBe(getVisibility);
+    expect(getNextVisibility("category")).toBe("locked");
+  });
+
+  it("returns null when embedding is off", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: false,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibilityGetter(state)("category")).toBeNull();
+  });
+
+  it.each(["enabled", "locked"] as const)(
+    "returns the stored %s value for a known slug",
+    (visibility) => {
+      const state = getBaseState({
+        card: createMockCard({
+          enable_embedding: true,
+          embedding_params: { category: visibility },
+        }),
+      });
+
+      expect(getEmbeddedParameterVisibilityGetter(state)("category")).toBe(
+        visibility,
+      );
+    },
+  );
+
+  it("returns disabled for a missing slug", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibilityGetter(state)("vendor")).toBe(
+      "disabled",
+    );
+  });
+
+  it("returns disabled when the card has no embedding params", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: null,
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibilityGetter(state)("category")).toBe(
+      "disabled",
+    );
   });
 });

@@ -292,9 +292,9 @@
                    :model/Dashboard  {dashboard-id :id} {}
                    :model/Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
       (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
-                            (t2/update! :model/Pulse pulse-id {:collection_id (inc collection-id)})))
+                            (t2/update! :model/Pulse :id pulse-id {:collection_id (inc collection-id)})))
       (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
-                            (t2/update! :model/Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
+                            (t2/update! :model/Pulse :id pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
@@ -322,7 +322,7 @@
         (do-with-objects
          (fn [{:keys [archived? user-id]}]
            (testing "make the User inactive"
-             (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+             (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
            (testing "Pulse should be archived"
              (is (archived?))))))
       (testing "multiple subscribers"
@@ -334,10 +334,10 @@
                           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id :user_id user-2-id}]
              (is (not (archived?)))
              (testing "User 1 becomes inactive: Pulse should not be archived yet (because User 2 is still a recipient)"
-               (is (pos? (t2/update! :model/User user-id {:is_active false})))
+               (is (pos? (t2/update! :model/User :id user-id {:is_active false})))
                (is (not (archived?))))
              (testing "User 2 becomes inactive: Pulse should now be archived because it has no more recipients"
-               (is (t2/update! :model/User user-2-id {:is_active false}))
+               (is (t2/update! :model/User :id user-2-id {:is_active false}))
                (is (archived?))
                (testing "PulseChannel & PulseChannelRecipient rows should have been archived as well."
                  (is (not (t2/exists? :model/PulseChannel :id pulse-channel-id)))
@@ -350,7 +350,7 @@
                           :model/PulseChannel          {channel-2-id :id} {:pulse_id pulse-id}
                           :model/PulseChannelRecipient _ {:pulse_channel_id channel-2-id :user_id user-2-id}]
              (testing "make User 1 inactive"
-               (is (t2/update! :model/User user-id {:is_active false})))
+               (is (t2/update! :model/User :id user-id {:is_active false})))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to a Slack channel"
@@ -360,16 +360,16 @@
                                                  :details      {:channel "#general"}
                                                  :pulse_id     pulse-id}]
              (testing "make the User inactive"
-               (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+               (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?))))))))
       (testing "still sent to email addresses\n"
         (testing "emails on the same channel as deleted User\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-channel-id]}]
-             (t2/update! :model/PulseChannel pulse-channel-id {:details {:emails ["foo@bar.com"]}})
+             (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails ["foo@bar.com"]}})
              (testing "make the User inactive"
-               (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+               (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
              (testing "Pulse should not be archived"
                (is (not (archived?)))))))
         (testing "emails on a different channel\n"
@@ -379,7 +379,7 @@
                                                    :details      {:emails ["foo@bar.com"]}
                                                    :pulse_id     pulse-id}]
                (testing "make the User inactive"
-                 (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+                 (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
 
@@ -392,17 +392,17 @@
       (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
              (pulse-channel-test/send-pulse-triggers pulse-id)))
       (testing "archived pulse will disable pulse channels and remove triggers"
-        (t2/update! :model/Pulse pulse-id {:archived true})
-        (is (false? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+        (t2/update! :model/Pulse :id pulse-id {:archived true})
+        (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
       (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-        (t2/update! :model/Pulse pulse-id {:archived false})
-        (is (true? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+        (t2/update! :model/Pulse :id pulse-id {:archived false})
+        (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
         (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                (pulse-channel-test/send-pulse-triggers pulse-id))))
       (testing "delete pulse will remove pulse channels and triggers"
-        (t2/delete! :model/Pulse pulse-id)
-        (is (false? (t2/exists? :model/PulseChannel pc-id)))
+        (t2/delete! :model/Pulse :id pulse-id)
+        (is (false? (t2/exists? :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -445,7 +445,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Pulse card-id {:collection_id collection-id})))))))
+             (t2/update! :model/Pulse :id card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -504,10 +504,10 @@
                      :model/Database {db-id :id} {:engine :h2}
                      :model/Table {table-id :id} {:db_id db-id}
                      :model/Collection {collection-id :id} {:name "Test Collection"}
-                     :model/Card card {:dataset_query {:database      db-id
-                                                       :type          :query
-                                                       :collection_id collection-id
-                                                       :query         {:source-table table-id}}}
+                     :model/Card card {:collection_id collection-id
+                                       :dataset_query {:database db-id
+                                                       :type     :query
+                                                       :query    {:source-table table-id}}}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
         ;; Grant read access on the card but no download permission
@@ -538,10 +538,10 @@
                      :model/Database {db-id :id} {:engine :h2}
                      :model/Table {table-id :id} {:db_id db-id}
                      :model/Collection {collection-id :id} {:name "Test Collection"}
-                     :model/Card card {:dataset_query {:database      db-id
-                                                       :collection_id collection-id
-                                                       :type          :query
-                                                       :query         {:source-table table-id}}}
+                     :model/Card card {:collection_id collection-id
+                                       :dataset_query {:database db-id
+                                                       :type     :query
+                                                       :query    {:source-table table-id}}}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
         ;; Grant read and download permissions
@@ -561,3 +561,42 @@
                                          {:cards         [(assoc card :include_xls true)]
                                           :dashboard_id  nil
                                           :collection_id nil}))))))))))
+
+(deftest maybe-filter-pulses-recipients-cross-tenant-test
+  ;; Tenants are enterprise-only: :model/Tenant is not on the OSS classpath, so guard the body out
+  ;; of OSS builds entirely (with-premium-features only flips the flag, it does not load EE code).
+  (mt/when-ee-evailable
+   (testing "GHY-4140: for a non-superuser, the recipient filter drops other-tenant users but
+            keeps same-tenant users. The comparison must deref *current-user* (an atom); reading
+            :tenant_id off the atom itself is always nil, which wrongly drops every tenant user."
+     (mt/with-premium-features #{:tenants}
+       (mt/with-temp [:model/Tenant {tenant-id :id}       {:name "GHY4140 T1" :slug "ghy4140-t1"}
+                      :model/Tenant {other-tenant-id :id} {:name "GHY4140 T2" :slug "ghy4140-t2"}
+                      :model/User   {caller-id :id}       {:tenant_id tenant-id}
+                      :model/User   {same-id :id}         {:tenant_id tenant-id}
+                      :model/User   {other-id :id}        {:tenant_id other-tenant-id}
+                      :model/User   {internal-id :id}     {}]
+         ;; Production recipient maps come from the :recipients hydration, which selects only
+         ;; id/email/name fields — no :tenant_id — so the recipients here carry ids only. The
+         ;; filter must work on that shape, which is why it looks tenant membership up from the
+         ;; app DB instead of reading it off the map.
+         (let [pulses [{:channels [{:recipients [{:id same-id}
+                                                 {:id other-id}
+                                                 {:id internal-id}
+                                                 {:email "ext@example.com"}]}]}]]
+           (mt/with-current-user caller-id
+             (let [kept (-> (models.pulse/maybe-filter-pulses-recipients pulses)
+                            first :channels first :recipients)]
+               (testing "same-tenant Metabase user survives"
+                 (is (some #(= same-id (:id %)) kept)))
+               (testing "other-tenant Metabase user is redacted"
+                 (is (not (some #(= other-id (:id %)) kept))))
+               (testing "an internal (tenantless) user is redacted too: a tenant caller sees only its own tenant"
+                 (is (not (some #(= internal-id (:id %)) kept))))
+               (testing "raw email recipient is always preserved"
+                 (is (some #(= "ext@example.com" (:email %)) kept)))))
+           (testing "an internal (tenantless) non-superuser sees only other internal users and raw emails"
+             (mt/with-current-user internal-id
+               (is (= [{:id internal-id} {:email "ext@example.com"}]
+                      (-> (models.pulse/maybe-filter-pulses-recipients pulses)
+                          first :channels first :recipients)))))))))))

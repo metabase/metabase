@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
   FormErrorMessage,
@@ -9,6 +8,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { SettingsSection } from "metabase/settings-components";
 import { Group, Stack } from "metabase/ui";
 import { useCreateDevCustomVizPluginMutation } from "metabase-enterprise/api";
 
@@ -36,7 +36,7 @@ export function AddDevCustomVizForm() {
       <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         {({ values }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <FormTextInput
                 name="devBundleUrl"
                 label={t`Dev server URL`}

@@ -1,7 +1,7 @@
 .root {
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-xl);
   background-color: var(--mb-color-background_surface-warning);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   border: 1px solid var(--mb-color-feedback-warning);
 }
 

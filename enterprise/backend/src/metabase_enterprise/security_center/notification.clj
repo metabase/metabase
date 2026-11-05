@@ -10,15 +10,17 @@
    as a recipient when set, but only if `security-center-email-recipients`
    targets the admin group (i.e. \"Send to all instance admins\" is on)."
   (:require
+   [clojure.string :as str]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -149,6 +151,12 @@
         (track-notification-sent! notif "test" "failure")
         (throw e)))))
 
+(defn- undelivered-channel-types
+  "The channel types that did not deliver, when `e` is the delivery failure of the notification pipeline, else nil."
+  [e]
+  (when (= :notification/delivery-failed (:error-code (ex-data e)))
+    (into #{} (map :channel_type) (:failed-handlers (ex-data e)))))
+
 (defn notify-advisory!
   "Send notifications for a security advisory and update `last_notified_at`.
    Publishes the system event for audit logging, then sends email (to admins or
@@ -163,13 +171,25 @@
    (events/publish-event! :event/security-advisory-match
                           (advisory-event-info advisory))
    ;; Send email + Slack via notification pipeline
-   ;; sync, so failure doesn't set last_notified_at
+   ;; sync, so a failure on every channel doesn't set last_notified_at and the next sync retries
    (let [notif (build-notification advisory (saved-config))]
      (try
        (notification/send-notification! notif :notification/sync? true)
        (track-notification-sent! notif triggered-from "success")
-       (t2/update! :model/SecurityAdvisory (:id advisory)
-                   {:last_notified_at (mi/now)})
+       (security-center.db/record-advisory-notification! (:id advisory))
        (catch Exception e
-         (track-notification-sent! notif triggered-from "failure")
-         (throw e))))))
+         (let [undelivered               (undelivered-channel-types e)
+               {failed    true
+                delivered false}         (group-by #(contains? undelivered (:channel_type %)) (:handlers notif))]
+           (if (and undelivered (seq delivered))
+             ;; a partial delivery counts as notified, so the next sync does not send the delivered channels again;
+             ;; the failed channel waits for the repeat cadence
+             (do
+               (log/warnf "Advisory %s was not delivered to %s" (:advisory_id advisory)
+                          (str/join ", " (map (comp u/qualified-name :channel_type) failed)))
+               (track-notification-sent! (assoc notif :handlers delivered) triggered-from "success")
+               (track-notification-sent! (assoc notif :handlers failed) triggered-from "failure")
+               (security-center.db/record-advisory-notification! (:id advisory)))
+             (do
+               (track-notification-sent! notif triggered-from "failure")
+               (throw e)))))))))

@@ -2,9 +2,11 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
@@ -13,12 +15,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
-  (when (t2/exists? :model/FieldValues :field_id (u/the-id field))
+  (when (sync.db/field-values-exist? (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -37,9 +38,7 @@
   Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from loading every Field
   into memory and issuing a warehouse request per field."
   [table limit]
-  (t2/select :model/Field
-             :table_id (u/the-id table), :active true, :visibility_type "normal"
-             {:order-by [[:id :asc]] :limit limit}))
+  (sync.db/normal-fields-for-table (u/the-id table) limit))
 
 (defn- warn-too-many-fields!
   "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
@@ -61,9 +60,8 @@
     but `run-distinct-batch` runs as a native query that bypasses that middleware.
 
   Tables that fail any check fall back to the per-field path."
-  [table]
-  (let [database (t2/select-one :model/Database :id (:db_id table))
-        engine   (:engine database)]
+  [database table]
+  (let [engine (:engine database)]
     (and (isa? driver/hierarchy engine :sql)
          (driver.u/supports? engine :nested-queries database)
          (not (:database_require_filter table)))))
@@ -131,10 +129,10 @@
   hand-rolled HoneySQL CAST does not).
 
   Returns a counts map of outcomes."
-  [table fields fvs-map]
+  [database table fields fvs-map]
   (when (seq fields)
     (let [{nested true plain false}    (group-by #(boolean (:parent_id %)) fields)
-          batch?                       (can-batch-distinct? table)
+          batch?                       (can-batch-distinct? database table)
           batch-fields                 (when batch? plain)
           per-field-fields             (concat nested (when-not batch? plain))
           {:keys [results queries failed-fields]}
@@ -166,10 +164,11 @@
   (let [eligible (filter field-values/field-should-have-field-values? fields)]
     (when (seq eligible)
       (let [fvs-map  (field-values/batched-get-latest-full-field-values (map u/the-id eligible))
-            by-table (group-by :table_id eligible)]
+            by-table (group-by :table_id eligible)
+            database (memoize driver.u/lib-database)]
         (transduce (map (fn [[table-id table-fields]]
-                          (let [table (t2/select-one :model/Table :id table-id)]
-                            (sync-fields-for-table! table table-fields fvs-map))))
+                          (let [table (sync.db/table table-id)]
+                            (sync-fields-for-table! (database (:db_id table)) table table-fields fvs-map))))
                    (completing (partial merge-with +))
                    empty-counts
                    by-table)))))
@@ -178,50 +177,55 @@
   "Update the FieldValues for all Fields (as needed) for `table`.
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
-  [table :- i/TableInstance]
-  (let [limit            (sync.settings/scan-max-fields-per-table)
-        scanned          (table->fields-to-scan table (inc limit))
-        _                (when (> (count scanned) limit)
-                           (warn-too-many-fields! table limit))
-        all-fields       (take limit scanned)
-        {to-sync  true
-         to-clear false} (group-by #(boolean (field-values/field-should-have-field-values? %))
-                                   all-fields)
-        clear-counts     (reduce (fn [counts field]
-                                   (let [result (sync-util/with-error-handling
-                                                 (format "Error clearing field values for %s"
+  ([table :- i/TableInstance]
+   (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table))
+
+  ([database :- i/DatabaseInstance
+    table    :- i/TableInstance]
+   (let [limit            (sync.settings/scan-max-fields-per-table)
+         scanned          (table->fields-to-scan table (inc limit))
+         _                (when (> (count scanned) limit)
+                            (warn-too-many-fields! table limit))
+         all-fields       (take limit scanned)
+         {to-sync  true
+          to-clear false} (group-by #(boolean (field-values/field-should-have-field-values? %))
+                                    all-fields)
+         clear-counts     (reduce (fn [counts field]
+                                    (let [result (sync-util/with-error-handling
+                                                  (format "Error clearing field values for %s"
+                                                          (sync-util/name-for-logging field))
+                                                   (clear-field-values-for-field! field))]
+                                      (merge-with + counts (result->delta result))))
+                                  empty-counts
+                                  to-clear)
+         fvs-map          (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
+         fields-to-sync   (filterv (fn [field]
+                                     (let [fv (get fvs-map (u/the-id field))]
+                                       (cond
+                                         (not fv)
+                                         (do (log/tracef "%s does not have FieldValues. Skipping..."
                                                          (sync-util/name-for-logging field))
-                                                  (clear-field-values-for-field! field))]
-                                     (merge-with + counts (result->delta result))))
-                                 empty-counts
-                                 to-clear)
-        fvs-map          (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
-        fields-to-sync   (filterv (fn [field]
-                                    (let [fv (get fvs-map (u/the-id field))]
-                                      (cond
-                                        (not fv)
-                                        (do (log/tracef "%s does not have FieldValues. Skipping..."
-                                                        (sync-util/name-for-logging field))
-                                            false)
+                                             false)
 
-                                        (field-values/inactive? fv)
-                                        (do (log/infof "%s has not been used since %s. Skipping..."
-                                                       (sync-util/name-for-logging field)
-                                                       (t/format "yyyy-MM-dd"
-                                                                 (t/local-date-time (:last_used_at fv))))
-                                            false)
+                                         (field-values/inactive? fv)
+                                         (do (log/infof "%s has not been used since %s. Skipping..."
+                                                        (sync-util/name-for-logging field)
+                                                        (t/format "yyyy-MM-dd"
+                                                                  (t/local-date-time (:last_used_at fv))))
+                                             false)
 
-                                        :else
-                                        true)))
-                                  to-sync)
-        sync-counts      (sync-fields-for-table! table fields-to-sync fvs-map)]
-    (merge-with + clear-counts (or sync-counts empty-counts))))
+                                         :else
+                                         true)))
+                                   to-sync)
+         sync-counts      (database-routing/with-anonymous-router-access
+                            (sync-fields-for-table! database table fields-to-sync fvs-map))]
+     (merge-with + clear-counts (or sync-counts empty-counts)))))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
   (tracing/with-span :sync "field-values.update" {:db/id (:id database)}
     (let [tables (sync-util/reducible-sync-tables database)]
-      (transduce (map update-field-values-for-table!) (partial merge-with +) tables))))
+      (transduce (map (partial update-field-values-for-table! database)) (partial merge-with +) tables))))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors probed queries]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries)"
@@ -237,13 +241,13 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
+                               (sync.db/table-database-ids table-ids))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (t2/select-pk->fn :is_on_demand 'Database
-                                                 :id [:in (set (vals table-id->db-id))]))]
+                               (sync.db/database-on-demand-flags (set (vals table-id->db-id))))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *on-demand-select-batch-size*
   "Chunk size when fetching :model/Field rows for on-demand updates. Keeps a single SQL `IN (…)`
   clause under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
@@ -260,28 +264,22 @@
                  (->> field-ids
                       (partition-all *on-demand-select-batch-size*)
                       (mapcat (fn [batch]
-                                (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                            :semantic_type :visibility_type :table_id :has_field_values]
-                                           :id [:in batch])))))
+                                (sync.db/fields-for-field-values batch)))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
         on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
     (when (seq on-demand-fields)
       (log/debugf "Updating FieldValues for %d on-demand fields across %d tables"
                   (count on-demand-fields) (count (set (map :table_id on-demand-fields))))
-      (sync-fields-grouped-by-table! on-demand-fields))))
+      (database-routing/with-anonymous-router-access
+        (sync-fields-grouped-by-table! on-demand-fields)))))
 
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [conditions [:field_id   (:id field)
-                      :type       [:in field-values/advanced-field-values-types]
-                      :created_at [:< ((requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
-                                       (mdb/db-type)
-                                       :%now
-                                       (- (t/as field-values/advanced-field-values-max-age :days))
-                                       :day)]]
-          rows-count (apply t2/count :model/FieldValues conditions)]
-      (apply t2/delete! :model/FieldValues conditions)
+    (let [types        field-values/advanced-field-values-types
+          max-age-days (t/as field-values/advanced-field-values-max-age :days)
+          rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
+      (sync.db/delete-advanced-field-values-before! (:id field) types max-age-days)
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!
@@ -316,8 +314,9 @@
 
 (mu/defn update-field-values!
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
-   in widgets like filters) for the Tables in `database` (as needed)."
-  [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
-                                                                 (sync-util/name-for-logging database))
-    (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
+   in widgets like filters) for the Tables in the Database with `database-id` (as needed)."
+  [database-id :- ::lib.schema.id/database]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
+                                                                   (sync-util/name-for-logging database))
+      (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps))))

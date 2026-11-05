@@ -16,7 +16,7 @@ export function KeyboardShortcut({ shortcut }: KeyboardShortcutProps) {
   const steps = parseShortcut(shortcut);
 
   return (
-    <Group gap="xs" wrap="nowrap" align="baseline">
+    <Group gap="xxs" wrap="nowrap" align="baseline">
       {steps.map((keys, stepIndex) => (
         <Fragment key={`${stepIndex}-${keys.join("+")}`}>
           {stepIndex > 0 && <span className={S.separator}>{t`then`}</span>}

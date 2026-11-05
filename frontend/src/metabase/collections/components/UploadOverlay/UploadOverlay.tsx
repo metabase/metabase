@@ -24,11 +24,11 @@ export default function UploadOverlay({
       direction="column"
       justify="center"
       align="center"
-      gap="md"
+      gap="lg"
       mx="4%"
       my="sm"
       p={rem(64)}
-      bdrs="md"
+      bdrs="sm"
       bg="background_surface-brand-subtle"
       c="core-brand"
       fz="lg"

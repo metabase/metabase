@@ -33,7 +33,7 @@ export const Overview = {
         title="Building block"
         description="Kbd renders a single key of a shortcut. Use KeyboardShortcut to render whole shortcut rather than using Kbd directly."
       >
-        <Group gap="xs">
+        <Group gap="xxs">
           {EXAMPLE_KEYS.map((key) => (
             <Kbd key={key}>{key}</Kbd>
           ))}

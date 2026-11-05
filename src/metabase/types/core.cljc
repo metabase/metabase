@@ -60,13 +60,17 @@
 
 ;;; Table (entity) Types
 
-(derive :entity/GenericTable :entity/*)
-(derive :entity/UserTable :entity/GenericTable)
-(derive :entity/CompanyTable :entity/GenericTable)
-(derive :entity/TransactionTable :entity/GenericTable)
-(derive :entity/ProductTable :entity/GenericTable)
-(derive :entity/SubscriptionTable :entity/GenericTable)
-(derive :entity/EventTable :entity/GenericTable)
+(def entity-hierarchy
+  "Hierarchy of table entity types, i.e. a Table's `:entity_type`. Not part of Clojure's global hierarchy, so `isa?`
+  on these keywords must be passed this hierarchy explicitly."
+  (-> (make-hierarchy)
+      (derive :entity/GenericTable :entity/*)
+      (derive :entity/UserTable :entity/GenericTable)
+      (derive :entity/CompanyTable :entity/GenericTable)
+      (derive :entity/TransactionTable :entity/GenericTable)
+      (derive :entity/ProductTable :entity/GenericTable)
+      (derive :entity/SubscriptionTable :entity/GenericTable)
+      (derive :entity/EventTable :entity/GenericTable)))
 
 ;;; Modifier Types
 
@@ -382,8 +386,9 @@
 (mr/def ::snake-cased-type-info
   "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
   deprecated."
-  [:map
-   [:base_type :any]])
+  [:map {:closed true}
+   [:base_type      :metabase.lib.schema.common/base-type]
+   [:effective_type {:optional true} [:maybe :metabase.lib.schema.common/base-type]]])
 
 (mu/defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value

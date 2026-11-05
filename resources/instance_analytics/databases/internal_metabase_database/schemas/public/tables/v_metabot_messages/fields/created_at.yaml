@@ -13,7 +13,6 @@ effective_type: type/DateTimeWithLocalTZ
 semantic_type: type/CreationTimestamp
 dimensions: []
 position: 2
-custom_position: 0
 database_position: 2
 serdes/meta:
 - id: Internal Metabase Database

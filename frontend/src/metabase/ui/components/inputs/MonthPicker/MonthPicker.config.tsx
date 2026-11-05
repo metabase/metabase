@@ -22,5 +22,10 @@ export const monthPickerOverrides: MantineThemeOverride["components"] = {
       monthsListControl: CalendarS.monthsListControl,
       calendarHeaderControlIcon: S.calendarHeaderControlIcon,
     },
+    styles: {
+      levelsGroup: {
+        gap: "var(--mantine-spacing-lg)",
+      },
+    },
   }),
 };

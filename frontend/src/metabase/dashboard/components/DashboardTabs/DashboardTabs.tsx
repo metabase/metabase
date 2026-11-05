@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 import { uniq } from "underscore";
 
@@ -17,7 +18,17 @@ import { isVirtualDashCard } from "metabase/utils/dashboard";
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
-export function DashboardTabs() {
+interface DashboardTabsProps {
+  /**
+   * Extend the bottom border to the edges of the nearest ancestor that clips
+   * horizontal overflow, so it can stand in for the dashboard header's border.
+   */
+  hasFullBleedBorder?: boolean;
+}
+
+export function DashboardTabs({
+  hasFullBleedBorder = false,
+}: DashboardTabsProps = {}) {
   const { isEditing = false, dashboard } = useDashboardContext();
   const { modalContent, show } = useConfirmation();
 
@@ -35,24 +46,21 @@ export function DashboardTabs() {
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-change-tab",
-        perform: (_, event) => {
-          if (!event?.key) {
-            return;
-          }
-          const key = parseInt(event.key);
-          const tab = tabs[key - 1];
-          if (tab) {
-            selectTab(tab.id);
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "dashboard-change-tab",
+      perform: (_, event) => {
+        if (!event?.key) {
+          return;
+        }
+        const key = parseInt(event.key);
+        const tab = tabs[key - 1];
+        if (tab) {
+          selectTab(tab.id);
+        }
       },
-    ],
-    [tabs],
-  );
+    },
+  ]);
 
   if (!showTabs) {
     return null;
@@ -93,7 +101,7 @@ export function DashboardTabs() {
           ) : (
             <>
               {t`This will also delete any questions saved in it. If you'd like to keep any of these, move them to a different tab, dashboard, or collection.`}
-              <List ml="md" mt="sm">
+              <List ml="lg" mt="sm">
                 {uniq(tabDashboardQuestions, (dc) => dc.card.id).map(
                   (dashcard) => (
                     <List.Item key={dashcard.card.id}>
@@ -117,7 +125,14 @@ export function DashboardTabs() {
   }
 
   return (
-    <Flex align="start" gap="lg" w="100%" className={S.dashboardTabs}>
+    <Flex
+      align="start"
+      gap="xl"
+      w="100%"
+      className={cx(S.dashboardTabs, {
+        [S.fullBleedBorder]: hasFullBleedBorder,
+      })}
+    >
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
@@ -152,7 +167,7 @@ export function DashboardTabs() {
         )}
         {isEditing && (
           <ActionIcon
-            variant="viewHeader"
+            variant="subtle"
             onClick={createNewTab}
             aria-label={t`Create new tab`}
             className={S.createTabButton}

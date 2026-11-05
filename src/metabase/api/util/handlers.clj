@@ -15,11 +15,24 @@
       [(subs path 0 next-slash-index) (subs path next-slash-index (count path))]
       [path "/"])))
 
+(defn- route-prefix
+  "The `:route-prefix` for `request` after this route-map level consumed `prefix`.
+
+  The first route-map level seeds the accumulator from `:compojure/route-context` — the route *patterns* of the
+  enclosing `compojure.core/context` forms, which is how the leading `/api`
+  from [[metabase.server.routes/make-routes]] gets into the template. We use `:compojure/route-context` rather than
+  Ring's `:context` because `:context` is sliced out of the request URI and would carry real path-param values for a
+  parameterized context; `:compojure/route-context` is always the declared pattern."
+  [request prefix]
+  (str (or (:route-prefix request) (:compojure/route-context request)) prefix))
+
 (defn- -route-map-handler [route-map]
   (fn [request respond raise]
     (if-let [[prefix rest-of-path] (split-path ((some-fn :path-info :uri) request))]
       (if-let [handler (get route-map prefix)]
-        (let [request' (assoc request :path-info rest-of-path)]
+        (let [request' (-> request
+                           (assoc :path-info rest-of-path)
+                           (assoc :route-prefix (route-prefix request prefix)))]
           (handler request' respond raise))
         (respond nil))
       (respond nil))))
@@ -46,7 +59,11 @@
                              (simple-symbol? v) api.macros/ns-handler))))
 
 (defn route-map-handler
-  "Create a Ring handler from a map of route prefix => handler."
+  "Create a Ring handler from a map of route prefix => handler.
+
+  As routing descends, each level appends the prefix it consumed to the request's `:route-prefix`, which
+  `metabase.api.macros` turns into the matched request's `:route-template` (e.g. `\"/api/card/:id\"`). Only declared
+  route patterns are accumulated — never anything from the request URI or query string."
   [route-map]
   (let [route-map (prepare-route-map route-map)]
     (open-api/handler-with-open-api-spec

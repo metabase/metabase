@@ -1,9 +1,9 @@
 import type { ComponentProps } from "react";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { createMockState } from "metabase/redux/store/mocks";
 import { color } from "metabase/ui/colors";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -193,6 +193,26 @@ describe("Visualization", () => {
     expect(
       await screen.findByTestId("development-watermark"),
     ).toBeInTheDocument();
+  });
+
+  it("should render the no results illustration for an empty result on a dashboard", async () => {
+    await renderViz(
+      [
+        {
+          card: createMockCard({ name: "Card", display: "bar" }),
+          data: createMockDatasetData({
+            cols: [
+              createMockCategoryColumn({ name: "Dimension" }),
+              createMockNumericColumn({ name: "Count" }),
+            ],
+            rows: [],
+          }),
+        },
+      ],
+      { isDashboard: true },
+    );
+
+    expect(screen.getByAltText("No results")).toBeInTheDocument();
   });
 
   describe("with a component that loads on demand", () => {

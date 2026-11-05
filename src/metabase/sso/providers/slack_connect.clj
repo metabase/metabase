@@ -5,17 +5,17 @@
    [clojure.string :as str]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.settings :as server.settings]
+   [metabase.sso.db :as sso.db]
    [metabase.sso.providers.oidc :as oidc]
    [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
-(derive :provider/slack-connect :provider/oidc)
+(auth-identity/derive! :provider/slack-connect :provider/oidc)
 
 ;;; -------------------------------------------------- Constants --------------------------------------------------
 
@@ -82,26 +82,6 @@
     (throw (ex-info (tru "Sorry, but you''ll need a Metabase account to view this page. Please contact your administrator.")
                     {:status-code 401}))))
 
-(defn check-sso-redirect
-  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
-  [redirect-url]
-  (try
-    (let [redirect (some-> redirect-url (java.net.URI.))
-          our-host (some-> ((requiring-resolve 'metabase.system.core/site-url)) (java.net.URI.) (.getHost))]
-      (when-not (or (nil? redirect-url)
-                    (and (nil? (.getHost redirect))
-                         (nil? (.getScheme redirect)))
-                    (= (.getHost redirect) our-host))
-        (throw (ex-info (tru "Invalid redirect URL")
-                        {:status-code  400
-                         :redirect-url redirect-url})))
-      redirect-url)
-    (catch clojure.lang.ExceptionInfo e (throw e))
-    (catch Exception _e
-      (throw (ex-info (tru "Invalid redirect URL")
-                      {:status-code  400
-                       :redirect-url redirect-url})))))
-
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/authenticate :provider/slack-connect
@@ -165,7 +145,7 @@
 
       :else
       (oidc/link-identity! provider user-id
-                           (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name)
+                           (sso.db/auth-identity user-id provider-name)
                            sub (:iss claims)))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
@@ -194,7 +174,7 @@
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
       ;; merge into existing metadata so the :iss stored by OIDC identity linking survives
-      (when-let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name)]
+      (when-let [auth-identity (sso.db/auth-identity user-id provider-name)]
         (auth-identity/merge-metadata! auth-identity
                                        {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}))))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))

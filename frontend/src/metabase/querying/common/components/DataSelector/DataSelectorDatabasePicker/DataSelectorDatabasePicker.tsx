@@ -8,32 +8,33 @@ import {
 } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Icon, Tooltip } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
+import type { DataSelectorDatabase, DataSelectorSchema } from "../types";
 
 type DataSelectorDatabasePickerProps = {
-  databases: Database[];
+  databases: DataSelectorDatabase[];
   hasBackButton?: boolean;
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  selectedDatabase?: Database;
-  selectedSchema?: Schema;
+  selectedDatabase?: DataSelectorDatabase;
+  selectedSchema?: DataSelectorSchema;
   onBack?: () => void;
-  onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (schema?: Schema) => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  onChangeDatabase: (database: DataSelectorDatabase) => void;
+  onChangeSchema: (schema?: DataSelectorSchema) => void;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
 };
 
 type Item = {
   name: string;
   index: number;
-  database: Database;
+  database: DataSelectorDatabase;
 };
 
 export const DataSelectorDatabasePicker = ({

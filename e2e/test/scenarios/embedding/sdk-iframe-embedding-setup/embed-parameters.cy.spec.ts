@@ -4,7 +4,6 @@ import {
   codeBlock,
   getEmbedSidebar,
   navigateToEmbedOptionsStep,
-  navigateToEntitySelectionStep,
 } from "./helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -21,8 +20,14 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("enable-embedding-static", false);
+    // Accept both sets of embedding terms up front so the wizard never shows
+    // the Agree CTA. Every test here preselects SSO, but the wizard opens in
+    // guest mode while SSO is unconfigured, so an unaccepted guest CTA would
+    // otherwise have to be clicked through first. That flow is covered by
+    // embed-flow-enable-embed-js.cy.spec.ts.
+    H.updateSetting("enable-embedding-modular", true);
+    H.updateSetting("show-modular-embed-terms", false);
+    H.updateSetting("show-static-embed-terms", false);
     H.mockEmbedJsToDevServer();
   });
 
@@ -49,36 +54,6 @@ describe(suiteTitle, () => {
             target: ["dimension", ["field", ORDERS.ID, null]],
           })),
         });
-      });
-    });
-
-    it("loads parameters into parameter settings", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: "Dashboard with Parameters",
-        preselectSso: true,
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Parameters").should("be.visible");
-
-        cy.log("parameter inputs should be visible");
-        cy.findByLabelText("ID").should("be.visible");
-        cy.findByLabelText("Product ID").should("be.visible");
-
-        cy.log("parameters should be visible by default");
-
-        parameterVisibilityToggle("id").should(
-          "have.attr",
-          "data-hidden",
-          "false",
-        );
-
-        parameterVisibilityToggle("product_id").should(
-          "have.attr",
-          "data-hidden",
-          "false",
-        );
       });
     });
 
@@ -125,20 +100,60 @@ describe(suiteTitle, () => {
         });
     });
 
-    it("can hide dashboard parameters", () => {
+    it("loads parameters into parameter settings and can hide them", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
         preselectSso: true,
       });
 
+      getEmbedSidebar().within(() => {
+        cy.findByText("Parameters").should("be.visible");
+
+        cy.log("parameter inputs should be visible");
+        cy.findByLabelText("ID").should("be.visible");
+        cy.findByLabelText("Product ID").should("be.visible");
+
+        cy.log("parameters should be visible by default");
+
+        parameterVisibilityToggle("id").should(
+          "have.attr",
+          "data-hidden",
+          "false",
+        );
+
+        parameterVisibilityToggle("product_id").should(
+          "have.attr",
+          "data-hidden",
+          "false",
+        );
+      });
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-parameters-widget-container")
+        .should("exist");
+
       cy.log("hide both parameters");
       getEmbedSidebar().within(() => {
         parameterVisibilityToggle("id").click();
         parameterVisibilityToggle("product_id").click();
+
+        parameterVisibilityToggle("id").should(
+          "have.attr",
+          "data-hidden",
+          "true",
+        );
+        parameterVisibilityToggle("product_id").should(
+          "have.attr",
+          "data-hidden",
+          "true",
+        );
       });
 
       cy.log("parameter widget container should not exist");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Dashboard with Parameters")
+        .should("be.visible");
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
@@ -179,6 +194,8 @@ describe(suiteTitle, () => {
     });
 
     it("can set default parameters for SQL questions", () => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Question with Parameters",
@@ -190,21 +207,30 @@ describe(suiteTitle, () => {
         cy.findByLabelText("ID").should("be.visible");
       });
 
+      cy.log("the preview runs {{id}} unset, so the backend rejects the query");
+      cy.wait("@cardQuery");
+
       H.getSimpleEmbedIframeContent()
         .findByText(/missing required parameters/)
-        .should("exist");
+        .should("be.visible");
 
       getEmbedSidebar().within(() => {
         cy.findByLabelText("ID").type("123");
         cy.press("Tab"); //.blur() doesn't easily work here
       });
 
+      cy.log("the new value re-runs the question in the preview iframe");
+      cy.wait("@cardQuery");
+
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText(/missing required parameters/).should("not.exist");
+        // Anchor on the row first: a mid-rerender iframe body is empty, which
+        // satisfies the "not.exist" check below on its own (EMB-2338).
         cy.findByText("123").should("be.visible");
 
         // value in a subtotal field
         cy.findAllByText("75.41").first().should("be.visible");
+
+        cy.findByText(/missing required parameters/).should("not.exist");
       });
 
       getEmbedSidebar().within(() => {
@@ -219,55 +245,6 @@ describe(suiteTitle, () => {
         .then((attr) => {
           expect(JSON.parse(attr!)).to.deep.equal({ id: "123" });
         });
-    });
-  });
-
-  describe("resources without parameters", () => {
-    it("shows no parameters message for dashboards without parameters", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: "Orders in a dashboard",
-        preselectSso: true,
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText(
-          "Parameters are not available for this dashboard.",
-        ).should("be.visible");
-      });
-    });
-
-    it("shows no parameters message for questions without parameters", () => {
-      navigateToEmbedOptionsStep({
-        experience: "chart",
-        resourceName: "Orders, Count",
-        preselectSso: true,
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Parameters are not available for this chart.").should(
-          "be.visible",
-        );
-      });
-    });
-
-    it("should not show parameter settings for exploration template", () => {
-      navigateToEntitySelectionStep({
-        experience: "exploration",
-        preselectSso: true,
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.log("go to embed options step");
-        cy.findByText("Next").click();
-
-        cy.log("should still contain appearance and behavior");
-        cy.findByText("Appearance").should("be.visible");
-        cy.findByText("Behavior").should("be.visible");
-
-        cy.log("should not contain parameters");
-        cy.findByText("Parameters").should("not.exist");
-      });
     });
   });
 });

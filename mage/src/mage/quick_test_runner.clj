@@ -163,10 +163,15 @@
                           :babashka/exit 1})))
     test-dir-or-nss))
 
+;; CI budgets 40 minutes per shard for this suite; sh*'s 15-minute default can kill a legitimate
+;; broad local run instead of just erroring.
+(def ^:private run-tests-timeout-ms (* 40 60 1000))
+
 (defn- run-tests-cli [test-dirs]
   (let [cmd (str "clj -X:dev:ee:ee-dev:test :only '" (pr-str test-dirs) "'")]
     (bling/callout {:label "Running Command Line"} (c/bold cmd))
-    (shell/sh* "clojure" "-X:dev:dev-ee:ee:test" ":only" (pr-str test-dirs))))
+    (shell/sh* {:timeout-ms run-tests-timeout-ms}
+               "clojure" "-X:dev:dev-ee:ee:test" ":only" (pr-str test-dirs))))
 
 (defn go
   "Interactively select directories to run tests against."

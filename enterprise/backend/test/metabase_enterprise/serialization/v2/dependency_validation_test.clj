@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.models.serialization :as serdes]
    [metabase.search.test-util :as search.tu]
@@ -28,7 +29,7 @@
    Warnings are logged before the abort, so callers can still assert on the logged messages."
   [opts]
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"incomplete export"
-                        (into [] (extract/extract opts)))))
+                        (dorun (extract/extract opts)))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db!
@@ -51,10 +52,8 @@
                                                                             :database db-id
                                                                             :query    {:source-table (str "card__" card1-id)}}}
                        :model/User          user           {:email "dirk@kirk.ir"}
-                       :model/Collection    pcoll          {:name              "Personal Collection"
-                                                            :personal_owner_id (:id user)}
                        :model/Card          pcard          {:name          "Personal Card"
-                                                            :collection_id (:id pcoll)}
+                                                            :collection_id (personal-collection-id user)}
                        :model/Card          _              {:name          "External Card"
                                                             :dataset_query {:database db-id
                                                                             :type     :query
@@ -165,16 +164,16 @@
           (doseq [{:keys [label query-filter viz-settings delete! msg-re]}
                   [{:label        "a Field referenced in the query"
                     :query-filter (fn [field-id _seg-id] [:> [:field field-id nil] 1])
-                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field :id field-id))
                     :msg-re       #"Field .* is missing from the source database"}
                    {:label        "a Segment referenced in the query"
                     :query-filter (fn [_field-id seg-id] [:segment seg-id])
-                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment seg-id))
+                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment :id seg-id))
                     :msg-re       #"Segment .* is missing from the source database"}
                    {:label        "a Field referenced only in visualization_settings"
                     :viz-settings (fn [field-id] {:column_settings {(str "[\"ref\",[\"field\"," field-id ",null]]")
                                                                     {:column_title "X"}}})
-                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field :id field-id))
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}

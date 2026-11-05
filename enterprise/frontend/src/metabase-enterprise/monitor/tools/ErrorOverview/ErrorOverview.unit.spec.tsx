@@ -12,6 +12,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -22,7 +23,6 @@ import {
 import { ErrorOverview } from "./ErrorOverview";
 import { createMockErroringCard } from "./mocks";
 import { type ErroringCard, SORT_COLUMNS } from "./types";
-import { PAGE_SIZE } from "./utils";
 
 const COLUMN_NAMES = ["card_id", ...SORT_COLUMNS];
 const SEARCH_PLACEHOLDER = "Search by question, error, database, or collection";
@@ -153,7 +153,7 @@ describe("ErrorOverview", () => {
       "metabase-enterprise.audit-app.pages.queries/bad-table",
     );
     expect(query.args).toEqual(["", "last_run_at", "desc"]);
-    expect(query.limit).toBe(PAGE_SIZE);
+    expect(query.limit).toBe(25);
     expect(query.offset).toBe(0);
     // the QP schema rejects an explicit null database; the key must be absent
     expect("database" in query).toBe(false);
@@ -187,28 +187,41 @@ describe("ErrorOverview", () => {
   });
 
   it("recovers from an error when the search changes and the retry succeeds", async () => {
-    mockGetBoundingClientRect({ width: 100, height: 100 });
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      mockGetBoundingClientRect({ width: 100, height: 100 });
 
-    let shouldFail = true;
-    fetchMock.post("path:/api/dataset", () =>
-      shouldFail
-        ? { status: 500, body: { message: "Audit query failed" } }
-        : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
-    );
+      let shouldFail = true;
+      fetchMock.post("path:/api/dataset", () =>
+        shouldFail
+          ? { status: 500, body: { message: "Audit query failed" } }
+          : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
+      );
 
-    renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
-      withRouter: true,
-    });
+      renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
+        withRouter: true,
+      });
 
-    expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
-    const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
+      expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+      const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
 
-    // changing the query is the only way to clear RTK's error and refire
-    shouldFail = false;
-    await userEvent.type(search, "recovered");
+      // changing the query is the only way to clear RTK's error and refire
+      shouldFail = false;
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(search, "recovered");
+      act(() => {
+        jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
+      });
 
-    expect(await screen.findByText("Recovered question")).toBeInTheDocument();
-    expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
+      // scoped to the row: TreeTable briefly renders a hidden copy of each
+      // cell into document.body to measure auto-width columns
+      const row = await screen.findByTestId("erroring-question");
+      expect(within(row).getByText("Recovered question")).toBeInTheDocument();
+      expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("surfaces an internal-query error returned in the dataset body", async () => {
@@ -239,7 +252,7 @@ describe("ErrorOverview", () => {
 
   it("passes filter values to the query and resets to the first page", async () => {
     const { router } = await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: 25 }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -248,7 +261,7 @@ describe("ErrorOverview", () => {
 
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE * 2);
+      expect(query.offset).toBe(50);
     });
 
     const rows = await screen.findAllByTestId("erroring-question");
@@ -549,7 +562,7 @@ describe("ErrorOverview", () => {
 
   it("paginates showing the total count and syncs the page to the URL", async () => {
     const { router } = await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: 25 }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -572,7 +585,7 @@ describe("ErrorOverview", () => {
     });
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE);
+      expect(query.offset).toBe(25);
     });
     await waitFor(() => {
       expect(router?.location.search).toBe("?page=1");
@@ -581,7 +594,7 @@ describe("ErrorOverview", () => {
 
   it("reads the initial page from the URL", async () => {
     await setup({
-      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: 25 }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -590,7 +603,7 @@ describe("ErrorOverview", () => {
 
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.offset).toBe(PAGE_SIZE * 2);
+      expect(query.offset).toBe(50);
     });
   });
 
@@ -604,7 +617,7 @@ describe("ErrorOverview", () => {
         deferResponse: true,
       });
 
-      expect((await getLastDatasetQuery()).offset).toBe(2 * PAGE_SIZE);
+      expect((await getLastDatasetQuery()).offset).toBe(50);
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY + 50);
       });

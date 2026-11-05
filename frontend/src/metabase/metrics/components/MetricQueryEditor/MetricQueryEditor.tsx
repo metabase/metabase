@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { QueryEditor } from "metabase/querying/editor/components/QueryEditor";
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import type { QueryEditorUiState } from "metabase/querying/editor/types";
 import type * as Lib from "metabase-lib";
 
@@ -27,7 +27,7 @@ export function MetricQueryEditor({
   );
 
   return (
-    <QueryEditor
+    <QueryEditorWithParameters
       query={query}
       uiState={uiState}
       uiOptions={uiOptions}

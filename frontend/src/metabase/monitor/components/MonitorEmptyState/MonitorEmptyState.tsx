@@ -9,7 +9,7 @@ type MonitorEmptyStateProps = {
 
 export function MonitorEmptyState({ label }: MonitorEmptyStateProps) {
   return (
-    <Stack p="xl" align="center">
+    <Stack p="xxl" align="center">
       <img
         src={EmptyDashboardBot}
         alt={t`Empty list`}

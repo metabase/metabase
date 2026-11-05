@@ -31,11 +31,11 @@ export const getDisabledFeatureMessage = (
     .with(
       { hasActionsEnabled: true, isPersisted: true },
       () =>
-        t`Database routing can't be enabled if model actions and persistence are enabled.`,
+        t`Database routing can't be enabled if data actions and model persistence are enabled.`,
     )
     .with(
       { hasActionsEnabled: true },
-      () => t`Database routing can't be enabled if model actions are enabled.`,
+      () => t`Database routing can't be enabled if data actions are enabled.`,
     )
     .with(
       { isPersisted: true },

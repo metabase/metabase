@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.task.index-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.models.model-index-test :refer [with-scheduler-setup!]]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.task.impl :as task]
@@ -36,7 +37,7 @@
               (task.index-values/add-indexing-job model-index)
               (is (some? (get-trigger)) "Trigger should exist after creating model index")
               ;; delete the trigger from Quartz
-              (task.index-values/remove-indexing-job model-index)
+              (model-index/remove-indexing-job model-index)
               (is (nil? (get-trigger)) "Trigger should be deleted")
               ;; call job-init! to recreate missing triggers
               (#'task.index-values/job-init!)

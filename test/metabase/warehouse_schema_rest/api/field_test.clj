@@ -12,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -108,6 +109,11 @@
             ["distincts" 75]]
            (mt/user-http-request :crowberto :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
+(defn- field-row
+  "The Field row in `metabase_field`."
+  [field-id]
+  (t2/select-one :model/Field :id field-id))
+
 (defn simple-field-details [field]
   (select-keys field [:name
                       :display_name
@@ -116,7 +122,7 @@
                       :semantic_type
                       :json_unfolding
                       :fk_target_field_id
-                      :nfc_path]))
+                      :data_sensitivity]))
 
 (mt/defdataset integer-coerceable
   [["t" [{:field-name "f"
@@ -127,7 +133,7 @@
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
-        (let [original-val (simple-field-details (t2/select-one :model/Field :id field-id))]
+        (let [original-field (simple-field-details (field-row field-id))]
           (testing "orignal value"
             (is (= {:name               "Field Test"
                     :display_name       "Field Test"
@@ -136,8 +142,8 @@
                     :visibility_type    :normal
                     :json_unfolding     false
                     :fk_target_field_id nil
-                    :nfc_path           nil}
-                   original-val)))
+                    :data_sensitivity   nil}
+                   original-field)))
           (let [;; set it
                 response (mt/user-http-request :crowberto :put 200
                                                (format "field/%d" field-id)
@@ -147,9 +153,8 @@
                                                 :semantic_type   :type/Name
                                                 :json_unfolding  true
                                                 :visibility_type :sensitive
-                                                :nfc_path        ["bob" "dobbs"]})
-                updated-val (simple-field-details (t2/select-one :model/Field :id field-id))]
-            (testing "response body should be the updated field"
+                                                :data_sensitivity "PII"})]
+            (testing "response body shows the user's values"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
                       :description        "foobar"
@@ -157,9 +162,9 @@
                       :visibility_type    "sensitive"
                       :json_unfolding     true
                       :fk_target_field_id nil
-                      :nfc_path           ["bob" "dobbs"]}
+                      :data_sensitivity   "PII"}
                      (simple-field-details response))))
-            (testing "updated value"
+            (testing "Field row shows user's values and FieldUserSettings records them"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
                       :description        "foobar"
@@ -167,13 +172,32 @@
                       :visibility_type    :sensitive
                       :json_unfolding     true
                       :fk_target_field_id nil
-                      :nfc_path           ["bob" "dobbs"]}
-                     updated-val)))
+                      :data_sensitivity   :PII}
+                     (simple-field-details (field-row field-id))))
+              (is (=? {:display_name      "yay"
+                       :description       "foobar"
+                       :description_set   true
+                       :semantic_type     :type/Name
+                       :semantic_type_set true
+                       :visibility_type   :sensitive
+                       :json_unfolding    true
+                       :data_sensitivity  :PII}
+                      (t2/select-one :model/FieldUserSettings :field_id field-id))))
+            (testing "GET /api/field/:id shows the user's values"
+              (is (= {:name               "Field Test"
+                      :display_name       "yay"
+                      :description        "foobar"
+                      :semantic_type      "type/Name"
+                      :visibility_type    "sensitive"
+                      :json_unfolding     true
+                      :fk_target_field_id nil
+                      :data_sensitivity   "PII"}
+                     (simple-field-details (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id))))))
             ;; unset it
-            (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description   nil
-                                                                                    :semantic_type nil
-                                                                                    :nfc_path      nil})
-            (testing "response"
+            (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description      nil
+                                                                                    :semantic_type    nil
+                                                                                    :data_sensitivity nil})
+            (testing "Field row shows cleared values"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
                       :description        nil
@@ -181,8 +205,62 @@
                       :visibility_type    :sensitive
                       :json_unfolding     true
                       :fk_target_field_id nil
-                      :nfc_path           nil}
-                     (simple-field-details (t2/select-one :model/Field :id field-id)))))))))))
+                      :data_sensitivity   nil}
+                     (simple-field-details (field-row field-id)))))
+            (testing "GET shows the cleared values"
+              (is (= {:name               "Field Test"
+                      :display_name       "yay"
+                      :description        nil
+                      :semantic_type      nil
+                      :visibility_type    "sensitive"
+                      :json_unfolding     true
+                      :fk_target_field_id nil
+                      :data_sensitivity   nil}
+                     (simple-field-details (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id))))))))))))
+
+(deftest update-field-clear-description-test
+  (testing "PUT /api/field/:id with description nil clears the description users see"
+    (mt/with-temp [:model/Field {field-id :id} {:name "Field Test" :description "synced description"}]
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description "user description"})
+      (is (= "user description"
+             (:description (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description nil})
+      (testing "user's cleared description is written to Field and recorded in its settings"
+        (is (nil? (:description (field-row field-id))))
+        (is (nil? (:description (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
+        (is (=? {:description nil :description_set true}
+                (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
+
+(deftest update-field-data-sensitivity-test
+  (testing "PUT /api/field/:id"
+    (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+      (testing "setting data_sensitivity writes it to Field and its settings"
+        (is (= "SEC_KEY"
+               (:data_sensitivity (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+                                                        {:data_sensitivity "SEC_KEY"}))))
+        (is (= :SEC_KEY (:data_sensitivity (field-row field-id))))
+        (is (= :SEC_KEY (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))
+      (testing "a null data_sensitivity clears the user setting"
+        (is (nil? (:data_sensitivity (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+                                                           {:data_sensitivity nil}))))
+        (is (nil? (:data_sensitivity (field-row field-id))))
+        (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))
+      (testing "an update that omits data_sensitivity leaves it unchanged"
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description "unrelated"})
+        (is (= :PHI (:data_sensitivity (field-row field-id))))
+        (is (= :PHI (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))
+        (is (= "PHI" (:data_sensitivity (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))))))
+
+(deftest update-field-data-sensitivity-validation-test
+  (testing "PUT /api/field/:id rejects data_sensitivity values outside the enum"
+    (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+      (doseq [bad-value ["pii" "NOT_A_MEMBER" 123 ["PII"]]]
+        (testing (pr-str bad-value)
+          (is (=? {:errors {:data_sensitivity some?}}
+                  (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id)
+                                        {:data_sensitivity bad-value})))
+          (is (nil? (:data_sensitivity (field-row field-id)))))))))
 
 (deftest update-field-test-2
   (testing "PUT /api/field/:id"
@@ -218,26 +296,51 @@
       (testing "Refingerprints field when updated"
         (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
-            (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
+            (sync/sync-database! (:id (t2/select-one :model/Database :id (mt/id))))
             (let [field-id      (mt/id :t :f)
                   set-strategy! (fn [strategy]
                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                                         {:coercion_strategy strategy}))]
               ;; ensure that there is no coercion strategy from previous tests
-              (set-strategy! nil)
-              (let [field (t2/select-one :model/Field :id field-id)]
-                (is (= :type/Integer (:effective_type field)))
-                (is (contains? (get-in field [:fingerprint :type]) :type/Number)))
-              (set-strategy! :Coercion/UNIXSeconds->DateTime)
-              (let [field (t2/select-one :model/Field :id field-id)]
-                (is (= :type/Instant (:effective_type field)))
-                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))))
+              (let [response (set-strategy! nil)]
+                (is (= "type/Integer" (:effective_type response)))
+                (is (contains? (get-in (t2/select-one :model/Field :id field-id) [:fingerprint :type]) :type/Number)))
+              (let [response (set-strategy! :Coercion/UNIXSeconds->DateTime)]
+                (is (= "type/Instant" (:effective_type response)))
+                (is (= "type/Instant" (:effective_type (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
+                (is (= :type/Instant (:effective_type (field-row field-id))))
+                (is (contains? (get-in (t2/select-one :model/Field :id field-id) [:fingerprint :type]) :type/DateTime))))))))))
+
+(deftest update-field-coercion-set-then-cleared-test
+  (testing "PUT /api/field/:id"
+    (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+      (testing "setting coercion strategy writes it to Field and its settings"
+        (let [response (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+                                             {:coercion_strategy :Coercion/YYYYMMDDHHMMSSString->Temporal})]
+          (is (= "Coercion/YYYYMMDDHHMMSSString->Temporal" (:coercion_strategy response)))
+          (is (= "type/DateTime" (:effective_type response))))
+        (is (=? {:coercion_strategy :Coercion/YYYYMMDDHHMMSSString->Temporal :effective_type :type/DateTime}
+                (field-row field-id)))
+        (is (= :Coercion/YYYYMMDDHHMMSSString->Temporal
+               (t2/select-one-fn :coercion_strategy :model/FieldUserSettings :field_id field-id)))
+        (is (= :type/DateTime
+               (t2/select-one-fn :effective_type :model/FieldUserSettings :field_id field-id))))
+      (testing "clearing it records the user's choice of no coercion, with the effective type back at the base type"
+        (let [response (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+                                             {:coercion_strategy nil})]
+          (is (nil? (:coercion_strategy response)))
+          (is (= "type/Text" (:effective_type response))))
+        (is (=? {:coercion_strategy nil :effective_type :type/Text} (field-row field-id)))
+        (is (=? {:coercion_strategy nil :effective_type :type/Text}
+                (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
 
 (deftest update-field-test-3
   (testing "PUT /api/field/:id"
     (testing "A field can only be updated by a superuser"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
-        (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
+        (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})
+        (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:data_sensitivity "PII"})
+        (is (nil? (:data_sensitivity (field-row field-id))))))))
 
 (deftest ^:parallel update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
@@ -246,22 +349,47 @@
                      :model/Field fk-field-2 {}
                      :model/Field field {:semantic_type :type/FK :fk_target_field_id (:id fk-field-1)}]
         (is (= (:id fk-field-2)
-               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
+               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (-> field
+                                                                                                           (dissoc :has_field_values)
+                                                                                                           (assoc :fk_target_field_id (:id fk-field-2))))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
-    (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
+    (testing "when we set the semantic-type from `:type/FK` to something else, `:fk_target_field_id` is cleared"
       (mt/with-temp [:model/Field {fk-field-id :id} {}
                      :model/Field {field-id :id} {:semantic_type :type/FK :fk_target_field_id fk-field-id}]
-        (let [original-val (boolean (t2/select-one-fn :fk_target_field_id :model/Field, :id field-id))]
-          (testing "before API call"
-            (is (true?
-                 original-val)))
-          ;; unset the :type/FK semantic-type
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
-          (testing "after API call"
-            (is (= nil
-                   (t2/select-one-fn :fk_target_field_id :model/Field, :id field-id)))))))))
+        (testing "before API call"
+          (is (= fk-field-id (:fk_target_field_id (field-row field-id)))))
+        ;; unset the :type/FK semantic-type
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
+        (testing "after API call"
+          (is (=? {:semantic_type :type/Name :fk_target_field_id nil} (field-row field-id)))
+          (is (=? {:semantic_type      :type/Name
+                   :semantic_type_set  true
+                   :fk_target_field_id nil}
+                  (t2/select-one :model/FieldUserSettings :field_id field-id)))
+          (is (nil? (:fk_target_field_id (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id))))))))))
+
+(deftest remove-sync-detected-fk-test
+  (testing "PUT /api/field/:id clearing semantic_type on a sync-detected FK clears the target"
+    (mt/with-temp [:model/Field {target-id :id} {}
+                   :model/Field {field-id :id} {}]
+      (t2/update! :model/Field :id field-id {:semantic_type :type/FK :fk_target_field_id target-id})
+      (testing "before the user's edit, GET shows the sync-detected FK"
+        (is (=? {:semantic_type      "type/FK"
+                 :fk_target_field_id target-id
+                 :target             {:id target-id}}
+                (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type nil})
+      (testing "after the user's edit, GET shows no FK or target"
+        (is (=? {:semantic_type      nil
+                 :fk_target_field_id nil
+                 :target             nil}
+                (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
+      (testing "Field row has no FK, and its settings record user cleared it"
+        (is (=? {:semantic_type nil :fk_target_field_id nil} (field-row field-id)))
+        (is (=? {:semantic_type_set true :fk_target_field_id_set true}
+                (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
 
 (deftest update-fk-target-field-id-test
   (testing "PUT /api/field/:id"
@@ -269,8 +397,11 @@
       (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Integer}]
         (mt/user-http-request :crowberto :put 200 (str "field/" field-id)
                               {:semantic_type :type/Quantity})
+        (is (= :type/Quantity (:semantic_type (field-row field-id))))
         (is (= :type/Quantity
-               (t2/select-one-fn :semantic_type :model/Field, :id field-id)))))))
+               (t2/select-one-fn :semantic_type :model/FieldUserSettings :field_id field-id)))
+        (is (= "type/Quantity"
+               (:semantic_type (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))))))
 
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
@@ -286,8 +417,8 @@
       (mt/with-temp-copy-of-db
         ;; clear out existing human_readable_values in case they're set
         (when-let [id (field-values-id :venues :price)]
-          (t2/update! :model/FieldValues id {:human_readable_values nil}))
-        (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
+          (t2/update! :model/FieldValues :id id {:human_readable_values nil}))
+        (t2/update! :model/Field :id (mt/id :venues :price) {:has_field_values "list"})
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
@@ -433,7 +564,9 @@
       (testing "before update"
         (is (= "Widget ID"
                (:name (dimension-for-field (:id field))))))
-      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "SKU"))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (-> field
+                                                                                    (dissoc :has_field_values)
+                                                                                    (assoc :display_name "SKU")))
       (testing "after update"
         (is (= "SKU"
                (:name (dimension-for-field (:id field)))))))))
@@ -626,32 +759,22 @@
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1))))))))))
 
 (deftest remove-fk-semantic-type-test-2
-  (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
+  (testing "When removing the FK semantic type, the fk_target_field_id is cleared too"
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name               "Field Test 2"
                                                   :semantic_type      :type/FK
                                                   :fk_target_field_id field-id-1}]
-      (testing "before change"
-        (is (= {:name               "Field Test 2"
-                :display_name       "Field Test 2"
-                :description        nil
-                :visibility_type    :normal
-                :semantic_type      :type/FK
-                :fk_target_field_id true
-                :json_unfolding     false
-                :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))
-      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
-      (testing "after change"
-        (is (= {:name               "Field Test 2"
-                :display_name       "Field Test 2"
-                :description        nil
-                :visibility_type    :normal
-                :semantic_type      nil
-                :fk_target_field_id false
-                :json_unfolding     false
-                :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2)))))))))
+      (let [raw-field #(simple-field-details (field-row field-id-2))
+            before    (raw-field)]
+        (testing "before change"
+          (is (= {:semantic_type :type/FK, :fk_target_field_id field-id-1}
+                 (select-keys before [:semantic_type :fk_target_field_id]))))
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
+        (testing "after change, Field row has no FK"
+          (is (= (assoc before :semantic_type nil :fk_target_field_id nil) (raw-field))))
+        (testing "after change, the user sees no FK"
+          (is (=? {:semantic_type nil, :fk_target_field_id nil}
+                  (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id-2)))))))))
 
 (deftest update-fk-target-field-id-test-2
   (testing "Checking update of the fk_target_field_id"
@@ -660,58 +783,33 @@
                    :model/Field {field-id-3 :id} {:name               "Field Test 3"
                                                   :semantic_type      :type/FK
                                                   :fk_target_field_id field-id-1}]
-      (let [before-change (simple-field-details (t2/select-one :model/Field :id field-id-3))]
+      (let [raw-field #(simple-field-details (field-row field-id-3))
+            before    (raw-field)]
         (testing "before change"
-          (is (= {:name               "Field Test 3"
-                  :display_name       "Field Test 3"
-                  :description        nil
-                  :visibility_type    :normal
-                  :semantic_type      :type/FK
-                  :fk_target_field_id true
-                  :json_unfolding     false
-                  :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps before-change))))
+          (is (= field-id-1 (:fk_target_field_id before))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
-        (testing "after change"
-          (let [after-change (simple-field-details (t2/select-one :model/Field :id field-id-3))]
-            (is (= {:name               "Field Test 3"
-                    :display_name       "Field Test 3"
-                    :description        nil
-                    :visibility_type    :normal
-                    :semantic_type      :type/FK
-                    :fk_target_field_id true
-                    :json_unfolding     false
-                    :nfc_path           nil}
-                   (mt/boolean-ids-and-timestamps after-change)))
-            (is (not= (:fk_target_field_id before-change)
-                      (:fk_target_field_id after-change)))))))))
+        (testing "after change, Field row has new target"
+          (is (= (assoc before :fk_target_field_id field-id-2) (raw-field))))
+        (testing "after change, the user sees the new target"
+          (is (= field-id-2
+                 (:fk_target_field_id (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id-3))))))))))
 
 (deftest update-fk-target-field-id-with-fk-test
   (testing "Checking update of the fk_target_field_id along with an FK change"
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name "Field Test 2"}]
-      (testing "before change"
-        (is (= {:name               "Field Test 2"
-                :display_name       "Field Test 2"
-                :description        nil
-                :visibility_type    :normal
-                :semantic_type      nil
-                :fk_target_field_id false
-                :json_unfolding     false
-                :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))
-      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
-                                                                                :fk_target_field_id field-id-1})
-      (testing "after change"
-        (is (= {:name               "Field Test 2"
-                :display_name       "Field Test 2"
-                :description        nil
-                :visibility_type    :normal
-                :semantic_type      :type/FK
-                :fk_target_field_id true
-                :json_unfolding     false
-                :nfc_path           nil}
-               (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2)))))))))
+      (let [raw-field #(simple-field-details (field-row field-id-2))
+            before    (raw-field)]
+        (testing "before change"
+          (is (= {:semantic_type nil, :fk_target_field_id nil}
+                 (select-keys before [:semantic_type :fk_target_field_id]))))
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
+                                                                                  :fk_target_field_id field-id-1})
+        (testing "after change, Field row has new FK"
+          (is (= (assoc before :semantic_type :type/FK :fk_target_field_id field-id-1) (raw-field))))
+        (testing "after change, the user sees the new FK"
+          (is (=? {:semantic_type "type/FK", :fk_target_field_id field-id-1}
+                  (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id-2)))))))))
 
 (deftest fk-target-field-id-shouldnt-change-test
   (testing "PUT /api/field/:id"
@@ -720,27 +818,17 @@
                      :model/Field {field-id-2 :id} {:name               "Field Test 2"
                                                     :semantic_type      :type/FK
                                                     :fk_target_field_id field-id-1}]
-        (testing "before change"
-          (is (= {:name               "Field Test 2"
-                  :display_name       "Field Test 2"
-                  :description        nil
-                  :visibility_type    :normal
-                  :semantic_type      :type/FK
-                  :fk_target_field_id true
-                  :json_unfolding     false
-                  :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))
-        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
-        (testing "after change"
-          (is (= {:name               "Field Test 2"
-                  :display_name       "Field Test 2"
-                  :description        "foo"
-                  :visibility_type    :normal
-                  :semantic_type      :type/FK
-                  :fk_target_field_id true
-                  :json_unfolding     false
-                  :nfc_path           nil}
-                 (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one :model/Field :id field-id-2))))))))))
+        (let [raw-field #(simple-field-details (field-row field-id-2))
+              before    (raw-field)]
+          (testing "before change"
+            (is (= {:semantic_type :type/FK, :fk_target_field_id field-id-1, :description nil}
+                   (select-keys before [:semantic_type :fk_target_field_id :description]))))
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
+          (testing "after change, Field row has new description and same FK"
+            (is (= (assoc before :description "foo") (raw-field))))
+          (testing "after change, the user sees the new description and the same FK"
+            (is (=? {:semantic_type "type/FK", :fk_target_field_id field-id-1, :description "foo"}
+                    (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id-2))))))))))
 
 (deftest update-field-type-dimension-test
   (testing "PUT /api/field/:id"
@@ -836,6 +924,16 @@
                                     [3 "Synergistic Granite Chair"]]}
                           (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
 
+(deftest rescan-values-reports-scan-failure-test
+  (testing "POST /api/field/:id/rescan_values"
+    (testing "reports a failed scan rather than answering success — a failed scan leaves the cached
+              FieldValues untouched, so there is otherwise no trace of it (GHY-2937)"
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:has_field_values "list"}
+        (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly nil)]
+          (is (=? {:message #"Failed to scan field values.*"}
+                  (mt/user-http-request :crowberto :post 500
+                                        (format "field/%d/rescan_values" (mt/id :venues :price))))))))))
+
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql/mariadb? (mt/db))
@@ -845,12 +943,12 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding true)}]
             (mt/with-db database
               ;; Sync the new database
-              (sync/sync-database! database)
+              (sync/sync-database! (:id database))
               (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                          (assoc field :json_unfolding v)))
+                                                                          {:json_unfolding v}))
                     set-json-unfolding-for-db! (fn [v]
                                                  (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -864,11 +962,11 @@
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the DB"
                   (set-json-unfolding-for-db! false)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again for the DB"
                   (set-json-unfolding-for-db! true)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the field"
                   (set-json-unfolding-for-field! false)
@@ -887,12 +985,12 @@
             (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding false)}]
               (mt/with-db database
                 ;; Sync the new database
-                (sync/sync-database! database)
+                (sync/sync-database! (:id database))
                 (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
                       get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                       set-json-unfolding-for-field! (fn [v]
                                                       (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                            (assoc (get-field) :json_unfolding v)))
+                                                                            {:json_unfolding v}))
                       set-json-unfolding-for-db! (fn [v]
                                                    (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
                                                      (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
@@ -916,11 +1014,11 @@
                     (set-json-unfolding-for-db! true)
                     (is (true? (:json-unfolding (:details (get-database)))))
                     (is (true? (:json_unfolding (get-field))))
-                    (sync/sync-database! (get-database))
+                    (sync/sync-database! (:id (get-database)))
                     (is (seq (nested-fields))))
                   (testing "nested fields are removed when json unfolding is disabled again"
                     (set-json-unfolding-for-db! false)
-                    (sync/sync-database! (get-database))
+                    (sync/sync-database! (:id (get-database)))
                     (is (empty? (nested-fields)))))))))))))
 
 (deftest coercion-strategy-is-respected-after-follow-up-request-test
@@ -928,20 +1026,22 @@
     (mt/with-temp-copy-of-db
       (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
                             {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})
-      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
-        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
-        (is (isa? (:effective_type field) :type/DateTime)))
+      (let [field (mt/user-http-request :crowberto :get 200 (format "field/%d" (mt/id :venues :price)))]
+        (is (= "Coercion/UNIXSeconds->DateTime" (:coercion_strategy field)))
+        (is (isa? (keyword (:effective_type field)) :type/DateTime)))
       (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
                             {:settings {:time_enabled "minutes"}})
-      (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
-        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
-        (is (isa? (:effective_type field) :type/DateTime))
-        (is (= "minutes" (-> field :settings :time_enabled)))))))
+      (let [field (mt/user-http-request :crowberto :get 200 (format "field/%d" (mt/id :venues :price)))]
+        (is (= "Coercion/UNIXSeconds->DateTime" (:coercion_strategy field)))
+        (is (isa? (keyword (:effective_type field)) :type/DateTime))
+        (is (= "minutes" (-> field :settings :time_enabled))))
+      (testing "Field row keeps coercion strategy"
+        (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy (field-row (mt/id :venues :price)))))))))
 
 (deftest field-values-requires-query-permission-test
   (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"
     (mt/with-temp-copy-of-db
-      (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
+      (t2/update! :model/Field :id (mt/id :venues :price) {:has_field_values "list"})
       (testing "User with only view-data permission (no create-queries) cannot access field values"
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
@@ -963,7 +1063,9 @@
         (testing (format "has_field_values = %s" v)
           (mt/user-http-request :crowberto :put 200 (format "field/%d" fid) {:has_field_values v})
           (is (= (keyword v)
-                 (t2/select-one-fn :has_field_values :model/Field :id fid))))))))
+                 (t2/select-one-fn :has_field_values :model/FieldUserSettings :field_id fid)))
+          (is (= v
+                 (:has_field_values (mt/user-http-request :crowberto :get 200 (format "field/%d" fid))))))))))
 
 (deftest discard-field-values-test
   (testing "POST /api/field/:id/discard_values"

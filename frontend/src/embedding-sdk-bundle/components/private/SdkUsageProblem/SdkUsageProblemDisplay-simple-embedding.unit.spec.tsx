@@ -5,6 +5,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -13,7 +14,6 @@ import {
   createMockSdkState,
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -28,10 +28,12 @@ jest.mock("metabase/visualizations/register", () => ({
 
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),
+  // The actual helper reads the actual config, not the mocked one below.
+  isEmbeddingEajs: () => true,
   EMBEDDING_SDK_CONFIG: {
     isEmbeddingSdk: true,
     metabaseClientRequestHeader: "embedding-simple",
-    enableEmbeddingSettingKey: "enable-embedding-simple",
+    enableEmbeddingSettingKey: "enable-embedding-modular",
     tokenFeatureKey: "embedding_simple",
   },
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG: {
@@ -52,7 +54,7 @@ const setup = (options: Options) => {
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-simple": options.isSimpleEmbeddingEnabled ?? true,
+    "enable-embedding-modular": options.isSimpleEmbeddingEnabled ?? true,
   });
 
   const MINUTE = 60;

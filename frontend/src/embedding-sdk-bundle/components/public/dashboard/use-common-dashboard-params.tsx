@@ -4,7 +4,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { getMetadata } from "metabase/metadata-store";
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { navigateBackToDashboard } from "metabase/query_builder";
 import {
   NAVIGATE_TO_NEW_CARD,
@@ -52,7 +52,7 @@ export const useCommonDashboardParams = ({
       objectId,
     }: NavigateToNewCardFromDashboardOpts) => {
       const state = store.getState();
-      const metadata = getMetadata(state);
+      const buildQuestion = selectQuestionFromCardBuilder(state);
       const { dashboards, parameterValues } = state.dashboard;
 
       if (dashboardId === null) {
@@ -63,7 +63,7 @@ export const useCommonDashboardParams = ({
 
       if (dashboard) {
         const url = getNewCardUrl({
-          metadata,
+          buildQuestion,
           dashboard,
           parameterValues,
           nextCard,

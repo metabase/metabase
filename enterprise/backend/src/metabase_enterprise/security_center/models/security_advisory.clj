@@ -1,5 +1,6 @@
 (ns metabase-enterprise.security-center.models.security-advisory
   (:require
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -23,14 +24,20 @@
   [advisory]
   (assoc advisory :fetched_at (mi/now)))
 
+(t2/define-before-update :model/SecurityAdvisory
+  [advisory]
+  (let [changes (t2/changes advisory)]
+    (cond-> advisory
+      (and (some? (:acknowledged_by changes)) (not (contains? changes :acknowledged_at)))
+      (assoc :acknowledged_at (mi/now)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by_user]
   "Hydrate `:acknowledged_by_user` from the `:acknowledged_by` FK to a User map with `:id`, `:common_name`, and `:email`."
   [_model k advisories]
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
-                   (t2/select-fn->fn :id #(select-keys % [:id :common_name :email])
-                                     [:model/User :id :first_name :last_name :email]
-                                     :id [:in (set user-ids)]))]
+                   (update-vals (security-center.db/user-summaries-by-id (set user-ids))
+                                #(select-keys % [:id :common_name :email])))]
     (mi/instances-with-hydrated-data
      advisories k
      (constantly id->user)
@@ -43,22 +50,19 @@
   [advisory user-id]
   (when (:acknowledged_at advisory)
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
-  (let [now (mi/now)]
-    (t2/update! :model/SecurityAdvisory (:id advisory)
-                {:acknowledged_by user-id
-                 :acknowledged_at now})
-    (events/publish-event! :event/security-advisory-acknowledge
-                           {:object  advisory
-                            :user-id user-id})
-    (analytics/track-event! :snowplow/simple_event
-                            {:event        "security_advisory_acknowledged"
-                             :event_detail (name (:severity advisory))})
-    (-> (t2/select-one :model/SecurityAdvisory :id (:id advisory))
-        (t2/hydrate :acknowledged_by_user))))
+  (security-center.db/update-advisory! (:id advisory) {:acknowledged_by user-id})
+  (events/publish-event! :event/security-advisory-acknowledge
+                         {:object  advisory
+                          :user-id user-id})
+  (analytics/track-event! :snowplow/simple_event
+                          {:event        "security_advisory_acknowledged"
+                           :event_detail (name (:severity advisory))})
+  (-> (security-center.db/advisory (:id advisory))
+      (t2/hydrate :acknowledged_by_user)))
 
 (defn acknowledge-many!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
    advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
   [advisory-ids user-id]
-  (let [advisories (t2/select :model/SecurityAdvisory :advisory_id [:in (set advisory-ids)] :acknowledged_at nil)]
+  (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))]
     (mapv #(acknowledge! % user-id) advisories)))

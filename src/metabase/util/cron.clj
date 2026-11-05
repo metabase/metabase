@@ -44,13 +44,17 @@
 (mr/def ::ScheduleMap
   (mu/with-api-error-message
    [:map
-    {:error/message "Expanded schedule map"}
+    {:closed true :error/message "Expanded schedule map"}
     [:schedule_type                    [:enum "hourly" "daily" "weekly" "monthly"]]
     [:schedule_day    {:optional true} [:maybe [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"]]]
     [:schedule_frame  {:optional true} [:maybe [:enum "first" "mid" "last"]]]
     [:schedule_hour   {:optional true} [:maybe ::CronHour]]
     [:schedule_minute {:optional true} [:maybe ::CronMinute]]]
    (i18n/deferred-tru "value must be a valid schedule map. See schema in metabase.util.cron for details.")))
+
+(def schedule-keys
+  "The keys of a [[ScheduleMap]]."
+  [:schedule_type :schedule_day :schedule_frame :schedule_hour :schedule_minute])
 
 (def ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
@@ -62,7 +66,15 @@
 
 (mu/defn- cron-string :- CronScheduleString
   "Build a cron string from key-value pair parts."
-  [{:keys [seconds minutes hours day-of-month month day-of-week year]}]
+  [{:keys [seconds minutes hours day-of-month month day-of-week year]}
+   :- [:map {:closed true}
+       [:seconds      {:optional true} [:maybe [:or :string :int]]]
+       [:minutes      {:optional true} [:maybe [:or :string :int]]]
+       [:hours        {:optional true} [:maybe [:or :string :int]]]
+       [:day-of-month {:optional true} [:maybe [:or :string :int]]]
+       [:month        {:optional true} [:maybe [:or :string :int]]]
+       [:day-of-week  {:optional true} [:maybe [:or :string :int]]]
+       [:year         {:optional true} [:maybe [:or :string :int]]]]]
   (str/join " " [(or seconds      "0")
                  (or minutes      "0")
                  (or hours        "*")

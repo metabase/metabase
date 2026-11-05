@@ -4,9 +4,9 @@
    [hooks.common :as common]))
 
 (defn lint-defsetting-namespace [node context]
-  (when-not (re-matches #"^metabase(?:-enterprise)?\.[^\.]+\.settings$" (name (:ns context)))
+  (when-not (re-matches #"^metabase(?:-enterprise)?\.([^\.]+\.)+settings$" (name (:ns context)))
     (hooks/reg-finding! (assoc (meta node)
-                               :message "All defsettings should live in metabase[-enterprise].<module>.settings namespaces"
+                               :message "All defsettings should live in a namespace ending in .settings under metabase[-enterprise]"
                                :type :metabase/defsetting-namespace))))
 
 ;;; TODO -- move this into a Kondo config file in `.clj-kondo/config/`
@@ -204,8 +204,7 @@
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
                         hooks/list-node
-                        (with-meta (meta node))
-                        common/add-lsp-ignore-unused-public-var-metadata)]
+                        (with-meta (meta node)))]
     (-> (hooks/list-node
          (list
           (hooks/token-node 'let)

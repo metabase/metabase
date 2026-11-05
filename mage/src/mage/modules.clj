@@ -1,14 +1,19 @@
 (ns mage.modules
   (:require
+   [cheshire.core :as json]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [dev.module-explorer :as module-explorer]
+   [hooks.common.modules :as modules]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *github-output-only?* false)
 
 (def default-modules-which-trigger-drivers
@@ -18,39 +23,71 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python})
+     enterprise/transforms enterprise/transforms.python})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
-(defn- file->module [filename]
+(defn- file->ns-symbol [filename]
+  (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
+    (-> filename
+        (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
+        (str/replace #"\.[^./]+$" "")
+        (str/replace "/" ".")
+        (str/replace "_" "-")
+        symbol)))
+
+(defn- file->module [prefix->module filename]
   (or
+   (some->> (file->ns-symbol filename) (modules/declared-module prefix->module))
+   ;; otherwise a file inside a directory belongs to the (undeclared) module that directory names
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
      (symbol "enterprise" (str/replace module #"_" "-")))))
 
+(defn- read-modules-config []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules))
+
 (defn- updated-files->updated-modules [updated-files]
-  (into (sorted-set)
-        (keep file->module)
-        updated-files))
+  (let [prefix->module (modules/build-prefix->module (read-modules-config))]
+    (into (sorted-set)
+          (keep #(file->module prefix->module %))
+          updated-files)))
 
 (defn- updated-modules [git-ref]
   (let [git-ref (or git-ref "master")
         updated-files (u/updated-files git-ref)]
     (updated-files->updated-modules updated-files)))
 
-(defn- module->test-directory
-  [module]
-  (case (namespace module)
-    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (str/replace (name module) #"-" "_"))
-    nil (str "test/metabase/" (str/replace (name module) #"-" "_"))))
+(def ^:private backend-test-source-file-extensions
+  [".clj" ".cljc"])
+
+(defn- module->test-paths [modules-config module]
+  (let [prefix->module (modules/build-prefix->module modules-config)
+        path-prefix    (modules/module-dir modules-config module "test")
+        test-dir       (io/file path-prefix)
+        test-files     (concat
+                        (for [extension backend-test-source-file-extensions
+                              :let      [file (io/file (str path-prefix "_test" extension))]
+                              :when     (.isFile file)]
+                          file)
+                        (when (.isDirectory test-dir)
+                          (for [file (file-seq test-dir)
+                                :when (and (.isFile ^java.io.File file)
+                                           (some #(str/ends-with? (str file) %)
+                                                 backend-test-source-file-extensions))]
+                            file)))]
+    (into (sorted-set)
+          (comp (filter #(= module (file->module prefix->module (str %))))
+                (map str))
+          test-files)))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
   []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-                     (edn/read r))
-                   :metabase/modules
+  (let [config (-> (read-modules-config)
                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
                    (dissoc 'connection-pool))]
     (into (sorted-map)
@@ -87,78 +124,93 @@
 
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{agent-api
+  '#{metabot.agent-api
+     metabot.agent-api.usage
      analytics
-     analytics-interface
+     analytics.interface
      api
-     api-scope
      api-keys
+     api-scope
      appearance
      audit-app
-     auth-identity
+     sso.auth-identity
      auth-provider
      batch-processing
+     bookmarks
      channel
-     classloader
+     util.classloader
      collections
-     config
+     util.config
      content-verification
-     contextual-interestingness
+     explorations.contextual-interestingness
      custom-viz-plugin
      dashboards
+     data-apps
+     dependencies
      documents
-     eid-translation
+     api.eid-translation
      embedding
      enterprise/api
-     enterprise/scim
+     enterprise/sso.scim
      enterprise/serialization
      enterprise/sso
      enterprise/transforms
-     enterprise/transforms-inspector
-     entity-retrieval
+     enterprise/transforms.inspector
+     search.entity-retrieval
      events
      explorations
      formatter
+     funnysql
      geojson
-     initialization-status
+     glossary
+     indexed-entities
+     core.initialization-status
      interestingness
-     internal-stats
-     llm
-     login-history
+     analytics.internal-stats
+     metabot.llm
+     session.login-history
      mcp
+     measures
      metabot
      mq
      notification
-     oauth-server
+     mcp.oauth-server
+     osi
      permissions
      premium-features
      public-sharing
      pulse
      remote-sync
      request
+     request.schema
      sample-data
      search
-     secrets
+     warehouses.secrets
+     segments
      server
      session
      settings
      setup
-     slackbot
+     metabot.slackbot
      sso
      staleness
      startup
      system
      task
-     task-history
+     task.history
+     task.secure-delegate
      tiles
      timeline
      tracing
-     types
+     transforms.feature-gating
+     lib.types
      users
+     users.schema
      util
-     version
-     view-log
-     warehouse-schema})
+     core.version
+     audit-app.view-log
+     warehouses.schema
+     xrays})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -197,7 +249,8 @@
 (defn cli-print-affected-modules
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [deps (dependencies)
+  (let [modules-config (read-modules-config)
+        deps (dependencies)
         updated (updated-modules git-ref)
         affected (affected-modules deps updated)
         driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
@@ -207,8 +260,372 @@
     (println "You can run tests for these modules and all downstream modules as follows:")
     (println)
     (println)
-    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
+    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n"
+            (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
+    (u/exit 0)))
+
+;;;; =============================================================================
+;;;; CODEOWNERS
+;;;; =============================================================================
+
+;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers.
+;;;; Its lines come from [[codeowners-entries]].
+;;;; Its text depends only on config.edn and team.json; the one disk read refuses an opted-in module with no code.
+;;;; Lines outside the markers are hand-maintained.
+
+(def ^:private codeowners-path ".github/CODEOWNERS")
+(def ^:private team-config-path ".github/team.json")
+
+(def ^:private codeowners-begin-marker
+  "# ===== BEGIN generated module ownership (./bin/mage update-codeowners) =====")
+
+(def ^:private codeowners-end-marker
+  "# ===== END generated module ownership =====")
+
+(def ^:private tree->root-file-suffix
+  "Each tree an opted-in module owns => the suffix added to the module's directory to match its root namespace file.
+  Examples: `src/metabase/driver.*` and `test/metabase/driver_test.*`."
+  (array-map "src"  ".*"
+             "test" "_test.*"))
+
+(defn- read-team->codeowner
+  "Team name => the `codeowner` value in team.json, for each team that has the field, whatever its value."
+  []
+  (into {}
+        (keep (fn [{:keys [name] :as team}]
+                (when (contains? team :codeowner)
+                  [name (:codeowner team)])))
+        (:teams (json/parse-string (slurp team-config-path) true))))
+
+(defn- valid-codeowner?
+  "Whether `value` is one GitHub handle, such as `@metabase/metabot` or `@someone`, and nothing else."
+  [value]
+  (and (string? value)
+       (some? (re-matches #"@[A-Za-z0-9-]+(?:/[A-Za-z0-9._-]+)?" value))))
+
+(defn- has-source?
+  "Whether `src-dir` exists as a directory, or a root namespace file sits next to where it would be."
+  [src-dir]
+  (or (.isDirectory (io/file ^String src-dir))
+      (some #(.isFile (io/file (str src-dir %))) [".clj" ".cljc"])))
+
+(defn- path-within?
+  "Whether `path` is `dir` or sits inside it."
+  [dir path]
+  (or (= dir path)
+      (str/starts-with? path (str dir "/"))))
+
+(defn- opts-in?
+  "Whether `module` sets `:codeowners true`."
+  [modules-config module]
+  (true? (get-in modules-config [module :codeowners])))
+
+(defn- codeowners-entries
+  "One entry per module the block must name, in block order.
+  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :patterns}`.
+  A module's src and test code go to its team's handle when it, or an opted-in module around it, belongs to that team.
+  Inside an opted-in module's directory, a nested module of another team is otherwise unowned, with a `nil` handle.
+  An opted-in module always gets an entry.
+  Another module gets one only where the nearest entry around it would give its code a different owner.
+  Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any other value."
+  [modules-config team->codeowner]
+  ;; config.edn's `codeowners` section states this rule for module authors; change the two together.
+  (reduce
+   (fn [entries module]
+     (let [team      (modules/module-team modules-config module)
+           src-dir   (modules/module-dir modules-config module "src")
+           ;; Entries come parent first, so the last one around `src-dir` is the nearest.
+           around    (filter #(path-within? (:src-dir %) src-dir) entries)
+           owners    (filter :opted-in? around)
+           opted-in? (opts-in? modules-config module)
+           handle    (when (or opted-in? (some #(= team (:team %)) owners))
+                       (get team->codeowner team))]
+       (cond-> entries
+         (or opted-in?
+             (and (seq owners) (not= handle (:handle (last around)))))
+         (conj {:module    module
+                :src-dir   src-dir
+                :team      team
+                :handle    handle
+                :opted-in? opted-in?
+                :patterns  (for [[tree suffix] tree->root-file-suffix
+                                 :let          [dir (modules/module-dir modules-config module tree)]
+                                 pattern       [dir (str dir suffix)]]
+                             pattern)}))))
+   []
+   ;; CODEOWNERS applies the last matching pattern, so a nested module's entry must follow its parent's. Sorting by
+   ;; source path does that, and the test tree mirrors the source tree.
+   (sort-by #(modules/module-dir modules-config % "src") (keys modules-config))))
+
+(defn- codeowners-config-problems
+  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`, all of them in one run.
+  Each module problem has `:module`.
+  An `:unknown-value` adds `:value`, a `:no-codeowner` adds `:team`, and a `:no-source` adds `:src-dir`.
+  A team whose codeowner is not one GitHub handle gives a single `:bad-codeowner` (`:team`, `:value`, `:modules`).
+  The predicate `source?` takes a module's src directory and says whether its code is there."
+  [modules-config team->codeowner source?]
+  (let [modules (for [[module cfg] (sort-by key modules-config)
+                      :when        (contains? cfg :codeowners)]
+                  module)]
+    (concat
+     (for [module  modules
+           :let    [team    (modules/module-team modules-config module)
+                    src-dir (modules/module-dir modules-config module "src")]
+           problem (cond-> []
+                     (not (opts-in? modules-config module))
+                     (conj {:type :unknown-value, :module module, :value (get-in modules-config [module :codeowners])})
+
+                     (not (contains? team->codeowner team))
+                     (conj {:type :no-codeowner, :module module, :team team})
+
+                     (not (source? src-dir))
+                     (conj {:type :no-source, :module module, :src-dir src-dir}))]
+       problem)
+     (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %) modules))
+           :let                [handle (get team->codeowner team)]
+           :when               (and (contains? team->codeowner team) (not (valid-codeowner? handle)))]
+       {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)}))))
+
+(defn- pattern-covers?
+  "Whether CODEOWNERS `pattern`, a directory or a `<path>.*` root-file glob from the block, matches `path`."
+  [pattern path]
+  (if (str/ends-with? pattern ".*")
+    (let [stem (subs pattern 0 (dec (count pattern)))]
+      (and (str/starts-with? path stem)
+           (not (str/includes? (subs path (count stem)) "/"))))
+    (path-within? pattern path)))
+
+(defn- shadowed-lines
+  "Rule lines above the generated block in `existing` whose path falls inside one of `patterns`.
+  With no block, every line counts as above it.
+  Paths with wildcards are compared as literal text, so they are found only when the text matches."
+  [existing patterns]
+  (let [above (subs existing 0 (or (str/index-of existing codeowners-begin-marker) (count existing)))]
+    (for [line  (str/split-lines above)
+          :let  [path (some-> (re-find #"^\s*([^#\s]\S*)" line) second (str/replace #"^/" ""))]
+          :when (and path (some #(pattern-covers? % path) patterns))]
+      (str/trim line))))
+
+(defn- markers-problem
+  "A `:broken-markers` problem (`:begin`, `:end`), or nil when the markers are sound.
+  Sound means no marker at all, or each marker exactly once with BEGIN before END."
+  [existing]
+  (let [begin (str/index-of existing codeowners-begin-marker)
+        end   (str/index-of existing codeowners-end-marker)]
+    (when-not (or (= nil begin end)
+                  (and begin
+                       end
+                       ;; A marker is there once when its first and last positions match.
+                       (= begin (str/last-index-of existing codeowners-begin-marker))
+                       (= end (str/last-index-of existing codeowners-end-marker))
+                       (< begin end)))
+      {:type :broken-markers, :begin begin, :end end})))
+
+(defn- codeowners-file-problems
+  "Problems with the `existing` CODEOWNERS text for the block's `entries`, as maps keyed by `:type`.
+  Broken markers give a [[markers-problem]].
+  Otherwise, lines above the block inside its paths give a `:shadowed-lines` problem listing them under `:lines`.
+  Lines are not checked while the markers are broken, since the block's position is then unknown."
+  [existing entries]
+  (if-let [markers (markers-problem existing)]
+    [markers]
+    (when-let [shadowed (seq (shadowed-lines existing (mapcat :patterns entries)))]
+      [{:type :shadowed-lines, :lines (vec shadowed)}])))
+
+(defn- codeowners-problem-message
+  "One problem from [[codeowners-config-problems]] or [[codeowners-file-problems]] as a sentence saying what to fix."
+  [{:keys [module] :as problem}]
+  (case (:type problem)
+    :unknown-value  (format "Module %s sets :codeowners to %s. Use true, or leave it out."
+                            module (pr-str (:value problem)))
+    :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
+                            module (pr-str (:team problem)) team-config-path)
+    :bad-codeowner  (format (str "Team %s has \"codeowner\" %s in %s. Use one GitHub handle, such as"
+                                 " \"@metabase/metabot\", so that %s can opt in.")
+                            (pr-str (:team problem)) (pr-str (:value problem)) team-config-path
+                            (str/join ", " (:modules problem)))
+    :no-source      (format (str "Module %s sets :codeowners, but has no code at %s. The generator does not handle"
+                                 " plugin code under modules/<plugin>/src; give that directory an owner by hand.")
+                            module (:src-dir problem))
+    :shadowed-lines (str "These lines in " codeowners-path " sit above the generated block but inside paths it owns,"
+                         " so the block overrides them. Move them below the END marker:\n  "
+                         (str/join "\n  " (:lines problem)))
+    :broken-markers (str codeowners-path " has a broken generated block. It needs one BEGIN marker and one END"
+                         " marker, in that order. Fix the markers by hand.")))
+
+(defn- codeowners-stanza-lines
+  "Lines for one entry: a `# module (team)` header, with `, not opted in` after the team when it did not opt in.
+  Then one `pattern handle` line per pattern, or the bare pattern when the entry is unowned."
+  [{:keys [module team handle opted-in? patterns]}]
+  (into [(format "# %s (%s%s)" module team (if opted-in? "" ", not opted in"))]
+        (map #(cond-> % handle (str " " handle)))
+        patterns))
+
+(defn- codeowners-block
+  "Generated block as one string, marker to marker, rendering `entries` in order."
+  [entries]
+  (str/join
+   "\n"
+   (concat
+    [codeowners-begin-marker
+     "#"
+     "# Generated by `./bin/mage update-codeowners` from .clj-kondo/config/modules/config.edn. Do not edit by hand."
+     "# The `codeowners` section at the top of that file says which modules are owned, and by whom."
+     "# Each team's handle is its \"codeowner\" in .github/team.json."
+     "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
+     "#"]
+    (mapcat #(cons "" (codeowners-stanza-lines %)) entries)
+    [""
+     codeowners-end-marker])))
+
+(defn- splice-codeowners
+  "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when no marker is there.
+  Returns text ending in one newline.
+  Throws on a [[markers-problem]]."
+  [existing block]
+  ;; Callers check the markers first, but splicing a bad file would put the block in the wrong place.
+  (when-let [problem (markers-problem existing)]
+    (throw (ex-info (codeowners-problem-message problem) problem)))
+  (if-let [begin (str/index-of existing codeowners-begin-marker)]
+    (let [end (str/index-of existing codeowners-end-marker)]
+      (str (str/trimr (subs existing 0 begin))
+           "\n\n" block
+           (str/trimr (subs existing (+ end (count codeowners-end-marker))))
+           "\n"))
+    (str (str/trimr existing) "\n\n" block "\n")))
+
+(defn- codeowners-outcome
+  "What `update-codeowners` should do with the `existing` CODEOWNERS text, as a map keyed by `:status`.
+  The statuses are `:problems`, `:up-to-date`, `:stale` (only with `check?`) and `:write`.
+  A `:problems` outcome carries `:problems`, and a `:write` outcome carries the `:desired` text."
+  [existing modules-config team->codeowner source? check?]
+  (let [entries  (codeowners-entries modules-config team->codeowner)
+        problems (into (vec (codeowners-config-problems modules-config team->codeowner source?))
+                       (codeowners-file-problems existing entries))
+        desired  (when (empty? problems)
+                   (splice-codeowners existing (codeowners-block entries)))]
+    (cond
+      (seq problems)       {:status :problems, :problems problems}
+      (= existing desired) {:status :up-to-date}
+      check?               {:status :stale}
+      :else                {:status :write, :desired desired})))
+
+(defn cli-update-codeowners
+  "Regenerate the module-ownership block in `.github/CODEOWNERS`.
+  With `--check`, exit non-zero when the file is stale instead of writing it.
+  Exits non-zero, printing each problem, when [[codeowners-outcome]] finds any."
+  [cli-args]
+  (let [outcome (codeowners-outcome (slurp codeowners-path)
+                                    (read-modules-config)
+                                    (read-team->codeowner)
+                                    has-source?
+                                    (get-in cli-args [:options :check]))]
+    (case (:status outcome)
+      :problems
+      (do (doseq [problem (:problems outcome)]
+            (println (c/red (codeowners-problem-message problem))))
+          (u/exit 1))
+
+      :up-to-date
+      (do (println (c/green "CODEOWNERS module ownership is up to date."))
+          (u/exit 0))
+
+      :stale
+      (do (println (c/red "CODEOWNERS module ownership is out of date. Run ./bin/mage update-codeowners."))
+          (u/exit 1))
+
+      :write
+      (do (spit codeowners-path (:desired outcome))
+          (println (c/green (str "Updated " codeowners-path ".")))
+          (u/exit 0)))))
+
+;;;; =============================================================================
+;;;; Module tree
+;;;; =============================================================================
+
+(defn- module-display-tree
+  "Build the nested map consumed by [[tree-node-lines]].
+
+  Grouping nodes that are not modules omit `:module`."
+  [modules-config]
+  (reduce (fn [tree module]
+            (update-in tree
+                       (into []
+                             (mapcat (fn [segment] [:children segment]))
+                             (module-explorer/module->tree-path modules-config module))
+                       assoc :module module))
+          {}
+          (keys modules-config)))
+
+(defn- sorted-children
+  "Sort child nodes alphabetically, with enterprise nodes last."
+  [node]
+  (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
+                                      (str/starts-with? segment "enterprise/"))
+                                1
+                                0)
+                              segment])
+           (:children node)))
+
+(defn- tree-node-lines
+  "Render a tree node and its descendants.
+
+  Dashes show depth. Grouping nodes are dimmed. Modules with a custom prefix
+  show `*`, or the prefix itself when `show-prefixes?` is true."
+  [modules-config show-prefixes? path node]
+  (let [depth   (dec (count path))
+        module  (:module node)
+        display (str/join "." path)
+        line    (str (when (pos? depth)
+                       (str (apply str (repeat depth "-")) " "))
+                     (if module display (c/dark display))
+                     (when-let [prefix (and module (module-explorer/explicit-ns-prefix modules-config module))]
+                       (if show-prefixes?
+                         (str " " (c/yellow (str "(" prefix ")")))
+                         (str " " (c/yellow "*")))))]
+    (into [line]
+          (mapcat (fn [[segment child]]
+                    (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
+          (sorted-children node))))
+
+(defn- write-explorer!
+  "Write the HTML explorer to `output`, or to stdout, and exit."
+  [modules-config {:keys [output no-stats]}]
+  (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
+        html (module-explorer/page data)]
+    (if output
+      (do (spit output html)
+          (println (c/green (str "Wrote " output))))
+      (do (print html)
+          ;; u/exit throws for bb to catch, which skips the flush at shutdown
+          (flush)))
+    (u/exit 0)))
+
+(defn cli-print-module-tree
+  "Print the module tree, nesting enterprise extensions under their OSS module.
+
+  Marks modules whose namespace prefix differs from their name.
+  With `--html`, writes the interactive explorer instead."
+  [{:keys [options] :as _parsed}]
+  (when (:html options)
+    (write-explorer! (read-modules-config) options))
+  (let [modules-config (read-modules-config)
+        tree           (module-display-tree modules-config)
+        roots          (cond->> (sorted-children tree)
+                         (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
+        starred        (count (keep #(module-explorer/explicit-ns-prefix modules-config %) (keys modules-config)))]
+    (doseq [[segment node] roots
+            line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
+      (println line))
+    (println)
+    (println (c/dark (str (count modules-config) " modules, "
+                          (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
+                          " enterprise"
+                          (when (pos? starred)
+                            (str ", " starred " custom prefixes ("
+                                 (if (:prefixes options) "shown in parentheses" "marked with *")
+                                 ")")))))
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
@@ -225,13 +642,19 @@
 
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
+   1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
+   [[modules-triggering-cloud-drivers]]."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
    (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
                                                   modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
+   ;; Fail clearly when a renamed trigger is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (boolean
       (some #(not (contains? unaffected %)) trigger-modules)))))
@@ -306,6 +729,7 @@
    :sparksql
    :sqlite
    :sqlserver
+   :starburst
    :vertica])
 
 (def ^:private driver-directory->drivers
@@ -323,8 +747,7 @@
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
    "sqlserver" [:sqlserver]
-   ;; starburst tests are currently disabled in drivers.yml
-   ;; "starburst" [:starburst]
+   "starburst" [:starburst]
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes

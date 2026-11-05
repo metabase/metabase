@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import {
   AccordionList,
@@ -7,30 +7,32 @@ import {
 } from "metabase/common/components/AccordionList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
+import type {
+  DataSelectorDatabase,
+  DataSelectorSchema,
+} from "metabase/querying/common/components/DataSelector";
+import { Icon, UnstyledButton } from "metabase/ui";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabasePickerProps = {
-  databases: Database[];
+  databases: DataSelectorDatabase[];
   hasBackButton?: boolean;
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  selectedDatabase?: Database | null;
-  selectedSchema?: Schema | null;
+  selectedDatabase?: DataSelectorDatabase | null;
+  selectedSchema?: DataSelectorSchema | null;
   onBack?: (() => void) | null;
-  onChangeDatabase: (database: Database) => void;
+  onChangeDatabase: (database: DataSelectorDatabase) => void;
 };
 
 type Item = {
   name: string;
   index: number;
-  database: Database;
+  database: DataSelectorDatabase;
 };
 
 export const DataSelectorDatabasePicker = ({
@@ -43,36 +45,34 @@ export const DataSelectorDatabasePicker = ({
 }: DataSelectorDatabasePickerProps) => {
   const tc = useTranslateContent();
   const sections = useMemo(() => {
-    const sections: Section<Item>[] = [];
-
-    if (onBack) {
-      sections.push({
-        name: <RawDataBackButton />,
-        items: [],
-      });
-    }
-
-    sections.push({
+    const section: Section<Item> = {
       items: databases.map((database, index) => ({
         name: tc(database.name),
         index,
         database,
       })),
-    });
+    };
 
-    return sections;
+    if (onBack) {
+      section.name = (
+        <UnstyledButton
+          display="flex"
+          fz="inherit"
+          onClick={onBack}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.stopPropagation();
+            }
+          }}
+        >
+          <RawDataBackButton />
+        </UnstyledButton>
+      );
+      section.type = "back";
+    }
+
+    return [section];
   }, [databases, onBack, tc]);
-
-  const handleChangeSection = useCallback(
-    (_section: Section<Item>, sectionIndex: number) => {
-      const isNavigationSection = onBack && sectionIndex === 0;
-      if (isNavigationSection) {
-        onBack();
-      }
-      return false;
-    },
-    [onBack],
-  );
 
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -86,7 +86,6 @@ export const DataSelectorDatabasePicker = ({
       hasInitialFocus={hasInitialFocus}
       sections={sections}
       onChange={(item) => onChangeDatabase(item.database)}
-      onChangeSection={handleChangeSection}
       itemIsSelected={(item) =>
         selectedDatabase != null && item.database.id === selectedDatabase.id
       }

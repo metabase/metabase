@@ -2,8 +2,11 @@
   "Provider for emailed secret tokens (password reset, email verification, magic links)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util :as u]
@@ -24,7 +27,8 @@
   and `:consumed_at` (initially nil)."
   [token :- :string
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}}]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true}
+                                                         [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :consumed_at nil})
@@ -35,51 +39,43 @@
   The `email` parameter is the user's email address. Optional keyword arguments `ip-address` and `user-agent` capture
   request context information. Returns a map with `:email`, `:ip_address`, and `:request_context` (containing
   `:user_agent` and `:timestamp`)."
-  [email :- ms/Email
-   & {:keys [ip-address user-agent]}]
+  [email :- [:maybe ms/Email]
+   & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true}
+                                                 [:ip-address {:optional true} [:maybe :string]]
+                                                 [:user-agent {:optional true} [:maybe :string]]]]]
   {:email email
    :ip_address ip-address
    :request_context {:user_agent user-agent
                      :timestamp (t/instant)}})
 
 (mu/defn- verify-reset-token :- [:enum :valid :expired :consumed :invalid]
-  "Verifies a password reset token against stored credentials.
-
-  Checks the `token` against the provided `credentials` map and returns one of:
-  - `:valid` if the token matches and hasn't expired or been consumed
-  - `:expired` if the token matches but has passed its expiration time
-  - `:consumed` if the token has already been used
-  - `:invalid` if the token doesn't match the stored hash"
+  "Checks `token` against stored reset `credentials` with one bcrypt check, returning `:consumed`, `:expired`, `:valid`,
+  or `:invalid`, in that order of precedence."
   [token :- :string
-   credentials :- [:map
-                   [:token_hash :string]
-                   [:expires_at inst?]
-                   [:consumed_at [:maybe inst?]]]]
-  (cond
-    (:consumed_at credentials)
-    :consumed
-    (t/after? (t/instant) (:expires_at credentials))
-    :expired
-    (u.password/bcrypt-verify token (:token_hash credentials))
-    :valid
-    :else
-    :invalid))
+   credentials :- ::auth-identity.schema/auth-identity.credentials.token]
+  (let [matches? (u.password/bcrypt-verify token (:token_hash credentials))]
+    (cond
+      (:consumed_at credentials)
+      :consumed
+      (t/after? (t/instant) (:expires_at credentials))
+      :expired
+      matches?
+      :valid
+      :else
+      :invalid)))
 
-(mu/defn mark-token-consumed :- [:map [:credentials :map]]
+(mu/defn mark-token-consumed :- ::auth-identity.schema/auth-identity
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`
   value in the credentials map."
-  [auth-identity :- [:map [:credentials :map]]]
+  [auth-identity :- ::auth-identity.schema/auth-identity]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
 (mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]
-  "Extracts the user ID from a password reset token.
-
-  Password reset tokens follow the format `USER-ID_RANDOM-UUID` (e.g., `123_abc-def-ghi`). Returns the user ID as an
-  integer if the token matches this format, or nil if the token format is invalid."
+  "The positive user ID that starts a `USER-ID_RANDOM-UUID` reset token, or nil for any other token."
   [token :- :string]
-  (when-let [[_ user-id-str] (re-matches #"(^\d+)_.+$" token)]
+  (when-let [[_ user-id-str] (re-matches #"^([1-9]\d*)_.+$" token)]
     (try
       (Integer/parseInt user-id-str)
       (catch NumberFormatException _
@@ -105,34 +101,28 @@
   [user-id :- ms/PositiveInt]
   (u/prog1 (generate-reset-token user-id)
     (t2/with-transaction [_]
-      (let [user (t2/select-one :model/User user-id)
+      (let [user (auth-identity.db/user user-id)
             auth-identity {:user_id user-id
                            :provider "emailed-secret-password-reset"
                            :provider_id (:email user)
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
-        (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")]
-          (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
-          (t2/insert! :model/AuthIdentity auth-identity))))))
+        (if-let [auth-identity-id (auth-identity.db/auth-identity-id user-id "emailed-secret-password-reset")]
+          (auth-identity.db/update-auth-identity! auth-identity-id auth-identity)
+          (auth-identity.db/insert-auth-identity! auth-identity))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register emailed_secret provider in the hierarchy
-(derive :provider/emailed-secret :metabase.auth-identity.provider/provider)
-(derive :provider/emailed-secret-password-reset :provider/emailed-secret)
+(auth-identity.hierarchy/derive! :provider/emailed-secret :metabase.auth-identity.provider/provider)
+(auth-identity.hierarchy/derive! :provider/emailed-secret-password-reset :provider/emailed-secret)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
 (methodical/defmethod provider/authenticate :provider/emailed-secret
-  "Authenticates a user using a password reset token.
-
-  The request map should contain a `:token` key with a password reset token in the format `USER-ID_RANDOM-UUID`.
-  Validates the token by checking it against the stored [[AuthIdentity]] credentials, verifying it hasn't expired or
-  been consumed.
-
-  Returns a map with `:success?` true and `:user-id` and `:auth-identity` on success, or `:success?` false with an
-  `:error` keyword (`:invalid-token`, `:expired-token`, `:consumed-token`, `:no-auth-identity`, or `:server-error`)
-  and human-readable `:message` on failure."
+  "Authenticates `:token` for an active user against their stored reset token, spending one bcrypt check on every
+  token, and fails with `:invalid-request`, `:invalid-token`, `:expired-token`, `:consumed-token`,
+  `:no-auth-identity`, `:inactive-user`, or `:server-error`."
   [provider {:keys [token]}]
   (log/debug "Authenticating with emailed_secret provider for token")
   (cond
@@ -143,17 +133,19 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (t2/select-one :model/AuthIdentity
-                                              :user_id user-id
-                                              :provider (name provider))]
+        (if-let [auth-identity (auth-identity.db/auth-identity user-id (name provider))]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid
-              (do
-                (log/debugf "Valid reset token for user %s" user-id)
-                {:success? true
-                 :user-id user-id
-                 :auth-identity auth-identity})
+              (if (auth-identity.db/user-active? user-id)
+                (do
+                  (log/debugf "Valid reset token for user %s" user-id)
+                  {:success? true
+                   :user-id user-id
+                   :auth-identity auth-identity})
+                {:success? false
+                 :error :inactive-user
+                 :message "Reset token belongs to an inactive user"})
               :expired
               {:success? false
                :error :expired-token
@@ -166,12 +158,14 @@
               {:success? false
                :error :invalid-token
                :message "Reset token is invalid"}))
-          {:success? false
-           :error :no-auth-identity
-           :message "No reset token found for this user"})
-        {:success? false
-         :error :invalid-token
-         :message "Invalid token format"})
+          (do (u.password/do-useless-hash)
+              {:success? false
+               :error :no-auth-identity
+               :message "No reset token found for this user"}))
+        (do (u.password/do-useless-hash)
+            {:success? false
+             :error :invalid-token
+             :message "Invalid token format"}))
       (catch Exception e
         (log/errorf "Unexpected error during reset token verification: %s" (ex-message e))
         {:success? false
@@ -179,16 +173,27 @@
          :message "An unexpected error occurred during token verification"}))))
 
 (methodical/defmethod provider/login! :after :provider/emailed-secret-password-reset
-  "Completes the password reset process after successful authentication.
-
-  After a successful password reset authentication, this method:
-  - Publishes a password reset event or sends admin notification (for new users)
-  - Updates the user's password, which also removes the now-used reset token (see
-    [[metabase.auth-identity.core/set-password!]])."
+  "Refuses a new password equal to the current one with `:password-unchanged`, changing nothing; otherwise records the
+  reset, sets the password (which deletes the reset token), and points the new session at the `password` identity."
   [_provider {:keys [user password] :as result}]
-  (when (:success? result)
-    (if (:last_login user)
-      (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
-      (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
-    (auth-identity/set-password! (:id user) password))
-  result)
+  (cond
+    (not (:success? result))
+    result
+
+    (auth-identity/current-password? (:id user) password)
+    (assoc result
+           :success? false
+           :error    :password-unchanged
+           :message  "New password must be different from your current password.")
+
+    :else
+    (do
+      (if (:last_login user)
+        (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
+        (messages/send-user-joined-admin-notification-email! (auth-identity.db/user (:id user))))
+      ;; the person resetting proved they own the account, so they are who ends its sessions
+      (auth-identity/set-password! (:id user) password {:ended-by (:id user)})
+      ;; The session cannot belong to the reset identity: `set-password!` has just deleted it, and its `expires_at` is
+      ;; the token's short lifetime, which has no business bounding a session. The user now holds a fresh password
+      ;; credential, so the session belongs to that. The reset itself is recorded by the event above.
+      (assoc result :session/provider :provider/password))))

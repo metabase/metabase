@@ -7,6 +7,7 @@ import type { Dataset, DatasetQuery } from "metabase-types/api";
 
 type AdhocQueryResult = {
   data: Dataset | undefined;
+  currentData: Dataset | undefined;
   jsQuery: DatasetQuery | null;
   isFetching: boolean;
   error: unknown;
@@ -19,11 +20,11 @@ export function useAdhocBreakoutQuery(query: Query | null): AdhocQueryResult {
     [query],
   );
 
-  const { data, isFetching, error } = useGetAdhocQueryQuery(
+  const { data, currentData, isFetching, error } = useGetAdhocQueryQuery(
     // Unjustified type cast. FIXME
     jsQuery ?? ({} as DatasetQuery),
     { skip: !jsQuery },
   );
 
-  return { data, jsQuery, isFetching, error };
+  return { data, currentData, jsQuery, isFetching, error };
 }

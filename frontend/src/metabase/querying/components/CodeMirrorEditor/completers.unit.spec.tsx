@@ -6,9 +6,9 @@ import { EditorState } from "@codemirror/state";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { isNotNull } from "metabase/utils/types";
 import type {
   AutocompleteMatchStyle,
@@ -509,6 +509,28 @@ describe("useCardTagCompletion", () => {
       ],
     });
     expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
+  });
+
+  it("should describe models in the root collection", async () => {
+    const { complete } = setup({
+      results: [
+        { id: 7, name: "People Model", type: "model", collection_name: null },
+      ],
+    });
+    const results = await complete("SELECT {{ #people|");
+
+    expect(results).toEqual({
+      from: 10,
+      to: 17,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "#7-people-model",
+          apply: "#7-people-model }}",
+          detail: "Model in Our analytics",
+        },
+      ],
+    });
   });
 
   it("should autocomplete cards when inside a closed card tag, inside a word", async () => {

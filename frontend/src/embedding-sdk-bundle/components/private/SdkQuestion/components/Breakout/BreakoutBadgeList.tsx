@@ -7,7 +7,7 @@ import {
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 
 import { BadgeList } from "../util/BadgeList";
 

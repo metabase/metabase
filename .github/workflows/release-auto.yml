@@ -40,7 +40,7 @@ jobs:
             echo "This workflow should not run on forks."
             exit 1
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -147,6 +147,14 @@ jobs:
             echo ""
             echo "**Triggered by:** @${{ github.actor }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Send release failure message
+        if: failure() || cancelled()
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Auto ${{ inputs.kind }} release for v${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   trigger-release:
     name: Release ${{ needs.prepare.outputs.version }}

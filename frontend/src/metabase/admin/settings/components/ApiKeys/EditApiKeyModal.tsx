@@ -10,7 +10,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import {
@@ -20,9 +19,7 @@ import {
 
 import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
-import { API_KEY_VALIDATION_SCHEMA } from "./utils";
-
-const { fontFamilyMonospace } = getThemeOverrides();
+import { getApiKeyValidationSchema } from "./utils";
 
 type EditModalName = "edit" | "regenerate" | "secretKey";
 
@@ -45,15 +42,14 @@ const RegenerateKeyModal = ({
   return (
     <Modal
       size="40rem"
-      padding="xl"
       opened
       onClose={() => setModal("edit")}
       title={t`Regenerate API key`}
     >
       <FormProvider initialValues={{}} onSubmit={handleRegenerate}>
         <Form>
-          <Stack gap="xl">
-            <Stack gap="xs">
+          <Stack gap="xxl">
+            <Stack gap="xxs">
               <Text
                 component="label"
                 c="text-secondary"
@@ -61,7 +57,7 @@ const RegenerateKeyModal = ({
               >{t`Key name`}</Text>
               <Text>{apiKey.name}</Text>
             </Stack>
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text
                 component="label"
                 c="text-secondary"
@@ -72,21 +68,21 @@ const RegenerateKeyModal = ({
             {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
             <Paper
               bg="background_page-secondary"
-              radius="md"
-              px="md"
+              radius="sm"
+              px="lg"
               py="sm"
               shadow="none"
             >
               <Text c="text-secondary">{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             </Paper>
-            <FormErrorMessage />
-            <Group justify="flex-end">
-              <Button
-                onClick={() => setModal("edit")}
-              >{t`No, don't regenerate`}</Button>
-              <FormSubmitButton variant="filled" label={t`Regenerate`} />
-            </Group>
           </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
+            <Button
+              onClick={() => setModal("edit")}
+            >{t`No, don't regenerate`}</Button>
+            <FormSubmitButton variant="filled" label={t`Regenerate`} />
+          </Modal.Footer>
         </Form>
       </FormProvider>
     </Modal>
@@ -134,7 +130,7 @@ export const EditApiKeyModal = ({
     return (
       <Modal
         size="40rem"
-        padding="xl"
+        density="relaxed"
         opened
         onClose={onClose}
         title={t`Edit API key`}
@@ -142,7 +138,7 @@ export const EditApiKeyModal = ({
         <FormProvider
           initialValues={{ ...apiKey, group_id: apiKey.group.id }}
           onSubmit={handleSubmit}
-          validationSchema={API_KEY_VALIDATION_SCHEMA}
+          validationSchema={getApiKeyValidationSchema()}
         >
           {({ dirty }) => (
             <Form>
@@ -161,18 +157,19 @@ export const EditApiKeyModal = ({
                     input: {
                       // override the disabled-gray so the masked key stays readable in both themes
                       color: "var(--mb-color-text-primary) !important",
-                      // Unjustified type cast. FIXME
-                      fontFamily: fontFamilyMonospace as string,
+                      fontFamily: "var(--mb-default-monospace-font-family)",
                     },
                   }}
                   disabled
                 />
-                <FormErrorMessage />
-                <Group justify="space-between">
+              </Stack>
+              <Modal.Footer>
+                <Group justify="space-between" flex={1}>
                   <Button
                     onClick={() => setModal("regenerate")}
                   >{t`Regenerate API key`}</Button>
-                  <Group justify="flex-end">
+                  <Group>
+                    <FormErrorMessage />
                     <Button onClick={onClose}>{t`Cancel`}</Button>
                     <FormSubmitButton
                       disabled={!dirty}
@@ -181,7 +178,7 @@ export const EditApiKeyModal = ({
                     />
                   </Group>
                 </Group>
-              </Stack>
+              </Modal.Footer>
             </Form>
           )}
         </FormProvider>

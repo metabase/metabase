@@ -15,7 +15,6 @@ fk_target_field_id:
 - conversation_id
 dimensions: []
 position: 9
-custom_position: 0
 database_position: 9
 has_field_values: auto-list
 serdes/meta:

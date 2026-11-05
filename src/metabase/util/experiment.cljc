@@ -24,6 +24,7 @@
   experiments-enabled-fn
   (atom (constantly false)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enabled-override*
   "When non-nil, used as the enabled? value instead of consulting [[experiments-enabled-fn]]. Bind this per-thread
   (e.g. via a test fixture) to enable or disable experiments locally without touching the global atom."
@@ -47,6 +48,7 @@
                  Nil means no reporting. Can be overridden per-experiment via :report-fn in the opts map."}
   default-report-fn (atom nil))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *report-fn-override*
   "When non-nil, used as the report-fn instead of consulting [[default-report-fn]] (the per-experiment `:report-fn`
   option still takes precedence over both). Bind this per-thread to install a thread-local reporter."
@@ -57,6 +59,7 @@
   [f]
   (reset! default-report-fn f))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *sync?*
   "When true, forces synchronous candidate execution on JVM. For testing only."
   false)

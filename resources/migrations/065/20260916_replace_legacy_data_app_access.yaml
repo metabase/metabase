@@ -1,0 +1,142 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-16T00:00:00
+      author: poom
+      comment: Assign existing permission groups to data apps
+      changes:
+        - createTable:
+            tableName: data_app_group_assignment
+            remarks: Permission group assignments for data apps
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_data_app_group_assignment
+              - column:
+                  name: data_app_id
+                  remarks: Data app receiving access through the assigned group
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permission_group_id
+                  remarks: Permission group assigned to the data app
+                  type: int
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:01
+      author: poom
+      comment: Prevent duplicate data app group assignments
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app_group_assignment
+            columnNames: data_app_id, permission_group_id
+            constraintName: uq_data_app_group_assignment
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:02
+      author: poom
+      comment: Index data app assignments by permission group
+      changes:
+        - createIndex:
+            tableName: data_app_group_assignment
+            indexName: idx_data_app_group_assignment_group
+            columns:
+              - column:
+                  name: permission_group_id
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:03
+      author: poom
+      comment: Remove group assignments when a data app is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: data_app_group_assignment
+            baseColumnNames: data_app_id
+            referencedTableName: data_app
+            referencedColumnNames: id
+            constraintName: fk_data_app_group_assignment_app
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:04
+      author: poom
+      comment: Remove app assignments when a permission group is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: data_app_group_assignment
+            baseColumnNames: permission_group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_data_app_group_assignment_group
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:05
+      author: poom
+      comment: Remove generated groups and individual assignments from older data apps implementation
+      changes:
+        - delete:
+            tableName: permissions_group
+            where: is_data_app_group = true
+      rollback: [] # Deleted groups and assignments are not restored.
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:06
+      author: poom
+      comment: Remove the generated data app group foreign key from older implementation
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: data_app
+            constraintName: fk_data_app_permission_group_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: data_app
+            baseColumnNames: permission_group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_data_app_permission_group_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:07
+      author: poom
+      comment: Remove the generated data app group reference from older implementation
+      changes:
+        - dropColumn:
+            tableName: data_app
+            columnName: permission_group_id
+      rollback:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: permission_group_id
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:08
+      author: poom
+      comment: Remove the generated data app group marker from older implementation
+      changes:
+        - dropColumn:
+            tableName: permissions_group
+            columnName: is_data_app_group
+      rollback:
+        - addColumn:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: is_data_app_group
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

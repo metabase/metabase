@@ -2,7 +2,9 @@
   "Meter-related limit checking for transforms"
   (:require
    [metabase.premium-features.core :as premium-features]
-   [metabase.transforms-base.util :as transforms-base.u]))
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli :as mu]))
 
 (def ^:private metered-as->meter-key
   "Map the bucket strings returned by [[premium-features/transform-metered-as]] to their
@@ -10,11 +12,11 @@
   {"transform-basic"    :transform-basic-runs
    "transform-advanced" :transform-advanced-runs})
 
-(defn transform-locked?
+(mu/defn transform-locked? :- :boolean
   "True if the meter that would be charged for running this transform is locked.
    Returns false for non-metered transforms (OSS, self-hosted basic-only) and when
    no `:locked-meters` mirror has been written yet (cold cache, airgap)."
-  [transform]
+  [transform :- ::transforms.schema/transform.definition]
   (boolean
    (when-let [meter-key (some-> (:source transform)
                                 transforms-base.u/transform-source-type
@@ -22,7 +24,7 @@
                                 metered-as->meter-key)]
      (get (premium-features/locked-meters) meter-key))))
 
-(defn transforms-meter-locked?
+(mu/defn transforms-meter-locked? :- :boolean
   "True if either of the two transforms meters (`:transform-basic-runs` or
    `:transform-advanced-runs`) is currently locked. Per harbormaster's
    mutual-exclusivity constraint, at most one of these is populated for a

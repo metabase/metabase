@@ -9,95 +9,45 @@
   their parent run. Because ids are per-table, a row is identified by the `(run_type, id)` pair;
   `entity_id` is the id of the associated job/transform."
   (:require
-   [medley.core :as m]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.util :as transforms.models.u]
-   [toucan2.core :as t2]))
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::run-summary.response
+  "A [[::transforms.schema/run-summary]] as [[present-run-summaries]] prepares it for an API response."
+  [:map {:closed true}
+   [:run_type        [:enum :job :dag :transform]]
+   [:id              ms/PositiveInt]
+   [:entity_id       [:maybe ms/PositiveInt]]
+   [:name            [:maybe :string]]
+   [:direction       [:maybe [:enum :upstream :downstream]]]
+   [:transform_count [:maybe :int]]
+   [:run_method      [:maybe :keyword]]
+   [:status          :keyword]
+   [:is_active       [:maybe :boolean]]
+   [:start_time      [:maybe :string]]
+   [:end_time        {:optional true} [:maybe :string]]
+   [:message         [:maybe :string]]
+   [:user_id         [:maybe ::lib.schema.id/user]]])
 
 (def run-types
   "The `run_type` discriminator values a listing row can have."
   [:job :dag :transform])
 
-;;; ---------------------------------------------- Per-source subqueries ----------------------------------------------
-
-;; Each branch must project the same columns in the same order for the UNION ALL to line up;
-;; `[nil :col]` fills in columns a table lacks.
-
-(defn- job-run-subquery [transform-ids]
-  ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "job"] :run_type]
-            :id
-            [:job_id :entity_id]
-            [:job_name :entity_name]
-            [nil :direction]
-            [nil :transform_count]
-            :run_method
-            :status :is_active :start_time :end_time :message
-            [nil :user_id]]
-   :from   [:transform_job_run]
-   :where  (if (seq transform-ids)
-             ;; only job runs that actually ran one of these transforms
-             [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                        :from   [[:transform_run :member]]
-                                        :where  [:and
-                                                 [:= :member.job_run_id :transform_job_run.id]
-                                                 [:in :member.transform_id transform-ids]]}]
-             true)})
-
-(defn- dag-run-subquery [transform-ids]
-  ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "dag"] :run_type]
-            :id
-            [:source_transform_id :entity_id]
-            [:source_transform_name :entity_name]
-            :direction
-            :transform_count
-            [^:allow-raw-sql [:inline "manual"] :run_method]
-            :status :is_active :start_time :end_time :message
-            :user_id]
-   :from   [:transform_dag_run]
-   :where  (if (seq transform-ids)
-             [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                        :from   [[:transform_run :member]]
-                                        :where  [:and
-                                                 [:= :member.dag_run_id :transform_dag_run.id]
-                                                 [:in :member.transform_id transform-ids]]}]
-             true)})
-
-(defn- transform-run-subquery [transform-ids]
-  ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "transform"] :run_type]
-            :id
-            [:transform_id :entity_id]
-            [:transform_name :entity_name]
-            [nil :direction]
-            [nil :transform_count]
-            :run_method
-            :status :is_active :start_time :end_time :message
-            :user_id]
-   :from   [:transform_run]
-   ;; standalone runs only: those not coordinated by a job or DAG run
-   :where  (cond-> [:and
-                    [:= :job_run_id nil]
-                    [:= :dag_run_id nil]]
-             (seq transform-ids) (conj [:in :transform_id transform-ids]))})
-
-(defn- union-subquery
-  "The UNION ALL of the branches selected by `types` (a subset of [[run-types]]), each optionally
-  narrowed to runs touching one of `transform-ids`."
-  [types transform-ids]
-  (let [types (set (or (seq types) run-types))]
-    ^:allow-subquery
-    {:union-all (cond-> []
-                  (:job types)       (conj (job-run-subquery transform-ids))
-                  (:dag types)       (conj (dag-run-subquery transform-ids))
-                  (:transform types) (conj (transform-run-subquery transform-ids)))}))
-
-(defn paged-run-summaries
-  "Return a page of root runs as a `{:data :limit :offset :total}` envelope. Rows are raw — see
-  [[present-run-summaries]].
+(mu/defn paged-run-summaries :- [:map {:closed true}
+                                 [:data   [:sequential ::transforms.schema/run-summary]]
+                                 [:limit  ms/PositiveInt]
+                                 [:offset ms/IntGreaterThanOrEqualToZero]
+                                 [:total  :int]]
+  "Return a page of root runs as a `{:data :limit :offset :total}` envelope; [[present-run-summaries]] prepares its
+  rows for an API response.
 
   Options (filter semantics match [[metabase.transforms.models.transform-run/paged-runs]]):
   - `:types`          subset of [[run-types]] to include; nil/empty means all three
@@ -107,51 +57,47 @@
   - `:end-time`       likewise for `end_time`
   - `:transform-ids`  only runs that ran any of these transforms (job/DAG runs whose members include
                       one, or the standalone runs of them)
-  - `:sort-column`    `\"start_time\"` / `\"end_time\"`
-  - `:sort-direction` `\"asc\"` / `\"desc\"`
+  - `:sort-column`    `:start_time` / `:end_time`
+  - `:sort-direction` `:asc` / `:desc`
   - `:offset`/`:limit` pagination (default 0 / 20)"
-  [{:keys [types statuses run-methods start-time end-time transform-ids sort-column sort-direction offset limit]}]
-  (let [offset     (or offset 0)
-        limit      (or limit 20)
-        inner      (union-subquery types transform-ids)
-        where      (into [:and] (remove nil?)
-                         [(when (seq statuses)    [:in :status (set statuses)])
-                          ;; started ⇒ still active, as in the per-table run listings
-                          (when (= (set statuses) #{"started"}) [:= :is_active true])
-                          (when (seq run-methods) [:in :run_method (set run-methods)])
-                          (when start-time        (transforms.models.u/timestamp-constraint :start_time start-time))
-                          (when end-time          (transforms.models.u/timestamp-constraint :end_time end-time))])
-        where      (when (> (count where) 1) where)
-        base       (cond-> {:from [[inner :runs]]}
-                     where (assoc :where where))]
-    {:data   (t2/query (merge base
-                              {:select   [:*]
-                               :order-by (transforms.models.u/run-order-by sort-column sort-direction)
-                               :limit    limit
-                               :offset   offset}))
+  [{:keys [types statuses run-methods start-time end-time transform-ids sort-column sort-direction offset limit]}
+   :- [:map {:closed true}
+       [:types          {:optional true} [:maybe [:sequential [:enum :job :dag :transform]]]]
+       [:statuses       {:optional true} [:maybe [:sequential :string]]]
+       [:run-methods    {:optional true} [:maybe [:sequential :string]]]
+       [:start-time     {:optional true} [:maybe ms/NonBlankString]]
+       [:end-time       {:optional true} [:maybe ms/NonBlankString]]
+       [:transform-ids  {:optional true} [:maybe [:sequential ::lib.schema.id/transform]]]
+       [:sort-column    {:optional true} [:maybe [:enum :start_time :end_time]]]
+       [:sort-direction {:optional true} [:maybe [:enum :asc :desc]]]
+       [:offset         {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+       [:limit          {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [offset              (or offset 0)
+        limit               (or limit 20)
+        [start-at end-at]   (when start-time (transforms.models.u/timestamp-range start-time))
+        [ended-at end-end]  (when end-time (transforms.models.u/timestamp-range end-time))]
+    {:data   (transforms.db/root-run-summaries-page types statuses run-methods start-at end-at ended-at end-end
+                                                    transform-ids sort-column sort-direction limit offset)
      :limit  limit
      :offset offset
-     :total  (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))}))
+     :total  (transforms.db/root-run-summaries-count types statuses run-methods start-at end-at ended-at end-end
+                                                     transform-ids)}))
 
-(defn present-run-summaries
-  "Prepare raw summary rows for an API response: hydrate each row's `:name` (nil when the underlying
-  job/transform was deleted), keywordize the discriminator columns, and localize timestamps."
-  [rows]
+(mu/defn present-run-summaries :- [:sequential ::run-summary.response]
+  "Prepare summary rows for an API response: hydrate each row's `:name` (nil when the underlying job/transform was
+  deleted) and localize timestamps."
+  [rows :- [:sequential ::transforms.schema/run-summary]]
   (let [by-type         (group-by :run_type rows)
-        job-ids         (seq (keep :entity_id (get by-type "job")))
-        transform-ids   (seq (keep :entity_id (concat (get by-type "dag") (get by-type "transform"))))
-        job->name       (when job-ids (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
-        transform->name (when transform-ids (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))]
+        job-ids         (seq (keep :entity_id (get by-type :job)))
+        transform-ids   (seq (keep :entity_id (concat (get by-type :dag) (get by-type :transform))))
+        job->name       (when job-ids (transforms.db/job-names-by-id job-ids))
+        transform->name (when transform-ids (transforms.db/transform-names-by-id transform-ids))]
     (map (fn [{:keys [run_type entity_id entity_name] :as row}]
            (-> row
-               (assoc :name (or (if (= run_type "job")
+               (assoc :name (or (if (= run_type :job)
                                   (get job->name entity_id)
                                   (get transform->name entity_id))
                                 entity_name))
                (dissoc :entity_name)
-               (update :run_type keyword)
-               (update :status keyword)
-               (m/update-existing :run_method #(some-> % keyword))
-               (m/update-existing :direction #(some-> % keyword))
                transforms-base.u/localize-run-timestamps))
          rows)))

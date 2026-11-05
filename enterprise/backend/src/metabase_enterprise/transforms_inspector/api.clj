@@ -19,6 +19,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
@@ -62,9 +63,9 @@
   :- ::inspector.schema/discovery-response
   "Phase 1: Discover available lenses for a transform.
    Returns structural metadata and available lens types."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [transform (api/read-check :model/Transform id)
-        _         (transforms.core/check-feature-enabled! transform)
+        _         (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
         result    (tracing/with-span :transforms "transforms.inspector.discover"
                     {:transform/id          id
                      :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))}
@@ -85,12 +86,12 @@
   "Phase 2: Get full lens contents for a transform.
    Returns sections, cards with dataset_query, and trigger definitions.
    Accepts optional params for drill lenses as query params."
-  [{:keys [id lens-id]} :- [:map
+  [{:keys [id lens-id]} :- [:map {:closed true}
                             [:id ms/PositiveInt]
                             [:lens-id ms/NonBlankString]]
-   params :- ::inspector.schema/lens-params]
+   params :- ::inspector.schema/lens-params.request]
   (let [transform (api/read-check :model/Transform id)
-        _         (transforms.core/check-feature-enabled! transform)
+        _         (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
         result    (tracing/with-span :transforms "transforms.inspector.lens"
                     {:transform/id          id
                      :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))
@@ -116,16 +117,16 @@
 (api.macros/defendpoint :post "/:id/inspect/:lens-id/query"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query in the context of a transform inspector lens."
-  [{:keys [id lens-id]} :- [:map
+  [{:keys [id lens-id]} :- [:map {:closed true}
                             [:id ms/PositiveInt]
                             [:lens-id ms/NonBlankString]]
    _query-params
    {query :query, lens-params :lens_params}
-   :- [:map
+   :- [:map {:closed true}
        [:query ::lib-be.schema/maybe-legacy-query]
-       [:lens_params {:optional true} [:maybe ::inspector.schema/lens-params]]]]
+       [:lens_params {:optional true} [:maybe ::inspector.schema/lens-params.request]]]]
   (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
+    (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
     (let [info {:executed-by  api/*current-user-id*
                 :context      :transform-inspector
                 :transform-id id

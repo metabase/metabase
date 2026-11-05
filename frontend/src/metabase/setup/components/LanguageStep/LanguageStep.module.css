@@ -1,0 +1,26 @@
+.localeInput {
+  appearance: none;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.localeButton {
+  color: var(--mb-color-text-primary);
+  border: 2px solid var(--mb-color-core-white);
+  background-color: var(--mb-color-background_page-primary);
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
+  }
+}
+
+.localeButtonChecked {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-brand);
+}
+
+.localeInput:focus-visible + .localeButton {
+  outline: 2px solid var(--mb-color-core-brand);
+}

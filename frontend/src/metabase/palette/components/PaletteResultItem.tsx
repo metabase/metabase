@@ -50,8 +50,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         />
       )}
 
-      <Stack gap="xs" flex="1" style={{ overflow: "hidden" }}>
-        <Flex align="center" gap="md" justify="space-between" wrap="nowrap">
+      <Stack gap="xxs" flex="1" style={{ overflow: "hidden" }}>
+        <Flex align="center" gap="lg" justify="space-between" wrap="nowrap">
           <Group align="center" gap="sm" wrap="nowrap">
             <Text c="inherit" component="span" lh="1rem" lineClamp={1} miw={0}>
               {item.name}
@@ -73,11 +73,11 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {subtext && (
             <Flex
               flex="0 0 auto"
-              c={active ? "text-secondary" : "text-disabled"}
+              c="text-secondary"
               fz="0.75rem"
               lh="1rem"
               maw="40%"
-              gap="xs"
+              gap="xxs"
               justify="end"
               align="center"
             >
@@ -88,7 +88,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
 
         {item.subtitle && (
           <Text
-            c={active ? "text-secondary" : "text-disabled"}
+            c="text-secondary"
             component="span"
             lh="1rem"
             style={{

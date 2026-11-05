@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.metrics :as metrics]
@@ -14,10 +15,7 @@
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,9 +37,7 @@
 (defn- unacknowledged-active-advisories
   "Return all unacknowledged advisories with match_status in (:active :error)."
   []
-  (t2/select :model/SecurityAdvisory
-             :acknowledged_at nil
-             :match_status [:in ["active" "error"]]))
+  (security-center.db/unacknowledged-advisories-with-statuses ["active" "error"]))
 
 (defn send-repeat-notifications!
   "Check all unacknowledged active/error advisories and send repeat notifications
@@ -77,8 +73,11 @@
         (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
     (metrics/refresh-metrics!)))
 
-(task/defjob ^{:doc "Periodically fetch and re-evaluate security advisories."
-               DisallowConcurrentExecution true} SyncAdvisories [_]
+(task/defjob SyncAdvisories
+  "Periodically fetch and re-evaluate security advisories."
+  {:saved-class "metabase_enterprise.security_center.task.sync_advisories.SyncAdvisories"
+   :concurrent? false}
+  [_]
   (sync-and-evaluate!))
 
 (defmethod task/init! ::SyncAdvisories [_]

@@ -32,6 +32,7 @@ export const INVALID_CSV_FILES = [
   {
     valid: false,
     fileName: "invalid.csv",
+    tableName: "invalid",
   },
 ];
 

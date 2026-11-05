@@ -1,5 +1,5 @@
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import type { RawSeries, RowValue, TreemapRow } from "metabase-types/api";
 
 import { getTreemapChartColumns } from "../../echarts/graph/treemap/model/data";
@@ -100,9 +100,9 @@ function createNameFormatter({
 }): NameFormatter {
   return (rawValue: RowValue) => {
     if (rawValue == null) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
-    return formatter(rawValue, groupingColumnSettings) ?? NULL_DISPLAY_VALUE;
+    return formatter(rawValue, groupingColumnSettings) ?? getNullDisplayValue();
   };
 }
 

@@ -11,15 +11,22 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
+import { MetabotWorkingIndicator } from "metabase/metabot/components/MetabotWorkingIndicator";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { buildDraftCard } from "metabase/rich_text_editing/tiptap/extensions/shared/draft-card";
 import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shared/layout";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { MetabotGenerateContentRequest } from "metabase-types/api";
 
 import { useLazyMetabotGenerateContentQuery } from "../../../api";
@@ -273,30 +280,18 @@ export const MetabotComponent = memo(
           className={S.borderRadius}
           pos="relative"
           direction="column"
-          mb="md"
+          mb="lg"
         >
-          <Box
-            pos="absolute"
-            top={0}
-            right={0}
-            opacity="0.5"
-            className={S.closeButton}
-          >
-            {editor.options.editable ? (
-              <Button
+          <Box pos="absolute" top={0} right={0} className={S.closeButton}>
+            {editor.options.editable && (
+              <ActionIcon
                 variant="subtle"
-                p="sm"
-                m="sm"
                 size="sm"
+                m="xxs"
                 onClick={() => deleteNode()}
               >
                 <Icon name="close" data-hide-on-print />
-                <MetabotIcon data-show-on-print />
-              </Button>
-            ) : (
-              <Box p="md">
-                <MetabotIcon />
-              </Box>
+              </ActionIcon>
             )}
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
@@ -312,12 +307,10 @@ export const MetabotComponent = memo(
               className={S.codeBlockTextArea}
             />
           </Flex>
-          <Flex px="md" pb="md" pt="sm" gap="sm" contentEditable={false}>
+          <Flex px="lg" pb="lg" pt="sm" gap="sm" contentEditable={false}>
             <Flex flex={1} my="auto">
               {isLoading ? (
-                <Text flex={1} className={S.toolCallStarted}>
-                  {t`Working on it...`}
-                </Text>
+                <MetabotWorkingIndicator flex={1} />
               ) : errorText ? (
                 <Flex gap="sm" c="text-secondary">
                   <Icon name="warning" h="1.2rem" className={S.iconShrink} />
@@ -334,17 +327,14 @@ export const MetabotComponent = memo(
                 position="bottom"
               >
                 <Button
-                  size="sm"
                   disabled={!isMetabotEnabled}
                   onClick={() =>
                     isLoading ? handleStopMetabot() : handleRunMetabot()
                   }
-                  classNames={{
-                    label: CS.flex, // ensures icon is vertically centered
-                  }}
+                  leftSection={isLoading ? <Icon name="close" /> : undefined}
                   data-hide-on-print
                 >
-                  {isLoading ? <Icon name="close" /> : t`Run`}
+                  {isLoading ? null : t`Run`}
                 </Button>
               </Tooltip>
             )}

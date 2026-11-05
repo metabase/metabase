@@ -24,7 +24,7 @@ export const QuestionVisualizationButton = {
   render: function Render() {
     const [count, setCount] = useState(0);
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion
           questionId={QUESTION_ID}
           onRun={() => setCount((cnt) => cnt + 1)}
@@ -57,7 +57,7 @@ export const CustomVisualizationButton = {
     const [count, setCount] = useState(0);
 
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion
           questionId={QUESTION_ID}
           onRun={() => setCount((cnt) => cnt + 1)}

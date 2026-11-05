@@ -134,3 +134,36 @@
       (testing "and settable settings are still included"
         (is (contains? names "admin-email"))
         (is (contains? names "aggregated-query-row-limit"))))))
+
+(def ^:private setting-without-env-var
+  "A setting with `:can-read-from-env? false`, like the Metabot system prompts. It has no environment
+  variable to document, but a config file can still set it."
+  {:database-local :never,
+   :cache? true,
+   :user-local :never,
+   :init nil,
+   :default "",
+   :name :metabot-chat-system-prompt,
+   :export? true,
+   :type :string,
+   :enabled? nil,
+   :encryption :no,
+   :deprecated nil,
+   :audit :no-value,
+   :sensitive? false,
+   :tag java.lang.String,
+   :on-change nil,
+   :can-read-from-env? false,
+   :doc nil,
+   :feature :ai-controls,
+   :namespace 'metabase.metabot.settings,
+   :munged-name "metabot-chat-system-prompt",
+   :visibility :admin})
+
+(deftest config-file-settings-includes-settings-without-env-vars-test
+  (testing "Settings that ignore their environment variable are still offered in the config file template"
+    (let [names (->> (conj (vec example-settings) setting-without-env-var)
+                     config-file-settings
+                     (map :munged-name)
+                     set)]
+      (is (contains? names "metabot-chat-system-prompt")))))

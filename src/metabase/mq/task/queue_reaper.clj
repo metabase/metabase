@@ -23,11 +23,11 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.mq.db :as mq.db]
    [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.settings :as mq.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.lang.management ManagementFactory)
    (java.time Instant)
@@ -55,10 +55,7 @@
   lower-case* reference (`:qrtz_triggers`) fails on case-sensitive MySQL/MariaDB. (Quartz's own SQL
   references these tables the same unquoted upper-case way.)"
   [sched-name threshold]
-  (t2/query [(str "SELECT trigger_name, job_name FROM QRTZ_TRIGGERS"
-                  " WHERE sched_name = ? AND trigger_group = ? AND trigger_state = 'WAITING'"
-                  " AND start_time < ?")
-             sched-name quartz-affinity/queue-job-group threshold]))
+  (mq.db/waiting-queue-triggers-before sched-name quartz-affinity/queue-job-group threshold))
 
 (defn- drop-orphaned-triggers!
   "Drops queue message triggers that have sat `WAITING` — never acquired by any node — for longer than
@@ -84,9 +81,10 @@
 (def ^:private job-key (jobs/key "metabase.mq.task.queue-reaper.job"))
 (def ^:private trigger-key (triggers/key "metabase.mq.task.queue-reaper.trigger"))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Drops queue messages no node in the cluster has a listener for (older than the max age)."}
-  QueueReaper
+(task/defjob QueueReaper
+  "Drops queue messages no node in the cluster has a listener for (older than the max age)."
+  {:saved-class "metabase.mq.task.queue_reaper.QueueReaper"
+   :concurrent? false}
   [ctx]
   (if (< (node-uptime-ms) startup-grace-ms)
     ;; too soon after startup — a recovering cluster may still be draining a backlog of old-but-valid

@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
@@ -66,14 +66,14 @@ export function getTreemapColumnFormatter(
 
   return (value: RowValue): string => {
     if (value == null) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return String(
       formatValue(value, {
         ...columnSettings,
         column,
-      }) ?? NULL_DISPLAY_VALUE,
+      }) ?? getNullDisplayValue(),
     );
   };
 }

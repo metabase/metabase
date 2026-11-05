@@ -1,5 +1,4 @@
 .container {
-  padding: 0 var(--mantine-spacing-sm);
   max-width: 100%;
   box-sizing: border-box;
 }

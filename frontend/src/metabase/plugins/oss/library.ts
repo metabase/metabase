@@ -10,14 +10,9 @@ import type {
 import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
-  DataReferenceLibraryItem,
-  DataReferencePaneProps,
-} from "metabase/querying/components/DataReference/types";
-import type {
   Collection,
   CollectionId,
   CollectionItem,
-  CollectionNamespace,
   CollectionType,
   DatabaseId,
   GetLibraryCollectionResponse,
@@ -25,6 +20,8 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type CreateLibraryModalProps = {
   title?: string;
@@ -51,19 +48,16 @@ export type UnpublishTablesModalProps = {
   onClose: () => void;
 };
 
-export type CollectionPermissionsModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  namespace?: CollectionNamespace | null;
-  onClose: () => void;
-};
-
 export type LibraryCollectionType =
   | "library"
   | "library-data"
-  | "library-metrics";
+  | "library-metrics"
+  | "library-dashboards";
 
-export type LibrarySubCollectionType = "library-data" | "library-metrics";
+export type LibrarySubCollectionType =
+  | "library-data"
+  | "library-metrics"
+  | "library-dashboards";
 
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {
@@ -82,6 +76,7 @@ export type GetEntityPickerSyntheticLibraryItemFunction = {
 type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
+  getDataStudioDashboardRoutes: () => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
@@ -108,11 +103,7 @@ type LibraryPlugin = {
     items: CollectionItem[];
   }) => OmniPickerItem[] | undefined;
   getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
-  DataReferenceLibraryPane: ComponentType<
-    DataReferencePaneProps<DataReferenceLibraryItem>
-  >;
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
-  CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
   useGetLibraryCollectionQuery: UseQuery<
@@ -134,6 +125,7 @@ type LibraryPlugin = {
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
   getDataStudioLibraryRoutes: () => null,
+  getDataStudioDashboardRoutes: () => null,
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
   useGetLibraryChildCollectionByType: () => ({
     data: undefined,
@@ -145,15 +137,9 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   }),
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
-  DataReferenceLibraryPane: PluginPlaceholder<
-    DataReferencePaneProps<DataReferenceLibraryItem>
-  >,
   CreateLibraryModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
-  CollectionPermissionsModal:
-    // Unjustified type cast. FIXME
-    PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
   PublishTablesModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,
@@ -178,11 +164,4 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   ): _type is "library-data" => false,
 });
 
-export const PLUGIN_LIBRARY = getDefaultPluginLibrary();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_LIBRARY, getDefaultPluginLibrary());
-}
+export const PLUGIN_LIBRARY = definePluginSlot(getDefaultPluginLibrary);

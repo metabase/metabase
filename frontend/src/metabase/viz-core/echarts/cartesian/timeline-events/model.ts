@@ -2,6 +2,7 @@ import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
 import { type OpUnitType, dayjs } from "metabase/dayjs";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { TimelineEvent } from "metabase-types/api";
 
 import { CHART_STYLE } from "../constants/style";
@@ -93,17 +94,30 @@ export const buildTimelineEventClusters = (
   return clusters;
 };
 
+export const isTimelineEventInRange = (
+  event: TimelineEvent,
+  [min, max]: DateRange,
+  interval: TimeSeriesInterval | null,
+) => {
+  const unit: SupportedUnit | undefined = interval?.unit;
+  // `max` is the start of the final bucket, so a multi-unit interval — a two-month bucket, say — runs past it;
+  // comparing at unit granularity alone would drop an event in the rest of that bucket
+  const end =
+    unit && interval
+      ? // SupportedUnit is the dayjs unit set this axis uses, so it is always a valid OpUnitType here
+        max.add(interval.count - 1, unit as OpUnitType)
+      : max;
+  return parseTimestamp(event.timestamp).isBetween(min, end, unit, "[]");
+};
+
 const getTimelineEventsInsideRange = (
   timelineEvents: TimelineEvent[],
   range: DateRange,
-  unit: SupportedUnit,
-) => {
-  const [min, max] = range;
-
-  return timelineEvents.filter((event) => {
-    return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
-  });
-};
+  interval: TimeSeriesInterval,
+) =>
+  timelineEvents.filter((event) =>
+    isTimelineEventInRange(event, range, interval),
+  );
 
 export const getTimelineEventsModel = (
   chartModel: BaseCartesianChartModel,
@@ -122,7 +136,7 @@ export const getTimelineEventsModel = (
   const visibleTimelineEvents = getTimelineEventsInsideRange(
     timelineEvents,
     dimensionRange,
-    chartModel.xAxisModel.interval.unit,
+    chartModel.xAxisModel.interval,
   );
 
   const hasTimelineEvents = visibleTimelineEvents.length !== 0;

@@ -103,7 +103,7 @@
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase.lib.core :as lib]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
@@ -132,6 +132,7 @@
        (s/assert* spec section-config))
      true)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *supported-versions*
   "Range of config file versions (inclusive) that we'll support. If the version is out of this range, spec validation
   will fail and trigger an error. See ns documentation for [[metabase.config.file]] for more details."
@@ -147,6 +148,7 @@
   (s/keys :req-un [:metabase.config.file.config/version
                    :metabase.config.file.config/config]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *env*
   "Environment variables and system properties used in this namespace. This is a dynamic version
   of [[environ.core/env]]; it is dynamic for test mocking purposes.
@@ -289,8 +291,9 @@
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
    :ok))
 
-(defn boot-initialize!
-  "Boot-time entry point: read the config file from disk and run [[initialize!]]
-   with `{{env VAR}}` template expansion enabled. No-op when no file is present."
+(defenterprise boot-initialize!
+  "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
+  Does nothing when there is no config file."
+  :feature :none
   []
   (initialize! (config-from-disk) {:expand-templates? true}))

@@ -40,7 +40,7 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
     } catch (error) {
       sendToast({
         message: t`Failed to pull changes`,
-        icon: "warning",
+        variant: "negative",
       });
     }
   }, [importChanges, branch, forcePull, sendToast]);
@@ -51,7 +51,6 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
         disabled={isImporting || dirty}
         loading={isImporting}
         onClick={handlePullChanges}
-        variant="outline"
       >
         {t`Pull changes now`}
       </Button>

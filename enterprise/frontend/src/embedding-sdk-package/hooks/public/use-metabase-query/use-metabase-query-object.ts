@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useAsyncFn } from "react-use";
 
+import { useDataAppDevLog } from "embedding-sdk-package/hooks/private/use-data-app-dev-log";
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
@@ -11,24 +12,24 @@ import {
   getResolveDatasetQueryFromBundle,
 } from "./bundle";
 import { stableStringifyQuery } from "./stable-query-key";
-import type { MetabaseQueryOptions } from "./types";
+import type {
+  DefinedQuery,
+  MetabaseDynamicQuery,
+  MetabaseQueryOptions,
+  UseMetabaseQueryObject,
+  UseMetabaseQueryObjectResult,
+} from "./types";
 
-export type UseMetabaseQueryObjectResult = {
-  query: MetabaseQueryObject | null;
-  error: unknown;
-  isLoading: boolean;
-};
+export type { UseMetabaseQueryObjectResult } from "./types";
 
 type QueryObjectState = {
   query: MetabaseQueryObject;
   queryKey: string;
 };
 
-/**
- * Resolves a data app query into a query object that can be passed to SDK question components.
- */
-export function useMetabaseQueryObject(
-  query: MetabaseQueryOptions<undefined>,
+function useMetabaseQueryObjectImpl(
+  query: MetabaseQueryOptions<undefined> & DefinedQuery,
+  dynamicQuery?: MetabaseDynamicQuery,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
 
@@ -40,11 +41,21 @@ export function useMetabaseQueryObject(
     },
   } = useMetabaseProviderPropsStore();
 
-  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
-  const queryRef = useRef(query);
-  const pendingQueryKeyRef = useRef<string | null>(null);
+  const isEnabled = query.enabled !== false && dynamicQuery?.enabled !== false;
 
-  queryRef.current = query;
+  const queryKey = useMemo(
+    () => stableStringifyQuery([query, dynamicQuery]),
+    [query, dynamicQuery],
+  );
+  const queryRef = useRef(query);
+  const dynamicQueryRef = useRef(dynamicQuery);
+  const pendingQueryKeyRef = useRef<string | null>(null);
+  const { logError } = useDataAppDevLog();
+
+  useEffect(() => {
+    queryRef.current = query;
+    dynamicQueryRef.current = dynamicQuery;
+  }, [query, dynamicQuery]);
 
   const [{ value, error, loading }, resolveQueryObject] =
     useAsyncFn(async (): Promise<QueryObjectState | null> => {
@@ -54,18 +65,27 @@ export function useMetabaseQueryObject(
         return null;
       }
 
-      const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
+      try {
+        const result = await resolveDatasetQuery(reduxStore)(
+          queryRef.current,
+          dynamicQueryRef.current,
+        );
 
-      return {
-        // The bundle returns the opaque `DatasetQuery`; the public API publishes
-        // the structural `MetabaseQueryObject` instead (see its own docs for why).
-        query: result as MetabaseQueryObject,
-        queryKey,
-      };
-    }, [queryKey, reduxStore]);
+        return {
+          // The bundle returns the opaque `DatasetQuery`; the public API publishes
+          // the structural `MetabaseQueryObject` instead (see its own docs for why).
+          query: result as MetabaseQueryObject,
+          queryKey,
+        };
+      } catch (error) {
+        logError(error);
+        throw error;
+      }
+    }, [logError, queryKey, reduxStore]);
 
   useEffect(() => {
     if (
+      !isEnabled ||
       !reduxStore ||
       !getResolveDatasetQueryFromBundle() ||
       loginStatus?.status !== "success"
@@ -76,12 +96,17 @@ export function useMetabaseQueryObject(
     pendingQueryKeyRef.current = queryKey;
     resolveQueryObject();
   }, [
+    isEnabled,
     loadingState,
     loginStatus?.status,
     queryKey,
     reduxStore,
     resolveQueryObject,
   ]);
+
+  if (!isEnabled) {
+    return { query: null, error: null, isLoading: false };
+  }
 
   if (error && !loading && pendingQueryKeyRef.current === queryKey) {
     return { query: null, error, isLoading: false };
@@ -97,3 +122,10 @@ export function useMetabaseQueryObject(
     isLoading: loading,
   };
 }
+
+/**
+ * Resolves a data app query into a query object that can be passed to SDK question components.
+ */
+export const useMetabaseQueryObject =
+  // The implementation takes any query; the public signature checks the dynamic clauses against the static query.
+  useMetabaseQueryObjectImpl as UseMetabaseQueryObject;

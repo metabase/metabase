@@ -12,10 +12,12 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.driver.sql.query-processor.format :as sql.qp.format]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
@@ -24,14 +26,21 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [empty? every? get-in mapv not-empty select-keys some]]
+   [potemkin :as p]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [sql.qp.format
+  format-honeysql
+  quote-style])
 
 (def source-query-alias
   "Alias to use for source queries, e.g.:
@@ -42,6 +51,7 @@
 
 ;; TODO (Cam 2026-08-11) "Inner query" is MBQL 4 terminology, since we're using MBQL 5 now, rename this to `stage` and
 ;; rename all the `inner-query` function args & local variables to `stage` as well
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
@@ -486,8 +496,8 @@
 
     (truncate-fn expr) => truncated-expr"
   [driver      :- :keyword
-   truncate-fn :- [:=> [:cat :any] :any]
-   expr]
+   truncate-fn :- [:=> [:cat ::h2x/expr] ::h2x/expr]
+   expr        :- ::h2x/expr]
   (let [offset (driver.common/start-of-week-offset driver)]
     (if (not= offset 0)
       (add-interval-honeysql-form driver
@@ -506,16 +516,19 @@
   This assumes `day-of-week` as returned by the driver is already between `1` and `7` (adjust it if it's not). It
   adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
   from [[driver/db-start-of-week]]."
-  ([driver day-of-week-honeysql-expr]
+  ([driver                    :- :keyword
+    day-of-week-honeysql-expr :- ::h2x/expr]
    (adjust-day-of-week driver day-of-week-honeysql-expr (driver.common/start-of-week-offset driver)))
 
-  ([driver day-of-week-honeysql-expr offset]
+  ([driver                    :- :keyword
+    day-of-week-honeysql-expr :- ::h2x/expr
+    offset                    :- :int]
    (adjust-day-of-week driver day-of-week-honeysql-expr offset h2x/mod))
 
-  ([driver
-    day-of-week-honeysql-expr
+  ([driver                    :- :keyword
+    day-of-week-honeysql-expr :- ::h2x/expr
     offset :- :int
-    mod-fn :- [:=> [:cat any? any?] any?]]
+    mod-fn :- [:=> [:cat ::h2x/expr ::h2x/expr] ::h2x/expr]]
    (cond
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
@@ -527,22 +540,6 @@
                         (-> (h2x/+ (mod-fn shifted (inline-num 7)) (inline-num 1))
                             (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
                                                              "integer")))))))
-
-(defmulti quote-style
-  "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
-  valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
-  [[metabase.util.honey-sql-2]]; like `:ansi`, but uppercases the result). Check [[honey.sql/dialects]] for all
-  available dialects, or register a custom one with [[honey.sql/register-dialect!]].
-
-    (honey.sql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
-
-  (The name of this method reflects Honey SQL 1 terminology, where \"dialect\" was called \"quote style\". To avoid
-  needless churn, I haven't changed it yet. -- Cam)"
-  {:added "0.32.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod quote-style :sql [_] :ansi)
 
 (defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
@@ -920,7 +917,7 @@
   `AS`).
 
     (field-source-table-aliases [:field 1 nil]) ; -> [\"public\" \"venues\"]"
-  [[_ opts id-or-name]]
+  [[_ opts id-or-name] :- :mbql.clause/field]
   (let [source-table (or (get opts driver-api/qp.add.source-table)
                          (when (integer? id-or-name)
                            (:table-id (driver-api/field (driver-api/metadata-provider) id-or-name))))]
@@ -1525,7 +1522,9 @@
                              (:name (driver-api/field (driver-api/metadata-provider) id-or-name))))]
      (->honeysql driver (h2x/identifier :field-alias desired-alias))))
 
-  ([driver field-clause _unique-name-fn]
+  ([driver         :- :keyword
+    field-clause    :- vector?
+    _unique-name-fn :- [:maybe ifn?]]
    (sql.qp.deprecated/log-deprecation-warning
     driver
     "metabase.driver.sql.query-processor/field-clause->alias with 3 args"
@@ -1738,12 +1737,13 @@
 
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
-  [driver
-   pre
+  [driver :- :keyword
+   pre    :- [:maybe :string]
    ;; still typed by the deprecated legacy schema above; both go away with the MBQL 5 migration
    [type _ :as arg] :- #_{:clj-kondo/ignore [:deprecated-var]} LegacyStringValueOrFieldOrExpression
-   post
-   {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+   post   :- [:maybe :string]
+   {:keys [case-sensitive] :or {case-sensitive true} :as _options}
+   :- [:merge :metabase.lib.schema.common/options :metabase.lib.schema.filter/string-filter-options]]
   (if (= :value type)
     (->> (update arg 2 #(cond-> (str pre (escape-like-pattern driver %) post)
                           (not case-sensitive) u/lower-case-en))
@@ -1766,9 +1766,25 @@
                    (:base-type opts))
                :type/UUID))))
 
+(mr/def ::compilable-expression
+  "An argument [[->honeysql]] compiles in a filter: an MBQL 5 expression, a UUID, or a driver's own clause (tagged with a
+  namespaced keyword, e.g. `:metabase.driver.sqlserver/cast`) wrapping one."
+  [:or
+   :metabase.lib.schema.expression/expression
+   uuid?
+   [:tuple [:= ::compiled] ::h2x/honeysql-expr]
+   [:and
+    vector?
+    [:cat
+     qualified-keyword?
+     [:? [:or [:= {} {}] :metabase.lib.schema.common/options]]
+     [:* [:schema [:or :string [:ref ::compilable-expression]]]]]]])
+
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
-  [driver field arg]
+  [driver :- :keyword
+   field  :- ::compilable-expression
+   arg    :- ::compilable-expression]
   (if (and (uuid-field? field)
            ;; If the arg is a uuid we are happy especially for joins (#46558)
            (not (uuid-field? arg))
@@ -1783,7 +1799,8 @@
 (mu/defn maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
-  [_driver field]
+  [_driver :- :keyword
+   field   :- ::compilable-expression]
   (if (uuid-field? field)
     [::cast-to-text {} field]
     field))
@@ -1844,6 +1861,7 @@
     (select-keys (driver-api/field (driver-api/metadata-provider) field-id)
                  [:effective-type])))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. It carries the
   compiled LHS's full HoneySQL type-info (see [[metabase.util.honey-sql-2/type-info]]) merged with `:base-type` and
@@ -2065,39 +2083,6 @@
   (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
            (keys inner-query)))
 
-(defn- format-honeysql-2 [driver dialect honeysql-form]
-  ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
-  (binding [driver/*driver* driver]
-    (sql/format honeysql-form {:dialect      dialect
-                               :quoted       true
-                               :quoted-snake false
-                               :inline       driver/*compile-with-inline-parameters*
-                               ;; Enable :nested when we want to compile just one particular snippet.
-                               :nested (not (map? honeysql-form))})))
-
-(defmulti format-honeysql
-  "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a
-  multimethod in 0.51.0 to support drivers that need to always
-  specify [[metabase.driver/*compile-with-inline-parameters*]]."
-  {:arglists '([driver honeysql-form]), :added "0.51.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod format-honeysql :sql
-  [driver honeysql-form]
-  (let [dialect (quote-style driver)]
-    (try
-      (format-honeysql-2 driver dialect honeysql-form)
-      (catch Throwable e
-        (try
-          (log/error (u/format-color :red "Invalid HoneySQL form: %s" (ex-message e)))
-          (finally
-            (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
-                            {:dialect dialect
-                             :form    honeysql-form
-                             :type    driver-api/qp.error-type.driver}
-                            e))))))))
-
 (defn- default-select [driver {[from] :from, :as _honeysql-form}]
   (let [table-identifier (if (sequential? from)
                            ;; Grab the alias part.
@@ -2219,6 +2204,18 @@
        (remove (partial = :source-query)))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
+(defmulti apply-cte-hoist?
+  "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
+  `WITH` binding that every branch references by alias, rather than inlining it once per branch. On
+  by default; drivers whose planner doesn't support the resulting shape override to false."
+  {:added "0.64.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod apply-cte-hoist? :sql
+  [_driver]
+  true)
+
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
@@ -2230,9 +2227,14 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod preprocess :sql
-  [_driver mbql5-query]
+  [driver mbql5-query]
+  ;; Nest a pivot stage's joins into a prior stage only for drivers that opt into the UA CTE hoist —
+  ;; the nesting exists so [[metabase.driver.sql.pivot/compile-union-all-pivot]] can lift the shared
+  ;; subquery into a `WITH` binding. Drivers that don't hoist would just carry an unnecessary
+  ;; subquery layer on their GS / multi-query paths.
   (-> mbql5-query
       driver-api/nest-breakouts-in-stages-with-window-aggregation
+      (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
       driver-api/nest-expressions
       driver-api/add-alias-info
       :stages))
@@ -2268,7 +2270,9 @@
     (binding [*inner-query* stage]
       (apply-top-level-clauses driver prev-from stage))))
 
-(defn- stages->honeysql [driver stages]
+(defn- stages->honeysql-subselects
+  "Compile `stages` to HoneySQL with each stage nested as a subselect in the `FROM` of the next one."
+  [driver stages]
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
@@ -2277,19 +2281,134 @@
     [nil nil]
     stages)))
 
+(def ^:private stage-cte-prefix "__mb_stage_")
+
+(defn- cte-stage-source-form
+  "The CTE is aliased as `__mb_source` so field refs can compile the same as with nested subselects."
+  [driver prev-cte-name]
+  {:from [[(->honeysql driver (h2x/identifier :table-alias prev-cte-name))
+           [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
+
+(defn- stage-cte
+  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
+  Applies the fix for duplicate column names similar to `stage-source-form`."
+  [hsql stage]
+  (let [cte-name         (::cte-name stage)
+        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
+    (if (needs-cte-for-duplicate-cols? columns-metadata)
+      [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
+      [cte-name hsql])))
+
+(defn- stages->honeysql-ctes
+  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
+  [driver stages]
+  (let [stages   (vec stages)
+        last-idx (dec (count stages))
+        cte-body (fn [idx]
+                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
+                     (stage->honeysql driver prev-from (stages idx))))
+        ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
+    (update (cte-body last-idx) :with #(into ctes %))))
+
+(defn- stages->honeysql*
+  [driver stages]
+  (if (::cte-name (first stages))
+    (stages->honeysql-ctes driver stages)
+    (stages->honeysql-subselects driver stages)))
+
 (defmethod join-source :sql
   [driver {:keys [stages]}]
-  (stages->honeysql driver stages))
+  (stages->honeysql* driver stages))
+
+(defn- all-stages
+  "Gets all the stages of a query including the join stages."
+  [stages]
+  (mapcat #(cons % (mapcat (comp all-stages :stages) (:joins %))) stages))
+
+(defn- hoist-ctes
+  "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top."
+  [hsql]
+  (let [ctes (volatile! [])
+        hsql (perf/postwalk (fn [form]
+                              (if (and (map? form) (:with form))
+                                (do (vswap! ctes into (:with form))
+                                    (dissoc form :with))
+                                form))
+                            hsql)]
+    (cond-> hsql
+      (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
+
+(defn- stage-raw-sql
+  "The raw SQL that `stage->honeysql` compiles for `stage`, if any."
+  [stage]
+  (let [sql (or (:persisted-info/native stage)
+                (when (lib/native-stage? stage) (:native stage)))]
+    (when (string? sql) sql)))
+
+(defn- native-sql-max-cte-number
+  [stage]
+  (when-let [sql (stage-raw-sql stage)]
+    (some->> (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)
+             (map (comp parse-long second))
+             (apply max))))
+
+(defn- first-cte-number
+  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
+  above them to avoid name collisions."
+  [stages]
+  (inc (reduce max -1 (keep native-sql-max-cte-number (all-stages stages)))))
+
+(defn- assign-cte-names*
+  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
+  [stages n]
+  (let [last-idx (dec (count stages))]
+    (reduce (fn [[stages n] [idx stage]]
+              (let [[joins n] (reduce (fn [[joins n] join]
+                                        (let [[join-stages n] (assign-cte-names* (:stages join) n)]
+                                          [(conj joins (assoc join :stages join-stages)) n]))
+                                      [[] n]
+                                      (:joins stage))
+                    stage     (cond-> stage
+                                (seq joins)      (assoc :joins joins)
+                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
+                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
+            [[] n]
+            (map-indexed vector stages))))
+
+(defn- assign-cte-names
+  [stages]
+  (first (assign-cte-names* stages (first-cte-number stages))))
+
+(defn- native-stage-has-cte?
+  "Whether the raw SQL of `stage` contains `WITH`. A false positive only makes the query use subselects."
+  [stage]
+  (boolean (some->> (stage-raw-sql stage) (re-find #"(?i)\bwith\b"))))
+
+(defn- use-stage-ctes?
+  [driver stages query]
+  (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
+    (and (driver/database-supports? driver :stage-ctes db)
+         (or (driver/database-supports? driver :stage-ctes/nested db)
+             ;; If nested CTEs aren't supported, check that we don't have a card reference like {{#123}}
+             ;; and don't have a native stage with a CTE, otherwise we could end up with nested CTEs.
+             (and (not (get-in query [:middleware :card-reference?]))
+                  (not-any? native-stage-has-cte? (all-stages stages)))))))
+
+(defn- stages->honeysql
+  [driver stages query]
+  (if (use-stage-ctes? driver stages query)
+    (hoist-ctes (stages->honeysql* driver (assign-cte-names stages)))
+    (stages->honeysql* driver stages)))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
-   query  :- :map]
+   query  :- ::qp.schema/any-query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [stages (preprocess driver query)]
         (log/trace "Compiling MBQL query")
-        (u/prog1 (stages->honeysql driver stages)
+        (u/prog1 (stages->honeysql driver stages query)
           (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)
@@ -2308,7 +2427,7 @@
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver      :- :keyword
-   outer-query :- :map]
+   outer-query :- ::qp.schema/any-query]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
@@ -2345,6 +2464,21 @@
     [(first (format-honeysql driver
                              {:insert-into [(keyword output-table) {:raw sql-query}]}))
      sql-params]))
+
+(defmethod driver/temp-table-name :sql
+  [_driver]
+  (str "mb_test_" (str/replace (str (random-uuid)) "-" "")))
+
+(defmethod driver/compile-create-temp-table :sql
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver [:raw ["CREATE TEMPORARY TABLE " [:inline (keyword table)] " AS " sql-query]]))
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :sql
+  [driver table]
+  [(first (format-honeysql driver [:raw ["DROP TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
 
 (defmethod driver/compile-drop-table :sql
   [driver table]

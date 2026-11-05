@@ -1,8 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { DatabaseFeature } from "metabase-types/api";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
@@ -148,6 +151,22 @@ describe("ExpressionWidget", () => {
     });
   });
 
+  it("debounces the first validation of a new expression", async () => {
+    await setup({ expressionMode: "aggregation" });
+
+    await userEvent.paste("[Imaginary]");
+
+    // Validation is debounced, so the error must not appear synchronously with
+    // the first change to a new expression.
+    expect(
+      screen.queryByText("Unknown Aggregation, Measure or Metric: Imaginary"),
+    ).not.toBeInTheDocument();
+
+    await screen.findByText(
+      "Unknown Aggregation, Measure or Metric: Imaginary",
+    );
+  });
+
   describe("expressionMode = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
       await setup({ expressionMode: "expression" });
@@ -161,9 +180,40 @@ describe("ExpressionWidget", () => {
       await screen.findByText('Expecting operator but got "test" instead');
     });
   });
+
+  describe("functions the query's database supports", () => {
+    const expression = "Percentile([Total], 0.5)";
+
+    it("should accept a function when the database has its feature", async () => {
+      await setup({ expressionMode: "aggregation" }, [
+        "percentile-aggregations",
+      ]);
+
+      await userEvent.paste(expression);
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+    });
+
+    it("should reject a function when the database lacks its feature", async () => {
+      await setup({ expressionMode: "aggregation" }, []);
+
+      await userEvent.paste(expression);
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
+
+      await screen.findByText("Unsupported function Percentile");
+    });
+  });
 });
 
-async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
+async function setup(
+  additionalProps?: Partial<ExpressionWidgetProps>,
+  databaseFeatures?: DatabaseFeature[],
+) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.expressionableColumns(query, stageIndex);
@@ -179,6 +229,12 @@ async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   function getRecentExpressionClauseInfo() {
     return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
   }
+
+  setupDatabaseEndpoints(
+    createSampleDatabase(
+      databaseFeatures ? { features: databaseFeatures } : {},
+    ),
+  );
 
   renderWithProviders(
     <ExpressionWidget

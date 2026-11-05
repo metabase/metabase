@@ -106,11 +106,11 @@
           :when (nil? (:dataset_query q))]
     (when-let [ctx (qp.context/build-row-context q)]
       (when-let [dq (qp.variants/dataset-query (:query_type q) ctx)]
-        (t2/update! :model/ExplorationQuery (:id q)
+        (t2/update! :model/ExplorationQuery :id (:id q)
                     {:dataset_query     dq
                      :data_access_token (perms/data-access-token
                                          {:database-id (:database_id q)
-                                          :table-ids   (query-perms/query->resolved-source-table-ids dq)})})))))
+                                          :table-ids   (:table-ids (query-perms/query->resolved-source-ids dq))})})))))
 
 (defn- vectorize-clauses
   "`mt/user-http-request` decodes JSON arrays as lists, but MBQL normalization (and
@@ -283,7 +283,7 @@
                             :target       [:field {} 999999999]
                             :table-id     (mt/id :venues)}]
           ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
-          (t2/update! :model/Card (:id metric)
+          (t2/update! :model/Card :id (:id metric)
                       {:dimensions         [{:id good-id :name "NAME" :display-name "Good"
                                              :effective-type :type/Text}
                                             {:id bad-id  :name "ZZZ"  :display-name "Unresolvable"
@@ -315,7 +315,7 @@
                   :metrics      [{:card_id (:id metric)
                                   :dimension_mappings [{:dimension_id (duid "d1")
                                                         :table_id (mt/id :venues)
-                                                        :target ["field" {} (mt/id :venues :price)]}]}]
+                                                        :target ["field" (mt/id :venues :price) nil]}]}]
                   :dimensions   [{:dimension_id (duid "d1") :display_name "Price"
                                   :effective_type "type/Number"}]
                   :timeline_ids [(:id tl)]}
@@ -358,7 +358,7 @@
                        :metrics      [{:card_id (:id metric)
                                        :dimension_mappings [{:dimension_id (duid "d1")
                                                              :table_id (mt/id :venues)
-                                                             :target ["field" {} (mt/id :venues :price)]}]}]
+                                                             :target ["field" (mt/id :venues :price) nil]}]}]
                        :dimensions   [{:dimension_id (duid "d1") :display_name "Price"
                                        :effective_type "type/Number"}]
                        :timeline_ids [(:id tl)]}
@@ -377,7 +377,7 @@
       (let [mapping (fn [card-id]
                       [{:dimension_id (duid "d1")
                         :table_id (mt/id :venues)
-                        :target ["field" {} (mt/id :venues :price)]
+                        :target ["field" (mt/id :venues :price) nil]
                         :card_id card-id}])
             dims    [{:dimension_id (duid "d1") :display_name "Price" :effective_type "type/Number"}]
             body    {:name   "Naming"
@@ -409,7 +409,7 @@
                    :model/Timeline tl {:creator_id (:id u)}]
       (let [mapping [{:dimension_id (duid "d1")
                       :table_id (mt/id :venues)
-                      :target ["field" {} (mt/id :venues :price)]}]
+                      :target ["field" (mt/id :venues :price) nil]}]
             ;; Two blocks sharing the same metric: one with d1, one with d2. Timelines are
             ;; thread-scoped, sent once at the top level. Each block is stored verbatim — the
             ;; shared metric is NOT deduped across blocks.
@@ -542,8 +542,8 @@
     (mt/with-temp [:model/User u {:email "matrix@example.com"}
                    :model/Card m1 (valid-metric-card (:id u))
                    :model/Card m2 (valid-metric-card (:id u))]
-      (let [mapping  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-                      {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]
+      (let [mapping  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}
+                      {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" (mt/id :venues :price) nil]}]
             body     {:name "matrix"
                       :metrics [{:card_id (:id m1) :dimension_mappings mapping}
                                 {:card_id (:id m2) :dimension_mappings mapping}]
@@ -570,15 +570,15 @@
   these to the internal kebab-case shape via the `:metabase.metrics.core/dimension-mapping`
   schema the request schemas reference."
   []
-  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-   {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
+  [{:dimension_id (duid "category") :table_id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}
+   {:dimension_id (duid "price")    :table_id (mt/id :venues) :target ["field" (mt/id :venues :price) nil]}])
 
 (defn- stored-venues-dimension-mappings
   "Internal-shape (kebab-case) dimension mappings for direct t2 block fixtures — the canonical
   stored shape, bypassing the API edge conversion."
   []
-  [{:dimension-id (duid "category") :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-   {:dimension-id (duid "price")    :table-id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}])
+  [{:dimension-id (duid "category") :table-id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}
+   {:dimension-id (duid "price")    :table-id (mt/id :venues) :target ["field" (mt/id :venues :price) nil]}])
 
 (defn- segment-filters
   "Extract :segment filter clauses (as `[:segment {} <id>]`) from a snapshot dataset_query at stage 0."
@@ -673,7 +673,7 @@
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
                       ;; which for joined dimensions differs from the metric's source table
                       :table_id     (mt/id :people)
-                      :target       ["field" {} (mt/id :people :created_at)]}]
+                      :target       ["field" (mt/id :people :created_at) nil]}]
             body    {:name       "dt"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   (duid "created")
@@ -691,7 +691,7 @@
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id (duid "created")
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" (mt/id :checkins :date) nil]}]
             body    {:name       "date"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   (duid "created")
@@ -707,7 +707,7 @@
                    :model/Card metric (assoc (products-monthly-metric-card (:id u)) :name "Sales")]
       (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
-                      :target       ["field" {} (mt/id :products :category)]}]
+                      :target       ["field" (mt/id :products :category) nil]}]
             body    {:name       "facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id (duid "cat") :display_name "Category"}]}
@@ -735,7 +735,7 @@
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id (duid "price")
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :venues :price)]}]
+                      :target       ["field" (mt/id :venues :price) nil]}]
             body    {:name       "no-facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id (duid "price") :display_name "Price" :effective_type "type/Number"}]}
@@ -752,7 +752,7 @@
       (let [mapping [{:dimension_id (duid "email")
                       ;; :table_id is the target column's table, not the metric's source table
                       :table_id     (mt/id :people)
-                      :target       ["field" {} (mt/id :people :email)]}]
+                      :target       ["field" (mt/id :people :email) nil]}]
             body    {:name       "high-card"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id (duid "email") :display_name "Email"}]}
@@ -770,7 +770,7 @@
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/filter (lib/> (lib.metadata/field mp (mt/id :products :price)) 50)))))}]
       (let [mapping [{:dimension_id (duid "cat")
                       :table_id     (mt/id :products)
-                      :target       ["field" {} (mt/id :products :category)]}]
+                      :target       ["field" (mt/id :products :category) nil]}]
             body    {:name       "facet-no-seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id (duid "cat") :display_name "Category"}]}
@@ -798,7 +798,7 @@
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
                       ;; which for joined dimensions differs from the metric's source table
                       :table_id     (mt/id :people)
-                      :target       ["field" {} (mt/id :people :created_at)]}]
+                      :target       ["field" (mt/id :people :created_at) nil]}]
             body    {:name       "seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   (duid "created")
@@ -823,7 +823,7 @@
                       ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
                       ;; which for joined dimensions differs from the metric's source table
                       :table_id     (mt/id :people)
-                      :target       ["field" {} (mt/id :people :created_at)]}]
+                      :target       ["field" (mt/id :people :created_at) nil]}]
             body    {:name       "collapse"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   (duid "created")
@@ -859,7 +859,7 @@
                        :metrics      [{:card_id (:id metric)
                                        :dimension_mappings [{:dimension_id (duid "d1")
                                                              :table_id (mt/id :venues)
-                                                             :target ["field" {} (mt/id :venues :price)]}]}]
+                                                             :target ["field" (mt/id :venues :price) nil]}]}]
                        :dimensions   [{:dimension_id (duid "d1") :display_name "Price"
                                        :effective_type "type/Number"}]
                        :timeline_ids [(:id tl)]}
@@ -869,7 +869,7 @@
             orig-tid  (:id thread)]
         (is (pos? (count (:queries thread))) "the first run materialized queries")
         ;; Simulate a finished run so we can prove restart clears the terminal-state gates.
-        (t2/update! :model/ExplorationThread orig-tid
+        (t2/update! :model/ExplorationThread :id orig-tid
                     {:query_plan_started_at (t/offset-date-time)
                      :analysis_started_at   (t/offset-date-time)
                      :completed_at          (t/offset-date-time)})
@@ -910,7 +910,7 @@
             tid     (-> created :threads first :id)]
         ;; Perms ride the thread's parent exploration, resolved by `write-check-thread`.
         ;; Mark the thread terminal — restart refuses in-flight threads with a 409.
-        (t2/update! :model/ExplorationThread tid {:completed_at (t/offset-date-time)})
+        (t2/update! :model/ExplorationThread :id tid {:completed_at (t/offset-date-time)})
         (mt/user-http-request other :post 403 (format "exploration/thread/%d/restart" tid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/thread/%d/restart" tid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -928,7 +928,7 @@
                                :model/ExplorationThread
                                {:exploration_id expl-id :name "drill" :position 1
                                 :completed_at   (t/offset-date-time)}))]
-          (t2/update! :model/ExplorationThread root-tid {:completed_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationThread :id root-tid {:completed_at (t/offset-date-time)})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid))
           (is (nil? (t2/select-one-fn :completed_at :model/ExplorationThread :id root-tid))
               "the named (root) thread was reset")
@@ -942,6 +942,19 @@
     ;; expressible here. Perms ride the thread's parent exploration (see the permissions test).
     (mt/with-temp [:model/User u {:email "rs-404@example.com"}]
       (mt/user-http-request u :post 404 "exploration/thread/9999999/restart"))))
+
+(deftest exploration-get-hydrates-trash-permissions-test
+  (testing "GET /api/exploration/:id hydrates :can_restore and :can_delete"
+    (mt/with-temp [:model/Exploration {trashed-id :id} {:name              "trashed"
+                                                        :creator_id        (mt/user->id :crowberto)
+                                                        :archived          true
+                                                        :archived_directly true}
+                   :model/Exploration {live-id :id}    {:name       "live"
+                                                        :creator_id (mt/user->id :crowberto)}]
+      (is (=? {:archived true, :can_restore true, :can_delete true}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" trashed-id))))
+      (is (=? {:archived false, :can_restore false, :can_delete false}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" live-id)))))))
 
 (deftest exploration-get-permissions-test
   (testing "Only the creator (or a superuser) can GET an exploration"
@@ -961,10 +974,10 @@
                    :model/Card signups (valid-metric-card (:id u))]
       (let [body {:name "applicability"
                   :metrics [{:card_id (:id revenue)
-                             :dimension_mappings [{:dimension_id (duid "plan")   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}]}
+                             :dimension_mappings [{:dimension_id (duid "plan")   :table_id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}]}
                             {:card_id (:id signups)
-                             :dimension_mappings [{:dimension_id (duid "plan")   :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-                                                  {:dimension_id (duid "channel") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                             :dimension_mappings [{:dimension_id (duid "plan")   :table_id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}
+                                                  {:dimension_id (duid "channel") :table_id (mt/id :venues) :target ["field" (mt/id :venues :price) nil]}]}]
                   :dimensions [{:dimension_id (duid "plan")} {:dimension_id (duid "channel")}]}
             resp     (create-exploration! u body)
             all-queries (-> resp :threads first :queries)
@@ -986,8 +999,8 @@
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
       (let [body {:name "naming"
                   :metrics    [{:card_id (:id revenue)
-                                :dimension_mappings [{:dimension_id (duid "country") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :category_id)]}
-                                                     {:dimension_id (duid "no-name") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                                :dimension_mappings [{:dimension_id (duid "country") :table_id (mt/id :venues) :target ["field" (mt/id :venues :category_id) nil]}
+                                                     {:dimension_id (duid "no-name") :table_id (mt/id :venues) :target ["field" (mt/id :venues :price) nil]}]}]
                   :dimensions [{:dimension_id (duid "country") :display_name "Country"}
                                {:dimension_id (duid "no-name")}]}
             resp     (create-exploration! u body)
@@ -1020,8 +1033,8 @@
           (let [body {:name "ambig"
                       :metrics    [{:card_id (:id revenue)
                                     :dimension_mappings
-                                    [{:dimension_id users-created  :table_id 1 :target ["field" {} 1]}
-                                     {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
+                                    [{:dimension_id users-created  :table_id 1 :target ["field" 1 nil]}
+                                     {:dimension_id orders-created :table_id 1 :target ["field" 2 nil]}]}]
                       :dimensions [{:dimension_id users-created  :display_name "Created At"}
                                    {:dimension_id orders-created :display_name "Created At"}]}
                 by-dim (->> (create-exploration! u body)
@@ -1033,8 +1046,8 @@
           (let [body {:name "no-ambig"
                       :metrics    [{:card_id (:id revenue)
                                     :dimension_mappings
-                                    [{:dimension_id users-created :table_id 1 :target ["field" {} 1]}
-                                     {:dimension_id users-country :table_id 1 :target ["field" {} 3]}]}]
+                                    [{:dimension_id users-created :table_id 1 :target ["field" 1 nil]}
+                                     {:dimension_id users-country :table_id 1 :target ["field" 3 nil]}]}]
                       :dimensions [{:dimension_id users-created :display_name "Created At"}
                                    {:dimension_id users-country :display_name "Country"}]}
                 by-dim (->> (create-exploration! u body)
@@ -1050,8 +1063,8 @@
       (let [body {:name "dim-name"
                   :metrics    [{:card_id (:id metric)
                                 :dimension_mappings
-                                [{:dimension_id (duid "country") :table_id 1 :target ["field" {} 1]}
-                                 {:dimension_id (duid "no-name") :table_id 1 :target ["field" {} 2]}]}]
+                                [{:dimension_id (duid "country") :table_id 1 :target ["field" 1 nil]}
+                                 {:dimension_id (duid "no-name") :table_id 1 :target ["field" 2 nil]}]}]
                   :dimensions [{:dimension_id (duid "country") :display_name "Country"}
                                {:dimension_id (duid "no-name")}]}
             by-dim (->> (create-exploration! u body)
@@ -1077,8 +1090,8 @@
         (let [body   {:name "ambig"
                       :metrics    [{:card_id (:id metric)
                                     :dimension_mappings
-                                    [{:dimension_id users-created  :table_id 1 :target ["field" {} 1]}
-                                     {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
+                                    [{:dimension_id users-created  :table_id 1 :target ["field" 1 nil]}
+                                     {:dimension_id orders-created :table_id 1 :target ["field" 2 nil]}]}]
                       :dimensions [{:dimension_id users-created  :display_name "Created At"}
                                    {:dimension_id orders-created :display_name "Created At"}]}
               by-dim (->> (create-exploration! u body)
@@ -1094,7 +1107,7 @@
       (let [resp (create-exploration! u
                                       {:name "get-score"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)
@@ -1165,7 +1178,7 @@
                  :stored_result_id     sr-id})))
 
 (defn- mark-done! [query-id]
-  (t2/update! :model/ExplorationQuery query-id {:status "done"}))
+  (t2/update! :model/ExplorationQuery :id query-id {:status "done"}))
 
 (deftest exploration-query-result-streams-stored-result-test
   (testing "GET /query/:id streams the stored worker result as JSON"
@@ -1174,7 +1187,7 @@
       (let [resp     (create-exploration! u
                                           {:name "result"
                                            :metrics [{:card_id (:id metric)
-                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                            :dimensions [{:dimension_id (duid "d1")}]})
             qid      (-> resp :threads first :queries first :id)
             qp-out   {:status :completed
@@ -1196,7 +1209,7 @@
       (let [resp (create-exploration! u
                                       {:name "pending"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             qid  (-> resp :threads first :queries first :id)
             body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
@@ -1212,12 +1225,12 @@
       (let [resp   (create-exploration! u
                                         {:name "errored"
                                          :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                          :dimensions [{:dimension_id (duid "d1")}]})
             qid    (-> resp :threads first :queries first :id)
             ;; stands in for a driver error carrying SQL and row values the reader can't query
             secret "SECRET_VALUE_FROM_DRIVER_ERROR"]
-        (t2/update! :model/ExplorationQuery qid {:status "error" :error_message secret})
+        (t2/update! :model/ExplorationQuery :id qid {:status "error" :error_message secret})
         (testing "GET /query/:id — the endpoint that already allowlists its 409 payload"
           (let [body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
             (is (not (str/includes? (pr-str body) secret)))
@@ -1229,6 +1242,31 @@
                 "the raw driver error must not reach anyone who can read the exploration")
             (is (= "This query failed to run." (:error_message q)))))))))
 
+(deftest exploration-lens-stamps-never-reach-the-client-test
+  (testing "GET /:id strips the lens stamp and resolved source ids from every thread and every query"
+    (mt/with-temp [:model/User u      {:email "stamps@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp      (create-exploration! u
+                                           {:name "stamped"
+                                            :metrics [{:card_id (:id metric)
+                                                       :dimension_mappings [{:dimension_id (duid "d1")
+                                                                             :table_id     1
+                                                                             :target       ["field" 1 nil]}]}]
+                                            :dimensions [{:dimension_id (duid "d1")}]})
+            thread-id (-> resp :threads first :id)
+            qid       (-> resp :threads first :queries first :id)
+            stamp     {:data_access_token {} :resolved_source_ids {:table-ids #{(mt/id :venues)}}}]
+        (store-fake-result! qid {:status :completed :data {:cols [{:name "x"}] :rows [[1]]} :row_count 1})
+        (t2/update! :model/ExplorationQuery :id qid (assoc stamp :status "done"))
+        (t2/update! :model/ExplorationThread :id thread-id stamp)
+        (let [body (mt/user-http-request u :get 200 (str "exploration/" (:id resp)))
+              keys-in-body (atom #{})]
+          (is (= [qid] (->> body :threads (mapcat :queries) (map :id)))
+              "sanity: queries are present")
+          (walk/postwalk (fn [x] (when (map? x) (swap! keys-in-body into (keys x))) x) body)
+          (is (not (contains? @keys-in-body :data_access_token)))
+          (is (not (contains? @keys-in-body :resolved_source_ids))))))))
+
 (deftest exploration-query-result-permissions-test
   (testing "GET /query/:id enforces the parent exploration's read check"
     (mt/with-temp [:model/User owner {:email "qr-owner@example.com"}
@@ -1238,7 +1276,7 @@
                                       {:name "qr-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
@@ -1250,7 +1288,7 @@
       (let [resp (create-exploration! u
                                       {:name "page-mark"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             eid     (:id resp)
             page-id (-> resp :threads first :blocks first :pages first :id)
@@ -1275,7 +1313,7 @@
                                       {:name "page-mark-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             page-id (-> resp :threads first :blocks first :pages first :id)]
         (mt/user-http-request other :put 403 (format "exploration/page/%d/starred" page-id) {:starred true})))))
@@ -1292,7 +1330,7 @@
       (let [resp (create-exploration! u
                                       {:name "page-hide"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             eid     (:id resp)
             page-id (-> resp :threads first :blocks first :pages first :id)
@@ -1315,8 +1353,8 @@
       (let [resp (create-exploration! u
                                       {:name "pages-hide-bulk"
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}
-                                                                       {:dimension_id (duid "d2") :table_id 1 :target ["field" {} 2]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}
+                                                                       {:dimension_id (duid "d2") :table_id 1 :target ["field" 2 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")} {:dimension_id (duid "d2")}]})
             eid      (:id resp)
             page-ids (->> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
@@ -1337,7 +1375,7 @@
                                       {:name "page-hide-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                  :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                        :dimensions [{:dimension_id (duid "d1")}]})
             page-id (-> resp :threads first :blocks first :pages first :id)]
         (mt/user-http-request other :put 403 "exploration/pages/hidden" {:page_ids [page-id] :hidden true})))))
@@ -1347,13 +1385,51 @@
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
 
+(deftest exploration-explore-further-stamps-union-resolved-source-ids-test
+  (testing "a block with two metric cards stamps its drill thread with every table either card reads, the same tables
+            its token is computed over"
+    (mt/with-temp [:model/User u {:email "explore-further-union@example.com"}
+                   :model/Card venues-metric (venues-metric-card (:id u))
+                   :model/Card products-metric {:type          :metric
+                                                :creator_id    (:id u)
+                                                :dataset_query (lib/->legacy-MBQL
+                                                                (let [mp (mt/metadata-provider)]
+                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                                      (lib/aggregate (lib/count)))))}]
+      (let [body     {:name       "union drill"
+                      :metrics    [{:card_id (:id venues-metric) :dimension_mappings (venues-dimension-mappings)}
+                                   {:card_id (:id products-metric)
+                                    :dimension_mappings [{:dimension_id (duid "price")
+                                                          :table_id     (mt/id :products)
+                                                          :target       ["field" (mt/id :products :price) nil]}]}]
+                      :dimensions [{:dimension_id (duid "price") :display_name "Price"}]}
+            created  (create-exploration! u body)
+            page-id  (some :id (filter #(str/includes? (:name %) "Price")
+                                       (-> created :threads first :blocks first :pages)))
+            _        (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" (:id created))
+                                           {:page_id         page-id
+                                            :explore_filters [{:operator      "="
+                                                               :field_ref     ["field" (mt/id :venues :price) nil]
+                                                               :value         2
+                                                               :display_value "2"}]})
+            new      (t2/select-one :model/ExplorationThread :exploration_id (:id created) :position 1)]
+        (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
+                :table-query-ids #{(mt/id :venues) (mt/id :products)}}
+               (dissoc (:resolved_source_ids new) :query-digest)))
+        (testing "stamped from the first card's query as it reads back, which is what the content gate adjudicates"
+          (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
+                  :table-query-ids #{(mt/id :venues) (mt/id :products)}}
+                 (query-perms/verified-resolved-source-ids
+                  (t2/select-one-fn :dataset_query :model/Card :id (:id venues-metric))
+                  (:resolved_source_ids new)))))))))
+
 (deftest exploration-explore-further-creates-filtered-thread-test
   (testing "POST /:id/explore-further copies the clicked block into a new filtered thread"
     (mt/with-temp [:model/User u {:email "explore-further@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")
                    :model/Timeline tl {:creator_id (:id u) :name "Releases"}]
       (let [filter-value 2
-            field-ref    ["field" {} (mt/id :venues :price)]
+            field-ref    ["field" (mt/id :venues :price) nil]
             body         {:name         "base drill"
                           :prompt       "why down?"
                           :metrics      [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
@@ -1380,6 +1456,11 @@
             "explore-further does not create a second Summary document")
         (is (= (:id orig-thread) (:id orig)))
         (is (= 1 (:position new)))
+        (testing "the drill thread's lens stamp carries the resolved source ids of the metric it drills, which never
+                  reaches the client"
+          (is (= {:table-ids #{(mt/id :venues)} :table-query-ids #{(mt/id :venues)}}
+                 (dissoc (t2/select-one-fn :resolved_source_ids :model/ExplorationThread :id (:id new)) :query-digest)))
+          (is (not-any? #(contains? % :resolved_source_ids) (cons new new-queries))))
         (testing "the drill thread records the page it was drilled from (sidebar nesting)"
           (is (= page-id (:source_page_id new)))
           (is (nil? (:source_page_id orig))))
@@ -1397,13 +1478,13 @@
           (let [price-page (some #(when (str/includes? (:name %) "Price") %) (:pages new-block))]
             (is (some? price-page))
             (is (= [{:operator       "="
-                     :field_ref      field-ref
+                     :field_ref      (assoc field-ref 2 {})
                      :value          filter-value
                      :dimension_name "Price"
                      :display_value  "2"}]
                    (map #(select-keys % [:operator :field_ref :value :dimension_name :display_value])
                         (:explore_filters new-block)))
-                "block node echoes persisted explore_filters")
+                "block node echoes persisted explore_filters, with its field ref normalized")
             (is (str/includes? (:name price-page) "Price")
                 "page short name is heading-relative, without the clicked value prefix")
             (is (= "Number of venues by Price" (:long_name price-page)))))
@@ -1438,7 +1519,7 @@
                                         (-> src :blocks first :pages)))
             drill     {:page_id         page-id
                        :explore_filters [{:operator      "="
-                                          :field_ref     ["field" {} (mt/id :venues :price)]
+                                          :field_ref     ["field" (mt/id :venues :price) nil]
                                           :value         2
                                           :display_value "2"}]}]
         (testing "control: drilling a thread the caller can see succeeds"
@@ -1476,7 +1557,7 @@
           (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" expl-id)
                                 {:page_id         page-id
                                  :explore_filters [{:operator      "="
-                                                    :field_ref     ["field" {} (mt/id :venues :price)]
+                                                    :field_ref     ["field" (mt/id :venues :price) nil]
                                                     :value         2
                                                     :display_value "2"}]}))
         (let [new-thread-id (->> (t2/select :model/ExplorationThread
@@ -1500,7 +1581,7 @@
             page-id (-> resp :threads first :blocks first :pages first :id)
             body    {:page_id         page-id
                      :explore_filters [{:operator      "="
-                                        :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                        :field_ref     ["field" (mt/id :venues :category_id) nil]
                                         :value         1
                                         :display_value "1"}]}]
         (mt/user-http-request other :post 403 (format "exploration/%d/explore-further" expl-id) body)
@@ -1520,7 +1601,7 @@
                                         :timeline_ids [(:id tl)]
                                         :blocks       [{:name       "Group"
                                                         :metrics    [{:card_id (:id metric)
-                                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                                         :dimensions [{:dimension_id (duid "d1")}]}]})
             eid  (:id resp)
             tid  (-> resp :threads first :id)
@@ -1567,7 +1648,7 @@
       (let [resp   (create-exploration! u
                                         {:name "append-use"
                                          :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id (mt/id :venues) :target ["field" (mt/id :venues :price) nil]}]}]
                                          :dimensions [{:dimension_id (duid "d1") :display_name "Price" :effective_type "type/Number"}]})
             eid    (:id resp)
             qid    (-> resp :threads first :queries first :id)
@@ -1578,7 +1659,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                        :exploration_query_id qid)
               before (t2/select :model/StoredResultUse :stored_result_id sr-id)
@@ -1586,7 +1667,7 @@
                                            (format "exploration/%d/summary/append" eid)
                                            (assoc append-display+viz :exploration_query_ids [qid]))
               card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
-                          :content last :content first :attrs :id)
+                          :content last :content first :attrs (get "id"))
               use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)
               attrs   (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                           :content last :content first :attrs)]
@@ -1596,13 +1677,13 @@
               "appending records a stored_result_use row for the source snapshot")
           (is (nil? (:exploration_id use-row))
               "the card-use row has no exploration_id")
-          (is (= sr-id (:stored_result_id attrs)))
-          (is (string? (:chart_href attrs)))
-          (is (string? (:child_target_id attrs)))
-          (is (= [qid] (get-in attrs [:host_data :query_ids])))
-          (is (nil? (get-in attrs [:host_data :explore_filters]))
+          (is (= sr-id (get attrs "stored_result_id")))
+          (is (string? (get attrs "chart_href")))
+          (is (string? (get attrs "child_target_id")))
+          (is (= [qid] (get-in attrs ["host_data" :query_ids])))
+          (is (nil? (get-in attrs ["host_data" :explore_filters]))
               "unfiltered charts omit explore_filters from host_data")
-          (is (uuid? (parse-uuid (str (:_id attrs))))
+          (is (uuid? (parse-uuid (str (get attrs "_id"))))
               "_id is stamped for per-node identity (string after JSON round-trip)")
           (is (false? (:is_placeholder doc))
               "first append clears is_placeholder"))))))
@@ -1612,7 +1693,7 @@
     (mt/with-temp [:model/User u {:email "append-filters@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [filter-value 2
-            field-ref    ["field" {} (mt/id :venues :price)]
+            field-ref    ["field" (mt/id :venues :price) nil]
             created      (create-exploration! u
                                               {:name       "append-filters"
                                                :metrics    [{:card_id (:id metric)
@@ -1636,18 +1717,18 @@
                           :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [doc   (mt/user-http-request u :post 200
                                           (format "exploration/%d/summary/append" expl-id)
                                           (assoc append-display+viz :exploration_query_ids [qid]))
               attrs (-> (t2/select-one-fn :document :model/Document :id (:id doc))
                         :content last :content first :attrs)]
-          (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (= [qid] (get-in attrs ["host_data" :query_ids])))
           (is (=? [{:operator       "="
                     :value          filter-value
                     :dimension_name "Price"
                     :display_value  "2"}]
-                  (get-in attrs [:host_data :explore_filters]))))))))
+                  (get-in attrs ["host_data" :explore_filters]))))))))
 
 (deftest exploration-append-rolls-back-on-failure-test
   (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
@@ -1656,7 +1737,7 @@
       (let [resp   (create-exploration! u
                                         {:name "append-rollback"
                                          :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                          :dimensions [{:dimension_id (duid "d1")}]})
             qid    (-> resp :threads first :queries first :id)
             doc-id (-> resp :document :id)
@@ -1670,8 +1751,8 @@
         (let [doc (t2/select-one :model/Document :id doc-id)]
           ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
           ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
-          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                                      queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u
@@ -1692,7 +1773,7 @@
       (let [resp   (create-exploration! u
                                         {:name "append-single"
                                          :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                          :dimensions [{:dimension_id (duid "d1")}]})
             qid    (-> resp :threads first :queries first :id)
             doc-id (-> resp :document :id)
@@ -1704,13 +1785,13 @@
         (store-fake-result! qid qp-out)
         (mark-done! qid)
         ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                           :exploration_query_id qid)
               doc       (t2/select-one :model/Document :id doc-id)
               ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
               ;; the real create-card! / stored_result write path.
-              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+              result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
                           (eqr/create-ephemeral-card-for-exploration-queries!
                            [qid] doc-id (:collection_id doc) u
                            {:display "bar" :visualization-settings {}}))
@@ -1731,7 +1812,7 @@
                                          :metrics [{:card_id (:id metric)
                                                     :dimension_mappings [{:dimension_id (duid "d1")
                                                                           :table_id (mt/id :venues)
-                                                                          :target ["field" {} (mt/id :venues :price)]}]}]
+                                                                          :target ["field" (mt/id :venues :price) nil]}]}]
                                          :dimensions [{:dimension_id (duid "d1") :display_name "Price"
                                                        :effective_type "type/Number"}]})
             eid    (:id resp)
@@ -1744,14 +1825,14 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (mt/user-http-request u :post 200
                               (format "exploration/%d/summary/append" eid)
                               (assoc append-display+viz :exploration_query_ids [qid]))
         (let [attrs   (-> (t2/select-one-fn :document :model/Document :id doc-id)
                           :content last :content first :attrs)
-              sr-id   (:stored_result_id attrs)
-              old-card-id (:id attrs)
+              sr-id   (get attrs "stored_result_id")
+              old-card-id (get attrs "id")
               draft-id -10
               ;; Simulate the editor forking the embed into a negative-id draft card on save.
               updated (mt/user-http-request u :put 200 (format "document/%d" doc-id)
@@ -1888,7 +1969,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name "http-delete"
                                         :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                   :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                         :dimensions [{:dimension_id (duid "d1")}]})
             eid  (:id resp)]
         ;; Live exploration: delete via HTTP.
@@ -1898,7 +1979,7 @@
         (let [resp2 (mt/user-http-request u :post 200 "exploration"
                                           {:name "trash-then-delete"
                                            :metrics [{:card_id (:id metric)
-                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" 1 nil]}]}]
                                            :dimensions [{:dimension_id (duid "d1")}]})
               eid2  (:id resp2)]
           (mt/user-http-request u :put 200 (format "exploration/%d" eid2) {:archived true})
@@ -1976,12 +2057,12 @@
 (deftest blocks-tree-explore-further-naming-test
   (testing "filtered blocks expose explore_filters on the block node with unprefixed page names"
     (let [filters [{:operator       "="
-                    :field_ref      ["field" {} 1]
+                    :field_ref      ["field" 1 nil]
                     :value          "texas"
                     :dimension_name "State"
                     :display_value  "Texas"}
                    {:operator       "="
-                    :field_ref      ["field" {} 2]
+                    :field_ref      ["field" 2 nil]
                     :value          "2024"
                     :dimension_name "Year"
                     :display_value  "2024"}]
@@ -2298,7 +2379,7 @@
             that leaves canceled_at NULL"
     (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
       (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
-            _    (t2/update! :model/ExplorationThread thread-id
+            _    (t2/update! :model/ExplorationThread :id thread-id
                              {:completed_at (t/offset-date-time)})
             resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
         (is (nil? (:canceled_at resp))
@@ -2489,7 +2570,7 @@
               a       (insert-explore-fixture! common)
               b       (insert-explore-fixture! common)
               body    {:explore_filters [{:operator      "="
-                                          :field_ref     ["field" {} (mt/id :venues :name)]
+                                          :field_ref     ["field" (mt/id :venues :name) nil]
                                           :value         "Texas"
                                           :display_value "Texas"}]}]
           (testing "cross-exploration page is rejected"
@@ -2515,12 +2596,12 @@
                           :collection-id (:id coll)
                           :card-id       (:id metric)
                           :database-id   (mt/id)
-                          :dimension-id  "price"
+                          :dimension-id  (duid "price")
                           :metrics       [{:card_id (:id metric)
-                                           :dimension_mappings (venues-dimension-mappings)}]
-                          :dimensions    [{:dimension_id "price" :display_name "Price"}]})
+                                           :dimension_mappings (stored-venues-dimension-mappings)}]
+                          :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})
             filter-spec {:operator      "between"
-                         :field_ref     ["field" {} (mt/id :venues :price)]
+                         :field_ref     ["field" (mt/id :venues :price) nil]
                          :values        [1 3]
                          :display_value "1 - 3"}
             hydrated    (explore-further-and-hydrate! :crowberto
@@ -2533,7 +2614,7 @@
                                        :exploration_thread_id (:id new-thread))]
         (is (= "Number of venues → Price: 1 - 3" (:name new-thread)))
         (is (= [{:operator       "between"
-                 :field_ref      ["field" {} (mt/id :venues :price)]
+                 :field_ref      ["field" (mt/id :venues :price) {}]
                  :values         [1 3]
                  :display_value  "1 - 3"
                  :dimension_name "Price"}]
@@ -2554,11 +2635,11 @@
                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                      (lib/aggregate (lib/count)))))}]
         (let [prior  {:operator      "="
-                      :field_ref     ["field" {} (mt/id :venues :name)]
+                      :field_ref     ["field" (mt/id :venues :name) nil]
                       :value         "Texas"
                       :display_value "Texas"}
               new-f  {:operator      "="
-                      :field_ref     ["field" {} (mt/id :venues :price)]
+                      :field_ref     ["field" (mt/id :venues :price) nil]
                       :value         2
                       :display_value "2"}
               src    (insert-explore-fixture!
@@ -2580,7 +2661,8 @@
                                                  [:not= :exploration_block.exploration_thread_id (:thread-id src)]]})
                              first)
               filters (:explore_filters (first (:metrics new-block)))]
-          (is (= [prior new-f]
+          (is (= [(assoc prior :field_ref [:field (mt/id :venues :name) nil])
+                  (assoc new-f :field_ref [:field (mt/id :venues :price) nil])]
                  (mapv #(select-keys % [:operator :field_ref :value :display_value]) filters))
               "both the prior (Texas) and the newly clicked (price) filter are present, in drill order"))))))
 
@@ -2604,12 +2686,12 @@
                   :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})]
         ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
         ;; a made-up id would violate the source_page_id FK.
-        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
+        (t2/update! :model/ExplorationThread :id (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
                                :explore_filters [{:operator      "="
-                                                  :field_ref     ["field" {} (mt/id :venues :price)]
+                                                  :field_ref     ["field" (mt/id :venues :price) nil]
                                                   :value         2
                                                   :display_value "2"}]})
         (let [new-thread (t2/select-one :model/ExplorationThread
@@ -2642,11 +2724,11 @@
                                 (str "exploration/" (:exploration-id src) "/explore-further")
                                 {:page_id         (:page-id src)
                                  :explore_filters [{:operator      "="
-                                                    :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                                    :field_ref     ["field" (mt/id :venues :category_id) nil]
                                                     :value         "gadget"
                                                     :display_value "gadget"}
                                                    {:operator      "="
-                                                    :field_ref     ["field" {} (mt/id :venues :price)]
+                                                    :field_ref     ["field" (mt/id :venues :price) nil]
                                                     :value         2
                                                     :display_value "2"}]})
           (let [new-thread (t2/select-one :model/ExplorationThread
@@ -2692,7 +2774,7 @@
                                                      (:query_ids page))
                                            (:id page))))))
               _           (is (some? page-id) "find the users-created page")
-              filter-spec {:operator "=" :field_ref ["field" {} users-field] :value 40.7 :display_value "40.7"}
+              filter-spec {:operator "=" :field_ref ["field" users-field nil] :value 40.7 :display_value "40.7"}
               hydrated    (explore-further-and-hydrate! u expl-id page-id [filter-spec])
               new-thread  (->> hydrated :threads (sort-by :position) last)
               persisted   (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new-thread))]
@@ -2761,7 +2843,7 @@
             page-id        (-> resp :threads first :blocks first :pages first :id)
             body           {:page_id         page-id
                             :explore_filters [{:operator      "="
-                                               :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                               :field_ref     ["field" (mt/id :venues :category_id) nil]
                                                :value         1
                                                :display_value "1"}]}
             threads-before (t2/count :model/ExplorationThread :exploration_id expl-id)]
@@ -2794,7 +2876,7 @@
                                             :metrics    [{:card_id (:id metric)
                                                           :dimension_mappings [{:dimension_id (duid "d1")
                                                                                 :table_id (mt/id :venues)
-                                                                                :target ["field" {} (mt/id :venues :price)]}]}]
+                                                                                :target ["field" (mt/id :venues :price) nil]}]}]
                                             :dimensions [{:dimension_id (duid "d1") :display_name "Price"
                                                           :effective_type "type/Number"}]})
             tid     (-> created :threads first :id)
@@ -2804,15 +2886,15 @@
           (is (pos? (t2/count :model/ExplorationQuery :exploration_thread_id tid))
               "its materialized queries are untouched"))
         (testing "a canceled thread with a query still mid-QP-execution returns 409"
-          (t2/update! :model/ExplorationThread tid
+          (t2/update! :model/ExplorationThread :id tid
                       {:canceled_at  (t/offset-date-time)
                        :completed_at (t/offset-date-time)})
-          (t2/update! :model/ExplorationQuery eq-id {:status "running" :started_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationQuery :id eq-id {:status "running" :started_at (t/offset-date-time)})
           (mt/user-http-request u :post 409 (format "exploration/thread/%d/restart" tid))
           (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id tid))
               "the terminal stamp survives — nothing was reset"))
         (testing "once no query is mid-execution, restart succeeds and leaves the thread claimable"
-          (t2/update! :model/ExplorationQuery eq-id {:status "canceled"})
+          (t2/update! :model/ExplorationQuery :id eq-id {:status "canceled"})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
           (let [thread (t2/select-one :model/ExplorationThread :id tid)]
             ;; exactly the state the planning worker's claim-unplanned-thread! predicate claims:
@@ -2835,10 +2917,10 @@
                                      :metrics [{:card_id (:id metric)
                                                 :dimension_mappings [{:dimension_id (duid "d1")
                                                                       :table_id (mt/id :venues)
-                                                                      :target ["field" {} (mt/id :venues :price)]}
+                                                                      :target ["field" (mt/id :venues :price) nil]}
                                                                      {:dimension_id (duid "d2")
                                                                       :table_id (mt/id :venues)
-                                                                      :target ["field" {} (mt/id :venues :name)]}]}]
+                                                                      :target ["field" (mt/id :venues :name) nil]}]}]
                                      :dimensions [{:dimension_id (duid "d1") :display_name "Price"
                                                    :effective_type "type/Number"}
                                                   {:dimension_id (duid "d2") :display_name "Name"
@@ -2855,7 +2937,7 @@
     (doseq [qid qids]
       (store-fake-result! qid qp-out)
       (mark-done! qid)
-      (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)}))
+      (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)}))
     {:exploration-id (:id resp) :document-id (-> resp :document :id) :query-ids qids}))
 
 (defn- combine-with-perms-stubbed!
@@ -2863,7 +2945,7 @@
   create hold no data perms, and `create-card!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -2887,6 +2969,39 @@
                (t2/select-one-fn :data_access_token :model/StoredResult :id (:stored-result-id result)))
             "the composite carries the same lens its sources were computed under")))))
 
+(deftest composite-snapshot-stamps-every-sources-resolved-source-ids-test
+  (testing "A multi-query composite is stamped with the union of its sources' resolved source ids, under its own
+            query's digest, so the read gate holds a viewer to every source's tables without a live preprocess"
+    (mt/with-temp [:model/User u {:email "composite-sources@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc       (t2/select-one :model/Document :id document-id)
+            [sr-1 sr-2] (map #(t2/select-one :model/StoredResult
+                                             :id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                                   :exploration_query_id %))
+                             query-ids)
+            checkins-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                (lib/aggregate (lib/count)))))]
+        ;; The first source carries a verified stamp naming an extra table, so only a read of the stamp (not a
+        ;; live resolve) puts `products` in the union; the second has no stamp and reads a different table.
+        (t2/update! :model/StoredResult :id (:id sr-1)
+                    {:resolved_source_ids (query-perms/stamped-resolved-source-ids
+                                           (:dataset_query sr-1)
+                                           {:table-ids #{(mt/id :venues) (mt/id :products)}})})
+        (t2/update! :model/StoredResult :id (:id sr-2) {:dataset_query checkins-q :resolved_source_ids nil})
+        (let [result    (combine-with-perms-stubbed!
+                         query-ids document-id (:collection_id doc) u
+                         {:display "bar" :visualization-settings {}})
+              composite (t2/select-one :model/StoredResult :id (:stored-result-id result))
+              verified  (query-perms/verified-resolved-source-ids (:dataset_query composite)
+                                                                  (:resolved_source_ids composite))]
+          (is (some? verified)
+              "the stamp verifies against the composite row's own query")
+          (is (= #{(mt/id :venues) (mt/id :products) (mt/id :checkins)}
+                 (:table-ids verified))
+              "and covers the first source's stamped tables plus the unstamped second source's resolved table"))))))
+
 (deftest composite-refuses-to-blend-different-data-access-lenses-test
   (testing "Sources computed under different lenses have no single honest stamp, so the combine is refused
             rather than persisted under one of them"
@@ -2896,14 +3011,14 @@
             doc    (t2/select-one :model/Document :id document-id)
             sr-2   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                      :exploration_query_id (second query-ids))]
-        (t2/update! :model/StoredResult sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
+        (t2/update! :model/StoredResult :id sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"different data-access contexts"
              (combine-with-perms-stubbed!
               query-ids document-id (:collection_id doc) u
               {:display "bar" :visualization-settings {}})))
         (testing "and a source with no recorded lens at all is refused too"
-          (t2/update! :model/StoredResult sr-2 {:data_access_token nil})
+          (t2/update! :model/StoredResult :id sr-2 {:data_access_token nil})
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"no recorded data-access context"
                (combine-with-perms-stubbed!
@@ -2924,10 +3039,10 @@
                                              (lib/aggregate (lib/count)))))]
         ;; Give the second source a genuinely different query, so "checked the first one" and
         ;; "checked them all" are distinguishable.
-        (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
+        (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})
         (let [checked (atom [])]
-          (with-redefs [query-perms/check-run-permissions-for-query
-                        (fn [q] (swap! checked conj q) nil)]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
+                                      (fn [q] (swap! checked conj q) nil)]
             (eqr/create-ephemeral-card-for-exploration-queries!
              query-ids document-id (:collection_id doc) u
              {:display "bar" :visualization-settings {}}))

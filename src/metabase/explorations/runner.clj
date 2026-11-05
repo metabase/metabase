@@ -12,6 +12,7 @@
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.query-plan :as explorations.query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
@@ -34,16 +35,13 @@
 (defn- pending-query-depth
   "Number of `exploration_query` rows currently awaiting execution."
   []
-  (t2/count :model/ExplorationQuery :status "pending"))
+  (explorations.db/pending-query-count))
 
 (defn- oldest-pending-age-seconds
   "Age in seconds of the oldest still-pending `exploration_query`, or 0 when the queue is empty.
   Computed as `now - min(created_at)` so it keeps climbing while the runner is stalled."
   []
-  (if-let [oldest (t2/select-one-fn :created_at :model/ExplorationQuery
-                                    {:where    [:= :status "pending"]
-                                     :order-by [[:created_at :asc]]
-                                     :limit    1})]
+  (if-let [oldest (explorations.db/oldest-pending-query-created-at)]
     (max 0 (.toSeconds (Duration/between ^OffsetDateTime oldest (OffsetDateTime/now))))
     0))
 
@@ -63,14 +61,7 @@
 (defn- runnable-query
   "Load the `ExplorationQuery` `query-id` if it is still work to do, else nil."
   [query-id]
-  (t2/select-one :model/ExplorationQuery
-                 {:select [:eq.*]
-                  :from   [[:exploration_query :eq]]
-                  :join   [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
-                  :where  [:and
-                           [:= :eq.id query-id]
-                           [:= :eq.status "pending"]
-                           [:= :et.canceled_at nil]]}))
+  (explorations.db/runnable-query query-id))
 
 (defn- serialize-result
   "Run `cache.impl/do-with-serialization` against a single QP result, returning the gzipped+nippy
@@ -93,13 +84,13 @@
      (result-fn))))
 
 (defn- compute-data-access-token
-  "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
-  fingerprint the query is computed under, stored on the `StoredResult` and on the
-  `ExplorationQuery` itself, and compared against a viewer's token to gate reads. Must be called
-  inside the creator's `with-current-user` (+ routing-on) binding."
-  [dataset-query db-id]
+  "The creator's effective-data-access token for a query over Database `db-id` with `resolved-source-ids` (its
+  [[query-perms/query->resolved-source-ids]]) — the sandbox/impersonation/routing fingerprint the query is computed
+  under, stored on the `StoredResult` and on the `ExplorationQuery` itself, and compared against a viewer's token
+  to gate reads. Must be called inside the creator's `with-current-user` (+ routing-on) binding."
+  [db-id resolved-source-ids]
   (perms/data-access-token {:database-id db-id
-                            :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)}))
+                            :table-ids   (:table-ids resolved-source-ids)}))
 
 (defn- finalize-row!
   "If `row` carries a nil `:dataset_query` (planner deferred the MBQL build),
@@ -122,10 +113,15 @@
         (when (nil? dq)
           (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
                           {:row-id (:id row) :variant variant})))
-        (let [token (compute-data-access-token dq (:database_id row))]
-          (t2/update! :model/ExplorationQuery (:id row)
-                      {:dataset_query dq :name nm :data_access_token token})
-          (assoc row :dataset_query dq :name nm :data_access_token token))))))
+        (let [resolved-source-ids (query-perms/query->resolved-source-ids dq)
+              stamp               {:dataset_query       dq
+                                   :name                nm
+                                   :data_access_token   (compute-data-access-token (:database_id row)
+                                                                                   resolved-source-ids)
+                                   :resolved_source_ids (query-perms/stamped-resolved-source-ids dq
+                                                                                                 resolved-source-ids)}]
+          (explorations.db/update-query! (:id row) stamp)
+          (merge row stamp))))))
 
 (defn- safe-chart-config
   "Best-effort `qp-result->chart-config`. Returns nil on failure (>2 cols,
@@ -176,20 +172,7 @@
   NOW() iff every query on the thread has reached a terminal status (anything other than `pending`).
   Returns true iff this caller was the one that claimed it"
   [thread-id]
-  (pos?
-   (t2/query-one
-    {:update :exploration_thread
-     :set    {:analysis_started_at (OffsetDateTime/now)
-              :completed_at        (OffsetDateTime/now)}
-     :where  [:and
-              [:= :id thread-id]
-              [:= :analysis_started_at nil]
-              [:= :canceled_at nil]
-              [:not-exists ^:allow-subquery {:select [1]
-                                             :from   [:exploration_query]
-                                             :where  [:and
-                                                      [:= :exploration_thread_id thread-id]
-                                                      [:= :status "pending"]]}]]})))
+  (pos? (explorations.db/claim-thread-analysis! thread-id (OffsetDateTime/now))))
 
 (defn maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`
@@ -207,16 +190,12 @@
 (defn- exploration-creator-id
   "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
   [exploration-query]
-  (t2/select-one-fn :creator_id :model/Exploration
-                    {:join  [:exploration_thread
-                             [:= :exploration_thread.exploration_id :exploration.id]]
-                     :where [:= :exploration_thread.id (:exploration_thread_id exploration-query)]}))
+  (explorations.db/exploration-creator-id-for-thread (:exploration_thread_id exploration-query)))
 
 (defn- exploration-id
   "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."
   [exploration-query]
-  (t2/select-one-fn :exploration_id :model/ExplorationThread
-                    :id (:exploration_thread_id exploration-query)))
+  (explorations.db/thread-exploration-id (:exploration_thread_id exploration-query)))
 
 (defn- variant-note
   "Human phrase for a chart's breakdown variant + params, or nil for the plain `default`
@@ -242,7 +221,7 @@
   Returns nil for a plain unsegmented default breakdown (nothing to call out)."
   [row]
   (let [segment-name (when-let [sid (:segment_id row)]
-                       (t2/select-one-fn :name :model/Segment :id sid))
+                       (explorations.db/segment-name sid))
         variant      (variant-note (:query_type row) (:params row))
         parts        (cond-> []
                        variant      (conj variant)
@@ -258,7 +237,7 @@
   charts that won't be scored."
   [exploration-query]
   {:card-description (when-let [card-id (:card_id exploration-query)]
-                       (some-> (t2/select-one-fn :description :model/Card :id card-id)
+                       (some-> (explorations.db/card-description card-id)
                                str/trim
                                not-empty))
    :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))})
@@ -284,7 +263,7 @@
       (if (nil? creator-id)
         (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
                    (:id exploration-query))
-        (let [prompt (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id)]
+        (let [prompt (explorations.db/thread-prompt thread-id)]
           (when-not (str/blank? prompt)
             (let [{:keys [card-description sql]} (build-score-context exploration-query)]
               (request/with-current-user creator-id
@@ -321,59 +300,57 @@
   lens is captured as a `:data_access_token` so non-creator readers can be gated against it."
   [row creator-id]
   (let [db-id        (:database_id row)
-        qp-result    (qp.variants/pin-other-last
-                      (:query_type row)
-                      (qp/process-query
-                       (qp/userland-query-with-default-constraints
-                        (:dataset_query row)
-                        {:context :exploration})))
-        token        (compute-data-access-token (:dataset_query row) db-id)
-        chart-config (safe-chart-config row qp-result)
-        stats        (safe-deep-stats row chart-config)]
-    {:creator-id creator-id
-     :db-id      db-id
-     :bytes      (serialize-result qp-result)
-     :row-count  (:row_count qp-result)
-     :token      token
-     :stats      stats
-     :score      (safe-score row chart-config stats)
-     :ctx        (safe-score+describe row chart-config stats creator-id)}))
+        qp-result           (qp.variants/pin-other-last
+                             (:query_type row)
+                             (qp/process-query
+                              (qp/userland-query-with-default-constraints
+                               (:dataset_query row)
+                               {:context :exploration})))
+        resolved-source-ids (query-perms/query->resolved-source-ids (:dataset_query row) (:resolved_source_ids row))
+        token               (compute-data-access-token db-id resolved-source-ids)
+        chart-config        (safe-chart-config row qp-result)
+        stats               (safe-deep-stats row chart-config)]
+    {:creator-id          creator-id
+     :db-id               db-id
+     :bytes               (serialize-result qp-result)
+     :row-count           (:row_count qp-result)
+     :token               token
+     :resolved-source-ids (query-perms/stamped-resolved-source-ids (:dataset_query row) resolved-source-ids)
+     :stats               stats
+     :score               (safe-score row chart-config stats)
+     :ctx                 (safe-score+describe row chart-config stats creator-id)}))
 
 (defn- persist-query-result!
   "Write what [[compute-query-result]] produced and flip the query to `done` transactionally.
 
   Returns false when a peer delivery already persisted this query."
-  [row ^OffsetDateTime started {:keys [creator-id db-id bytes row-count token stats score ctx]}]
+  [row ^OffsetDateTime started {:keys [creator-id db-id bytes row-count token resolved-source-ids stats score ctx]}]
   (try
     (t2/with-transaction [_conn]
-      (let [sr-id (first
-                   (t2/insert-returning-pks!
-                    :model/StoredResult
-                    {:result_data       bytes
-                     :creator_id        creator-id
-                     :database_id       db-id
-                     :dataset_query     (:dataset_query row)
-                     :row_count         row-count
-                     :data_access_token token}))]
-        (t2/insert! :model/ExplorationQueryResult
-                    {:exploration_query_id             (:id row)
-                     :stored_result_id                 sr-id
-                     :chart_stats                      stats
-                     :interestingness_score            score
-                     :contextual_interestingness_score (:score ctx)
-                     :metric_description               (:metric-description ctx)
-                     :chart_description                (:chart-description ctx)})
+      (let [sr-id (explorations.db/insert-stored-result! {:result_data         bytes
+                                                          :creator_id          creator-id
+                                                          :database_id         db-id
+                                                          :dataset_query       (:dataset_query row)
+                                                          :row_count           row-count
+                                                          :data_access_token   token
+                                                          :resolved_source_ids resolved-source-ids})]
+        (explorations.db/insert-query-result!
+         {:exploration_query_id             (:id row)
+          :stored_result_id                 sr-id
+          :chart_stats                      stats
+          :interestingness_score            score
+          :contextual_interestingness_score (:score ctx)
+          :metric_description               (:metric-description ctx)
+          :chart_description                (:chart-description ctx)})
         ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
-        (t2/insert! :model/StoredResultUse
-                    {:stored_result_id sr-id
-                     :exploration_id   (exploration-id row)})
-        (t2/update! :model/ExplorationQuery (:id row)
-                    {:status      "done"
-                     :started_at  started
-                     :finished_at (OffsetDateTime/now)})))
+        (explorations.db/insert-stored-result-use! {:stored_result_id sr-id
+                                                    :exploration_id   (exploration-id row)})
+        (explorations.db/update-query! (:id row) {:status      "done"
+                                                  :started_at  started
+                                                  :finished_at (OffsetDateTime/now)})))
     true
     (catch Exception e
-      (if (t2/exists? :model/ExplorationQueryResult :exploration_query_id (:id row))
+      (if (explorations.db/query-result-exists? (:id row))
         (do (log/infof "ExplorationQuery %d was already completed by a peer; discarding this run's duplicate result"
                        (:id row))
             false)
@@ -404,8 +381,7 @@
           (when (persist-query-result! row started computed)
             (record-query-outcome! "done"))
           (:exploration_thread_id row))))
-    (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
-                      :id query-id :status [:in ["done" "error" "canceled"]])))
+    (explorations.db/finished-query-thread-id query-id)))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
@@ -413,12 +389,8 @@
 
   No-ops on a row that is no longer `pending` (a later delivery succeeded, or it was canceled)."
   [query-id message]
-  (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery :id query-id)]
-    (when (pos? (t2/update! :model/ExplorationQuery
-                            {:id query-id :status "pending"}
-                            {:status        "error"
-                             :error_message message
-                             :finished_at   (OffsetDateTime/now)}))
+  (let [thread-id (explorations.db/query-thread-id query-id)]
+    (when (pos? (explorations.db/fail-pending-query! query-id message (OffsetDateTime/now)))
       (record-query-outcome! "error"))
     thread-id))
 
@@ -428,16 +400,13 @@
   saw the rows that existed at cancel time; rows the planner inserted after that are still `pending`
   on a canceled thread. Flip them so the query table matches its owning thread's terminal state."
   [thread-id]
-  (when (t2/exists? :model/ExplorationThread :id thread-id :canceled_at [:not= nil])
-    (t2/update! :model/ExplorationQuery
-                {:exploration_thread_id thread-id
-                 :status                "pending"}
-                {:status "canceled"})))
+  (when (explorations.db/thread-canceled? thread-id)
+    (explorations.db/cancel-pending-queries-for-thread! thread-id)))
 
 (defn plan-thread!
   "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
   [thread-id]
-  (let [thread   (t2/select-one [:model/ExplorationThread :id :canceled_at :analysis_started_at] :id thread-id)
+  (let [thread   (explorations.db/thread-planning-state thread-id)
         planned? (cond
                    ;; `restart` deletes and re-creates a thread's work; a message for a thread that
                    ;; no longer exists is a no-op.
@@ -459,7 +428,7 @@
                    (do (log/infof "Exploration thread %d already completed its analysis; skipping planning" thread-id)
                        false)
 
-                   (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+                   (explorations.db/thread-has-queries? thread-id)
                    (do (log/infof "Exploration thread %d is already planned; skipping" thread-id)
                        false)
 
@@ -485,4 +454,4 @@
 (defn pending-query-ids
   "Ids of `thread-id`'s queries still awaiting execution."
   [thread-id]
-  (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id thread-id :status "pending"))
+  (explorations.db/pending-query-ids-for-thread thread-id))

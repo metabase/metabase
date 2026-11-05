@@ -1,13 +1,10 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
-import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import {
+  getBasename,
+  navigate,
+  subscribeToDataAppRouting,
+} from "embedding-sdk-package/lib/private/data-app-routing";
 
 export type UseDataAppLocationResult = {
   pathname: string;
@@ -28,47 +25,24 @@ const computeSubPath = (basename: string): string => {
   return subPath || "/";
 };
 
-const useDataAppRouting = () =>
-  useSyncExternalStore(
-    (notify) => {
-      const target = typeof document !== "undefined" ? document : null;
-      const handler = () => notify();
-      target?.addEventListener(SDK_BUNDLE_LOADED, handler);
-      return () => {
-        target?.removeEventListener(SDK_BUNDLE_LOADED, handler);
-      };
-    },
-    () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.dataAppRouting,
-    () => undefined,
-  );
-
+/**
+ * The current data-app sub-path and a `navigate` function.
+ *
+ * Paths are relative to the data-app root: `/`, `/customers/42`, etc.
+ * `navigate(to)` switches sub-path without a full reload.
+ */
 export const useDataAppLocation = (): UseDataAppLocationResult => {
-  const dataAppRouting = useDataAppRouting();
-
-  const basename = useMemo(
-    () => dataAppRouting?.getBasename() ?? "",
-    [dataAppRouting],
-  );
-
+  // Never changes after mount: the iframe doesn't navigate to a different
+  // `<name>` — that is a parent-level route change, which remounts the iframe.
+  const basename = useMemo(() => getBasename(), []);
   const [pathname, setPathname] = useState(() => computeSubPath(basename));
 
-  useEffect(() => {
-    if (!dataAppRouting) {
-      return;
-    }
-
-    setPathname(computeSubPath(dataAppRouting.getBasename()));
-
-    return dataAppRouting.subscribe(() => {
-      setPathname(computeSubPath(dataAppRouting.getBasename()));
-    });
-  }, [dataAppRouting]);
-
-  const navigate = useCallback(
-    (to: string) => {
-      dataAppRouting?.navigate(to);
-    },
-    [dataAppRouting],
+  useEffect(
+    () =>
+      subscribeToDataAppRouting(() => {
+        setPathname(computeSubPath(basename));
+      }),
+    [basename],
   );
 
   return { pathname, navigate };

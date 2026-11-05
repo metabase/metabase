@@ -4,6 +4,7 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   getIcon,
   queryIcon,
@@ -12,7 +13,6 @@ import {
 } from "__support__/ui";
 import { SearchResult } from "metabase/common/components/SearchResult";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   SearchResult as ApiSearchResult,
   TokenFeatures,

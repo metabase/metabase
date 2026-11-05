@@ -7,6 +7,7 @@ import {
   skipToken,
   useCancelCurrentTransformRunMutation,
   useListDagRunTransformRunsQuery,
+  useListTransformJobsQuery,
   useRunTransformDagMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
@@ -26,6 +27,7 @@ import {
   Icon,
   Menu,
   Stack,
+  Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -109,7 +111,7 @@ export function RunSection({
   const content = (
     <>
       <Stack>
-        <Group p="lg" justify="space-between">
+        <Group p="xl" justify="space-between">
           <RunStatusSection transform={transform} isScheduled={isScheduled} />
           <RunButtonSection
             transform={transform}
@@ -120,7 +122,7 @@ export function RunSection({
         <RunOutputSection transform={transform} />
       </Stack>
       <Divider />
-      <Group p="lg" gap="lg">
+      <Group p="xl" gap="xl">
         <Stack gap="sm">
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
@@ -161,8 +163,8 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
 
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
-      c="text-disabled"
-      ml="lg"
+      c="text-secondary"
+      ml="xl"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
 
@@ -363,12 +365,42 @@ function TagSection({ transform, readOnly }: TagSectionProps) {
   };
 
   return (
-    <Box flex={1}>
+    <Stack flex={1} gap="sm">
       <TagMultiSelect
         onChange={handleTagListChange}
         readOnly={readOnly}
         tagIds={transform.tag_ids ?? []}
       />
-    </Box>
+      <NoActiveJobNote tagIds={transform.tag_ids ?? []} />
+    </Stack>
+  );
+}
+
+type NoActiveJobNoteProps = {
+  tagIds: TransformTagId[];
+};
+
+function NoActiveJobNote({ tagIds }: NoActiveJobNoteProps) {
+  const hasTags = tagIds.length > 0;
+  const { data: jobs } = useListTransformJobsQuery(hasTags ? {} : skipToken);
+
+  if (!hasTags || jobs == null) {
+    return null;
+  }
+
+  const hasActiveJob = jobs.some(
+    (job) => job.active && job.tag_ids?.some((tagId) => tagIds.includes(tagId)),
+  );
+  if (hasActiveJob) {
+    return null;
+  }
+
+  return (
+    <Text c="text-secondary" size="sm" data-testid="no-active-job-note">
+      {t`No enabled job runs these tags.`}{" "}
+      <Anchor component={Link} to={Urls.transformJobList()} lh="inherit">
+        {t`Go to jobs`}
+      </Anchor>
+    </Text>
   );
 }

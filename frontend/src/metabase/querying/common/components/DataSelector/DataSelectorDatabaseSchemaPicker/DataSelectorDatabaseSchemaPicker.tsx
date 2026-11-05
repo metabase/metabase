@@ -8,29 +8,30 @@ import {
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
+import type { DatabaseId } from "metabase-types/api";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
+import type { DataSelectorDatabase, DataSelectorSchema } from "../types";
 
 type DataSelectorDatabaseSchemaPicker = {
-  databases: Database[];
+  databases: DataSelectorDatabase[];
   hasBackButton: boolean;
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
-  selectedDatabase?: Database;
-  selectedSchema?: Schema;
+  selectedDatabase?: DataSelectorDatabase;
+  selectedSchema?: DataSelectorSchema;
   onBack?: () => void;
-  onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (schema?: Schema) => void;
+  onChangeDatabase: (database: DataSelectorDatabase) => void;
+  onChangeSchema: (schema?: DataSelectorSchema) => void;
+  getDatabaseSchemas: (databaseId: DatabaseId) => DataSelectorSchema[];
 };
 
 type Item = {
-  schema: Schema;
+  schema: DataSelectorSchema;
   name: string;
 };
 
@@ -49,28 +50,33 @@ export const DataSelectorDatabaseSchemaPicker = ({
   hasBackButton,
   onBack,
   hasInitialFocus,
+  getDatabaseSchemas,
 }: DataSelectorDatabaseSchemaPicker) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
 
-  const sections: Section[] = databases.map((database) => ({
-    name: database.is_saved_questions ? t`Saved Questions` : database.name,
-    items:
-      !database.is_saved_questions && database.getSchemas().length > 1
-        ? database.getSchemas().map((schema) => ({
-            schema,
-            name: getSchemaDisplayName(schema.name) ?? "",
-          }))
-        : [],
-    className: database.is_saved_questions ? CS.bgLight : undefined,
-    icon: database.is_saved_questions ? "collection" : "database",
-    loading:
-      selectedDatabase?.id === database.id &&
-      database.getSchemas().length === 0 &&
-      isLoading,
-    active: database.is_saved_questions || isSyncCompleted(database),
-  }));
+  const sections: Section[] = databases.map((database) => {
+    const schemas = getDatabaseSchemas(database.id);
+
+    return {
+      name: database.is_saved_questions ? t`Saved Questions` : database.name,
+      items:
+        !database.is_saved_questions && schemas.length > 1
+          ? schemas.map((schema) => ({
+              schema,
+              name: getSchemaDisplayName(schema.name) ?? "",
+            }))
+          : [],
+      className: database.is_saved_questions ? CS.bgLight : undefined,
+      icon: database.is_saved_questions ? "collection" : "database",
+      loading:
+        selectedDatabase?.id === database.id &&
+        schemas.length === 0 &&
+        isLoading,
+      active: database.is_saved_questions || isSyncCompleted(database),
+    };
+  });
 
   const handleChangeSection = (_section: any, sectionIndex: number) => {
     const isNavigationSection = hasBackButton && sectionIndex === 0;
@@ -105,12 +111,17 @@ export const DataSelectorDatabaseSchemaPicker = ({
   }
 
   let openSection = selectedSchema
-    ? databases.findIndex((db) => db.id === selectedSchema.database?.id)
+    ? databases.findIndex((db) => db.id === selectedSchema.database)
     : selectedDatabase
       ? databases.findIndex((db) => db.id === selectedDatabase.id)
       : -1;
 
-  if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
+  const openSectionDatabase = databases[openSection];
+  if (
+    openSection >= 0 &&
+    openSectionDatabase != null &&
+    getDatabaseSchemas(openSectionDatabase.id).length === 1
+  ) {
     openSection = -1;
   }
 

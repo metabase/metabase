@@ -28,6 +28,7 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -96,9 +97,11 @@
                               :rename                         true
                               :schemas                        true
                               :split-part                     true
+                              :stage-ctes                     true
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/testing             true
                               :uploads                        true
                               :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -404,7 +407,7 @@
                [:pn.nspname :table-schema]
                [:pc.relname :table-name]
                [false :pk?]
-               [nil :field-comment]
+               [[:col_description :pc.oid :pa.attnum] :field-comment]
                [false :database-required]
                [nil   :database-default]
                [false :database-is-auto-increment]
@@ -537,7 +540,7 @@
 
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
-   expr]
+   expr :- ::h2x/expr]
   ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
   ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
   ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
@@ -609,7 +612,7 @@
 
 (mu/defn- enum-cast
   [database-type :- driver-api/schema.common.non-blank-string
-   raw-value]
+   raw-value      :- ::h2x/expr]
   (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
       (h2x/with-database-type-info database-type)))
 
@@ -625,6 +628,12 @@
                          (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        ;; `TIMEZONE(zone, date)` implicitly promotes a `DATE` to `TIMESTAMPTZ` using the session (report) time zone
+        ;; before converting. Cast dates to a plain `TIMESTAMP` first so the source timezone gets applied (#27186).
+        expr (cond-> expr
+               (or (instance? java.time.LocalDate expr)
+                   (h2x/is-of-type? expr "date"))
+               h2x/->timestamp)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
                                                   expr)]]
@@ -1200,7 +1209,7 @@
                                         :quoted true
                                         :dialect (sql.qp/quote-style driver))))
                    sorted-rename-map)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^java.sql.Statement stmt ^String sql))
@@ -1289,7 +1298,7 @@
 
 (defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           dialect      (sql.qp/quote-style driver)
           [sql & _] (sql/format {::copy       (keyword table-name)
@@ -1521,7 +1530,3 @@
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")
-
-(defmethod driver/validate-impersonated-query :postgres
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))

@@ -226,9 +226,33 @@ describe("getXValues", () => {
       .map((value) => value.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
+
+  it("should dedupe a timestamp shared by two series of the same chart", () => {
+    // 4 rows, 3 distinct instants. Two independently parsed Dayjs values are
+    // distinct in a Set, so this only collapses to 3 while every series of the
+    // pass shares one cache.
+    expect(
+      getXValuesForRows(
+        [
+          [["2021-01-01"], ["2021-01-02"]],
+          [["2021-01-01"], ["2021-01-03"]],
+        ],
+        { "graph.x_axis.scale": "timeseries" },
+      ),
+    ).toHaveLength(3);
+  });
 });
 
 describe("parseXValue", () => {
+  it("should not intern parsed values across separate calls", () => {
+    const first = parseXValue("2024-03-01", { isTimeseries: true });
+    const second = parseXValue("2024-03-01", { isTimeseries: true });
+
+    expect(dayjs.isDayjs(first)).toBe(true);
+    expect(first).toEqual(second);
+    expect(first).not.toBe(second);
+  });
+
   it("should use options as part of the cache key", () => {
     const value1 = parseXValue("2018-08-23", { isTimeseries: true });
     const value2 = parseXValue("2018-08-23", { isTimeseries: false });

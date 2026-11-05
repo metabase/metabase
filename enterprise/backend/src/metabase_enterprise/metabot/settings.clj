@@ -14,6 +14,7 @@
   :encryption :no
   :export?    true
   :feature    :ai-controls
+  :can-read-from-env? false
   :setter     (fn [new-value]
                 (let [v (some-> new-value keyword)]
                   (when (and v (not (contains? valid-limit-units v)))
@@ -32,6 +33,7 @@
   :encryption :no
   :export?    true
   :feature    :ai-controls
+  :can-read-from-env? false
   :setter     (fn [new-value]
                 (let [v (some-> new-value keyword)]
                   (when (and v (not (contains? valid-reset-rates v)))
@@ -47,7 +49,8 @@
   :visibility :settings-manager
   :encryption :no
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-advanced-permissions
   (deferred-tru "Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.")

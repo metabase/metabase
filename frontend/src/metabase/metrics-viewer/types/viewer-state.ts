@@ -1,9 +1,9 @@
-import type { GeoSubtype } from "metabase/common/metrics/utils/dimension-types";
 import type {
   MetricsViewerDimensionBreakoutType,
   MetricsViewerDisplayType,
   SerializedDefinitionInfo,
 } from "metabase/common/metrics-viewer";
+import type { GeoSubtype } from "metabase/common/metrics/utils/dimension-types";
 import type {
   DimensionGroup,
   MetricDefinition,
@@ -14,6 +14,7 @@ import type {
   DimensionId,
   IconName,
   MathOperator,
+  SeriesCard,
   SingleSeries,
   TemporalUnit,
   VisualizationSettings,
@@ -199,6 +200,12 @@ export interface SourceDisplayInfo {
   name: string;
 }
 
+// ── Series types ──
+
+export type MetricsViewerSeries = SingleSeries<
+  SeriesCard & Required<Pick<SeriesCard, "id" | "name">>
+>;
+
 export interface UseViewerStateResult {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
@@ -208,7 +215,7 @@ export interface UseViewerStateResult {
   queriesError: string | null;
   modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
   metricSlots: MetricSlot[];
-  series: SingleSeries[];
+  series: MetricsViewerSeries[];
   cardIdToEntityIndex: Record<CardId, number>;
   activeBreakoutColors: SourceBreakoutColorMap;
   sourceColors: SourceColorMap;

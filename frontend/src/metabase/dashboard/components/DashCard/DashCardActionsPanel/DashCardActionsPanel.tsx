@@ -24,8 +24,8 @@ import { getVisualizationRaw } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
+  DashCardSeries,
   DashboardCard,
-  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
@@ -41,7 +41,7 @@ import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
 import { trackVisualizeAnotherWayClicked } from "./analytics";
 
 interface Props {
-  series: Series;
+  series: DashCardSeries;
   dashcard?: DashboardCard;
   question: Question | null;
   isLoading: boolean;
@@ -183,8 +183,9 @@ function DashCardActionsPanelInner({
 
   if (!isLoading && !hasError) {
     if (
-      isVisualizerDashboardCard(dashcard) ||
-      isVisualizerSupportedVisualization(dashcard?.card.display)
+      (isVisualizerDashboardCard(dashcard) ||
+        isVisualizerSupportedVisualization(dashcard?.card.display)) &&
+      onEditVisualization
     ) {
       const label = isVisualizerDashboardCard(dashcard)
         ? t`Edit visualization`

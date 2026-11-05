@@ -1,16 +1,13 @@
 (ns metabase.sync.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [toucan2.core :as t2]))
+   [metabase.sync.db :as sync.db]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defn- -show-database-syncing-modal []
   (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
     (if (nil? v)
-      (not (t2/exists? :model/Database
-                       :is_sample false
-                       :is_audit false
-                       :initial_sync_status "complete"))
+      (not (sync.db/synced-user-database-exists?))
       ;; frontend should set this value to `true` after the modal has been shown once
       v)))
 
@@ -60,3 +57,26 @@
   :export?    true
   :type       :integer
   :default    10000)
+
+(defsetting interestingness-max-fields-per-sync
+  "Maximum number of fields per database to score for dimension interestingness in one sync. The leftovers pass
+  scores every field whose score is still NULL, which after a release that invalidates existing scores is every field
+  in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
+  `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
+  NULL and so are picked up by the following sync, which is why this can be set far higher than those two."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    100000)
+
+(defsetting data-sensitivity-scan-enabled
+  "When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
+  its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or
+  restrict anything. Labels set by a user are never overwritten."
+  :type       :boolean
+  :default    false
+  :setter     :none
+  :visibility :internal
+  :export?    false
+  :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
+  page. Fields that already carry a label, including PUBLIC, are not rescanned.")

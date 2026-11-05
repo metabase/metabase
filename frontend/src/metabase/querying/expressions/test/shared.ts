@@ -93,7 +93,6 @@ metadata = createMockMetadata({
                     {
                       type: "column",
                       name: "TOTAL",
-                      sourceName: "ORDERS",
                     },
                   ],
                 },

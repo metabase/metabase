@@ -26,6 +26,7 @@ export const createMockChartLayout = (
     outerHeight: 0,
     outerWidth: 800,
     padding: { top: 0, left: 0, bottom: 0, right: 0, ...padding },
+    internalInset: { left: 0, right: 0 },
     bounds: { top: 0, left: 0, bottom: 0, right: 0, ...bounds },
     ticksDimensions: {
       yTicksWidthLeft: 0,
@@ -81,6 +82,7 @@ export const createMockCartesianChartModel = (
       column,
       columnIndex: 0,
       columnByCardId: {},
+      columns: [column],
     },
     seriesModels: [],
     dataset: [],

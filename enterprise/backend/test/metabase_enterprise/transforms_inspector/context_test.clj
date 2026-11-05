@@ -122,11 +122,7 @@
 (defn- native-orders-query
   "Build a native-only MBQL 5 query selecting from the orders table."
   []
-  {:lib/type     :mbql/query
-   :lib/metadata (mt/metadata-provider)
-   :database     (mt/id)
-   :stages       [{:lib/type :mbql.stage/native
-                   :native   "SELECT * FROM ORDERS"}]})
+  (lib/native-query (mt/metadata-provider) "SELECT * FROM ORDERS"))
 
 (deftest extract-sources-mbql-test
   (testing "MBQL: extracts source table from simple query"
@@ -163,11 +159,8 @@
 (deftest extract-sources-native-with-joins-test
   (testing "Native: extracts multiple source tables from SQL with JOIN"
     (let [transform {:source {:type :query
-                              :query {:lib/type     :mbql/query
-                                      :lib/metadata (mt/metadata-provider)
-                                      :database     (mt/id)
-                                      :stages       [{:lib/type :mbql.stage/native
-                                                      :native   "SELECT * FROM ORDERS JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID"}]}}
+                              :query (lib/native-query (mt/metadata-provider)
+                                                       "SELECT * FROM ORDERS JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID")}
                      :name   "test"}
           sources   (context/extract-sources transform)
           table-ids (set (map :table-id sources))]
@@ -179,7 +172,8 @@
   (testing "Python: extracts source tables from source-tables vec"
     (let [transform {:source {:type           :python
                               :source-tables  [{:alias "orders" :table_id (mt/id :orders)}]
-                              :source-database (mt/id)}
+                              :source-database (mt/id)
+                              :body           "pass"}
                      :name   "test"}
           sources   (context/extract-sources transform)]
       (is (seq sources))
@@ -191,7 +185,8 @@
     (let [transform {:source {:type           :python
                               :source-tables  [{:alias "orders"   :table_id (mt/id :orders)}
                                                {:alias "products" :table_id (mt/id :products)}]
-                              :source-database (mt/id)}
+                              :source-database (mt/id)
+                              :body           "pass"}
                      :name   "test"}
           sources   (context/extract-sources transform)
           table-ids (set (map :table-id sources))]
@@ -203,9 +198,10 @@
 
 (deftest build-context-mbql-sources-test
   (testing "build-context extracts source tables from MBQL query"
-    (let [transform {:source {:type :query
+    (let [transform {:id     1
+                     :source {:type :query
                               :query (simple-orders-query)}
-                     :target {:schema "nonexistent" :name "nonexistent_table" :type :table}
+                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}
                      :name   "test"}
           ctx (context/build-context transform)]
       (is (= :mbql (:source-type ctx)))
@@ -216,9 +212,10 @@
 
 (deftest build-context-not-run-test
   (testing "build-context returns nil target when target table doesn't exist"
-    (let [transform {:source {:type :query
+    (let [transform {:id     1
+                     :source {:type :query
                               :query (simple-orders-query)}
-                     :target {:schema "nonexistent" :name "nonexistent_table" :type :table}
+                     :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}
                      :name   "test"}
           ctx (context/build-context transform)]
       (is (nil? (:target ctx)))
@@ -227,9 +224,10 @@
 (deftest build-context-with-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context extracts join structure from MBQL query with LEFT JOIN"
-      (let [transform {:source {:type :query
+      (let [transform {:id     1
+                       :source {:type :query
                                 :query (joined-orders-products-query)}
-                       :target {:schema "nonexistent" :name "nonexistent_table" :type :table}
+                       :target {:schema "nonexistent" :name "nonexistent_table" :type "table"}
                        :name   "test"}
             ctx (context/build-context transform)]
         (is (true? (:has-joins? ctx)))
@@ -247,12 +245,13 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context populates column-matches when target exists"
       ;; Use products table as a fake target to avoid running a transform
-      (let [products-table (t2/select-one :model/Table (mt/id :products))
-            transform {:source {:type :query
+      (let [products-table (t2/select-one :model/Table :id (mt/id :products))
+            transform {:id     1
+                       :source {:type :query
                                 :query (joined-orders-products-query)}
                        :target {:schema (:schema products-table)
                                 :name   (:name products-table)
-                                :type   :table}
+                                :type   "table"}
                        :name   "test"}
             ctx (context/build-context transform)]
         (is (some? (:target ctx)))

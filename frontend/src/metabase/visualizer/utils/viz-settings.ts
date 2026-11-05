@@ -4,10 +4,9 @@ import {
 } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import {
-  DEFAULT_VISUALIZER_DISPLAY,
-  isVisualizerSupportedVisualization,
-} from "./dashboard-card-supports-visualizer";
+import { DEFAULT_VISUALIZER_DISPLAY } from "../constants";
+
+import { isVisualizerSupportedVisualization } from "./dashboard-card-supports-visualizer";
 
 const isDataSetting = ({ widget }: VisualizationSettingDefinition) => {
   // TODO Come up with a better condition

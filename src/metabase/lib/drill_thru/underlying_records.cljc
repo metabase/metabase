@@ -33,6 +33,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.date-time :as lib.date-time]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.filter :as lib.filter]
@@ -41,6 +42,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -140,7 +142,10 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    column-ref   :- ::lib.schema.ref/ref
-   value        :- :any]
+   value        :- [:maybe [:or
+                            ::lib.schema.literal/param-value
+                            [:sequential ::lib.schema.literal/param-value]
+                            #?@(:cljs [[:fn {:error/message "JS array"} array?]])]]]
   (let [filter-column  (lib.drill-thru.common/breakout->filterable-column query stage-number column-ref column)
         values         (non-empty-seq value)
         filter-clauses (or
@@ -178,7 +183,7 @@
                             :else
                             [(cond-> (lib.filter/= column value)
                                (and unit (lib.schema.temporal-bucketing/datetime-truncation-units unit))
-                               lib.fe-util/expand-temporal-expression)])))]
+                               (#(lib.fe-util/expand-temporal-expression (lib.date-time/config query) %)))])))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))

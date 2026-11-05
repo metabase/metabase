@@ -3,7 +3,7 @@
   off a separate `response` module."
   (:require
    [clojure.string :as str]
-   [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -34,7 +34,7 @@ twitter.com,
 x.com")
 
 (defsetting allowed-iframe-hosts
-  (deferred-tru "Allowed iframe hosts")
+  (deferred-tru "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list.")
   :encryption :when-encryption-key-set
   :default    default-allowed-iframe-hosts
   :audit      :getter
@@ -46,7 +46,7 @@ x.com")
   :encryption :when-encryption-key-set
   :default    ""
   :audit      :getter
-  :visibility :public
+  :visibility :authenticated
   :export?    true)
 
 (defsetting csp-img-enabled
@@ -58,12 +58,7 @@ x.com")
   :export?    true
   :setter     (fn [new-value]
                 (let [disabling? (not (cond-> new-value (string? new-value) setting/string->boolean))]
-                  (when (and disabling?
-                             config/ee-available?
-                             (when-let [custom-viz-enabled?
-                                        (requiring-resolve
-                                         'metabase-enterprise.custom-viz-plugin.settings/custom-viz-enabled)]
-                               (custom-viz-enabled?)))
+                  (when (and disabling? (premium-features/enable-custom-viz?))
                     (throw (ex-info (tru "Cannot disable the image CSP setting while Custom Visualizations are enabled.")
                                     {:status-code 400})))
                   (setting/set-value-of-type! :boolean :csp-img-enabled new-value))))
@@ -84,7 +79,7 @@ x.com")
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting health-check-logging-enabled
-  (deferred-tru "Whether to log health check requests from session middleware.")
+  "Whether to log health check requests from session middleware."
   :type       :boolean
   :default    true
   :visibility :internal
@@ -114,9 +109,19 @@ x.com")
   :doc "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
         This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *thread-interrupt-escalation-timeout-ms*
   "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption."
   (thread-interrupt-escalation-timeout-ms))
+
+(defsetting max-unauthenticated-request-body-bytes
+  "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+  :type       :integer
+  :visibility :internal
+  :setter     :none
+  :export?    false
+  :default    (* 4 1024 1024)
+  :doc "Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.")
 
 (defsetting metabot-slack-signing-secret
   (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
@@ -135,7 +140,7 @@ x.com")
   (setting/get-value-of-type :string :metabot-slack-signing-secret))
 
 (defsetting slack-connect-signing-secret-version
-  (deferred-tru "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.")
+  "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility."
   :type       :integer
   :visibility :internal
   :default    0

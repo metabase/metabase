@@ -38,11 +38,20 @@ export function getColorShades(colorName: string): MantineColorsTuple {
   ];
 }
 
-export function getMantineThemeColors(
-  colorScheme: ResolvedColorScheme,
-  whitelabelColors?: ColorSettings | null,
-): Record<string, MantineColorsTuple> {
-  const { colors } = deriveFullMetabaseTheme({ colorScheme, whitelabelColors });
+export function getMantineThemeColors({
+  colorScheme,
+  whitelabelColors,
+  forceDynamicBrandRamp,
+}: {
+  colorScheme: ResolvedColorScheme;
+  whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
+}): Record<string, MantineColorsTuple> {
+  const { colors } = deriveFullMetabaseTheme({
+    colorScheme,
+    whitelabelColors,
+    forceDynamicBrandRamp,
+  });
 
   return {
     ...Object.fromEntries(

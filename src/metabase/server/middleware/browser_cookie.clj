@@ -5,7 +5,10 @@
   they log in."
   (:require
    [java-time.api :as t]
+   [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
+   [metabase.request.schema :as request.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -30,14 +33,24 @@
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(mu/defn- add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
+(mu/defn- add-browser-id-cookie
+  [request      :- ::request.schema/request
+   response     :- ::api.macros/response
+   browser-id   :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
+
+(defn- valid-browser-id
+  "The cookie value when it is the UUID we issued, else nil. The value ends up in the char(36) `login_history.device_id`
+  column, so anything else (a tampered cookie) is replaced rather than sent to the app DB."
+  [value]
+  (when (some->> value str (re-matches u/uuid-regex))
+    (str value)))
 
 (defn ensure-browser-id-cookie
   "Set a permanent browser identifier cookie if one is not already set."
   [handler]
   (fn [request respond raise]
-    (if-let [browser-id (get-in request [:cookies browser-id-cookie-name :value])]
+    (if-let [browser-id (valid-browser-id (get-in request [:cookies browser-id-cookie-name :value]))]
       (handler (assoc request :browser-id browser-id) respond raise)
       (let [browser-id (str (random-uuid))]
         (handler

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.impl.email :as email.impl]
@@ -85,6 +86,29 @@
         (is (true? (-> result first :card :format_rows))
             "Should include format_rows setting using the fallback match")))))
 
+(defn- test-dashcard
+  "A DashboardCard row for card `card-id` on dashboard `dashboard-id`, as a Dashboard Subscription part carries it."
+  [id dashboard-id card-id]
+  {:id                     id
+   :dashboard_id           dashboard-id
+   :card_id                card-id
+   :created_at             (t/offset-date-time)
+   :updated_at             (t/offset-date-time)
+   :size_x                 4
+   :size_y                 4
+   :row                    0
+   :col                    0
+   :parameter_mappings     []
+   :visualization_settings {}
+   :entity_id              "test-dashcard-entity"
+   :action_id              nil
+   :dashboard_tab_id       nil
+   :inline_parameters      nil})
+
+(def ^:private empty-result
+  "A QP result with no rows."
+  {:data {:cols [] :rows []} :row_count 0})
+
 (deftest dashboard-notification-dashcard-links-test
   (testing "Dashboard notification renders dashcard links with parameters like Slack implementation"
     (let [dashboard-id 42
@@ -103,8 +127,8 @@
                                   :dashboard_parts [{:type :card
                                                      :card {:id card-id
                                                             :name "Test Card"}
-                                                     :dashcard {:id dashcard-id
-                                                                :dashboard_id dashboard-id}}]
+                                                     :dashcard (test-dashcard dashcard-id dashboard-id card-id)
+                                                     :result empty-result}]
                                   :dashboard_subscription {:id 789
                                                            :dashboard_subscription_dashcards []}}}
           recipients [{:type :notification-recipient/user

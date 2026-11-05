@@ -9,33 +9,44 @@ import {
   setupRemoteSyncDirtyEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
+import { seedApiQueryCache } from "__support__/state";
 import { Api } from "metabase/api";
+import { actionApi } from "metabase/api/action";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
-import { seedApiQueryCache } from "metabase/redux/store/mocks";
+import { glossaryApi } from "metabase/api/glossary";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
-import { initialState, remoteSyncReducer } from "../sync-task-slice";
+import {
+  initialState,
+  remoteSyncReducer,
+  taskStarted,
+} from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
+
+const CURRENT_USER_ID = 1;
+const OTHER_USER_ID = 2;
 
 const createTestStore = (
   settingsOverrides: Partial<EnterpriseSettings> = {},
 ) => {
   const store = configureStore({
     reducer: combineReducers({
-      remoteSyncPlugin: remoteSyncReducer,
+      // nested as the app registers it (PLUGIN_REDUCERS -> state.plugins), which the selectors read
+      plugins: combineReducers({ remoteSyncPlugin: remoteSyncReducer }),
       // EnterpriseApi is an enhanced version of Api, so they share the same reducer
       [Api.reducerPath]: Api.reducer,
     }),
     preloadedState: {
-      remoteSyncPlugin: initialState,
+      plugins: { remoteSyncPlugin: initialState },
       // Settings are served from the getSessionProperties RTK Query cache.
       [Api.reducerPath]: seedApiQueryCache(undefined, [
         {
@@ -44,6 +55,10 @@ const createTestStore = (
             "remote-sync-transforms": false,
             ...settingsOverrides,
           }),
+        },
+        {
+          endpointName: "getCurrentUser",
+          value: createMockUser({ id: CURRENT_USER_ID, is_superuser: true }),
         },
       ]),
     },
@@ -95,12 +110,12 @@ describe("remote-sync-listener-middleware", () => {
       // Wait for the request to complete and middleware to process
       await waitForCondition(() => {
         const state = store.getState();
-        return state.remoteSyncPlugin?.showModal === true;
+        return state.plugins.remoteSyncPlugin.showModal === true;
       });
 
       const state = store.getState();
-      expect(state.remoteSyncPlugin?.showModal).toBe(true);
-      expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(true);
+      expect(state.plugins.remoteSyncPlugin.currentTask?.sync_task_type).toBe(
         "import",
       );
     });
@@ -129,8 +144,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState();
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin.currentTask).toBeNull();
     });
 
     it("should NOT show modal when settings save fails", async () => {
@@ -158,8 +173,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState();
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin.currentTask).toBeNull();
     });
 
     it("should NOT show modal when disabling remote sync", async () => {
@@ -186,8 +201,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState();
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin.currentTask).toBeNull();
     });
   });
 
@@ -211,12 +226,12 @@ describe("remote-sync-listener-middleware", () => {
       // The import listener triggers on matchPending, so modal should show immediately
       await waitForCondition(() => {
         const state = store.getState();
-        return state.remoteSyncPlugin?.showModal === true;
+        return state.plugins.remoteSyncPlugin.showModal === true;
       });
 
       const state = store.getState();
-      expect(state.remoteSyncPlugin?.showModal).toBe(true);
-      expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(true);
+      expect(state.plugins.remoteSyncPlugin.currentTask?.sync_task_type).toBe(
         "import",
       );
     });
@@ -246,8 +261,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState();
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin.currentTask).toBeNull();
     });
 
     it("should set conflict variant to 'setup' when import fails with conflict", async () => {
@@ -255,10 +270,13 @@ describe("remote-sync-listener-middleware", () => {
         status: 200,
         body: {
           status: "conflict",
+          sync_task_type: "import",
+          ended_at: "2026-01-01T00:00:01Z",
         },
       });
 
       const store = createTestStore();
+      store.dispatch(taskStarted({ taskType: "import" }));
 
       // Dispatch the mutation
       store.dispatch(
@@ -270,13 +288,12 @@ describe("remote-sync-listener-middleware", () => {
         fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
       );
 
-      expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
-
       await waitFor(() => {
-        expect(store.getState().remoteSyncPlugin?.syncConflictVariant).toBe(
-          "setup",
-        );
+        expect(
+          store.getState().plugins.remoteSyncPlugin.syncConflictVariant,
+        ).toBe("setup");
       });
+      expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
     });
 
     it("does NOT open the setup modal when an export task ends in conflict", async () => {
@@ -284,10 +301,15 @@ describe("remote-sync-listener-middleware", () => {
       // not by the middleware — so the middleware must not route them to the setup-conflict modal.
       fetchMock.get("path:/api/ee/remote-sync/current-task", {
         status: 200,
-        body: { status: "conflict", sync_task_type: "export" },
+        body: {
+          status: "conflict",
+          sync_task_type: "export",
+          ended_at: "2026-01-01T00:00:01Z",
+        },
       });
 
       const store = createTestStore();
+      store.dispatch(taskStarted({ taskType: "export" }));
 
       store.dispatch(
         remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
@@ -298,11 +320,180 @@ describe("remote-sync-listener-middleware", () => {
       );
 
       await waitFor(() => {
-        expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
+        expect(
+          store.getState().plugins.remoteSyncPlugin.currentTask?.status,
+        ).toBe("conflict");
       });
-      expect(store.getState().remoteSyncPlugin?.syncConflictVariant).not.toBe(
-        "setup",
+      expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
+      expect(
+        store.getState().plugins.remoteSyncPlugin.syncConflictVariant,
+      ).not.toBe("setup");
+    });
+  });
+
+  describe("getRemoteSyncCurrentTask listener", () => {
+    const CURRENT_TASK = "path:/api/ee/remote-sync/current-task";
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
+
+    it("follows the current user's task found running on load so the tab can watch it", async () => {
+      fetchMock.get(CURRENT_TASK, {
+        status: 200,
+        body: {
+          id: 5,
+          status: "running",
+          sync_task_type: "import",
+          progress: 0.4,
+          ended_at: null,
+          initiated_by: CURRENT_USER_ID,
+        },
+      });
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
       );
+
+      await waitFor(() => {
+        expect(store.getState().plugins.remoteSyncPlugin.currentTask?.id).toBe(
+          5,
+        );
+      });
+      expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(true);
+    });
+
+    it.each([
+      ["another user", OTHER_USER_ID],
+      ["no user (auto-import)", null],
+    ])(
+      "does not follow or show a running task started by %s",
+      async (_description, initiatedBy) => {
+        fetchMock.get(CURRENT_TASK, {
+          status: 200,
+          body: {
+            id: 5,
+            status: "running",
+            sync_task_type: "export",
+            progress: 0.3,
+            ended_at: null,
+            initiated_by: initiatedBy,
+          },
+        });
+        const store = createTestStore();
+
+        store.dispatch(
+          remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+        );
+
+        await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+        await settle();
+
+        expect(
+          store.getState().plugins.remoteSyncPlugin.currentTask,
+        ).toBeNull();
+        expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
+      },
+    );
+
+    it("does not route another user's import conflict to the setup modal", async () => {
+      const responses = [
+        {
+          id: 5,
+          status: "running",
+          sync_task_type: "import",
+          progress: 0.3,
+          ended_at: null,
+          initiated_by: OTHER_USER_ID,
+        },
+        {
+          id: 5,
+          status: "conflict",
+          sync_task_type: "import",
+          ended_at: "2026-01-01T00:00:01Z",
+          initiated_by: OTHER_USER_ID,
+        },
+      ];
+      fetchMock.get(CURRENT_TASK, () => ({
+        status: 200,
+        body: responses.shift() ?? responses[0],
+      }));
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+      await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+      await settle();
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(undefined, {
+          forceRefetch: true,
+        }),
+      );
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(CURRENT_TASK)).toHaveLength(2);
+      });
+      await settle();
+
+      expect(
+        store.getState().plugins.remoteSyncPlugin.syncConflictVariant,
+      ).toBeNull();
+      expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
+    });
+
+    it("leaves a finished task found on load alone", async () => {
+      fetchMock.get(CURRENT_TASK, {
+        status: 200,
+        body: {
+          id: 5,
+          status: "conflict",
+          sync_task_type: "import",
+          ended_at: "2026-01-01T00:00:01Z",
+        },
+      });
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+
+      await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+      await settle();
+
+      expect(store.getState().plugins.remoteSyncPlugin.currentTask).toBeNull();
+      expect(
+        store.getState().plugins.remoteSyncPlugin.syncConflictVariant,
+      ).toBeNull();
+      expect(fetchMock.callHistory.calls(CURRENT_TASK)).toHaveLength(1);
+    });
+
+    it("refreshes the task once when a watched task ends, not in a loop", async () => {
+      fetchMock.get(CURRENT_TASK, {
+        status: 200,
+        body: {
+          id: 5,
+          status: "successful",
+          sync_task_type: "import",
+          progress: 1,
+          ended_at: "2026-01-01T00:00:01Z",
+        },
+      });
+      const store = createTestStore();
+      store.dispatch(taskStarted({ taskType: "import" }));
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+
+      await waitFor(() => {
+        expect(store.getState().plugins.remoteSyncPlugin.currentTask?.id).toBe(
+          5,
+        );
+      });
+      // the terminal handling invalidates this query's tag, so the subscribed query refetches once
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(CURRENT_TASK)).toHaveLength(2);
+      });
+      await settle();
+      expect(fetchMock.callHistory.calls(CURRENT_TASK)).toHaveLength(2);
     });
   });
 
@@ -664,6 +855,154 @@ describe("remote-sync-listener-middleware", () => {
           name: "Renamed",
         }),
       );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+  });
+
+  describe("action listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    // Model actions are tracked by remote sync, so creating one must refresh
+    // the dirty state that enables the push button (GHY-4722).
+    it("invalidates when a model action is created", async () => {
+      fetchMock.post("path:/api/action", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        actionApi.endpoints.createAction.initiate({
+          name: "Create",
+          type: "implicit",
+          kind: "row/create",
+          model_id: 10,
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a model action is updated", async () => {
+      fetchMock.put("path:/api/action/1", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        actionApi.endpoints.updateAction.initiate({ id: 1, name: "Renamed" }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a model action is deleted", async () => {
+      fetchMock.delete("path:/api/action/1", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(actionApi.endpoints.deleteAction.initiate(1));
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+  });
+
+  describe("glossary listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    it("invalidates when a glossary entry is created", async () => {
+      fetchMock.post("path:/api/glossary", {
+        id: 1,
+        term: "ARR",
+        definition: "Annual recurring revenue",
+      });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        glossaryApi.endpoints.createGlossary.initiate({
+          term: "ARR",
+          definition: "Annual recurring revenue",
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a glossary entry is updated", async () => {
+      fetchMock.put("path:/api/glossary/1", {
+        id: 1,
+        term: "ARR",
+        definition: "Annualized recurring revenue",
+      });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        glossaryApi.endpoints.updateGlossary.initiate({
+          id: 1,
+          term: "ARR",
+          definition: "Annualized recurring revenue",
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a glossary entry is deleted", async () => {
+      fetchMock.delete("path:/api/glossary/1", 204);
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(glossaryApi.endpoints.deleteGlossary.initiate({ id: 1 }));
 
       await waitForCondition(() => dirtyCallCount() > 1);
       expect(dirtyCallCount()).toBeGreaterThan(1);

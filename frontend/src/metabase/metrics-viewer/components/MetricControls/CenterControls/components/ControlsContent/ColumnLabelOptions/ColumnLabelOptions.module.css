@@ -1,13 +1,5 @@
 .ellipsisMenuButton {
   --ellipsis-button-size: 2rem;
-
-  border-radius: 0.5rem;
-  height: var(--ellipsis-button-size);
-  width: var(--ellipsis-button-size);
-
-  &.ellipsisMenuButton:hover {
-    background-color: var(--mb-color-background_surface-hover);
-  }
 }
 
 .ellipsisMenuButtonFloating {

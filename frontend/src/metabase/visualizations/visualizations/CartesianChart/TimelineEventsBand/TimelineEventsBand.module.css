@@ -9,7 +9,7 @@
   position: absolute;
   display: flex;
   align-items: center;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   background-color: var(--mb-color-background_page-secondary);
   pointer-events: none;
   padding: 0.25rem 0;
@@ -33,8 +33,8 @@
 /*
  * The bridge extends past the dropdown, so keep overflow visible — otherwise the
  * default `overflow: auto` treats the bridge as content and adds a scrollbar.
- * The doubled selector wins over the default dropdown styles. The content always
- * fits (at most three rows plus "See all"), so no scrolling is needed.
+ * The doubled selector wins over the default dropdown styles. Long event lists
+ * scroll inside the dropdown instead.
  */
 .bridgeDropdown.bridgeDropdown {
   overflow: visible;
@@ -49,7 +49,7 @@
   justify-content: center;
   box-sizing: border-box;
   padding: 0;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
   background-color: var(--mb-color-background_surface-primary);
   color: var(--mb-color-icon-primary);

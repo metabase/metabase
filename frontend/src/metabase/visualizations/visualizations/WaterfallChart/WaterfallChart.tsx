@@ -1,3 +1,4 @@
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 
 import type { VisualizationProps } from "../../types";
@@ -8,7 +9,7 @@ function WaterfallChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
 
-export const WaterfallChart = Object.assign(
+export const WaterfallChart = assignLazily(
   WaterfallChartComponent,
   WATERFALL_CHART_DEFINITION,
 );

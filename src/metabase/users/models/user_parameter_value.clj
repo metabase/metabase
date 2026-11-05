@@ -5,6 +5,7 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.users.db :as users.db]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -40,15 +41,9 @@
     (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
       (t2/with-transaction [_conn]
         (doseq [batch (partition-all 1000 parameters)]
-          (t2/delete! :model/UserParameterValue
-                      {:where (into [:or] (for [p batch]
-                                            [:and
-                                             [:= :user_id (:user_id p)]
-                                             [:= :dashboard_id (:dashboard_id p)]
-                                             [:= :parameter_id (:parameter_id p)]]))}))
+          (users.db/delete-user-parameter-values! (map #(select-keys % [:user_id :dashboard_id :parameter_id]) batch)))
         (doseq [batch (partition-all 1000 to-insert)]
-          (t2/insert! :model/UserParameterValue
-                      (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch)))))))
+          (users.db/insert-user-parameter-values! (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch)))))))
 
 (defn- update-user-parameter-values* [inputs]
   (try
@@ -75,11 +70,7 @@
   "Asynchronously delete params with a nil `value` and upsert the rest."
   [user-id         :- pos-int?
    dashboard-id    :- pos-int?
-   parameters      :- [:sequential [:map
-                                    [:id      [:string {:min 1}]]
-                                    ;; TODO -- not sure whether these are optional or not
-                                    [:value   {:optional true} any?]
-                                    [:default {:optional true} some?]]]]
+   parameters      :- [:sequential :metabase.parameters.schema/parameter-with-stored-value]]
   (when (setting/get :dashboards-save-last-used-parameters)
     (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                   :dashboard-id dashboard-id
@@ -95,9 +86,7 @@
      dashboards
      :last_used_param_values
      (fn [] ;; return a map of {dashboard-id {parameter-id value}}
-       (let [upvs (t2/select :model/UserParameterValue
-                             :dashboard_id [:in (map :id dashboards)]
-                             :user_id user-id)]
+       (let [upvs (users.db/user-parameter-values-for-dashboards user-id (map :id dashboards))]
          (as-> upvs result
            (group-by :dashboard_id result)
            (update-vals result (fn [upvs]

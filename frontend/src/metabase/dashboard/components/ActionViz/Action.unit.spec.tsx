@@ -7,6 +7,7 @@ import {
   setupDatabasesEndpoints,
   setupPrefetchDashcardValuesEndpoint,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -17,7 +18,6 @@ import {
   within,
 } from "__support__/ui";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   ActionDashboardCard,
@@ -50,6 +50,7 @@ const ACTION = createMockQueryAction({
   name: "My Awesome Action",
   database_id: DATABASE_ID,
   model_id: ACTION_MODEL_ID,
+  can_write: true,
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
@@ -195,6 +196,18 @@ describe("Actions > ActionViz > Action", () => {
       ).toBeInTheDocument();
     });
 
+    it("should render a disabled state for a button with an archived action", async () => {
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          action: { ...ACTION, archived: true },
+        }),
+      });
+      expect(screen.getByRole("button")).toBeDisabled();
+      expect(
+        screen.getByLabelText(/this action is archived/i),
+      ).toBeInTheDocument();
+    });
+
     it("should render an enabled state when the action is valid", async () => {
       await setup();
       expect(screen.getByRole("button")).toBeEnabled();
@@ -216,7 +229,7 @@ describe("Actions > ActionViz > Action", () => {
       await setup();
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
     });
@@ -233,7 +246,7 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.queryByLabelText(/^Parameter/)).not.toBeInTheDocument();
     });
@@ -242,16 +255,22 @@ describe("Actions > ActionViz > Action", () => {
       await setup();
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        "My Awesome Action",
+      );
     });
 
     it("clicking the cancel button on the form should close the modal", async () => {
       await setup();
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        "My Awesome Action",
+      );
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
     });
 
     it("should format dashboard filter values for numeric parameters", async () => {
@@ -295,7 +314,7 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Click me" }));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       await userEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
@@ -316,28 +335,12 @@ describe("Actions > ActionViz > Action", () => {
       });
     });
 
-    it("should NOT allow to edit underlying action if a user does not has edit permissions for this model", async () => {
+    it("should NOT allow to edit underlying action if a user can't write it", async () => {
       await setup({
         dashcard: createMockActionDashboardCard({
-          card: {
-            ...CARD,
-            can_write: false,
-          },
+          action: { ...ACTION, can_write: false },
         }),
       });
-
-      await userEvent.click(screen.getByText("Click me"));
-
-      expect(queryIcon("pencil")).not.toBeInTheDocument();
-    });
-
-    it("should NOT allow to edit underlying action if a user does not has edit permissions for this database", async () => {
-      const readOnlyDB: Database = {
-        ...DATABASE,
-        native_permissions: "none",
-      };
-
-      await setup({ database: readOnlyDB });
 
       await userEvent.click(screen.getByText("Click me"));
 
@@ -349,7 +352,9 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(screen.getByText("Click me"));
 
-      const editActionEl = getIcon("pencil");
+      const editActionEl = await screen.findByRole("button", {
+        name: "Edit this action",
+      });
       expect(editActionEl).toBeInTheDocument();
 
       await userEvent.click(editActionEl);
@@ -385,7 +390,9 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(screen.getByText("Click me"));
 
-      await userEvent.click(getIcon("pencil"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Edit this action" }),
+      );
 
       // wait for action edit form to be loaded
       const editorModal = await screen.findByTestId("action-editor-modal");
@@ -532,7 +539,9 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toHaveTextContent(/cannot be undone/i);
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        /cannot be undone/i,
+      );
       expect(
         screen.getByRole("button", { name: "Delete" }),
       ).toBeInTheDocument();

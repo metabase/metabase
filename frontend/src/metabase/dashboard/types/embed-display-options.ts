@@ -1,5 +1,5 @@
 import type { DisplayTheme } from "metabase/embedding/types";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type { EmbedResourceDownloadOptions } from "metabase-types/api";
 
 type EmbedBackground = boolean;
@@ -25,7 +25,7 @@ export type EmbedDisplayParams = {
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
-  getClickActionMode: ClickActionModeGetter | undefined;
+  clickActionMode: ClickActionsMode | undefined;
   downloadsEnabled: EmbedResourceDownloadOptions;
   withFooter: boolean;
   // TODO: (Kelvin 2026-01-29) move this to a new type in EMB-1025 (canceled at moment)

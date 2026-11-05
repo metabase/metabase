@@ -14,11 +14,17 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
+   [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -27,7 +33,8 @@
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.util :as t2.util])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource WrapperConnectionPoolDataSource)
    (liquibase.exception LockException)))
@@ -70,7 +77,7 @@
                         available just in case)."
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
-   & args]
+   & args      :- [:* :int]]
   ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
@@ -84,12 +91,15 @@
         ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
         (when-not (= :release-locks direction)
           (liquibase/consolidate-liquibase-changesets! conn liquibase))
+        ;; The version bookkeeping every other direction reads and writes; `print` must not touch the database.
+        (when-not (#{:print :release-locks} direction)
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase)))
         (log/info "Liquibase is ready.")
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase data-source)
           :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-          :down          (apply liquibase/rollback-major-version! conn liquibase false args)
-          :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
+          :down          (apply rollback/rollback-major-version! conn liquibase false args)
+          :down-force    (apply rollback/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
         ;; Migrations were successful; commit everything and re-enable auto-commit
@@ -212,26 +222,49 @@
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
-      (let [latest-available (liquibase/latest-available-major-version liquibase)
-            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
-        ;; `latest-applied` will be `nil` for fresh installs
-        (when (and latest-applied (< latest-available latest-applied))
-          (let [later-changesets (liquibase/changesets-from-later-version conn (.getDatabase liquibase) latest-available latest-applied)]
-            (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
-                                      latest-applied latest-available))
-            (doseq [cs later-changesets]
-              (log/warn (u/format-color 'red "  - %s" cs))))
+      (let [database         (.getDatabase liquibase)
+            _                (versions/ensure-version-tracking! conn database)
+            ;; this binary's own major (for dev builds this is the synthetic version, so a dev DB doesn't look
+            ;; 'downgraded' against itself).
+            current-major    (versions/current-recorded-major)
+            ;; The version that ran the deployment the schema is currently at
+            recorded-version (versions/last-deployment-version conn database)
+            recorded-major   (some-> recorded-version versions/version->major)]
+        (cond
+          ;; nothing recorded yet (fresh install), or the DB is at/behind us -> fine
+          (or (nil? recorded-major) (>= current-major recorded-major))
+          nil
+
+          ;; The DB was last migrated by a *development* build: it may carry un-released migrations this binary knows
+          ;; nothing about. Refuse, pointing at the development tooling that can roll those deployments back.
+          (versions/synthetic-dev-major? recorded-major)
           (throw (ex-info
-                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                  (str (u/format-color 'red (trs "ERROR: Development build detected."))
                        "\n\n"
-                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                       (trs "This database was last migrated by a development build ({0}), which this version (v{1}) cannot use." recorded-version current-major)
                        "\n\n"
-                       (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." latest-applied)
-                       "\n\n"
-                       (trs "Once your database has been downgraded, try running the application again.")
-                       "\n\n"
-                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
-                  {})))))))
+                       (trs "Roll back its development deployments from a development checkout with `clojure -M:dev:migrate rollback last-deployment` (dev.migrate/rollback!), or rebuild the database."))
+                  {}))
+
+          ;; A genuine downgrade: a newer *released* version migrated this database.
+          :else
+          (do
+            (let [later-changesets (versions/changesets-from-later-version conn database current-major recorded-major)]
+              (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
+                                        recorded-major current-major))
+              (doseq [cs later-changesets]
+                (log/warn (u/format-color 'red "  - %s" cs))))
+            (throw (ex-info
+                    (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                         "\n\n"
+                         (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                         "\n\n"
+                         (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." recorded-major)
+                         "\n\n"
+                         (trs "Once your database has been downgraded, try running the application again.")
+                         "\n\n"
+                         (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade-or-to-an-older-version"))
+                    {}))))))))
 
 (mu/defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
@@ -240,6 +273,28 @@
   (log/info "Running Database Migrations...")
   (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
+
+(defn- migrate-settings!
+  "Run [[mdb.setting/migrate-settings!]] once the migrations have, in an encryption state where every row of the
+  database can be read: a caller that skips [[mdb.encryption/check-encryption]] (`enable-encryption`, `copy!`) can get
+  here with rows the key in hand cannot decrypt, and those are left for it to sort out. Here rather than at
+  application startup because every entry point that migrates the app DB comes through [[setup-db!]], and several
+  never reach `metabase.core.core/init!` -- `migrate up`, the serialization commands, `reset-password`, the
+  encryption commands -- and a JVM that skipped the repair would read every setting as nil."
+  [db-state]
+  (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
+    (when (mdb.db/unmigrated-settings?)
+      (if (and (encryption/default-encryption-enabled?)
+               (mdb.encryption/legacy-startup-encryption-disabled?))
+        (throw (ex-info (str "Some settings were saved by an older version of Metabase and would be converted to the "
+                             "current storage format, encrypted with MB_ENCRYPTION_SECRET_KEY, but "
+                             "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set. Unset it to let Metabase convert them on "
+                             "startup.")
+                        {}))
+        (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
+                       "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
+                       ". This is expected once after an upgrade."))))
+    (mdb.setting/migrate-settings!)))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (mu/defn setup-db!
@@ -254,14 +309,15 @@
     state afterwards (see [[mdb.encryption/record-encryption-state!]]). Turned off by the `enable-encryption` command
     and by [[metabase.cmd.copy/copy!]],
     which handle the encryption state themselves."
-  ([db-type data-source]
+  ([db-type     :- :keyword
+    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
    (setup-db! db-type data-source {}))
 
   ([db-type     :- :keyword
     data-source :- (ms/InstanceOfClass javax.sql.DataSource)
     {:keys [auto-migrate? create-sample-content? manage-encryption-state?]
      :or   {auto-migrate? true, create-sample-content? false, manage-encryption-state? true}}
-    :- [:map
+    :- [:map {:closed true}
         [:auto-migrate?          {:optional true} :boolean]
         [:create-sample-content? {:optional true} :boolean]
         [:manage-encryption-state?      {:optional true} :boolean]]]
@@ -276,6 +332,7 @@
            (when manage-encryption-state?
              (mdb.encryption/check-encryption db-state))
            (run-schema-migrations! data-source auto-migrate?)
+           (migrate-settings! db-state)
            (when manage-encryption-state?
              (mdb.encryption/record-encryption-state! db-state))))))
    :done))
@@ -308,7 +365,8 @@
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 
-(defn- clause-order-fn-for-application-db [clauses]
+(defn- clause-order-fn-for-application-db
+  [clauses]
   (case (mdb.connection/db-type)
     (:postgres :h2) clauses
     :mysql          (let [{f :clause-order-fn} (sql/get-dialect :mysql)]
@@ -361,3 +419,13 @@
     (contains? query :delete-from)
     (-> (dissoc :delete-from)
         (assoc :from [(:delete-from query)]))))
+
+(methodical/defmethod t2.pipeline/compile [#_query-type :default
+                                           #_model      :default
+                                           #_query      clojure.lang.IPersistentMap]
+  "Override default Honey SQL 2 backend; compile using Funny SQL instead."
+  [query-type model honeysql]
+  (let [options  (t2.honeysql/options)
+        sql-args (t2.util/try-with-error-context ["compile SQL with Funny SQL" {:honeysql honeysql, :options options}]
+                   (funnysql/format honeysql (mdb.connection/db-type) options))]
+    (t2.pipeline/compile query-type model sql-args)))

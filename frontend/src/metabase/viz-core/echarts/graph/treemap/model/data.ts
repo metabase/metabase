@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import type {
   DatasetColumn,
   RawSeries,
@@ -151,7 +151,7 @@ export function getTreemapData(
       map: leafMap,
       rawName: subGroupingValue,
       displayName:
-        formatSubGroupingName?.(subGroupingValue) ?? NULL_DISPLAY_VALUE,
+        formatSubGroupingName?.(subGroupingValue) ?? getNullDisplayValue(),
       withChildren: false,
     });
     addRowMetric(leaf, metricValue, rowIndex);

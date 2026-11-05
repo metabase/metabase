@@ -3,6 +3,7 @@
   certain permission groups when running queries."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -24,12 +25,10 @@
   [graph & {:keys [group-ids group-id db-id audit-db?]}]
   (m/deep-merge
    graph
-   (let [impersonations (t2/select :model/ConnectionImpersonation
-                                   {:where [:and
-                                            (when db-id [:= :db_id db-id])
-                                            (when group-id [:= :group_id group-id])
-                                            (when group-ids [:in :group_id group-ids])
-                                            (when-not audit-db? [:not [:= :db_id audit/audit-db-id]])]})]
+   (let [impersonations (impersonation.db/impersonations-matching db-id
+                                                                  group-id
+                                                                  group-ids
+                                                                  (when-not audit-db? audit/audit-db-id))]
      (reduce (fn [acc {:keys [db_id group_id]}]
                (assoc-in acc [group_id db_id :view-data] :impersonated))
              {}
@@ -43,11 +42,8 @@
   (doall
    (for [impersonation impersonations]
      (do
-       (t2/delete! :model/ConnectionImpersonation
-                   :group_id (:group_id impersonation)
-                   :db_id (:db_id impersonation))
-       (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
-           first)))))
+       (impersonation.db/delete-impersonations-for-group-and-database! (:group_id impersonation) (:db_id impersonation))
+       (impersonation.db/insert-impersonation! impersonation)))))
 
 (defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"
@@ -60,7 +56,7 @@
                   :blocked      "is now BLOCKED from all non-data-perms access"
                   "now has granular (sandboxed) data access")
                 database-id)
-    (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id)))
+    (impersonation.db/delete-impersonations-for-group-and-database! group-id database-id)))
 
 (defn- delete-impersonations-for-group! [{:keys [group-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s" group-id (pr-str changes))

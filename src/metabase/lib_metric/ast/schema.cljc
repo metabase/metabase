@@ -5,31 +5,36 @@
   (:require
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------- Primitive Nodes --------------------
 
 (mr/def ::table-node
   "Reference to a database table."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/table]]
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]])
 
 (mr/def ::column-node
   "Reference to a database column/field."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/column]]
    [:id [:or pos-int? string?]]
    [:name {:optional true} [:maybe string?]]
    [:table-id {:optional true} [:maybe pos-int?]]
+   [:source-field {:optional true} [:maybe pos-int?]]
    [:base-type {:optional true} [:maybe keyword?]]])
 
 ;;; -------------------- Dimension Nodes --------------------
 
 (mr/def ::dimension-node
   "A dimension definition - the abstract dimension."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension]]
    [:id ::lib-metric.schema/dimension-id]
    [:name {:optional true} [:maybe string?]]
@@ -40,24 +45,28 @@
 
 (mr/def ::dimension-ref-options
   "Options for dimension references (bucketing, binning, etc.)."
-  [:map
+  [:map {:closed true}
+   [:lib/uuid {:optional true} [:maybe :string]]
+   [:display-name {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe keyword?]]
+   [:semantic-type {:optional true} [:maybe keyword?]]
    [:temporal-unit {:optional true} [:maybe keyword?]]
-   [:binning {:optional true} [:maybe :map]]])
+   [:binning {:optional true} [:maybe ::lib-metric.schema/binning]]])
 
 (mr/def ::dimension-ref-node
   "A reference to a dimension, used in filters and group-by."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension-ref]]
    [:dimension-id ::lib-metric.schema/dimension-id]
    [:options {:optional true} [:maybe ::dimension-ref-options]]])
 
 (mr/def ::dimension-expression-node
   "A dimension reference wrapped in an expression (e.g. temporal extraction like :get-day-of-week)."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension-expression]]
    [:expression-op keyword?]
    [:dimension ::dimension-ref-node]
-   [:args {:optional true} [:maybe [:sequential :any]]]])
+   [:args {:optional true} [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal]]]]])
 
 (mr/def ::dimension-or-expression
   "A dimension reference or an expression wrapping one."
@@ -65,7 +74,7 @@
 
 (mr/def ::dimension-mapping-node
   "Connects a dimension to a physical column."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/dimension-mapping]]
    [:dimension-id ::lib-metric.schema/dimension-id]
    [:table-id {:optional true} [:maybe pos-int?]]
@@ -74,40 +83,40 @@
 ;;; -------------------- Aggregation Nodes --------------------
 
 (mr/def ::aggregation-count
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/count]]
    [:column {:optional true} [:maybe ::column-node]]])
 
 (mr/def ::aggregation-sum
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/sum]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-avg
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/avg]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-min
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/min]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-max
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/max]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-distinct
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/distinct]]
    [:column ::column-node]])
 
 (mr/def ::aggregation-mbql
   "For complex/custom aggregations that don't fit standard types."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :aggregation/mbql]]
-   [:clause :any]])
+   [:clause ::lib.schema.mbql-clause/clause]])
 
 (mr/def ::aggregation-node
   "Union of all aggregation node types."
@@ -124,58 +133,58 @@
 
 (mr/def ::filter-comparison
   "Comparison filter (=, !=, <, <=, >, >=)."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/comparison]]
    [:operator [:enum := :!= :< :<= :> :>=]]
    [:dimension ::dimension-or-expression]
-   [:values [:sequential :any]]])
+   [:values [:sequential ::lib.schema.literal/literal]]])
 
 (mr/def ::filter-between
   "Between filter for range checks."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/between]]
    [:dimension ::dimension-or-expression]
-   [:min :any]
-   [:max :any]])
+   [:min ::lib.schema.literal/literal]
+   [:max ::lib.schema.literal/literal]])
 
 (mr/def ::filter-string
   "String filter operations."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/string]]
    [:operator [:enum :contains :starts-with :ends-with :does-not-contain]]
    [:dimension ::dimension-or-expression]
    [:value string?]
-   [:options {:optional true} [:map [:case-sensitive {:optional true} [:maybe boolean?]]]]])
+   [:options {:optional true} [:map {:closed true} [:case-sensitive {:optional true} [:maybe boolean?]]]]])
 
 (mr/def ::filter-null
   "Null/empty check filter."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/null]]
    [:operator [:enum :is-null :not-null :is-empty :not-empty]]
    [:dimension ::dimension-or-expression]])
 
 (mr/def ::filter-in
   "Multi-value filter (in, not-in)."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/in]]
    [:operator [:enum :in :not-in]]
    [:dimension ::dimension-or-expression]
-   [:values [:sequential :any]]])
+   [:values [:sequential ::lib.schema.literal/literal]]])
 
 (mr/def ::filter-inside
   "Geographic bounding-box filter."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/inside]]
    [:lat-dimension ::dimension-or-expression]
    [:lon-dimension ::dimension-or-expression]
-   [:north :any]
-   [:east :any]
-   [:south :any]
-   [:west :any]])
+   [:north number?]
+   [:east number?]
+   [:south number?]
+   [:west number?]])
 
 (mr/def ::filter-temporal
   "Temporal filter for time-based operations."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/temporal]]
    [:operator [:enum :time-interval :relative-time-interval]]
    [:dimension ::dimension-or-expression]
@@ -186,9 +195,9 @@
 
 (mr/def ::filter-mbql
   "Raw MBQL filter clause passthrough for source filters."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :filter/mbql]]
-   [:clause :any]])
+   [:clause ::lib.schema.mbql-clause/clause]])
 
 ;; Forward declare for recursive references
 (mr/def ::filter-node
@@ -202,13 +211,13 @@
    ::filter-in
    ::filter-temporal
    ::filter-mbql
-   [:map
+   [:map {:closed true}
     [:node/type [:= :filter/and]]
     [:children [:sequential [:ref ::filter-node]]]]
-   [:map
+   [:map {:closed true}
     [:node/type [:= :filter/or]]
     [:children [:sequential [:ref ::filter-node]]]]
-   [:map
+   [:map {:closed true}
     [:node/type [:= :filter/not]]
     [:child [:ref ::filter-node]]]])
 
@@ -216,23 +225,23 @@
 
 (mr/def ::join-node
   "A join from the source metric's query, preserved as raw MBQL 5."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/join]]
-   [:mbql-join :any]])
+   [:mbql-join ::lib.schema.join/join]])
 
 ;;; -------------------- Source Nodes --------------------
 
 (defn- source-node-schema
   "Create a source node schema with the given node-type keyword."
   [node-type]
-  [:map
+  [:map {:closed true}
    [:node/type [:= node-type]]
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
    [:source-card-id {:optional true} [:maybe pos-int?]]
-   [:metadata {:optional true} [:maybe :map]]
+   [:metadata {:optional true} [:maybe [:or ::lib.schema.metadata/metric ::lib.schema.metadata/measure]]]
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
 
@@ -253,7 +262,7 @@
 (mr/def ::source-query
   "A single-source query node with source, dimensions, mappings, filters, and group-by.
    Used inside expression leaves as the compilable sub-query."
-  [:map
+  [:map {:closed true}
    [:node/type [:= :ast/source-query]]
    [:source ::source-node]
    [:dimensions [:sequential ::dimension-node]]

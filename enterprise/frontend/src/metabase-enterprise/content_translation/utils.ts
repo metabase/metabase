@@ -4,14 +4,15 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useLocale } from "metabase/common/hooks";
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import type {
+  ContentTranslationFunction,
+  TranslatableSingleSeries,
+} from "metabase/content-translation/types";
 import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type {
   DictionaryArray,
-  MaybeTranslatedSeries,
   RowValue,
-  Series,
   SeriesSettings,
 } from "metabase-types/api";
 
@@ -211,7 +212,7 @@ export const useTranslateFieldValuesInHoveredObject = (
 
 export const translateFieldValuesInSeries = (
   tc: ContentTranslationFunction,
-): ((series: Series) => MaybeTranslatedSeries) => {
+): (<T extends TranslatableSingleSeries>(series: T[]) => T[]) => {
   if (!hasTranslations(tc)) {
     return (series) => series;
   }
@@ -220,12 +221,11 @@ export const translateFieldValuesInSeries = (
       if (!singleSeries.data) {
         return singleSeries;
       }
+      const data = singleSeries.data;
       const untranslatedRows = singleSeries.data.rows.concat();
 
       const defaultFn = () => {
-        return singleSeries.data.rows.map((row) =>
-          row.map((value) => tc(value)),
-        );
+        return data.rows.map((row) => row.map((value) => tc(value)));
       };
 
       const translatedRows: RowValue[][] = match(singleSeries.card?.display)
@@ -245,7 +245,7 @@ export const translateFieldValuesInSeries = (
           //   ...
           // ]
           //
-          return singleSeries.data.rows.map((row) =>
+          return data.rows.map((row) =>
             row.map((value) => {
               if (
                 typeof value === "string" &&
@@ -257,24 +257,27 @@ export const translateFieldValuesInSeries = (
             }),
           );
         })
-        .with(P.when(isCartesianChart), () => {
-          // cartesian charts have series settings that can provide display names
-          // for fields, which we should translate if available
-          const seriesSettings =
-            singleSeries.card.visualization_settings?.series_settings ?? {};
+        .with(
+          P.when((display) => display && isCartesianChart(display)),
+          () => {
+            // cartesian charts have series settings that can provide display names
+            // for fields, which we should translate if available
+            const seriesSettings =
+              singleSeries.card.visualization_settings?.series_settings ?? {};
 
-          return singleSeries.data.rows.map((row) =>
-            row.map((value) => {
-              if (
-                typeof value === "string" &&
-                seriesSettings[value]?.title !== undefined
-              ) {
-                return tc(seriesSettings[value].title);
-              }
-              return tc(value);
-            }),
-          );
-        })
+            return data.rows.map((row) =>
+              row.map((value) => {
+                if (
+                  typeof value === "string" &&
+                  seriesSettings[value]?.title !== undefined
+                ) {
+                  return tc(seriesSettings[value].title);
+                }
+                return tc(value);
+              }),
+            );
+          },
+        )
         .otherwise(defaultFn);
 
       return {
@@ -288,11 +291,13 @@ export const translateFieldValuesInSeries = (
     });
 };
 
-export const translateCardNames = (tc: ContentTranslationFunction) => {
+export const translateCardNames = (
+  tc: ContentTranslationFunction,
+): (<T extends TranslatableSingleSeries>(series: T[]) => T[]) => {
   if (!hasTranslations(tc)) {
-    return (series: Series) => series;
+    return (series) => series;
   }
-  return (series: Series) =>
+  return (series) =>
     series.map((s) =>
       s.card?.name ? I.setIn(s, ["card", "name"], tc(s.card.name)) : s,
     );
@@ -309,7 +314,7 @@ export const translateCardNames = (tc: ContentTranslationFunction) => {
  * // ➜ series_settings: { revenue: { title: tc("Revenue") } }
  */
 export const translateSeriesNames = (tc: ContentTranslationFunction) => {
-  return (series: Series) => {
+  return <T extends TranslatableSingleSeries>(series: T[]): T[] => {
     if (!hasTranslations(tc)) {
       return series;
     }
@@ -318,7 +323,7 @@ export const translateSeriesNames = (tc: ContentTranslationFunction) => {
       const seriesSettings =
         singleSeries.card?.visualization_settings?.series_settings;
       const metrics =
-        singleSeries.card?.visualization_settings["graph.metrics"];
+        singleSeries.card?.visualization_settings?.["graph.metrics"];
 
       if (!seriesSettings || !metrics) {
         return singleSeries;
@@ -352,14 +357,17 @@ const curriedTranslatedDisplayNames = (
   tc: ContentTranslationFunction,
   locale: string,
 ) => {
-  return (series: Series) => {
+  return <T extends TranslatableSingleSeries>(series: T[]): T[] => {
     return translateDisplayNames({ obj: series, tc, locale });
   };
 };
 
-const identity = (series: Series) => series;
+const identity = <T extends TranslatableSingleSeries>(series: T[]): T[] =>
+  series;
 
-export const useTranslateSeries = (series: Series) => {
+export const useTranslateSeries = <T extends TranslatableSingleSeries>(
+  series: T[],
+): T[] => {
   const tc = useTranslateContent();
   const { locale } = useLocale();
 

@@ -1,25 +1,45 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import {
+  PUBLISHED_QUESTION_ENTITY_ID,
   createMockStore,
-  mockFetchTableMetadata,
-  mockGetMetadataUnfiltered,
+  mockFetchTableMetadataAndForeignKeys,
   mockRunRtkEndpoint,
+  mockSelectMetadataProviderUnfiltered,
   resetTestState,
   stagesOf,
 } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import * as Lib from "metabase-lib";
+import { isObject } from "metabase-types/guards";
 
-import { avg, breakout, count, filter, orderBy, sum } from "..";
+import {
+  aggregations,
+  avg,
+  breakout,
+  count,
+  distinct,
+  filter,
+  orderBy,
+  sum,
+} from "..";
+
+import { TEST_METADATA, TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 
 describe("resolveDatasetQuery", () => {
   it("loads table metadata and passes the public source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
+    const createdAtMonth = breakout(
+      TEST_SCHEMA.tables.orders.fields.createdAt,
+      {
+        unit: "month",
+      },
+    );
 
     const datasetQuery = await resolveDatasetQueryInBundle(store)({
       source: TEST_SCHEMA.tables.orders,
@@ -32,25 +52,21 @@ describe("resolveDatasetQuery", () => {
         filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
       ],
       aggregations: [count(), sum(TEST_SCHEMA.tables.orders.fields.amount)],
-      breakouts: [
-        breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { unit: "month" }),
-      ],
-      orderBys: [
-        orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
-          unit: "month",
-        }),
-      ],
+      breakouts: [createdAtMonth],
+      orderBys: [orderBy(createdAtMonth, "desc")],
       limit: 100,
     });
 
-    expect(mockFetchTableMetadata).toHaveBeenCalledWith({ id: 1 });
+    expect(mockFetchTableMetadataAndForeignKeys).toHaveBeenCalledWith({
+      id: 1,
+    });
 
     expect(store.dispatch).toHaveBeenCalledWith({
-      type: "fetchTableMetadata",
+      type: "fetchTableMetadataAndForeignKeys",
       payload: 1,
     });
 
-    expect(mockGetMetadataUnfiltered).toHaveBeenCalledWith({});
+    expect(mockSelectMetadataProviderUnfiltered).toHaveBeenCalledWith({}, 1);
 
     expect(datasetQuery).toMatchObject({
       "lib/type": "mbql/query",
@@ -95,6 +111,54 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("passes breakout and orderBy binning through Lib.createTestQuery", async () => {
+    const { amount } = TEST_SCHEMA.tables.orders.fields;
+    const binnedAmountBreakout = breakout(amount, {
+      binning: { strategy: "num-bins", numBins: 10 },
+    });
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [binnedAmountBreakout],
+      orderBys: [orderBy(binnedAmountBreakout, "asc")],
+    });
+
+    const binnedAmount = [
+      "field",
+      expect.objectContaining({
+        binning: { strategy: "num-bins", "num-bins": 10 },
+      }),
+      102,
+    ];
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      breakout: [binnedAmount],
+      "order-by": [["asc", expect.anything(), binnedAmount]],
+    });
+  });
+
+  it("passes default binning on a plain breakout object through Lib.createTestQuery", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [
+        {
+          ...TEST_SCHEMA.tables.orders.fields.amount,
+          binning: { strategy: "default" },
+        },
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].breakout).toEqual([
+      [
+        "field",
+        expect.objectContaining({ binning: { strategy: "default" } }),
+        102,
+      ],
+    ]);
+  });
+
   it("passes generated table Measures to Lib.createTestQuery measure aggregations", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.tables.orders,
@@ -137,10 +201,12 @@ describe("resolveDatasetQuery", () => {
         ),
       ],
       aggregations: [
-        TEST_SCHEMA.metrics.revenue,
+        aggregations.metric(TEST_SCHEMA.metrics.revenue, { name: "revenue" }),
         count(),
         sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount),
-        TEST_SCHEMA.tables.orders.measures.revenue,
+        aggregations.measure(TEST_SCHEMA.tables.orders.measures.revenue, {
+          name: "orders",
+        }),
       ],
       breakouts: [
         breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
@@ -150,7 +216,9 @@ describe("resolveDatasetQuery", () => {
       limit: 100,
     });
 
-    expect(mockFetchTableMetadata).toHaveBeenCalledWith({ id: 1 });
+    expect(mockFetchTableMetadataAndForeignKeys).toHaveBeenCalledWith({
+      id: 1,
+    });
 
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       1,
@@ -180,10 +248,10 @@ describe("resolveDatasetQuery", () => {
             ["=", expect.anything(), ["field", expect.anything(), 101], "paid"],
           ],
           aggregation: [
-            ["metric", expect.anything(), 31],
+            ["metric", expect.objectContaining({ name: "revenue" }), 31],
             ["count", expect.anything()],
             ["sum", expect.anything(), ["field", expect.anything(), 102]],
-            ["measure", expect.anything(), 21],
+            ["measure", expect.objectContaining({ name: "orders" }), 21],
           ],
           breakout: [
             [
@@ -221,6 +289,28 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("filters the dynamic stage on an FK-joined dimension of the static query", async () => {
+    const product = TEST_SCHEMA.metrics.revenue.dimensions.orders.product;
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [TEST_SCHEMA.metrics.revenue],
+        breakouts: [breakout(product)],
+      },
+      { filters: [filter(product, "=", "Widget")] },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      [
+        "=",
+        expect.anything(),
+        ["field", expect.anything(), expect.stringContaining("NAME")],
+        "Widget",
+      ],
+    ]);
+  });
+
   it("passes generated metric dimension orderBys through Lib.createTestQuery", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.tables.orders,
@@ -232,9 +322,10 @@ describe("resolveDatasetQuery", () => {
       ],
       orderBys: [
         orderBy(
-          TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt,
+          breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+            unit: "month",
+          }),
           "desc",
-          { unit: "month" },
         ),
       ],
       limit: 12,
@@ -276,7 +367,7 @@ describe("resolveDatasetQuery", () => {
       source: TEST_SCHEMA.questions.ordersQuestion,
     });
 
-    expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+    expect(mockFetchTableMetadataAndForeignKeys).not.toHaveBeenCalled();
 
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       1,
@@ -399,8 +490,8 @@ describe("resolveDatasetQuery", () => {
       filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     });
 
-    // The generated field's `tableId`/`sourceName` scope it to the orders table;
-    // keeping them would stop it matching the question's own STATUS column.
+    // The question's STATUS column comes from the orders table, so the table
+    // field's `tableId` still matches it.
     expect(stagesOf(datasetQuery)[0].filters).toEqual([
       ["=", expect.anything(), ["field", expect.anything(), "STATUS"], "paid"],
     ]);
@@ -423,6 +514,43 @@ describe("resolveDatasetQuery", () => {
         ["desc", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
       ],
       limit: 5,
+    });
+  });
+
+  // `/api/card/:id/query_metadata` returns empty databases/tables/fields for a
+  // user who may read the card but not create queries. Lib then cannot resolve a
+  // database and omits `:database`, which `/api/dataset` rejects outright.
+  //
+  // Built without spreading `TEST_METADATA`: `Lib.metadataProvider` caches the
+  // provider on the metadata object itself, so copying that key would hand back
+  // a provider built from the full metadata and the empty databases would be
+  // ignored.
+  it("sets the database when the user cannot see database metadata", async () => {
+    const metadataWithoutDatabases = {
+      databases: {},
+      tables: {},
+      fields: {},
+      segments: {},
+      measures: {},
+      questions: TEST_METADATA.questions,
+    };
+
+    mockSelectMetadataProviderUnfiltered.mockImplementation(
+      (_state, databaseId) =>
+        Lib.metadataProvider(
+          databaseId,
+          // The fixture supplies the plain metadata shape instead of the Metadata class.
+          metadataWithoutDatabases as unknown as Lib.Metadata,
+        ),
+    );
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [{ "source-card": 41 }],
     });
   });
 
@@ -542,5 +670,359 @@ describe("resolveDatasetQuery", () => {
         },
       ],
     });
+  });
+});
+
+describe("resolveDatasetQuery aggregation column names", () => {
+  const orders = TEST_SCHEMA.tables.orders;
+
+  it("refuses aggregations that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count(), distinct(orders.fields.status)],
+      }),
+    ).rejects.toThrow(
+      'Breakouts and aggregations need unique column names: Count, Distinct values of Status share the column name "count". Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric.',
+    );
+  });
+
+  it("accepts aggregations named apart", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [
+        count(),
+        distinct(orders.fields.status, { name: "statuses" }),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["count", expect.anything()],
+      [
+        "distinct",
+        expect.objectContaining({ name: "statuses" }),
+        ["field", expect.anything(), 101],
+      ],
+    ]);
+  });
+
+  it("leaves a measure's own name out of its column name", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [orders.measures.revenue],
+    });
+
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["measure", expect.not.objectContaining({ name: "Revenue" }), 21],
+    ]);
+  });
+
+  it("refuses a measure that shares a column name with another aggregation", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [orders.measures.revenue, count()],
+      }),
+    ).rejects.toThrow('share the column name "count"');
+  });
+
+  it("passes a measure through aggregations.measure unchanged without a name", () => {
+    expect(aggregations.measure(orders.measures.revenue)).toBe(
+      orders.measures.revenue,
+    );
+  });
+
+  it("names a measure's column with aggregations.measure", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [
+        aggregations.measure(orders.measures.revenue, { name: "revenue" }),
+        count(),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["measure", expect.objectContaining({ name: "revenue" }), 21],
+      ["count", expect.anything()],
+    ]);
+  });
+
+  it("refuses an orderBy on a column two aggregations share with the same message", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count(), distinct(orders.fields.status)],
+        breakouts: [breakout(orders.fields.createdAt, { unit: "month" })],
+        orderBys: [{ type: "column", name: "count" }],
+      }),
+    ).rejects.toThrow('share the column name "count"');
+  });
+
+  it("refuses named breakouts that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count()],
+        breakouts: [
+          {
+            type: "breakout",
+            name: "period",
+            column: { ...orders.fields.createdAt, unit: "month" },
+          },
+          {
+            type: "breakout",
+            name: "period",
+            column: { ...orders.fields.createdAt, unit: "year" },
+          },
+        ],
+      }),
+    ).rejects.toThrow('share the column name "period"');
+  });
+
+  it("refuses a named breakout that shares an aggregation's column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count()],
+        breakouts: [
+          { type: "breakout", name: "count", column: orders.fields.status },
+        ],
+      }),
+    ).rejects.toThrow('share the column name "count"');
+  });
+
+  it("refuses a field broken out twice without names", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: orders,
+        aggregations: [count()],
+        breakouts: [
+          breakout(orders.fields.createdAt, { unit: "month" }),
+          breakout(orders.fields.createdAt, { unit: "year" }),
+        ],
+      }),
+    ).rejects.toThrow('share the column name "CREATED_AT"');
+  });
+
+  it("accepts a field broken out twice with names", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [count()],
+      breakouts: [
+        breakout(orders.fields.createdAt, { unit: "month", name: "month" }),
+        breakout(orders.fields.createdAt, { unit: "year", name: "year" }),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].breakout).toHaveLength(2);
+  });
+
+  it("refuses dynamic aggregations that share a column name", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(
+        {
+          source: orders,
+          aggregations: [count()],
+          breakouts: [breakout(orders.fields.status)],
+        },
+        {
+          aggregations: [count(), distinct({ type: "column", name: "STATUS" })],
+        },
+      ),
+    ).rejects.toThrow('share the column name "count"');
+  });
+});
+
+describe("resolveDatasetQuery time-interval filters", () => {
+  it("passes a relative date window as an amount and a unit", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      filters: [
+        filter(TEST_SCHEMA.tables.orders.fields.createdAt, "time-interval", [
+          -24,
+          "month",
+        ]),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].filters).toEqual([
+      [
+        "time-interval",
+        expect.anything(),
+        ["field", expect.anything(), 103],
+        -24,
+        "month",
+      ],
+    ]);
+  });
+});
+
+describe("resolveDatasetQuery named breakouts", () => {
+  const orders = TEST_SCHEMA.tables.orders;
+  const createdMonth = breakout(orders.fields.createdAt, {
+    unit: "month",
+    name: "created_month",
+  });
+
+  it("orders by a named breakout on a joined field through its foreign key", async () => {
+    const productName = breakout(
+      TEST_SCHEMA.metrics.revenue.dimensions.orders.product,
+      { name: "product_name" },
+    );
+
+    expect(orderBy(productName, "desc")).toEqual({
+      type: "column",
+      name: "product_name",
+      sourceFieldId: 104,
+      direction: "desc",
+    });
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [count()],
+      breakouts: [productName],
+      orderBys: [orderBy(productName, "desc")],
+    });
+
+    expect(stagesOf(datasetQuery)[0]["order-by"]).toEqual([
+      [
+        "desc",
+        expect.anything(),
+        [
+          "field",
+          expect.objectContaining({
+            name: "product_name",
+            "source-field": 104,
+          }),
+          202,
+        ],
+      ],
+    ]);
+  });
+
+  it("names a breakout's result column with breakout's name option", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [count()],
+      breakouts: [createdMonth],
+      orderBys: [orderBy(createdMonth, "desc")],
+    });
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      breakout: [
+        [
+          "field",
+          expect.objectContaining({
+            name: "created_month",
+            "temporal-unit": "month",
+          }),
+          103,
+        ],
+      ],
+      "order-by": [
+        [
+          "desc",
+          expect.anything(),
+          ["field", expect.objectContaining({ name: "created_month" }), 103],
+        ],
+      ],
+    });
+  });
+
+  it("resolves a dynamic column by name, ignoring a field ID from another instance", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: orders,
+        aggregations: [count()],
+        breakouts: [breakout(orders.fields.status)],
+      },
+      {
+        filters: [
+          filter({ ...orders.fields.status, fieldId: 999999 }, "=", "paid"),
+        ],
+      },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      ["=", expect.anything(), ["field", expect.anything(), "STATUS"], "paid"],
+    ]);
+  });
+
+  it("lets a dynamic stage refer to a named breakout by its name", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
+      {
+        source: orders,
+        aggregations: [count()],
+        breakouts: [createdMonth],
+      },
+      {
+        filters: [
+          filter({ type: "column", name: "created_month" }, "not-null"),
+        ],
+      },
+    );
+
+    expect(stagesOf(datasetQuery)[1].filters).toEqual([
+      [
+        "not-null",
+        expect.anything(),
+        ["field", expect.anything(), "created_month"],
+      ],
+    ]);
+  });
+});
+
+describe("resolveDatasetQuery in a data app", () => {
+  const ordersCountQuery = {
+    entityId: PUBLISHED_QUESTION_ENTITY_ID,
+    source: TEST_SCHEMA.tables.orders,
+    aggregations: [count()],
+  };
+
+  beforeEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+    mockRunRtkEndpoint.mockImplementation(async (request) => {
+      if (isObject(request) && "card" in request) {
+        return {
+          [PUBLISHED_QUESTION_ENTITY_ID]: {
+            id: 41,
+            type: "card",
+            status: "ok",
+          },
+        };
+      }
+      return isObject(request) && request.id === 41
+        ? TEST_METADATA.questions[41]
+        : undefined;
+    });
+  });
+
+  afterEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+    EMBEDDING_SDK_CONFIG.isDataAppDev = false;
+  });
+
+  it("runs the question its entity ID names, which holds the query's clauses", async () => {
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(ordersCountQuery);
+
+    expect(stagesOf(datasetQuery)).toEqual([
+      expect.objectContaining({ "source-card": 41 }),
+    ]);
+    expect(stagesOf(datasetQuery)[0]).not.toHaveProperty("aggregation");
+  });
+
+  it("runs the table query itself in the dev preview", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(ordersCountQuery);
+
+    expect(stagesOf(datasetQuery)).toEqual([
+      expect.objectContaining({
+        "source-table": 1,
+        aggregation: [expect.anything()],
+      }),
+    ]);
   });
 });

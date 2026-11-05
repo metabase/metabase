@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase-enterprise.mfa.settings :as mfa.settings.ee]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as auth-identity.provider]
+   [metabase.mfa.settings :as mfa.settings.oss]
    [metabase.test :as mt]))
 
 (defn- with-enrolled-user! [f]
@@ -106,10 +108,13 @@
                         ;; child must be classified here on its own when it ships
                         :provider/emailed-secret                :exempt
                         ;; the second factor itself, never a first factor
-                        :provider/totp                          :exempt}]
+                        :provider/totp                          :exempt
+                        ;; not a login provider: it attributes the `core_session` rows an MCP handshake creates,
+                        ;; which never run `login!`; the user proved their identity to obtain the OAuth grant
+                        :provider/mcp                           :exempt}]
     (testing "every registered provider has a deliberate MFA classification"
       (is (= (set (keys classification))
-             (set (descendants :metabase.auth-identity.provider/provider)))))
+             (set (auth-identity/descendants :metabase.auth-identity.provider/provider)))))
     (testing "the gate's behavior matches each classification for an enrolled user"
       (mt/with-premium-features #{:multi-factor-auth}
         (mt/with-temporary-setting-values [mfa-enforcement :optional]
@@ -138,7 +143,7 @@
                    (:success? (auth-identity.provider/apply-mfa-gate :provider/password result)))
                 "sanity: challenged before the override")
             (mt/with-temp-env-var-value! [mb-mfa-enforcement "off"]
-              (is (false? (mfa.settings/mfa-enabled?))
+              (is (false? (mfa.settings.ee/mfa-enabled?))
                   "the env var beats the DB value")
               (is (= result (auth-identity.provider/apply-mfa-gate :provider/password result))
                   "the gate no-ops, so the locked-out admin can log in"))))))))
@@ -148,17 +153,17 @@
     (testing "enabling (:optional) requires the :multi-factor-auth feature (setup is gated; enforcement is not)"
       (mt/with-premium-features #{}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"[Mm]ulti-factor"
-                              (mfa.settings/mfa-enforcement! :optional)))
-        (is (= :off (mfa.settings/mfa-enforcement)))))
+                              (mfa.settings.oss/mfa-enforcement! :optional)))
+        (is (= :off (mfa.settings.oss/mfa-enforcement)))))
     (testing "enabling works with the feature"
       (mt/with-premium-features #{:multi-factor-auth}
-        (mfa.settings/mfa-enforcement! :optional)
-        (is (= :optional (mfa.settings/mfa-enforcement)))))
+        (mfa.settings.oss/mfa-enforcement! :optional)
+        (is (= :optional (mfa.settings.oss/mfa-enforcement)))))
     (testing "setting :off never requires the feature — the lapsed-license escape hatch"
       (mt/with-premium-features #{}
-        (mfa.settings/mfa-enforcement! :off)
-        (is (= :off (mfa.settings/mfa-enforcement)))))
-    (testing "setting :required is rejected even with the feature — reserved for a future release"
+        (mfa.settings.oss/mfa-enforcement! :off)
+        (is (= :off (mfa.settings.oss/mfa-enforcement)))))
+    (testing "setting :required counts as enforcement"
       (mt/with-premium-features #{:multi-factor-auth}
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved"
-                              (mfa.settings/mfa-enforcement! :required)))))))
+        (mfa.settings.oss/mfa-enforcement! :required)
+        (is (= :required (mfa.settings.oss/mfa-enforcement)))))))

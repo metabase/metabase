@@ -13,6 +13,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
@@ -21,6 +22,8 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -171,7 +174,7 @@
 
 (defn distinct-field-values
   [id]
-  (field-values/distinct-values (t2/select-one :model/Field id)))
+  (field-values/distinct-values (t2/select-one :model/Field :id id)))
 
 (deftest distinct-values-test
   (testing "Correctly get distinct field values for text fields"
@@ -197,7 +200,7 @@
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values! [db field-values-id]
-  (sync/sync-database! db)
+  (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db))))
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test
@@ -266,6 +269,164 @@
         (is (not= (t/offset-date-time 2001 12)
                   (:last_used_at (t2/select-one :model/FieldValues :field_id (mt/id :categories :name) :type :full))))))))
 
+(deftest detached-fetch!-shares-in-flight-work-test
+  (testing "callers sharing a cache key wait on the one in-flight run instead of each starting their own,
+            so retrying a slow field values request does not pile up warehouse scans (GHY-2937)"
+    (let [runs    (atom 0)
+          thunk   (fn []
+                    (swap! runs inc)
+                    ;; hold the fetch open long enough that every caller reaches it while it is in flight
+                    (Thread/sleep 1000)
+                    ::values)
+          callers (doall (repeatedly 5 #(future (field-values/detached-fetch! ::shared-key thunk))))]
+      (is (= (repeat 5 ::values)
+             (map #(deref % 30000 ::timed-out) callers)))
+      (is (= 1 @runs)))))
+
+(deftest detached-fetch!-outlives-canceled-caller-test
+  (testing "a fetch runs to completion even after the caller stops waiting, e.g. when the HTTP request
+            that asked for the values is canceled (GHY-2937)"
+    (let [started  (promise)
+          release  (promise)
+          finished (promise)
+          caller   (future (field-values/detached-fetch!
+                            ::canceled-key
+                            (fn []
+                              (deliver started true)
+                              @release
+                              (deliver finished true))))]
+      @started
+      (is (true? (future-cancel caller)))
+      (deliver release true)
+      (is (true? (deref finished 10000 ::timed-out))))))
+
+(deftest detached-fetch!-always-completes-test
+  (testing "nothing may leave a registry entry undelivered — later callers for that key would park
+            on it forever, holding a request thread each (GHY-2937)"
+    ;; `detached-fetch!` pr-strs the cache key to log a failed fetch, so a key that refuses to print
+    ;; makes the logging itself throw. That is the one path that used to escape between dropping the
+    ;; registry entry and delivering the promise.
+    (let [unprintable (reify Object (toString [_] (throw (ex-info "unprintable" {}))))
+          registry    @#'field-values/in-flight-fetches
+          caller      (future (try
+                                (field-values/detached-fetch! unprintable #(throw (ex-info "boom" {})))
+                                (catch Throwable _ ::threw)))]
+      (is (= ::threw (deref caller 10000 ::timed-out)))
+      (is (not (contains? @registry unprintable)))
+      (testing "and the key is usable again afterwards"
+        (is (= ::ok (field-values/detached-fetch! unprintable (constantly ::ok))))))))
+
+(deftest detached-fetch!-sweeps-stalled-fetches-test
+  (testing "a fetch that outlives the max age is canceled and its waiters are failed, so no registry
+            entry can outlive its work (GHY-2937)"
+    (let [registry @#'field-values/in-flight-fetches
+          started  (promise)
+          release  (promise)
+          caller   (future (try
+                             (field-values/detached-fetch! ::stalled (fn []
+                                                                       (deliver started true)
+                                                                       @release))
+                             (catch Throwable _ ::threw)))]
+      @started
+      ;; the registry entry exists before the fetch starts, but its future is stored just after
+      ;; submission, so `started` can fire before :future-ref is populated
+      (let [stalled-future (tu/poll-until 10000 @(:future-ref (get @registry ::stalled)))]
+        ;; backdate the entry's timer so the next call through detached-fetch! sees it as stalled.
+        ;; Backdating this one entry rather than shortening the max age keeps the sweep from
+        ;; touching fetches other tests may have in flight.
+        (swap! registry update ::stalled update :timer - (* 24 60 60 1000 1000000))
+        (testing "the sweep runs on the next fetch, which is unaffected by it"
+          (is (= ::ok (field-values/detached-fetch! ::sweep-trigger (constantly ::ok)))))
+        (is (= ::threw (deref caller 10000 ::timed-out)))
+        (is (future-cancelled? stalled-future))
+        (is (not (contains? @registry ::stalled)))))))
+
+(deftest detached-fetch!-caps-registry-test
+  (testing "past the registry cap the fetch is refused rather than growing the registry, so nothing
+            outside this namespace has to bound it (GHY-2937)"
+    (let [release (promise)
+          started (promise)
+          ran     (atom false)]
+      (try
+        ;; a real in-flight fetch, so the joining case below goes through the public API rather than
+        ;; a hand-built registry entry
+        (let [holder (future (field-values/detached-fetch! ::held (fn []
+                                                                    (deliver started true)
+                                                                    @release)))]
+          @started
+          (binding [field-values/*max-in-flight-fetches* 0]
+            (testing "a new key is refused with a 503, and its work never runs"
+              (is (= 503 (try
+                           (field-values/detached-fetch! ::over-cap (fn [] (reset! ran true)))
+                           nil
+                           (catch clojure.lang.ExceptionInfo e
+                             (:status-code (ex-data e))))))
+              (is (false? @ran)))
+            (testing "but a caller joining a fetch already in flight is still admitted — it adds no
+                      registry entry, so the cap has no reason to turn it away"
+              (let [joining (promise)
+                    joiner  (future
+                              (deliver joining true)
+                              (field-values/detached-fetch! ::held (constantly ::should-not-run)))]
+                @joining
+                ;; the joiner has to reach the registry while ::held is still in flight; releasing the
+                ;; holder first would let it complete, and the joiner would then be a new key the cap
+                ;; refuses. It cannot return while `release` is undelivered, so a timeout here means
+                ;; it parked on the held fetch.
+                (is (= ::parked (deref joiner 1000 ::parked)))
+                (deliver release ::from-held)
+                (is (= ::from-held (deref joiner 10000 ::timed-out))))))
+          (is (= ::from-held (deref holder 10000 ::timed-out))))
+        (finally
+          (deliver release ::done))))))
+
+(deftest detached-fetch!-rethrows-test
+  (testing "an exception thrown by the fetch reaches the caller"
+    (is (thrown-with-msg? Exception #"oops"
+                          (field-values/detached-fetch! ::throwing-key #(throw (ex-info "oops" {})))))))
+
+(deftest get-or-create-full-field-values!-outlives-canceled-caller-test
+  (testing "FieldValues fetched on behalf of a canceled request still get saved to the app DB (GHY-2937)"
+    (mt/dataset test-data
+      (let [field-id             (mt/id :categories :name)
+            started              (promise)
+            release              (promise)
+            real-distinct-values (mt/original-fn #'field-values/distinct-values)]
+        (t2/delete! :model/FieldValues :field_id field-id :type :full)
+        (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [field]
+                                                                   (deliver started true)
+                                                                   @release
+                                                                   (real-distinct-values field))]
+          (let [caller (future (field-values/get-or-create-full-field-values!
+                                (t2/select-one :model/Field :id field-id)))]
+            @started
+            (is (true? (future-cancel caller)))
+            (deliver release true)
+            (is (seq (:values (tu/poll-until 10000
+                                             (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))))))
+
+(deftest create-or-update-full-field-values!-fetch-failure-test
+  (mt/dataset test-data
+    (let [field-id (mt/id :categories :name)
+          field    (t2/select-one :model/Field :id field-id)
+          cached   #(t2/select-one :model/FieldValues :field_id field-id :type :full)]
+      (field-values/get-or-create-full-field-values! field)
+      (let [before (cached)]
+        (is (seq (:values before)))
+        (testing "a failed warehouse scan must not be read as \"this field has no values\" and wipe
+                  the FieldValues we already have cached (GHY-2937)"
+          (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly nil)]
+            (is (= ::field-values/fv-fetch-failed
+                   (field-values/create-or-update-full-field-values! field))))
+          (is (= (:values before) (:values (cached)))))
+        (testing "a scan that genuinely comes back empty still clears the FieldValues"
+          (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values []})]
+            (is (= ::field-values/fv-deleted
+                   (field-values/create-or-update-full-field-values! field))))
+          (is (nil? (cached))))
+        ;; leave the shared test-data dataset as we found it
+        (field-values/get-or-create-full-field-values! field)))))
+
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
@@ -295,14 +456,14 @@
                                           :is_full_sync true
                                           :details      "{\"db\": \"mem:temp\"}"}]
          ;; Sync the database so we have the new table and it's fields
-         (sync/sync-database! db)
+         (sync/sync-database! (:id db))
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
                field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
                ;; Manually activate Field values since they are not created during sync (#53387)
                _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
            ;; Add in human readable values for remapping
-           (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
+           (is (t2/update! :model/FieldValues :id field-values-id {:human_readable_values ["a" "b" "c"]}))
            (let [expected-original-values {:values                [1 2 3]
                                            :human_readable_values ["a" "b" "c"]}
                  expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -339,7 +500,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
-             (t2/update! :model/FieldValues id {:human_readable_values {"1" "A", "2", "B"}})))))))
+             (t2/update! :model/FieldValues :id id {:human_readable_values {"1" "A", "2", "B"}})))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
@@ -406,7 +567,7 @@
                                [full-id {:type :sandbox, :hash_key "random-hash"}]]]
         (is (thrown-with-msg? ExceptionInfo
                               #"Can't update field_id, type, or hash_key for a FieldValues."
-                              (t2/update! :model/FieldValues id update-map)))))
+                              (t2/update! :model/FieldValues :id id update-map)))))
     (testing "The model hooks permits mention of the existing values"
       (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
                                [sandbox-id {:type :sandbox}]
@@ -415,7 +576,7 @@
                                [full-id {:hash_key nil}]
                                [full-id {:type :full, :hash_key nil}]
                                [sandbox-id {:type :sandbox, :hash_key "random-hash"}]]]
-        (is (some? (t2/update! :model/FieldValues id update-map)))))))
+        (is (some? (t2/update! :model/FieldValues :id id update-map)))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (doseq [explicitly-full? [false true]]
@@ -431,7 +592,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {:values [1 2 3]})
+    (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -440,7 +601,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
+    (t2/update! :model/FieldValues :id (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
 (deftest select-coherence-test
@@ -681,7 +842,7 @@
                    :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
                                                 :parent_id parent-id}]
       (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
-        (with-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
                  (distinct-batch/run-distinct-batch table fields))))))))

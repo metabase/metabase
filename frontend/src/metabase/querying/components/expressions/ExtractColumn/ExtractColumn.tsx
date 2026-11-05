@@ -108,7 +108,7 @@ function ColumnPicker({
       )}
       <Box py="sm">
         {!onCancel && (
-          <Title p="md" pt="sm" pb={0} order={6}>
+          <Title p="lg" pt="sm" pb={0} order={6}>
             {t`Select column to extract from`}
           </Title>
         )}
@@ -190,7 +190,7 @@ function ExtractColumnButton({
       variant="subtle"
       type="button"
       p="sm"
-      mb="xs"
+      mb="xxs"
       className={styles.button}
       classNames={{
         inner: styles.inner,
@@ -202,7 +202,7 @@ function ExtractColumnButton({
         <Text color="text-primary" className={styles.content} fw="bold" p={0}>
           {title}
         </Text>
-        <Text color="text-disabled" size="sm" className={styles.example}>
+        <Text color="text-secondary" size="sm" className={styles.example}>
           {example}
         </Text>
       </Flex>

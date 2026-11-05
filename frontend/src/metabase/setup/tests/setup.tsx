@@ -8,6 +8,7 @@ import {
 } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
+  setupEnginesEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -15,18 +16,16 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockSetupState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SetupStep } from "metabase/redux/store";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
   TokenFeatures,
   UsageReason,
 } from "metabase-types/api";
 import {
+  createMockEngines,
   createMockLlmProviderField,
   createMockLlmProviderType,
   createMockSettings,
@@ -106,6 +105,8 @@ export async function setup({
   setupLlmProviderTypesEndpoint([ANTHROPIC_TYPE, METABASE_TYPE]);
   setupLlmProvidersEndpoint([]);
   setupLlmModelsEndpoint([]);
+
+  setupEnginesEndpoint(createMockEngines());
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 

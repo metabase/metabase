@@ -30,9 +30,9 @@ export const FlatLayout = ({ cards }: FlatLayoutProps) => {
   const otherCards = visibleCards.filter((c) => c.display !== "scalar");
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {scalarCards.length > 0 && (
-        <SimpleGrid cols={Math.min(scalarCards.length, 4)} spacing="md">
+        <SimpleGrid cols={Math.min(scalarCards.length, 4)} spacing="lg">
           {scalarCards.map((card) => (
             <ScalarCard key={card.id} card={card} />
           ))}

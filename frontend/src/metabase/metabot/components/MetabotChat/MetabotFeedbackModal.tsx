@@ -5,15 +5,14 @@ import * as Yup from "yup";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
-import { getMetabotId } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
 
-import { issueTypeOptions } from "./feedback-issue-types";
+import { getIssueTypeOptions } from "./feedback-issue-types";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
@@ -65,14 +64,12 @@ export const MetabotFeedbackModal = ({
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
   const metabotName = useSetting("metabot-name");
-  const metabotId = useSelector(getMetabotId);
 
   const handleSubmit = (values: {
     freeform_feedback: string;
     issue_type?: MetabotIssueType | "";
   }) => {
     const base = {
-      metabot_id: metabotId,
       message_id: messageId,
       freeform_feedback: values.freeform_feedback,
     };
@@ -89,6 +86,7 @@ export const MetabotFeedbackModal = ({
 
   return (
     <Modal
+      density="relaxed"
       opened
       onClose={onClose}
       size="md"
@@ -104,18 +102,18 @@ export const MetabotFeedbackModal = ({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="md">
+          <Stack gap="xl">
             {!positive && (
-              <Stack gap="xs">
+              <Stack gap="xxs">
                 <Text>{t`What kind of issue are you reporting? (optional)`}</Text>
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
-                  data={issueTypeOptions}
+                  data={getIssueTypeOptions()}
                 />
               </Stack>
             )}
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
@@ -136,16 +134,15 @@ export const MetabotFeedbackModal = ({
               {c("{0} is the name of the application, usually 'Metabase'")
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>
-
-            <Group justify="flex-end" gap="md" mt="md">
-              <Button variant="subtle" onClick={onClose}>
-                {t`Cancel`}
-              </Button>
-              <Button variant="filled" type="submit">{c(
-                "This is a verb, not a noun",
-              ).t`Submit`}</Button>
-            </Group>
           </Stack>
+          <Modal.Footer>
+            <Button variant="subtle" color="neutral" onClick={onClose}>
+              {t`Cancel`}
+            </Button>
+            <Button variant="filled" type="submit">{c(
+              "This is a verb, not a noun",
+            ).t`Submit`}</Button>
+          </Modal.Footer>
         </Form>
       </FormProvider>
     </Modal>

@@ -40,12 +40,20 @@ export interface MajorVersionSupport {
   eol: string;
 }
 
+export interface AlertUpgradeVersion {
+  min: string;
+  fixed: string;
+  message: string;
+  id?: string;
+}
+
 export interface VersionInfoFile {
   latest: VersionInfo;
   beta?: VersionInfo;
   nightly?: VersionInfo;
   older: VersionInfo[];
   major_version_support?: MajorVersionSupport[];
+  alert_upgrade_versions?: AlertUpgradeVersion[];
 }
 
 export type Issue = {
@@ -71,13 +79,6 @@ export type Milestone = {
   state: "open" | "closed";
   title: string;
   description: string | null;
-};
-
-export type Commit = {
-  sha: string;
-  commit: {
-    message: string;
-  };
 };
 
 export type Tag = {

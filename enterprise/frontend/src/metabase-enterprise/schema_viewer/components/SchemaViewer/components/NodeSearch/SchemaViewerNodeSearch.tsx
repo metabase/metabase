@@ -140,13 +140,13 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
               >
                 <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
                   <Text className={S.label}>{item.label}</Text>
-                  <Group gap="xs" wrap="nowrap" className={S.fieldCount}>
-                    <Text c="text-disabled" fz="xs">
+                  <Group gap="xxs" wrap="nowrap" className={S.fieldCount}>
+                    <Text c="text-secondary" fz="xs">
                       {item.fkCount}
                     </Text>
                     <FixedSizeIcon
                       name="connections"
-                      c="text-disabled"
+                      c="text-secondary"
                       size={12}
                     />
                   </Group>

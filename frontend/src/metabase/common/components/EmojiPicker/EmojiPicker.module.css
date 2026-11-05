@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 17rem;
   width: 17rem;
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
 
   /*
   Make emoji background depend on base emoji color
@@ -99,6 +99,6 @@
   padding-block: var(--mantine-spacing-sm);
 
   [frimousse-row] {
-    padding-inline: var(--mantine-spacing-xs);
+    padding-inline: var(--mantine-spacing-xxs);
   }
 }

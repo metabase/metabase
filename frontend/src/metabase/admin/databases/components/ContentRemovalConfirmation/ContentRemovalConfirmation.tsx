@@ -34,7 +34,7 @@ const ContentRemovalConfirmation = ({
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {question > 0 && (
         <Checkbox
           label={ngettext(
@@ -86,8 +86,8 @@ const ContentRemovalConfirmation = ({
       {transform > 0 && (
         <Checkbox
           label={ngettext(
-            msgid`${transform} transform will stop working`,
-            `${transform} transforms will stop working`,
+            msgid`Delete ${transform} transform`,
+            `Delete ${transform} transforms`,
             transform,
           )}
           name="transform"

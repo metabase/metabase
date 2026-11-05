@@ -17,7 +17,7 @@
 (mr/def ::ExpandedSchedulesMap
   (mu/with-api-error-message
    [:map
-    {:error/message "Map of expanded schedule maps"}
+    {:closed true :error/message "Map of expanded schedule maps"}
     [:cache_field_values {:optional true} [:maybe u.cron/ScheduleMap]]
     [:metadata_sync      {:optional true} u.cron/ScheduleMap]]
    (deferred-tru "value must be a valid map of schedule maps for a DB.")))

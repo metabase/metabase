@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";

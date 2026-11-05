@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as resolve]
@@ -147,7 +148,7 @@
     ;;
     ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
     ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
-    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; same shape `metabase.models.serialization.resolve.default/import-table-fk` has always
     ;; used.
     (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
                    :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
@@ -176,7 +177,10 @@
               (is (= :unknown-table (:error d)))
               (is (= 400 (:status-code d)))
               (is (true? (:agent-error? d)))
-              (is (re-find #"read_resource" msg) "message points the LLM at read_resource to re-list")
+              (is (re-find #"No table found matching portable FK" msg)
+                  "the resolver states the miss (positive check, so an empty/unrelated message can't pass)")
+              (is (not (re-find #"read_resource|browse_data" msg))
+                  "the resolver states the miss; the calling surface owns the recovery sentence")
               (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
                 (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
                                          (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
@@ -201,7 +205,7 @@
         (testing "warm the provider's by-name cache while the table is still active"
           (is (= [true] (mapv :active (by-name))))
           (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
-        (t2/update! :model/Table (:id gone) {:active false})
+        (t2/update! :model/Table :id (:id gone) {:active false})
         (testing "the cache still surfaces the stale ACTIVE row by name"
           (is (= [true] (mapv :active (by-name)))))
         (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"
@@ -242,8 +246,10 @@
             (testing "ex-data carries only the rejected path — no candidates / schemas"
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
-            (testing "message points the LLM at read_resource for self-correction"
-              (is (re-find #"read_resource" msg)))))))))
+            (testing "the resolver states the miss without naming any surface's discovery tool"
+              (is (re-find #"No table found matching portable FK" msg)
+                  "positive check: the message actually states the miss")
+              (is (not (re-find #"read_resource|browse_data" msg))))))))))
 
 (deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"
@@ -459,6 +465,22 @@
     (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
       (is (= {:source-card card-entity-id}
              (resolve/export-mbql r {:source-card 500}))))))
+
+(deftest ^:parallel export-import-mbql-table-template-tag-test
+  (let [query    (-> (lib/native-query mp-simple "SELECT * FROM {{orders}}")
+                     (lib/with-template-tags {"orders" {:id           "c3f2d4b1-0f52-4f4e-9b1c-2f7d5a0e8c11"
+                                                        :name         "orders"
+                                                        :display-name "Orders"
+                                                        :type         :table
+                                                        :table-id     10}}))
+        exported (resolve/export-mbql (resolve.mp/export-resolver mp-simple) query)]
+    (testing "table template tag exports its table as portable path"
+      (is (= ["Sample" "PUBLIC" "ORDERS"]
+             (get-in exported [:stages 0 :template-tags 0 :table-id]))))
+    (testing "portable table path imports back to numeric table id"
+      (is (= 10
+             (get-in (resolve/import-mbql (resolve.mp/import-resolver mp-simple) exported)
+                     [:stages 0 :template-tags 0 :table-id]))))))
 
 ;;; ============================================================
 ;;; Not-yet-implemented methods
@@ -779,3 +801,80 @@
             (is (true? (:agent-error? d)))
             (is (= :cross-database-card (:error d)))
             (is (= 999 (:card-database-id d)))))))))
+
+;;; ============================================================
+;;; Numeric `source-card` — the read-check chokepoint (GHY-4410)
+;;; ============================================================
+
+(deftest ^:parallel import-fk-card-by-numeric-id-happy-path-test
+  (testing "on a numeric-id surface, a bare card id resolves to itself through the content store"
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [store (map-content-store {"someEntityId12345678x" {:id 4242 :database_id 1}})
+            ir    (resolve.mp/import-resolver mp-simple store)]
+        (is (= 4242 (resolve/import-fk ir 4242 'Card)))))))
+
+(deftest ^:parallel import-fk-card-by-numeric-id-consults-the-store-test
+  (testing (str "GHY-4410: the numeric branch must go THROUGH the content store, because the\n"
+                "agent-facing store is `read-checked` — that lookup is the permission check. A\n"
+                "store that returns nil (what `read-checked` yields for a card the caller cannot\n"
+                "read) must surface :unknown-card-id, never fall through to the card.")
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [;; empty store == the read-checked store's answer for a forbidden card
+            ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+        (try
+          (resolve/import-fk ir 4242 'Card)
+          (is false "expected throw — a numeric id that the store denies must not resolve")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-card-id (:error d)))
+              (is (= 4242 (:card-id d))))))))))
+
+(deftest ^:parallel import-fk-card-by-numeric-id-cross-database-test
+  (testing "the numeric branch carries the same cross-database guard as the portable one"
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [store (map-content-store {"someEntityId12345678y" {:id 99 :database_id 999}})
+            ir    (resolve.mp/import-resolver mp-simple store)]
+        (try
+          (resolve/import-fk ir 99 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :cross-database-card (:error d)))
+              (is (= 999 (:card-database-id d))))))))))
+
+(deftest ^:parallel import-fk-numeric-consults-store-for-every-content-model-test
+  (testing (str "GHY-4410 follow-up: the numeric branch must cover EVERY content model, not just\n"
+                "Card. A numeric metric / segment / measure ref reaches the resolver by the same\n"
+                "route a numeric `source-card` does, and the store lookup is the permission check —\n"
+                "so a model that skipped it would let an unreadable one through unchecked.\n"
+                "An empty store stands in for what `read-checked` returns when the caller may not\n"
+                "read the row.")
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+        (testing "Card (also the model metric refs resolve through)"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No saved question or model found with id"
+                                (resolve/import-fk ir 4242 'Card))))
+        (testing "Measure"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No measure found with id"
+                                (resolve/import-fk ir 4242 'Measure))))
+        (testing "Segment"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No segment found with id"
+                                (resolve/import-fk ir 4242 'Segment))))))))
+
+(deftest ^:parallel import-mbql-routes-numeric-content-refs-through-the-store-test
+  (testing (str "the same, one level up: `import-mbql`'s clause branches matched `portable-id?`,\n"
+                "which is string-only, so a numeric metric / segment / measure ref fell through\n"
+                "every branch and was never resolved at all — never reaching the store, never\n"
+                "read-checked. They now share one `content-ref?` guard, so no branch can be\n"
+                "forgotten.")
+    (binding [resolve/*numeric-ids-allowed?* true]
+      (let [ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
+        (doseq [[label clause] {"metric"  [:metric {} 4242]
+                                "segment" [:segment {} 4242]
+                                "measure" [:measure {} 4242]}]
+          (testing (str "a numeric " label " ref is resolved (and so permission-checked)")
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (resolve/import-mbql ir {:stages [{:aggregation [clause]}]}))
+                (str "a numeric " label " ref must not pass through unresolved"))))))))

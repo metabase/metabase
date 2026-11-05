@@ -17,6 +17,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.view-log.db :as view-log.db]
    [metabase.view-log.events.view-log :as events.view-log]
    [toucan2.core :as t2]))
 
@@ -88,6 +89,37 @@
         (is (= 1 (t2/count :model/ViewLog :user_id (u/id user) :model_id (u/id model)))
             "only the ad-hoc view is recorded")))))
 
+(deftest card-query-data-app-read-ee-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User user         {}
+                   :model/Card published    {:type :question :creator_id (u/id user)}
+                   :model/Card preview      {:type :question :creator_id (u/id user)}
+                   :model/Card sdk-question {:type :question :creator_id (u/id user)}
+                   :model/Card download     {:type :question :creator_id (u/id user)}]
+      (testing "An ad-hoc card-query a published data app runs on a question is recorded as a card view"
+        (sdk/with-client! ["data-app"]
+          (binding [sdk/*client-identifier* "product-reviews"]
+            (events/publish-event! :event/card-query
+                                   {:card-id (u/id published) :user-id (u/id user) :context :ad-hoc})))
+        (is (partial= {:user_id                     (u/id user)
+                       :model                       "card"
+                       :model_id                    (u/id published)
+                       :context                     :question
+                       :has_access                  true
+                       :embedding_client            "data-app"
+                       :embedding_client_identifier "product-reviews"}
+                      (latest-view (u/id user) (u/id published)))))
+      (testing "Other clients' ad-hoc card-queries aren't recorded, a data app's dev preview included"
+        (doseq [[client card] [["data-app-preview" preview] ["embedding-sdk-react" sdk-question]]]
+          (testing client
+            (sdk/with-client! [client]
+              (events/publish-event! :event/card-query {:card-id (u/id card) :user-id (u/id user) :context :ad-hoc}))
+            (is (nil? (latest-view (u/id user) (u/id card)))))))
+      (testing "A data app's non-ad-hoc card-query is not recorded"
+        (sdk/with-client! ["data-app"]
+          (events/publish-event! :event/card-query {:card-id (u/id download) :user-id (u/id user) :context :csv-download}))
+        (is (nil? (latest-view (u/id user) (u/id download))))))))
+
 (deftest collection-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Collection coll {}]
@@ -116,7 +148,7 @@
         (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-1 :timestamp one-hour-ago}
                                                               {:id dashboard-id-1 :timestamp two-hours-ago}])
         (is (= one-hour-ago
-               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id-1)
                    t/offset-date-time
                    (.withNano 0))))))
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
@@ -124,7 +156,7 @@
         [:model/Dashboard {dashboard-id-2 :id} {:last_viewed_at now}]
         (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-2 :timestamp one-hour-ago}])
         (is (= now
-               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-2)
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id-2)
                    t/offset-date-time
                    (.withNano 0))))))))
 
@@ -180,9 +212,9 @@
           (is (= 0 (:view_count card))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-          (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
+          (is (= 1 (t2/select-one-fn :view_count :model/Card :id (:id card))))
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-          (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
+          (is (= 2 (t2/select-one-fn :view_count :model/Card :id (:id card)))))))))
 
 (deftest card-query-model-view-count-test
   (mt/test-helpers-set-global-values!
@@ -193,9 +225,9 @@
           (is (= 0 (:view_count model))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
-          (is (= 1 (t2/select-one-fn :view_count :model/Card (u/id model))))
+          (is (= 1 (t2/select-one-fn :view_count :model/Card :id (u/id model))))
           (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
-          (is (= 2 (t2/select-one-fn :view_count :model/Card (u/id model)))))))))
+          (is (= 2 (t2/select-one-fn :view_count :model/Card :id (u/id model)))))))))
 
 (deftest dashboard-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -209,11 +241,11 @@
             (is (= 0 (:view_count dashboard) (:view_count card))
                 "view_count should be 0 before the event is published")
             (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-            (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
-            (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
+            (is (= 1 (t2/select-one-fn :view_count :model/Dashboard :id (:id dashboard))))
+            (is (= 0 (t2/select-one-fn :view_count :model/Card :id (:id card)))
                 "view_count for cards on the dashboard should not be incremented")
             (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-            (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))))
+            (is (= 2 (t2/select-one-fn :view_count :model/Dashboard :id (:id dashboard))))))))))
 
 (deftest table-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -224,11 +256,47 @@
           (is (= 0 (:view_count table))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-          (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
+          (is (= 1 (t2/select-one-fn :view_count :model/Table :id (:id table)))
               "view_count should be incremented")
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-          (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
+          (is (= 2 (t2/select-one-fn :view_count :model/Table :id (:id table)))
               "view_count should be incremented"))))))
+
+(deftest oversized-row-does-not-destroy-batch-test
+  (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
+    ;; no `with-temp`: its rollback-only transaction would be aborted by the rejected statement on Postgres, and
+    ;; `model_id` is not a foreign key, so a Card is not needed
+    (mt/with-model-cleanup [:model/ViewLog]
+      (let [model-id (+ 1000000 (rand-int 1000000))
+            view     (fn [client]
+                       {:model            "card"
+                        :model_id         model-id
+                        :user_id          (mt/user->id :rasta)
+                        :has_access       true
+                        :timestamp        (t/offset-date-time)
+                        :embedding_client client})]
+        (#'events.view-log/record-views!* [(view "embedding-sdk-react")
+                                           (view (apply str (repeat 255 "c")))
+                                           (view "embedding-sdk-react")])
+        (is (= 2 (t2/count :model/ViewLog :model "card" :model_id model-id)))
+        (testing "inside a caller's transaction (the synchronous path of grouper/submit!) the good rows are still saved,
+                  and the rejected statement does not abort that transaction"
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (#'events.view-log/record-views!* [(view (apply str (repeat 255 "c")))
+                                               (view "embedding-sdk-react")])
+            (is (= 3 (t2/count :model/ViewLog :model "card" :model_id model-id)))
+            (is (pos? (t2/count :model/User)))))))))
+
+(deftest unavailable-app-db-does-not-retry-rows-test
+  (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
+            row: every retry would fail too, and could wait for a connection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [view-log.db/insert-view-logs!
+                                  (fn [_views]
+                                    (swap! calls inc)
+                                    (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]
+        (#'events.view-log/record-views!* [{:model "card"} {:model "card"} {:model "card"}])
+        (is (= 1 @calls))))))
 
 (deftest increment-view-counts!*-test
   (mt/with-temp [:model/Card  {card-1-id :id} {}
@@ -247,12 +315,12 @@
         (is (= 2 ;; one for update card, one for table
                @call-count)
             "and groups db calls by frequency")
-        (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
+        (is (= 1 (t2/select-one-fn :view_count :model/Table :id table-id))
             "view_count for table-id should be 1")
-        (is (= 2 (t2/select-one-fn :view_count :model/Card card-1-id))
+        (is (= 2 (t2/select-one-fn :view_count :model/Card :id card-1-id))
             "view_count for card-1 should be 2")
         (is (= 4 ;; 2 old + 2 new
-               (t2/select-one-fn :view_count :model/Card card-2-id))
+               (t2/select-one-fn :view_count :model/Card :id card-2-id))
             "view_count for card-2 should be 2")))))
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
@@ -289,6 +357,36 @@
                                  :query    {:source-table (str "card__" (u/id model))}})
           (is (partial= {:user_id (mt/user->id :crowberto) :model "card" :model_id (u/id model) :context :question}
                         (latest-view (mt/user->id :crowberto) (u/id model)))))))))
+
+(deftest data-app-dataset-query-view-log-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/Card published {:name          "Bird sightings"
+                                          :type          :question
+                                          :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Card preview   {:name          "Bird sightings preview"
+                                          :type          :question
+                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
+      (let [data-app-headers  {"x-metabase-client"            "data-app"
+                               "x-metabase-client-identifier" "bird-watch"}
+            read-as-data-app! (fn [card extra-headers]
+                                (mt/user-http-request
+                                 :crowberto :post 202 "dataset"
+                                 {:request-options {:headers (merge data-app-headers extra-headers)}}
+                                 {:database (mt/id)
+                                  :type     :query
+                                  :query    {:source-table (str "card__" (u/id card))}}))]
+        (testing "A question a published data app reads through POST /api/dataset is recorded from the request headers"
+          (read-as-data-app! published {})
+          (is (partial= {:user_id                     (mt/user->id :crowberto)
+                         :model                       "card"
+                         :model_id                    (u/id published)
+                         :context                     :question
+                         :embedding_client            "data-app"
+                         :embedding_client_identifier "bird-watch"}
+                        (latest-view (mt/user->id :crowberto) (u/id published)))))
+        (testing "A data app's dev preview reading a question is not recorded"
+          (read-as-data-app! preview {"x-metabase-embedded-preview" "true"})
+          (is (nil? (latest-view (mt/user->id :crowberto) (u/id preview)))))))))
 
 (deftest get-dashboard-view-log-test
   (mt/with-premium-features #{:audit-app}

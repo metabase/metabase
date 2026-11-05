@@ -17,13 +17,13 @@
 }
 
 .schemaSeparator {
-  composes: textLight my2 from "style";
+  composes: textSecondary my2 from "style";
   margin-left: 0;
   font-size: 18px;
 }
 
 .tableActualName {
-  font-family: "Lucida Console", Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family);
   font-size: 13px;
   line-height: 1.4em;
   letter-spacing: 1px;

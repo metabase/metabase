@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
@@ -74,7 +74,7 @@ export function DetailsTableCell({
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
-      cellValue = <span className={CS.textTertiary}>{t`Empty`}</span>;
+      cellValue = <span className={CS.textSecondary}>{t`Empty`}</span>;
     } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
       const rawJson = String(value);
       let formattedJson;
@@ -142,7 +142,7 @@ export function DetailsTableCell({
             alt={value}
             maw="100%"
             mah="18rem"
-            my="md"
+            my="lg"
             mx="auto"
           />
         </div>

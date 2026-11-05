@@ -34,11 +34,18 @@ const ORDERS_TIMESERIES_METRIC = {
 
 describe("scenarios > metrics > collection", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
     cy.signInAsNormalUser();
   });
 
-  it("should show metrics in collections", () => {
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should show pinned metrics in a collection, and unpin and pin them", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion(ORDERS_TIMESERIES_METRIC);
     cy.visit("/collection/root");
@@ -47,24 +54,28 @@ describe("scenarios > metrics > collection", () => {
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
       cy.findAllByText("A metric").should("have.length", 2).and("be.visible");
     });
-  });
-
-  it("should be possible to pin and unpin metrics", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    cy.visit("/collection/root");
-    H.getPinnedSection()
-      .findByText(ORDERS_SCALAR_METRIC.name)
-      .should("be.visible");
     // Pinned items also stay in the contents list below the pinned section
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Unpin").click();
-    H.getPinnedSection().should("not.exist");
+    H.getPinnedSection().within(() => {
+      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+    });
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
+
+    cy.log("unpinning the last pinned metric removes the pinned section");
+    H.openPinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    H.popover().findByText("Unpin").click();
+    H.getPinnedSection().should("not.exist");
+    H.getUnpinnedSection()
+      .findByText(ORDERS_TIMESERIES_METRIC.name)
+      .should("be.visible");
+
     H.openUnpinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Pin this").click();
     H.getPinnedSection()
@@ -75,13 +86,14 @@ describe("scenarios > metrics > collection", () => {
       .should("be.visible");
   });
 
-  it("should be possible to add and remove a metric from bookmarks", () => {
+  it("should be possible to bookmark, trash, restore, and permanently delete a metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion({
       ...ORDERS_TIMESERIES_METRIC,
       collection_position: null,
     });
 
+    cy.log("add and remove bookmarks");
     cy.visit("/collection/root");
 
     H.getPinnedSection().should("contain", ORDERS_SCALAR_METRIC.name);
@@ -91,6 +103,11 @@ describe("scenarios > metrics > collection", () => {
     H.navigationSidebar()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "collection_list",
+    });
 
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Remove from bookmarks").click();
@@ -103,21 +120,21 @@ describe("scenarios > metrics > collection", () => {
     H.navigationSidebar()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("be.visible");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "bookmark_added",
+        event_detail: "metric",
+        triggered_from: "collection_list",
+      },
+      2,
+    );
     H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
     H.popover().findByText("Remove from bookmarks").click();
     H.navigationSidebar()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-  });
 
-  it("should be possible to archive, unarchive, and delete a metric", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion({
-      ...ORDERS_TIMESERIES_METRIC,
-      collection_position: null,
-    });
-    cy.visit("/collection/root");
-
+    cy.log("trash, restore, and permanently delete");
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Move to trash").click();
     H.getPinnedSection().should("not.exist");

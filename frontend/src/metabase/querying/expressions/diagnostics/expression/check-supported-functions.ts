@@ -2,27 +2,19 @@ import { t } from "ttag";
 
 import { hasRequiredFeature } from "metabase/databases";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import { getClauseDefinition } from "../../clause";
-import { getDatabase } from "../../utils";
 import { visit } from "../../visitor";
 import { error } from "../utils";
 
 export function checkSupportedFunctions({
   expressionParts,
-  query,
-  metadata,
+  database,
 }: {
   expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
-  query: Lib.Query;
-  metadata?: Metadata;
+  database?: Pick<Database, "features">;
 }) {
-  if (!metadata) {
-    return;
-  }
-
-  const database = getDatabase(query, metadata);
   if (!database) {
     return;
   }

@@ -4,10 +4,12 @@ import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  act,
   fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
@@ -22,6 +24,7 @@ import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   DatasetColumn,
+  RowValues,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
@@ -31,6 +34,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockNativeCard,
   createMockNumericColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
@@ -214,36 +218,168 @@ describe("table.pivot", () => {
   ];
 
   describe("getHidden", () => {
-    const threeCols = createMockSeriesWithCols(["dim1", "dim2", "metric"]);
-    const fourCols = createMockSeriesWithCols([
-      "dim1",
-      "dim2",
-      "dim3",
-      "metric",
-    ]);
     const getHidden = Table.settings["table.pivot"].getHidden;
     if (!getHidden) {
       throw new Error("table.pivot getHidden should be defined");
     }
 
-    it("should be hidden when cols.length is not 3", () => {
-      expect(getHidden).toBeDefined();
-      expect(getHidden(fourCols)).toBe(true);
+    it("should be hidden when there are fewer than 3 columns", () => {
+      expect(getHidden(createMockSeriesWithCols(["dim1", "metric"]))).toBe(
+        true,
+      );
     });
 
-    it("should not be hidden when cols.length is 3", () => {
-      expect(getHidden).toBeDefined();
-      expect(getHidden(threeCols)).toBe(false);
+    it("should not be hidden when there are 3 columns", () => {
+      expect(
+        getHidden(createMockSeriesWithCols(["dim1", "dim2", "metric"])),
+      ).toBe(false);
+    });
+
+    it("should not be hidden when there are more than 3 columns (metabase#84401)", () => {
+      expect(
+        getHidden(createMockSeriesWithCols(["dim1", "dim2", "dim3", "metric"])),
+      ).toBe(false);
     });
   });
 
-  it("should unpivot when table.pivot is stored true but there are not 3 columns", () => {
-    const series = createMockSeriesWithCols(
-      ["dim1", "dim2", "dim3", "metric"],
-      { "table.pivot": true },
-    );
+  it.each([
+    { shape: "an extra metric", cols: ["dim1", "dim2", "metric1", "metric2"] },
+    { shape: "an extra dimension", cols: ["dim1", "dim2", "dim3", "metric"] },
+  ])(
+    "should keep a stored pivot when there is $shape (metabase#84401)",
+    ({ cols }) => {
+      const series = createMockSeriesWithCols(cols, { "table.pivot": true });
 
-    expect(getComputedSettingsForSeries(series)["table.pivot"]).toBe(false);
+      expect(getComputedSettingsForSeries(series)["table.pivot"]).toBe(true);
+    },
+  );
+
+  describe("rendering", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
+
+    const CATEGORY = createMockCategoryColumn({
+      name: "CATEGORY",
+      display_name: "Category",
+    });
+    const MONTH_LABEL = createMockCategoryColumn({
+      name: "MONTH_LABEL",
+      display_name: "Month label",
+    });
+    const MONTH_DATE = createMockColumn({
+      name: "MONTH_DATE",
+      display_name: "Month date",
+      base_type: "type/DateTime",
+      effective_type: "type/DateTime",
+    });
+    const TOTAL = createMockNumericColumn({
+      name: "TOTAL",
+      display_name: "Total",
+    });
+
+    type PivotSetupOpts = {
+      cols: DatasetColumn[];
+      rows: RowValues[];
+    };
+
+    const setupPivot = ({ cols, rows }: PivotSetupOpts) => {
+      const onUpdateWarnings = jest.fn<void, [string[]]>();
+      const series: Series = [
+        {
+          card: createMockNativeCard({
+            display: "table",
+            visualization_settings: {
+              "table.pivot": true,
+              "table.pivot_column": "MONTH_LABEL",
+              "table.cell_column": "TOTAL",
+            },
+          }),
+          ...createMockDataset({ data: { cols, rows } }),
+        },
+      ];
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series}
+          width={600}
+          height={400}
+          onUpdateWarnings={onUpdateWarnings}
+        />,
+      );
+
+      return { onUpdateWarnings };
+    };
+
+    it("should pivot a native question with an extra column, using the first other column for rows (metabase#84401)", () => {
+      setupPivot({
+        cols: [CATEGORY, MONTH_LABEL, MONTH_DATE, TOTAL],
+        rows: [
+          ["Gadget", "2025-01", "2025-01-01T00:00:00Z", 10],
+          ["Widget", "2025-01", "2025-01-01T00:00:00Z", 20],
+          ["Gadget", "2025-02", "2025-02-01T00:00:00Z", 30],
+          ["Widget", "2025-02", "2025-02-01T00:00:00Z", 40],
+        ],
+      });
+
+      expect(
+        screen.getAllByRole("columnheader").map((header) => header.textContent),
+      ).toEqual(["Category", "2025-01", "2025-02"]);
+      expect(
+        screen
+          .getAllByRole("row")
+          .slice(1)
+          .map((row) =>
+            within(row)
+              .getAllByRole("gridcell")
+              .map((cell) => cell.textContent),
+          ),
+      ).toEqual([
+        ["Gadget", "10", "30"],
+        ["Widget", "20", "40"],
+      ]);
+    });
+
+    it("should not warn when each row and pivot value pair appears once (metabase#84401)", async () => {
+      const { onUpdateWarnings } = setupPivot({
+        cols: [CATEGORY, MONTH_LABEL, MONTH_DATE, TOTAL],
+        rows: [
+          ["Gadget", "2025-01", "2025-01-01T00:00:00Z", 10],
+          ["Gadget", "2025-02", "2025-02-01T00:00:00Z", 30],
+        ],
+      });
+
+      // Visualization applies reported warnings in an animation frame
+      await act(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          ),
+      );
+      expect(onUpdateWarnings).toHaveBeenLastCalledWith([]);
+    });
+
+    it("should warn and show the last value when a row and pivot value pair appears more than once", async () => {
+      const { onUpdateWarnings } = setupPivot({
+        cols: [CATEGORY, MONTH_LABEL, TOTAL],
+        rows: [
+          ["Gadget", "2025-01", 10],
+          ["Gadget", "2025-01", 20],
+        ],
+      });
+
+      await waitFor(() =>
+        expect(onUpdateWarnings).toHaveBeenLastCalledWith([
+          'Some combinations of "Category" and "Month label" appear in more than one row. Each of those cells shows only the value from the last of these rows.',
+        ]),
+      );
+      const [, firstRow] = screen.getAllByRole("row");
+      expect(
+        within(firstRow)
+          .getAllByRole("gridcell")
+          .map((cell) => cell.textContent),
+      ).toEqual(["Gadget", "20"]);
+    });
   });
 });
 
@@ -325,7 +461,145 @@ describe("dashboard client-side sorting", () => {
   });
 });
 
+describe("table.striped", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("should be a display toggle disabled by default", () => {
+    const setting = Table.settings["table.striped"];
+
+    expect(setting).toBeDefined();
+    expect(setting.widget).toBe("toggle");
+    expect(setting.inline).toBe(true);
+    expect(setting.getDefault?.()).toBe(false);
+  });
+
+  function setupStripedTable() {
+    const series = [
+      createMockSingleSeries(
+        { display: "table" },
+        {
+          data: {
+            cols: [createMockNumericColumn({ display_name: "id", name: "id" })],
+            rows: [[1], [2], [3], [4]],
+          },
+        },
+      ),
+    ];
+
+    series[0].card.visualization_settings = {
+      ...series[0].card.visualization_settings,
+      "table.striped": true,
+    };
+
+    renderWithProviders(
+      <Visualization rawSeries={series} isDashboard width={600} height={400} />,
+    );
+  }
+
+  function getStripedRows() {
+    return screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => [
+        within(row).getAllByRole("gridcell")[0].textContent,
+        row.getAttribute("data-row-striped") === "true",
+      ]);
+  }
+
+  it("stripes every other rendered row", () => {
+    setupStripedTable();
+
+    expect(getStripedRows()).toEqual([
+      ["1", false],
+      ["2", true],
+      ["3", false],
+      ["4", true],
+    ]);
+  });
+
+  it("keeps stripes on alternating rendered rows after client-side sorting (#71960)", () => {
+    setupStripedTable();
+
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
+    const clickTarget = within(idHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+
+    // Rows are now in descending order; the stripes must still alternate by
+    // display position rather than by position in the original dataset.
+    expect(getStripedRows()).toEqual([
+      ["4", false],
+      ["3", true],
+      ["2", false],
+      ["1", true],
+    ]);
+  });
+});
+
 describe("text_wrapping", () => {
+  describe("line breaks in cells (#6178, #64697)", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
+
+    const wrappedColumn = createMockCategoryColumn({
+      name: "wrapped",
+      display_name: "wrapped",
+    });
+    const unwrappedColumn = createMockCategoryColumn({
+      name: "unwrapped",
+      display_name: "unwrapped",
+    });
+
+    it.each([
+      ["\\n", "\n"],
+      ["\\r\\n", "\r\n"],
+      ["\\r", "\r"],
+      ["\\u0085", "\u0085"],
+      ["\\u2028", " "],
+      ["\\u2029", " "],
+    ])(
+      "should render %s as a line break when wrapped and a space when not",
+      (_name, lineBreak) => {
+        const value = `line1${lineBreak}line2`;
+        const series = [
+          createMockSingleSeries(
+            {
+              display: "table",
+              visualization_settings: {
+                column_settings: {
+                  [getColumnKey(wrappedColumn)]: { text_wrapping: true },
+                },
+              },
+            },
+            {
+              data: {
+                cols: [wrappedColumn, unwrappedColumn],
+                rows: [[value, value]],
+              },
+            },
+          ),
+        ];
+
+        renderWithProviders(
+          <Visualization rawSeries={series} width={600} height={400} />,
+        );
+
+        const [_rowIdCell, wrappedCell, unwrappedCell] =
+          screen.getAllByRole("gridcell");
+        expect(wrappedCell).toHaveTextContent("line1\nline2", {
+          normalizeWhitespace: false,
+        });
+        expect(unwrappedCell).toHaveTextContent("line1 line2", {
+          normalizeWhitespace: false,
+        });
+      },
+    );
+  });
+
   describe("in columnSettings", () => {
     function assertDefined<T>(
       value: T | undefined | null,

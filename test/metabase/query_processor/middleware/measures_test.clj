@@ -4,6 +4,7 @@
    [mb.hawk.assert-exprs.approximately-equal]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.middleware.measures :as measures]))
@@ -76,6 +77,19 @@
                     (lib/aggregate (lib/with-expression-name (lib/ref measure-meta) "My Custom Name")))]
       (is (=? {:stages [{:aggregation [[:sum {:display-name "My Custom Name"} some?]]}]}
               (adjust query))))))
+
+(deftest ^:parallel measure-with-name-override-test
+  (testing "name from measure clause options is preserved (GHY-4517) so later stages can reference the column"
+    (let [[_measure mp] (mock-measure 1 (basic-sum-measure-query))
+          measure-meta  (lib.metadata/measure mp 1)
+          query         (-> (lib/query mp (meta/table-metadata :products))
+                            (lib/aggregate (lib.options/update-options (lib/ref measure-meta)
+                                                                       assoc :name "revenue")))]
+      (is (=? {:stages [{:aggregation [[:sum {:name "revenue"} some?]]}]}
+              (adjust query)))
+      (testing "and shows up as the returned column's name"
+        (is (= ["revenue"]
+               (map :name (lib/returned-columns (adjust query)))))))))
 
 (deftest ^:parallel multiple-measures-in-query-test
   (testing "Multiple measures in a query all expand"

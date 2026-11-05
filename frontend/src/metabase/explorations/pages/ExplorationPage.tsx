@@ -31,6 +31,7 @@ import {
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
 
+import { ExplorationArchivedEntityBanner } from "../components/ExplorationArchivedEntityBanner";
 import {
   ExplorationSidebar,
   ExplorationTitle,
@@ -583,11 +584,14 @@ function ExplorationPageForId({ view }: ExplorationPageProps) {
   }
 
   return (
-    <Group h="100%" align="stretch" gap={0}>
+    <Stack h="100%" gap={0}>
+      {exploration.archived && (
+        <ExplorationArchivedEntityBanner exploration={exploration} />
+      )}
       <Stack
-        h="100%"
         flex={1}
-        bg="background-secondary"
+        mih={0}
+        bg="background_page-secondary"
         pl="1.5rem"
         pt="1rem"
         data-test-id="exploration-page"
@@ -663,6 +667,6 @@ function ExplorationPageForId({ view }: ExplorationPageProps) {
             shouldPoll && <ExplorationChartAreaSkeleton />}
         </Group>
       </Stack>
-    </Group>
+    </Stack>
   );
 }

@@ -1,12 +1,12 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--mantine-spacing-xl);
+  gap: var(--mantine-spacing-xxl);
 }
 
 .advisoryList {
   > :not(:last-child) {
-    margin-bottom: var(--mantine-spacing-md);
+    margin-bottom: var(--mantine-spacing-lg);
   }
 }
 

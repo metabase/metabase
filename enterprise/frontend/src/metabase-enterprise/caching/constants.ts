@@ -62,7 +62,7 @@ export const getEnterprisePerformanceTabMetadata = () => {
   return [
     metadata.find(({ key }) => key === "performance-databases"),
     {
-      name: t`Dashboard and question caching`,
+      getName: () => t`Dashboard and question caching`,
       path: "/admin/performance/dashboards-and-questions",
       key: "performance-dashboards-and-questions",
       tabId: PerformanceTabId.DashboardsAndQuestions,

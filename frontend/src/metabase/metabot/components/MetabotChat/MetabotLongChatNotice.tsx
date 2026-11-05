@@ -56,14 +56,14 @@ export const MetabotLongChatNotice = ({
               .jt`This chat is nearing the ${contextLimit}.`}
       </Text>
       <Button
-        variant="subtle"
-        size="compact-sm"
+        variant="transparent"
+        size="compact-md"
         onClick={onNewChat}
-        fw="bold"
         data-testid="metabot-long-chat-new-chat"
       >{t`New chat`}</Button>
       {variant === "warning" && (
         <ActionIcon
+          variant="subtle"
           size="sm"
           c="text-secondary"
           onClick={() => setDismissedWarning(true)}

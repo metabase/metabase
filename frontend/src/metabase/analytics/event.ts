@@ -29,7 +29,7 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   serialization: "1-0-1",
   settings: "1-0-2",
   setup: "1-0-4",
-  timeline: "1-0-0",
+  timeline: "1-0-1",
   upsell: "1-0-0",
 };
 
@@ -64,15 +64,11 @@ export function trackSchemaEvent<S extends SchemaType>(
   }
 
   if (shouldSendSnowplow) {
-    Snowplow.trackSelfDescribingEvent(
-      {
-        event: {
-          schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
-          data: event,
-        },
-      },
-      ["sp"],
-    );
+    const payload: Snowplow.SelfDescribingJson = {
+      schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
+      data: event,
+    };
+    Snowplow.trackSelfDescribingEvent({ event: payload }, ["sp"]);
   }
 
   if (Settings.get("metaplow-tracking-enabled")) {

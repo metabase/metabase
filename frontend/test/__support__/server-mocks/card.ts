@@ -8,7 +8,10 @@ import type {
   ConcreteTableId,
   DashboardId,
   Dataset,
+  FieldValue,
   GetPublicCard,
+  ParameterId,
+  ParameterValues,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -29,6 +32,14 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}/series`, [], {
     name: `card-${card.id}-series`,
   });
+}
+
+export function setupDeleteCardEndpoint(cardId: CardId) {
+  fetchMock.delete(`path:/api/card/${cardId}`, 204);
+}
+
+export function setupUpdateCardEndpointWithError(cardId: CardId) {
+  fetchMock.put(`path:/api/card/${cardId}`, { status: 500, body: {} });
 }
 
 export function setupCardByEntityIdEndpoints(card: Card) {
@@ -162,4 +173,58 @@ export function setupCardDashboardsEndpoint(
   fetchMock.get(`path:/api/card/${cardId}/dashboards`, dashboards, {
     name: `card-${cardId}-dashboards`,
   });
+}
+
+export function setupCardParameterValuesEndpoint({
+  cardId,
+  parameterId,
+  parameterValues,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/values`,
+    parameterValues,
+  );
+}
+
+export function setupCardParameterRemappingEndpoint({
+  cardId,
+  parameterId,
+  remappings,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  remappings: FieldValue[];
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/remapping`,
+    ({ url }) => {
+      const value = new URL(url).searchParams.get("value");
+      return (
+        remappings.find(
+          ([remappedValue]) => String(remappedValue) === value,
+        ) ?? [value]
+      );
+    },
+  );
+}
+
+export function setupCardParameterSearchEndpoint({
+  cardId,
+  parameterId,
+  query,
+  parameterValues,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  query: string;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/search/${encodeURIComponent(query)}`,
+    parameterValues,
+  );
 }

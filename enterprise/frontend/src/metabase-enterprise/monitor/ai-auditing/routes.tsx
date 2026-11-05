@@ -1,3 +1,4 @@
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { Route, redirect, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -8,7 +9,7 @@ import {
 
 /**
  * The AI auditing pages, in one chunk. Every loader names it, so moving between
- * usage, conversations, MCP and CLI does not cost a fetch each time.
+ * usage, conversations, MCP, CLI and data apps does not cost a fetch each time.
  *
  * The plugin registry assigns these routes on every page load, so whatever they
  * name is in the initial bundle. The pages carry the charting and data grid
@@ -78,20 +79,55 @@ const cliCallsPage = () =>
     Component: CliCallsPage,
   }));
 
+const dataAppsAnalyticsPage = () =>
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./data-apps-analytics/components/DataAppsAnalyticsPage"
+  ).then(({ DataAppsAnalyticsPage }) => ({
+    Component: DataAppsAnalyticsPage,
+  }));
+
 /**
  * Hovering a Monitor sidebar link starts the fetch, so the chunk is usually in
  * hand by the time the click lands. These pages share a chunk, so the first
  * hover covers the whole section.
+ *
+ * Called from the branch of `initializePlugin` that mounts these routes, so only
+ * the pages this instance can reach are registered. The background pass reads the
+ * registrations too, and fetching a page nobody can reach would spend a download
+ * on nothing.
  */
-registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
-registerPagePrefetch(Urls.monitorAiAuditingUsage(), metabotAnalyticsUpsellPage);
-registerPagePrefetch(Urls.monitorAiAuditingConversations(), conversationsPage);
-registerPagePrefetch(
-  `${Urls.monitorAiAuditingConversations()}/`,
-  conversationDetailPage,
-);
-registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
-registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+export function registerAiAuditingPagePrefetch(): void {
+  registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
+  registerPagePrefetch(
+    Urls.monitorAiAuditingConversations(),
+    conversationsPage,
+  );
+  registerPagePrefetch(
+    `${Urls.monitorAiAuditingConversations()}/`,
+    conversationDetailPage,
+  );
+  registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
+  registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+  registerDataAppsAnalyticsPagePrefetch();
+}
+
+/** The section as an instance without the license mounts it: usage upsells. */
+export function registerAiAuditingUpsellPagePrefetch(): void {
+  registerPagePrefetch(
+    Urls.monitorAiAuditingUsage(),
+    metabotAnalyticsUpsellPage,
+  );
+  registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
+  registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+  registerDataAppsAnalyticsPagePrefetch();
+}
+
+// Unconditional: the audit app plugin registers these before the data apps plugin sets
+// `PLUGIN_DATA_APPS.isEnabled`, and the page shares the section's chunk, so prefetching it
+// costs nothing on an instance that can't open it.
+function registerDataAppsAnalyticsPagePrefetch() {
+  registerPagePrefetch(Urls.monitorAiAuditingDataApps(), dataAppsAnalyticsPage);
+}
 
 function getMcpAnalyticsRoutes() {
   return (
@@ -119,17 +155,28 @@ function getCliAnalyticsRoutes() {
   );
 }
 
+function getDataAppsAnalyticsRoutes() {
+  if (!PLUGIN_DATA_APPS.isEnabled) {
+    return null;
+  }
+  return <Route path="data-apps" lazy={dataAppsAnalyticsPage} />;
+}
+
 export function getAiAuditingRoutes() {
   return (
     <>
       <Route index element={redirect("usage")} />
       <Route element={<MetabotAnalyticsAvailabilityLayout />}>
-        <Route path="usage" lazy={conversationStatsPage} />
+        <Route path="usage">
+          <Route index element={redirect("conversations")} />
+          <Route path=":metric" lazy={conversationStatsPage} />
+        </Route>
         <Route path="conversations" lazy={conversationsPage} />
         <Route path="conversations/:convoId" lazy={conversationDetailPage} />
       </Route>
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
+      {getDataAppsAnalyticsRoutes()}
     </>
   );
 }
@@ -138,9 +185,10 @@ export function getAiAuditingUpsellRoutes() {
   return (
     <>
       <Route index element={redirect("usage")} />
-      <Route path="usage" lazy={metabotAnalyticsUpsellPage} />
+      <Route path="usage/*" lazy={metabotAnalyticsUpsellPage} />
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
+      {getDataAppsAnalyticsRoutes()}
     </>
   );
 }

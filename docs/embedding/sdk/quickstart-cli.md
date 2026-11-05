@@ -49,11 +49,11 @@ The tool will ask if you have a database to connect to. Use the arrow keys to se
 
 If you answer no, the script will use the Sample Database that ships with Metabase to create a dashboard to embed.
 
-If you select Yes, the tool will prompt you to connect to a database. Pick your database's engine. You'll need to provide database's host, port, username, and password. The tool will connect to the database, and prompt you to select tables from your database to embed. Pick 1-3 tables. If you want to see multi-tenancy in action, pick a table with user IDs in it. Metabase will X-ray these tables to create a dashboard to embed.
+If you select Yes, the tool will prompt you to connect to a database. Pick your database's engine. You'll need to provide the database's host, port, username, and password. The tool will connect to the database, and prompt you to select tables from your database to embed. Pick 1-3 tables. If you want to see multi-tenancy in action, pick a table with user IDs in it. Metabase will X-ray these tables to create a dashboard to embed.
 
 ## Metabase setup
 
-The tool will ask you for an email address to create the first admin account in Metabase. Doesn't have to be a real email address (the tool doesn't set up a SMTP server); the email address is just required for logging in to the Metabase that the tool will set up.
+The tool will ask you for an email address to create the first admin account in Metabase. Doesn't have to be a real email address (the tool doesn't set up an SMTP server); the email address is just required for logging in to the Metabase that the tool will set up.
 
 Next, the tool will spin up a Metabase on Docker. This takes a bit. To see the Docker container's status, use the `docker ps` command. Or use the time to reflect on good choices you've made recently.
 
@@ -63,7 +63,7 @@ The tool will then prompt you to pick 1-3 tables to embed. You can press <space>
 
 ## Permissions setup with multi-tenancy (optional)
 
-If you have a Pro/EE license, the tool can set up permissions. To get a license, sign up for a [free trial of self-hosted Metabase Pro](https://www.metabase.com/pricing/).
+If you have a Pro/EE license, the tool can set up permissions. To get a license, sign up for a [free trial of self-hosted Metabase Pro](https://www.metabase.com/pricing).
 
 If you opted to set up multi-tenancy and connected to your own database, the tool will ask you for the column you want to use to restrict the table (e.g., a user ID column). Metabase will [set row-level security](../../permissions/row-and-column-security.md) for that table based on the values in that column.
 
@@ -77,7 +77,7 @@ npm run start
 
 ## React components setup
 
-Next, the tool will generate example React components files. By default, the tool will save them in `./src/components/metabase` in your React app, though the tool will prompt you to save them to a different directory if you want (e.g., `./src/analytics`).
+Next, the tool will generate example React component files. By default, the tool will save them in `./src/components/metabase` in your React app, though the tool will prompt you to save them to a different directory if you want (e.g., `./src/analytics`).
 It generates a couple of demo components for you to try out theming and user switching:
 
 - `AnalyticsDashboard` - a dashboard component that embeds a Metabase dashboard.
@@ -87,7 +87,7 @@ It generates a couple of demo components for you to try out theming and user swi
 - `AnalyticsProvider` - a provider that adds the demo state for the example theme switcher and user switcher components.
 - `EmbeddingProvider` - a provider that wraps the `MetabaseProvider` with demo themes and auth configuration.
 
-You can delete these files once you've played around with the tool, and are ready to setup your own theming and user management.
+You can delete these files once you've played around with the tool, and are ready to set up your own theming and user management.
 
 ## Add the Metabase/React components to your app
 

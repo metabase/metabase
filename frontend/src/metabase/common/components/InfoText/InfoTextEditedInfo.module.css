@@ -1,0 +1,10 @@
+.lastEditedInfoText {
+  cursor: pointer;
+
+  @media (--breakpoint-max-sm) {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 50%;
+  }
+}

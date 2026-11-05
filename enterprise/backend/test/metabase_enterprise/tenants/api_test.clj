@@ -118,6 +118,32 @@
       (is (=? {:data [{:id id2 :member_count 1 :attributes {:status "inactive"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?status=deactivated"))))))
 
+(deftest non-superusers-dont-see-tenant-attributes-test
+  (mt/with-temporary-setting-values [use-tenants true]
+    (mt/with-temp [:model/Tenant {id :id} {:name "Attr Tenant" :slug "attr-tenant" :attributes {"env" "prod"}}
+                   :model/User {internal-user-id :id} {}
+                   :model/User {tenant-user-id :id} {:tenant_id id}]
+      (testing "internal non-superusers get the tenant list without attributes or member_count"
+        (let [row (->> (mt/user-http-request internal-user-id :get 200 "ee/tenant/")
+                       :data
+                       (filter #(= id (:id %)))
+                       first)]
+          (is (=? {:id                   id
+                   :name                 "Attr Tenant"
+                   :slug                 "attr-tenant"
+                   :is_active            true
+                   :tenant_collection_id integer?}
+                  row))
+          (is (not (contains? row :attributes)))
+          (is (not (contains? row :member_count)))))
+      (testing "same for the single-tenant endpoint"
+        (let [row (mt/user-http-request internal-user-id :get 200 (str "ee/tenant/" id))]
+          (is (not (contains? row :attributes)))
+          (is (not (contains? row :member_count)))))
+      (testing "tenant users are still refused"
+        (mt/user-http-request tenant-user-id :get 403 "ee/tenant/")
+        (mt/user-http-request tenant-user-id :get 403 (str "ee/tenant/" id))))))
+
 (deftest tenant-users-can-only-list-tenant-recipients-visibility-all-test
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
@@ -381,7 +407,7 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection/" {:namespace collection/shared-tenant-ns
                                                                                  :name (mt/random-name)})
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? coll))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -395,7 +421,7 @@
       (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}]
         (let [id (:id (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
                                                                                 :parent_id parent-id}))
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? id))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -787,6 +813,17 @@
         (mt/with-temp [:model/Collection {shared-id :id}  {:namespace collection/shared-tenant-ns}
                        :model/Collection {regular-id :id} {}]
           (mt/user-http-request :crowberto :put 400 (str "collection/" regular-id) {:parent_id shared-id}))))))
+
+(deftest can-move-shared-tenant-collection-within-shared-tenant-namespace-test
+  (testing "PUT /api/collection/:id can nest a shared-tenant collection and move it back to root"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}
+                       :model/Collection {child-id :id}  {:namespace collection/shared-tenant-ns}]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id parent-id})
+          (is (= (format "/%d/" parent-id) (t2/select-one-fn :location :model/Collection :id child-id)))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:parent_id nil})
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id child-id))))))))
 
 (deftest can-create-dashboards-in-shared-tenant-collections-test
   (testing "POST /api/dashboard can save a dashboard to a shared-tenant-namespace collection"

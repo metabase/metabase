@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellSemanticSearchPill } from "metabase/admin/upsells/UpsellSemanticSearch";
 import { getErrorMessage } from "metabase/api/utils";
 import type { SearchSettingsWidgetProps } from "metabase/plugins";
@@ -14,6 +12,10 @@ import {
   isProPlan,
   useAdminSetting,
 } from "metabase/settings";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Box, Progress, Stack, Text, Tooltip } from "metabase/ui";
 import { useGetSemanticSearchStatusQuery } from "metabase-enterprise/api/search";
 
@@ -105,14 +107,14 @@ export function SearchSettingsWidget({
           )}
 
           {!response.error && isIndexing && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Progress
                 size="md"
                 value={progress}
                 maw="25rem"
                 animated={progress < 100}
               />
-              <Text c="text-disabled" size="md">
+              <Text c="text-secondary" size="md">
                 {progress === 100
                   ? t`Initialized search index`
                   : t`Initializing search index...`}

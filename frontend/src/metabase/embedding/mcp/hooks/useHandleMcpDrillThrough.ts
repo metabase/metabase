@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import * as Urls from "metabase/urls";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import type * as Lib from "metabase-lib";
-import type { Card } from "metabase-types/api";
+import type { SeriesCard } from "metabase-types/api";
 
 import { storeDrillQuery } from "../api";
 
@@ -39,7 +39,7 @@ const isClaudeHost = (app: Pick<App, "getHostVersion">) => {
 };
 
 type DrillThroughHandler = (
-  params: { drillName?: string; nextCard: Card },
+  params: { drillName?: string; nextCard: SeriesCard },
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 

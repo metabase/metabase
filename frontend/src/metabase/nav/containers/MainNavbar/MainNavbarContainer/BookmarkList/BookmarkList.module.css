@@ -1,0 +1,14 @@
+.removeButton {
+  margin-top: 3px;
+  color: var(--mb-color-core-brand);
+  opacity: 0;
+}
+
+.bookmark:hover .removeButton,
+.bookmark:focus-within .removeButton {
+  opacity: 0.5;
+}
+
+.bookmark .removeButton:focus-visible {
+  opacity: 1;
+}

@@ -7,5 +7,5 @@
 
 .Border {
   border: 1px solid var(--border-color);
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
 }

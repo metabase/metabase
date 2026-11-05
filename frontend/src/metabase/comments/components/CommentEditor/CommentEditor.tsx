@@ -218,9 +218,10 @@ export const CommentEditor = ({
         <Tooltip disabled={!content} label={t`Send (${METAKEY} + Enter)`}>
           <ActionIcon
             aria-label={t`Send`}
-            className={cx(S.submitBtn, { [S.canSubmit]: content })}
+            className={S.submitBtn}
             disabled={!content}
             variant="subtle"
+            color="brand"
             size="sm"
             onClick={submitDoc}
           >

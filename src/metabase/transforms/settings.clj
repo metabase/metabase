@@ -3,12 +3,13 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.transforms.usage :as transforms.usage]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (setting/defsetting transform-timeout
-  (deferred-tru "The timeout for a transform job, in minutes.")
+  "The timeout for a transform job, in minutes."
   :type       :integer
   :visibility :internal
   :default    (* 4 60)
@@ -26,7 +27,7 @@
 ;; python-runner service is single-threaded; dispatching them in parallel would just queue them
 ;; against their own per-call timeouts.
 (setting/defsetting transform-run-job-sql-concurrency
-  (deferred-tru "Maximum number of SQL-backed transforms a single transform-job run may execute in parallel.")
+  "Maximum number of SQL-backed transforms a single transform-job run may execute in parallel."
   :type       :integer
   :visibility :internal
   :default    3
@@ -37,12 +38,12 @@
   :encryption :no
   :audit      :getter)
 
-(defn- explicit-transforms-enabled
+(mu/defn- explicit-transforms-enabled :- [:maybe :boolean]
   "Returns the :transforms-enabled setting if explicitly set, otherwise nil."
   []
   (setting/get-value-of-type :boolean :transforms-enabled))
 
-(defn- cloud-enabled-transforms?
+(mu/defn- cloud-enabled-transforms? :- :boolean
   "Whether a cloud instance has enabled transforms.
    If a cloud instance has the transforms token feature, then they've gone through the upsell and enabled transforms.
    Self-hosted instances don't go through the upsell, so we require that they explicitly enable transforms via the setting."
@@ -70,6 +71,7 @@
   :visibility :authenticated
   :export?    false
   :audit      :getter
+  :setter     :none
   :can-read-from-env? false
   :getter (fn []
             ;; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud

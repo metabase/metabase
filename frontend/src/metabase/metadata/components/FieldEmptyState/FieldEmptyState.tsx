@@ -10,7 +10,7 @@ type FieldEmptyStateProps = {
 
 export function FieldEmptyState({ hasTable }: FieldEmptyStateProps) {
   return (
-    <Box maw={rem(320)} p="xl">
+    <Box maw={rem(320)} p="xxl">
       <EmptyState
         illustrationElement={<img src={EmptyDashboardBot} />}
         title={

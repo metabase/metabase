@@ -29,6 +29,7 @@
 
 .content {
   display: flex;
+  user-select: none;
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);
@@ -68,12 +69,14 @@
 
 .treeCell {
   overflow: hidden;
+  user-select: text;
 }
 
 .cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  user-select: text;
 }
 
 .link {

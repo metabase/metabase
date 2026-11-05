@@ -126,13 +126,13 @@ A custom click behavior replaces the drill-through menu with an action you defin
 
 ### Combine native SQL with full drill-through
 
-If you need native SQL but also want to use the full drill-through menu, write your SQL query as a [transform](../../data-studio/transforms/transforms-overview.md) and build the user-facing question with the query builder.
+If you need native SQL but also want to use the full drill-through menu, write your SQL query as a [transform](../../data-modeling/transforms/transforms-overview.md) and build the user-facing question with the query builder.
 
 Write the transform's SQL to return the individual records, not summarized results. Build questions on the transform's table with the query builder. These questions support the full drill-through menu.
 
 Drill-through actions can only reach data that the transform's table contains.
 
-> To create transforms, you must have transform permissions. If you use Metabase Cloud, you must also have the [transform add-on](../../data-studio/transforms/addons.md).
+> To create transforms, you must have transform permissions. If you use Metabase Cloud, you must also have the [transform add-on](../../data-modeling/transforms/addons.md).
 
 ## Drill-through and embedding
 

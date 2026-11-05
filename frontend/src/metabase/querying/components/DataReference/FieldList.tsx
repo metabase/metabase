@@ -5,9 +5,8 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
-import { useSelector } from "metabase/redux";
 import { DelayGroup } from "metabase/ui";
 import {
   getIconForField,
@@ -34,10 +33,10 @@ interface FieldListProps {
 }
 
 export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
-  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const queryAndColumns = useMemo(
-    () => getQueryAndColumns(metadata, table, fields),
-    [metadata, table, fields],
+    () => getQueryAndColumns(metadataProvider, table, fields),
+    [metadataProvider, table, fields],
   );
 
   return (

@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import { updateField } from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -14,25 +14,16 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { FieldId, User } from "metabase-types/api";
+import { updateField } from "metabase/reference/update-actions";
+import type * as Lib from "metabase-lib";
+import type { DatabaseId, Field, Table, User } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getDatabase,
-  getField,
-  getIsEditing,
-  getIsFormulaExpanded,
-  getTable,
-  getUser,
-} from "../selectors";
+import type { StateWithReference } from "../selectors";
+import { getIsEditing, getIsFormulaExpanded, getUser } from "../selectors";
 import type {
   BaseDetailFormFields,
   FieldFormFieldsValues,
   ReferenceLoadingProps,
-  StubbedDatabase,
-  StubbedField,
-  StubbedTable,
 } from "../types";
 import { getQuestionUrl } from "../utils";
 
@@ -42,47 +33,40 @@ interface FieldDetailFormFields
 }
 
 const interestingQuestions = (
-  database: StubbedDatabase,
-  table: StubbedTable,
-  field: StubbedField,
-  metadata: Metadata,
+  table: Table,
+  field: Field,
+  metadataProvider: Lib.MetadataProvider,
 ) => {
   return [
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
       icon: "bar" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField: field,
         getCount: true,
         visualization: "bar",
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
       icon: "pie" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField: field,
         getCount: true,
         visualization: "pie",
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
     {
       text: t`All distinct values of ${field.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
-        metadata,
+        breakoutField: field,
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -90,15 +74,10 @@ const interestingQuestions = (
 
 const mapStateToProps = (
   state: StateWithReference,
-  props: ReferenceRouteProps,
+  props: Pick<FieldDetailProps, "databaseId">,
 ) => {
-  const entity = getField(state, props) || {};
-
   return {
-    entity,
-    field: entity,
-    table: getTable(state, props),
-    database: getDatabase(state, props),
+    metadataProvider: selectMetadataProvider(state, props.databaseId ?? null),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -113,17 +92,16 @@ const mapDispatchToProps = {
 
 interface FieldDetailProps {
   style: React.CSSProperties;
-  entity: StubbedField;
-  field: StubbedField;
-  table: StubbedTable;
+  field: Field | undefined;
+  table: Table | undefined;
+  databaseId: DatabaseId;
   user: User;
-  database: StubbedDatabase;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  metadataProvider: Lib.MetadataProvider;
 
   onSubmit: (fields: FieldDetailFormFields, props: any) => Promise<void>;
 }
@@ -131,7 +109,7 @@ interface FieldDetailProps {
 const FieldDetail = (props: FieldDetailProps) => {
   const {
     style,
-    entity,
+    field: entity,
     table,
     loadingError,
     loading,
@@ -139,7 +117,7 @@ const FieldDetail = (props: FieldDetailProps) => {
     isEditing,
     startEditing,
     endEditing,
-    metadata,
+    metadataProvider,
     onSubmit,
   } = props;
 
@@ -156,7 +134,13 @@ const FieldDetail = (props: FieldDetailProps) => {
     onSubmit: async (fields): Promise<void> => {
       setSaveError(null);
       try {
-        await onSubmit(fields, { ...props, resetForm: handleReset });
+        await onSubmit(fields, {
+          ...props,
+          // `props` carries the entity under its own name. The update actions
+          // read `entity`, so name it that here.
+          entity: entity ?? {},
+          resetForm: handleReset,
+        });
       } catch (error) {
         console.error(error);
         setSaveError(error);
@@ -198,102 +182,102 @@ const FieldDetail = (props: FieldDetailProps) => {
         loading={!loadingError && !saveError && (loading || isSubmitting)}
         error={saveError ?? loadingError}
       >
-        {() => (
-          <div className={CS.wrapper}>
-            <div
-              className={cx(
-                CS.pl4,
-                CS.pr3,
-                CS.pt4,
-                CS.mb4,
-                CS.mb1,
-                CS.bgWhite,
-                CS.rounded,
-                CS.bordered,
-              )}
-            >
-              <ul>
-                <li>
-                  <Detail
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={getFormField("description")}
-                  />
-                </li>
-                {!isEditing && (
+        {() =>
+          entity == null || table == null ? null : (
+            <div className={CS.wrapper}>
+              <div
+                className={cx(
+                  CS.pl4,
+                  CS.pr3,
+                  CS.pt4,
+                  CS.mb4,
+                  CS.mb1,
+                  CS.bgWhite,
+                  CS.rounded,
+                  CS.bordered,
+                )}
+              >
+                <ul>
                   <li>
                     <Detail
-                      name={t`Actual name in database`}
-                      description={entity.name}
-                      subtitleClass={S.tableActualName}
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={getFormField("description")}
                     />
                   </li>
-                )}
-                <li>
-                  <Detail
-                    name={t`Why this field is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={getFormField("points_of_interest")}
-                  />
-                </li>
-                <li>
-                  <Detail
-                    name={t`Things to be aware of about this field`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={getFormField("caveats")}
-                  />
-                </li>
+                  {!isEditing && (
+                    <li>
+                      <Detail
+                        name={t`Actual name in database`}
+                        description={entity.name}
+                        subtitleClass={S.tableActualName}
+                      />
+                    </li>
+                  )}
+                  <li>
+                    <Detail
+                      name={t`Why this field is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={getFormField("points_of_interest")}
+                    />
+                  </li>
+                  <li>
+                    <Detail
+                      name={t`Things to be aware of about this field`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={getFormField("caveats")}
+                    />
+                  </li>
 
-                {!isEditing && (
+                  {!isEditing && (
+                    <li>
+                      <Detail
+                        name={t`Data type`}
+                        description={entity.database_type}
+                      />
+                    </li>
+                  )}
                   <li>
-                    <Detail
-                      name={t`Data type`}
-                      description={entity.database_type}
+                    <FieldTypeDetail
+                      databaseId={table.db_id}
+                      field={entity}
+                      fieldTypeFormField={getFormField("semantic_type")}
+                      foreignKeyFormField={getFormField("fk_target_field_id")}
+                      fieldSettingsFormField={getFormField("settings")}
+                      isEditing={Boolean(isEditing)}
                     />
                   </li>
-                )}
-                <li>
-                  <FieldTypeDetail
-                    databaseId={table.db_id!}
-                    field={entity}
-                    fieldTypeFormField={getFormField("semantic_type")}
-                    foreignKeyFormField={getFormField("fk_target_field_id")}
-                    fieldSettingsFormField={getFormField("settings")}
-                    isEditing={Boolean(isEditing)}
-                  />
-                </li>
-                {!isEditing && (
-                  <li>
-                    <UsefulQuestions
-                      questions={interestingQuestions(
-                        props.database,
-                        props.table,
-                        props.field,
-                        metadata,
-                      )}
-                    />
-                  </li>
-                )}
-              </ul>
+                  {!isEditing && (
+                    <li>
+                      <UsefulQuestions
+                        questions={interestingQuestions(
+                          table,
+                          entity,
+                          metadataProvider,
+                        )}
+                      />
+                    </li>
+                  )}
+                </ul>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        }
       </LoadingAndErrorWrapper>
     </form>
   );
 };
 
-// What the container has to supply: `params` feeds `mapStateToProps`, and
-// `metadata` is read here but selected by the container. Naming it keeps that
-// contract type-checked.
-type FieldDetailOwnProps = ReferenceRouteProps &
-  Pick<FieldDetailProps, "metadata"> &
+type FieldDetailOwnProps = Pick<
+  FieldDetailProps,
+  "databaseId" | "table" | "field"
+> &
   ReferenceLoadingProps;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes-test
   (:require
    [clojure.test :refer :all]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -20,7 +22,7 @@
             [:stages 0]
             (lib.normalize/normalize :mbql.clause/field [:field {:temporal-unit :month} (meta/id :checkins :date)]))))))
 
-(mu/defn- auto-bucket [query :- :map]
+(mu/defn- auto-bucket [query :- [:or ::lib.schema/query ::mbql.s/Query]]
   (if (= (:lib/type query) :mbql/query)
     (qp.auto-bucket-datetimes/auto-bucket-datetimes query)
     (let [metadata-provider (if (qp.store/initialized?)

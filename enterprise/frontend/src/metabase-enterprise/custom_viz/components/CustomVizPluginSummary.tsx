@@ -19,24 +19,24 @@ export function CustomVizPluginSummary({ plugin }: Props) {
     <Group align="flex-start" flex="1" wrap="nowrap">
       <CustomVizIcon plugin={plugin} />
 
-      <Stack flex="1" gap="sm" py="xs">
-        <Stack flex="1" gap="xs">
+      <Stack flex="1" gap="sm" py="xxs">
+        <Stack flex="1" gap="xxs">
           <Text fw={700}>{plugin.display_name}</Text>
 
           {(plugin.bundle_hash || plugin.metabase_version) && (
-            <Group gap="xs">
+            <Group gap="xxs">
               {plugin.bundle_hash && (
-                <Text size="sm" c="text-disabled">
+                <Text size="sm" c="text-secondary">
                   {t`Bundle: ${plugin.bundle_hash.slice(0, 8)}`}
                 </Text>
               )}
               {plugin.bundle_hash && plugin.metabase_version && (
-                <Text size="sm" c="text-disabled">
+                <Text size="sm" c="text-secondary">
                   &bull;
                 </Text>
               )}
               {plugin.metabase_version && (
-                <Text size="sm" c="text-disabled">
+                <Text size="sm" c="text-secondary">
                   {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page */}
                   {t`Requires Metabase ${plugin.metabase_version}`}
                 </Text>
@@ -52,8 +52,8 @@ export function CustomVizPluginSummary({ plugin }: Props) {
         )}
 
         {plugin.warnings.map((warning) => (
-          <Group align="center" gap="xs" key={warning.type} wrap="nowrap">
-            <Icon c="warning" flex="0 0 auto" name="warning" />
+          <Group align="center" gap="xxs" key={warning.type} wrap="nowrap">
+            <Icon c="feedback-warning" flex="0 0 auto" name="warning" />
 
             <Text c="text-secondary" size="sm">
               {getCustomVizPluginWarningMessage(warning)}

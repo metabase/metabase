@@ -3,8 +3,10 @@
    [malli.core :as mc]
    [malli.experimental.time.transform :as mett]
    [malli.transform :as mtx]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.lib.schema.literal]
    [metabase.user-key-value.models.user-key-value :as user-key-value]
    [metabase.user-key-value.models.user-key-value.types :as types]
@@ -16,13 +18,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
-  [{nmspace :namespace, k :key} :- [:map
+  {:scope api-scope/data-app}
+  [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]
    _query-params
-   {v :value, expires-at :expires_at} :- [:map
-                                          [:value      {:optional true} :any]
-                                          [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
+   {v :value, expires-at :expires_at} :- [:map {:closed true}
+                                          [:value      {:optional true} [:maybe [:or :string number? :boolean ms/OpaqueJSONObject [:sequential [:or :string number? :boolean ms/OpaqueJSONObject]]]]]
+                                          [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-user-key-value nmspace k))
   (try
     (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
                                                           {:key k
@@ -46,18 +51,26 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
-  [{nmspace :namespace, k :key} :- [:map
+  {:scope api-scope/data-app}
+  [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
-                                    [:namespace ms/NonBlankString]]]
+                                    [:namespace ms/NonBlankString]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-user-key-value nmspace k))
   (user-key-value/retrieve api/*current-user-id* nmspace k))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the three per-key routes around it are: `useUserKeyValue`
+;; only ever reads, writes or clears one key at a time, so nothing a data app renders enumerates
+;; a whole namespace.
 (api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
-  [{nmspace :namespace} :- [:map
+  [{nmspace :namespace} :- [:map {:closed true}
                             [:namespace ms/NonBlankString]]]
   (user-key-value/retrieve-all api/*current-user-id* nmspace))
 
@@ -67,7 +80,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
-  [{nmspace :namespace, k :key} :- [:map
+  {:scope api-scope/data-app}
+  [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
-                                    [:namespace ms/NonBlankString]]]
+                                    [:namespace ms/NonBlankString]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-user-key-value nmspace k))
   (user-key-value/delete! api/*current-user-id* nmspace k))

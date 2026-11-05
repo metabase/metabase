@@ -11,7 +11,7 @@ import { useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Box, Button, Flex, Group, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Group, Icon } from "metabase/ui";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
@@ -34,25 +34,22 @@ export const AdminNavbar = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const navigate = useNavigate();
 
-  useRegisterShortcut(
-    [
-      {
-        id: "admin-change-tab",
-        perform: (_, event) => {
-          if (!event?.key) {
-            return;
-          }
-          const key = parseInt(event.key);
-          const path = adminPaths[key - 1]?.path;
+  useRegisterShortcut([
+    {
+      id: "admin-change-tab",
+      perform: (_, event) => {
+        if (!event?.key) {
+          return;
+        }
+        const key = parseInt(event.key);
+        const path = adminPaths[key - 1]?.path;
 
-          if (path) {
-            navigate(path);
-          }
-        },
+        if (path) {
+          navigate(path);
+        }
       },
-    ],
-    [adminPaths],
-  );
+    },
+  ]);
 
   return (
     <Flex
@@ -96,9 +93,9 @@ export const AdminNavbar = ({
           gap="0.25rem"
           miw={0}
         >
-          {adminPaths.map(({ name, key, path }) => (
+          {adminPaths.map(({ getName, key, path }) => (
             <AdminNavItem
-              name={name}
+              name={getName()}
               path={path}
               key={key}
               currentPath={currentPath}
@@ -106,7 +103,7 @@ export const AdminNavbar = ({
           ))}
           {/* Security Center is rendered outside adminPaths because it
               needs a live query to show an active-advisories badge */}
-          {PLUGIN_SECURITY_CENTER.isEnabled && (
+          {PLUGIN_SECURITY_CENTER.isEnabled && isAdmin && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterNavItem
               currentPath={currentPath}
             />
@@ -116,7 +113,11 @@ export const AdminNavbar = ({
         {!isPaidPlan && isAdmin && <StoreLink />}
       </Flex>
       <Group gap="0.5rem" ms="auto">
-        <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
+        <MobileNavbar
+          adminPaths={adminPaths}
+          currentPath={currentPath}
+          isAdmin={isAdmin}
+        />
         <AppSwitcher />
       </Group>
     </Flex>
@@ -126,23 +127,27 @@ export const AdminNavbar = ({
 interface AdminMobileNavbarProps {
   adminPaths: AdminPath[];
   currentPath: string;
+  isAdmin: boolean;
 }
 
-const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
+const MobileNavbar = ({
+  adminPaths,
+  currentPath,
+  isAdmin,
+}: AdminMobileNavbarProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const ref = useClickOutside(() => setMobileNavOpen(false));
 
   return (
     <Group ref={ref} hiddenFrom="md" gap="0.5rem" align="center">
-      <Button
+      <ActionIcon
         onClick={() => setMobileNavOpen((prev) => !prev)}
-        variant="subtle"
-        p="0.25rem"
-        leftSection={
-          <Icon name="burger" size={32} color="text-primary-inverse" />
-        }
-      />
+        variant="on-dark-secondary"
+        aria-label={t`Toggle navigation`}
+      >
+        <Icon name="burger" />
+      </ActionIcon>
 
       {mobileNavOpen && (
         <Flex
@@ -150,7 +155,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           aria-label={t`Navigation links`}
           direction="column"
           ta="right"
-          p="md"
+          p="lg"
           gap="sm"
           miw="12rem"
           pos="fixed"
@@ -161,19 +166,19 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           bdrs="0 0 0 0.5rem"
           style={{ overflowY: "auto" }}
         >
-          {adminPaths.map(({ name, key, path }) => (
+          {adminPaths.map(({ getName, key, path }) => (
             <AdminNavLink
               to={path}
               key={key}
               isSelected={currentPath.startsWith(path)}
               isInMobileNav
             >
-              {name}
+              {getName()}
             </AdminNavLink>
           ))}
           {/* Security Center is rendered outside adminPaths because it
               needs a live query to show an active-advisories badge */}
-          {PLUGIN_SECURITY_CENTER.isEnabled && (
+          {PLUGIN_SECURITY_CENTER.isEnabled && isAdmin && (
             <PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem
               currentPath={currentPath}
             />

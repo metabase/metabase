@@ -24,6 +24,27 @@
                       :ended_at   (t/plus now (t/seconds idx))}))
                  task-names)))
 
+(deftest counts-perms-test
+  (testing "Task counters require monitoring permission"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "task/counts")))))
+
+(deftest counts-test
+  (testing "Counters count task rows and run rows independently, without pagination"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/TaskRun {run-id :id} {:run_type :sync
+                                                :entity_type :database
+                                                :entity_id db-id
+                                                :status :started}]
+      (let [task-count (t2/count :model/TaskHistory)
+            run-count  (t2/count :model/TaskRun)]
+        (mt/with-temp [:model/TaskHistory _ {:status :success :run_id run-id}
+                       :model/TaskHistory _ {:status :failed :run_id run-id}]
+          (is (= {:tasks (+ task-count 2), :runs run-count}
+                 (mt/user-http-request :crowberto :get 200 "task/counts")))
+          (is (= {:tasks (+ task-count 2), :runs run-count}
+                 (mt/user-http-request :crowberto :get 200 "task/counts" :limit 1 :offset 100))))))))
+
 (deftest list-perms-test
   (testing "Only superusers can query for TaskHistory"
     (is (= "You don't have permissions to do that."

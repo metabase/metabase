@@ -6,9 +6,9 @@ import {
   setupSearchEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
-import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 import {
@@ -89,8 +89,6 @@ function setup({
       transform={transform}
       uiOptions={uiOptions}
       onChangeSource={jest.fn()}
-      onAcceptProposed={jest.fn()}
-      onRejectProposed={jest.fn()}
     />,
     {
       storeInitialState: createMockState(),
@@ -104,8 +102,10 @@ describe("PythonTransformEditor", () => {
   });
 
   describe("view mode (not editing)", () => {
-    it("should not render the data picker sidebar when not in edit mode", () => {
+    it("should not render the data picker sidebar when not in edit mode", async () => {
       setup({ isEditMode: false });
+      // The editor loads lazily, so assert absence only once it has rendered.
+      await screen.findByTestId("python-transform-top-bar");
       expect(
         screen.queryByTestId("python-data-picker"),
       ).not.toBeInTheDocument();

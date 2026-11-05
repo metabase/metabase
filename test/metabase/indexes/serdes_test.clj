@@ -10,7 +10,7 @@
 
 (defn- temp-transform-spec []
   {:name   (mt/random-name)
-   :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
+   :source {:type :query :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
 (deftest transform-indexes-inlined-test
@@ -22,7 +22,7 @@
                                                                    :columns [{:name "category" :direction :asc}]}
                                                    :status        :succeeded
                                                    :error_message "boom"}]
-      (let [hydrated (u/rfirst (serdes/extract-query "Transform" {:where [:= :id transform-id]}))]
+      (let [hydrated (u/rfirst (serdes/extract-query "Transform" {:filter-column :id :filter-ids [transform-id]}))]
         (testing "extract-query hydrates the index under :indexes"
           (is (= [idx-id] (map :id (:indexes hydrated)))))
         (testing "the serialized index keeps its definition and drops runtime/local state"

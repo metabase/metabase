@@ -9,7 +9,7 @@ redirect_from:
 Keycloak is an open source platform that can be used as a user directory to save user data while acting as the IdP for single sign-on.
 
 1. [Set up SAML in Keycloak](#working-in-the-keycloak-console) (the identity provider).
-2. [Set up SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
+2. [Set up SAML in Metabase](./authenticating-with-saml.md#setting-up-saml-with-your-idp-in-metabase) (the service provider).
 
 For more information, check out our guide for [authenticating with SAML](./authenticating-with-saml.md).
 
@@ -17,7 +17,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
 
 1. Go to the Keycloak admin console and sign in as an administrator.
 2. Create a user from **Manage** > **Users**. You'll need to populate the fields with an email, first name, and last name.
-3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set password for your user.
+3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set a password for your user.
    - Turn off the **Temporary** toggle.
    - Click **Set Password** to save your changes.
 4. Create a new SSO client from **Manage** > **Clients** > **Create**
@@ -29,7 +29,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Home URL**: In your Metabase, go to **Admin** > **Settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 
-5. (Optional, but recommended on test environments) Disable key signing for SSO client. See [settings for signing SSO requests](./authenticating-with-saml.md#settings-for-signing-sso-requests-optional).
+5. (Optional, but recommended on test environments) Disable key signing for SSO client. See [settings for signing SSO requests](./authenticating-with-saml.md#sign-sso-requests).
 
    - Click **Keys** tab.
    - **Client signature required:** Off.
@@ -48,11 +48,11 @@ For more information, check out our guide for [authenticating with SAML](./authe
 
 1. Go to your Metabase **Admin** > **Settings** > **Authentication** > **SAML**.
 2. From the XML file from Step 7 above:
-   - **SAML Identity Provider URL**: Insert the URL that appears right after the following string: `Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location=`
-   - **SAML Identity Provider Issuer**: Insert the URL that appears right after `entityID=`.
-   - **SAML Identity Provider Certificate**: Input the long string that appears after the `<X509Certificate>` tag. Take care when inserting this string: if any letters or special characters are added or off, the setup won't work.
-   - **SAML Application Name**: `metabase`
-3. Click **Save Changes**.
+   - **SAML identity provider URL**: Insert the URL that appears right after the following string: `Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location=`
+   - **SAML identity provider certificate**: Input the long string that appears after the `<X509Certificate>` tag. Take care when inserting this string: if any letters or special characters are added or off, the setup won't work.
+   - **SAML identity provider issuer**: Insert the URL that appears right after `entityID=`.
+   - **SAML application name**: `metabase`
+3. Click **Save and enable**.
 
 ## Mapping attributes from users in Keycloak to Metabase
 
@@ -86,13 +86,18 @@ In your Keycloak client:
 
 ### Set up group mapping in Metabase
 
-1. In Admin, go to **Authentication > SAML**.
-2. In SAML settings, toggle on **Synchronize Group Memberships**
-3. For each of the Keycloak groups, set up a new mapping to a Metabase group.
+1. Go to **Admin** > **Settings** > **Authentication** > **SAML**.
+2. In the **Group mapping** section, turn on the toggle.
+3. Next to **Manual group mappings**, click **New**.
+4. Enter the name of a Keycloak group.
 
-   Currently, Keycloak groups will show up in Metabase with the slash character ("/") prepended to the group name. So, for example, a group named `sales` in Keycloak shows up in Metabase as `/sales`.
+   Keycloak groups show up in Metabase with the slash character ("/") prepended to the group name. A group named `sales` in Keycloak shows up as `/sales`.
 
-4. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloak configuration).
+5. Select the Metabase groups to map the group name to.
+6. Click **Add mapping**.
+7. Repeat steps 3 to 6 for each group.
+8. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloak configuration).
+9. Click **Save and enable**.
 
 ## Troubleshooting SAML issues
 

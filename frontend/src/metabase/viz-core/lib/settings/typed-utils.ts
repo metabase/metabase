@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import type {
-  Card,
+  SeriesCard,
   TableColumnOrderSetting,
   VirtualCard,
   VisualizationSettings,
@@ -12,7 +12,10 @@ import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "../../types";
+import { migrateStoredDashcardCustomVizSettings } from "../custom-viz/migrate-legacy-settings";
 import { getVisualization } from "../registry";
+
+import { getSettingDefinitionsForDisplay } from "./visualization";
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
@@ -81,10 +84,9 @@ export function sanitizeDashcardSettings(
   });
 }
 
-export function extendCardWithDashcardSettings<T extends Card | VirtualCard>(
-  card: T,
-  dashcardSettings?: VisualizationSettings,
-): T {
+export function extendCardWithDashcardSettings<
+  T extends SeriesCard | VirtualCard,
+>(card: T, dashcardSettings?: VisualizationSettings): T {
   // Legacy broken behavior: When editing dashcard viz settings, we save both the edited setting and any settings with
   // persistDefault: true. This leads to saving data settings like graph.dimensions/graph.metrics even when they can't be edited in dashboards.
   const visualization = getVisualization(card.display);
@@ -94,11 +96,18 @@ export function extendCardWithDashcardSettings<T extends Card | VirtualCard>(
     return isSettingHiddenOnDashboards(settings[key] ?? {});
   });
 
+  const cardSettings = card.visualization_settings ?? {};
+
   return {
     ...card,
     visualization_settings: mergeSettings(
-      card?.visualization_settings,
-      _.omit(dashcardSettings, settingsToOmit),
+      cardSettings,
+      migrateStoredDashcardCustomVizSettings(
+        card.display,
+        cardSettings,
+        _.omit(dashcardSettings ?? {}, settingsToOmit),
+        () => getSettingDefinitionsForDisplay(card.display),
+      ),
     ),
   };
 }

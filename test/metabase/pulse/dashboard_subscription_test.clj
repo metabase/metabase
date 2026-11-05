@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
@@ -116,7 +117,7 @@
                             :channel/slack)
                           (pulse.test-util/with-captured-channel-send-messages!
                             (mt/with-temporary-setting-values [site-url "https://testmb.com"]
-                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                              (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))))))
                     (thunk []
                       (if fixture
                         (fixture {:dashboard-id dashboard-id,
@@ -327,7 +328,8 @@
 
     :fixture
     (fn [_ thunk]
-      (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
+      (mt/with-dynamic-fn-redefs [body/attached-results-text
+                                  (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
         (thunk)))
 
     :assert
@@ -373,10 +375,10 @@
                   pulse-results)))
          (testing "attached-results-text should be invoked exactly once"
            (is (= 1
-                  (count (pulse.test-util/input @#'body/attached-results-text)))))
+                  (count (pulse.test-util/input (mt/dynamic-value #'body/attached-results-text))))))
          (testing "attached-results-text should return nil since it's a slack message"
            (is (= [nil]
-                  (pulse.test-util/output @#'body/attached-results-text))))))}}))
+                  (pulse.test-util/output (mt/dynamic-value #'body/attached-results-text)))))))}}))
 
 (deftest virtual-card-test
   (tests!
@@ -582,7 +584,7 @@
 
     :fixture
     (fn [_ thunk]
-      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
         (thunk)))
 
     :assert
@@ -968,7 +970,7 @@
                                   [:model/Dashboard dashboard-id]
                                   [:model/Collection collection-id]
                                   [:model/Card model-id]]]
-                (t2/update! model id {:name (format "New %s name" (name model))}))
+                (t2/update! model :id id {:name (format "New %s name" (name model))}))
               (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                        {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                        {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
@@ -1019,7 +1021,7 @@
                                   [:model/Dashboard dashboard-id]
                                   [:model/Collection collection-id]
                                   [:model/Card model-id]]]
-                (t2/update! model id {:name (format "New %s name" (name model))}))
+                (t2/update! model :id id {:name (format "New %s name" (name model))}))
               (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                        {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                        {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
@@ -1033,6 +1035,21 @@
                        {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                        {:text "### [https://metabase.com](https://metabase.com)"}]
                       (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
+
+(deftest document-link-card-test
+  (mt/with-temp [:model/Collection    {coll-id :id}      {}
+                 :model/Document      {doc-id :id}       {:name          "Linked document"
+                                                          :document      {:type "doc" :content []}
+                                                          :content_type  "application/json+vnd.prose-mirror"
+                                                          :collection_id coll-id}
+                 :model/Dashboard     {dashboard-id :id} {}
+                 :model/DashboardCard _                  {:dashboard_id           dashboard-id
+                                                          :visualization_settings {:virtual_card {:display "link"}
+                                                                                   :link         {:entity {:id    doc-id
+                                                                                                           :model "document"}}}}]
+    (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+      (is (=? [{:text (format "### [Linked document](https://testmb.com/document/%d)" doc-id)}]
+              (execute-dashboard dashboard-id (mt/user->id :crowberto) nil))))))
 
 (deftest execute-dashboard-with-tabs-test
   (mt/with-temp
@@ -1216,6 +1233,43 @@
   [{:keys [name field_ref]} enabled?]
   {:name name :field_ref field_ref :enabled enabled?})
 
+(deftest simple-pivot-table-test
+  (testing "a Table card with the \"Pivot table\" toggle on is pivoted in email and Slack alike (#76931)"
+    (tests!
+     {:pulse   {:skip_if_empty false}
+      :display :table
+      :card    {:dataset_query          (mt/mbql-query orders
+                                          {:aggregation [[:count]]
+                                           :breakout    [$product_id->products.category
+                                                         $user_id->people.source]})
+                :visualization_settings {:table.pivot        true
+                                         :table.pivot_column "SOURCE"
+                                         :table.cell_column  "count"}}
+      ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
+      :fixture (fn [_ thunk]
+                 (mt/with-dynamic-fn-redefs [channel.render/png-from-render-info
+                                             (pulse.test-util/wrap-function
+                                              (mt/original-fn #'channel.render/png-from-render-info))]
+                   (thunk)))
+      :assert
+      {:email
+       (fn [_ [email]]
+         (is (= (rasta-dashsub-message {:message [{">Facebook</th>" true
+                                                   ">Product → Category</th>" true}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #">Facebook</th>"
+                                                     #">Product → Category</th>"))))
+       :slack
+       (fn [_ _]
+         (let [[[rendered-info]] (pulse.test-util/input (mt/dynamic-value #'channel.render/png-from-render-info))
+               h                 (html (:content rendered-info))]
+           (testing "the hiccup handed to the rasterizer is the pivoted grid"
+             (is (str/includes? h ">Facebook</th>"))
+             (is (str/includes? h ">Product → Category</th>"))
+             ;; header row + Doohickey, Gadget, Gizmo, Widget
+             (is (= 5 (count (re-seq #"<tr" h)))))))}})))
+
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
@@ -1238,7 +1292,7 @@
                            :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
-              (with-redefs [email.result-attachment/result-attachment result-attachment!]
+              (mt/with-dynamic-fn-redefs [email.result-attachment/result-attachment result-attachment!]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
                        (-> @mt/inbox
@@ -1278,7 +1332,7 @@
                                                    :pulse_channel_id pc-id}]
       (is (= "<h1>dashboard description</h1>"
              (->> (pulse.test-util/with-captured-channel-send-messages!
-                    (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                    (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
                   :channel/email first :message first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
 
@@ -1301,7 +1355,7 @@
                    :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id}
                    :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                    :pulse_channel_id pc-id}]
-      (let [pulse (t2/select-one :model/Pulse pulse-id)
+      (let [pulse (t2/select-one :model/Pulse :id pulse-id)
             has-link? (fn [pulse]
                         (->> (pulse.test-util/with-captured-channel-send-messages!
                                (pulse.send/send-pulse! pulse))
@@ -1423,7 +1477,7 @@
                                                  ;; icon
                                                  pulse.test-util/png-attachment]})
                (-> (pulse.test-util/with-captured-channel-send-messages!
-                     (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                     (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
                    :channel/email
                    first
                    (mt/summarize-multipart-single-email (re-pattern error-msg)))))))))
@@ -1457,7 +1511,7 @@
                                                ;; active card result
                                                pulse.test-util/png-attachment]})
              (-> (pulse.test-util/with-captured-channel-send-messages!
-                   (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
                  :channel/email
                  first
                  (mt/summarize-multipart-single-email #"My Precious Card" #"Archived Card")))))))
@@ -1480,7 +1534,7 @@
                                      :creator_id   (mt/user->id :rasta)
                                      :dashboard    dashboard-id
                                      :channel-type :email}]
-        (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+        (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))
         (is (empty? (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))))
 
 (deftest dashboard-with-rows-saved-to-disk-test
@@ -1509,7 +1563,7 @@
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
               (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
-                                    (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+                                    (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))]
                 (is (= (rasta-dashsub-message
                         {:message [{"Aviary KPIs" true}
                                    pulse.test-util/png-attachment]})
@@ -1538,7 +1592,7 @@
                  :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                  :pulse_channel_id pc-id}]
     (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
-                          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+                          (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))]
       (is (= (rasta-dashsub-message
               {:message [{"Aviary KPIs"                                   true
                           "Dashboard content available in attached files" true}
@@ -1586,7 +1640,7 @@
                                                      :pulse_channel_id pc-id}]
         (let [executed      (do-with-executed-card-ids
                              #(pulse.test-util/with-captured-channel-send-messages!
-                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))]
           (is (= [attached-id] @executed)))))
     (testing "attachment-only + include_pdf still executes every card, since the PDF renders the whole dashboard"
       (mt/with-temp [:model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
@@ -1597,7 +1651,7 @@
                                                      :pulse_channel_id pc-id}]
         (let [executed (do-with-executed-card-ids
                         #(pulse.test-util/with-captured-channel-send-messages!
-                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))]
           (is (= #{attached-id other-id} (set @executed))))))
     (testing "a slack channel executes every card"
       (mt/with-temp [:model/PulseChannel _ {:pulse_id     pulse-id
@@ -1605,7 +1659,7 @@
                                             :details      {:channel "#general"}}]
         (let [executed (do-with-executed-card-ids
                         #(pulse.test-util/with-captured-channel-send-messages!
-                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))]
           (is (= #{attached-id other-id} (set @executed))))))))
 
 (deftest dashboard-sub-body-only-cards-use-display-limit-test
@@ -1637,7 +1691,7 @@
                                       (u/prog1 (orig dashcard parameters opts)
                                         (swap! row-counts assoc (:card_id dashcard) (-> <> :result :row_count))))]
           (pulse.test-util/with-captured-channel-send-messages!
-            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+            (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))
         (is (< 2000 (get @row-counts attached-id)) "attached card runs to the attachment limit")
         (is (= 2000 (get @row-counts body-only-id)) "body-only card gets the interactive display limit")))))
 
@@ -1679,13 +1733,13 @@
   (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
     (let [render-args (atom nil)]
       ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
-      (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
-                      (reset! render-args {:dashboard-id dashboard-id
-                                           :user-id      user-id
-                                           :parameters   parameters
-                                           :parts        parts})
-                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+      (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                  (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                                    (reset! render-args {:dashboard-id dashboard-id
+                                                         :user-id      user-id
+                                                         :parameters   parameters
+                                                         :parts        parts})
+                                    (.getBytes "%PDF-1.4 stub" "UTF-8"))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
                        :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
@@ -1702,7 +1756,7 @@
                        :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                        :pulse_channel_id pc-id}]
           (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
-                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))]
             (testing "renderer is called with the subscription's dashboard id and resolved parameters"
               (is (= dashboard-id (:dashboard-id @render-args)))
               (is (= [] (:parameters @render-args))))
@@ -1721,8 +1775,8 @@
 (deftest dashboard-sub-no-pdf-by-default-test
   (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
     (let [called? (atom false)]
-      (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [& _] (reset! called? true) (byte-array 0))]
+      (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                  (fn [& _] (reset! called? true) (byte-array 0))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
                        :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
@@ -1738,7 +1792,7 @@
                        :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                        :pulse_channel_id pc-id}]
           (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
-                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))]
             (is (false? @called?))
             (is (= (rasta-dashsub-message
                     {:message [{"Aviary KPIs" true}
@@ -1746,6 +1800,47 @@
                    (mt/summarize-multipart-single-email
                     (first (:channel/email pulse-results))
                     #"Aviary KPIs")))))))))
+
+(defn- send-email-dashsub-with-details!
+  "Send a one-card dashboard subscription named \"Aviary KPIs\" to rasta over an email channel with `details`, and
+  return the captured email."
+  [details]
+  (mt/with-temp [:model/Card                  {card-id :id}      {:name          pulse.test-util/card-name
+                                                                  :dataset_query (mt/mbql-query orders {:limit 1})}
+                 :model/Dashboard             {dashboard-id :id} {:name "Aviary KPIs"}
+                 :model/DashboardCard         _                  {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}
+                 :model/Pulse                 {pulse-id :id}     {:name         "Pulse Name"
+                                                                  :dashboard_id dashboard-id}
+                 :model/PulseCard             _                  {:pulse_id pulse-id
+                                                                  :card_id  card-id
+                                                                  :position 0}
+                 :model/PulseChannel          {pc-id :id}        {:pulse_id     pulse-id
+                                                                  :channel_type "email"
+                                                                  :details      details}
+                 :model/PulseChannelRecipient _                  {:user_id          (pulse.test-util/rasta-id)
+                                                                  :pulse_channel_id pc-id}]
+    (-> (pulse.test-util/with-captured-channel-send-messages!
+          (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
+        :channel/email
+        first)))
+
+(deftest dashboard-sub-custom-subject-test
+  (testing "An email channel with :subject sends it as the subject and keeps the dashboard name in the body (#63305)"
+    (is (= (rasta-dashsub-message {:subject "Aviary KPIs, Account A"})
+           (mt/summarize-multipart-single-email
+            (send-email-dashsub-with-details! {:subject "Aviary KPIs, Account A"})
+            #"Aviary KPIs")))))
+
+(deftest dashboard-sub-custom-subject-is-literal-test
+  (testing "Template syntax in a custom subject is sent as typed, not resolved against the payload"
+    (is (= "{{payload.dashboard.id}} report"
+           (:subject (send-email-dashsub-with-details! {:subject "{{payload.dashboard.id}} report"}))))))
+
+(deftest dashboard-sub-without-subject-uses-dashboard-name-test
+  (testing "An email channel without :subject keeps the dashboard name as the subject"
+    (is (= "Aviary KPIs"
+           (:subject (send-email-dashsub-with-details! {}))))))
 
 (deftest dashboard-sub-slack-include-pdf-test
   (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
@@ -1761,14 +1856,14 @@
                                              :channel_type "slack"
                                              :details      {:channel "#general" :include_pdf true}}]
         (let [render-args (atom nil)]
-          (with-redefs [channel.render/render-dashboard-to-pdf
-                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
-                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
-                                               :parameters parameters :parts parts})
-                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+          (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                      (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                                        (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                                             :parameters parameters :parts parts})
+                                        (.getBytes "%PDF-1.4 stub" "UTF-8"))]
             (pulse.test-util/slack-test-setup!
              (let [results (pulse.test-util/with-captured-channel-send-messages!
-                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                             (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
                    msg     (first (:channel/slack results))]
                (testing "renderer is called with the subscription's dashboard id"
                  (is (= dashboard-id (:dashboard-id @render-args))))
@@ -1794,7 +1889,7 @@
                                              :details      {:channel "#general"}}]
         (pulse.test-util/slack-test-setup!
          (let [results (pulse.test-util/with-captured-channel-send-messages!
-                         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                         (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
                msg     (first (:channel/slack results))]
            (is (nil? (:pdf msg)))
            (is (some #(= "image" (:type %)) (:blocks msg)))))))))

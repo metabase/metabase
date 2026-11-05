@@ -45,6 +45,7 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.models.interface :as mi]
@@ -56,7 +57,7 @@
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
@@ -89,6 +90,12 @@
           (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
+(def ^:private xray-field-keys
+  "What X-rays pins on a Field row while it works, and what hydration added, none of which belongs on the Lib column
+  the Field becomes."
+  [:db :link :aggregation :max-cardinality :max_cardinality :field-type :field_type :links_to :score :named :dimensions
+   :name_field :target :xrays/database-id])
+
 (mu/defn field->metadata :- ::lib.schema.metadata/column
   "Convert a Field from the app DB to Lib column metadata, and do a bunch of weird additional transformations that
   I (Cam) do not really understand (see below).
@@ -97,9 +104,9 @@
  `:metadata/column`s directly or use Metadata Providers."
   [{fk-target-field-id :fk_target_field_id, base-type :base_type, :keys [id link aggregation], :as field} :- (ms/InstanceOf :model/Field)]
   (let [col (if fk-target-field-id
-              (-> (t2/select-one :metadata/column :id fk-target-field-id)
+              (-> (xrays.db/metadata-column fk-target-field-id)
                   (assoc :fk-field-id id, :lib/source :source/implicitly-joinable))
-              (lib-be/instance->metadata field :metadata/column))]
+              (lib-be/instance->metadata (apply dissoc field xray-field-keys) :metadata/column))]
     (cond-> col
       link
       (assoc :fk-field-id link, :lib/source :source/implicitly-joinable)
@@ -117,7 +124,7 @@
   (cond
     full-name full-name
     link (format "%s → %s"
-                 (-> (t2/select-one :model/Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 (-> (xrays.db/field link) :display_name (str/replace #"(?i)\sid$" ""))
                  display_name)
     :else display_name))
 
@@ -151,12 +158,13 @@
 
 (mu/defn transform-metric-aggregate :- ::ads/external-op
   "Map a metric aggregate definition from nominal types to semantic types."
-  [[ag-type & args] dimension-name->field]
+  [[ag-type & args] :- ::lib.schema.common/possibly-unnormalized-clause
+   dimension-name->field :- [:map-of :string ::ads/item]]
   {:lib/type :lib/external-op
    :operator (keyword ag-type)
    :args     (mapv (fn [arg]
                      (if (and (vector? arg)
-                              (= (first arg) "dimension"))
+                              (contains? #{:dimension "dimension"} (first arg)))
                        (when-let [field (dimension-name->field (second arg))]
                          (field->metadata field))
                        arg))
@@ -278,7 +286,7 @@
   "For every field in a given context determine all potential dimensions each field may map to.
   This will return a map of field id (or name) to collection of potential matching dimensions."
   [context :- ::ads/context
-   dimension-specs]
+   dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
   ;; TODO - Fix this so that the intermediate representations aren't so crazy.
   ;; all-bindings a map of binding dim identifier to binding def which contains
   ;; field matches which are all the same field except they are merged with the binding.
@@ -303,7 +311,7 @@
   [candidate-binding-values]
   (letfn [(score [a]
             (let [[_ definition] a]
-              [(reduce + (map (comp count ancestors) (:field_type definition)))
+              [(reduce + (map magic.util/ancestor-count (:field_type definition)))
                (count definition)
                (:score definition)]))]
     (map (juxt (comp score first) identity) candidate-binding-values)))
@@ -349,7 +357,8 @@
    (see `most-specific-definition` for details).
 
   The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
-  [context dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
+  [context :- ::ads/context
+   dimension-specs :- [:maybe [:sequential ::ads/dimension-template]]]
   (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
@@ -363,7 +372,7 @@
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
   [source :- (ms/InstanceOf #{:model/Table :model/Card})]
-  (t2/select-one :model/Database :id ((some-fn :db_id :database_id) source)))
+  (xrays.db/database ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field
@@ -393,7 +402,8 @@
 (mu/defn grounded-filters :- [:sequential ::ads/grounded-filter]
   "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
   filter name to grounded versions of the filter."
-  [filter-templates ground-dimensions]
+  [filter-templates :- [:maybe [:sequential ::ads/filter-template]]
+   ground-dimensions :- ::ads/dim-name->matching-fields]
   (->> filter-templates
        (keep (fn [fltr]
                (let [[fname {:keys [filter] :as v}] (first fltr)
@@ -410,7 +420,7 @@
                                    :operator (keyword op)
                                    :args     (mapv (fn [arg]
                                                      (if (and (vector? arg)
-                                                              (= (first arg) "dimension"))
+                                                              (contains? #{:dimension "dimension"} (first arg)))
                                                        (when-let [field (opt (second arg))]
                                                          (field->metadata field))
                                                        arg))
@@ -425,7 +435,7 @@
   [context :- ::ads/context
    {:keys [dimension-specs
            metric-specs
-           filter-specs]} :- [:map
+           filter-specs]} :- [:map {:closed true}
                               [:dimension-specs [:maybe [:sequential ::ads/dimension-template]]]
                               [:metric-specs    [:maybe [:sequential ::ads/metric-template]]]
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]

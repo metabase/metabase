@@ -1,7 +1,9 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
+   [metabase.channel.render.body :as body]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.shared :as channel.shared]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -34,13 +36,15 @@
   [^OutputStream os                                              :- (ms/InstanceOfClass OutputStream)
    {:keys [export-format format-rows? pivot? csv-include-bom?]
     :or   {csv-include-bom? true}
-    :as   _options}                                              :- [:map
+    :as   _options}                                              :- [:map {:closed true}
                                                                      [:export-format    :keyword]
                                                                      [:format-rows?     {:optional true} [:maybe :boolean]]
                                                                      [:pivot?           {:optional true} [:maybe :boolean]]
                                                                      [:csv-include-bom? {:optional true} [:maybe :boolean]]]
-   {{:keys [rows]} :data, database-id :database_id, :as results} :- [:map
-                                                                     [:database_id ::lib.schema.id/database]]]
+   {{:keys [rows]} :data, database-id :database_id, :as results} :- [:merge
+                                                                     ::body/QPResult
+                                                                     [:map {:closed true}
+                                                                      [:database_id ::lib.schema.id/database]]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (log/debugf "Streaming results to %s with %d rows" export-format (:row_count results))
@@ -53,7 +57,7 @@
             viz-settings'               (assoc viz-settings :output-order output-order)]
         (qp.si/begin! w
                       (-> results
-                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :format-rows?] (boolean format-rows?))
                           (assoc-in [:data :pivot?] pivot?)
                           (assoc-in [:data :csv-include-bom?] csv-include-bom?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
@@ -101,8 +105,7 @@
   (when (and (or (:include_csv card) (:include_xls card))
              (pos-int? (:row_count result))
              (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
-    (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
-          result            (:result (maybe-realize-data-rows part))
+    (let [result           (:result (channel.shared/maybe-realize-data-rows part))
           ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
           ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
           filename-prefix  (render.util/dashcard-title card dashcard)]

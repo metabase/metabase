@@ -1,9 +1,9 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { TokenFeatures } from "metabase-types/api";
+import type { DatabaseId, TokenFeatures } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -16,6 +16,7 @@ export interface SetupOpts {
   canCreateQueries?: boolean;
   canCreateNativeQueries?: boolean;
   showMetabaseLinks?: boolean;
+  lastUsedDatabaseId?: DatabaseId | null;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
@@ -24,6 +25,7 @@ export function setup({
   canCreateQueries = false,
   canCreateNativeQueries = false,
   showMetabaseLinks = true,
+  lastUsedDatabaseId = null,
   tokenFeatures = {},
   enterprisePlugins = [],
 }: SetupOpts) {
@@ -36,6 +38,7 @@ export function setup({
     }),
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,
+      "last-used-native-database-id": lastUsedDatabaseId,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });

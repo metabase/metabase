@@ -86,9 +86,8 @@
         (concat
          (map str frames-after-last-mb)
          ;; add a little arrow to the frame so it stands out more
-         (cons
-          (some->> last-mb-frame (str "--> "))
-          frames-before-last-mb)))))})
+         (when last-mb-frame
+           (cons (str "--> " last-mb-frame) frames-before-last-mb))))))})
 
 (defn ip-address?
   "Whether string `s` is a valid IP (v4 or v6) address."

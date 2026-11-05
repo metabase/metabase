@@ -1,5 +1,5 @@
 import { useField, useFormikContext } from "formik";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -82,7 +82,7 @@ export const DatabaseCacheScheduleField = ({
   };
 
   return (
-    <FormField title={title} description={description}>
+    <FormField mb="lg" title={title} description={description}>
       <ScheduleModePicker
         value={scheduleMode}
         onChange={handleScheduleModeChange}
@@ -90,7 +90,7 @@ export const DatabaseCacheScheduleField = ({
 
       {scheduleMode === "full" && (
         <Schedule
-          mt="md"
+          mt="lg"
           value={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
           onScheduleChange={handleScheduleChange}

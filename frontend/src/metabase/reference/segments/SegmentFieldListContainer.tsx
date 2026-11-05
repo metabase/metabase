@@ -15,13 +15,12 @@ import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getIsEditing,
-  getSegment,
   getSegmentId,
-  getTable,
   getUser,
 } from "../selectors";
 
 import SegmentSidebar from "./SegmentSidebar";
+import { useSegmentPage } from "./use-segment-page";
 
 const mapDispatchToProps = {
   ...actions,
@@ -36,11 +35,9 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
   const params = useParams<ReferenceRouteParams>();
 
   const user = useSelector(getUser);
-  const segment = useSelector((state) => getSegment(state, { params }));
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
   const isEditing = useSelector(getIsEditing);
-  // `SegmentFieldList` reads `table.db_id` but doesn't select the table itself.
-  const table = useSelector((state) => getTable(state, { params }));
+  const { segment, table } = useSegmentPage(segmentId);
 
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchSegmentFieldsData(dispatch, segmentId),
@@ -58,10 +55,16 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<SegmentSidebar segment={segment} user={user} />}
+      sidebar={
+        <SegmentSidebar
+          segmentId={segmentId}
+          segmentName={segment?.name}
+          user={user}
+        />
+      }
     >
       <SegmentFieldList
-        params={params}
+        segment={segment}
         table={table}
         loading={loading}
         loadingError={loadingError}

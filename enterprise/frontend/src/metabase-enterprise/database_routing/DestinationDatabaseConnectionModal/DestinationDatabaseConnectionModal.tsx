@@ -97,6 +97,7 @@ export const DestinationDatabaseConnectionModal = () => {
 
   return (
     <Modal
+      density="relaxed"
       title={
         addingNewDatabase
           ? t`Add destination database`
@@ -104,7 +105,6 @@ export const DestinationDatabaseConnectionModal = () => {
       }
       opened
       onClose={handleCloseModal}
-      padding="xl"
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,
@@ -115,9 +115,8 @@ export const DestinationDatabaseConnectionModal = () => {
         <>
           <Flex
             py="sm"
-            px="md"
-            mx="xl"
-            my="md"
+            px="lg"
+            my="lg"
             bg="background_page-secondary"
             align="center"
             justify="space-between"

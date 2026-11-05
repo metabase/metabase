@@ -3,7 +3,7 @@ import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
-import { usePublishedTableMeasurePage } from "../../hooks";
+import { usePublishedTableMeasurePage } from "../../hooks/use-published-table-measure-page";
 import { MeasureRevisionHistoryPage } from "../MeasureRevisionHistoryPage";
 
 type PublishedTableMeasureRevisionHistoryPageParams = {

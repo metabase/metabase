@@ -150,7 +150,7 @@ Only counts rows where the condition is true.
 
 Syntax: `CountIf(condition)`
 
-Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
+Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal was greater than 100.
 
 ### Distinct
 
@@ -186,7 +186,9 @@ Syntax: `Median(column)`
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
+Databases that don't support `median`: Druid, MariaDB, MongoDB, MySQL, SQLite, Vertica, and SQL Server.
+
+Presto only provides approximate results. BigQuery uses the lower of the middle 2 values, rather than their mean, when there is an even number of values.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -1049,6 +1051,8 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 Limitations are noted for each aggregation and function above, and here they are in summary:
 
 **Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
+
+**BigQuery**: `Median`.
 
 **Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 

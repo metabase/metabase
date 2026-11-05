@@ -123,7 +123,7 @@ export function IndexEditorModal({
       trackFailure({ transformId: transform.id, kind, result: "failure" });
       sendToast({
         message: getErrorMessage(submitError, t`Failed to save index`),
-        icon: "warning",
+        variant: "negative",
       });
       throw submitError;
     }
@@ -131,9 +131,9 @@ export function IndexEditorModal({
 
   return (
     <Modal
+      density="relaxed"
       opened
       title={isEditing ? t`Edit index` : t`Create an index`}
-      padding="xl"
       onClose={onClose}
     >
       {isLoading || error !== undefined ? (

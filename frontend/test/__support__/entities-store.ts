@@ -2,17 +2,16 @@ import type { Middleware, Reducer } from "@reduxjs/toolkit";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { type StoreSeedState, seedApiQueryCache } from "__support__/state";
 import { Api } from "metabase/api";
+import {
+  entitiesReducer,
+  metadataHydrationMiddleware,
+} from "metabase/metadata-store";
 import { commonReducers } from "metabase/reducers-common";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { reducer as entitiesReducer } from "metabase/redux/entities";
-import { metadataHydrationMiddleware } from "metabase/redux/entities/hydration";
 import type { State } from "metabase/redux/store";
-import {
-  type StoreSeedState,
-  seedApiQueryCache,
-} from "metabase/redux/store/mocks";
 
 // Re-exported from the test-support tier so specs can build a main-app store
 // without importing `metabase/reducers-main` directly, which would

@@ -7,11 +7,11 @@ summary: Upload a translation dictionary to translate the UI and content of embe
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embedding=true %}
 
-You can set a locale on modular embeds (guest, SSO, and SDK) to translate Metabase's UI. If you've uploaded a translation dictionary, Metabase will also translate content strings (like dashboard names and filter labels) for all [modular embeds](./modular-embedding.md).
+On every plan, you can set a locale on modular embeds (guest, SSO, and SDK) to translate Metabase's UI. On Pro and Enterprise plans, you can also upload a translation dictionary so that Metabase translates content strings (like dashboard names and filter labels) for all [modular embeds](./modular-embedding.md).
 
 ## Set a locale to translate UI, and upload a dictionary to translate content
 
-To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus) automatically. You don't need to add translations for them to your dictionary.
 
 For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
 
@@ -55,8 +55,10 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **Admin > Embedding**.
-2. Under **Translate embedded dashboards and question**, click **Upload translation dictionary**.
+1. Go to **Embedding hub > Localization**.
+2. Under **Translate embedded dashboards and questions**, click **Upload edited translation dictionary**.
+
+For a starting point, click **Get translation dictionary template**. You'll get a CSV with the right columns, filled with your current dictionary if you've uploaded one, or a few sample rows if you haven't.
 
 Uploading a new dictionary will replace the existing dictionary.
 
@@ -85,7 +87,7 @@ Currently, Metabase doesn't tokenize strings for translations, so you should inc
 
 For example, if you have a dashboard called "Monthly Sales", it's not sufficient to have translations of "Monthly" and "Sales" - you also need to include "Monthly Sales" as a full string.
 
-Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") into the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
+Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") in the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
 
 ## Translations are case-insensitive
 

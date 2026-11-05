@@ -1,23 +1,21 @@
 import fetchMock from "fetch-mock";
 
+import { createMockMetadataFromState } from "__support__/metadata";
+import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { databaseApi, snippetApi } from "metabase/api";
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
-import {
-  createMockLocation,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
@@ -29,7 +27,9 @@ import type {
   User,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockSegment,
+  createMockTemplateTag,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -85,7 +85,7 @@ async function baseSetup({
         : user,
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const getState = () => state;
 
   // Pass actions through verbatim so callers that capture the result of
@@ -93,7 +93,7 @@ async function baseSetup({
   // call methods on it in tests where the snippet endpoint is mocked.
   const dispatch = jest.fn((action) => action);
   await initializeQB(location, params)(dispatch, getState);
-  jest.runAllTimers();
+  jest.runOnlyPendingTimers();
 
   const actions = dispatch.mock.calls.find(
     (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
@@ -685,6 +685,88 @@ describe("QB Actions > initializeQB", () => {
     });
   });
 
+  describe("native questions with card references", () => {
+    const REFERENCED_CARD = createMockCard({ id: 10, name: "Bob's Café" });
+
+    function setupCardReference({ tagName }: { tagName: string }) {
+      const actualRunRtkEndpoint = rtkEndpointUtils.runRtkEndpoint;
+      jest
+        .spyOn(rtkEndpointUtils, "runRtkEndpoint")
+        .mockImplementation((request, dispatch, endpoint, options) =>
+          endpoint === cardApi.endpoints.getCard
+            ? Promise.resolve(REFERENCED_CARD)
+            : actualRunRtkEndpoint(request, dispatch, endpoint, options),
+        );
+
+      return setup({
+        card: createSavedNativeCard({
+          dataset_query: {
+            type: "native",
+            database: SAMPLE_DB_ID,
+            native: {
+              query: `SELECT * FROM {{${tagName}}}`,
+              "template-tags": {
+                [tagName]: createMockTemplateTag({
+                  name: tagName,
+                  "display-name": tagName,
+                  type: "card",
+                  "card-id": REFERENCED_CARD.id,
+                }),
+              },
+            },
+          },
+        }),
+      });
+    }
+
+    function getQueryText(card: Card, metadata: Metadata) {
+      return checkNotNull(
+        new Question(card, metadata).legacyNativeQuery(),
+      ).queryText();
+    }
+
+    function isDirty(
+      { card, originalCard }: { card: Card; originalCard: Card },
+      metadata: Metadata,
+    ) {
+      return new Question(card, metadata).isDirtyComparedTo(
+        new Question(originalCard, metadata),
+      );
+    }
+
+    it("fetches the card that the tag references", async () => {
+      await setupCardReference({ tagName: "#10-bobs-cafe" });
+
+      expect(rtkEndpointUtils.runRtkEndpoint).toHaveBeenCalledWith(
+        { id: REFERENCED_CARD.id, ignore_error: true },
+        expect.anything(),
+        cardApi.endpoints.getCard,
+      );
+    });
+
+    it("keeps a card reference unchanged when its tag name matches the name the frontend generates", async () => {
+      const { result, metadata } = await setupCardReference({
+        tagName: "#10-bobs-cafe",
+      });
+
+      expect(getQueryText(result.card, metadata)).toBe(
+        "SELECT * FROM {{#10-bobs-cafe}}",
+      );
+      expect(isDirty(result, metadata)).toBe(false);
+    });
+
+    it("renames a card reference whose tag name does not match the name the frontend generates", async () => {
+      const { result, metadata } = await setupCardReference({
+        tagName: "#10-foo",
+      });
+
+      expect(getQueryText(result.card, metadata)).toBe(
+        "SELECT * FROM {{#10-bobs-cafe}}",
+      );
+      expect(isDirty(result, metadata)).toBe(true);
+    });
+  });
+
   function startInitializeDB(
     card: Card,
     dispatch: jest.Mock,
@@ -736,13 +818,13 @@ describe("QB Actions > initializeQB", () => {
 
       // Second init runs to completion, superseding the first
       await startInitializeDB(secondCard, dispatch, getState);
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       // Unblock the first init; it should bail out once it sees the version
       // has been superseded.
       resolveFirstLoad(firstCard);
       await firstInit;
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       const initActions = dispatch.mock.calls.filter(
         (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
@@ -787,11 +869,11 @@ describe("QB Actions > initializeQB", () => {
       await Promise.resolve();
 
       await startInitializeDB(secondCard, dispatch, getState);
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       resolveFirstLoad(firstCard);
       await firstInit;
-      jest.runAllTimers();
+      jest.runOnlyPendingTimers();
 
       const archiveError = setErrorPage(
         expect.objectContaining({ data: { error_code: "archived" } }),

@@ -43,7 +43,7 @@ export type Transform = {
   can_write?: boolean;
   can_execute?: boolean;
 
-  source_database_id?: DatabaseId | null;
+  source_database_id?: DatabaseId;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
@@ -75,20 +75,6 @@ export type Transform = {
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
-
-export type TaggedTransform = Transform & { type: "transform" };
-
-export type UnsavedTransform = {
-  type: "unsaved-transform";
-  id: TransformId;
-  name: string;
-  source: DraftTransformSource;
-  target: {
-    name: string;
-    schema: string | null;
-    type: TransformTargetType;
-  };
-};
 
 export type PythonTransformTableEntry = {
   alias: string;
@@ -340,6 +326,11 @@ export type UpdateTransformTagRequest = {
 
 export type RunTransformResponse = {
   run_id: TransformRunId;
+  message?: string;
+};
+
+export type RunTransformJobResponse = {
+  job_run_id: TransformJobRunId | null;
   message?: string;
 };
 

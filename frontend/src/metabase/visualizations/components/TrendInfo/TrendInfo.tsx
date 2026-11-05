@@ -20,7 +20,7 @@ export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {
       <Title order={2} className={S.value}>
         {value}
       </Title>
-      <Flex align="center" gap="xs" mt="xs" wrap="wrap">
+      <Flex align="center" gap="xxs" mt="xxs" wrap="wrap">
         <Text fw={700} c="text-secondary">
           {dateLabel}
         </Text>
@@ -39,7 +39,7 @@ export function TrendInfo({ value, dateLabel, change }: TrendInfoProps) {
         )}
         {change != null && change.percent === 0 && (
           <Flex align="center" gap={4}>
-            <Text c="text-disabled" fw={700}>
+            <Text c="text-secondary" fw={700}>
               {t`No change`}
             </Text>
             <Text c="text-secondary">{change.description}</Text>

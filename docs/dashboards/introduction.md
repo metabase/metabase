@@ -39,7 +39,7 @@ Every new Metabase comes with an example dashboard, **E-commerce insights**, in 
 
 ## Adding or saving questions to a dashboard
 
-To get some charts on a dashboard, you'll need to [create questions](../questions/introduction.md) (Metabase word for chart or query) and then add them, to the dashboard.
+To get some charts on a dashboard, you'll need to [create questions](../questions/introduction.md) (Metabase word for chart or query) and then add them to the dashboard.
 
 You can add questions that are saved to collections, or save questions directly to a dashboard.
 
@@ -132,7 +132,7 @@ To provide values for the variable, you'll need to add a filter to the dashboard
 
 ## Iframe cards
 
-[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
+[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
 
 - Spreadsheets or surveys for data entry or workflows
 - Videos or slides for contextualizing and storytelling on dashboards
@@ -166,6 +166,8 @@ src="https://www.youtube.com/embed/{{video_id}}
 ```
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `video_id`). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
+
+If Metabase blocks the iframe, an admin needs to [allow iframes from that site](../configuring-metabase/domains.md#allow-iframes-from-a-site-in-dashboards).
 
 ## Dashboard tabs
 
@@ -202,7 +204,7 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 ![Editing dashboard](images/duplicate-card.png)
 
 - **Duplicate a card**: hover over the card and click the Duplicate icon.
-- **Move a card to a new tab**: hover over the card, click the move icon, and select that tab you want to move the card to.
+- **Move a card to a new tab**: hover over the card, click the move icon, and select the tab you want to move the card to.
 - **Move a card within a tab**: click and drag the card. Other cards will move out of the way.
 - **Resize a card**: click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
 - **Remove a card**: hover over the card and click the X icon in the top right corner.
@@ -252,6 +254,16 @@ To edit a card's:
 - **Underlying query**: click on the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
 - **Visualization settings**, see [changing a card's visualization settings](#changing-a-cards-visualization-settings).
 
+## Showing events on dashboard cards
+
+Time series cards can show [events](../exploration-and-organization/events-and-timelines.md) saved to the question.
+
+**To toggle events for a card**, click on the card's **three-dot menu** (**...**) and select **Events**.
+
+**To toggle events for all time series cards on the current tab**, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**.
+
+Toggling events on a dashboard only applies to your session. To change what everyone sees, edit the question's events and save the question. See [Events on dashboards](../exploration-and-organization/events-and-timelines.md#events-on-dashboards).
+
 ## Changing a card's visualization settings
 
 You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
@@ -260,7 +272,7 @@ Click on the **pencil** icon to enter dashboard edit mode, hover over the questi
 
 ![Visualization settings](images/visualization-settings.png)
 
-If you clicked the pencil icon, look for **Settings** button in the bottom right.
+If you clicked the pencil icon, look for the **Settings** button in the bottom right.
 
 ![Settings sidebar](./images/settings-sidebar.png)
 
@@ -325,7 +337,7 @@ If your Metabase administrator has enabled [public sharing](../embedding/public-
 
 ![Share icon](./images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/static-embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](../embedding/tenants.md).
 
 Admins can also [create an account](../people-and-groups/managing.md#creating-an-account) for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**.
 
@@ -343,11 +355,12 @@ To configure a dashboard using its URL, you can add the following optional keywo
 
 - `fullscreen`
 - `refresh`
+- `theme`
 
 Here's an example URL:
 
 ```
-https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
+https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&theme=night
 ```
 
 The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode. Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
@@ -356,7 +369,7 @@ There is one important limitation with the `fullscreen` option: for security rea
 
 ## Dashboard version history
 
-For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../exploration-and-organization/history.md).
 
@@ -370,11 +383,11 @@ See [deleting and restoring](../exploration-and-organization/delete-and-restore.
 
 ## Tips on creating helpful dashboards
 
-To make a great dashboard, you first need to decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals".
+To make a great dashboard, you first need to decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals.”
 
 Some tips:
 
-- **Emphasize the most important questions**. To draw people’s attention to what matters most, place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards,
+- **Emphasize the most important questions**. To draw people’s attention to what matters most, place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards.
 - **Keep dashboards focused**. If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
 - **Add filters to your dashboard**. [Adding filters](./filters.md) to dashboards makes them more useful. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
 - **Make your dashboards interactive.** [Customize what happens when users click on a chart or table in your dashboard](./interactive.md).

@@ -54,8 +54,7 @@ export function FixSqlQueryButton() {
     }
 
     sendToast({
-      icon: "warning",
-      toastColor: "feedback-negative",
+      variant: "negative",
       message: action.payload.error?.message ?? METABOT_ERR_MSG.default,
     });
   };

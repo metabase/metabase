@@ -12,6 +12,9 @@ function char(char: string): number {
 const BACKSLASH = char("\\");
 const OPEN_BRACKET = char("[");
 const CLOSE_BRACKET = char("]");
+const SINGLE_QUOTE = char("'");
+const DOUBLE_QUOTE = char('"');
+const STRING_QUOTES = new Set([SINGLE_QUOTE, DOUBLE_QUOTE]);
 const NEW_LINE = char("\n");
 const EOF = -1;
 
@@ -44,6 +47,12 @@ export const field = new ExternalTokenizer((input) => {
   // We allow any character to potentially start a Field token, except field-delimiting
   // punctuators.
   if (FIELD_PUNCTUATORS.has(current)) {
+    return;
+  }
+
+  // A quote starts a string literal so a `]` after it is part of the string, not
+  // the closing bracket of a field (#82328).
+  if (STRING_QUOTES.has(current)) {
     return;
   }
 

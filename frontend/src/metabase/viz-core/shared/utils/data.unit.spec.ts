@@ -8,9 +8,8 @@ import type {
   BreakoutChartColumns,
   MultipleMetricsChartColumns,
 } from "../../lib/graph/columns";
-import type { ColumnFormatter } from "../types/format";
 
-import { getGroupedDataset, getSeries } from "./data";
+import { type ColumnFormatter, getSeries } from "./data";
 
 const columnFormatter: ColumnFormatter = (value: any) => String(value);
 
@@ -65,135 +64,6 @@ const multipleMetricsChartColumns: MultipleMetricsChartColumns = {
 };
 
 describe("data utils", () => {
-  describe("getGroupedDataset", () => {
-    describe("chart with multiple metrics", () => {
-      it("should group dataset by dimension values", () => {
-        const groupedData = getGroupedDataset(
-          { rows },
-          multipleMetricsChartColumns,
-          createMockVisualizationSettings({ column: () => {} }),
-          columnFormatter,
-        );
-
-        expect(groupedData).toStrictEqual([
-          {
-            dimensionValue: 2020,
-            isClickable: true,
-            metrics: {
-              count: 850,
-              avg: 190,
-            },
-            rawRows: [rows[0], rows[1]],
-          },
-          {
-            dimensionValue: 2021,
-            isClickable: true,
-            metrics: {
-              count: 1050,
-              avg: 230,
-            },
-            rawRows: [rows[2], rows[3]],
-          },
-        ]);
-      });
-    });
-  });
-
-  describe("chart with a breakout", () => {
-    it("should group dataset by dimension values and breakout", () => {
-      const groupedData = getGroupedDataset(
-        { rows },
-        breakoutChartColumns,
-        createMockVisualizationSettings({ column: () => {} }),
-        columnFormatter,
-      );
-
-      expect(groupedData).toStrictEqual([
-        {
-          dimensionValue: 2020,
-          isClickable: true,
-          metrics: {
-            count: 850,
-          },
-          rawRows: [rows[0], rows[1]],
-          breakout: {
-            Doohickey: {
-              metrics: {
-                count: 400,
-              },
-              rawRows: [rows[0]],
-            },
-            Gadget: {
-              metrics: {
-                count: 450,
-              },
-              rawRows: [rows[1]],
-            },
-          },
-        },
-        {
-          dimensionValue: 2021,
-          isClickable: true,
-          metrics: {
-            count: 1050,
-          },
-          rawRows: [rows[2], rows[3]],
-          breakout: {
-            Doohickey: {
-              metrics: {
-                count: 500,
-              },
-              rawRows: [rows[2]],
-            },
-            Gadget: {
-              metrics: {
-                count: 550,
-              },
-              rawRows: [rows[3]],
-            },
-          },
-        },
-      ]);
-    });
-
-    it("should use untranslatedRows for breakout keys when present", () => {
-      const translatedRows = [
-        [2020, "Appareil", 400, 90],
-        [2020, "Bidule", 450, 100],
-        [2021, "Appareil", 500, 110],
-        [2021, "Bidule", 550, 120],
-      ];
-
-      const groupedData = getGroupedDataset(
-        { rows: translatedRows, untranslatedRows: rows },
-        breakoutChartColumns,
-        createMockVisualizationSettings({ column: () => {} }),
-        columnFormatter,
-      );
-
-      expect(groupedData[0].breakout).toStrictEqual({
-        Doohickey: {
-          metrics: { count: 400 },
-          rawRows: [translatedRows[0]],
-        },
-        Gadget: {
-          metrics: { count: 450 },
-          rawRows: [translatedRows[1]],
-        },
-      });
-      expect(groupedData[1].breakout).toStrictEqual({
-        Doohickey: {
-          metrics: { count: 500 },
-          rawRows: [translatedRows[2]],
-        },
-        Gadget: {
-          metrics: { count: 550 },
-          rawRows: [translatedRows[3]],
-        },
-      });
-    });
-  });
-
   describe("getSeries", () => {
     describe("chart with breakout", () => {
       it("should return series for each breakout value", () => {

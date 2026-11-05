@@ -2,16 +2,16 @@
   "Advisory matching engine. Evaluates HoneySQL queries against the appdb
    and combines with version checks to determine match status."
   (:require
-   [metabase-enterprise.security-center.schema :as schema]
+   [honey.sql :as sql]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.interface :as mi]
+   [metabase.security-center.schema :as schema]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [next.jdbc.result-set :as rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as rs])
   (:import
    (org.semver4j Semver)))
 
@@ -57,6 +57,7 @@
   (or (get matching-query (mdb/db-type))
       (get matching-query :default)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-timeout-seconds*
   "Maximum execution time in seconds for advisory matching queries."
   120)
@@ -68,7 +69,9 @@
       even if the driver doesn't enforce read-only
    3. setQueryTimeout — kills the query if it exceeds [[*query-timeout-seconds*]]"
   [hsql-query]
-  (let [[sql & params] (mdb/compile hsql-query)
+  (let [[sql & params] (sql/format hsql-query {:quoted       true
+                                               :dialect      :metabase.app-db.setup/application-db
+                                               :quoted-snake false})
         driver         (mdb/db-type)]
     (with-open [^java.sql.Connection conn (.getConnection (mdb/data-source))]
       (.setReadOnly conn true)
@@ -85,7 +88,7 @@
   "Execute a matching query against the appdb.
    Returns true if rows matched, false if no rows, :error if query failed.
    nil matching_query means 'affects all instances' — returns true."
-  [matching-query :- [:maybe :map]]
+  [matching-query :- ::schema/matching-query]
   (if (nil? matching-query)
     true
     (if-let [query (select-query-for-dialect matching-query)]
@@ -148,11 +151,10 @@
              reactivated? (and (#{:active :error} match-status)
                                currently-unaffected
                                (some? (:acknowledged_at advisory)))]
-         (t2/update! :model/SecurityAdvisory (:id advisory)
-                     (cond-> {:match_status      match-status
-                              :last_evaluated_at (mi/now)}
-                       reactivated? (assoc :acknowledged_at nil
-                                           :acknowledged_by nil))))))))
+         (security-center.db/record-advisory-evaluation! (:id advisory)
+                                                         (cond-> {:match_status match-status}
+                                                           reactivated? (assoc :acknowledged_at nil
+                                                                               :acknowledged_by nil))))))))
 
 (defn evaluate-all-advisories!
   "Re-evaluate every advisory, including acknowledged ones — an acked
@@ -160,12 +162,11 @@
   []
   (let [instance-version (parse-version (:tag config/mb-version-info))]
     (->>
-     (t2/reducible-select :model/SecurityAdvisory)
+     (security-center.db/advisories-reducible)
      (run! (fn [advisory]
              (try
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
                  (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
-                 (t2/update! :model/SecurityAdvisory (:id advisory)
-                             {:match_status      :error
-                              :last_evaluated_at (mi/now)}))))))))
+                 (security-center.db/record-advisory-evaluation! (:id advisory)
+                                                                 {:match_status :error}))))))))

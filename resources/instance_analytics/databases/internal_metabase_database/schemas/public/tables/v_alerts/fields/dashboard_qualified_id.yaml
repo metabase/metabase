@@ -9,7 +9,6 @@ base_type: type/Text
 effective_type: type/Text
 dimensions: []
 position: 12
-custom_position: 0
 database_position: 12
 has_field_values: auto-list
 serdes/meta:

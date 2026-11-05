@@ -1,11 +1,13 @@
 (ns metabase.analytics.settings
   (:require
    [java-time.api :as t]
+   [metabase.analytics.db :as analytics.db]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.experiment :as experiment]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting analytics-uuid
   (deferred-tru
@@ -44,21 +46,33 @@
   :visibility :public
   :doc        false)
 
-(defsetting metaplow-tracking-enabled
-  (deferred-tru
-   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
-        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
-  :type       :boolean
-  :getter     (fn [] (boolean (and (anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :metaplow-url))))
-  :visibility :public
-  :doc        false)
+(defn- default-metaplow-url
+  "The Metabase Track collector in production run mode, and nil in every other run mode — dev, test and e2e runs must
+  not send real telemetry. Air-gapped instances get no default either; an explicitly set URL still applies."
+  []
+  (when (and config/is-prod?
+             (not (premium-features/airgap-enabled)))
+    "https://product-analytics-ingestion.metabase.com/api/send"))
 
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
   :encryption :when-encryption-key-set
+  ;; resolved per read rather than as `:default`, which is fixed at load time, before the token is known
+  :getter     (fn []
+                (or (setting/get-value-of-type :string :metaplow-url)
+                    (default-metaplow-url)))
   :visibility :public
   :audit      :never
+  :doc        false)
+
+(defsetting metaplow-tracking-enabled
+  (deferred-tru
+   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
+        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set or defaulted."))
+  :type       :boolean
+  :getter     (fn [] (boolean (and (anon-tracking-enabled)
+                                   (metaplow-url))))
+  :visibility :public
   :doc        false)
 
 (defsetting snowplow-url
@@ -75,7 +89,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
+  (analytics.db/first-user-date-joined))
 
 (defn- -instance-creation []
   (when-not (setting/get-value-of-type :timestamp :instance-creation)
@@ -110,11 +124,24 @@
   :setter     #'-non-table-chart-generated!)
 
 (defsetting analytics-pii-retention-enabled
-  (deferred-tru (str "Enable logging of embed path, query parameters, user agent, IP address, and Metabot "
-                     "conversation metadata for users of your internal data and embeds. This information "
-                     "will be shown in your usage analytics."))
+  (deferred-tru (str "Enable logging of embed path, query parameters, user attribute values, user agent, "
+                     "IP address, and Metabot conversation metadata for users of your internal data and embeds. "
+                     "This information will be shown in your usage analytics."))
   :type       :boolean
   :default    false
   :visibility :admin
   :export?    true
   :feature    :audit-app)
+
+(defsetting experiments-enabled
+  (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")
+  :type       :boolean
+  :default    false
+  :doc        false
+  :visibility :admin
+  :export?    false
+  :audit      :getter)
+
+;; Wire the setting into the experiment machinery, which sits below the settings framework in the module
+;; graph. The fn is called on every experiment invocation, so toggling the setting takes effect immediately.
+(experiment/set-experiments-enabled-fn! experiments-enabled)

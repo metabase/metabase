@@ -4,13 +4,9 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
+   [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql Timestamp)
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,21 +18,17 @@
 
 (def ^:private retention-months 3)
 
-(defn- retention-cutoff-timestamp
-  [months]
-  (Timestamp/valueOf ^java.time.LocalDateTime
-   (t/minus (t/local-date-time) (t/months months))))
-
 (defn- trim-old-complexity-score-data!
   []
   (log/info "Trimming old Data Complexity Score snapshots.")
-  (let [cutoff  (retention-cutoff-timestamp retention-months)
-        deleted (t2/delete! :model/DataComplexityScore {:where [:< :created_at cutoff]})]
+  (let [deleted (data-complexity-score.db/delete-scores-older-than! retention-months)]
     (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete old Data Complexity Score snapshots"}
-  DataComplexityScoreTrimmer [_ctx]
+(task/defjob DataComplexityScoreTrimmer
+  "Delete old Data Complexity Score snapshots"
+  {:saved-class "metabase_enterprise.data_complexity_score.task.complexity_score_trimmer.DataComplexityScoreTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-old-complexity-score-data!))
 
 (defmethod task/init! ::DataComplexityScoreTrimmer [_]

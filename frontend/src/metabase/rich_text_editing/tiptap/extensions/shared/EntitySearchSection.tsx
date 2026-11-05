@@ -64,8 +64,8 @@ export function EntitySearchSection({
   return (
     <>
       {selectedSearchModelName && (
-        <Box py="xs">
-          <Text size="sm" c="text-disabled" fw="bold">
+        <Box py="xxs">
+          <Text size="sm" c="text-secondary" fw="bold">
             {selectedSearchModelName}
           </Text>
         </Box>

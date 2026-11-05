@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { PaginationFooter } from "metabase/data-grid";
-import Question from "metabase-lib/v1/Question";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./ObjectDetail.module.css";
@@ -33,10 +33,9 @@ export function ObjectDetail({
     }
   }, [data.rows, currentObjectIndex]);
 
+  const cardQuestion = useQuestionFromCard(card);
   const hasPagination = data?.rows?.length > 1;
-  const resolvedQuestion =
-    question ??
-    (card && rest.metadata ? new Question(card, rest.metadata) : undefined);
+  const resolvedQuestion = question ?? cardQuestion;
 
   return (
     <>
@@ -47,7 +46,6 @@ export function ObjectDetail({
         question={resolvedQuestion}
         showHeader={rest.settings["detail.showHeader"]}
         showControls={false}
-        showRelations={false}
         closeObjectDetail={closeObjectDetail}
         isDataApp={isDataApp}
       />

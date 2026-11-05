@@ -1,0 +1,8 @@
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+description: Every order placed, as the team describes it
+display_name: Customer Orders
+serdes/meta:
+- model: TableUserSettings

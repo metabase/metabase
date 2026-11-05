@@ -3,7 +3,20 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn personal-collection
+  "A User's Personal Collection. It is created along with the User row itself, so a test that wants one should look it
+  up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
+  that failure poisons the surrounding transaction."
+  [user-or-id]
+  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+
+(defn personal-collection-id
+  "The ID of a User's Personal Collection. See [[personal-collection]]."
+  [user-or-id]
+  (u/the-id (personal-collection user-or-id)))
 
 (defmacro without-library
   "Macro that clears existing library collections, executes body, then cleans up any created library collections.
@@ -47,10 +60,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection (:id library) {:is_remote_synced true})
+        (t2/update! :model/Collection :id (:id library) {:is_remote_synced true})
         (f)
         (finally
-          (t2/update! :model/Collection (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
     ;; No library collection exists, create one for the test
     (mt/with-temp [:model/Collection _ {:name "Library" :type collection/library-collection-type :is_remote_synced true :location "/"}]
       (f))))
@@ -67,10 +80,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection (:id library) {:is_remote_synced false})
+        (t2/update! :model/Collection :id (:id library) {:is_remote_synced false})
         (f)
         (finally
-          (t2/update! :model/Collection (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
     (f)))
 
 (defmacro with-library-not-synced

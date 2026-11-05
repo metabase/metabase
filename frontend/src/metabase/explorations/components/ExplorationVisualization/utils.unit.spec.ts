@@ -6,7 +6,7 @@ import {
 } from "metabase/explorations/constants";
 import { createQuery } from "metabase/explorations/test-utils";
 import type { HighlightedCommentState } from "metabase/redux/store/explorations";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ClickObject } from "metabase/visualizations/types";
 import type {
@@ -312,7 +312,7 @@ describe("getExploreFurtherFilters", () => {
         operator: "=",
         field_ref: ["field", 10, null],
         value: null,
-        display_value: NULL_DISPLAY_VALUE,
+        display_value: getNullDisplayValue(),
       },
     ]);
   });

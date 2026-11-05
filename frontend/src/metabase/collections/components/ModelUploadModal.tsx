@@ -4,16 +4,7 @@ import { t } from "ttag";
 import { useListCollectionItemsQuery } from "metabase/api";
 import type { OnFileUpload } from "metabase/common/collections/types";
 import { UploadMode } from "metabase/redux/store/upload";
-import {
-  Button,
-  Flex,
-  Icon,
-  Modal,
-  Radio,
-  Select,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, Icon, Modal, Radio, Select, Stack, Text } from "metabase/ui";
 import type { CollectionId, TableId } from "metabase-types/api";
 
 import { findLastEditedCollectionItem } from "./utils";
@@ -101,11 +92,12 @@ export function ModelUploadModal({
 
   return (
     <Modal
+      density="relaxed"
       opened={opened}
       title={t`Select upload destination`}
       onClose={onClose}
     >
-      <Stack mb="lg">
+      <Stack gap="xl">
         <Text>
           {t`If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new model.`}
         </Text>
@@ -117,12 +109,12 @@ export function ModelUploadModal({
         >
           <Radio label={t`Create a new model`} value={UploadMode.create} />
           <Radio
-            mt="md"
+            mt="lg"
             label={t`Append to a model`}
             value={UploadMode.append}
           />
           <Radio
-            mt="md"
+            mt="lg"
             label={t`Replace data in a model`}
             value={UploadMode.replace}
           />
@@ -144,12 +136,12 @@ export function ModelUploadModal({
         )}
       </Stack>
 
-      <Flex justify="flex-end" gap="sm">
+      <Modal.Footer>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
           {buttonText}
         </Button>
-      </Flex>
+      </Modal.Footer>
     </Modal>
   );
 }

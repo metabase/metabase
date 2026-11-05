@@ -2,17 +2,10 @@
   --metabot-chat-messages-padding-top: 2rem;
 }
 
-.topFade {
+/* placed before the greeting in the DOM for tab order, so it needs a z-index to paint above it */
+.historyAction {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1rem;
-  background: linear-gradient(
-    to bottom,
-    var(--mb-color-background_page-primary),
-    transparent
-  );
-  pointer-events: none;
+  top: var(--mantine-spacing-lg);
+  right: var(--mantine-spacing-lg);
   z-index: 1;
 }

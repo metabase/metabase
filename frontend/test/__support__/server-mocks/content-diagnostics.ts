@@ -1,0 +1,70 @@
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
+
+import type {
+  ContentDiagnosticsCountsResponse,
+  InvalidateFindingsResponse,
+  ListDuplicatedFindingsResponse,
+  ListImbalancedFindingsResponse,
+  ListSlowFindingsResponse,
+  ListStaleFindingsResponse,
+} from "metabase-types/api";
+
+import type { MockResponse } from "./types";
+
+export function setupContentDiagnosticsCountsEndpoint(
+  response: MockResponse<ContentDiagnosticsCountsResponse> = {
+    stale: 0,
+    duplicated: 0,
+    slow: 0,
+    empty: 0,
+    sparse: 0,
+    crowded: 0,
+  },
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/counts", response, options);
+}
+
+export function setupContentDiagnosticsCountsErrorEndpoint() {
+  fetchMock.get("path:/api/ee/content-diagnostics/counts", { status: 500 });
+}
+
+export function setupInvalidateFindingsEndpoint(
+  response: MockResponse<InvalidateFindingsResponse | Response>,
+) {
+  fetchMock.post("path:/api/ee/content-diagnostics/invalidate", response, {
+    name: "invalidate-findings",
+  });
+}
+
+export function setupInvalidateFindingsEndpointWithError(error: object) {
+  fetchMock.post(
+    "path:/api/ee/content-diagnostics/invalidate",
+    { status: 500, body: error },
+    { name: "invalidate-findings" },
+  );
+}
+
+export function setupListStaleFindingsEndpoint(
+  response: MockResponse<ListStaleFindingsResponse>,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/stale", response);
+}
+
+export function setupListSlowFindingsEndpoint(
+  response: MockResponse<ListSlowFindingsResponse>,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/slow", response);
+}
+
+export function setupListDuplicatedFindingsEndpoint(
+  response: MockResponse<ListDuplicatedFindingsResponse>,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/duplicated", response);
+}
+
+export function setupListImbalancedFindingsEndpoint(
+  response: MockResponse<ListImbalancedFindingsResponse>,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/imbalanced", response);
+}

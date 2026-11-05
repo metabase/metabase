@@ -12,7 +12,7 @@
 
 ## Testing
 
-Use `./bin/test-agent` to run backend tests. See the top-level CLAUDE.md for usage.
+Use `./bin/test-agent` to run backend tests. See the top-level AGENTS.md for usage.
 
 ## Code Readability
 

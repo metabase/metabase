@@ -2,12 +2,13 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.db :as search.db]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.str]))
 
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
@@ -78,8 +79,7 @@
                               :es    :spanish
                               :sv    :swedish
                               :tr    :turkish}
-             available-languages (->> (t2/query {:select [:cfgname]
-                                                 :from   [:pg_ts_config]})
+             available-languages (->> (search.db/pg-text-search-configs)
                                       (map :cfgname)
                                       (map keyword)
                                       set)]
@@ -162,5 +162,11 @@
   ([weight text]
    (weighted-tsvector weight text (tsv-language)))
   ([weight text lang]
-   ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
-   [:setweight [:to_tsvector ^:allow-raw-sql [:inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] ^:allow-raw-sql [:inline weight]]))
+   ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get
+   ;; concatenated together
+   ;; `lang` is a `regconfig` and `weight` is a `"char"`; both have to be real SQL literals, since Postgres cannot
+   ;; resolve either overload from an `?` parameter bound as `varchar`
+   [:setweight
+    [:to_tsvector (h2x/literal lang)
+     [:cast (u.str/limit-bytes text search.ingestion.query/max-searchable-value-length) :text]]
+    (h2x/literal weight)]))

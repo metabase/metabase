@@ -10,7 +10,6 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -27,6 +26,7 @@ import {
   getCommentNodeId,
   getListCommentsQuery,
 } from "metabase/comments/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
@@ -190,8 +190,7 @@ export function ExplorationComments({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     } else {
@@ -206,19 +205,19 @@ export function ExplorationComments({
   return (
     <Stack gap={0} h="100%" data-testid="exploration-comments">
       <Group
-        px="lg"
+        px="xl"
         pt="1.25rem"
         pb="sm"
         justify="space-between"
         align="center"
       >
         <Title order={3}>{t`Comments`}</Title>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <Icon name="close" c="icon-primary" />
         </ActionIcon>
       </Group>
-      <Box ref={streamRef} flex={1} px="md" py="sm" className={S.stream}>
-        <Stack ref={streamContentRef} gap="md">
+      <Box ref={streamRef} flex={1} px="lg" py="sm" className={S.stream}>
+        <Stack ref={streamContentRef} gap="lg">
           {commentsStream.map((comment) => (
             <ExplorationComment
               key={comment.id}
@@ -231,7 +230,7 @@ export function ExplorationComments({
           ))}
         </Stack>
       </Box>
-      <Box px="lg" pb="lg" pt="xs" className={S.composer}>
+      <Box px="xl" pb="xl" pt="xxs" className={S.composer}>
         <CommentEditor
           autoFocus={!disableAutoFocus}
           data-testid="new-thread-editor"
@@ -283,8 +282,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to update comment`,
       });
     }
@@ -299,8 +297,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to delete comment`,
       });
     }
@@ -327,8 +324,7 @@ function ExplorationComment({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: errorMessage,
       });
     }
@@ -373,7 +369,7 @@ function ExplorationComment({
           size="1.5rem"
           mt="0.125rem"
         />
-        <Stack gap="xs" flex={1} miw={0}>
+        <Stack gap="xxs" flex={1} miw={0}>
           <Group gap="sm" align="center" wrap="nowrap">
             <Text fw={700} lh={1.3} truncate>
               {comment.creator?.common_name}
@@ -451,14 +447,8 @@ function CommentTags({
   }
 
   return (
-    <Group gap="xs" wrap="wrap">
-      <Icon
-        name="corner_up_right"
-        size={12}
-        c="text-secondary"
-        className={S.commentTagArrow}
-        aria-hidden
-      />
+    <Group gap="xxs" wrap="wrap">
+      <Icon name="corner_down_right" size={12} c="text-secondary" aria-hidden />
       {highlightLabel && (
         <CommentBadge
           label={highlightLabel}
@@ -504,13 +494,14 @@ function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
   if (buttonProps == null) {
     return (
       <Text
-        bdrs="md"
-        py="xs"
+        bdrs="sm"
+        py="xxs"
         px="sm"
         fz="sm"
         c="text-primary"
         className={S.commentBadgeLabel}
         component="span"
+        style={{ lineHeight: "normal" }}
       >
         {label}
       </Text>
@@ -519,8 +510,8 @@ function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
 
   return (
     <UnstyledButton
-      bdrs="md"
-      py="xs"
+      bdrs="sm"
+      py="xxs"
       px="sm"
       fz="sm"
       c="text-primary"

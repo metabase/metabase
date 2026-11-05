@@ -28,6 +28,8 @@
            :when (and
                   (str/includes? (name ns-symb) "metabase")
                   (not (str/includes? (name ns-symb) "test")))]
+     ;; documentation generation deliberately loads every discovered Metabase namespace
+     #_{:clj-kondo/ignore [:metabase/modules]}
      (require ns-symb))
    (prep-settings @setting/registered-settings))
   ;; Or supply a set of namespaces to load
@@ -35,6 +37,8 @@
   ([ns-set]
    (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
            :when (ns-set (name ns-symb))]
+     ;; callers explicitly select the namespaces to document
+     #_{:clj-kondo/ignore [:metabase/modules]}
      (require ns-symb))
    (prep-settings @setting/registered-settings)))
 
@@ -164,7 +168,6 @@
   "Used to filter out environment variables with high foot-gun indices."
   [env-var]
   (or (false? (:doc env-var))
-      (false? (:can-read-from-env? env-var))
       ;; Ideally, we'd move off of this list completely,
       ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
@@ -194,9 +197,14 @@
        (remove setter-none?)))
 
 (defn format-env-var-docs
-  "Preps relevant environment variable docs as a Markdown string."
+  "Preps relevant environment variable docs as a Markdown string. A setting that ignores its environment variable has
+  none to document, but it is still settable in a config file, so that filter belongs here rather than in
+  [[remove-env-vars-we-should-not-document]], which the config file template shares."
   [settings]
-  (map format-env-var-entry (remove-env-vars-we-should-not-document settings)))
+  (->> settings
+       remove-env-vars-we-should-not-document
+       (remove (comp false? :can-read-from-env?))
+       (map format-env-var-entry)))
 
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."

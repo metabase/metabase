@@ -10,8 +10,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2])
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.time LocalDate)))
 
@@ -24,7 +23,7 @@
   [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
-    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :app-user  (not (search.permissions/sandboxed-impersonated-or-routed-user? search-ctx))
     :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
@@ -132,9 +131,7 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
-                                                                    :personal_owner_id [:= current-user-id]
-                                                                    :location          "/"))]]
+     [:like :collection.location (format "/%d/%%" (:id (collection/user->existing-personal-collection current-user-id)))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
@@ -203,7 +200,7 @@
               [:in :search_index.model_id (map str ids)]
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
+              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]]]])
     [[:dashboard-questions [:and
                             [:or
                              ;; leverage the fact that only card-related models populate this attribute

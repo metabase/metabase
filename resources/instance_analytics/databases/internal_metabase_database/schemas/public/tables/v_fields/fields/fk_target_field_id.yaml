@@ -17,7 +17,6 @@ dimensions:
   serdes/meta:
   - {id: Dl90EVZMrh8F4vog-lzt1, label: fk_target_field_id, model: Dimension}
 position: 9
-custom_position: 0
 database_position: 9
 has_field_values: auto-list
 serdes/meta:

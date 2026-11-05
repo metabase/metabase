@@ -18,14 +18,14 @@ To add a database connection:
 
 1. Click the **grid** icon in the top right.
 2. Select **Admin**.
-3. In Admin settings, navigate **Databases** > **Add a database**.
+3. In Admin settings, navigate to **Databases** > **Add a database**.
 4. Fill out the fields for that database, and click **Save changes** at the bottom.
 
    The connection settings differ database to database. For the list of connection settings available for your database, click the link to your database below.
 
 ## Connecting to supported databases
 
-The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing/) will get official support. For each database, Metabase supports the oldest supported version through the latest stable version.
+The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing) will get official support. For each database, Metabase supports the oldest supported version through the latest stable version.
 
 - [Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
@@ -83,6 +83,6 @@ If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossa
 
 ## Further reading
 
-- [Metadata editing](../data-modeling/metadata-editing.md).
+- [Metadata editing](../data-modeling/metadata/metadata-editing.md).
 - [Setting data access permissions](../permissions/data.md).
 - [Metabase at scale](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale).

@@ -1,0 +1,24 @@
+.root {
+  --step-padding: 2rem;
+
+  padding: var(--step-padding);
+}
+
+@media (--breakpoint-min-sm) {
+  .root {
+    --step-padding: 4rem;
+  }
+}
+
+/* Keeps the number centered on the title line at every padding. */
+.label {
+  position: absolute;
+  top: calc(var(--step-padding) - 0.5rem);
+  left: 0;
+  transform: translate(-50%, 0);
+  width: 2.625rem;
+  height: 2.625rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 50%;
+  background-color: var(--mb-color-background_page-primary);
+}

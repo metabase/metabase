@@ -22,11 +22,11 @@ export function TimeRangeControl({
             closePopover();
           }}
           renderSubmitButton={({ value }) => (
-            <Flex justify="space-between" w="100%">
+            <Flex justify="space-between" align="center" w="100%">
               {timeRange.hasActiveFilter ? (
                 <Button
-                  variant="subtle"
-                  c="text-secondary"
+                  variant="transparent"
+                  size="compact-md"
                   onClick={() => {
                     timeRange.onClear();
                     closePopover();

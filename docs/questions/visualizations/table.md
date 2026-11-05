@@ -20,7 +20,7 @@ When viewing tables, you can click on the **gear** icon in the bottom left to br
 
 ![Adding or removing columns](../images/column-selection.png)
 
-Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#field-visibility).
+Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata/metadata-editing.md#field-visibility).
 
 > **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder.
 
@@ -39,13 +39,23 @@ For more complicated calculations, you can use the editor to [add a custom colum
 
 ## Add row numbers to a table
 
-To number the rows of a table, click on the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, and toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
+To number the rows of a table, click on the **gear** icon in bottom left to bring up the table formatting sidebar. In the **Columns** tab, toggle on **Show row index**. Metabase will add a column to the left of the table displaying a number for each row.
 
 ![Add row numbers to a table](../images/show-row-index.png)
 
 ## Resize columns
 
 To change the width of a column, you can click and drag the edges of the column's header.
+
+## Stripe rows
+
+To make wide tables easier to read, you can shade every other row.
+
+1. Click the **gear** icon in the bottom left to open visualization settings.
+2. Switch to the **Display** tab.
+3. Toggle on **Striped rows**.
+
+Striped rows also apply when the table is sent in a [dashboard subscription or alert](../../dashboards/subscriptions.md). Any [conditional formatting](#conditional-table-formatting) colors take precedence over the striped row effect.
 
 ## Freeze columns or rows
 

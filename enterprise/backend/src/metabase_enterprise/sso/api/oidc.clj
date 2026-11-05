@@ -99,7 +99,7 @@
 ;; GET /api/ee/sso/oidc/:key
 (api.macros/defendpoint :get "/:key" :- oidc-provider-response-schema
   "Get a single OIDC provider by key (with client secret masked)."
-  [{provider-key :key} :- [:map [:key :string]]]
+  [{provider-key :key} :- [:map {:closed true} [:key :string]]]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [provider (sso-settings/get-oidc-provider provider-key)]
     (api/check-404 provider)
@@ -126,7 +126,7 @@
 ;; PUT /api/ee/sso/oidc/:key
 (api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema
   "Update an existing OIDC provider."
-  [{provider-key :key} :- [:map [:key :string]]
+  [{provider-key :key} :- [:map {:closed true} [:key :string]]
    _query-params
    body :- oidc-provider-update-schema]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
@@ -152,7 +152,8 @@
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret {:optional true} [:maybe :string]]
-   [:key {:optional true} [:maybe :string]]])
+   [:key {:optional true} [:maybe :string]]
+   [:scopes {:optional true} [:maybe [:sequential :string]]]])
 
 (def ^:private oidc-check-step-schema
   [:map
@@ -181,13 +182,13 @@
                         (if (str/blank? s)
                           (:client-secret stored)
                           s))
-        scopes        (or (:scopes stored) ["openid"])]
+        scopes        (or (:scopes body) (:scopes stored) ["openid"])]
     (check-oidc-connection! issuer-uri client-id client-secret scopes)))
 
 ;; DELETE /api/ee/sso/oidc/:key
 (api.macros/defendpoint :delete "/:key"  :- :nil
   "Delete an OIDC provider."
-  [{provider-key :key} :- [:map [:key :string]]]
+  [{provider-key :key} :- [:map {:closed true} [:key :string]]]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
         filtered  (vec (remove #(= (:key %) provider-key) providers))]

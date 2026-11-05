@@ -2,9 +2,9 @@ import { getSubpathSafeUrl } from "metabase/urls";
 import { formatValue as internalFormatValue } from "metabase/value-formatting";
 import type {
   ColumnSettings,
+  CustomVizDisplayType,
   CustomVizPluginId,
   CustomVizPluginRuntime,
-  VisualizationDisplay,
 } from "metabase-types/api";
 
 export function formatValue(value: unknown, options?: ColumnSettings): string {
@@ -42,7 +42,7 @@ export function resolveCustomVizAssetUrl(
 
 export function getCustomPluginIdentifier(
   pluginOrIdentifier: Pick<CustomVizPluginRuntime, "identifier"> | string,
-): VisualizationDisplay {
+): CustomVizDisplayType {
   const identifier =
     typeof pluginOrIdentifier === "string"
       ? pluginOrIdentifier

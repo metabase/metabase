@@ -10,7 +10,14 @@ import {
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ColumnBucketPickerPopover } from "metabase/querying/common/components/QueryColumnPicker/ColumnBucketPickerPopover";
-import { Box, type BoxProps, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  type BoxProps,
+  Flex,
+  Icon,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import BreakoutColumnListItemS from "./BreakoutColumnListItem.module.css";
@@ -94,11 +101,11 @@ export function BreakoutColumnListItem({
     >
       <Flex
         className={BreakoutColumnListItemS.Content}
+        px="sm"
         onClick={handleListItemClick}
       >
         <Flex
           align="center"
-          ml="sm"
           p="0.5rem 0"
           className={BreakoutColumnListItemS.TitleContainer}
         >
@@ -134,26 +141,27 @@ export function BreakoutColumnListItem({
           }
         />
         {isSelected && (
-          <Button
-            className={BreakoutColumnListItemS.RemoveButton}
-            variant="subtle"
-            size="xs"
-            leftSection={<Icon name="close" />}
+          <ActionIcon
+            variant="on-dark-secondary"
+            size="sm"
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
-          />
+          >
+            <Icon name="close" />
+          </ActionIcon>
         )}
       </Flex>
       {!isSelected && (
         <Tooltip label={t`Add grouping`}>
-          <Button
-            className={BreakoutColumnListItemS.AddButton}
+          <ActionIcon
             variant="subtle"
             size="sm"
-            leftSection={<Icon name="add" />}
+            className={BreakoutColumnListItemS.AddButton}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}
-          />
+          >
+            <Icon name="add" />
+          </ActionIcon>
         </Tooltip>
       )}
     </HoverParent>

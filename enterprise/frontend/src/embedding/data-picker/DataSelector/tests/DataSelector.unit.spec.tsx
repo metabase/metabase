@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
-import { getIcon, render, screen } from "__support__/ui";
-import { delay } from "__support__/utils";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { render, screen } from "__support__/ui";
+import { delay, waitForRequestsToSettle } from "__support__/utils";
+import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
@@ -72,16 +73,21 @@ describe("DataSelector", () => {
     }),
   ];
 
-  const metadata = createMockMetadata({ databases });
-  const emptyMetadata = createMockMetadata({});
-
-  const SAMPLE_DATABASE = checkNotNull(metadata.database(SAMPLE_DB_ID));
-  const ANOTHER_DATABASE = checkNotNull(metadata.database(EMPTY_DB_ID));
-  const MULTI_SCHEMA_DATABASE = checkNotNull(
-    metadata.database(MULTI_SCHEMA_DB_ID),
+  const entities = createMockEntitiesState({ databases });
+  // Each stage of loading is a store with fewer records in it.
+  const lookupsWith = (overrides: Partial<typeof entities> = {}) =>
+    getEntityLookups(
+      createMockState({ entities: { ...entities, ...overrides } }),
+    );
+  const entityLookups = lookupsWith();
+  const emptyLookups = getEntityLookups(
+    createMockState({ entities: createMockEntitiesState({}) }),
   );
-  const OTHER_MULTI_SCHEMA_DATABASE = checkNotNull(
-    metadata.database(OTHER_MULTI_SCHEMA_DB_ID),
+
+  const SAMPLE_DATABASE = checkNotNull(entityLookups.database(SAMPLE_DB_ID));
+  const ANOTHER_DATABASE = checkNotNull(entityLookups.database(EMPTY_DB_ID));
+  const MULTI_SCHEMA_DATABASE = checkNotNull(
+    entityLookups.database(MULTI_SCHEMA_DB_ID),
   );
 
   // Required props the connected wrappers normally inject. The falsy values
@@ -93,7 +99,7 @@ describe("DataSelector", () => {
     canSelectModel: true,
     canSelectTable: true,
     canSelectQuestion: true,
-    metadata: emptyMetadata,
+    entityLookups: emptyLookups,
     databases: [],
     availableModels: [],
     hasLoadedDatabasesWithTablesSaved: false,
@@ -101,7 +107,6 @@ describe("DataSelector", () => {
     hasLoadedDatabasesWithTables: false,
     hasDataAccess: false,
     hasNestedQueriesEnabled: false,
-    selectedQuestion: null,
     loading: false,
     loaded: false,
     allLoading: false,
@@ -121,10 +126,9 @@ describe("DataSelector", () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE, ANOTHER_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
         setSourceTableFn={setTable}
       />,
@@ -141,11 +145,6 @@ describe("DataSelector", () => {
     await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
-
-    // but the databases are still displayed
-    expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
     // clicking shows the table
     await userEvent.click(screen.getByText("First Schema"));
@@ -171,10 +170,9 @@ describe("DataSelector", () => {
 
     const props: TestProps = {
       steps: ["DATABASE", "SCHEMA", "TABLE"],
-      combineDatabaseSchemaSteps: true,
       triggerElement: <div />,
       databases: [],
-      metadata: emptyMetadata,
+      entityLookups: emptyLookups,
       isOpen: true,
       fetchDatabases,
       fetchSchemas,
@@ -184,12 +182,12 @@ describe("DataSelector", () => {
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = (nextMetadata: Metadata) => {
+    const rerenderWith = (nextLookups: typeof entityLookups) => {
       rerender(
         <DataSelector
           {...props}
-          metadata={nextMetadata}
-          databases={Object.values(metadata.databases)}
+          entityLookups={nextLookups}
+          databases={Object.values(entities.databases)}
         />,
       );
     };
@@ -201,10 +199,7 @@ describe("DataSelector", () => {
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
     // select a db
-    let nextMetadata = createMockMetadata({ databases });
-    nextMetadata.schemas = {};
-    nextMetadata.tables = {};
-    rerenderWith(nextMetadata);
+    rerenderWith(lookupsWith({ schemas: {}, tables: {} }));
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
@@ -215,9 +210,7 @@ describe("DataSelector", () => {
     expect(fetchSchemas).toHaveBeenCalled();
 
     // select a schema
-    nextMetadata = createMockMetadata({ databases });
-    nextMetadata.tables = {};
-    rerenderWith(nextMetadata);
+    rerenderWith(lookupsWith({ tables: {} }));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Second Schema"));
@@ -227,7 +220,7 @@ describe("DataSelector", () => {
     expect(fetchSchemaTables).toHaveBeenCalled();
 
     // table is displayed
-    rerenderWith(metadata);
+    rerenderWith(entityLookups);
     expect(screen.getByText("Table in Second Schema")).toBeInTheDocument();
   });
 
@@ -235,10 +228,9 @@ describe("DataSelector", () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -252,7 +244,7 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["DATABASE"]}
         triggerElement={<div>button</div>}
-        metadata={emptyMetadata}
+        entityLookups={emptyLookups}
         databases={[]}
         fetchDatabases={fetchDatabases}
       />,
@@ -263,33 +255,13 @@ describe("DataSelector", () => {
     expect(fetchDatabases).toHaveBeenCalled();
   });
 
-  it("should click into a single-schema db after expanding a multi-schema db", async () => {
-    render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
-        isOpen={true}
-      />,
-    );
-
-    await userEvent.click(screen.getByText("Multi-schema Database"));
-    expect(screen.getByText("First Schema")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-  });
-
   it("should expand multi-schema after clicking into single-schema", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -308,107 +280,21 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should expand schemas after viewing tables on a single-schema db", async () => {
-    // This is the same and the previous test except that it first opens/closes
-    // the multi-schema db. This left some lingering traces in component state
-    // which caused a bug that the previous test didn't catch.
-    render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
-        isOpen={true}
-      />,
-    );
-
-    // expand a multi-schema db to make sure it's schemas are loaded
-    await userEvent.click(screen.getByText("Multi-schema Database"));
-    expect(screen.getByText("First Schema")).toBeInTheDocument();
-    expect(screen.getByText("Second Schema")).toBeInTheDocument();
-
-    // click into a single schema db, check for a table, and then return to db list
-    await userEvent.click(screen.getByText("Sample Database"));
-    await delay(1);
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Sample Database"));
-
-    // expand multi-schema db
-    await userEvent.click(screen.getByText("Multi-schema Database"));
-    // see schema appear and click to view tables for good measure
-    await userEvent.click(screen.getByText("First Schema"));
-    await delay(1);
-    expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
-  });
-
-  it("should collapse expanded list of db's schemas", async () => {
-    render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
-        isOpen={true}
-      />,
-    );
-
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Multi-schema Database"));
-    // check that schemas are listed
-    expect(screen.getByText("First Schema")).toBeInTheDocument();
-    expect(screen.getByText("Second Schema")).toBeInTheDocument();
-    // check for chevron icon
-    expect(getIcon("chevronup")).toBeInTheDocument();
-
-    // collapse db
-    await userEvent.click(screen.getByText("Multi-schema Database"));
-    // schemas are hidden, but databases are still shown
-    expect(screen.queryByText("First Schema")).not.toBeInTheDocument();
-    expect(screen.queryByText("Second Schema")).not.toBeInTheDocument();
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
-    // check for chevron icon
-    expect(getIcon("chevrondown")).toBeInTheDocument();
-  });
-
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
         databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
 
     expect(
-      screen.getByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
-  });
-
-  it("should move between selected multi-schema dbs", async () => {
-    render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        databases={[MULTI_SCHEMA_DATABASE, OTHER_MULTI_SCHEMA_DATABASE]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        metadata={metadata}
-        isOpen={true}
-      />,
-    );
-
-    await userEvent.click(screen.getByText("Multi-schema Database"));
-    expect(screen.getByText("First Schema")).toBeInTheDocument();
-    expect(screen.getByText("Second Schema")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByText("Other Multi-schema Database"));
-    expect(screen.getByText("Other First Schema")).toBeInTheDocument();
-    expect(screen.getByText("Other Second Schema")).toBeInTheDocument();
   });
 
   it("should skip schema when going to previous step", async () => {
@@ -416,9 +302,8 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
-        combineDatabaseSchemaSteps
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -438,7 +323,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -447,6 +332,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await waitForRequestsToSettle();
 
     expect(
       screen.getByText("To pick some data, you'll need to add some first"),

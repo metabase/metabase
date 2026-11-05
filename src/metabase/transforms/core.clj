@@ -34,7 +34,6 @@
   native-query-transform?
   output-table
   python-transform?
-  query-transform?
   transform-source-database
   transform-source-type]
  [metabase.transforms.util
@@ -42,6 +41,7 @@
   is-temp-transform-table?]
  [metabase.transforms.crud
   check-database-feature
+  requestable-indexes
   check-feature-enabled!
   validate-incremental-column-type!
   validate-target-schema!

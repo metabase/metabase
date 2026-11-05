@@ -1,15 +1,18 @@
 (ns metabase-enterprise.transforms.search-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.transforms.search-test :as search-test])
   (:import
    (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest transform-ingestion-test
   (search.tu/with-temp-index-table
@@ -17,10 +20,11 @@
       (let [now (t/truncate-to (t/offset-date-time) :millis)]
         (mt/with-temp [:model/Transform {transform-id :id} {:name        "Test Python transform"
                                                             :description "A Python test transform"
-                                                            :source      {:type "python"
+                                                            :source      {:type :python
                                                                           :source-database (mt/id)
+                                                                          :source-tables []
                                                                           :body "import pandas as pd\n"}
-                                                            :target      {:database (mt/id)}
+                                                            :target      {:type "table" :database (mt/id) :name "test_table"}
                                                             :created_at  now
                                                             :updated_at  now}]
           (let [ingested-transform (search-test/ingest-then-fetch! "transform" "Test Python transform")]
@@ -36,9 +40,10 @@
 (deftest transform-query-ingestion-test
   (testing "Contents of Python transform sources are extracted and indexed for full-text search"
     (when (= (mdb/db-type) :postgres)
-      (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
-                                         :source {:type "python"
+      (mt/with-temp [:model/Transform _ {:target {:type "table" :database (mt/id) :name "python_target"}
+                                         :source {:type :python
                                                   :source-database (mt/id)
+                                                  :source-tables []
                                                   :body "import pandas as pd\n"}
                                          :name "Test python transform"}]
         (let [ingested-transform (search-test/ingest-then-fetch! "transform" "Test python transform")

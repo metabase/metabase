@@ -26,11 +26,11 @@ export function NewPulseSidebar({
 
   return (
     <Sidebar onCancel={onCancel}>
-      <Box mx="xl" my="lg">
+      <Box mx="xxl" my="xl">
         <Title order={4} mb="sm">{t`Set up a dashboard subscription`}</Title>
         <Text lh="md">{t`Schedule dashboard results to be sent to you and your team. People don't need a ${applicationName} account to subscribe.`}</Text>
       </Box>
-      <Stack mx="xl" gap="sm">
+      <Stack mx="xxl" gap="sm">
         {emailConfigured ? (
           <ChannelCard
             title={t`Email it`}

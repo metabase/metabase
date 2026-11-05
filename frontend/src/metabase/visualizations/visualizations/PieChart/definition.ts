@@ -9,14 +9,15 @@ import {
   type VisualizationDefinition,
   columnSettings,
   dimensionSetting,
+  getDefaultLegendPosition,
   getDefaultPercentVisibility,
   getDefaultPieColumns,
   getDefaultShowLabels,
-  getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSize,
   getDefaultSliceThreshold,
   getDefaultSortRows,
+  getLegendPositionSetting,
   getMinSize,
   getPieRows,
   getPieSortRowsDimensionSetting,
@@ -25,9 +26,19 @@ import {
   nestedSettings,
 } from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { SingleSeries } from "metabase-types/api";
+import type { DatasetData, SingleSeries } from "metabase-types/api";
 
 import type { SliceNameWidgetProps } from "./SliceNameWidget";
+
+/**
+ * Weak on the dataset, which was the bulk of the old key, and a short string
+ * for the settings that actually change the result. The previous key was a
+ * JSON copy of every row and column, held for the life of the tab.
+ */
+const pieRowsByData = new WeakMap<
+  DatasetData,
+  Map<string, ReturnType<typeof getPieRows>>
+>();
 
 const pieRowsReadDeps = [
   "pie.dimension",
@@ -101,24 +112,34 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "pie.rows": {
       getHidden: () => true,
-      getValue: _.memoize(
-        (series, settings) => {
-          return getPieRows(series, settings, (value, options) =>
-            String(formatValue(value, options)),
-          );
-        },
-        ([{ data }], settings) =>
-          JSON.stringify({
-            cols: data.cols,
-            rows: data.rows,
-            settings: _.pick(
-              settings,
-              ...pieRowsReadDeps,
-              "pie.rows",
-              "pie.sort_rows_dimension",
-            ),
-          }),
-      ),
+      getValue: (series, settings) => {
+        const [{ data }] = series;
+        const settingsKey = JSON.stringify(
+          _.pick(
+            settings,
+            ...pieRowsReadDeps,
+            "pie.rows",
+            "pie.sort_rows_dimension",
+          ),
+        );
+
+        let rowsBySettings = pieRowsByData.get(data);
+        if (rowsBySettings == null) {
+          rowsBySettings = new Map();
+          pieRowsByData.set(data, rowsBySettings);
+        }
+
+        const cached = rowsBySettings.get(settingsKey);
+        if (cached !== undefined) {
+          return cached;
+        }
+
+        const pieRows = getPieRows(series, settings, (value, options) =>
+          String(formatValue(value, options)),
+        );
+        rowsBySettings.set(settingsKey, pieRows);
+        return pieRows;
+      },
       readDependencies: pieRowsReadDeps,
       writeDependencies: ["pie.sort_rows_dimension"],
     },
@@ -180,18 +201,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
       readDependencies: ["pie.dimension", "pie.rows"],
     },
-    "pie.show_legend": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Show legend`;
-      },
-      widget: "toggle",
-      getDefault: getDefaultShowLegend,
-      inline: true,
-      getWrapperStyle: () => ({
-        marginBottom: "1rem",
-      }),
-    },
+    "legend.position": getLegendPositionSetting({
+      getDefault: getDefaultLegendPosition,
+    }),
     "pie.show_total": {
       getSection: () => t`Display`,
       get title() {

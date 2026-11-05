@@ -2,13 +2,13 @@
   "Enterprise implementation of metabot usage logging and limit checking."
   (:require
    [clojure.core.memoize :as memoize]
+   [metabase-enterprise.metabot.db :as metabot.db]
    [metabase-enterprise.metabot.models.metabot-group-limit :as group-limit]
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase-enterprise.metabot.settings :as metabot.settings]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time DayOfWeek LocalDate YearMonth ZoneOffset)
    (java.time.temporal TemporalAdjusters)))
@@ -16,14 +16,15 @@
 (set! *warn-on-reflection* true)
 
 ;; Keep these in sync with the CASE branches in the LATEST version of:
-;;   resources/migrations/instance_analytics_views/ai_usage_log/v4/{h2,mysql,postgres}-ai_usage_log.sql
-;;   resources/migrations/instance_analytics_views/metabot_conversations/v6/{h2,mysql,postgres}-metabot_conversations.sql
+;;   resources/migrations/instance_analytics_views/ai_usage_log/v6/{h2,mysql,postgres}-ai_usage_log.sql
+;;   resources/migrations/instance_analytics_views/metabot_conversations/v8/{h2,mysql,postgres}-metabot_conversations.sql
 ;; When adding a value here, create a new view version (vN+1) with the extra CASE branches plus a migration
 ;; that reinstalls the views, so users see a nicer name in ai analytics. Parity is enforced by
 ;; `metabase-enterprise.metabot.usage-test/known-sources-and-profiles-have-view-case-branches-test`.
 (def ^:private known-sources
   #{"metabot_agent"
     "contextual_interestingness"
+    "conversation_title"
     "document_generate_content"
     "example_question_generation_batch"
     "exploration"
@@ -33,6 +34,12 @@
     "sql-gen"
     "unknown"
     "user-intent-classification"})
+
+(def ^:private message-sources
+  "The sources whose agent loops count as messages under a message limit: a chat turn, a Slack turn and a document
+  generation, each a prompt the user sent. Every other source runs through the limit check but never adds to the
+  count."
+  #{"metabot_agent" "slackbot" "document_generate_content"})
 
 (def ^:private known-profile-ids
   #{"internal"
@@ -54,8 +61,8 @@
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."
   :feature :none
-  [{:keys [source model prompt-tokens completion-tokens cache-creation-tokens cache-read-tokens
-           user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
+  [{:keys [source model provider model-name prompt-tokens completion-tokens cache-creation-tokens
+           cache-read-tokens user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
   (when-not (contains? known-sources source)
     (throw (ex-info (str "Unknown ai_usage_log source " (pr-str source))
                     {:source source})))
@@ -68,20 +75,22 @@
       (let [cache-creation (or cache-creation-tokens 0)
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
-        (t2/insert! :model/AiUsageLog
-                    {:source                 source
-                     :model                  model
-                     :prompt_tokens          prompt-tokens
-                     :completion_tokens      completion-tokens
-                     :total_tokens           total-tokens
-                     :cache_creation_tokens  cache-creation
-                     :cache_read_tokens      cache-read
-                     :user_id                (or user-id api/*current-user-id*)
-                     :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
-                     :conversation_id        conversation-id
-                     :profile_id             (some-> profile-id name)
-                     :request_id             request-id
-                     :ai_proxied             ai-proxied}))
+        (metabot.db/insert-usage-log!
+         {:source                 source
+          :model                  model
+          :provider               provider
+          :model_name             model-name
+          :prompt_tokens          prompt-tokens
+          :completion_tokens      completion-tokens
+          :total_tokens           total-tokens
+          :cache_creation_tokens  cache-creation
+          :cache_read_tokens      cache-read
+          :user_id                (or user-id api/*current-user-id*)
+          :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
+          :conversation_id        conversation-id
+          :profile_id             (some-> profile-id name)
+          :request_id             request-id
+          :ai_proxied             ai-proxied}))
       (catch Exception e
         (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 
@@ -99,52 +108,44 @@
      ZoneOffset/UTC)))
 
 (defn- usage-query
-  "Query ai_usage_log for current-period usage. `where-clauses` are additional HoneySQL where conditions.
-  Returns a token sum or row count depending on `metabot-limit-unit`."
-  [where-clauses]
+  "Query ai_usage_log for current-period usage, narrowed by the optional `user-id` and `tenant-id`.
+  Returns a token sum or a message count depending on `metabot-limit-unit`. A message count leaves out the agent
+  loop that asks, `request-id`, see [[metabot.db/usage-message-count]]."
+  [& {:keys [user-id tenant-id request-id]}]
   (let [limit-type (metabot.settings/metabot-limit-unit)
-        start      (period-start)
-        base-where [:and
-                    [:>= :created_at start]]
-        full-where (if (seq where-clauses)
-                     (into base-where where-clauses)
-                     base-where)]
+        start      (period-start)]
     (case limit-type
       :tokens
-      (quot (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
-                                     :from   [:ai_usage_log]
-                                     :where  full-where}))
+      (quot (or (:sum (metabot.db/usage-token-sum start user-id tenant-id))
                 0)
             1000000)
 
       :messages
-      (:cnt (t2/query-one {:select [[[:count :*] :cnt]]
-                           :from   [:ai_usage_log]
-                           :where  full-where})))))
+      (:cnt (metabot.db/usage-message-count start message-sources request-id user-id tenant-id)))))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."
-  []
+  [request-id]
   (when-let [max-usage (:max_usage (instance-limit/instance-limit nil))]
-    (let [usage (usage-query [])]
+    (let [usage (usage-query :request-id request-id)]
       (when (>= usage max-usage)
         (metabot.settings/metabot-quota-reached-message)))))
 
 (defn- check-tenant-limit
   "Check the tenant-level limit. Returns an error message string if exceeded, nil otherwise."
-  [tenant-id]
+  [tenant-id request-id]
   (when tenant-id
     (when-let [max-usage (:max_usage (instance-limit/instance-limit tenant-id))]
-      (let [usage (usage-query [[:= :tenant_id tenant-id]])]
+      (let [usage (usage-query :tenant-id tenant-id :request-id request-id)]
         (when (>= usage max-usage)
           (metabot.settings/metabot-quota-reached-message))))))
 
 (defn- check-user-limit
   "Check the user-level limit (max across all their groups). Returns an error message if exceeded, nil otherwise."
-  [user-id]
+  [user-id request-id]
   (when user-id
     (when-let [max-usage (group-limit/limit-for-user user-id)]
-      (let [usage (usage-query [[:= :user_id user-id]])]
+      (let [usage (usage-query :user-id user-id :request-id request-id)]
         (when (>= usage max-usage)
           (metabot.settings/metabot-quota-reached-message))))))
 
@@ -154,7 +155,7 @@
 
 (def ^:private check-instance-limit*
   (memoize/ttl
-   (fn [_cache-key] (check-instance-limit))
+   check-instance-limit
    :ttl/threshold cache-ttl-ms))
 
 (def ^:private check-tenant-limit*
@@ -184,11 +185,16 @@
   "Check all usage limits for the current user. Returns nil if all limits are within bounds,
   or a user-friendly error message string if any limit is exceeded.
 
-  Results are cached for `cache-ttl-ms`."
+  `request-id` is the id of the agent loop the call belongs to. A message limit does not count that loop's earlier
+  calls, so a turn that fits when it starts runs to its end. Without it, every loop counts.
+
+  Results are cached for `cache-ttl-ms`, per `request-id`."
   :feature :none
-  []
-  (let [user-id   api/*current-user-id*
-        tenant-id (some-> api/*current-user* deref :tenant_id)]
-    (or (check-instance-limit* :instance)
-        (check-tenant-limit* tenant-id)
-        (check-user-limit* user-id))))
+  ([]
+   (check-usage-limits! nil))
+  ([request-id]
+   (let [user-id   api/*current-user-id*
+         tenant-id (some-> api/*current-user* deref :tenant_id)]
+     (or (check-instance-limit* request-id)
+         (check-tenant-limit* tenant-id request-id)
+         (check-user-limit* user-id request-id)))))

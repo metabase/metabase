@@ -30,7 +30,7 @@ export const ResizeHandle = forwardRef(function ResizableBoxHandle(
         left={rem(-4)}
         {...rest}
       >
-        <Box w="xs" h={THICKNESS} bg="border-neutral" />
+        <Box w="xxs" h={THICKNESS} bg="border-neutral" />
       </Flex>
     );
   } else if (handleAxis === "s" || handleAxis === "n") {
@@ -46,7 +46,7 @@ export const ResizeHandle = forwardRef(function ResizableBoxHandle(
         bottom={rem(-4)}
         {...rest}
       >
-        <Box w={THICKNESS} h="xs" bg="border-neutral" />
+        <Box w={THICKNESS} h="xxs" bg="border-neutral" />
       </Flex>
     );
   }

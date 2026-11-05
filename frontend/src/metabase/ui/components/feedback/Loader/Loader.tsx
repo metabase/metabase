@@ -31,9 +31,9 @@ export const Loader = ({
   const labelSize = isLoaderNamedSize(size) ? LOADER_LABEL_SIZES[size] : "md";
 
   return label ? (
-    <Stack justify="center" align="center" gap="sm" mt="xl">
+    <Stack justify="center" align="center" gap="sm" mt="xxl">
       <MantineLoader {...props} data-testid={dataTestId} size={size} />
-      <Text c="text-disabled" size={labelSize}>
+      <Text c="text-secondary" size={labelSize}>
         {label}
       </Text>
     </Stack>

@@ -53,18 +53,14 @@ const PreviewSectionBase = ({
       className={className}
       data-testid="preview-section"
       h="100%"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       withBorder
     >
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>
 
-        <ActionIcon
-          color="text-primary"
-          variant="transparent"
-          onClick={onClose}
-        >
+        <ActionIcon variant="subtle" onClick={onClose}>
           <Icon name="close" />
         </ActionIcon>
       </Group>

@@ -11,7 +11,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
-import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -32,6 +32,7 @@ interface McpUiAppRouteContentProps {
   mcpSessionId: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
+  queryError: McpAppState["queryError"];
   uiCredential: string;
 }
 
@@ -59,6 +60,7 @@ export function McpUiAppRoute() {
     uiCredential,
     prompt,
     query,
+    queryError,
   } = useMcpApp();
 
   const scheme: ResolvedColorScheme =
@@ -94,6 +96,7 @@ export function McpUiAppRoute() {
         mcpSessionId={mcpSessionId}
         prompt={prompt}
         query={query}
+        queryError={queryError}
         uiCredential={uiCredential}
       />
     </ComponentProvider>
@@ -108,6 +111,7 @@ function McpUiAppRouteContent({
   mcpSessionId,
   prompt,
   query,
+  queryError,
   uiCredential,
 }: McpUiAppRouteContentProps) {
   const isHosted = useSetting("is-hosted?");
@@ -119,18 +123,19 @@ function McpUiAppRouteContent({
     mcpSessionId,
   });
 
-  const deserializedCard = useMemo(() => {
+  const deserializedQuery = useMemo(() => {
     if (!query) {
       return null;
     }
 
-    return getMcpDeserializedCard(query);
+    return getMcpDeserializedQuery(query);
   }, [query]);
 
   const { isSettingsReady, userAndSettingsFetchError } =
     useMcpUserAndSettingsFetch({
       instanceUrl,
       uiCredential,
+      mcpSessionId,
       store,
     });
 
@@ -139,16 +144,16 @@ function McpUiAppRouteContent({
     hostContext &&
     isSettingsReady &&
     uiCredential &&
-    deserializedCard
+    deserializedQuery
   );
 
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || hostError || userAndSettingsFetchError) {
+    if (isReady || hostError || userAndSettingsFetchError || queryError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [hostError, isReady, userAndSettingsFetchError]);
+  }, [hostError, isReady, queryError, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -222,9 +227,10 @@ function McpUiAppRouteContent({
   };
 
   const renderQuestionCardView = () =>
-    deserializedCard && (
+    deserializedQuery && (
       <SdkQuestion
-        deserializedCard={deserializedCard}
+        deserializedCard={deserializedQuery.card}
+        initialSqlParameters={deserializedQuery.initialSqlParameters}
         isSaveEnabled={false}
         // we should never show query builder in chat interfaces
         withEditorButton={false}
@@ -242,6 +248,12 @@ function McpUiAppRouteContent({
 
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    // A handle that will not resolve has no card to render. Without this the
+    // route would sit on the loading indicator forever.
+    if (queryError) {
+      return <SdkError message={queryError} />;
     }
 
     if (!isReady) {

@@ -22,7 +22,7 @@
    search-field :- [:or
                     (ms/InstanceOf :model/Field)
                     ::lib.schema.metadata/column]
-   value
+   value       :- [:maybe ms/NonBlankString]
    limit       :- pos-int?]
   (if-let [value->human-readable-value (schema.metadata-queries/human-readable-remapping-map (u/the-id field))]
     (let [query-string (some-> value u/lower-case-en)]

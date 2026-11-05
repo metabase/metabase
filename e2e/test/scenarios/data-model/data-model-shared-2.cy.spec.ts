@@ -49,14 +49,13 @@ areas.forEach((area) => {
       cy.intercept("PUT", "/api/table").as("updateTables");
       cy.intercept("PUT", "/api/table/*").as("updateTable");
 
+      cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+        "databases",
+      );
+
       if (area === "admin") {
-        cy.intercept("GET", "/api/database?*").as("databases");
         cy.intercept("GET", "/api/field/*/values").as("fieldValues");
         cy.intercept("PUT", "/api/table/*").as("updateTable");
-      }
-
-      if (area === "data studio") {
-        cy.intercept("GET", "/api/database").as("databases");
       }
     });
 
@@ -198,7 +197,9 @@ areas.forEach((area) => {
             cy.button("Discard cached field values").should("be.visible");
           });
 
-          cy.realPress("Escape");
+          // synthetic escape: realPress depends on real browser focus, which
+          // the app may not hold in CI, so the keystroke can miss the modal
+          cy.get("body").type("{esc}");
           H.modal().should("not.exist");
         });
 

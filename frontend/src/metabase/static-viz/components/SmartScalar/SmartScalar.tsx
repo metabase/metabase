@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import { isEmpty } from "metabase/utils/validate";
 import {
   CHANGE_TYPE_OPTIONS,
   computeTrend,
@@ -121,17 +122,23 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
     },
   };
 
+  const comparisonValue = comparison.display.comparisonValue;
+  const hasComparisonValue = !isEmpty(comparisonValue);
+  const description = hasComparisonValue
+    ? `${comparison.comparisonDescStr}: `
+    : comparison.comparisonDescStr;
+
   return (
     <span style={styles.root}>
       {!!icon && <span style={styles.icon}>{icon}</span>}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
-        <span style={styles.comparisonDescription}>
-          {`${comparison.comparisonDescStr}: `}
-        </span>
-        <span style={styles.comparisonValue}>
-          {comparison.display.comparisonValue}
-        </span>
+        {!isEmpty(comparison.comparisonDescStr) && (
+          <span style={styles.comparisonDescription}>{description}</span>
+        )}
+        {hasComparisonValue && (
+          <span style={styles.comparisonValue}>{comparisonValue}</span>
+        )}
       </span>
     </span>
   );

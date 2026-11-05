@@ -48,8 +48,8 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       <Group
         className={S.header}
         gap="sm"
-        px="md"
-        py="md"
+        px="lg"
+        py="lg"
         wrap="nowrap"
         onClick={handleHeaderClick}
         style={{ cursor: "pointer" }}

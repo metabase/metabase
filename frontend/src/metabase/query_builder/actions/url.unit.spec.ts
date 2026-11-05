@@ -5,23 +5,24 @@
 // on it. Complementary to router/navigate-contract.unit.spec.tsx, which pins the
 // other side: how `navigate` drives the router.
 
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import {
   type NavigateOptions,
   type To,
-  getIsNavigationPending,
+  getPendingNavigationPath,
   navigate,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
   ORDERS_ID,
@@ -39,7 +40,7 @@ registerVisualizations();
 jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
   navigate: jest.fn(),
-  getIsNavigationPending: jest.fn(() => false),
+  getPendingNavigationPath: jest.fn(() => null),
 }));
 
 type UpdateUrlOptions = Parameters<typeof updateUrl>[1];
@@ -49,17 +50,23 @@ function buildSavedQuestion(card: Card): Question {
     databases: [createSampleDatabase()],
     questions: [card],
   });
-  const metadata = getMetadata(createMockState({ entities }));
+  const metadata = createMockMetadataFromState(createMockState({ entities }));
   return checkNotNull(metadata.question(card.id));
 }
 
 function buildPristineTableQuestion(): Question {
-  const entities = createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  });
-  const metadata = getMetadata(createMockState({ entities }));
-  return checkNotNull(metadata.table(ORDERS_ID)).newQuestion();
+  return checkNotNull(tableMetadata.table(ORDERS_ID)).newQuestion();
 }
+
+const tableMetadata = createMockMetadataFromState(
+  createMockState({
+    entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
+  }),
+);
+
+// What `selectQuestionFromOptsBuilder` gives the thunk, over test metadata.
+const buildDraftQuestion: DraftQuestionBuilder = (opts) =>
+  Question.create({ ...opts, metadata: tableMetadata });
 
 // Re-presents the `navigate(to, options)` call as the descriptor the assertions
 // below were written against: `state` rides in the options, and replacing vs
@@ -125,7 +132,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     jest.mocked(navigate).mockClear();
     // Reset here rather than at the end of the test that sets it, so a failing
     // expectation cannot leak the pending state into the tests that follow.
-    jest.mocked(getIsNavigationPending).mockReturnValue(false);
+    jest.mocked(getPendingNavigationPath).mockReturnValue(null);
     jest.spyOn(console, "warn").mockImplementation(() => {});
     window.history.replaceState({}, "", "/");
   });
@@ -272,8 +279,8 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
   // query builder mounted while its chunk loads, so this can run after the user
   // has been sent elsewhere, and a navigation here would replace that pending
   // one. See dashboard-questions.cy.spec.js, which caught it.
-  it("does not navigate while the router has a navigation pending", async () => {
-    jest.mocked(getIsNavigationPending).mockReturnValue(true);
+  it("does not navigate while a navigation to a different path is pending", async () => {
+    jest.mocked(getPendingNavigationPath).mockReturnValue("/dashboard/1");
 
     const card = createSavedStructuredCard();
     await setup({
@@ -282,6 +289,23 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     });
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  // A pending navigation to the same path the URL mirror targets is this card's
+  // own, not a redirect elsewhere. React 19 keeps the lazy destination pending a
+  // render longer, so a blanket pending check dropped this sync (metabase#51020).
+  it("navigates when the pending navigation targets the same path", async () => {
+    const card = createSavedStructuredCard();
+    jest
+      .mocked(getPendingNavigationPath)
+      .mockReturnValue("/question/1-question");
+
+    await setup({
+      question: buildSavedQuestion(card),
+      options: { dirty: true },
+    });
+
+    expect(navigate).toHaveBeenCalled();
   });
 
   it("flows objectId through onto location.state", async () => {
@@ -314,7 +338,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const navigation = getDispatchedNavigation();
       expect(navigation?.descriptor.pathname).toBe(expectedUrl);
       expect(navigation?.descriptor.pathname).toBe(
-        getTableUrlForPristineQuestion(question),
+        getTableUrlForPristineQuestion(question, buildDraftQuestion),
       );
     });
 

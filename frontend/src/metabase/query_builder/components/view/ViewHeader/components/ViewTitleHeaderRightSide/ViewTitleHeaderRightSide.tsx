@@ -6,9 +6,13 @@ import { t } from "ttag";
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";
@@ -148,11 +152,12 @@ export function ViewTitleHeaderRightSide({
           {
             id: "query-builder-data-refresh",
             perform: () =>
-              isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
+              isRunning
+                ? cancelQuery()
+                : runQuestionQuery({ ignoreCache: true }),
           },
         ]
       : [],
-    [isRunning, isShowingNotebook, hasRunButton],
   );
 
   return (
@@ -228,7 +233,6 @@ export function ViewTitleHeaderRightSide({
         <QuestionActions
           question={question}
           isBookmarked={isBookmarked}
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           onOpenModal={onOpenModal}
           onToggleBookmark={toggleBookmark}
           onSetQueryBuilderMode={setQueryBuilderMode}
@@ -240,8 +244,6 @@ export function ViewTitleHeaderRightSide({
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
-            px="md"
-            py="sm"
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}

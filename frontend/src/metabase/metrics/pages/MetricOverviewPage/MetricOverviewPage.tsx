@@ -78,7 +78,7 @@ function MetricOverviewPageBody({
   }
 
   return (
-    <PageContainer data-testid="metric-overview-page" gap="xl">
+    <PageContainer data-testid="metric-overview-page" gap="xxl">
       <MetricPageShell
         card={card}
         urls={urls}

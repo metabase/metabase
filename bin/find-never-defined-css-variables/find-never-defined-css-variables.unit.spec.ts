@@ -31,6 +31,16 @@ describe("extractVariableDefinitionsFromFileContent", () => {
     expect(result).toEqual(new Set(["--theme-primary", "--theme-secondary"]));
   });
 
+  it("should extract variable definitions containing underscores", () => {
+    const content = `
+      :root {
+        --mantine-shadow-xs_outline: 0 1px 3px black;
+      }
+    `;
+    const result = extractVariableDefinitionsFromFileContent(content);
+    expect(result).toEqual(new Set(["--mantine-shadow-xs_outline"]));
+  });
+
   it("should handle mixed quotes in definitions", () => {
     const content = `
       const theme = {
@@ -57,6 +67,16 @@ describe("extractVariableUsagesFromFileContent", () => {
     `;
     const result = extractVariableUsagesFromFileContent(content);
     expect(result).toEqual(new Set(["--color-brand", "--color-background"]));
+  });
+
+  it("should extract usages containing underscores", () => {
+    const content = `
+      .paper {
+        box-shadow: var(--mantine-shadow-xs_outline);
+      }
+    `;
+    const result = extractVariableUsagesFromFileContent(content);
+    expect(result).toEqual(new Set(["--mantine-shadow-xs_outline"]));
   });
 
   it("should extract usage from css-in-js syntax", () => {
@@ -154,7 +174,10 @@ describe("extractVariableUsagesFromFileContent", () => {
     `;
     const result = extractVariableUsagesFromFileContent(content);
     expect(result).toEqual(
-      new Set(["--mb-color-text-secondary", "--notification-warning-text-color"]),
+      new Set([
+        "--mb-color-text-secondary",
+        "--notification-warning-text-color",
+      ]),
     );
   });
 

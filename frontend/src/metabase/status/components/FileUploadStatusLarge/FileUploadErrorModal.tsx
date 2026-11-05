@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { ErrorBox } from "metabase/common/components/ErrorDetails";
 import { Modal, Text } from "metabase/ui";
 
-// OSS Component, do not use directly, use through PLUGIN_UPLOAD_MANAGEMENT
 export const _FileUploadErrorModal = ({
   onClose,
   fileName,

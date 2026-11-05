@@ -30,7 +30,7 @@ export function VisualizationRunningState({
       align="center"
     >
       <Loader size="lg" />
-      <Title c="core-brand" order={3} mt="lg">
+      <Title c="core-brand" order={3} mt="xl">
         {message}
       </Title>
     </Flex>

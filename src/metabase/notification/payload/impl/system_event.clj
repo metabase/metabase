@@ -5,14 +5,14 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.urls :as urls]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn- join-url
   [user-id redirect]
@@ -20,7 +20,7 @@
   (let [reset-token               (auth-identity/create-password-reset! user-id)
         should-link-to-login-page (and (sso/sso-enabled?)
                                        (not (session/enable-password-login)))
-        email (t2/select-one-fn :email [:model/User :email] user-id)]
+        email (notification.db/user-email user-id)]
     (if should-link-to-login-page
       (cond-> (str (system/site-url) "/auth/login")
         redirect (str "?redirect=" redirect))

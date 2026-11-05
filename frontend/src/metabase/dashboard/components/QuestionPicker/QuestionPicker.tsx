@@ -119,7 +119,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
       />
 
       {(hasDataAccess || hasNativeWrite) && (
-        <Flex gap="sm" mb="md" data-testid="new-button-bar">
+        <Flex gap="sm" mb="lg" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
               w="50%"
@@ -154,7 +154,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-disabled"
+                  ? "text-secondary"
                   : icon.color;
                 return (
                   <SelectList.Item

@@ -1,4 +1,4 @@
-import type { ClickBehavior, VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 
 /**
  * In modular embedding (react sdk and embed-js) we disable internal click behaviors
@@ -8,62 +8,12 @@ import type { ClickBehavior, VisualizationSettings } from "metabase-types/api";
 export function removeInternalClickBehaviors(
   computedSettings: VisualizationSettings,
 ): VisualizationSettings {
-  const { click_behavior, column_settings } = computedSettings;
-
-  const nextClickBehavior = stripIfInternal(click_behavior);
-  const nextColumnSettings = mapColumnSettings(column_settings);
-
-  if (
-    nextClickBehavior === click_behavior &&
-    nextColumnSettings === column_settings
-  ) {
-    return computedSettings;
+  const { click_behavior } = computedSettings;
+  if (click_behavior?.type === "link" && click_behavior.linkType !== "url") {
+    return { ...computedSettings, click_behavior: undefined };
   }
 
-  return {
-    ...computedSettings,
-    click_behavior: nextClickBehavior,
-    column_settings: nextColumnSettings,
-  };
-}
-
-function mapColumnSettings(
-  columnSettings: VisualizationSettings["column_settings"],
-): VisualizationSettings["column_settings"] {
-  if (!columnSettings) {
-    return columnSettings;
-  }
-
-  const entries = Object.entries(columnSettings);
-  const hasInternal = entries.some(([, settings]) =>
-    isInternalLinkClickBehavior(settings?.click_behavior),
-  );
-
-  if (!hasInternal) {
-    return columnSettings;
-  }
-
-  return Object.fromEntries(
-    entries.map(([key, settings]) => {
-      if (!isInternalLinkClickBehavior(settings?.click_behavior)) {
-        return [key, settings];
-      }
-
-      return [key, { ...settings, click_behavior: undefined }];
-    }),
-  );
-}
-
-function stripIfInternal(clickBehavior: ClickBehavior | undefined) {
-  return isInternalLinkClickBehavior(clickBehavior) ? undefined : clickBehavior;
-}
-
-function isInternalLinkClickBehavior(clickBehavior: ClickBehavior | undefined) {
-  return (
-    clickBehavior?.type === "link" &&
-    "linkType" in clickBehavior &&
-    clickBehavior.linkType !== "url"
-  );
+  return computedSettings;
 }
 
 /**

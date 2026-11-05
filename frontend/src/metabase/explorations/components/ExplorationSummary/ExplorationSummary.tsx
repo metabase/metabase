@@ -120,12 +120,18 @@ export function ExplorationSummary({
   return (
     <>
       <Box flex={1} h="100%" pb="3rem" pr="1rem">
-        <Box bg="background-primary" bd="1px solid border" bdrs="md" h="100%">
+        <Box
+          bg="background_page-primary"
+          bd="1px solid border-neutral"
+          bdrs="sm"
+          h="100%"
+          style={{ overflow: "hidden" }}
+        >
           <Group gap={0} h="100%">
             <Stack
               h="100%"
               flex={1}
-              p="lg"
+              p="xl"
               pr={sidebarMode != null ? "5rem" : "lg"}
               pt="3rem"
               gap={0}
@@ -154,6 +160,7 @@ export function ExplorationSummary({
                 {documentData && (
                   <Tooltip label={t`Revision history`}>
                     <ActionIcon
+                      variant="subtle"
                       size="md"
                       aria-label={t`Revision history`}
                       onClick={handleShowHistory}

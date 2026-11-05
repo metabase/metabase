@@ -73,17 +73,16 @@ Each conversation is tagged with a source (where in Metabase the conversation to
 
 ### Profiles
 
-A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page, the **By profile** chart in [Usage stats](#usage-stats), and the **Metabot Conversations** model (see [Building custom reports](#building-custom-reports)) all show the human-readable profile name. The [AI Usage Log](#building-custom-reports) model exposes the raw `profile_id` instead (e.g. `internal`, `transforms_codegen`, `embedding_next`).
+A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page, the **By profile** chart in [Usage stats](#usage-stats), and the **Metabot Conversations** model (see [Building custom reports](#building-custom-reports)) all show the human-readable profile name. The [AI Usage Log](#building-custom-reports) model exposes the raw `profile_id` instead (e.g. `internal`, `embedding_next`).
 
-| Profile              | What it does                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `Internal`           | The default Metabot in the chat sidebar. Can build query-builder questions _and_ write SQL.                               |
-| `NLQ`                | Natural-language querying only. Always returns a [query builder](../questions/query-builder/editor.md) result, never SQL. |
-| `SQL`                | SQL writing only. Used by [inline SQL editing](./metabot.md#inline-sql-editing) and similar surfaces.                     |
-| `Slackbot`           | The persona behind [Metabot in Slack](./metabot-slack.md).                                                                |
-| `Embedding`          | The Metabot persona used inside [embedded Metabase](../embedding/start.md).                                               |
-| `Transforms codegen` | Generates [transform](../data-studio/transforms/transforms-overview.md), SQL, or Python.                                  |
-| `Documents`          | Generates content inside [Documents](../documents/start.md).                                                              |
+| Profile     | What it does                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `Internal`  | The default Metabot in the chat sidebar. Can build query-builder questions _and_ write SQL.                               |
+| `NLQ`       | Natural-language querying only. Always returns a [query builder](../questions/query-builder/editor.md) result, never SQL. |
+| `SQL`       | SQL writing only. Used by [inline SQL editing](./metabot.md#inline-sql-editing) and similar surfaces.                     |
+| `Slackbot`  | The persona behind [Metabot in Slack](./metabot-slack.md).                                                                |
+| `Embedding` | The Metabot persona used inside [embedded Metabase](../embedding/start.md).                                               |
+| `Documents` | Generates content inside [Documents](../documents/start.md).                                                              |
 
 ## Conversations
 
@@ -118,7 +117,7 @@ The detail view is a full audit of a single conversation. It includes:
 - **Stat tiles**: Messages, Total tokens, Queries run, Searches.
 - **Feedback** (if any): thumbs-up or thumbs-down and comments. The agent response that triggered the feedback is shown alongside.
 - **Conversation transcript**: the full message-by-message exchange. Tool calls (search calls, query construction, etc.) are inlined. You can click "View" to open a modal with the info.
-- **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Visit** on a query to open the item in a new tab and run it yourself. Transform code-gen queries are shown read-only and can't be re-run from here.
+- **Queries generated**: every SQL or [query builder](../questions/query-builder/editor.md) (MBQL) query Metabot wrote during the conversation, with the referenced tables listed underneath. Hit **Visit** on a query to open the item in a new tab and run it yourself.
 
 ### The `/inspect` shortcut
 

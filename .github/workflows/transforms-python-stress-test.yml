@@ -48,7 +48,7 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -83,7 +83,7 @@ jobs:
       MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
     name: ClickHouse Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -140,7 +140,7 @@ jobs:
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     name: MongoDB Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -185,7 +185,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     name: MySQL Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -231,7 +231,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     name: Postgres Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -267,7 +267,7 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: Redshift Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -312,7 +312,7 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     name: Snowflake Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner
@@ -355,7 +355,7 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     name: SQL Server Transforms
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         ref: ${{ inputs.ref || github.ref }}
     - name: Setup python-runner

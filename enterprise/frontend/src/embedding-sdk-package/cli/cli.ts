@@ -1,6 +1,7 @@
 import { Command } from "commander";
 
 import { start } from "./actions/start";
+import { printError } from "./utils/print";
 
 const program = new Command();
 
@@ -13,4 +14,7 @@ program
   .description("downloads and starts a local Metabase instance")
   .action(start);
 
-program.parse();
+program.parseAsync().catch((error: unknown) => {
+  printError(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});

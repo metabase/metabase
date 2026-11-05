@@ -28,19 +28,21 @@ import { getImpersonations } from "./selectors";
 import { getEditImpersonationUrl } from "./utils";
 
 const IMPERSONATED_PERMISSION_OPTION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Impersonated`,
+  get label() {
+    return t`Impersonated`;
+  },
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
-  iconColor: "warning",
+  iconColor: "feedback-warning",
 } satisfies PermissionOption;
 
 const BLOCK_PERMISSION_OPTION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Blocked`,
+  get label() {
+    return t`Blocked`;
+  },
   value: DataPermissionValue.BLOCKED,
   icon: "close",
-  iconColor: "danger",
+  iconColor: "feedback-negative",
 } satisfies PermissionOption;
 
 /**
@@ -136,8 +138,10 @@ export function initializePlugin() {
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
       DataPermissionValue.IMPERSONATED
     ].push({
-      label: t`Edit Impersonated`,
-      iconColor: "warning",
+      get label() {
+        return t`Edit Impersonated`;
+      },
+      iconColor: "feedback-warning",
       icon: "database",
       onSelect: (entityId, groupId, view) => {
         if (entityId == null) {

@@ -41,7 +41,7 @@ If you need to change the target database based on who is logged in, check out [
 
 Before you apply more specific permissions, you'll want to make sure that no one can see any data. Since everyone's automatically in the All Users group, you'll want to block this group from seeing any data.
 
-In the **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
+In **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
 
 From there, you can selectively grant privileges to different groups.
 
@@ -113,6 +113,8 @@ See [impersonated view data permissions](./impersonation.md)
 
 **Blocked** ensures people in a group can’t see the data from this database, schema, or table, regardless of their permissions at the collection level.
 
+Blocked applies to the data. It stops a group from seeing results, and it doesn't hide the query definitions of questions that the group can otherwise view. Query definitions follow [collection permissions](./collections.md#collection-vs-data-permissions).
+
 The Blocked view data permission can be set at the database, schema, or table level. Essentially, what Blocked does is make collections permissions _insufficient_ to view a question. For example, even if a question is in a collection that the group has access to, but that question queries a data source that is Blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the data permissions to that data source.
 
 Setting blocked access for a group ALWAYS prevents the group from viewing questions built with the native query editor that query ANY tables from the same database. So even if you only block a single table in a database, the group won't be able to view the results of SQL questions that query ANY table in that database. The reason: Metabase doesn't (yet) parse SQL queries, so it can't know for sure whether the SQL queries the table you want to block.
@@ -124,6 +126,8 @@ If a person in a Blocked group belongs to _another_ group that has its View data
 Specifies whether a group can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results. This permission also determines whether a group will get access to the [database browser](../exploration-and-organization/exploration.md#browse-your-databases) to explore that data source.
 
 To enable Create queries permissions for a group, that group must be able to view the data source ("Can view" permission.)
+
+Create queries permissions control who can write and run queries. They don't hide the queries behind questions that already exist. A group without native query permissions can't write SQL, and won't see the **View SQL** button in the query builder, but they can still read the SQL of a saved native question in a collection they have access to. Metabase returns a question's query definition to anyone who can view that question. See [Collection vs data permissions](./collections.md#collection-vs-data-permissions).
 
 Create query levels include:
 
@@ -158,7 +162,7 @@ Downloads of native queries are only allowed if a group has download permissions
 
 {% include plans-blockquote.html feature="Data model permissions" is_plural=true  %}
 
-You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
+You can define whether a group can [edit table metadata](../data-modeling/metadata/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No
@@ -190,7 +194,7 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 
 {% include plans-blockquote.html feature="Transform permissions" is_plural=true %}
 
-Transform permissions control who can manage and run [transforms](../data-studio/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
+Transform permissions control who can manage and run [transforms](../data-modeling/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
 
 A group can only have transform permissions for a database if they also have "View data" and "Query builder and native" permissions for _all_ the tables in a database.
 

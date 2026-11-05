@@ -51,6 +51,8 @@
                   "complexity-score" 'metabase-enterprise.data-complexity-score.cli/entrypoint
                   nil)]
     (if startup
+      ;; the target is selected from the fixed standalone-mode dispatch above
+      #_{:clj-kondo/ignore [:metabase/modules]}
       ((requiring-resolve startup) args)
       (do (binding [*out* *err*]
             (output! (str "Unknown mode: " mode))

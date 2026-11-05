@@ -78,7 +78,7 @@ function ExecutionResultTabs({
 }) {
   return (
     <Group className={S.header} justify="space-between">
-      <Box mt="xs">
+      <Box mt="xxs">
         <Tabs
           value={tab}
           onChange={(value) => {
@@ -103,7 +103,7 @@ function getRunQueryShortcut() {
 
 function LoadingState() {
   return (
-    <Flex p="md" align="center" justify="center" className={S.loading}>
+    <Flex p="lg" align="center" justify="center" className={S.loading}>
       <Loader size="lg" color="core-brand" />
     </Flex>
   );
@@ -131,7 +131,7 @@ function EmptyState() {
 
 function ErrorState({ error }: { error: string }) {
   return (
-    <Stack gap="sm" h="100%" p="md" c="feedback-negative" className={S.error}>
+    <Stack gap="sm" h="100%" p="lg" c="feedback-negative" className={S.error}>
       <Group fw="bold" gap="sm">
         <Icon name="warning" />
         {t`Error`}
@@ -156,7 +156,7 @@ function ResultsFooter({
 
   if (executionResult.error) {
     return (
-      <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
+      <Flex className={S.footer} gap="xxs" align="center" px="lg" py="lg">
         <Icon
           size="1rem"
           style={{ flexShrink: 0 }}
@@ -165,7 +165,7 @@ function ResultsFooter({
         />
         <Text
           c="text-primary"
-          ml="xs"
+          ml="xxs"
         >{t`An error occurred while executing your Python script.`}</Text>
         <DismissButton onDismiss={onDismiss} />
       </Flex>
@@ -177,7 +177,7 @@ function ResultsFooter({
   }
 
   return (
-    <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
+    <Flex className={S.footer} gap="xxs" align="center" px="lg" py="lg">
       <Icon
         size="1rem"
         style={{ flexShrink: 0 }}
@@ -186,8 +186,8 @@ function ResultsFooter({
       />
       <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
       <Text
-        c="text-disabled"
-        ml="xs"
+        c="text-secondary"
+        ml="xxs"
         lh="xs"
       >{t`Preview based on the first 100 rows from each table.`}</Text>
       <DismissButton onDismiss={onDismiss} />
@@ -199,10 +199,10 @@ function DismissButton({ onDismiss }: { onDismiss: () => void }) {
   return (
     <ActionIcon
       ml="auto"
-      size="1.5rem"
+      size="sm"
       radius="xl"
       variant="subtle"
-      c="text-disabled"
+      c="text-secondary"
       onClick={onDismiss}
       aria-label={t`Dismiss`}
     >
@@ -219,7 +219,7 @@ function ExecutionOutputLogs({
   return (
     <Box
       fz="sm"
-      p="md"
+      p="lg"
       bg="background_page-secondary"
       h="100%"
       className={S.logs}
@@ -228,7 +228,7 @@ function ExecutionOutputLogs({
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
         <Text
-          c="text-disabled"
+          c="text-secondary"
           fz="sm"
           fs="italic"
         >{t`No logs to display`}</Text>

@@ -1,8 +1,5 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -32,7 +29,7 @@ describe("HomeGreeting", () => {
     });
 
     expect(screen.getByText(/John/)).toBeInTheDocument();
-    expect(screen.getAllByRole("img")).toHaveLength(2);
+    expect(screen.getAllByRole("img", { name: "Metabot" })).toHaveLength(2);
   });
 
   it("should render nothing when the welcome message is turned off", () => {

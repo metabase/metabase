@@ -66,7 +66,7 @@ export function MetricsFilterPillPopover({
           onClick={() => setIsOpened((prev) => !prev)}
           onRemoveClick={handleRemove}
         >
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xxs">
             {metricName && (
               <Flex align="center">
                 <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
@@ -78,7 +78,7 @@ export function MetricsFilterPillPopover({
                     color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
-                    ml="xs"
+                    ml="xxs"
                     variant="light"
                   >
                     {metricCount}

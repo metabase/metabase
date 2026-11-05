@@ -80,17 +80,12 @@ export const ExportSettingsWidget = ({
   }));
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <SegmentedControl
-        w="100%"
+        fullWidth
         data={formatOptions}
         value={selectedFormat}
         onChange={onChangeFormat}
-        styles={{
-          root: {
-            backgroundColor: "var(--mb-color-background_page-secondary)",
-          },
-        }}
       />
 
       {canConfigureFormatting ? (

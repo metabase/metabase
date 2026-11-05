@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.sso.db :as sso.db]
    [metabase.sso.oidc.common :as oidc.common]
    [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.http :as oidc.http]
@@ -13,14 +14,13 @@
    [metabase.sso.oidc.tokens :as oidc.tokens]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register the OIDC provider in the hierarchy
-(derive :provider/oidc :metabase.auth-identity.provider/provider)
-(derive :provider/oidc :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/oidc :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/oidc :metabase.auth-identity.provider/create-user-if-not-exists)
 
 ;;; -------------------------------------------------- Configuration Handling --------------------------------------------------
 
@@ -164,7 +164,7 @@
            (and (not= (:user_id row) user-id)
                 (let [stored-iss (get-in row [:metadata :iss])]
                   (or (nil? stored-iss) (= stored-iss iss)))))
-         (t2/select :model/AuthIdentity :provider [:in provider-names] :provider_id sub))))
+         (sso.db/auth-identities-with-provider-id provider-names sub))))
 
 (def ^:private link-identity-lock-shards
   "Bounded: metabase_cluster_lock rows are never deleted, so lock names must not grow per identity."
@@ -201,10 +201,7 @@
        (if auth-identity
          (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider    (name provider)
                                                                   :provider_id sub})
-         (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                          :provider    (name provider)
-                                          :provider_id sub
-                                          :metadata    {:iss iss}}))
+         (sso.db/insert-auth-identity! user-id (name provider) sub {:iss iss}))
        {:success? true}))))
 
 (defn- verify-or-link-identity!
@@ -219,13 +216,12 @@
        :error :invalid-token
        :message "ID token is missing the sub claim"}
       (let [names (provider-names pname config)
-            auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider pname)
+            auth-identity (sso.db/auth-identity (:id user) pname)
             ;; rows written before per-IdP provider names live under the shared :legacy-provider-name; this
             ;; user's row with the same sub (and no conflicting iss) is the same identity — migrate it in place
             legacy-identity (when-not auth-identity
                               (when-let [legacy-name (:legacy-provider-name config)]
-                                (when-let [row (t2/select-one :model/AuthIdentity :user_id (:id user)
-                                                              :provider legacy-name :provider_id sub)]
+                                (when-let [row (sso.db/auth-identity-with-provider-id (:id user) legacy-name sub)]
                                   (let [legacy-iss (get-in row [:metadata :iss])]
                                     (when (or (nil? legacy-iss) (= legacy-iss iss))
                                       row)))))

@@ -246,7 +246,9 @@ describe("embedding-sdk-release-helpers", () => {
             releaseType: "custom",
             prereleaseId: "",
           }),
-        ).toThrow(/prerelease_id is required when cutting a new one-off branch/);
+        ).toThrow(
+          /prerelease_id is required when cutting a new one-off branch/,
+        );
       });
     });
 
@@ -265,14 +267,17 @@ describe("embedding-sdk-release-helpers", () => {
   describe("computeSdkDistTag", () => {
     it("maps each release type to its real dist-tag", () => {
       expect(
-        computeSdkDistTag({ newVersion: "0.63.0-alpha.6", releaseType: "alpha" }),
-      ).toBe("alpha");
+        computeSdkDistTag({
+          newVersion: "0.63.0-alpha.6",
+          releaseType: "alpha",
+        }),
+      ).toBe("63-alpha");
       expect(
         computeSdkDistTag({
           newVersion: "0.64.0-alpha.0",
           releaseType: "preminor",
         }),
-      ).toBe("alpha");
+      ).toBe("64-alpha");
       expect(
         computeSdkDistTag({ newVersion: "0.63.0-beta.0", releaseType: "beta" }),
       ).toBe("63-beta");
@@ -348,31 +353,44 @@ describe("embedding-sdk-release-helpers", () => {
       return path;
     }
 
-    it("alpha bump on master writes the file and returns outputs", () => {
-      const path = writeTemplate("0.63.0-alpha.5");
-
-      const result = applySdkVersionBump({
-        packageTemplatePath: path,
-        branch: "master",
-        releaseType: "alpha",
-        latestMajorVersion: "63",
-      });
-
-      expect(result).toEqual({
-        previousVersion: "0.63.0-alpha.5",
+    it.each([
+      {
+        releaseType: "alpha" as const,
         newVersion: "0.63.0-alpha.6",
         majorVersion: "63",
-        distTag: "alpha",
-        tagAsLatest: false,
-      });
+        distTag: "63-alpha",
+      },
+      {
+        releaseType: "preminor" as const,
+        newVersion: "0.64.0-alpha.0",
+        majorVersion: "64",
+        distTag: "64-alpha",
+      },
+    ])(
+      "$releaseType bump on master writes the file and returns outputs",
+      ({ releaseType, newVersion, majorVersion, distTag }) => {
+        const path = writeTemplate("0.63.0-alpha.5");
 
-      const written = JSON.parse(readFileSync(path, "utf8"));
-      expect(written.version).toBe("0.63.0-alpha.6");
-      expect(written.sdkRelease).toEqual({ distTag: "alpha", tagAsLatest: false });
-      // other keys are preserved
-      expect(written.name).toBe("@metabase/embedding-sdk-react");
-      expect(written.description).toBe("x");
-    });
+        const result = applySdkVersionBump({
+          packageTemplatePath: path,
+          branch: "master",
+          releaseType,
+          latestMajorVersion: "63",
+        });
+
+        expect(result).toEqual({
+          previousVersion: "0.63.0-alpha.5",
+          newVersion,
+          majorVersion,
+          distTag,
+          tagAsLatest: false,
+        });
+
+        const written = JSON.parse(readFileSync(path, "utf8"));
+        expect(written.version).toBe(newVersion);
+        expect(written.sdkRelease).toEqual({ distTag, tagAsLatest: false });
+      },
+    );
 
     it("beta on a release branch", () => {
       const path = writeTemplate("0.63.0-beta.1");
@@ -512,13 +530,13 @@ describe("embedding-sdk-release-helpers", () => {
     it("defaults tagAsLatest to false when it's absent", () => {
       const path = writeJsonTemplate({
         version: "0.63.0-alpha.6",
-        sdkRelease: { distTag: "alpha" },
+        sdkRelease: { distTag: "63-alpha" },
       });
 
       expect(readSdkReleaseMetadata({ packageTemplatePath: path })).toEqual({
         version: "0.63.0-alpha.6",
         majorVersion: "63",
-        distTag: "alpha",
+        distTag: "63-alpha",
         tagAsLatest: false,
       });
     });

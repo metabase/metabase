@@ -1,8 +1,12 @@
-import { getIn } from "icepick";
-
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
+import { getChartColor } from "../../lib/color-name";
 import type { ComputedVisualizationSettings } from "../../types";
 
 export const SERIES_SETTING_KEY = "series_settings";
@@ -15,10 +19,7 @@ export const getSeriesColors = (
 ) => {
   const assignments: Record<string, string> = {};
 
-  // Unjustified type cast. FIXME
-  const seriesSettings = getIn(settings, [SERIES_SETTING_KEY]) as
-    | Record<string, { color?: string; title?: string }>
-    | undefined;
+  const seriesSettings = settings[SERIES_SETTING_KEY];
 
   if (seriesSettings) {
     for (const [key, seriesObject] of Object.entries(seriesSettings)) {
@@ -27,10 +28,15 @@ export const getSeriesColors = (
       }
 
       if (seriesObject.color != null) {
-        assignments[key] = seriesObject.color;
+        const seriesColor = getChartColor(
+          seriesObject.color,
+          seriesObject.color_name,
+        );
+
+        assignments[key] = seriesColor;
 
         if (seriesObject.title != null) {
-          assignments[seriesObject.title] = seriesObject.color;
+          assignments[seriesObject.title] = seriesColor;
         }
       }
     }
@@ -56,6 +62,11 @@ export const getSeriesColors = (
 export const getSeriesDefaultDisplay = (cardDisplay: string, index: number) => {
   if (cardDisplay === "combo") {
     return index === 0 ? "line" : "bar";
+  }
+
+  // Row charts are rotated bars; "row" matches no series builder.
+  if (cardDisplay === "row") {
+    return "bar";
   }
 
   return cardDisplay;
@@ -87,6 +98,32 @@ export const getSeriesDefaultLineMissing = (
 export const getSeriesDefaultShowSeriesTrendline = (
   settings: ComputedVisualizationSettings,
 ) => settings["graph.show_trendline"];
+
+const getRawSeries = (series: Series): Series =>
+  isObjectWithRaw(series) && series._raw ? series._raw : series;
+
+const hasInsights = (single: SingleSeries | undefined) =>
+  (single?.data.insights?.length ?? 0) > 0;
+
+const hasMultipleDimensions = (settings: ComputedVisualizationSettings) =>
+  (settings["graph.dimensions"] ?? []).length > 1;
+
+export const isTrendLineUnavailable = (
+  series: Series,
+  settings: ComputedVisualizationSettings,
+) => hasMultipleDimensions(settings) || !hasInsights(getRawSeries(series)[0]);
+
+// unlike isTrendLineUnavailable, reads the insights of the series' own card
+export const isSeriesTrendLineUnavailable = (
+  single: SingleSeries,
+  series: Series,
+  settings: ComputedVisualizationSettings,
+) => {
+  const rawSeries = getRawSeries(series);
+  const sourceSeries =
+    rawSeries.find((raw) => raw.card.id === single.card.id) ?? rawSeries[0];
+  return hasMultipleDimensions(settings) || !hasInsights(sourceSeries);
+};
 
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,

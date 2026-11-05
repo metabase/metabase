@@ -101,7 +101,7 @@ const FieldItemBase = ({
         justify="space-between"
         mih={rem(40)}
         pos="relative"
-        px="md"
+        px="lg"
         py={rem(12)}
         to={href}
         w="100%"
@@ -110,7 +110,7 @@ const FieldItemBase = ({
       >
         <Group
           align="center"
-          c="text-disabled"
+          c="text-secondary"
           flex="0 0 auto"
           gap={0}
           maw="100%"
@@ -126,7 +126,7 @@ const FieldItemBase = ({
               lh="normal"
               maw="50%"
               mb={rem(-4)}
-              mr="xs"
+              mr="xxs"
               mt={rem(-3)}
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>

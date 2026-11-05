@@ -1,7 +1,7 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { createRef } from "react";
-import { act } from "react-dom/test-utils";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { EntityPickerModalProps } from "metabase/common/components/Pickers";
@@ -77,6 +77,16 @@ const setup = (props: Partial<MetabotMentionSuggestionProps> = {}) => {
     onClose,
     decorationNode: null,
     clientRect: null,
+    placement: "bottom-start",
+    offset: { mainAxis: 0, crossAxis: 0 },
+    flip: false,
+    floatingUi: {
+      placement: "bottom-start",
+      strategy: "absolute",
+      middleware: [],
+    },
+    mount: jest.fn(),
+    loading: false,
     ...props,
   };
 

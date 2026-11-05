@@ -35,5 +35,5 @@
 }
 
 .inputWithLeftSection {
-  margin-left: var(--mantine-spacing-xs);
+  margin-left: var(--mantine-spacing-xxs);
 }

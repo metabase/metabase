@@ -25,6 +25,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
@@ -38,13 +39,17 @@
                                      (lib.order-by/orderable-columns query stage-number)))
 
 (mu/defn- existing-order-by-clause :- [:maybe ::lib.schema.order-by/order-by]
-  [query stage-number column]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
   (m/find-first (fn [[_direction _opts expr, :as _asc-or-desc-clause]]
                   (lib.equality/find-matching-column query stage-number expr [column]))
                 (lib.order-by/order-bys query stage-number)))
 
 (mu/defn- existing-order-by-direction :- [:maybe ::lib.schema.order-by/direction]
-  [query stage-number column]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
   (when-let [[direction _opts _expr] (existing-order-by-clause query stage-number column)]
     direction))
 

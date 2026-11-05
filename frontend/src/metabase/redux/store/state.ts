@@ -3,7 +3,6 @@ import type { DocumentsState } from "metabase/redux/store/documents";
 import type { ExplorationsState } from "metabase/redux/store/explorations";
 
 import type { AdminState } from "./admin";
-import type { AnalyticsExportState } from "./analytics-export";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
@@ -11,7 +10,6 @@ import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
-import type { MetabotState } from "./metabot";
 import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
@@ -25,7 +23,6 @@ type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
-  analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
   dashboard: DashboardState;
@@ -47,7 +44,8 @@ export interface State {
   };
   "metabase-api": MetabaseApiState;
   documents: DocumentsState;
-  metabot: MetabotState;
+  // The slice shape is metabot's own — read it through metabot's selectors, which narrow this key.
+  metabot: unknown;
   explorations: ExplorationsState;
 }
 

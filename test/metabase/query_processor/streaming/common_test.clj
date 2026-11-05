@@ -98,3 +98,39 @@
                 ::mb.viz/link-type           ::mb.viz/url
                 ::mb.viz/link-text-template  "http://example.com"}
                (::mb.viz/click-behavior settings)))))))
+
+(deftest escape-spreadsheet-formula-test
+  (testing "values that a spreadsheet would evaluate as a formula are prefixed with a single quote"
+    (are [v] (= (str "'" v) (streaming.common/escape-spreadsheet-formula v))
+      "=1+1"
+      "=cmd|' /C calc'!A0"
+      "+cmd|' /C calc'!A0"
+      "-cmd|' /C calc'!A0"
+      "@SUM(1+1)"
+      "=HYPERLINK(\"http://evil.example\",\"click me\")"
+      "-2+3"
+      "\t=1+1"
+      "\r=1+1"))
+  (testing "ordinary values are left alone"
+    (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
+      nil
+      ""
+      "hello"
+      "a=b"
+      "Sale: 50% off"
+      " =1+1"))
+  (testing "values a spreadsheet reads as plain numbers are left alone, so exports stay faithful"
+    (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
+      "-5"
+      "+5"
+      "-1,234.56"
+      "-$1,234.56"
+      "-50%"
+      "-1.5e3"
+      "+1 555 1234"))
+  (testing "non-string values pass through untouched"
+    (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
+      5
+      -5
+      true
+      :kw)))

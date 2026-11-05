@@ -1,141 +1,87 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
-import type { DataApp } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
-import type { DataAppTestEnv } from "./data-app-test-env";
+import { createLibrary, publishTables } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
 
-export const SYNCED_DATA_APPS_FIXTURE_PATH =
-  Cypress.config("projectRoot") +
-  "/e2e/support/assets/example_synced_data_apps";
+/**
+ * Builds the apps of `e2e/support/assets/data-apps` and copies that repository,
+ * with the Library and the tables it publishes, into the sync repository.
+ */
+export const copyDataAppsFixture = () =>
+  cy.task(
+    "copyDataAppsFixture",
+    { destination: LOCAL_GIT_PATH },
+    { timeout: 300000 },
+  );
 
 /**
- * Copy the example data-app repo into the working directory of the local git repo
- * `setupGitSync` created, so a `commitToRepo` + a real pull materialize its apps.
- * The repo holds one directory per materialization outcome (a good app, an app
- * whose bundle is missing, a malformed config, and a directory with no config) —
- * see the fixture and the sync spec that drives it.
+ * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from
+ * `ensure-scopes-checked` — the endpoint declares no `:scope` at all, so a narrowed request
+ * may not reach it. `unsupported_scope` comes from `enforce-scope` — the endpoint is scoped,
+ * but not for the scope the request carries. Either one inside a data app means a route the
+ * SDK really uses was never tagged `data-apps:base`.
  */
-export const copySyncedDataAppsFixture = () =>
-  cy.task("copyDirectory", {
-    source: SYNCED_DATA_APPS_FIXTURE_PATH,
-    destination: LOCAL_GIT_PATH,
-  });
+const SCOPE_ERRORS = ["scope_not_permitted", "unsupported_scope"];
+
+let scopeDenials: string[] = [];
+let scopeGuardInstalled = false;
 
 /**
- * The e2e data-app fixture that `mockDataApp` builds and serves — its directory
- * name and its `/apps/<slug>` URL segment. One bundle with a page per surface it
- * exercises (questions, query hooks, actions, clipboard, sandbox, isolation), so
- * the specs share a single build.
+ * Records every scope rejection the backend returns while a data app is open. Every request a
+ * sandboxed app makes is marked `X-Metabase-Client: data-app` and confined to `data-apps:base`,
+ * so a rejection here is a route missing its `{:scope api-scope/data-app}` tag, not a
+ * permission problem. `assertNoDataAppScopeDenials` (a root `afterEach`) fails the test on any.
  */
-export const DATA_APP_NAME = "kitchen-sink";
-export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
+function installDataAppScopeGuard() {
+  if (scopeGuardInstalled) {
+    return;
+  }
+  scopeGuardInstalled = true;
 
-/**
- * Visit a nested route inside the fixture data app. `openDataApp` encodes the
- * slug, so it can't carry a sub-path — deep-links go through a raw `cy.visit`.
- */
-export const visitDataAppRoute = (route: string) =>
-  cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
-
-/**
- * A minimal `DataApp`-shaped row. Admin-list state tests use it directly (they
- * only assert how the management UI renders the list, no real bundle needed);
- * `mockDataApp` uses it for the intercepted metadata of the built fixture.
- */
-export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
-  id: 1,
-  name: DATA_APP_NAME,
-  display_name: DATA_APP_DISPLAY_NAME,
-  description: null,
-  bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
-  enabled: true,
-  allowed_hosts: [],
-  bundle_hash: "e2e-bundle-hash",
-  last_synced_sha: "e2e0000",
-  last_synced_at: "2024-01-01T00:00:00Z",
-  sync_error: null,
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
-  ...overrides,
-});
-
-type MockDataAppOptions<TestEnv> = {
-  /** Display name (iframe title + admin list); defaults to the fixture dir name. */
-  displayName?: string;
-  /** `allowed_hosts` served in the bundle response header. */
-  allowedHosts?: string[];
-  /**
-   * Config a fixture reads at runtime, so it doesn't hard-code values that track
-   * the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized and prepended
-   * to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`; since the
-   * bundle is evaluated as one script in the sandbox realm, the app reads it as a
-   * plain global. Typed by `DataAppTestEnv` by default; pass another fixture's
-   * type as `TestEnv` if it differs.
-   */
-  testEnv?: TestEnv;
-  /**
-   * Hold the bundle response for this many ms, so the app's loading window is
-   * long enough to assert on. Without it a small mocked bundle can render before
-   * the test ever queries, making any "still loading" assertion racy.
-   */
-  bundleDelay?: number;
-};
-
-/**
- * Set up a data app for the current test
- */
-export const mockDataApp = <TestEnv = DataAppTestEnv>(
-  appName: string,
-  options: MockDataAppOptions<TestEnv> = {},
-) => {
-  const slug = appName;
-  const displayName = options.displayName ?? appName;
-  const allowedHosts = options.allowedHosts ?? [];
-
-  // Prelude runs in the sandbox realm before the bundle's factory, so the app
-  // can read the injected config as a global (see MockDataAppOptions.testEnv).
-  const prelude =
-    options.testEnv !== undefined
-      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(options.testEnv)};\n`
-      : "";
-
-  return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
-    const app = fakeDataApp({
-      name: slug,
-      display_name: displayName,
-      allowed_hosts: allowedHosts,
+  cy.intercept("/api/**", (req) => {
+    // `after:response` rather than a `req.continue` callback: the latter buffers the body,
+    // which would sit in front of the streamed `/api/dataset` responses.
+    req.on("after:response", (res) => {
+      // `res.body` is whatever the endpoint returned; the scope middleware answers with a
+      // JSON `{error, message}` body.
+      const error = (res.body as { error?: string } | undefined)?.error;
+      if (
+        res.statusCode === 403 &&
+        error !== undefined &&
+        SCOPE_ERRORS.includes(error)
+      ) {
+        scopeDenials.push(
+          `${req.method} ${new URL(req.url).pathname} -> ${error}`,
+        );
+      }
     });
-
-    cy.intercept("GET", "/api/apps/repo-status", {
-      configured: true,
-    });
-    cy.intercept("GET", "/api/apps", [app]);
-    cy.intercept({ method: "GET", pathname: `/api/apps/${slug}` }, app);
-    cy.intercept(
-      { method: "GET", pathname: `/api/apps/${slug}/bundle` },
-      {
-        statusCode: 200,
-        headers: {
-          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
-          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
-          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
-          // `text/plain`) would diverge from production, so keep it aligned.
-          "content-type": "application/javascript",
-          "X-Content-Type-Options": "nosniff",
-          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
-        },
-        body: prelude + bundleCode,
-        ...(options.bundleDelay ? { delay: options.bundleDelay } : {}),
-      },
-    );
-
-    return cy.wrap({ slug, displayName }, { log: false });
   });
-};
+}
+
+/** Root `beforeEach` in `e2e/support/cypress.js`: intercepts reset between tests, so must this record. */
+export function resetDataAppScopeGuard() {
+  scopeDenials = [];
+  scopeGuardInstalled = false;
+}
+
+/** Root `afterEach` in `e2e/support/cypress.js`. Only a test that opened a data app pays for it. */
+export function assertNoDataAppScopeDenials() {
+  if (!scopeGuardInstalled) {
+    return;
+  }
+  cy.then(() => {
+    expect(
+      scopeDenials,
+      `data-app scope rejections:\n${scopeDenials.join("\n")}`,
+    ).to.deep.eq([]);
+  });
+}
 
 export function openDataApp(slug: string) {
+  installDataAppScopeGuard();
   return cy.visit(Urls.dataApp(slug));
 }
 
@@ -148,18 +94,12 @@ const DATA_APP_DEV_HOST_APP_DIR =
 
 const DATA_APP_DEV_ENV_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/.env.local`;
 
-/** The dev host app's manifest — the live manifest-validation suite edits it. */
 export const DATA_APP_DEV_MANIFEST_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/data_app.yaml`;
 
-/** The dev host app's source entry — the soft-reload suite edits it. */
 export const DATA_APP_DEV_APP_SRC_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/src/App.tsx`;
 
 const DATA_APP_DEV_CONTENT_TIMEOUT_MS = 40000;
 
-/**
- * Visit the dev host app and wait for the sandboxed bundle to render — the
- * point at which the dev entry has booted (toolbar mounted, probes fired).
- */
 export function visitDataAppDevApp(clientHost: string) {
   cy.visit(clientHost);
   cy.findByTestId("dev-app-content", {
@@ -167,35 +107,41 @@ export function visitDataAppDevApp(clientHost: string) {
   }).should("exist");
 }
 
-/**
- * Provision auth for the data-app dev-server host app: create an API key and
- * write the `.env.local` the SDK dev entry reads at startup, then wait for Vite
- * to restart onto it. `clientHost` is the dev server origin.
- */
-export function setUpDataAppDevServer(clientHost: string) {
+type DataAppDevServerOpts = {
+  clientHost: string;
+  tableId: TableId;
+};
+
+export function setUpDataAppDevServer({
+  clientHost,
+  tableId,
+}: DataAppDevServerOpts) {
   const mbUrl = Cypress.config("baseUrl");
   if (!mbUrl) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
-  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  createLibrary();
+  publishTables({ table_ids: [tableId] });
+  cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
 
   cy.request("POST", "/api/api-key", {
     name: `data-app-dev-e2e-${Date.now()}`,
     group_id: USER_GROUPS.ADMIN_GROUP,
   }).then(({ body }) => {
-    cy.writeFile(
-      DATA_APP_DEV_ENV_PATH,
-      `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
-    );
+    cy.task("writeDataAppFiles", {
+      files: {
+        [DATA_APP_DEV_ENV_PATH]: `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
+      },
+    });
   });
 
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
 }
 
 export function tearDownDataAppDevServer() {
-  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  return cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
 }
 
 // `DATA_APP_MB_URL` shows up in (or drops out of) the served CSP once Vite has

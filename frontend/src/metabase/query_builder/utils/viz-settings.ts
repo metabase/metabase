@@ -1,7 +1,10 @@
 import _ from "underscore";
 
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
-import { getPersistableDefaultSettingsForSeries } from "metabase/viz-core";
+import {
+  adoptLegacyCustomVizSettings,
+  getPersistableDefaultSettingsForSeries,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
@@ -16,7 +19,11 @@ export function getQuestionWithDefaultVisualizationSettings(
   question: Question,
   series: Series,
 ) {
-  const oldVizSettings = question.settings();
+  // Adopting a legacy custom viz key should not dirty the question
+  const oldVizSettings = adoptLegacyCustomVizSettings(
+    question.display(),
+    question.settings(),
+  );
   const newVizSettings = {
     ...oldVizSettings,
     ...getPersistableDefaultSettingsForSeries(series),
