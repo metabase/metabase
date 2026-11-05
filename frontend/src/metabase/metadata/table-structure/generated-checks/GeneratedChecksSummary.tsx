@@ -9,7 +9,6 @@ import {
   Button,
   Code,
   Group,
-  Icon,
   Modal,
   Stack,
   Text,
@@ -43,30 +42,29 @@ export function GeneratedChecksSummary({
   }
 
   return (
-    <Stack gap="xs" py="xs" data-testid="generated-checks-summary">
-      <Text>
-        {ngettext(
-          msgid`${checks.length} check from this table's metadata`,
-          `${checks.length} checks from this table's metadata`,
-          checks.length,
-        )}
-        {" · "}
+    <Group
+      gap="sm"
+      justify="space-between"
+      wrap="nowrap"
+      data-testid="generated-checks-summary"
+    >
+      <Group gap="xs" miw={0}>
+        <Text>
+          {ngettext(
+            msgid`${checks.length} check from this table's metadata`,
+            `${checks.length} checks from this table's metadata`,
+            checks.length,
+          )}
+        </Text>
         {failingCount > 0 ? (
-          <Text span fw="bold" c="feedback-warning">
+          <Badge color="warning" variant="light" flex="0 0 auto">
             {t`${failingCount} failing`}
-          </Text>
+          </Badge>
         ) : (
-          <Text span c="text-secondary">{t`all passing`}</Text>
+          <Text c="text-secondary">{t`all passing`}</Text>
         )}
-      </Text>
-      <Button
-        size="compact-sm"
-        variant="subtle"
-        px={0}
-        w="fit-content"
-        leftSection={<Icon name="external" />}
-        onClick={open}
-      >
+      </Group>
+      <Button size="compact-sm" flex="0 0 auto" onClick={open}>
         {t`View in data quality`}
       </Button>
       {isOpen && (
@@ -77,7 +75,7 @@ export function GeneratedChecksSummary({
           onClose={close}
         />
       )}
-    </Stack>
+    </Group>
   );
 }
 

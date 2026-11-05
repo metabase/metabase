@@ -34,11 +34,13 @@ import {
 import type { Table } from "metabase-types/api";
 
 import {
+  DETAILS_CELL_INPUT_CLASS_NAMES,
   DetailPanel,
   DetailPanelHeader,
   DetailsEditableText,
   FieldDetailsSkeleton,
 } from "../DetailPanel";
+import { InferredIcon } from "../TableSection/InferenceReview";
 
 import {
   type OpenPropertySignal,
@@ -174,6 +176,7 @@ function PropertyDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Display name`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={property.displayName}
@@ -202,6 +205,7 @@ function PropertyDetails({
           />
           <DetailsRow
             label={t`Description`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={property.description}
@@ -214,22 +218,18 @@ function PropertyDetails({
               />
             }
           />
-          <DetailsRow
-            label={t`Type`}
-            value={
-              <PropertyTypeInput
-                property={property}
-                definitionColumns={definitionColumns}
-                onSave={save}
-              />
-            }
+          <PropertyTypeRow
+            property={property}
+            definitionColumns={definitionColumns}
+            onSave={save}
           />
           <DetailsRow
             label={t`Semantic type`}
+            fillValue
             value={
               <Select
-                py="xs"
                 aria-label={t`Semantic type`}
+                classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
                 data={getPropertySemanticTypeOptions()}
                 value={property.semanticType}
                 placeholder={t`No semantic type`}
@@ -245,25 +245,26 @@ function PropertyDetails({
           />
           <DetailsRow
             label={t`Also called`}
+            fillValue
+            labelNote={
+              <Text size="sm" c="text-secondary">
+                {t`Search and Metabot match these words`}
+              </Text>
+            }
             value={
-              <Stack gap="xs" py="xs">
-                <TagsInput
-                  aria-label={t`Also called`}
-                  value={property.synonyms}
-                  placeholder={t`Add a synonym`}
-                  onChange={(synonyms) => save({ synonyms })}
-                />
-                <Text size="sm" c="text-secondary">
-                  {t`Search and Metabot match these words to this property.`}
-                </Text>
-              </Stack>
+              <TagsInput
+                aria-label={t`Also called`}
+                classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+                value={property.synonyms}
+                placeholder={t`Add a synonym`}
+                onChange={(synonyms) => save({ synonyms })}
+              />
             }
           />
           <DetailsRow
             label={t`Visibility`}
             value={
               <Switch
-                py="xs"
                 label={t`Hide from people and Metabot`}
                 checked={property.isHidden}
                 onChange={(event) =>
@@ -280,7 +281,7 @@ function PropertyDetails({
           <DetailsRow
             label={t`Coverage`}
             value={
-              <Stack gap="xs" py="xs">
+              <Stack gap="xs">
                 <Text c="text-primary">
                   {t`${formatShare(property.coverage)} of ${noun.plural} (${property.entityCount.toLocaleString()} of ${registry.entityCount.toLocaleString()})`}
                 </Text>
@@ -343,7 +344,7 @@ function LabelSource({
       ? `${definitionColumns.table}.${definitionColumns.label}`
       : null;
   return (
-    <Stack gap="xs" py="xs">
+    <Stack gap="xs" align="flex-start">
       {match(property.labelSource)
         .with("definition", () => (
           <Text c="text-primary">{t`From ${labelColumn ?? t`the definitions`}`}</Text>
@@ -364,13 +365,7 @@ function LabelSource({
         ))
         .exhaustive()}
       {property.labelSource === "admin" && definitionLabel && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={onReset}
-        >
+        <Button size="compact-sm" onClick={onReset}>
           {t`Use “${definitionLabel}”`}
         </Button>
       )}
@@ -388,8 +383,8 @@ function RawName({
   const propertyColumn = resolved.propertyField?.name;
   const showsKey = property.key !== property.name && propertyColumn != null;
   return (
-    <Stack gap="xs" py="xs">
-      <Code w="fit-content">{property.name}</Code>
+    <Stack gap="xs" align="flex-start">
+      <Code>{property.name}</Code>
       {showsKey && (
         <Text size="sm" c="text-secondary">
           {t`Rows where ${propertyColumn} is ${property.key}`}
@@ -399,7 +394,19 @@ function RawName({
   );
 }
 
-function PropertyTypeInput({
+function getTypeInference(property: RegistryProperty) {
+  if (property.typeSource !== "values") {
+    return null;
+  }
+  const inferredTypeLabel = getPropertyTypeLabel(property.inferredType);
+  const hasUntypedDefinition =
+    property.definition != null && property.definition.declaredType == null;
+  return hasUntypedDefinition
+    ? t`Its definition has no type, so it's inferred: most values read as ${inferredTypeLabel}.`
+    : t`Inferred: most values read as ${inferredTypeLabel}. Values are stored as text.`;
+}
+
+function PropertyTypeRow({
   property,
   definitionColumns,
   onSave,
@@ -409,58 +416,50 @@ function PropertyTypeInput({
   onSave: (overrides: { type?: RegistryProperty["type"] }) => void;
 }) {
   const declaredType = property.definition?.declaredType;
-  const typeColumn =
-    definitionColumns?.type != null
-      ? `${definitionColumns.table}.${definitionColumns.type}`
-      : null;
+  const inferredTypeLabel = getPropertyTypeLabel(property.inferredType);
+  const inference = getTypeInference(property);
+
   return (
-    <Stack gap="xs" py="xs">
-      <Select
-        aria-label={t`Type`}
-        data={getPropertyTypeOptions()}
-        value={property.type}
-        allowDeselect={false}
-        onChange={(value) => {
-          const option = getPropertyTypeOptions().find(
-            (option) => option.value === value,
-          );
-          if (option) {
-            onSave({ type: option.value });
-          }
-        }}
-      />
-      <Text size="sm" c="text-secondary">
-        {match(property.typeSource)
-          .with(
-            "definition",
-            () =>
-              t`From ${typeColumn ?? t`the definitions`}: ${declaredType ?? ""}. Values are stored as text.`,
-          )
-          .with("values", () =>
-            declaredType == null && property.definition != null
-              ? t`Its definition has no type, so it's inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}.`
-              : t`Inferred: most values read as ${getPropertyTypeLabel(property.inferredType)}. Values are stored as text.`,
-          )
-          .with(
-            "admin",
-            () =>
-              t`Set by an admin. The default is ${getPropertyTypeLabel(property.inferredType)}.`,
-          )
-          .exhaustive()}
-      </Text>
-      <TypeDriftHint property={property} />
-      {property.typeSource === "admin" && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => onSave({ type: undefined })}
-        >
-          {t`Use the default type (${getPropertyTypeLabel(property.inferredType)})`}
-        </Button>
-      )}
-    </Stack>
+    <DetailsRow
+      label={t`Type`}
+      fillValue
+      labelAside={<InferredIcon description={inference} />}
+      labelNote={
+        <>
+          {property.typeSource === "definition" && (
+            <Text size="sm" c="text-secondary">
+              {t`From ${definitionColumns?.type ?? t`the definitions`}: ${declaredType ?? ""}`}
+            </Text>
+          )}
+          <TypeDriftHint property={property} />
+          {property.typeSource === "admin" && (
+            <Button
+              size="compact-sm"
+              onClick={() => onSave({ type: undefined })}
+            >
+              {t`Use ${inferredTypeLabel}`}
+            </Button>
+          )}
+        </>
+      }
+      value={
+        <Select
+          aria-label={t`Type`}
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          data={getPropertyTypeOptions()}
+          value={property.type}
+          allowDeselect={false}
+          onChange={(value) => {
+            const option = getPropertyTypeOptions().find(
+              (option) => option.value === value,
+            );
+            if (option) {
+              onSave({ type: option.value });
+            }
+          }}
+        />
+      }
+    />
   );
 }
 
@@ -471,7 +470,7 @@ function TypeDriftHint({ property }: { property: RegistryProperty }) {
   }
   return (
     <Text size="sm" c="text-secondary">
-      {t`${drift.nonConformingCount.toLocaleString()} values don't fit ${getPropertyTypeLabel(property.type).toLowerCase()}. A generated data quality check flags them.`}
+      {t`${drift.nonConformingCount.toLocaleString()} values don't fit. A data quality check flags them.`}
     </Text>
   );
 }

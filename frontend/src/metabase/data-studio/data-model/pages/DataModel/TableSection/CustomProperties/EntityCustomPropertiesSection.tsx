@@ -79,9 +79,7 @@ function EntityCustomProperties({
           tab: "properties",
         })}
         size="compact-sm"
-        variant="subtle"
         w="fit-content"
-        px={0}
       >
         {t`Review properties`}
       </Button>

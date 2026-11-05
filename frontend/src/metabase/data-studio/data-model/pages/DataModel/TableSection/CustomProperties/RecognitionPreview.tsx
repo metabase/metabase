@@ -7,19 +7,11 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import {
-  Badge,
-  Code,
-  Group,
-  Icon,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Code, Group, Icon, Paper, SimpleGrid, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import { getEntityNoun } from "../../PropertyDetailsPanel/property-labels";
+import { InferredIcon } from "../InferenceReview";
 
 import { formatPropertyValue, pivotSampleRows } from "./pivot-preview";
 
@@ -63,15 +55,15 @@ export function RecognitionPreview({
   return (
     <Paper withBorder radius="md" p="md">
       <Stack gap="md">
-        <Group gap="sm" wrap="nowrap">
-          <Badge variant="light" color="positive" flex="0 0 auto">
-            {t`Recognised`}
-          </Badge>
+        <Group gap="xs" wrap="nowrap">
           <Text size="sm" c="text-secondary">
-            {isRoleOverridden
-              ? t`Set by an admin`
-              : t`Inferred: ${inference.signal}`}
+            {t`Recognised as custom property rows`}
           </Text>
+          <InferredIcon
+            description={
+              isRoleOverridden ? null : t`Inferred: ${inference.signal}`
+            }
+          />
         </Group>
         <SimpleGrid cols={3} spacing="xs" verticalSpacing={4}>
           {[

@@ -8,16 +8,7 @@ import {
   usePropertyRegistry,
 } from "metabase/metadata/table-structure";
 import { useNavigate } from "metabase/router";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Loader,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Group, Loader, Modal, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -62,15 +53,11 @@ export function SuggestTransformInput({
   }
 
   return (
-    <Stack gap="xs" py="xs">
-      <Text size="sm" c="text-secondary">
-        {t`Pivot these properties into a table with one column per property.`}
-      </Text>
+    <Group gap="sm" justify="space-between" wrap="nowrap">
+      <Text>{t`One column per property`}</Text>
       <Button
         size="compact-sm"
-        variant="default"
-        w="fit-content"
-        leftSection={<Icon name="sparkles" />}
+        flex="0 0 auto"
         disabled={disabled}
         onClick={open}
       >
@@ -84,7 +71,7 @@ export function SuggestTransformInput({
           onClose={close}
         />
       )}
-    </Stack>
+    </Group>
   );
 }
 
