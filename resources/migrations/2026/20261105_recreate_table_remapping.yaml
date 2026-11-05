@@ -1,0 +1,111 @@
+## Workspaces: recreate table_remapping, the table a workspace sidecar uses to read a transform's output from its
+## scratch namespace while content keeps naming the main table. 064/20260724_drop_workspace_tables dropped it; this
+## recreates it in the shape that migration's rollback describes. "" in a *_db or *_schema column means the driver
+## emits no identifier at that level, so the unique constraints stay enforceable (NULL never equals NULL).
+
+databaseChangeLog:
+  - changeSet:
+      id: j2myeu
+      author: escherize
+      comment: Recreate table_remapping table
+      changes:
+        - createTable:
+            tableName: table_remapping
+            remarks: Maps main tables to the workspace scratch tables that back them on a workspace instance
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: Database this remapping applies to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_db
+                  type: varchar(254)
+                  remarks: Main catalog; empty string when the driver does not emit this level
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_schema
+                  type: varchar(254)
+                  remarks: Main schema; empty string when the driver does not emit this level
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_table_name
+                  type: varchar(254)
+                  remarks: Main table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_db
+                  type: varchar(254)
+                  remarks: Scratch catalog; empty string when the driver does not emit this level
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_schema
+                  type: varchar(254)
+                  remarks: Scratch namespace; empty string when the driver does not emit this level
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_table_name
+                  type: varchar(254)
+                  remarks: Scratch table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this remapping was recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: tr3mapuq
+      author: escherize
+      comment: Unique constraint on table_remapping (database_id, from_db, from_schema, from_table_name)
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: tr3mapuk
+      author: escherize
+      comment: Unique constraint on table_remapping (database_id, to_db, to_schema, to_table_name)
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_db, to_schema, to_table_name
+
+  - changeSet:
+      id: tr3mapfk
+      author: escherize
+      comment: Foreign key table_remapping.database_id -> metabase_database.id, deleted with the database
+      ## Added after the unique constraints so MySQL can use the source-side unique index (whose leading column is
+      ## database_id) for the foreign key instead of creating another one.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: table_remapping
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_table_remapping_database_id
+            deleteCascade: true
