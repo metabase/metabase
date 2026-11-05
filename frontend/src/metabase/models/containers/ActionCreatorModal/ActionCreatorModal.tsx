@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useQuestionFromCard } from "metabase/metadata-store";
@@ -96,7 +97,9 @@ function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
       withCloseButton={false}
       padding={0}
     >
-      {isLoading || error != null || !model ? (
+      {modelId == null ? (
+        <NotFound />
+      ) : isLoading || error != null || !model ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : (
         <ActionCreatorModal
