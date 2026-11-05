@@ -104,7 +104,8 @@
                               :transforms/table               true
                               :transforms/testing             true
                               :uploads                        true
-                              :uuid-type                      true}]
+                              :uuid-type                      true
+                              :workspace                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

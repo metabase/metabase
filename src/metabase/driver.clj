@@ -1052,6 +1052,9 @@
     ;; whether this driver supports checking table writeable permissions
     :metadata/table-writable-check
     ;;
+    ;; Does this driver implement the workspace isolation methods, such as [[init-workspace-isolation!]]?
+    :workspace
+    ;;
     ;; Does this driver support creating a java.sql.Statement via a Connection?
     :jdbc/statements
     ;;
@@ -1136,7 +1139,8 @@
                               :test/uuids-in-create-table-statements  true
                               :test/use-fake-sync                     false
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false}]
+                              :metadata/table-writable-check          false
+                              :workspace                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -2230,6 +2234,8 @@
 ;;; `ex-info` with `{:status-code 412, :schema <schema>}` and a message naming the SQL that fixes it. A warehouse error
 ;;; is rethrown through [[metabase.driver.util/batch-exception]] and [[metabase.driver.util/scrub-exceptions]]. Drivers
 ;;; do not clean up after a failure: the caller runs [[remove-workspace-schema!]] or [[destroy-workspace-isolation!]].
+;;;
+;;; A driver that implements them reports `(database-supports? driver :workspace database)`.
 
 (defmulti workspace-isolation-details
   "The connection details of the workspace user for `wsd`: `:user`, `:password` and any engine-specific extras. Does

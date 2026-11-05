@@ -82,7 +82,9 @@
                               :transforms/table                 true
                               :transforms/testing               true
                               :transforms/index-ddl             false
-                              :uuid-type                        false}]
+                              :uuid-type                        false
+                              ;; inherits the Postgres workspace isolation methods, whose catalog queries Redshift lacks
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 (defmethod driver/qualified-name-components :redshift

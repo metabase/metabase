@@ -860,3 +860,7 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest ^:parallel workspace-feature-test
+  (testing "Redshift inherits the Postgres workspace isolation methods, but does not support them"
+    (is (false? (driver/database-supports? :redshift :workspace nil)))))

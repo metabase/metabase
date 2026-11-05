@@ -13,7 +13,9 @@ title: Driver interface changelog
   `[driver database wsd main-schema scratch]`, `metabase.driver/remove-workspace-schema!` `[driver database wsd
   main-schema scratch]` and `metabase.driver/destroy-workspace-isolation!` `[driver database wsd]`. Callers run them
   inside the new `:workspace-provisioning` connection type
-  (`metabase.driver.connection/with-workspace-provisioning-connection`). Postgres implements them.
+  (`metabase.driver.connection/with-workspace-provisioning-connection`), which throws when the database has no
+  provisioning login. A driver that implements them reports the new `:workspace` feature. Postgres implements them;
+  Redshift inherits the Postgres methods but reports `:workspace` false.
 
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
