@@ -39,7 +39,7 @@ function setup({
     slack: { configured: slackConfigured },
   });
 
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
     advisories,
   });

@@ -308,7 +308,7 @@ function setupWithRealHook({
       ],
     }),
   });
-  fetchMock.post("path:/api/ee/security-center/test-notification", {
+  fetchMock.post("path:/api/ee/security-center/advisories/test-notification", {
     success: true,
   });
 
@@ -329,7 +329,7 @@ async function getSavedSettings() {
 async function getTestNotificationBody() {
   const posts = await findRequests("POST");
   return posts.find((r) =>
-    r.url.includes("/api/ee/security-center/test-notification"),
+    r.url.includes("/api/ee/security-center/advisories/test-notification"),
   )?.body;
 }
 

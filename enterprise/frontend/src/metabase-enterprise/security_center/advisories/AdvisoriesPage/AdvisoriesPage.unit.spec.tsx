@@ -441,7 +441,7 @@ describe("AdvisoriesPage", () => {
 
   describe("sync polling", () => {
     it("disables the sync button while syncing", async () => {
-      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
       setup();
 
       await userEvent.click(screen.getByTestId("sync-advisories"));
@@ -450,7 +450,7 @@ describe("AdvisoriesPage", () => {
     });
 
     it("passes isPolling to useSecurityAdvisories after sync is triggered", async () => {
-      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
       const spy = jest.spyOn(advisoriesHook, "useSecurityAdvisories");
       setup();
 

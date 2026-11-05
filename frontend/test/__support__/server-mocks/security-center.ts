@@ -3,14 +3,14 @@ import fetchMock from "fetch-mock";
 import type { Advisory, HealthCheck } from "metabase-types/api";
 
 export const setupSecurityAdvisoriesEndpoint = (advisories: Advisory[]) => {
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     advisories,
     last_checked_at: null,
   });
 };
 
 export const setupSecurityAdvisoriesErrorEndpoint = () => {
-  fetchMock.get("path:/api/ee/security-center", { status: 500 });
+  fetchMock.get("path:/api/ee/security-center/advisories", { status: 500 });
 };
 
 export const setupHealthChecksEndpoint = (checks: HealthCheck[]) => {
