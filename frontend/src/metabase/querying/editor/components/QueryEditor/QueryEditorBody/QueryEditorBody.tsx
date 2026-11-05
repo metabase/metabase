@@ -244,12 +244,10 @@ export function QueryEditorBody({
           runQuestionQuery={onRunQuery}
           dataPickerOptions={dataPickerOptions}
         />
-        {!readOnly && !hideRunButton ? (
+        {!readOnly && !hideRunButton && isRunnable && isResultDirty ? (
           <Box p="md" pos="absolute" right={0} bottom={0}>
             <RefreshButton
               isRunning={isRunning}
-              isRunnable={isRunnable}
-              isResultDirty={isResultDirty}
               runQuery={onRunQuery}
               cancelQuery={onCancelQuery}
             />

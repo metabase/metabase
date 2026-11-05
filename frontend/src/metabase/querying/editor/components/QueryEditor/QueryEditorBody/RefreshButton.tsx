@@ -7,23 +7,15 @@ import S from "./RefreshButton.module.css";
 
 type RefreshButtonProps = {
   isRunning: boolean;
-  isRunnable: boolean;
-  isResultDirty: boolean;
   runQuery: () => void;
   cancelQuery: () => void;
 };
 
 export function RefreshButton({
   isRunning,
-  isRunnable,
-  isResultDirty,
   runQuery,
   cancelQuery,
 }: RefreshButtonProps) {
-  if (!isRunnable || isResultDirty) {
-    return null;
-  }
-
   const getTooltip = () => t`Refresh query (${METAKEY} + Enter)`;
 
   return (
