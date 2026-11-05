@@ -553,6 +553,11 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/serialization/import"
                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                     {:file (byte-array 0)}))))
+      (testing "Non-admin cannot validate an import"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/serialization/import/validate"
+                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                      {:file (byte-array 0)})))))))
 
 (deftest serialization-cleanup-test
@@ -655,3 +660,34 @@
                   (str k " should keep none of the low-level keys"))))
           (finally
             (t2/delete! :model/Database :name db-name)))))))
+
+(defn- validate-archive!
+  "Validate `ba` through the API, expecting `status`, and return the response."
+  [status ba]
+  (mt/user-http-request :crowberto :post status "ee/serialization/import/validate"
+                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                        {:file ba}))
+
+(deftest import-validate-accepts-export-test
+  (testing "Every entity of an export matches the schema of its model"
+    (with-serialization-test-data! [coll _dash _card]
+      (let [ba (do-export (:id coll))]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (is (= {:valid true :errors []}
+               (validate-archive! 200 ba)))))))
+
+(deftest import-validate-reports-undeclared-keys-test
+  (testing "An entity with a key its schema does not declare is reported, and nothing is imported"
+    (mt/with-premium-features #{:serialization}
+      (let [db-name (str "validate-" (u.random/random-name))]
+        (is (= {:valid  false
+                :errors [{:path    (str "Database " db-name)
+                          :message "{:created_at \"disallowed key\"}"}]}
+               (validate-archive! 200 (database-archive! db-name :postgres {}))))
+        (is (not (t2/exists? :model/Database :name db-name)))))))
+
+(deftest import-validate-invalid-archive-test
+  (testing "Validating an invalid archive returns 422 client error"
+    (mt/with-premium-features #{:serialization}
+      (is (= "Cannot unpack archive"
+             (validate-archive! 422 (.getBytes "not an archive" "UTF-8")))))))

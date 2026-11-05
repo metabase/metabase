@@ -311,16 +311,22 @@
   [model-name opts]
   (make-spec model-name opts))
 
+(defn external-error
+  "The humanized explanation of why `entity` does not match the `:schema` of `model-name`'s `spec`, or nil when it
+  does."
+  [model-name spec entity]
+  (let [schema (or (:schema spec)
+                   (throw (ex-info (format "No :schema in the serialization spec of %s" model-name)
+                                   {:model model-name})))]
+    (some-> (mr/explain schema entity) mu.humanize/humanize)))
+
 (defn validate-external!
   "In dev and test, throws when the extracted `entity` does not match the `:schema` of `model-name`'s `spec`."
   [model-name spec entity]
   (when (or config/is-dev? config/is-test?)
-    (let [schema (or (:schema spec)
-                     (throw (ex-info (format "No :schema in the serialization spec of %s" model-name)
-                                     {:model model-name})))]
-      (when-let [error (mr/explain schema entity)]
-        (throw (ex-info (format "Invalid export of %s: %s" model-name (pr-str (mu.humanize/humanize error)))
-                        {:model model-name :error (mu.humanize/humanize error)}))))))
+    (when-let [error (external-error model-name spec entity)]
+      (throw (ex-info (format "Invalid export of %s: %s" model-name (pr-str error))
+                      {:model model-name :error error})))))
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
