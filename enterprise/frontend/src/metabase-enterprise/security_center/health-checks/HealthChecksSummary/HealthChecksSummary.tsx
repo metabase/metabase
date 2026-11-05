@@ -31,9 +31,9 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
   const summary = c(
     "{0} is the number of passing checks, {1} is the total number of checks",
   ).ngettext(
-    msgid`${passedCount} of ${totalCount} check passes`,
+    msgid`${passedCount} of ${totalCount} checks passes`,
     `${passedCount} of ${totalCount} checks pass`,
-    totalCount,
+    passedCount,
   );
 
   return (

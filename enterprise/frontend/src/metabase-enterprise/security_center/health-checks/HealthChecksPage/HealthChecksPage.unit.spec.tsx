@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -11,6 +12,7 @@ import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -113,15 +115,15 @@ describe("HealthChecksPage", () => {
   });
 
   it("shows how many checks pass", async () => {
-    await setup({ checks: [FAILING_CHECK, UNKNOWN_CHECK, PASSING_CHECK] });
+    await setup({ checks: [FAILING_CHECK, UNKNOWN_CHECK] });
 
-    expect(screen.getByText("1 of 3 checks pass")).toBeInTheDocument();
+    expect(screen.getByText("0 of 2 checks pass")).toBeInTheDocument();
   });
 
-  it("uses the singular form when there is only one check", async () => {
-    await setup({ checks: [FAILING_CHECK] });
+  it("uses the singular verb when one check passes", async () => {
+    await setup({ checks: [FAILING_CHECK, UNKNOWN_CHECK, PASSING_CHECK] });
 
-    expect(screen.getByText("0 of 1 check passes")).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 checks passes")).toBeInTheDocument();
   });
 
   it("shows the all clear state only when every check passes", async () => {
@@ -437,8 +439,16 @@ describe("HealthChecksPage", () => {
   });
 
   it("re-checks all checks and shows the returned results", async () => {
-    const track = jest.spyOn(analytics, "trackHealthChecksRecheckClicked");
-    setupRecheckHealthChecksEndpoint([PASSING_CHECK]);
+    setupRecheckHealthChecksEndpoint([
+      {
+        ...FAILING_CHECK,
+        status: "pass",
+        items: [
+          createMockHealthCheckItem({ status: "pass", message: "Key is set" }),
+        ],
+      },
+      PASSING_CHECK,
+    ]);
     await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
 
     await userEvent.click(
@@ -448,7 +458,28 @@ describe("HealthChecksPage", () => {
     expect(
       await screen.findByText("All security checks pass"),
     ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/ee/security-center/health-checks/recheck",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("tracks the re-check all click", async () => {
+    const track = jest.spyOn(analytics, "trackHealthChecksRecheckClicked");
+    setupRecheckHealthChecksEndpoint([FAILING_CHECK]);
+    await setup({ checks: [FAILING_CHECK] });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "sync icon Re-check all" }),
+    );
+
     expect(track).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "sync icon Re-check all" }),
+      ).toBeEnabled(),
+    );
   });
 
   it("shows an error when re-check all fails", async () => {

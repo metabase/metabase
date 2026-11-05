@@ -49,7 +49,8 @@ export const getStatusInfo = (status: HealthCheckStatus) => ({
 export const getChecksByStatus = (
   checks: HealthCheck[],
   status: HealthCheckStatus,
-) => checks.filter((check) => check.status === status).sort(compareBySeverity);
+) =>
+  checks.filter((check) => check.status === status).toSorted(compareBySeverity);
 
 export const getItemsByStatus = (
   items: HealthCheckItem[],

@@ -85,9 +85,9 @@ type HealthCheckEntity<Type extends string, Id> = {
 };
 
 type HealthCheckNoEntity = {
-  entity_type?: undefined;
-  entity_id?: undefined;
-  entity_name?: undefined;
+  entity_type?: never;
+  entity_id?: never;
+  entity_name?: never;
 };
 
 export type HealthCheckItem = HealthCheckItemBase &
