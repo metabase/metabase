@@ -1,7 +1,6 @@
 import fetchMock from "fetch-mock";
 
 import {
-  setupDashboardEndpoints,
   setupDatabasesEndpoints,
   setupPopularItemsEndpoints,
   setupRecentViewsEndpoints,
@@ -44,9 +43,10 @@ const setup = async ({ dashboardId, dashboardResponse }: SetupOpts = {}) => {
   setupRecentViewsEndpoints([]);
   setupPopularItemsEndpoints([]);
   if (dashboardId !== undefined) {
-    setupDashboardEndpoints(createMockDashboard({ id: dashboardId }), {
-      dashboardResponse,
-    });
+    fetchMock.get(
+      `path:/api/dashboard/${dashboardId}`,
+      dashboardResponse ?? createMockDashboard({ id: dashboardId }),
+    );
   }
 
   renderWithProviders(
