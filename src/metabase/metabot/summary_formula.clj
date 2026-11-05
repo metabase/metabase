@@ -115,13 +115,14 @@
   "What the LLM is told about `query`: `:columns` as maps of `:name` (the column's name in expression syntax, without
   brackets) and `:type`, `:metrics` as names, and `:table-name`."
   [query mode]
-  (let [display-info #(lib/display-info query -1 %)]
-    {:columns    (for [column (formula-columns query mode)]
-                   ;; the formula editor resolves columns by their long display name
-                   {:name (:long-display-name (display-info column))
-                    :type (column-type column)})
-     :metrics    (map (comp :display-name display-info) (formula-metrics query mode))
-     :table-name (some-> (primary-source query) display-info :display-name)}))
+  (let [display-name #(lib/display-name query -1 %)]
+    {:columns    (mapv (fn [column]
+                         ;; the formula editor resolves columns by their long display name
+                         {:name (:long-display-name (lib/display-info query -1 column))
+                          :type (column-type column)})
+                       (formula-columns query mode))
+     :metrics    (mapv display-name (formula-metrics query mode))
+     :table-name (some-> (primary-source query) display-name)}))
 
 (defn- format-columns
   [columns]
@@ -197,15 +198,11 @@
       (ex-info message error e))))
 
 (defn- call-llm
-  [{:keys [mode] :as request}]
+  [messages]
   (try
     (metabot.self/call-llm-structured
      (metabot.settings/llm-mini-model)
-     [{:role    "system"
-       :content (if (= mode "expression")
-                  expression-system-prompt
-                  aggregation-system-prompt)}
-      {:role "user" :content (user-message request)}]
+     messages
      formula-json-schema
      nil
      formula-max-tokens
@@ -217,6 +214,14 @@
       :required-permission required-permission})
     (catch Exception e
       (throw (llm-call-error e)))))
+
+(defn- llm-messages
+  [{:keys [mode] :as request}]
+  [{:role    "system"
+    :content (if (= mode "expression")
+               expression-system-prompt
+               aggregation-system-prompt)}
+   {:role "user" :content (user-message request)}])
 
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
@@ -232,7 +237,9 @@
   (let [query                     (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
                                              dataset_query)
         _                         (check-mbql-last-stage! query)
-        {:keys [expression name]} (call-llm (assoc (formula-context query mode) :mode mode :prompt prompt))
+        {:keys [expression name]} (call-llm (llm-messages (assoc (formula-context query mode)
+                                                                 :mode   mode
+                                                                 :prompt prompt)))
         expression                (clean-expression expression)]
     {:expression expression
      :name       (when expression (clean-name name))
