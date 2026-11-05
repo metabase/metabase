@@ -992,19 +992,42 @@ export function ExpressionBar({
     return undefined;
   };
 
+  // Prototype: a drag that starts or passes over empty space, like the room
+  // after the last pill, counts from the caret position nearest to it.
+  const getSlotRangeNearPoint = (x: number, y: number) => {
+    const bar = barRef.current;
+    const slot = bar == null ? undefined : getSlotNearPoint(bar, x, y);
+    if (slot == null || slot.element.closest(`[${BAR_ATTR}]`) !== bar) {
+      return undefined;
+    }
+    return {
+      range: { start: slot.index, end: slot.index },
+      element: slot.element,
+    };
+  };
+
   /** Prototype: a drag across the pills selects them. */
   const startDragSelection = (event: MouseEvent<HTMLDivElement>) => {
+    // A drag whose click never came, like one that ended off the bar, must
+    // not swallow the next click.
+    didDragRef.current = false;
     if (!event.shiftKey) {
       setSelectionState(undefined);
     }
-    if (
-      event.button !== 0 ||
-      (event.target instanceof Element &&
-        event.target.closest("input, [data-testid='draft-filter-pill']"))
-    ) {
+    // A button outside a token, like Clear, keeps its click; a pill's parts are
+    // buttons too, and a drag can start on them.
+    const isOnControl =
+      event.target instanceof Element &&
+      (event.target.closest("input, [data-testid='draft-filter-pill']") !=
+        null ||
+        (event.target.closest("button") != null &&
+          event.target.closest(`[${PILL_ATTR}]`) == null));
+    if (event.button !== 0 || isOnControl) {
       return;
     }
-    const at = getTokenRangeAt(event.target);
+    const at =
+      getTokenRangeAt(event.target) ??
+      getSlotRangeNearPoint(event.clientX, event.clientY);
     if (at == null) {
       return;
     }
@@ -1029,9 +1052,10 @@ export function ExpressionBar({
     dragRef.current = { anchor: at.range, element: at.element };
     const handleMove = (moveEvent: globalThis.MouseEvent) => {
       const drag = dragRef.current;
-      const over = getTokenRangeAt(
-        document.elementFromPoint(moveEvent.clientX, moveEvent.clientY),
-      );
+      const over =
+        getTokenRangeAt(
+          document.elementFromPoint(moveEvent.clientX, moveEvent.clientY),
+        ) ?? getSlotRangeNearPoint(moveEvent.clientX, moveEvent.clientY);
       if (drag == null || over == null || over.element === drag.element) {
         return;
       }
