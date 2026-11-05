@@ -157,9 +157,9 @@
 (def cross-database-step
   "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
-   :text (str "Neither a notebook query nor a SQL query can combine data from two databases in Metabase "
-              "(two different `database_id`s). Tell the user that one query cannot combine data from these two "
-              "databases, and say what you can do instead.")})
+   :text (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "
+              "notebook query or in SQL. Tell the user that you can't combine data from these two databases in one "
+              "query, and say what you can do instead.")})
 
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."

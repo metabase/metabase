@@ -14,9 +14,9 @@
 (deftest ^:parallel cross-database-hint-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "Neither a structured query nor a SQL query can combine data from two databases in Metabase (two "
-                  "different `database_id`s). Tell the user that one query cannot combine data from these two "
-                  "databases, and say what you can do instead.")
+      (is (= (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, "
+                  "in a structured query or in SQL. Tell the user that you can't combine data from these two "
+                  "databases in one query, and say what you can do instead.")
              (some-> (recovery-hints/recovery-hint {:error error}) message/render))))))
 
 (deftest ^:parallel ambiguous-database-name-hint-test

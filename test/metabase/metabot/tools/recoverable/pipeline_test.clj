@@ -284,9 +284,9 @@
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
 (def ^:private cross-database-recovery
-  (str "Neither a notebook query nor a SQL query can combine data from two databases in Metabase (two different "
-       "`database_id`s). Tell the user that one query cannot combine data from these two databases, and say what "
-       "you can do instead."))
+  (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a notebook "
+       "query or in SQL. Tell the user that you can't combine data from these two databases in one query, and say "
+       "what you can do instead."))
 
 (deftest table-in-another-database-recovery-test
   (mt/with-current-user (mt/user->id :crowberto)

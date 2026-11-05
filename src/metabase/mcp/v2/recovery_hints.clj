@@ -111,9 +111,9 @@
                        "owns the segment and use the numeric id from its segments list.")])
 
     (:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table)
-    (message/msg [(str "Neither a structured query nor a SQL query can combine data from two databases in Metabase "
-                       "(two different `database_id`s). Tell the user that one query cannot combine data from these "
-                       "two databases, and say what you can do instead.")])
+    (message/msg [(str "Don't combine data from two databases in Metabase (two different `database_id`s) in one "
+                       "query, in a structured query or in SQL. Tell the user that you can't combine data from these "
+                       "two databases in one query, and say what you can do instead.")])
 
     (:unknown-database :ambiguous-database-name)
     (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "
