@@ -250,6 +250,14 @@
                   (invoke-metadata profile "get_field_values"
                                    {:data_source data-source :source_id source-id :field_id field-id}))))))))
 
+(defn- wrong-source-type-recovery
+  "The recovery lines of a wrong-source-type error in `profile`. Of these profiles, only Documents has `read_resource`."
+  [profile source-id actual-type expected-type]
+  (str "\nRetry using a " expected-type " ID."
+       (when (= profile :document-generate-content)
+         (str "\nRead `metabase://" actual-type "/" source-id "` instead."))
+       "\nSet `data_source` to \"" actual-type "\" in `get_field_values` for this card."))
+
 (deftest metadata-wrong-source-types-are-recoverable-test
   (mt/as-admin
     (mt/with-temp [:model/Card {question-id :id} {:type :question}
@@ -260,9 +268,8 @@
                                                      [metric-id "metric" "model"]
                                                      [model-id "model" "metric"]
                                                      [question-id "question" "metric"]]
-              :let [message (str (if (= expected-type "metric") "Card " "ID ")
-                                 source-id " is a " actual-type ", not a " expected-type "."
-                                 "\nRetry using a " expected-type " ID.")]]
+              :let [message (str "Card " source-id " is a " actual-type ", not a " expected-type "."
+                                 (wrong-source-type-recovery profile source-id actual-type expected-type))]]
         (let [result (invoke-metadata profile "list_available_fields"
                                       (assoc {:table_ids [(mt/id :products)] :model_ids [] :metric_ids []}
                                              (keyword (str expected-type "_ids")) [source-id]))]
@@ -277,7 +284,8 @@
       (doseq [profile [:document-generate-content :slackbot]
               [source-id actual-type] [[question-id "question"] [model-id "model"]]]
         (is (= {:error {:class :recoverable :code ::tools.u/wrong-source-type}
-                :output (str "Card " source-id " is a " actual-type ", not a metric.\nRetry using a metric ID.")}
+                :output (str "Card " source-id " is a " actual-type ", not a metric."
+                             (wrong-source-type-recovery profile source-id actual-type "metric"))}
                (invoke-metadata profile "get_field_values"
                                 {:data_source "metric" :source_id source-id :field_id (mt/id :orders :id)})))))))
 
@@ -365,14 +373,12 @@
                             :metabase.metabot.tools.core/all-items-failed
                             ::tools.u/wrong-source-type)} error))
             (is (str/includes? (or output "")
-                               (if (= profile :internal)
-                                 (str "Card " source-id " is a " actual-type ", not a " expected-type "."
-                                      "\nRead `metabase://" actual-type "/" source-id
-                                      (if (= actual-type "metric") "/dimensions/" "/fields/")
-                                      (mt/id :orders :id) "` instead.")
-                                 (str (if (= expected-type "metric") "Card " "ID ")
-                                      source-id " is a " actual-type ", not a " expected-type "."
-                                      "\nRetry using a " expected-type " ID."))))))))))
+                               (str "Card " source-id " is a " actual-type ", not a " expected-type "."
+                                    (if (= profile :internal)
+                                      (str "\nRead `metabase://" actual-type "/" source-id
+                                           (if (= actual-type "metric") "/dimensions/" "/fields/")
+                                           (mt/id :orders :id) "` instead.")
+                                      (wrong-source-type-recovery profile source-id actual-type expected-type)))))))))))
 
 (deftest question-field-details-use-returned-columns-test
   (mt/as-admin
