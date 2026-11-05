@@ -52,7 +52,7 @@ describe("QueryVisualization", () => {
   it("should show a run button before the query is ran", async () => {
     setup({ isRunning: false, isResultDirty: true });
 
-    const runButton = await screen.findByTestId("run-button");
+    const runButton = screen.getByTestId("run-button");
     expect(runButton).toBeVisible();
     expect(runButton).not.toHaveAttribute("aria-hidden", "true");
 
@@ -63,7 +63,7 @@ describe("QueryVisualization", () => {
     setup({ isRunning: true, isResultDirty: false });
 
     expect(await screen.findByText("Doing science...")).toBeInTheDocument();
-    expect(await screen.findByTestId("run-button")).toHaveAttribute(
+    expect(screen.getByTestId("run-button")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
@@ -73,7 +73,7 @@ describe("QueryVisualization", () => {
     setup({ isRunning: false, isResultDirty: false });
 
     expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
-    expect(await screen.findByTestId("run-button")).toHaveAttribute(
+    expect(screen.getByTestId("run-button")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
