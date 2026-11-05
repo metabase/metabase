@@ -40,11 +40,13 @@ import type {
 } from "metabase-types/api";
 
 import {
+  DETAILS_CELL_INPUT_CLASS_NAMES,
   DetailPanel,
   DetailPanelHeader,
   DetailsEditableText,
   SchemaDetailsSkeleton,
 } from "../DetailPanel";
+import { SegmentSettingsSection } from "../SegmentSettingsSection";
 import {
   getLastSyncedAt,
   getLastSyncedValue,
@@ -235,6 +237,7 @@ function SchemaDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Display name`}
+            fillValue
             value={
               <DetailsEditableText
                 initialValue={displayName}
@@ -242,7 +245,6 @@ function SchemaDetails({
                 placeholder={schemaName}
                 maxLength={254}
                 isOptional
-                fw="bold"
                 onChange={handleDisplayNameChange}
                 data-testid="schema-display-name-input"
               />
@@ -272,9 +274,11 @@ function SchemaDetails({
         <DetailsTable>
           <DetailsRow
             label={t`Layer`}
+            fillValue
             value={
               <Select
                 aria-label={t`Data layer`}
+                classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
                 data={dataLayers.map((layer) => ({
                   value: layer.id,
                   label: layer.name,
@@ -317,6 +321,11 @@ function SchemaDetails({
           />
         </DetailsTable>
       </SidebarSection>
+
+      <SegmentSettingsSection
+        databaseId={database.id}
+        schemaName={schemaName}
+      />
 
       <SidebarSection title={t`Stats`}>
         <DetailsTable>

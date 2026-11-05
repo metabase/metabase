@@ -25,7 +25,6 @@ import {
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
-  Badge,
   Box,
   Button,
   Group,
@@ -40,9 +39,17 @@ import * as Urls from "metabase/urls";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { DetailsEditableText } from "../../DetailPanel";
+import {
+  DETAILS_CELL_INPUT_CLASS_NAMES,
+  DetailsEditableText,
+} from "../../DetailPanel";
 import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
 import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
+import {
+  InferredIcon,
+  NeedsReviewBadge,
+  ReviewValue,
+} from "../InferenceReview";
 import {
   CurrentRuleHint,
   DefaultSegmentInput,
@@ -83,6 +90,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
     role,
     dataLayer: getTableDataLayer(table.db_id, table.schema, table.id).layer,
   });
+
   const structureSectionRef = useRef<HTMLDivElement>(null);
 
   // Leaves room below the Structure heading for the section that just appeared
@@ -102,8 +110,21 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
           <DetailsTable>
             <DetailsRow
               label={t`Role`}
+              fillValue
+              labelAside={
+                isRoleUnderReview(structure, readOnly) ? (
+                  <NeedsReviewBadge />
+                ) : (
+                  <InferredIcon description={getRoleInference(structure)} />
+                )
+              }
+              labelNote={
+                // Read-only tables keep the badge here; there's no review cell
+                structure.needsReview &&
+                !isRoleUnderReview(structure, readOnly) && <NeedsReviewBadge />
+              }
               value={
-                <RoleInput
+                <RoleValue
                   structure={structure}
                   disabled={readOnly}
                   onChange={(role) => setTableRole(table, role)}
@@ -112,6 +133,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
             />
             <DetailsRow
               label={t`Each row is`}
+              fillValue
               value={
                 <DetailsEditableText
                   initialValue={structure.grainDescription}
@@ -143,8 +165,23 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
             />
             <DetailsRow
               label={t`Main date`}
+              fillValue
+              labelAside={
+                isMainDateUnderReview(structure, readOnly) ? (
+                  <NeedsReviewBadge />
+                ) : (
+                  <InferredIcon description={getMainDateInference(structure)} />
+                )
+              }
+              labelNote={
+                // Read-only tables keep the badge here; there's no review cell
+                structure.mainDateNeedsReview &&
+                !isMainDateUnderReview(structure, readOnly) && (
+                  <NeedsReviewBadge />
+                )
+              }
               value={
-                <MainDateInput
+                <MainDateValue
                   fields={fields}
                   structure={structure}
                   disabled={readOnly}
@@ -165,9 +202,11 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
             {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
               <DetailsRow
                 label={t`Period`}
+                fillValue
                 value={
                   <Select
                     aria-label={t`Period`}
+                    classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
                     data={getPeriodGranularityOptions()}
                     value={structure.periodGranularity}
                     allowDeselect={false}
@@ -269,72 +308,105 @@ function RevealTransition({
   );
 }
 
-function RoleInput({
-  structure,
-  disabled,
-  onChange,
-}: {
+type RoleInputProps = {
   structure: TableStructureValue;
   disabled: boolean;
   onChange: (role: TableStructureValue["role"]) => void;
-}) {
-  const { role, inference, isRoleOverridden, needsReview } = structure;
-  // An admin picked the same role sync guessed, so there's nothing to revert to
-  const isConfirmedGuess = isRoleOverridden && role === inference.role;
+};
+
+/** A weak guess an admin can act on: shown as text to confirm or change */
+function isRoleUnderReview(
+  { needsReview, inference }: TableStructureValue,
+  disabled: boolean,
+) {
+  return needsReview && !disabled && inference.role != null;
+}
+
+/** The role, or its weak guess to confirm or change */
+function RoleValue({ structure, disabled, onChange }: RoleInputProps) {
+  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
+  const { inference } = structure;
+
+  if (isRoleUnderReview(structure, disabled) && inference.role) {
+    const inferredRole = inference.role;
+    return (
+      <ReviewValue
+        value={getTableRoleLabel(inferredRole)}
+        inference={getRoleInference(structure)}
+        onConfirm={() => onChange(inferredRole)}
+        onChange={() => {
+          setIsSelectOpenOnMount(true);
+          onChange(inferredRole);
+        }}
+        data-testid="table-role-review"
+      />
+    );
+  }
 
   return (
-    <Stack gap="xs" py="xs">
-      {needsReview && (
-        <Badge color="warning" variant="light" w="fit-content">
-          {t`Needs review`}
-        </Badge>
-      )}
-      <Select
-        aria-label={t`Role`}
-        data={getTableRoleOptions()}
-        value={role}
-        placeholder={t`Choose a role`}
-        searchable
-        allowDeselect={false}
-        disabled={disabled}
-        onChange={(value) => {
-          if (isTableRole(value)) {
-            onChange(value);
-          }
-        }}
-        data-testid="table-role-select"
-      />
-      <Text size="sm" c="text-secondary">
-        {!isRoleOverridden
-          ? t`Inferred: ${inference.signal}`
-          : isConfirmedGuess
-            ? t`Confirmed by an admin`
-            : t`Set by an admin`}
-      </Text>
-      {!disabled && isRoleOverridden && !isConfirmedGuess && inference.role && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => onChange(null)}
-        >
-          {t`Use the inferred role (${getTableRoleLabel(inference.role)})`}
-        </Button>
-      )}
-      {!disabled && needsReview && inference.role && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => onChange(inference.role)}
-        >
-          {t`Yes, this table's role is ${getTableRoleLabel(inference.role)}`}
-        </Button>
-      )}
-    </Stack>
+    <RoleSelect
+      structure={structure}
+      disabled={disabled}
+      isOpenOnMount={isSelectOpenOnMount}
+      onChange={onChange}
+    />
   );
+}
+
+function RoleSelect({
+  structure,
+  disabled,
+  isOpenOnMount,
+  onChange,
+}: RoleInputProps & { isOpenOnMount: boolean }) {
+  const { role, inference } = structure;
+  // Once an admin picks something else, point out what sync guessed
+  const markedRole = role !== inference.role ? inference.role : null;
+  const options = getTableRoleOptions().map((group) => ({
+    ...group,
+    items: group.items.map((item) =>
+      item.value === markedRole
+        ? { ...item, label: t`${item.label} (Inferred)` }
+        : item,
+    ),
+  }));
+
+  return (
+    <Select
+      aria-label={t`Role`}
+      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+      data={options}
+      value={role}
+      placeholder={t`Choose a role`}
+      searchable
+      allowDeselect={false}
+      disabled={disabled}
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
+      onChange={(value) => {
+        if (isTableRole(value)) {
+          onChange(value);
+        }
+      }}
+      data-testid="table-role-select"
+    />
+  );
+}
+
+/** Why sync picked the role; nothing once an admin has set it */
+function getRoleInference({
+  inference,
+  isRoleOverridden,
+}: TableStructureValue): string | null {
+  return isRoleOverridden ? null : t`Inferred: ${inference.signal}`;
+}
+
+/** Why sync picked the main date; nothing once an admin has set it */
+function getMainDateInference({
+  mainDateInference,
+  isMainDateOverridden,
+}: TableStructureValue): string | null {
+  return isMainDateOverridden ? null : t`Inferred: ${mainDateInference.signal}`;
 }
 
 function GrainFields({
@@ -378,56 +450,66 @@ function GrainFields({
   );
 }
 
-/** The date the table is trended by; clearing it says the table has none */
-function MainDateInput({
+type MainDateInputProps = {
+  structure: TableStructureValue;
+  disabled: boolean;
+  onChange: (fieldId: FieldId | null | undefined) => void;
+};
+
+function getMainDateFieldId({ mainDateField }: TableStructureValue) {
+  return mainDateField ? getRawTableFieldId(mainDateField) : null;
+}
+
+/** A weak main date guess an admin can act on, like the role's */
+function isMainDateUnderReview(
+  { mainDateNeedsReview }: TableStructureValue,
+  disabled: boolean,
+) {
+  return mainDateNeedsReview && !disabled;
+}
+
+/** The main date, or its weak guess to confirm or change */
+function MainDateValue({
   fields,
   structure,
   disabled,
   onChange,
-}: {
-  fields: Field[];
-  structure: TableStructureValue;
-  disabled: boolean;
-  onChange: (fieldId: FieldId | null | undefined) => void;
-}) {
-  const { mainDateField, mainDateInference, isMainDateOverridden } = structure;
-  const mainDateFieldId = mainDateField
-    ? getRawTableFieldId(mainDateField)
-    : null;
-  // An admin picked the same date sync guessed, so there's nothing to revert to
-  const isConfirmedGuess =
-    isMainDateOverridden && mainDateFieldId === mainDateInference.fieldId;
+}: MainDateInputProps & { fields: Field[] }) {
+  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
+  const inferredFieldId = structure.mainDateInference.fieldId;
 
-  return (
-    <Stack gap="xs" py="xs">
-      <FieldSelect
-        label={t`Main date`}
-        fields={fields.filter((field) => isDate(field))}
-        value={mainDateFieldId}
-        placeholder={t`No main date`}
-        clearable
-        disabled={disabled}
-        onChange={onChange}
+  if (isMainDateUnderReview(structure, disabled)) {
+    return (
+      <ReviewValue
+        // Not overridden, so the current main date is the inferred one
+        value={structure.mainDateField?.display_name ?? t`No main date`}
+        inference={getMainDateInference(structure)}
+        onConfirm={() => onChange(inferredFieldId)}
+        onChange={() => {
+          setIsSelectOpenOnMount(true);
+          onChange(inferredFieldId);
+        }}
+        data-testid="table-main-date-review"
       />
-      <Text size="sm" c="text-secondary">
-        {!isMainDateOverridden
-          ? t`Inferred: ${mainDateInference.signal}`
-          : isConfirmedGuess
-            ? t`Confirmed by an admin`
-            : t`Set by an admin`}
-      </Text>
-      {!disabled && isMainDateOverridden && !isConfirmedGuess && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => onChange(undefined)}
-        >
-          {t`Use the inferred main date`}
-        </Button>
-      )}
-    </Stack>
+    );
+  }
+
+  const mainDateFieldId = getMainDateFieldId(structure);
+  return (
+    <FieldSelect
+      label={t`Main date`}
+      fields={fields.filter((field) => isDate(field))}
+      value={mainDateFieldId}
+      // Once an admin picks something else, point out what sync guessed
+      inferredFieldId={
+        mainDateFieldId !== inferredFieldId ? inferredFieldId : null
+      }
+      placeholder={t`No main date`}
+      clearable
+      disabled={disabled}
+      isOpenOnMount={isSelectOpenOnMount}
+      onChange={onChange}
+    />
   );
 }
 
@@ -435,32 +517,46 @@ function FieldSelect({
   label,
   fields,
   value,
+  inferredFieldId = null,
   placeholder = t`Choose a column`,
   clearable,
   disabled,
+  isOpenOnMount = false,
   onChange,
 }: {
   label: string;
   fields: Field[];
   value: FieldId | null;
+  /** Marked "(Inferred)" in the list */
+  inferredFieldId?: FieldId | null;
   placeholder?: string;
   clearable?: boolean;
   disabled: boolean;
+  isOpenOnMount?: boolean;
   onChange: (fieldId: FieldId | null) => void;
 }) {
   return (
     <Select
       aria-label={label}
-      data={fields.map((field) => ({
-        value: String(getRawTableFieldId(field)),
-        label: field.display_name,
-      }))}
+      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+      data={fields.map((field) => {
+        const fieldId = getRawTableFieldId(field);
+        return {
+          value: String(fieldId),
+          label:
+            fieldId === inferredFieldId
+              ? t`${field.display_name} (Inferred)`
+              : field.display_name,
+        };
+      })}
       value={value != null ? String(value) : null}
       placeholder={placeholder}
       searchable
       clearable={clearable}
       allowDeselect={clearable}
       disabled={disabled}
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
       onChange={(value) => onChange(value != null ? Number(value) : null)}
     />
   );
@@ -539,6 +635,7 @@ function HistoryBindingSection({
         />
         <DetailsRow
           label={t`Entity key`}
+          fillValue
           value={
             <FieldSelect
               label={t`Entity key`}
@@ -551,8 +648,9 @@ function HistoryBindingSection({
         />
         <DetailsRow
           label={t`Valid from`}
+          fillValue
           value={
-            <Stack gap="xs" py="xs">
+            <Stack gap={0} w="100%">
               <FieldSelect
                 label={t`Valid from`}
                 fields={fields}
@@ -566,8 +664,9 @@ function HistoryBindingSection({
         />
         <DetailsRow
           label={t`Valid to`}
+          fillValue
           value={
-            <Stack gap="xs" py="xs">
+            <Stack gap={0} w="100%">
               <FieldSelect
                 label={t`Valid to`}
                 fields={fields}
@@ -578,11 +677,13 @@ function HistoryBindingSection({
                 onChange={(validToFieldId) => onChange({ validToFieldId })}
               />
               {!hasCurrentFlag && (
-                <CurrentRuleHint
-                  table={table}
-                  structure={structure}
-                  fields={fields}
-                />
+                <Box px="lg" pb="sm">
+                  <CurrentRuleHint
+                    table={table}
+                    structure={structure}
+                    fields={fields}
+                  />
+                </Box>
               )}
             </Stack>
           }
@@ -590,19 +691,22 @@ function HistoryBindingSection({
         {hasCurrentFlag && (
           <DetailsRow
             label={t`Current flag`}
+            fillValue
             value={
-              <Stack gap="xs" py="xs">
+              <Stack gap={0} w="100%">
                 <CurrentFlagSelect
                   fields={fields}
                   binding={binding}
                   disabled={disabled}
                   onChange={onChange}
                 />
-                <CurrentRuleHint
-                  table={table}
-                  structure={structure}
-                  fields={fields}
-                />
+                <Box px="lg" pb="sm">
+                  <CurrentRuleHint
+                    table={table}
+                    structure={structure}
+                    fields={fields}
+                  />
+                </Box>
               </Stack>
             }
           />
@@ -638,6 +742,7 @@ function HistoryBindingSection({
         {isAdvancedOpen && !hasCurrentFlag && (
           <DetailsRow
             label={t`Current flag`}
+            fillValue
             value={
               <CurrentFlagSelect
                 fields={fields}
@@ -651,6 +756,7 @@ function HistoryBindingSection({
         {isAdvancedOpen && (
           <DetailsRow
             label={t`Version`}
+            fillValue
             value={
               <FieldSelect
                 label={t`Version`}

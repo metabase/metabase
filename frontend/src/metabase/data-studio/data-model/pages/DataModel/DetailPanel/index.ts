@@ -6,3 +6,4 @@ export {
   TableDetailsSkeleton,
 } from "./DetailPanelSkeleton";
 export { DetailsEditableText } from "./DetailsEditableText";
+export { DETAILS_CELL_INPUT_CLASS_NAMES } from "./DetailsCellInput";

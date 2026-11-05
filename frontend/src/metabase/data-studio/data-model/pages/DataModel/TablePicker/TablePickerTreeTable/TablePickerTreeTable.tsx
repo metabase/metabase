@@ -67,6 +67,8 @@ import {
   transformToTreeTableFormat,
 } from "../utils";
 
+import S from "./TablePickerTreeTable.module.css";
+
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 
 interface Props {
@@ -479,6 +481,7 @@ export function TablePickerTreeTable({
       isChildrenLoading={isChildrenLoading}
       isRowDisabled={isRowDisabled}
       getRowProps={getRowProps}
+      classNames={{ cell: S.cell }}
       ariaLabel={t`Tables`}
     />
   );
@@ -506,27 +509,28 @@ function TableRoleCell({ table }: { table: Table }) {
     : historyReview?.needsReview && historyReview.issue;
 
   return (
-    <Group gap="xs" wrap="nowrap" data-testid="table-role">
-      {role ? (
-        <Text truncate flex="0 0 auto">
-          {getTableRoleLabel(role)}
-        </Text>
-      ) : (
-        <Text c="text-secondary">{t`No role`}</Text>
-      )}
+    <Box className={S.role} data-testid="table-role">
       {reviewReason && (
         <Tooltip label={t`Needs review. ${reviewReason}`}>
           <Icon
-            name="warning"
-            size={12}
-            c="feedback-warning"
+            name="flag"
+            c="icon-secondary"
+            className={S.flag}
             aria-label={t`Needs review`}
-            flex="0 0 auto"
           />
         </Tooltip>
       )}
-      <HistoryListSummary table={{ ...table, fields }} />
-    </Group>
+      <Group gap="xs" wrap="nowrap">
+        {role ? (
+          <Text truncate flex="0 0 auto">
+            {getTableRoleLabel(role)}
+          </Text>
+        ) : (
+          <Text c="text-secondary">{t`No role`}</Text>
+        )}
+        <HistoryListSummary table={{ ...table, fields }} />
+      </Group>
+    </Box>
   );
 }
 

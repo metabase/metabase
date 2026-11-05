@@ -15,8 +15,9 @@ import {
 } from "metabase/metadata/data-layers";
 import {
   ActionIcon,
-  Box,
   Button,
+  Center,
+  Divider,
   Flex,
   Icon,
   Menu,
@@ -25,10 +26,13 @@ import {
   TextInputBlurChange,
 } from "metabase/ui";
 
-// Shared by the heading row and the layer rows so the headings line up
-const VISIBILITY_SELECT_WIDTH = 136;
-// `ActionIcon size="lg"`
-const LAYER_ACTIONS_WIDTH = 40;
+import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
+
+// Shared by the heading row and the layer rows so the columns line up
+const VISIBILITY_COLUMN_WIDTH = 136;
+// A 32px `ActionIcon size="md"` with a little room around it. It fits inside
+// the 40px row the cell inputs set, which matches a `DetailsRow`'s height.
+const ACTIONS_COLUMN_WIDTH = 48;
 
 interface DataLayersSectionProps {
   layers: DataLayer[];
@@ -99,25 +103,23 @@ export function DataLayersSection({
         {t`Ordered from source to presentation. Each schema uses one of these layers, and a table can override its schema's.`}
       </Text>
       <DetailsTable>
-        <Flex
-          align="center"
-          gap="sm"
-          px="lg"
-          py="xs"
-          bg="background_page-secondary"
-        >
-          <Text flex={1} size="sm" fw="bold" c="text-secondary">
+        <Flex align="stretch" bg="background_page-secondary">
+          <Text flex={1} px="lg" py="xs" size="sm" fw="bold" c="text-secondary">
             {t`Layer`}
           </Text>
+          <Divider orientation="vertical" />
           <Text
-            w={VISIBILITY_SELECT_WIDTH}
+            w={VISIBILITY_COLUMN_WIDTH}
+            px="lg"
+            py="xs"
             size="sm"
             fw="bold"
             c="text-secondary"
           >
             {t`Visibility`}
           </Text>
-          <Box w={LAYER_ACTIONS_WIDTH} />
+          <Divider orientation="vertical" />
+          <Center w={ACTIONS_COLUMN_WIDTH} />
         </Flex>
         {layers.map((layer, index) => (
           <DataLayerRow
@@ -183,11 +185,11 @@ function DataLayerRow({
   };
 
   return (
-    <Flex align="center" gap="sm" p="lg" data-testid="data-layer-row">
+    <Flex align="stretch" data-testid="data-layer-row">
       <TextInputBlurChange
         aria-label={t`Layer name`}
+        classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
         flex={1}
-        miw={0}
         value={layer.name}
         placeholder={t`Layer name`}
         maxLength={254}
@@ -216,46 +218,58 @@ function DataLayerRow({
             : layer.name
         }
         onBlurChange={handleNameBlurChange}
+        rightSection={<Icon name="pencil" size={14} c="text-secondary" />}
+        rightSectionPointerEvents="none"
       />
+      <Divider orientation="vertical" />
       <Select
         aria-label={t`Visibility`}
-        w={VISIBILITY_SELECT_WIDTH}
+        classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+        w={VISIBILITY_COLUMN_WIDTH}
+        flex="0 0 auto"
         data={visibilityOptions}
         value={layer.visibility}
         allowDeselect={false}
         onChange={handleVisibilityChange}
       />
-      <Menu position="bottom-end">
-        <Menu.Target>
-          <ActionIcon size="lg" aria-label={t`Layer actions`}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="arrow_up" />}
-            disabled={isFirst}
-            onClick={onMoveUp}
-          >
-            {t`Move up`}
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Icon name="arrow_down" />}
-            disabled={isLast}
-            onClick={onMoveDown}
-          >
-            {t`Move down`}
-          </Menu.Item>
-          <Menu.Item
-            c="feedback-negative"
-            leftSection={<Icon name="trash" />}
-            disabled={!canDelete}
-            onClick={onDelete}
-          >
-            {t`Delete layer`}
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
+      <Divider orientation="vertical" />
+      <Center w={ACTIONS_COLUMN_WIDTH}>
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <ActionIcon
+              size="md"
+              variant="subtle"
+              aria-label={t`Layer actions`}
+            >
+              <Icon name="ellipsis" />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<Icon name="arrow_up" />}
+              disabled={isFirst}
+              onClick={onMoveUp}
+            >
+              {t`Move up`}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<Icon name="arrow_down" />}
+              disabled={isLast}
+              onClick={onMoveDown}
+            >
+              {t`Move down`}
+            </Menu.Item>
+            <Menu.Item
+              c="feedback-negative"
+              leftSection={<Icon name="trash" />}
+              disabled={!canDelete}
+              onClick={onDelete}
+            >
+              {t`Delete layer`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Center>
     </Flex>
   );
 }

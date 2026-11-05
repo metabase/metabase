@@ -234,7 +234,7 @@ export function SharedPointerNote({
     return null;
   }
   return (
-    <Stack gap={4}>
+    <Stack gap={4} px="lg" pb="sm">
       {shared.map((group) => (
         <Text key={group[0].fieldId} size="sm" c="text-secondary">
           {t`${displayNameOf(fields, group[0].fieldId)} is used as both ${group.map((pointer) => pointer.label).join(" and ")}.`}

@@ -109,6 +109,7 @@ import fields_component from "./fields.svg?component";
 import filter_component from "./filter.svg?component";
 import filter_plus_component from "./filter_plus.svg?component";
 import find_replace_component from "./find_replace.svg?component";
+import flag_component from "./flag.svg?component";
 import folder_component from "./folder.svg?component";
 import folder_database_component from "./folder_database.svg?component";
 import folder_filled_component from "./folder_filled.svg?component";
@@ -412,6 +413,7 @@ export const Icons: Record<IconName, React.FC> = {
   filter: filter_component,
   filter_plus: filter_plus_component,
   find_replace: find_replace_component,
+  flag: flag_component,
   bug: bug_component,
   format_code: format_code_component,
   formula: formula_component,

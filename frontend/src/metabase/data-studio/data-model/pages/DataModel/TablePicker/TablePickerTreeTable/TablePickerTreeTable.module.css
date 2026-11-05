@@ -1,0 +1,18 @@
+/* A needs-review flag hangs left of the role, in the cell's padding, so the
+ * role text lines up with unflagged rows and the column header */
+.cell:has(> .role > .flag) {
+  overflow: visible;
+}
+
+.role {
+  position: relative;
+  min-width: 0;
+}
+
+.flag {
+  position: absolute;
+  top: 50%;
+  /* Same gap as the icon and text in the Visibility layer column */
+  right: calc(100% + var(--mantine-spacing-sm));
+  transform: translateY(-50%);
+}

@@ -549,6 +549,8 @@ export function inferWildcardDefinitionTable<T extends SchemaTable>(
 export type MainDateInference = {
   fieldId: FieldId | null;
   signal: string;
+  /** Low-confidence guesses need an admin's review */
+  confidence: "high" | "low";
 };
 
 // Load and edit bookkeeping, and the end of a validity range: never what a
@@ -556,12 +558,27 @@ export type MainDateInference = {
 const BOOKKEEPING_DATE_RE =
   /^(_fivetran_synced|_fivetran_deleted|_fivetran_end|_loaded_at|_sdc_.*|_airbyte_.*)$|(^|_)(updated|modified|deleted|synced|loaded|extracted)(_at|_on|_date|_time)?$|^last_modified$/;
 
-// Names that read as "when this happened", strongest first
-const EVENT_DATE_RES = [
-  /(^|_)(occurred|happened|event)(_at|_time|_timestamp|_date)?$/,
-  /(^|_)(ordered|purchased|paid|transaction|invoice|booked|signed_up|subscribed)(_at|_date|_time)?$/,
-  /^(date|day|timestamp|ts|time)$/,
-  /(^|_)(created|inserted)(_at|_on|_date|_time)?$/,
+// Names that read as "when this happened", strongest first. A created date may
+// be when the record was made rather than when the thing happened, so it's a
+// weaker guess.
+const EVENT_DATE_RES: {
+  pattern: RegExp;
+  confidence: MainDateInference["confidence"];
+}[] = [
+  {
+    pattern: /(^|_)(occurred|happened|event)(_at|_time|_timestamp|_date)?$/,
+    confidence: "high",
+  },
+  {
+    pattern:
+      /(^|_)(ordered|purchased|paid|transaction|invoice|booked|signed_up|subscribed)(_at|_date|_time)?$/,
+    confidence: "high",
+  },
+  { pattern: /^(date|day|timestamp|ts|time)$/, confidence: "high" },
+  {
+    pattern: /(^|_)(created|inserted)(_at|_on|_date|_time)?$/,
+    confidence: "low",
+  },
 ];
 
 /**
@@ -585,15 +602,17 @@ export function inferMainDate(
     return {
       fieldId: idOf(keyDate),
       signal: t`The period in the table's key`,
+      confidence: "high",
     };
   }
 
-  for (const pattern of EVENT_DATE_RES) {
+  for (const { pattern, confidence } of EVENT_DATE_RES) {
     const field = candidates.find((field) => matches(field, pattern));
     if (field) {
       return {
         fieldId: idOf(field),
         signal: t`Named like when a row happened`,
+        confidence,
       };
     }
   }
@@ -602,6 +621,7 @@ export function inferMainDate(
     return {
       fieldId: idOf(candidates[0]),
       signal: t`The only date that isn't load or edit bookkeeping`,
+      confidence: "low",
     };
   }
 
@@ -611,6 +631,8 @@ export function inferMainDate(
       candidates.length === 0
         ? t`No date column besides load or edit bookkeeping`
         : t`Several dates, none named like when a row happened`,
+    // With no dates there's nothing to pick; with several, an admin should
+    confidence: candidates.length === 0 ? "high" : "low",
   };
 }
 
