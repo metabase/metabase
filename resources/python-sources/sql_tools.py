@@ -655,7 +655,8 @@ def fold_lookup(folded, key):
     return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
 
 
-# Beyond `_SQL_EXECUTING_FUNCTIONS`: Postgres functions that read a table, schema or database named as text, which a
+# Beyond `_SQL_EXECUTING_FUNCTIONS`: every `dblink*` function (refused by prefix: dblink_get_result, dblink_build_sql_*,
+# dblink_connect, ...) and the Postgres functions below that read a table, schema or database named as text, which a
 # workspace rewrite can't see into. Other functions that resolve a name at run time (a ::regclass cast, ...) are not
 # listed.
 WORKSPACE_TABLE_READING_FUNCTIONS = frozenset(
@@ -889,7 +890,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             raise ValueError("The SQL contains a statement sqlglot can't read into (for example EXPLAIN, DECLARE, "
                              "PREPARE, EXECUTE or DO), so its tables can't be rewritten.")
         executor = _sql_executing_function(ast) or next(
-            (name for name in map(_function_name, ast.walk()) if name in WORKSPACE_TABLE_READING_FUNCTIONS), None)
+            (name for name in map(_function_name, ast.walk())
+             if name in WORKSPACE_TABLE_READING_FUNCTIONS or (name or "").startswith("dblink")),
+            None)
         if executor:
             raise ValueError(f"The SQL calls {executor}, which runs SQL or reads a table named in text, so its "
                              f"tables can't be rewritten.")

@@ -333,6 +333,15 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "calls " function ", which runs SQL"))
                             (ws/rewrite-sql :postgres remaps sql))
           sql)))
+  (testing "every dblink function is refused, by prefix, however its name is written"
+    (doseq [function ["dblink_get_result" "dblink_build_sql_insert" "dblink_build_sql_update" "dblink_build_sql_delete"
+                      "dblink_connect" "dblink_connect_u" "dblink_get_pkey" "dblink_get_notify" "dblink_close"
+                      "dblink_cancel_query" "dblink_disconnect" "dblink_is_busy" "dblink_error_message"]
+            sql      [(format "SELECT %s('c')" function)
+                      (format "SELECT public.\"%s\"('c')" function)]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern (str "calls " function ", which runs SQL"))
+                            (ws/rewrite-sql :postgres remaps sql))
+          sql)))
   (testing "a function argument that is SQL text naming a remapped table is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"passes upper SQL text that names a remapped table"
                           (ws/rewrite-sql :postgres remaps "SELECT upper('select src from public.orders')"))))
