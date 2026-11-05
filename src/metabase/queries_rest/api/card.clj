@@ -31,10 +31,10 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -847,7 +847,7 @@
          :middleware   {:process-viz-settings? false})))))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
@@ -942,7 +942,7 @@
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Run the query associated with a Card."
   {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}

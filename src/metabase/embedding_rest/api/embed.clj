@@ -28,8 +28,8 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
-   [metabase.server.core :as server]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -110,7 +110,7 @@
      :options options)))
 
 (api.macros/defendpoint :get "/card/:token/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -127,7 +127,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:token/query/:export-format"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map {:closed true}
                                      [:token api.embed.common/EncodedToken]
@@ -203,7 +203,7 @@
      :middleware middleware)))
 
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
@@ -225,7 +225,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [{:keys [token dashcard-id card-id export-format]} :- [:map {:closed true}
@@ -349,7 +349,7 @@
                                                  :value (codec/url-decode value)})))
 
 (api.macros/defendpoint :get "/pivot/card/:token/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -364,7 +364,7 @@
                                       :qp qp.pivot/run-pivot-query))
 
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}

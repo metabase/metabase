@@ -17,9 +17,8 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
-   [metabase.server.core :as server]
    [metabase.tiles.api :as api.tiles]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
@@ -51,7 +50,7 @@
   2000)
 
 (api.macros/defendpoint :get "/card/:token/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
@@ -163,7 +162,7 @@
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]
@@ -187,7 +186,7 @@
      :query-params     (api.embed.common/parse-query-params query-params))))
 
 (api.macros/defendpoint :get "/pivot/card/:token/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
@@ -204,7 +203,7 @@
      :qp               qp.pivot/run-pivot-query)))
 
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]

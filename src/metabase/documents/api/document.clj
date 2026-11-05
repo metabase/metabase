@@ -15,8 +15,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.schema :as qp.schema]
-   [metabase.server.core :as server]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -328,7 +327,7 @@
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
 
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Download query results for a Card embedded in a Document.
 
   Returns query results in the requested format. The user must have read access to the document

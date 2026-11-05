@@ -35,7 +35,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -102,7 +101,7 @@
           (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   {:scope api-scope/data-app}
   [_route-params
@@ -137,7 +136,7 @@
     (keyword json-key)))
 
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Execute a query and download the result data as a file in the specified format."
   {:scope api-scope/data-app}
   [{:keys [export-format]} :- [:map {:closed true}
@@ -258,7 +257,7 @@
                   (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
 (api.macros/defendpoint :post "/pivot"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
+  :- ::qp.streaming/query-result-response
   "Generate a pivoted dataset for an ad-hoc query"
   {:scope api-scope/data-app}
   [_route-params
