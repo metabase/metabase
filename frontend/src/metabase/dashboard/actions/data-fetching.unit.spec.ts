@@ -781,6 +781,25 @@ describe("fetchCardDataAction with goal references", () => {
     expect(result.payload).toMatchObject({ result: lastResults[card.id] });
   });
 
+  it("returns the cached error of a visualizer dashcard whose own query failed", async () => {
+    // the backend attaches goal answers only to a successful result
+    const failedResult = createMockDataset({
+      status: "failed",
+      error: "Query timed out",
+      data: createMockDatasetData({ rows: [], cols: [] }),
+    });
+    const { store, card, dashcard } = setupVisualizerDashcard({
+      cardResult: failedResult,
+    });
+
+    const result = await store.dispatch(
+      fetchCardDataAction({ card, dashcard, options: {} }),
+    );
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(false);
+    expect(result.payload).toMatchObject({ result: failedResult });
+  });
+
   it("returns the cached result of a visualizer dashcard's series card, which answers no goals", async () => {
     const { store, seriesCard, dashcard, lastResults } =
       setupVisualizerDashcard();
@@ -829,8 +848,10 @@ describe("fetchCardDataAction with goal references", () => {
   });
 
   function setupVisualizerDashcard({
+    cardResult,
     referencedEntities = {},
   }: {
+    cardResult?: Dataset;
     referencedEntities?: ReferencedEntitiesResults | null;
   } = {}) {
     const card = createMockCard({ id: 1, display: "table" });
@@ -850,7 +871,7 @@ describe("fetchCardDataAction with goal references", () => {
       },
     });
     const lastResults = {
-      [card.id]: createCachedResult(referencedEntities),
+      [card.id]: cardResult ?? createCachedResult(referencedEntities),
       [seriesCard.id]: createCachedResult({}),
     };
     const store = setupDashcardStore({ dashcard, lastResults });

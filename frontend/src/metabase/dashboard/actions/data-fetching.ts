@@ -287,8 +287,10 @@ export const fetchCardDataAction = createAsyncThunk<
           : dashcard;
       const savedGoalCard =
         savedDashcard != null ? getSavedGoalCard(card, savedDashcard) : null;
+      // a failed query carries no goal answers, and a refetch would fail again
       const isMissingGoalReferences =
         savedGoalCard != null &&
+        lastResult?.status !== "failed" &&
         hasUnansweredGoalReferences(savedGoalCard, lastResult?.data);
 
       // if reload not set, check to see if the last result has the same query dict and return that
