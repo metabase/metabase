@@ -27,17 +27,16 @@ describe("Remote Sync first-time setup", () => {
   });
 
   it("sets up git sync from scratch, creating Library and syncing it with transforms", () => {
-    H.updateSetting("remote-sync-custom-collections-enabled", false);
-
     cy.visit("/admin/settings/remote-sync");
     cy.findByLabelText(/repository url/i)
       .should("be.visible")
       .clear()
       .type(LOCAL_GIT_URL);
     cy.findByTestId("admin-layout-content").findByText("Read-write").click();
-    cy.findByTestId("admin-layout-content")
-      .findByText("Collections to sync")
-      .should("not.exist");
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByLabelText("Sync Library").should("be.checked");
+      cy.findByLabelText("Sync Transforms").should("be.checked");
+    });
     cy.button("Set up remote sync").click();
     cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
 
@@ -83,8 +82,7 @@ describe("Remote Sync first-time setup", () => {
     });
   });
 
-  it("opens branch picker after push while collections to sync are hidden", () => {
-    H.updateSetting("remote-sync-custom-collections-enabled", false);
+  it("opens branch picker after push", () => {
     H.createLibrary().then(({ libraryCollectionId }) => {
       H.configureGit("read-write", LOCAL_GIT_URL, {
         [libraryCollectionId]: true,
