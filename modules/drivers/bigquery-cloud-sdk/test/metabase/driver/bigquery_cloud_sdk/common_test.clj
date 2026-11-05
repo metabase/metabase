@@ -33,16 +33,6 @@
            (System/setProperty k# before#)
            (System/clearProperty k#))))))
 
-(deftest ^:parallel credentials-source-test
-  (is (= :application-default (bigquery.common/credentials-source {})))
-  (is (= :application-default (bigquery.common/credentials-source {:service-account-json   ""
-                                                                    :credential-config-json "  "})))
-  (is (= :service-account (bigquery.common/credentials-source {:service-account-json "{}"})))
-  (is (= :credential-config (bigquery.common/credentials-source {:credential-config-json "{}"})))
-  (testing "a service account key takes precedence over a credential configuration file"
-    (is (= :service-account (bigquery.common/credentials-source {:service-account-json   "{}"
-                                                                 :credential-config-json "{}"})))))
-
 (deftest ^:parallel credential-config-json->credentials-test
   (testing "a Workload Identity Federation configuration becomes external account credentials"
     (let [creds (bigquery.common/credential-config-json->credentials (json/encode wif-config))]
@@ -67,14 +57,14 @@
           (json/encode (assoc wif-config "credential_source" {"executable" {"command" "/bin/echo token"}})))))))
 
 (deftest database-details->credentials-test
-  (testing "a credential configuration file is used when there is no service account key"
+  (testing "a credential configuration file is used when :auth-mode says so"
     (is (instance? ExternalAccountCredentials
-                   (bigquery.common/database-details->credentials {:service-account-json   ""
+                   (bigquery.common/database-details->credentials {:auth-mode "credential-config"
                                                                    :credential-config-json (json/encode wif-config)}))))
-  (testing "with neither file, the server's Application Default Credentials are used"
+  (testing "the server's Application Default Credentials are used when :auth-mode says so"
     (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
       (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)]
-        (is (identical? adc (bigquery.common/database-details->credentials {})))))))
+        (is (identical? adc (bigquery.common/database-details->credentials {:auth-mode "application-default"})))))))
 
 (deftest credential-project-id-test
   (testing "credentials that carry no project of their own fall back to the server's default project"

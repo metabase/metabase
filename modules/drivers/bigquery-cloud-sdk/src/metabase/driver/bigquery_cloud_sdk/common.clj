@@ -1,7 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
-   [clojure.string :as str]
    [malli.core :as mc]
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
@@ -31,22 +30,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Credentials                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn credentials-source
-  "How `details` authenticate to Google Cloud:
-
-  * `:service-account` -- `:service-account-json` holds a service account key
-  * `:credential-config` -- `:credential-config-json` holds a credential configuration file, such as the one
-    `gcloud iam workload-identity-pools create-cred-config` writes for Workload Identity Federation
-  * `:application-default` -- neither is set, so the Application Default Credentials of the Metabase server's
-    environment are used (`GOOGLE_APPLICATION_CREDENTIALS`, the metadata server on GCE/GKE, a local gcloud login)
-
-  A service account key takes precedence when both files are given."
-  [{:keys [service-account-json credential-config-json]}]
-  (cond
-    (not (str/blank? service-account-json))   :service-account
-    (not (str/blank? credential-config-json)) :credential-config
-    :else                                     :application-default))
 
 (mu/defn service-account-json->service-account-credential
   "Returns a `ServiceAccountCredentials` (not scoped) for the given `service-account-json` (String)."
@@ -102,13 +85,14 @@
                       e)))))
 
 (mu/defn database-details->credentials
-  "Returns `GoogleCredentials` (not scoped) for `details`, from whichever source [[credentials-source]] names."
+  "Returns `GoogleCredentials` (not scoped) for `details`, from whichever source :auth-mode names."
   ^GoogleCredentials [{:keys [service-account-json credential-config-json] :as details}
                       :- :metabase.lib.schema.common/database-details]
-  (case (credentials-source details)
-    :service-account     (service-account-json->service-account-credential service-account-json)
-    :credential-config   (credential-config-json->credentials credential-config-json)
-    :application-default (application-default-credentials)))
+  (case (:auth-mode details)
+    ;; default here if auth-mode isn't set for backwards-compatibility
+    ("service-account" nil) (service-account-json->service-account-credential service-account-json)
+    "credential-config" (credential-config-json->credentials credential-config-json)
+    "application-default" (application-default-credentials)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Project IDs                                                  |
@@ -121,18 +105,13 @@
   for those this is the server's default project (`GOOGLE_CLOUD_PROJECT`, the gcloud configuration, or the metadata
   server on GCE/GKE), if it has one."
   [details :- :metabase.lib.schema.common/database-details]
-  (if (= :service-account (credentials-source details))
+  (if (= "service-account" (:auth-mode details))
     (.getProjectId (database-details->service-account-credential details))
     (ServiceOptions/getDefaultProjectId)))
 
-(defn- missing-project-id-exception []
-  (ex-info (tru (str "Could not determine the Google Cloud project. Set the Data project ID (and the Billing project "
-                     "ID, if query jobs should run in a different project) in the connection details."))
-           {:type :missing-project-id}))
-
 (defn get-project-id
   "Data project for `details`, the one its datasets live in: `:project-id`, then `:billing-project-id`, then the
-  credentials' project ([[database-details->credential-project-id]]). Throws when none of them is set.
+  credentials' project ([[database-details->credential-project-id]]).
 
   `:billing-project-id` is included because a service account granted `bigquery.jobs.create` on a project typically
   also has data access there — so setting only the billing field implies the data lives there too. Users who want
@@ -140,8 +119,7 @@
   [{:keys [project-id billing-project-id] :as details}]
   (or (perf/not-empty project-id)
       (perf/not-empty billing-project-id)
-      (database-details->credential-project-id details)
-      (throw (missing-project-id-exception))))
+      (database-details->credential-project-id details)))
 
 (defn get-billing-project-id
   "Project query jobs run in and are billed to, which is also the project unqualified `dataset.table` names in a
@@ -150,8 +128,7 @@
   [{:keys [billing-project-id project-id] :as details}]
   (or (perf/not-empty billing-project-id)
       (database-details->credential-project-id details)
-      (perf/not-empty project-id)
-      (throw (missing-project-id-exception))))
+      (perf/not-empty project-id)))
 
 (defmulti base-type->bigquery-type
   "Return the BigQuery SQL type name for a Metabase `:type/*` base-type as a plain string. Throws
