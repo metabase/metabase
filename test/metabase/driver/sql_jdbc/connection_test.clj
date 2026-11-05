@@ -962,16 +962,64 @@
              (#'sql-jdbc.conn/without-pool (assoc-in state [:pools cache-key] newer-pool) cache-key old-pool))))))
 
 (deftest halting-closes-pools-test
-  (testing "the pools component is stopped by a halt, and stopping it destroys every open pool"
+  (testing "the stop the pools component registers for a halt destroys every open pool"
     (#'sql-jdbc.conn/pools-state)
-    (let [destroyed (atom [])]
+    (let [destroyed (atom [])
+          stop      (get-in @@#'system/started-components [::sql-jdbc.conn/pools :stop])]
       (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [id spec] (swap! destroyed conj [id spec]))]
-        (#'sql-jdbc.conn/close-all-pools! {:pools {[1 :default] ::pool-1, [2 :write] ::pool-2}}))
-      (is (= {:registered-for-halt? true
-              :destroyed            #{[1 ::pool-1] [2 ::pool-2]}}
-             {:registered-for-halt? (boolean (some #{@#'sql-jdbc.conn/pools-component}
-                                                   (#'system/halt-order)))
-              :destroyed            (set @destroyed)})))))
+        (stop {:pools {[1 :default] ::pool-1, [2 :write] ::pool-2}}))
+      (is (= #{[1 ::pool-1] [2 ::pool-2]}
+             (set @destroyed))))))
+
+(deftest pool-that-cannot-be-cached-is-destroyed-test
+  (testing "a new pool that cannot be cached, as while the pools state is stopping, is destroyed and the error rethrown"
+    (let [destroyed (atom [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/pools-state   (fn [] (throw (ex-info "Component is stopping" {})))
+                                  sql-jdbc.conn/destroy-pool! (fn [id spec] (swap! destroyed conj [id spec]))]
+        (is (= {:error     "Component is stopping"
+                :destroyed [[Integer/MAX_VALUE ::new-pool]]}
+               {:error     (try
+                             (#'sql-jdbc.conn/set-canonical-pool! [Integer/MAX_VALUE :default] 42 ::new-pool
+                                                                  {:id Integer/MAX_VALUE, :engine :h2})
+                             nil
+                             (catch clojure.lang.ExceptionInfo e
+                               (ex-message e)))
+                :destroyed @destroyed}))))))
+
+(deftest failed-old-pool-teardown-keeps-the-new-pool-test
+  (testing "when destroying the replaced pool throws, the new pool stays cached and is not destroyed"
+    (let [cache-key [Integer/MAX_VALUE :default]
+          database  {:id Integer/MAX_VALUE, :engine :h2}
+          destroyed (atom [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [_id spec]
+                                                                (when (= ::old-pool spec)
+                                                                  (throw (ex-info "close failed" {})))
+                                                                (swap! destroyed conj spec))]
+        (try
+          (#'sql-jdbc.conn/set-canonical-pool! cache-key 1 ::old-pool database)
+          (is (= {:error "close failed", :cached ::new-pool, :destroyed []}
+                 {:error     (try
+                               (#'sql-jdbc.conn/set-canonical-pool! cache-key 2 ::new-pool database)
+                               nil
+                               (catch clojure.lang.ExceptionInfo e
+                                 (ex-message e)))
+                  :cached    (get-in (#'sql-jdbc.conn/pools-state) [:pools cache-key])
+                  :destroyed @destroyed}))
+          (finally
+            (sql-jdbc.conn/invalidate-pool-for-db! Integer/MAX_VALUE)))))))
+
+(deftest pool-spec-leaves-out-the-database-test
+  (mt/test-driver :h2
+    (testing "the spec of a new pool carries nothing from the database it connects to beyond its connection"
+      (let [database (driver.u/ensure-lib-database (t2/instance :model/Database {:id      Integer/MAX_VALUE
+                                                                                 :engine  :h2
+                                                                                 :name    "pool-spec-sentinel-name"
+                                                                                 :details {:db "mem:pool_spec_test"}}))
+            spec     (#'sql-jdbc.conn/create-pool! database)]
+        (try
+          (is (not (str/includes? (pr-str spec) "pool-spec-sentinel-name")))
+          (finally
+            (#'sql-jdbc.conn/destroy-pool! Integer/MAX_VALUE spec)))))))
 
 (deftest close-all-pools-survives-a-failed-close-test
   (testing "a pool that fails to close does not stop the rest, and the failure is reported once all are tried"
@@ -993,14 +1041,14 @@
     (let [cache-key   [Integer/MAX_VALUE :default]
           data-source (reify com.mchange.v2.c3p0.PooledDataSource
                         (getIdentityToken [_] "cached-pool-token"))
-          pool-spec   {:datasource                     data-source
-                       ::sql-jdbc.conn/driver+database [:h2 {:id Integer/MAX_VALUE}]}]
+          pool-spec   {:datasource data-source}
+          database    {:id Integer/MAX_VALUE, :engine :h2}]
       (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [_id _spec] nil)]
         (try
-          (#'sql-jdbc.conn/set-canonical-pool! cache-key 42 pool-spec)
+          (#'sql-jdbc.conn/set-canonical-pool! cache-key 42 pool-spec database)
           (is (=? {:pools     {cache-key pool-spec}
                    :hashes    {cache-key 42}
-                   :databases {"cached-pool-token" [:h2 {:id Integer/MAX_VALUE}]}}
+                   :databases {"cached-pool-token" [:h2 database]}}
                   (#'sql-jdbc.conn/pools-state)))
           (finally
             (sql-jdbc.conn/invalidate-pool-for-db! Integer/MAX_VALUE)))))))
