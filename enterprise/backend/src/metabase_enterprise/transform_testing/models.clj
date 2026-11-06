@@ -15,9 +15,11 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
+   [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -177,3 +179,33 @@
                                 :collection_id (serdes/*export-fk* (:collection_id transform) :model/Collection)}
                                ctx)
           {:label (:name transform-test) :key (:entity_id transform-test)})))
+
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(defmethod serialization/spec :model/TransformTest [_]
+  {:schema    ::transform-testing.schema/external-transform-test
+   :copy      [:entity_id :name :description :inputs :expectations]
+   :transform {:transform_id (serialization/fk-transform :model/Transform)
+               :creator_id   serialization/user-transform}})
+
+(defmethod serialization/storage-paths :model/TransformTest [_ entities _ctx]
+  (let [transforms (u/index-by :entity_id (transform-testing.db/transforms-by-entity-ids
+                                           (vec (distinct (keep :transform_id entities)))))
+        coll-eids  (zipmap (keys transforms)
+                           (serialization/column-refs serialization/app-db-store :model/Collection
+                                                      (map :collection_id (vals transforms))))
+        paths      (serialization/batch-storage-paths
+                    (for [transform-test entities
+                          :let [{eid :entity_id transform-name :name} (get transforms (:transform_id transform-test))]]
+                      {:serdes/meta   [{:model "Transform"}]
+                       :name          transform-name
+                       :entity_id     eid
+                       :collection_id (get coll-eids eid)}))]
+    (mapv (fn [transform-test path]
+            (conj path {:label (:name transform-test) :key (:entity_id transform-test)}))
+          entities paths)))
+
+(defmethod serialization/import-dependencies :model/TransformTest [_ entities]
+  (mapv (fn [{:keys [transform_id]}]
+          #{[:model/Transform transform_id]})
+        entities))

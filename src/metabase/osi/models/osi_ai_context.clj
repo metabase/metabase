@@ -20,6 +20,7 @@
    [metabase.osi.schema :as osi.schema]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -189,3 +190,49 @@
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
   (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (update ingested :ai_context ->ai-context))
   (osi.db/ai-context (:entity_type local) (:entity_local_id local)))
+
+(defmethod serialization/storage-paths :model/OsiAiContext [_ entities _ctx]
+  (mapv (fn [{:keys [entity_type entity_local_id]}]
+          (let [ids (if (sequential? entity_local_id) entity_local_id [entity_local_id])]
+            [{:label "osi_ai_context"}
+             {:label (u/slugify (str/join "-" ids) {:unicode? true})
+              :key   (pr-str [entity_type entity_local_id])}]))
+        entities))
+
+;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
+;; verbatim. The key columns are exported so the path can be rebuilt on import, and imported from that path.
+
+(defn- walk-export-local-id
+  "The ref of the entity a row describes, which `visit` resolves: a Table's reference, or the entity id of a card,
+  measure or segment; an unmapped type keeps its raw id."
+  [visit {:keys [entity_type entity_local_id]}]
+  (cond
+    (= entity_type "table")           (visit :model/Table entity_local_id)
+    (entity-type->toucan entity_type) (visit (entity-type->toucan entity_type) entity_local_id)
+    :else                             entity_local_id))
+
+(defn- walk-import-local-id
+  "The local id of the entity a row describes, which `visit` resolves from its ref: a Table's reference, or the entity
+  id of a card, measure or segment; an unmapped type keeps its raw id."
+  [visit {:keys [entity_type entity_local_id]}]
+  (cond
+    (= entity_type "table")           (visit :model/Table entity_local_id)
+    (entity-type->toucan entity_type) (visit (entity-type->toucan entity_type) entity_local_id)
+    :else                             entity_local_id))
+
+(defmethod serialization/spec :model/OsiAiContext [_]
+  {:schema    ::osi.schema/external-osi-ai-context
+   :identity  [:entity_type :entity_local_id]
+   :primary-key :entity_type
+   :copy      [:ai_context :entity_id :entity_type]
+   :transform {:entity_local_id {:export (fn [store rows _ _]
+                                           (serialization/export-in-bulk store rows walk-export-local-id))
+                                 :import (fn [store entities _ opts]
+                                           (serialization/import-in-bulk store entities opts walk-import-local-id))}}})
+
+(defmethod serialization/import-dependencies :model/OsiAiContext [_ entities]
+  (mapv (fn [{:keys [entity_type entity_local_id]}]
+          (cond
+            (= entity_type "table")           #{[:model/Table entity_local_id]}
+            (entity-type->toucan entity_type) #{[(entity-type->toucan entity_type) entity_local_id]}))
+        entities))

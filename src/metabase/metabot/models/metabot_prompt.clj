@@ -4,6 +4,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -35,3 +36,18 @@
    :transform {:model      (serdes/kw)
                :card_id    (serdes/fk :model/Card)
                :metabot_id (serdes/parent-ref)}})
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+(defmethod serialization/spec :model/MetabotPrompt [_]
+  {:schema    ::metabot.schema/external-metabot-prompt
+   :copy      [:entity_id :prompt]
+   :parent    {:model :model/Metabot :key :metabot_id :order (juxt :prompt :entity_id)}
+   :transform {:metabot_id serialization/import-only-transform
+               :model   serialization/keyword-transform
+               :card_id (serialization/fk-transform :model/Card)}})
+
+(defmethod serialization/import-dependencies :model/MetabotPrompt [_ entities]
+  (mapv (fn [prompt]
+          #{[:model/Card (:card_id prompt)]})
+        entities))

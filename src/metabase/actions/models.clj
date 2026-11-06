@@ -17,6 +17,7 @@
    [metabase.queries.models.query :as query]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -743,6 +744,51 @@
   (when-let [model-id (actions.db/action-model-id id)]
     {["Card" model-id] {"Action" id}}))
 
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serialization/spec :model/QueryAction [_]
+  {:schema    ::actions.schema/external-query-action
+   :identity  [:action_id]
+   :primary-key :action_id
+   :skip      [:legacy_query]
+   :parent    {:model :model/Action :key :action_id}
+   :transform {:action_id     serialization/import-only-transform
+               :database_id   serialization/database-transform
+               :dataset_query serialization/mbql-transform}})
+
+(defmethod serialization/spec :model/ImplicitAction [_]
+  {:schema    ::actions.schema/external-implicit-action
+   :identity  [:action_id]
+   :primary-key :action_id
+   :copy      [:kind]
+   :parent    {:model :model/Action :key :action_id}
+   :transform {:action_id serialization/import-only-transform
+               :table_id serialization/table-transform}})
+
+(defmethod serialization/spec :model/Action [_]
+  {:schema    ::actions.schema/external-action
+   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
+   :skip      [:public_uuid_prefix]
+   :transform {:type                   serialization/keyword-transform
+               :creator_id             serialization/user-transform
+               :made_public_by_id      serialization/user-transform
+               :collection_id          (serialization/fk-transform :model/Collection)
+               :model_id               (serialization/fk-transform :model/Card)
+               :parameters             serialization/parameters-transform
+               :parameter_mappings     serialization/parameter-mappings-transform
+               :visualization_settings serialization/visualization-settings-transform}
+   :children  {:query    :model/QueryAction
+               :implicit :model/ImplicitAction}
+   :defaults  {:archived false, :archived_directly false}})
+
+(defmethod serialization/storage-paths :model/Action [_ entities ctx]
+  (mapv (fn [{:keys [model_id] :as action}]
+          (serialization/storage-default-collection-path
+           action ctx (if (nil? model_id)
+                        (serialization/collection-namespace-folder collection/data-actions-ns)
+                        "main")))
+        entities))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "action"
@@ -763,3 +809,31 @@
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
                   :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Action [_ entities]
+  (mapv (fn [action]
+          (set (concat (when-let [collection-id (:collection_id action)]
+                         [[:model/Collection collection-id]])
+                       (when-let [model-id (:model_id action)]
+                         [[:model/Card model-id]])
+                       (when (= (:type action) "query")
+                         (serialization/import-mbql-dependencies (:dataset_query (first (:query action))))))))
+        entities))
+
+(defmethod serialization/export-dependencies :model/Action [_ actions]
+  (let [queries (when-let [ids (seq (keep #(when (= (keyword (:type %)) :query) (:id %)) actions))]
+                  (into {} (map (juxt :action_id identity)) (actions.db/query-actions (vec ids))))]
+    (mapv (fn [{:keys [id collection_id model_id]}]
+            (set (concat (when collection_id [[:model/Collection collection_id]])
+                         (when model_id [[:model/Card model_id]])
+                         (when-let [{:keys [database_id dataset_query]} (get queries id)]
+                           (concat (when database_id [[:model/Database database_id]])
+                                   (serialization/export-mbql-dependencies dataset_query))))))
+          actions)))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/Action [_ items]
+  (filterv #(not= "http" (some-> % :entity :type name)) items))

@@ -12,6 +12,7 @@
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -150,3 +151,16 @@
    :copy      [:index_name :structured]
    :skip      [:status :error_message :last_executed_at :created_by]
    :transform {:transform_id (serdes/parent-ref)}})
+
+;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
+;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
+;; column names (no references), so it copies verbatim. `:created_by` is skipped: the user may
+;; not resolve on import.
+
+(defmethod serialization/spec :model/TableIndex [_]
+  {:schema    ::schema/external-table-index
+   :identity  [:transform_id :index_name]
+   :copy      [:index_name :structured]
+   :skip      [:status :error_message :last_executed_at :created_by]
+   :parent    {:model :model/Transform :key :transform_id :order :index_name}
+   :transform {:transform_id serialization/import-only-transform}})

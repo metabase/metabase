@@ -6,6 +6,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform]
@@ -225,3 +226,22 @@
 
 (defmethod serdes/storage-path "TransformJob" [job _ctx]
   [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])
+
+(defmethod serialization/spec :model/TransformJob [_]
+  {:schema    ::transforms.schema/external-transform-job
+   :copy      [:entity_id :built_in_type :schedule :ui_display_type]
+   :skip      [:active]
+   :transform {:name        {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}
+               :description {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}
+   :children  {:job_tags :model/TransformJobTransformTag}})
+
+(defmethod serialization/storage-paths :model/TransformJob [_ entities _ctx]
+  (mapv (fn [job]
+          [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])
+        entities))
+
+(defmethod serialization/import-dependencies :model/TransformJob [_ entities]
+  (mapv (fn [{:keys [job_tags]}]
+          (set (for [{tag-id :tag_id} job_tags]
+                 [:model/TransformTag tag-id])))
+        entities))

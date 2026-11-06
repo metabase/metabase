@@ -16,6 +16,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -544,6 +545,80 @@
   (when-let [collection-id (transforms.db/transform-collection-id id)]
     {["Collection" collection-id] {"Transform" id}}))
 
+(defn- walk-export-source
+  "The exported `source` of a transform, its ids replaced by the references `visit` resolves them to. A checkpoint
+  field that no longer exists is dropped, since a local id names nothing on another instance."
+  [visit source]
+  (let [database #(serialization/visit-some :model/Database % visit)]
+    (-> source
+        (m/update-existing :query #(serialization/walk-export visit %))
+        (m/update-existing :source-database database)
+        (m/update-existing :source-tables
+                           (fn [entries]
+                             (mapv #(-> %
+                                        (m/update-existing :table_id
+                                                           (fn [id] (serialization/visit-some :model/Table id visit)))
+                                        (m/update-existing :database_id database))
+                                   (transforms-base.u/normalize-source-tables entries))))
+        (m/update-existing :source-incremental-strategy
+                           (fn [{field-id :checkpoint-filter-field-id :as strategy}]
+                             (if-let [field-ref (when field-id
+                                                  (serialization/found-or-nil #(visit :model/Field field-id)))]
+                               (assoc strategy :checkpoint-filter-field-id field-ref)
+                               (dissoc strategy :checkpoint-filter-field-id)))))))
+
+(defn- walk-import-source
+  "The `source` of an exported transform with its references replaced by the ids `visit` resolves them to, keeping the
+  raw numeric ids of older exports."
+  [visit source]
+  (let [ref-or-id (fn [model] (fn [v] (if (or (nil? v) (pos-int? v)) v (visit model v))))
+        entry     #(-> %
+                       (m/update-existing :table_id (ref-or-id :model/Table))
+                       (m/update-existing :database_id (ref-or-id :model/Database)))]
+    (cond->> (-> source
+                 (m/update-existing :query #(serialization/walk-import visit %))
+                 (m/update-existing :source-database (ref-or-id :model/Database))
+                 (m/update-existing :source-tables
+                                    (fn [entries]
+                                      (if (map? entries)
+                                        (update-vals entries #(if (map? %) (entry %) ((ref-or-id :model/Table) %)))
+                                        (mapv entry entries))))
+                 (m/update-existing-in [:source-incremental-strategy :checkpoint-filter-field-id]
+                                       (ref-or-id :model/Field)))
+      (not (serialization/collecting? visit)) (lib/normalize ::transforms.schema/transform-source))))
+
+(defmethod serialization/spec :model/Transform [_]
+  {:schema    ::transforms.schema/external-transform
+   :copy      [:name :description :entity_id :owner_email]
+   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :transform {:creator_id         serialization/user-transform
+               :owner_user_id      serialization/user-transform
+               :collection_id      (serialization/fk-transform :model/Collection)
+               :source_database_id serialization/database-transform
+               :source             {:export (fn [store _ sources _]
+                                              (serialization/export-in-bulk store sources walk-export-source))
+                                    :import (fn [store _ sources opts]
+                                              (serialization/import-in-bulk
+                                               store
+                                               sources
+                                               opts
+                                               (fn [visit source]
+                                                 (cond->> source
+                                                   (not (:serdes/unresolved source)) (walk-import-source visit)))))}
+               :target             {:export (fn [store _ targets _]
+                                              (serialization/export-mbql
+                                               store (map #(drop-merge-key-field-ids (dissoc % :table_id)) targets)))
+                                    :import (fn [store _ targets opts]
+                                              (serialization/import-mbql store (map drop-merge-key-field-ids targets)
+                                                                         opts))}}
+   :children  {:tags    :model/TransformTransformTag
+               :indexes :model/TableIndex}})
+
+(defmethod serialization/storage-paths :model/Transform [_ entities ctx]
+  (mapv (fn [transform]
+          (serialization/storage-default-collection-path transform ctx "transforms"))
+        entities))
+
 (mu/defn- maybe-extract-transform-query-text :- [:maybe :string]
   "Return the query text (truncated to `max-searchable-value-length`) from transform source; else nil.
   Extracts SQL from query-type transforms and Python code from python-type transforms."
@@ -614,3 +689,20 @@
                  (when (seq schedule-fresh-ids)
                    [:not [:in :transform.id schedule-fresh-ids]])
                  (staleness/collection-filter :transform.collection_id args)]}))
+
+(defmethod serialization/import-dependencies :model/Transform [_ entities]
+  (mapv (fn [{:keys [collection_id source tags]}]
+          (set (concat (when collection_id [[:model/Collection collection_id]])
+                       (for [{tag-id :tag_id} tags] [:model/TransformTag tag-id])
+                       (when-not (:serdes/unresolved source)
+                         (serialization/import-mbql-dependencies source)))))
+        entities))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/Transform [_ items]
+  (let [{unresolved true resolved false} (group-by #(boolean (get-in % [:entity :source :serdes/unresolved])) items)]
+    (doseq [{{:keys [entity_id]} :entity} unresolved]
+      (log/warnf "Skipping transform %s, since an export from before 66 left it without its deleted source database"
+                 entity_id))
+    (vec resolved)))

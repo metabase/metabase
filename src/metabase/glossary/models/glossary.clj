@@ -3,6 +3,7 @@
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -61,3 +62,15 @@
 
 (defmethod serdes/storage-path "Glossary" [item _]
   [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
+
+;;; ---------------------- Serialization ----------------------------
+
+(defmethod serialization/spec :model/Glossary [_]
+  {:schema    ::glossary.schema/external-glossary
+   :copy      [:entity_id :term :definition]
+   :transform {:creator_id serialization/user-transform}})
+
+(defmethod serialization/storage-paths :model/Glossary [_ entities _]
+  (mapv (fn [item]
+          [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
+        entities))

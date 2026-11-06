@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -93,6 +94,18 @@
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serialization/spec :model/PythonLibrary [_]
+  {:schema ::transforms-python.schema/external-python-library
+   :copy   [:path :source :entity_id]
+   :skip   [:is_default]})
+
+(defmethod serialization/storage-paths :model/PythonLibrary [_ entities _ctx]
+  (mapv (fn [entity]
+          [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
+        entities))
 
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 
