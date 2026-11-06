@@ -39,8 +39,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
-   [metabase.util.string :as string]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +99,7 @@
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
   against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
   [session-key]
-  (or (not session-key) (string/valid-uuid? session-key)))
+  (or (not session-key) (u/uuid-string? session-key)))
 
 (mu/defn- current-user-info-for-session :- [:maybe [:merge
                                                     ::request.schema/current-user-info

@@ -65,7 +65,7 @@
      plenty for the ~2^61 birthday bound the rest of the session model already
      relies on.
    - Some older UUID inspection tools predate RFC 9562 and may render v8 as
-     \"unknown version\". `java.util.UUID/fromString` and our `valid-uuid?` are
+     \"unknown version\". `java.util.UUID/fromString` and our `u/uuid-string?` are
      format-only, so nothing in Metabase breaks.
    - The output is deterministic in `mcp-session-id` and the signing secret. That's
      intentional (so any webserver can recompute it) — don't treat two of these as

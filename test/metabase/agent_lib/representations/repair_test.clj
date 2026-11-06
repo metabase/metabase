@@ -17,6 +17,7 @@
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]))
 
@@ -1819,10 +1820,6 @@
 ;;; stamping the matching aggregation's `lib/uuid` if needed.
 ;;; ============================================================
 
-(defn- uuid-string? [x]
-  (and (string? x)
-       (try (java.util.UUID/fromString x) true (catch Exception _ false))))
-
 (defn- agg-uuid-of [stage idx]
   (get-in stage ["aggregation" idx 1 "lib/uuid"]))
 
@@ -1843,7 +1840,7 @@
           stage    (get-in repaired ["stages" 0])
           agg-uuid (agg-uuid-of stage 0)]
       (testing "the matched aggregation got a lib/uuid stamped into its options"
-        (is (uuid-string? agg-uuid)))
+        (is (u/uuid-string? agg-uuid)))
       (testing "order-by inner clause is now [\"aggregation\" {} <that-uuid>]"
         (is (= ["aggregation" {} agg-uuid]
                (get-in stage ["order-by" 0 2])))))))
@@ -1867,8 +1864,8 @@
           stage    (get-in repaired ["stages" 0])
           sum-uuid (agg-uuid-of stage 0)
           cnt-uuid (agg-uuid-of stage 1)]
-      (is (uuid-string? sum-uuid))
-      (is (uuid-string? cnt-uuid))
+      (is (u/uuid-string? sum-uuid))
+      (is (u/uuid-string? cnt-uuid))
       (is (not= sum-uuid cnt-uuid) "each aggregation gets its own uuid")
       (is (= ["aggregation" {} cnt-uuid] (get-in stage ["order-by" 0 2]))
           "first order-by (count) refers to the count aggregation")
@@ -2916,7 +2913,7 @@
             uuid     (get-in aggs [0 1 "lib/uuid"])]
         (if ordered?
           (do
-            (is (uuid-string? uuid))
+            (is (u/uuid-string? uuid))
             (is (= [["count" {"lib/uuid" uuid}]] aggs))
             (is (= ["aggregation" {"base-type" "type/BigInteger", "effective-type" "type/BigInteger"} uuid]
                    (get-in repaired ["stages" 0 "order-by" 0 2]))))
@@ -2958,7 +2955,7 @@
           count-agg (get-in repaired ["stages" 0 "aggregation" 1])
           ref-clause (get-in repaired ["stages" 0 "order-by" 0 2])]
       (testing "target aggregation clause got a lib/uuid stamped"
-        (is (uuid-string? (get-in count-agg [1 "lib/uuid"]))))
+        (is (u/uuid-string? (get-in count-agg [1 "lib/uuid"]))))
       (testing "ref last slot is the same UUID as the target aggregation"
         (is (= (get-in count-agg [1 "lib/uuid"])
                (nth ref-clause 2))))
@@ -3102,7 +3099,7 @@
           repaired (repair/repair trivial-mp q)
           stage1-agg-uuid (get-in repaired ["stages" 1 "aggregation" 0 1 "lib/uuid"])
           stage1-ref-uuid (get-in repaired ["stages" 1 "order-by" 0 2 2])]
-      (is (uuid-string? stage1-agg-uuid))
+      (is (u/uuid-string? stage1-agg-uuid))
       (is (= stage1-agg-uuid stage1-ref-uuid))
       (is (= "type/Float"
              (get-in repaired ["stages" 1 "order-by" 0 2 1 "base-type"]))))))
