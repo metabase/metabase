@@ -535,3 +535,9 @@
        clojure.lang.ExceptionInfo
        #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
        (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(deftest workspace-feature-is-postgres-only-test
+  (testing "only Postgres reports :workspace; each other driver comes back once its isolation methods are proven"
+    (mt/test-drivers (mt/normal-drivers)
+      (is (= (= driver/*driver* :postgres)
+             (driver/database-supports? driver/*driver* :workspace nil))))))

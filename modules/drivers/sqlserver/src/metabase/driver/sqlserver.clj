@@ -84,7 +84,8 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :workspace                              true
+                              ;; Off until this driver's isolation methods are proven: init still reuses an existing user.
+                              :workspace                              false
                               :table-privileges                       true
                               :stage-ctes                             true
                               :stage-ctes/nested                      false}]

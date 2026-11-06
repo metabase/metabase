@@ -112,7 +112,8 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :workspace                              true}]
+                              ;; Off until this driver's isolation methods are proven: init still reuses an existing user.
+                              :workspace                              false}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :mysql
