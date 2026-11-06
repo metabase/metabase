@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [metabase.util.encryption-test :as encryption-test]))
 
+(set! *warn-on-reflection* true)
+
 (deftest flavors-agree-test
   (testing "every flavor has a dumper, and every flavor but H2 a pinned server to dump it from"
     (is (= snapshot/flavors
@@ -50,6 +52,22 @@
         (is (thrown? Exception (snapshot/load-snapshot! conn :h2))))
       (is (= [{:restored 1}]
              (jdbc/query {:connection conn} ["SELECT @MB_RESTORED AS restored"]))))))
+
+(deftest load-snapshot-keeps-the-first-failure-test
+  (testing "when restoring the guards fails too, the error that stopped the load is the one thrown"
+    (impl/with-temp-empty-app-db [conn :h2]
+      (mt/with-dynamic-fn-redefs [snapshot/session-guards (fn [_flavor]
+                                                            [["NOT VALID SQL"]
+                                                             ["ALSO NOT VALID"]])]
+        (let [e (try
+                  (snapshot/load-snapshot! conn :h2)
+                  nil
+                  (catch Exception e e))]
+          (is (=? {:message    #"(?s).*NOT VALID SQL.*"
+                   :suppressed [{:message #"(?s).*ALSO NOT VALID.*"}]}
+                  {:message    (ex-message e)
+                   :suppressed (mapv (fn [^Throwable s] {:message (ex-message s)})
+                                     (.getSuppressed ^Throwable e))})))))))
 
 (deftest usable-for-start?-test
   (impl/with-temp-empty-app-db [conn :h2]
