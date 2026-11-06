@@ -11,6 +11,8 @@ import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId, waitForRequestsToSettle } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -62,71 +64,76 @@ const databaseWithActionsDisabled = createMockDatabase({
   settings: { "database-enable-actions": false },
 });
 
+const tablesProvider = createMetadataProvider({
+  metadata: createMockMetadata({
+    databases: [createSampleDatabase({ id: databaseWithActionsEnabled.id })],
+    tables: [mockTable, mockTableMultiplePks, mockTableNoPk],
+  }),
+});
+
 const mockDatasetCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const mockDatasetNoPkCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": mockTableNoPk.id,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: mockTableNoPk.id } }],
+    }),
+  ),
 });
 
 const mockDatasetMultiplePksCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": mockTableMultiplePks.id,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: mockTableMultiplePks.id } }],
+    }),
+  ),
 });
 
 const mockDatasetWithClausesCard = createMockCard({
   id: getNextId(),
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-      filter: [
-        "contains",
-        ["field", PEOPLE.NAME, null],
-        "Macy",
-        { "case-sensitive": false },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [
+        {
+          source: { type: "table", id: PEOPLE_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: "contains",
+              args: [
+                { type: "column", fieldId: PEOPLE.NAME },
+                { type: "literal", value: "Macy" },
+              ],
+            },
+          ],
+        },
       ],
-    },
-  },
+    }),
+  ),
 });
 
 const mockDatasetNoWritePermissionCard = createMockCard({
   id: getNextId(),
   can_write: false,
   type: "model",
-  dataset_query: {
-    type: "query",
-    database: databaseWithActionsEnabled.id,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(tablesProvider, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const metadata = createMockMetadata({

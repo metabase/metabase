@@ -20,6 +20,8 @@ import {
   getComputedSettingsForSeries,
   loadVisualizationComponents,
 } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
@@ -42,7 +44,6 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -73,13 +74,11 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
     const [question, setQuestion] = useState(
       new Question(
         {
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": ORDERS_ID,
-            },
-            database: SAMPLE_DB_ID,
-          },
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [{ source: { type: "table", id: ORDERS_ID } }],
+            }),
+          ),
           display,
           visualization_settings,
         },
