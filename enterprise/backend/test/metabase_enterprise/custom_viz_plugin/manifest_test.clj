@@ -195,8 +195,9 @@
     (is (nil? (manifest/icon-error "Icon.SVG"))))
   (testing "any other file type is named in the error"
     (is (= "Plugin icon \"icon.png\" must be an SVG file" (manifest/icon-error "icon.png"))))
-  (testing "no icon is fine"
-    (is (nil? (manifest/icon-error nil)))))
+  (testing "no icon, or a blank one, is fine"
+    (is (nil? (manifest/icon-error nil)))
+    (is (nil? (manifest/icon-error "")))))
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 
