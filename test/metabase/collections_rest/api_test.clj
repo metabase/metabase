@@ -637,11 +637,10 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
+           (testing "Data and Metrics collections are both marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
-                        collection/library-metrics-collection-type
-                        collection/library-dashboards-collection-type}
+                        collection/library-metrics-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200

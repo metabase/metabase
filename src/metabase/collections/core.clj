@@ -25,14 +25,11 @@
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!
-  ensure-library-dashboards-collection!
   descendant-ids
   instance-analytics-collection-type
   library-collection
   library-collection-type
   library-collection-types
-  library-dashboards-collection-type
-  library-dashboards-collection?
   library-data-collection-type
   library-metrics-collection-type
   location-path
