@@ -27,20 +27,6 @@
       (is (= "ab...ra"
              (u.str/mask "abracadabra" 2 2))))))
 
-(deftest ^:parallel valid-uuid?-test
-  (testing "accepts the canonical form in either case"
-    (doseq [s [(str (random-uuid))
-               "12345678-9abc-def0-1234-56789abcdef0"
-               "12345678-9ABC-DEF0-1234-56789ABCDEF0"]]
-      (is (true? (u.str/valid-uuid? s)) s)))
-  (testing "rejects the short forms that UUID/fromString accepts"
-    (doseq [s ["1-2-3-4-5" "157-bad-cafe-dead-beef"]]
-      (is (false? (u.str/valid-uuid? s)) s)))
-  (testing "rejects other values"
-    (doseq [s [nil "" "not-a-uuid" "123456789abcdef0123456789abcdef0" " 12345678-9abc-def0-1234-56789abcdef0"
-               (random-uuid) 12345678]]
-      (is (false? (u.str/valid-uuid? s)) (pr-str s)))))
-
 (deftest ^:parallel elide-test
   (is (= "short" (u.str/elide "short" 5)))
   (is (= "lo..." (u.str/elide "longer string" 5)))

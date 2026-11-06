@@ -13,7 +13,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
    (java.sql Blob)))
@@ -90,7 +89,7 @@
       :absent
 
       (and (encryption/default-encryption-enabled?)
-           (u/ignore-exceptions (string/valid-uuid? (encryption/maybe-decrypt raw))))
+           (u/ignore-exceptions (u/uuid-string? (encryption/maybe-decrypt raw))))
       :valid
 
       :else

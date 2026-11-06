@@ -61,6 +61,30 @@
        "https://metabase.com" false
        "email@metabase.com"   false)))
 
+(deftest ^:parallel uuid-string?-test
+  (are [s expected] (= expected
+                       (u/uuid-string? s))
+    ;; the canonical form, in either case
+    "12345678-9abc-def0-1234-56789abcdef0"  true
+    "12345678-9ABC-DEF0-1234-56789ABCDEF0"  true
+    ;; short forms that `UUID/fromString` accepts on the JVM
+    "1-2-3-4-5"                             false
+    "157-bad-cafe-dead-beef"                false
+    ;; other strings: empty, no dashes, a leading space
+    ""                                      false
+    "not-a-uuid"                            false
+    "123456789abcdef0123456789abcdef0"      false
+    " 12345678-9abc-def0-1234-56789abcdef0" false
+    ;; values that are not strings
+    nil                                     false
+    (random-uuid)                           false
+    12345678                                false))
+
+(defspec uuid-string?-accepts-generated-uuids-test 100
+  (prop/for-all [id gen/uuid]
+    (and (u/uuid-string? (str id))
+         (u/uuid-string? (u/upper-case-en (str id))))))
+
 (deftest ^:parallel state?-test
   (are [x expected] (= expected
                        (u/state? x))

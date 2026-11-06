@@ -6,7 +6,7 @@
    [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
-   [metabase.util.string :as u.string]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -152,7 +152,7 @@
             (is (partial= {:url "https://drive.google.com/drive/expected-gdrive-link", :created-by-id (mt/user->id :crowberto)}
                           saved))
             (is (pos-int? (:created-at saved)))
-            (is (u.string/valid-uuid? (:gdrive/conn-id saved)))))))))
+            (is (u/uuid-string? (:gdrive/conn-id saved)))))))))
 
 (deftest create-sheet-test
   (with-sample-db-as-dwh

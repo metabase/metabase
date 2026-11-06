@@ -52,16 +52,6 @@
         (when (< (+ end-limit start-limit) cnt)
           (subs s (- cnt end-limit) cnt)))))))
 
-(def ^:private uuid-pattern
-  #"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-
-(defn valid-uuid?
-  "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case.
-  `java.util.UUID/fromString` is not strict enough: it accepts any five dash-separated groups of hex digits, such as
-  `1-2-3-4-5`."
-  [s]
-  (boolean (and (string? s) (re-matches uuid-pattern s))))
-
 (defn- continuation-byte? [b]
   (= (bit-and b 0xC0) 0x80))
 

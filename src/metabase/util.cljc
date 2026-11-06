@@ -601,6 +601,13 @@
   "A regular expression for matching canonical string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
 
+(defn uuid-string?
+  "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case."
+  [s]
+  ;; Not `parse-uuid` or `UUID/fromString`: on the JVM they accept any five dash-separated groups of hex digits,
+  ;; such as `1-2-3-4-5`. Case is ignored because the ClickHouse driver checks filter values that users type.
+  (boolean (and (string? s) (re-matches uuid-regex (lower-case-en s)))))
+
 (defn one-or-many
   "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
   single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
