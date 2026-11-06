@@ -12,6 +12,7 @@
    [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -634,6 +635,42 @@
   (conj (serdes/storage-path-prefixes (serdes/path table))
         {:label (:name table) :key (:name table)}))
 
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+(defn- import-owner-ids
+  "A transform fn importing owner emails as User ids, keeping the local user ids that older exports copied, so that
+  re-importing such files on the same instance keeps the right owner."
+  [store _entities values opts]
+  (mapv (fn [v id] (if (int? v) v id))
+        values
+        (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
+
+(defmethod serialization/spec :model/Table [_]
+  {:schema    ::warehouse-schema.schema/external-table
+   :identity  [:db_id :schema :name]
+   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
+               :data_source :owner_email :is_published]
+   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
+   :transform {:archived_at    serialization/date-transform
+               :deactivated_at serialization/date-transform
+               :data_layer     serialization/keyword-transform
+               :db_id          serialization/database-transform
+               :collection_id  (serialization/fk-transform :model/Collection)
+               :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
+               :transform_id   (serialization/fk-transform :model/Transform)}
+   :defaults  {:is_defective_duplicate  false
+               :is_published            false
+               :is_upload               false
+               :show_in_getting_started false}})
+
+(defmethod serialization/storage-paths :model/Table [_ entities _ctx]
+  (mapv (fn [{:keys [db_id schema name]}]
+          (conj (serialization/storage-path-prefixes [db_id schema name])
+                {:label name :key name}))
+        entities))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search.spec/define-spec "table"
@@ -677,3 +714,12 @@
                   [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Table [_ entities]
+  (mapv (fn [{:keys [collection_id transform_id]}]
+          (cond-> []
+            collection_id (conj [:model/Collection collection_id])
+            transform_id  (conj [:model/Transform transform_id])))
+        entities))

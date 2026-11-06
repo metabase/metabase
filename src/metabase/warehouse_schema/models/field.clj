@@ -10,6 +10,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -482,3 +483,47 @@
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
+;; a trio of strings with schema maybe nil.
+
+(def ^:private table-transform
+  serialization/table-transform)
+
+(def ^:private field-transform
+  serialization/field-transform)
+
+(defmethod serialization/spec :model/Field [_]
+  {:schema    ::warehouse-schema.schema/external-field
+   :identity  [:table_id :parent_id :name]
+   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
+               :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
+               :database_partitioned :database_position :database_required :database_type
+               :description :display_name :effective_type :has_field_values :is_defective_duplicate
+               :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
+               :unique_field_helper :visibility_type]
+   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
+   :children  {:dimensions :model/Dimension}
+   :transform {:table_id           table-transform
+               :fk_target_field_id field-transform
+               :parent_id          field-transform}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
+
+(defmethod serialization/entity-ref :model/Field [_ {:keys [table_id parent_id name]}]
+  (conj (or parent_id table_id) name))
+
+(defmethod serialization/storage-paths :model/Field [_ entities _]
+  (mapv (fn [field]
+          (let [[db-name schema table-name & field-names] (serialization/entity-ref :model/Field field)
+                field-name                                (str/join "." field-names)]
+            (conj (serialization/storage-path-prefixes [db-name schema table-name])
+                  {:label "fields"}
+                  {:label field-name :key field-name})))
+        entities))

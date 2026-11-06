@@ -573,6 +573,7 @@
            query-processor
            query-processor.pivot
            request
+           serialization
            settings
            startup
            system
@@ -2638,7 +2639,7 @@
 
   serialization
   {:team "Data Apps"
-   :api  #{}
+   :api  #{metabase.serialization.core}
    :uses #{app-db
            lib
            lib.legacy-mbql
@@ -2762,6 +2763,7 @@
            lib.schema
            models
            premium-features
+           serialization
            util
            util.config}
    :model-exports #{:model/Setting}
@@ -3382,6 +3384,7 @@
            permissions
            premium-features
            search
+           serialization
            settings
            sync
            util
@@ -3468,6 +3471,7 @@
            query-processor
            remote-sync
            search
+           serialization
            settings
            sync.analyze
            util

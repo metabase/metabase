@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -111,6 +112,17 @@
   [_model-name _opts]
   {:schema    ::channel.schema/external-channel
    :copy           [:name :description :type :details :active]
+   :defaults {:active true}})
+
+(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+  (mapv (fn [channel]
+          [{:label "channels"} {:label (:name channel) :key (:name channel)}])
+        entities))
+
+(defmethod serialization/spec :model/Channel [_]
+  {:schema   ::channel.schema/external-channel
+   :identity [:name]
+   :copy     [:name :description :type :details :active]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;

@@ -16,8 +16,10 @@
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.settings.schema :as settings.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -110,6 +112,24 @@
 
 (defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
   (set-value-of-type! :string key (some-> value str)))
+
+(defn exportable-settings
+  "The site-wide settings an admin can write, that serialization exports, as `{:key :value}` maps with string values:
+  the ones whose value isn't set by an environment variable."
+  []
+  (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
+                                            :getter (partial get-value-of-type :string))
+        :when (and (export? key) (not is_env_setting))]
+    {:key key :value value}))
+
+(defmethod serialization/spec :model/Setting [_]
+  {:schema    ::settings.schema/external-setting
+   :identity  [:key]
+   :primary-key :key
+   :copy      [:value]
+   :skip      [:value_with_aad]
+   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
+                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
 
 (def ^:private Type
   [:fn

@@ -3,6 +3,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -237,3 +238,51 @@
   (let [table-path (pop (serdes/path tus))]
     (conj (serdes/storage-path-prefixes table-path)
           {:label (:id (peek table-path)) :suffix table-user-settings-slug})))
+
+(defmethod serialization/spec :model/TableUserSettings [_]
+  {:schema    ::warehouse-schema.schema/external-table-user-settings
+   :identity  [:table_id]
+   :primary-key :table_id
+   :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
+               :show_in_getting_started :data_authority :data_source :owner_email :is_published
+               :description_set :visibility_type_set :data_layer_set :data_source_set]
+   :skip      [:caveats_set :points_of_interest_set]
+   :defaults  {:description_set     false
+               :visibility_type_set false
+               :data_layer_set      false
+               :data_source_set     false}
+   :transform {:collection_id (serialization/fk-transform :model/Collection)
+               :owner_user_id serialization/user-transform
+               :data_layer    serialization/keyword-transform
+               :table_id      serialization/table-transform}})
+
+(defmethod serialization/storage-paths :model/TableUserSettings [_ entities _ctx]
+  (mapv (fn [{:keys [table_id]}]
+          (conj (serialization/storage-path-prefixes table_id)
+                {:label (nth table_id 2) :suffix table-user-settings-slug}))
+        entities))
+
+(defmethod serialization/import-dependencies :model/TableUserSettings [_ entities]
+  (mapv (fn [{:keys [collection_id]}]
+          (cond-> #{} collection_id (conj [:model/Collection collection_id])))
+        entities))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defn- load-legacy-fields!
+  "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
+  FieldUserSettings of their Tables."
+  [items]
+  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
+    (let [kept (into #{} (map :field_id)
+                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
+      (warehouse-schema.db/delete-field-user-settings!
+       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
+
+(defmethod serialization/after-load :model/TableUserSettings [_ items]
+  (load-legacy-fields! items)
+  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
+    (warehouse-schema.db/update-table! table_id (without-derived-half
+                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
+    (when (:field_order entity)
+      (table/update-field-positions! (warehouse-schema.db/table table_id)))))

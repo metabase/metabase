@@ -5,6 +5,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
@@ -61,3 +62,26 @@
   (let [field-path (serdes/storage-path-prefixes (pop (serdes/path dimension)))]
     (update field-path (dec (count field-path))
             (fn [segment] (assoc segment :suffix dimension-slug)))))
+
+(def ^:private field-id-transform
+  "The transform of `field_id`, which keeps the Field id that a Dimension nested in its Field's entity loads with."
+  (assoc serialization/field-transform
+         :import (fn [store _ field-ids opts]
+                   (mapv (fn [field-id imported] (if (int? field-id) field-id imported))
+                         field-ids
+                         (serialization/column-ids store :model/Field (mapv #(when-not (int? %) %) field-ids) opts)))))
+
+(defmethod serialization/spec :model/Dimension [_]
+  {:schema    ::warehouse-schema.schema/external-dimension
+   :identity  [:field_id]
+   :copy      [:name :type :entity_id]
+   :parent    {:model :model/Field :key :field_id :import-only? true}
+   :transform {:human_readable_field_id serialization/field-transform
+               :field_id                field-id-transform}})
+
+(defmethod serialization/storage-paths :model/Dimension [_ entities _ctx]
+  (mapv (fn [dimension]
+          (let [field-path (serialization/storage-path-prefixes (:field_id dimension))]
+            (update field-path (dec (count field-path))
+                    (fn [segment] (assoc segment :suffix dimension-slug)))))
+        entities))

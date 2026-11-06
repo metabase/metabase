@@ -35,6 +35,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -743,3 +744,30 @@
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
     (update field-path (dec (count field-path))
             (fn [segment] (assoc segment :suffix field-values-slug)))))
+
+(defmethod serialization/spec :model/FieldValues [_]
+  {:schema    ::warehouse-schema.schema/external-field-values
+   :identity  [:field_id :type]
+   :copy      [:values :human_readable_values :has_more_values :hash_key]
+   :skip      [:last_used_at]
+   :transform {:type     serialization/keyword-transform
+               :field_id serialization/field-transform}
+   :defaults  {:has_more_values false}})
+
+(defmethod serialization/storage-paths :model/FieldValues [_ entities _]
+  (mapv (fn [fv]
+          ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
+          ;; don't have their own directories.
+          (let [field-path (serialization/storage-path-prefixes (:field_id fv))]
+            (update field-path (dec (count field-path))
+                    (fn [segment] (assoc segment :suffix field-values-slug)))))
+        entities))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/FieldValues [_ items]
+  (mapv (fn [{:keys [local] :as item}]
+          (cond-> item
+            (and local (= (get-in item [:row :type]) (:type local)))         (update :row dissoc :type)
+            (and local (= (get-in item [:row :hash_key]) (:hash_key local))) (update :row dissoc :hash_key)))
+        items))

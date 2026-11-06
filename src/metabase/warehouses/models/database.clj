@@ -19,6 +19,7 @@
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
@@ -726,6 +727,44 @@
   ;; directory for the database with same-named file inside.
   [{:label "databases"} {:label name :key name} {:label name :key name}])
 
+;;; ------------------------------------------------ Serialization ----------------------------------------------------
+
+(defn- import-constantly
+  "A transform fn importing every value as `v`."
+  [v]
+  (fn [_store _entities values _opts]
+    (mapv (constantly v) values)))
+
+(defmethod serialization/spec :model/Database [_]
+  {:schema    ::warehouses.schema/external-database
+   :identity  [:name]
+   :copy      [:auto_run_queries :caveats
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
+               :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+               :uploads_schema_name :uploads_table_prefix]
+   :skip      [:cache_ttl :initial_sync_error :dbms_version]
+   :transform {:details                     serialization/import-only-transform
+               :write_data_details          serialization/import-only-transform
+               :cache_field_values_schedule serialization/import-only-transform
+               :metadata_sync_schedule      serialization/import-only-transform
+               :initial_sync_status         {:import (import-constantly "complete")}
+               :is_sample                   {:import (import-constantly false)}
+               :is_stub                     {:import (import-constantly false)}
+               :creator_id                  serialization/user-transform
+               :router_database_id          serialization/database-transform}
+   :defaults  {:auto_run_queries true
+               :is_attached_dwh  false
+               :is_audit         false
+               :is_full_sync     true
+               :is_on_demand     false
+               :uploads_enabled  false}})
+
+(defmethod serialization/storage-paths :model/Database [_ entities _]
+  (mapv (fn [{:keys [name]}]
+          ;; directory for the database with same-named file inside.
+          [{:label "databases"} {:label name :key name} {:label name :key name}])
+        entities))
+
 (defn assert-not-h2!
   "Validate db is not h2 for serialization import"
   [ingested]
@@ -787,3 +826,25 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defn- keep-local-audit-columns
+  "The load `item` of a Database, keeping the local values of the columns its entity lacks when it is the internal
+  analytics Database, whose engine, details and timezone belong to this instance."
+  [{:keys [entity local] :as item}]
+  (if (and local (:is_audit entity))
+    (update item :row #(apply dissoc % (remove (set (keys entity)) (keys %))))
+    item))
+
+(defmethod serialization/before-load :model/Database [_ items]
+  (doseq [{:keys [row]} items]
+    (assert-not-h2! row)
+    (assert-sqlite-not-hosted! row))
+  (mapv (fn [item]
+          (-> item
+              keep-local-audit-columns
+              (update :row #(cond-> %
+                              (:details %)            (update :details driver/sanitize-db-details)
+                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)))))
+        items))
