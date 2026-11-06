@@ -694,6 +694,7 @@
    :skip      [:cache_ttl :initial_sync_error :dbms_version]
    :transform {:details                     serialization/import-only-transform
                :write_data_details          serialization/import-only-transform
+               :admin_details               serialization/import-only-transform
                :cache_field_values_schedule serialization/import-only-transform
                :metadata_sync_schedule      serialization/import-only-transform
                :initial_sync_status         {:import (import-constantly "complete")}
@@ -786,5 +787,6 @@
               keep-local-audit-columns
               (update :row #(cond-> %
                               (:details %)            (update :details driver/sanitize-db-details)
-                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)))))
+                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)
+                              (:admin_details %)      (update :admin_details driver/sanitize-db-details)))))
         items))
