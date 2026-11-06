@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`first 1`] = `"first"`;
+
+exports[`second 1`] = `"second"`;
