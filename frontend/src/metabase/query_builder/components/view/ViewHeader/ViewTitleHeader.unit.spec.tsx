@@ -595,7 +595,7 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", async () => {
     const { question, onOpenModal } = setupAdHoc();
     const table = checkNotNull(
-      question.metadata().table(Lib.sourceTableOrCardId(question.query())),
+      question.metadata().table(Lib.primarySourceTableId(question.query())),
     );
     const tableName = table.displayName();
 

@@ -95,7 +95,7 @@ describe("createTestQuery", () => {
           },
         ],
       });
-      expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+      expect(Lib.primarySourceTableId(query)).toBe(PRODUCTS_ID);
     });
 
     it("should create a query with a card source", () => {
@@ -172,7 +172,7 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.sourceTableOrCardId(query)).toBe(ORDERS_ID);
+      expect(Lib.primarySourceTableId(query)).toBe(ORDERS_ID);
       expect(
         Lib.displayInfo(query, 0, Lib.aggregations(query, 0)[0]),
       ).toMatchObject({

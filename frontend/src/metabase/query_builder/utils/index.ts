@@ -90,13 +90,12 @@ export function getTableUrlForPristineQuestion(
     return null;
   }
 
-  // A card source (`card__123`) is a string id; only a real table qualifies.
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  if (typeof sourceTableId !== "number") {
+  const sourceTableId = Lib.primarySourceTableId(query);
+  if (sourceTableId == null) {
     return null;
   }
 
-  const tableMetadata = Lib.tableOrCardMetadata(query, sourceTableId);
+  const tableMetadata = Lib.tableMetadata(query, sourceTableId);
   if (!tableMetadata) {
     return null;
   }

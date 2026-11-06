@@ -23,7 +23,6 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Box, Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   ConcreteTableId,
   DatasetColumn,
@@ -148,12 +147,7 @@ export function ObjectDetailPanel({
       return;
     }
 
-    if (
-      isDrillThroughDetail &&
-      table &&
-      _.isEmpty(table.fks) &&
-      !isVirtualCardId(table.id)
-    ) {
+    if (isDrillThroughDetail && table && _.isEmpty(table.fks)) {
       // Unjustified type cast. FIXME
       fetchTableFks?.(table.id as ConcreteTableId);
     }

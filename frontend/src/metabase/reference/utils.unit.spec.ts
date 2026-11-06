@@ -68,7 +68,7 @@ describe("Reference utils.js", () => {
       });
 
       const query = new Question(card).query();
-      expect(Lib.sourceTableOrCardId(query)).toBe(tableId);
+      expect(Lib.primarySourceTableId(query)).toBe(tableId);
     });
 
     it("should generate correct question for table counts", () => {

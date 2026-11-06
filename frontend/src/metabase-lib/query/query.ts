@@ -8,7 +8,6 @@ import type {
   FieldId,
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
-  TableId,
   TestNativeQuerySpec,
   TestQuerySpec,
 } from "metabase-types/api";
@@ -107,10 +106,6 @@ export function swapClauses(
   targetClause: Clause,
 ): Query {
   return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
-}
-
-export function sourceTableOrCardId(query: Query): TableId | null {
-  return ML.source_table_or_card_id(query);
 }
 
 export function primarySourceTableId(query: Query): ConcreteTableId | null {

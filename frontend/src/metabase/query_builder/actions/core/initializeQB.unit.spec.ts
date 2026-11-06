@@ -985,7 +985,7 @@ describe("QB Actions > initializeQB", () => {
           expectedCard.dataset_query,
         ),
       ).toBe(true);
-      expect(Lib.sourceTableOrCardId(query)).toBe(null);
+      expect(Lib.primarySourceTableId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 
