@@ -1,19 +1,29 @@
 import cx from "classnames";
+import { useId } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Tooltip, UnstyledButton } from "metabase/ui";
+
+type WarningSeverity = "warning" | "error";
 
 interface WarningsProps {
   warnings?: string[];
+  severity?: WarningSeverity;
   className?: string;
   size?: number;
+  onClick?: () => void;
 }
 
 export const Warnings = ({
   warnings,
+  severity = "warning",
   className = "",
   size = 16,
+  onClick,
 }: WarningsProps) => {
+  const descriptionId = useId();
+
   if (!warnings || warnings.length === 0) {
     return null;
   }
@@ -26,10 +36,30 @@ export const Warnings = ({
       ))}
     </ul>
   );
+  const color = severity === "error" ? "feedback-negative" : undefined;
+
+  if (!onClick) {
+    return (
+      <Tooltip label={tooltip}>
+        <Icon className={className} c={color} name="warning" size={size} />
+      </Tooltip>
+    );
+  }
 
   return (
     <Tooltip label={tooltip}>
-      <Icon className={className} name="warning" size={size} />
+      <UnstyledButton
+        aria-describedby={descriptionId}
+        aria-label={t`Warnings`}
+        className={className}
+        display="block"
+        onClick={onClick}
+      >
+        <Icon c={color} display="block" name="warning" size={size} />
+        <span hidden id={descriptionId}>
+          {warnings.join(" ")}
+        </span>
+      </UnstyledButton>
     </Tooltip>
   );
 };

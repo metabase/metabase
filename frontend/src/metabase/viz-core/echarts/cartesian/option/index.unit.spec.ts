@@ -9,6 +9,7 @@ import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 
+import { createMockChartContext } from "__support__/echarts";
 import type {
   RawSeries,
   SingleSeries,
@@ -52,13 +53,7 @@ const chartHeight = 274;
 const hasTimelineEvents = false;
 const hiddenSeries: string[] = [];
 
-const mockRenderingContext: RenderingContext = {
-  getColor: (name) => name,
-  measureText: () => 0,
-  measureTextHeight: () => 0,
-  fontFamily: "",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+const mockRenderingContext = createMockChartContext();
 
 const seriesFn = jest.fn();
 
@@ -222,10 +217,9 @@ describe("empty series", () => {
 
 describe("brushSelected / brushEnd ordering", () => {
   it("does not throttle brushSelected in getSharedEChartsOptions", () => {
-    const renderingContext: RenderingContext = {
-      ...mockRenderingContext,
+    const renderingContext = createMockChartContext({
       getColor: () => "#509EE3",
-    };
+    });
     const { brush } = getSharedEChartsOptions(false, renderingContext);
 
     expect(brush).not.toHaveProperty("throttleType");

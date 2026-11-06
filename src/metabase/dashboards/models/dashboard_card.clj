@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -61,8 +62,23 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
+;;; before-insert can't take arguments, so the copy source is passed through a binding
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *copy-source-dashcards*
+  "DashboardCards whose goals new DashboardCards may reuse without a fresh read check."
+  nil)
+
+(defmacro with-copy-source-dashcards
+  "Runs `body` with [[*copy-source-dashcards*]] bound to `source-dashcards`, which must belong to a Dashboard the
+  current user has passed a read check on."
+  [source-dashcards & body]
+  `(binding [*copy-source-dashcards* ~source-dashcards] ~@body))
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (apply queries/check-new-goal-references!
+         (:visualization_settings dashcard)
+         (map :visualization_settings *copy-source-dashcards*))
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -71,6 +87,9 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
+  (when (contains? (t2/changes dashcard) :visualization_settings)
+    (queries/check-new-goal-references! (:visualization_settings dashcard)
+                                        (:visualization_settings (t2/original dashcard))))
   (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

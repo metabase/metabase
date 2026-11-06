@@ -44,6 +44,7 @@ import {
   dimensionIsTimeseries,
   formatValueForTooltip,
   getMarkerColorClass,
+  getNumericGoalValue,
   getOtherSeriesAggregationLabel,
   getPercent,
   getTotalValue,
@@ -956,6 +957,16 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+export function getGoalFormatter({
+  leftAxisModel,
+  rightAxisModel,
+}: {
+  leftAxisModel: { formatGoal: AxisFormatter } | null;
+  rightAxisModel: { formatGoal: AxisFormatter } | null;
+}) {
+  return (leftAxisModel ?? rightAxisModel)?.formatGoal;
+}
+
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
   element: EventTarget | null,
@@ -965,7 +976,7 @@ export const getGoalLineHoverData = (
     return null;
   }
 
-  const goalValue = settings["graph.goal_value"] ?? "";
+  const goalValue = getNumericGoalValue(settings) ?? "";
 
   return {
     element,

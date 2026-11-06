@@ -1,0 +1,45 @@
+import { useMemo } from "react";
+
+import {
+  type ComputedVisualizationSettings,
+  type GoalRefError,
+  applyGraphGoalValue,
+  getGoalErrors,
+  needsGraphGoalResolution,
+} from "metabase/viz-core";
+import type { Card, DatasetData } from "metabase-types/api";
+
+import {
+  type ResolvedGoalData,
+  useResolvedGoalData,
+} from "./use-resolved-goal-data";
+
+/**
+ * Resolves `graph.goal_value` to a number for the chart model. A goal that
+ * can't resolve turns off `graph.show_goal` and is reported in `errors`.
+ * Returns the given settings untouched when there is nothing to resolve.
+ */
+export function useResolvedGoalSettings(
+  card: Pick<Card, "display" | "dataset_query">,
+  data: DatasetData,
+  settings: ComputedVisualizationSettings,
+): {
+  status: ResolvedGoalData["status"];
+  settings: ComputedVisualizationSettings;
+  errors: GoalRefError[];
+} {
+  const needsResolving = needsGraphGoalResolution(card.display, settings);
+  const goal = needsResolving ? (settings["graph.goal_value"] ?? null) : null;
+
+  const goalData = useResolvedGoalData(card.dataset_query, data, [goal]);
+  const results = goalData.status === "resolved" ? goalData.results : [];
+  const errors = getGoalErrors(results);
+  const value = results[0]?.value ?? null;
+
+  const resolvedSettings = useMemo(
+    () => (needsResolving ? applyGraphGoalValue(settings, value) : settings),
+    [settings, needsResolving, value],
+  );
+
+  return { status: goalData.status, settings: resolvedSettings, errors };
+}

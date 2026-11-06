@@ -226,6 +226,49 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
     });
   });
 
+  describe("goal references", () => {
+    const DYNAMIC_SETTINGS = {
+      "gauge.segments": [
+        {
+          min: 0,
+          max: { type: "card" as const, id: 7, column: "total" },
+          color: "red",
+        },
+      ],
+    };
+
+    it("sends referenced_entities for an ad-hoc gauge", async () => {
+      const question = createMockAdHocQuestion({
+        display: "gauge",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+
+      await setupRunQuestionQuery(question);
+
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+      expect(await call?.request?.json()).toEqual({
+        ...question.datasetQuery(),
+        parameters: [],
+        referenced_entities: [{ type: "card", id: 7, columns: ["total"] }],
+      });
+    });
+
+    it("does not run goal references for a display without dynamic goals", async () => {
+      const question = createMockAdHocQuestion({
+        display: "table",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+
+      await setupRunQuestionQuery(question);
+
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+      expect(await call?.request?.json()).toEqual({
+        ...question.datasetQuery(),
+        parameters: [],
+      });
+    });
+  });
+
   describe("error handling", () => {
     it("should convert 4xx errors to successful responses with error data (saved question)", async () => {
       const question = createMockSavedQuestion();

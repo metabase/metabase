@@ -56,6 +56,8 @@ import {
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
+import { hasUnansweredGoalReferences } from "metabase/viz-core";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -280,9 +282,22 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
     if (!reload) {
+      const savedDashcard =
+        editingDashboard != null
+          ? editingDashboard.dashcards.find(({ id }) => id === dashcard.id)
+          : dashcard;
+      const savedGoalCard =
+        savedDashcard != null ? getSavedGoalCard(card, savedDashcard) : null;
+      // a failed query carries no goal answers, and a refetch would fail again
+      const isMissingGoalReferences =
+        savedGoalCard != null &&
+        lastResult?.status !== "failed" &&
+        hasUnansweredGoalReferences(savedGoalCard, lastResult?.data);
+
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
+        !isMissingGoalReferences &&
         _.isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),
@@ -661,6 +676,36 @@ export const clearCardData = createAction(
   CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
+
+// keep in sync with `goal-scope` in dynamic_goals.clj, which picks the goals the backend answers
+function getSavedGoalCard(
+  card: Card,
+  savedDashcard: DashboardCard,
+): Pick<Card, "display" | "visualization_settings"> | null {
+  if (savedDashcard.card_id != null && card.id !== savedDashcard.card_id) {
+    return null;
+  }
+
+  if (!isVisualizerDashboardCard(savedDashcard)) {
+    return {
+      display: card.display,
+      visualization_settings: {
+        ...card.visualization_settings,
+        ...savedDashcard.visualization_settings,
+      },
+    };
+  }
+
+  const { display, settings } =
+    savedDashcard.visualization_settings.visualization;
+  return {
+    display: display ?? DEFAULT_VISUALIZER_DISPLAY,
+    visualization_settings: {
+      ...settings,
+      ..._.omit(savedDashcard.visualization_settings, "visualization"),
+    },
+  };
+}
 
 function getDatasetQueryParams(datasetQuery?: JsonQuery) {
   const parameters = datasetQuery?.parameters ?? [];

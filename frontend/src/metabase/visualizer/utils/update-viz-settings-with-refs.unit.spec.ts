@@ -168,6 +168,41 @@ describe("updateVizSettingsKeysWithRefs", () => {
 });
 
 describe("updateVizSettingsWithRefs", () => {
+  it("should update a graph.goal_value that names a column of the same query", () => {
+    const settings: VisualizationSettings = {
+      "graph.show_goal": true,
+      "graph.goal_value": "avg",
+    };
+    const columnsToRefs = { avg: "COLUMN_1", sum: "COLUMN_2" };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result["graph.goal_value"]).toBe("COLUMN_1");
+  });
+
+  it("should not modify graph.goal_value when it is not a column of the same query", () => {
+    const columnsToRefs = { avg: "COLUMN_1" };
+    const foreignRef = { type: "card" as const, id: 10, column: "count" };
+
+    expect(
+      updateVizSettingsWithRefs({ "graph.goal_value": 42 }, columnsToRefs)[
+        "graph.goal_value"
+      ],
+    ).toBe(42);
+    expect(
+      updateVizSettingsWithRefs(
+        { "graph.goal_value": foreignRef },
+        columnsToRefs,
+      )["graph.goal_value"],
+    ).toEqual(foreignRef);
+    expect(
+      updateVizSettingsWithRefs(
+        { "graph.goal_value": "other_field" },
+        columnsToRefs,
+      )["graph.goal_value"],
+    ).toBe("other_field");
+  });
+
   it("should not modify graph.series_order_dimension when value is not in columnsToRefs", () => {
     const settings: VisualizationSettings = {
       "graph.series_order_dimension": "other_field",

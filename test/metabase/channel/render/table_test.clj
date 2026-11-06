@@ -9,10 +9,10 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
@@ -18,7 +17,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.performance :refer [mapv some]])
+   [metabase.util.performance :refer [mapv some]]
+   [metabase.visualization-settings.core :as mb.viz])
   (:import
    (java.io OutputStream)
    (java.time

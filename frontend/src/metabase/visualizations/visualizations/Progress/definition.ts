@@ -9,6 +9,7 @@ import {
   getMinSize,
 } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isGoalSelfColumnRef, isGoalValue } from "metabase-types/guards";
 
 import { findProgressColumn } from "./utils";
 
@@ -66,30 +67,37 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     }),
     "progress.goal": {
-      getSection: () => t`Display`,
+      getSection: getProgressGoalSettingsSection,
       get title() {
         return t`Goal`;
       },
-      widget: "goalInput",
+      widget: "goalValue",
       getDefault: () => 0,
       isValid: ([{ data }], settings) => {
         const goalSetting = settings["progress.goal"];
 
-        if (typeof goalSetting === "number") {
-          return true;
-        }
-
-        if (typeof goalSetting === "string") {
+        if (isGoalSelfColumnRef(goalSetting)) {
           const column = data.cols.find((col) => col.name === goalSetting);
           return !!(column && isNumeric(column));
         }
 
-        return false;
+        return isGoalValue(goalSetting);
       },
-      getProps: ([{ data }], settings) => ({
-        columns: data.cols,
-        valueField: settings["progress.value"],
-      }),
+      getProps: ([{ card, data }], settings) => {
+        const column = findProgressColumn(
+          data.cols,
+          settings["progress.value"],
+        );
+
+        return {
+          data,
+          datasetQuery: card.dataset_query,
+          display: card.display,
+          excludedSelfColumn: settings["progress.value"],
+          formatOptions: column && settings.column?.(column),
+          placeholder: t`Enter goal value`,
+        };
+      },
       readDependencies: ["progress.value"],
     },
     "progress.color": {
@@ -102,3 +110,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
     },
   },
 };
+
+export function getProgressGoalSettingsSection() {
+  return t`Display`;
+}

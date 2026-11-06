@@ -1,6 +1,8 @@
 import debounce from "lodash.debounce";
 import {
   type ChangeEvent,
+  type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useMemo,
@@ -39,10 +41,14 @@ interface ChartSettingInputProps extends Omit<
     isInteger?: boolean;
     isNonNegative?: boolean;
   };
+  "aria-label"?: string;
   id?: string;
+  inputRef?: Ref<HTMLInputElement>;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  rightSection?: ReactNode;
+  rightSectionWidth?: number;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -50,9 +56,13 @@ export const ChartSettingInputNumeric = ({
   value,
   placeholder,
   options,
+  "aria-label": ariaLabel,
   id,
+  inputRef,
   className,
   disabled,
+  rightSection,
+  rightSectionWidth,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const isFocusedRef = useRef(false);
@@ -109,7 +119,9 @@ export const ChartSettingInputNumeric = ({
 
   return (
     <TextInput
+      aria-label={ariaLabel}
       id={id}
+      ref={inputRef}
       placeholder={placeholder}
       type="text"
       disabled={disabled}
@@ -125,6 +137,9 @@ export const ChartSettingInputNumeric = ({
       onFocus={handleFocus}
       onBlur={handleBlur}
       className={className}
+      rightSection={rightSection}
+      rightSectionPointerEvents="all"
+      rightSectionWidth={rightSectionWidth}
     />
   );
 };

@@ -5,6 +5,7 @@ import {
 } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
 import {
+  type AxisFormatter,
   type ComputedVisualizationSettings,
   type Datum,
   type DimensionModel,
@@ -31,6 +32,7 @@ import {
   getAdjustedBrushEndEvent,
   getBrushClickObject,
   getEventDimensions,
+  getGoalFormatter,
   getGoalLineHoverData,
   getSeriesClickData,
   getSeriesHovered,
@@ -1158,5 +1160,28 @@ describe("getGoalLineHoverData", () => {
     const marker = createMarkerElement();
 
     expect(getGoalLineHoverData(settings, marker)?.element).toBe(marker);
+  });
+});
+
+describe("getGoalFormatter", () => {
+  const formatLeft: AxisFormatter = (value) => `left ${value}`;
+  const formatRight: AxisFormatter = (value) => `right ${value}`;
+
+  it("formats the goal with the left axis when there is one", () => {
+    const formatGoal = getGoalFormatter({
+      leftAxisModel: { formatGoal: formatLeft },
+      rightAxisModel: { formatGoal: formatRight },
+    });
+
+    expect(formatGoal).toBe(formatLeft);
+  });
+
+  it("formats the goal with the right axis when it is the only axis", () => {
+    const formatGoal = getGoalFormatter({
+      leftAxisModel: null,
+      rightAxisModel: { formatGoal: formatRight },
+    });
+
+    expect(formatGoal).toBe(formatRight);
   });
 });

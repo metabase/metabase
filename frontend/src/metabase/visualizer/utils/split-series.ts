@@ -111,6 +111,7 @@ export function splitVisualizerSeries(
             columnNames.includes(insight.col),
           ),
           results_metadata: { columns: resultMetadataCols },
+          referenced_entities: data.referenced_entities,
         },
         columnValuesMapping,
         started_at: new Date().toISOString(),

@@ -124,6 +124,28 @@ describe("getRowGoalLineSeriesOption", () => {
     ).toBeNull();
   });
 
+  it("returns null for a goal reference that was not resolved to a number", () => {
+    expect(
+      getRowGoalLineSeriesOption(
+        PARAMS,
+        createSettings({
+          "graph.goal_value": { type: "card", id: 9, column: "goal" },
+        }),
+        createRenderingContext(),
+      ),
+    ).toBeNull();
+  });
+
+  it("reads a goal on a normalized stack as a percentage", () => {
+    const option = getRowGoalLineSeriesOption(
+      { ...PARAMS, isNormalized: true },
+      createSettings({ "graph.goal_value": 50 }),
+      createRenderingContext(),
+    );
+
+    expect(option?.data).toEqual([[0.5, "a"]]);
+  });
+
   it("triggers the goal tooltip only from the marker at the line's top end", () => {
     const { hover, onGoalHover } = setup();
     const x = goalX(X_AXIS_MAX / 2);

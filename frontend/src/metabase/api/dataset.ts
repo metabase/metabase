@@ -6,6 +6,7 @@ import type {
   GetRemappedParameterValueRequest,
   InternalDatasetQuery,
   NativeDatasetResponse,
+  ReferencedEntity,
 } from "metabase-types/api";
 
 import { Api, type RtkCacheKeyed } from "./api";
@@ -17,6 +18,10 @@ import {
 
 interface IgnorableError {
   ignore_error?: boolean;
+}
+
+interface ReferencedEntitiesRequest {
+  referenced_entities?: ReferencedEntity[];
 }
 
 export type DownloadDatasetArgs = {
@@ -53,7 +58,10 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      (DatasetQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
+      (DatasetQuery | InternalDatasetQuery) &
+        ReferencedEntitiesRequest &
+        RtkCacheKeyed &
+        IgnorableError
     >({
       query: ({ ignore_error, ...body }) => ({
         method: "POST",

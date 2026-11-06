@@ -232,6 +232,7 @@ const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
 
 interface SetupOpts {
   card: Card | UnsavedCard | null;
+  database?: Database;
   dataset?: Dataset;
   database?: Database;
   echoQueryParameters?: boolean;
@@ -242,6 +243,7 @@ interface SetupOpts {
 
 export const setup = async ({
   card,
+  database = TEST_DB,
   dataset = createMockDataset(),
   database = TEST_DB,
   echoQueryParameters = false,

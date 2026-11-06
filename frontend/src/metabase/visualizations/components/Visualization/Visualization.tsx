@@ -45,6 +45,8 @@ import {
   type ClickActionsMode,
   type ClickObject,
   type OnBrush,
+  type OnOpenChartSettings,
+  type OnUpdateGoalWarning,
   type VisualizationPassThroughProps,
   isRegularClickAction,
 } from "metabase/visualizations/types";
@@ -175,10 +177,7 @@ type VisualizationOwnProps = {
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
-  onOpenChartSettings?: (data: {
-    initialChartSettings?: { section: string };
-    showSidebarTitle?: boolean;
-  }) => void;
+  onOpenChartSettings?: OnOpenChartSettings;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onBrush?: OnBrush | null;
   onHeaderColumnReorder?: (columnIndex: number) => void;
@@ -189,6 +188,7 @@ type VisualizationOwnProps = {
     question?: Question,
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
   onVisualizationRendered?: (series: Series) => void;
   onSameOriginNavigation?: (location: Partial<Path>) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
@@ -709,6 +709,7 @@ class Visualization extends PureComponent<
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
+      onUpdateGoalWarning,
       titleMenuItems,
       zoomedRowIndex,
       onZoomRow,
@@ -1007,6 +1008,7 @@ class Visualization extends PureComponent<
                       onBrush={this.props.onBrush}
                       onDeselectTimelineEvents={onDeselectTimelineEvents}
                       onHoverChange={this.handleHoverChange}
+                      onOpenChartSettings={onOpenChartSettings}
                       onOpenTimelines={onOpenTimelines}
                       onRender={this.onRender}
                       onRenderError={this.onRenderError}
@@ -1017,6 +1019,7 @@ class Visualization extends PureComponent<
                         onUpdateVisualizationSettings
                       }
                       onUpdateWarnings={onUpdateWarnings}
+                      onUpdateGoalWarning={onUpdateGoalWarning}
                       onVisualizationClick={this.handleVisualizationClick}
                       onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                       titleMenuItems={hasHeader ? undefined : titleMenuItems}
