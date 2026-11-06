@@ -502,7 +502,7 @@
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
             (mt/with-temp [:model/User {:keys [id]} {}]
-              (t2/update! :model/User id {:last_login :%now})
+              (t2/update! :model/User :id id {:last_login :%now})
               (let [token       (auth-identity/create-password-reset! id)
                     reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
@@ -533,7 +533,7 @@
       (let [uid (mt/user->id :rasta)
             token (auth-identity/create-password-reset! uid)
             ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
-        (t2/update! :model/AuthIdentity (:id ai)
+        (t2/update! :model/AuthIdentity :id (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (=? {:errors {:password "Invalid reset token"}}
                 (mt/client :post 400 "session/reset_password" {:token    token
@@ -695,7 +695,7 @@
       (let [uid (mt/user->id :rasta)
             token (auth-identity/create-password-reset! uid)
             ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
-        (t2/update! :model/AuthIdentity (:id ai)
+        (t2/update! :model/AuthIdentity :id (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
@@ -902,7 +902,7 @@
                           (mt/client :post 200 "session/google_auth" {:token "foo"})))
               (is (=? {:first_name "test"
                        :last_name "user"}
-                      (t2/select-one :model/User user-id))))
+                      (t2/select-one :model/User :id user-id))))
             (testing "with throttling disabled"
               (with-redefs [api.session/throttling-disabled? true]
                 (is (malli= SessionResponse
@@ -1054,7 +1054,7 @@
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
     (mt/with-temp [:model/User user]
-      (t2/update! :model/User (u/the-id user) {:password nil, :password_salt nil})
+      (t2/update! :model/User :id (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
                          :embedded           false

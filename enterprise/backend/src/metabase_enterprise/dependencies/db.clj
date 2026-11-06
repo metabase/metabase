@@ -584,7 +584,7 @@
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
@@ -807,7 +807,7 @@
   "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
   [finding-id :- ms/PositiveInt
    changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update [:analyzed_at :analysis_version :result :stale])]
-  (t2/update! :model/AnalysisFinding finding-id changes))
+  (t2/update! :model/AnalysisFinding :id finding-id changes))
 
 (mu/defn mark-findings-stale!
   "Mark the AnalysisFindings of the entities `entity-type` `entity-ids` as stale, returning the number updated."

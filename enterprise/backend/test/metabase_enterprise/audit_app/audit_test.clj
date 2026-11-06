@@ -329,7 +329,7 @@
                                         :query    {:source-table orig-id}}}]
           (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
             ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (t2/update! :model/Table :id orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
             (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
             (is (= 2 (t2/count :model/Table :db_id audit/audit-db-id :name (:name v-content)))
                 "stale-schema sync should produce a duplicate pair")
@@ -367,7 +367,7 @@
                         :table_id      orig-id
                         :dataset_query {:database audit/audit-db-id :type :query :query {:source-table orig-id}}}]
           (testing "precondition: a real Mode A duplicate pair, customer card on the new/active row"
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (t2/update! :model/Table :id orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
             (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
             (let [rows   (t2/select [:model/Table :id :active] :db_id audit/audit-db-id
                                     {:where [:= [:lower :name] "v_content"]})

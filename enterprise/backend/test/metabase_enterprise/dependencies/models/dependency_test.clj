@@ -203,7 +203,7 @@
         (mt/with-premium-features #{}
           (mt/with-temp [:model/Transform transform]
             (mt/with-premium-features #{:dependencies}
-              (t2/update! :model/Transform (:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}))
+              (t2/update! :model/Transform :id (:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}))
             (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
       (testing "snippets create"
         (mt/with-premium-features #{:dependencies}
@@ -213,7 +213,7 @@
         (mt/with-premium-features #{}
           (mt/with-temp [:model/NativeQuerySnippet snippet]
             (mt/with-premium-features #{:dependencies}
-              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
+              (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "new content"}))
             (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true))))))))
 
 (deftest dependency-status-marked-stale-on-card-create-test

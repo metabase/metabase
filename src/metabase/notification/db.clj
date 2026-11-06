@@ -85,7 +85,7 @@
 (mu/defn notification
   "The Notification with `notification-id`, or nil."
   [notification-id :- ms/PositiveInt]
-  (t2/select-one :model/Notification notification-id))
+  (t2/select-one :model/Notification :id notification-id))
 
 (mu/defn notification-by-internal-id
   "The seeded Notification with `internal-id`, or nil."
@@ -209,12 +209,12 @@
 (mu/defn deactivate-notification!
   "Mark the Notification with `notification-id` inactive, returning the number updated."
   [notification-id :- ms/PositiveInt]
-  (t2/update! :model/Notification notification-id {:active false}))
+  (t2/update! :model/Notification :id notification-id {:active false}))
 
 (mu/defn delete-notification!
   "Delete the Notification with `notification-id`, returning the number deleted."
   [notification-id :- ms/PositiveInt]
-  (t2/delete! :model/Notification notification-id))
+  (t2/delete! :model/Notification :id notification-id))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
@@ -236,7 +236,7 @@
 (mu/defn notification-card-exists?
   "Whether a NotificationCard with `notification-card-id` exists."
   [notification-card-id :- ::lib.schema.id/card]
-  (t2/exists? :model/NotificationCard notification-card-id))
+  (t2/exists? :model/NotificationCard :id notification-card-id))
 
 (mu/defn notification-card-card-id
   "The `:card_id` of the NotificationCard with `notification-card-id`."
@@ -251,14 +251,14 @@
 (mu/defn delete-notification-card!
   "Delete the NotificationCard with `notification-card-id`, returning the number deleted."
   [notification-card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/NotificationCard notification-card-id))
+  (t2/delete! :model/NotificationCard :id notification-card-id))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
 (mu/defn subscription
   "The NotificationSubscription with `subscription-id`, or nil."
   [subscription-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationSubscription subscription-id))
+  (t2/select-one :model/NotificationSubscription :id subscription-id))
 
 (mu/defn subscriptions-for-notifications
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
@@ -351,7 +351,7 @@
 (mu/defn delete-recipient!
   "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
   [recipient-id :- ms/PositiveInt]
-  (t2/delete! :model/NotificationRecipient recipient-id))
+  (t2/delete! :model/NotificationRecipient :id recipient-id))
 
 (mu/defn delete-user-recipients-for-notification!
   "Delete the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`,
@@ -379,7 +379,7 @@
 (mu/defn channel-template-channel-type
   "The `:channel_type` of the ChannelTemplate with `template-id`."
   [template-id :- ms/PositiveInt]
-  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id))
+  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] :id template-id))
 
 (mu/defn insert-channel-template!
   "Insert `template` and return its ID."
@@ -663,8 +663,9 @@
   nil."
   [notification-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
-                 (-> (admin-base-list-query {:skip-run-joins? true})
-                     (sql.helpers/where [:= :notification.id notification-id]))))
+                 (h2x/assert-map-or-nil!
+                  (-> (admin-base-list-query {:skip-run-joins? true})
+                      (sql.helpers/where [:= :notification.id notification-id])))))
 
 ;;; ------------------------------------------- Other models -------------------------------------------
 
@@ -672,12 +673,12 @@
   "The instance of `model` (a model keyword, or a `[model & columns]` vector) with `id`, or nil."
   [model :- [:or :keyword [:sequential :keyword]]
    id    :- [:maybe ms/PositiveInt]]
-  (t2/select-one model id))
+  (t2/select-one model :id id))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn unarchived-card
   "The Card with `card-id` if it is not archived, or nil."
@@ -687,17 +688,17 @@
 (mu/defn card-name
   "The name of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :name :model/Card card-id))
+  (t2/select-one-fn :name :model/Card :id card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :name :model/Dashboard dashboard-id))
+  (t2/select-one-fn :name :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`."
@@ -717,13 +718,13 @@
 (mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email [:model/User :email] user-id))
+  (t2/select-one-fn :email [:model/User :email] :id user-id))
 
 (mu/defn user-summary
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
   [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :id :first_name :last_name :email] :id user-id))
 
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."

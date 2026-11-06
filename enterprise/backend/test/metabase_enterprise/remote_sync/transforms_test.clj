@@ -702,7 +702,7 @@ is_sample: false
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % "transforms_collection") (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % "child_transform") (keys (get @(:files-atom mock-source) "main"))))
-                (t2/update! :model/Collection coll-id {:archived true})
+                (t2/update! :model/Collection :id coll-id {:archived true})
                 (events/publish-event! :event/collection-update
                                        {:object (t2/select-one :model/Collection :id coll-id)
                                         :user-id (mt/user->id :rasta)})
@@ -879,7 +879,7 @@ serdes/meta:
         (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
                       {:status "synced"})
-          (t2/update! :model/PythonLibrary (:id library) {:source "# updated"})
+          (t2/update! :model/PythonLibrary :id (:id library) {:source "# updated"})
           (let [entry (t2/select-one :model/RemoteSyncObject
                                      :model_type "PythonLibrary"
                                      :model_id (:id library))]

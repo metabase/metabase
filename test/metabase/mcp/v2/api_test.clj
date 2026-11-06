@@ -675,7 +675,7 @@
         (testing "the session really is auth-identity-linked — otherwise this degrades into a plain-session test"
           (is (some? (:auth_identity_id session))))
         (testing "the user is one the seat count bills, unlike the `:type :api-key` user an API key authenticates as"
-          (is (= :personal (t2/select-one-fn :type :model/User (:id user)))))
+          (is (= :personal (t2/select-one-fn :type :model/User :id (:id user)))))
         (let [session-key (:key session)
               init        (client/client-full-response session-key :post 200 endpoint
                                                        {:request-options {:headers {}}}
@@ -996,7 +996,7 @@
 (defn- orders-query
   "A portable MBQL 5 query over the test data Orders table."
   []
-  (let [table (t2/select-one :model/Table (mt/id :orders))]
+  (let [table (t2/select-one :model/Table :id (mt/id :orders))]
     {:lib/type "mbql/query"
      :stages   [{:lib/type     "mbql.stage/mbql"
                  :source-table [(:name (mt/db)) (:schema table) (:name table)]

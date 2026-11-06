@@ -36,9 +36,9 @@
       (let [session-id (insert-session! user-id)]
         (is (t2/exists? :model/Session :id session-id)
             "session exists while the user is active")
-        (t2/update! :model/User user-id {:is_active false})
+        (t2/update! :model/User :id user-id {:is_active false})
         (is (not (t2/exists? :model/Session :id session-id))
             "deactivation revokes the session")
-        (t2/update! :model/User user-id {:is_active true})
+        (t2/update! :model/User :id user-id {:is_active true})
         (is (not (t2/exists? :model/Session :id session-id))
             "reactivation does not revive the pre-deactivation session")))))

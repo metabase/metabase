@@ -398,7 +398,7 @@
                                            {:name    (mt/random-name)
                                             :engine  (u/qualified-name ::test-driver)
                                             :details {:db "my_db"}})
-                db   (t2/select-one :model/Database (:id resp))]
+                db   (t2/select-one :model/Database :id (:id resp))]
             (is (malli= [:merge
                          (into [:map] (m/map-vals (fn [v] [:= {} v]) (mt/object-defaults :model/Database)))
                          [:map
@@ -759,7 +759,7 @@
           (is (= {:message "H2 is not supported as a data warehouse"}
                  (update! db {:engine :h2})))
           (is (= :postgres
-                 (t2/select-one-fn :engine :model/Database (u/the-id db))))))
+                 (t2/select-one-fn :engine :model/Database :id (u/the-id db))))))
       (mt/with-temp [:model/Database db {:name    (mt/random-name)
                                          :details (:details (mt/db))
                                          :engine  :h2}]
@@ -767,7 +767,7 @@
           (is (= {:message "H2 is not supported as a data warehouse"}
                  (update! db {:details {:db "mem:test-data;USER=GUEST;PASSWORD=guest;WHATEVER=true"}})))
           (is (= (:details db)
-                 (t2/select-one-fn :details :model/Database (u/the-id db)))))))))
+                 (t2/select-one-fn :details :model/Database :id (u/the-id db)))))))))
 
 (deftest ^:parallel enable-model-actions-with-user-controlled-scheduling-test
   (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
@@ -1080,7 +1080,7 @@
 (deftest autocomplete-suggestions-honors-user-set-semantic-type-and-visibility-test
   (testing "GET /api/database/:id/autocomplete_suggestions honors the user's semantic_type/visibility_type"
     (let [field-id  (mt/id :venues :price)
-          base-type (t2/select-one-fn :base_type :model/Field field-id)
+          base-type (t2/select-one-fn :base_type :model/Field :id field-id)
           venues-row (fn [] (first (filter (fn [[_ desc]] (str/starts-with? desc "VENUES "))
                                            (mt/user-http-request :rasta :get 200
                                                                  (format "database/%d/autocomplete_suggestions" (mt/id))
@@ -1623,7 +1623,7 @@
                                                            :cache_field_values schedule-map-for-last-friday-at-11pm}
                                             :is_on_demand false
                                             :is_full_sync false})
-                db   (t2/select-one :model/Database (:id resp))]
+                db   (t2/select-one :model/Database :id (:id resp))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
@@ -1644,7 +1644,7 @@
                                                            :cache_field_values schedule-map-for-last-friday-at-11pm}
                                             :is_on_demand true
                                             :is_full_sync false})
-                db   (t2/select-one :model/Database (:id resp))]
+                db   (t2/select-one :model/Database :id (:id resp))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
@@ -1676,7 +1676,7 @@
                                  :is_on_demand false})
           (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
@@ -1690,7 +1690,7 @@
                                  :is_on_demand false})
           (is (= #{(sync-and-analyze-trigger-name db)}
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))
@@ -1703,7 +1703,7 @@
                                  :is_on_demand false})
           (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             ;; make sure the new schedule is randomized, not from the payload
             (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
                       (:metadata_sync_schedule db)))
@@ -1730,7 +1730,7 @@
                                  :is_on_demand false})
           (is (= #{(sync-and-analyze-trigger-name db)}
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))))))
@@ -1749,7 +1749,7 @@
                                  :is_on_demand true})
           (is (= #{(sync-and-analyze-trigger-name db)}
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))))))
@@ -1885,16 +1885,16 @@
                    :model/Table    table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database (:id db)))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))
       (testing "dismissed table spinner"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table (:id table))))))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table :id (:id table))))))))
 
 (deftest ^:parallel dismiss-spinner-test-2
   (testing "can we dissmiss the spinner if db has no tables? (#30837)"
     (mt/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database (:id db))))))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-sync
   (testing "Non-admins should not be allowed to trigger sync"

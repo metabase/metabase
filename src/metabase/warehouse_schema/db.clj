@@ -170,7 +170,7 @@
   "Set the display name of the ::warehouse-schema.schema/field with `id`, returning the number updated."
   [id           :- ::lib.schema.id/field
    display-name :- :string]
-  (t2/update! :model/Field id {:display_name display-name}))
+  (t2/update! :model/Field :id id {:display_name display-name}))
 
 ;;; -------------------------------------------- FieldUserSettings --------------------------------------------
 
@@ -219,7 +219,7 @@
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
-  (t2/update! :model/FieldUserSettings field-id changes))
+  (t2/update! :model/FieldUserSettings :field_id field-id changes))
 
 (mu/defn update-or-insert-field-user-settings!
   "Update the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id` with what `update-fn` returns
@@ -279,7 +279,7 @@
 (mu/defn table-user-settings-exist?
   "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
   [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings table-id))
+  (t2/exists? :model/TableUserSettings :table_id table-id))
 
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
@@ -310,7 +310,7 @@
   number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings table-id changes))
+  (t2/update! :model/TableUserSettings :table_id table-id changes))
 
 (mu/defn delete-table-user-settings!
   "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
@@ -414,7 +414,7 @@
   "Apply `changes` to the FieldValues with `field-values-id`, returning the number updated."
   [field-values-id :- ms/PositiveInt
    changes         :- (mut/select-keys ::warehouse-schema.schema/field-values.update [:has_more_values :values :human_readable_values])]
-  (t2/update! :model/FieldValues field-values-id changes))
+  (t2/update! :model/FieldValues :id field-values-id changes))
 
 (mu/defn find-or-insert-full-field-values!
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting one with `has-more-values`, `values`, and no
@@ -430,7 +430,7 @@
 (mu/defn touch-field-values!
   "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."
   [field-values-id :- ms/PositiveInt]
-  (t2/update! :model/FieldValues field-values-id {:last_used_at :%now}))
+  (t2/update! :model/FieldValues :id field-values-id {:last_used_at :%now}))
 
 (mu/defn delete-field-values!
   "Delete the FieldValues with `field-values-ids`, returning the number deleted."
@@ -571,7 +571,7 @@
   "Set the display name of the ::warehouse-schema.schema/table with `id`, returning the number updated."
   [id           :- ::lib.schema.id/table
    display-name :- :string]
-  (t2/update! :model/Table id {:display_name display-name}))
+  (t2/update! :model/Table :id id {:display_name display-name}))
 
 ;;; ------------------------------------------------ ::warehouses.schema/database ------------------------------------------------
 

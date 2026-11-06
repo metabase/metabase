@@ -330,7 +330,7 @@
                  :fv {:values ["d" "e" "f"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After setting to search it should stay search and sync removes field-values"
-        (t2/update! :model/Field (:id field) {:has_field_values "search"})
+        (t2/update! :model/Field :id (:id field) {:has_field_values "search"})
         (sync/sync-database! db)
         (get-or-create-vals ["x" "y" "z"])
         (is (=? {:f {:name "title" :has_field_values :search}

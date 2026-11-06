@@ -184,7 +184,7 @@
             (is (=? {:status "delete"} (action-rso action-id))))
           (testing "moving the model out of synced collections marks its actions removed"
             (seed!)
-            (t2/update! :model/Card (:id model) {:collection_id plain-id})
+            (t2/update! :model/Card :id (:id model) {:collection_id plain-id})
             (events/publish-event! :event/card-update {:object          (assoc model :collection_id plain-id)
                                                        :previous-object model
                                                        :user-id         (mt/user->id :rasta)})
@@ -430,7 +430,7 @@
 (deftest snippet-event-when-library-not-synced-no-entry-test
   (testing "snippet events don't create entries when Library is not synced"
     (when-let [library (collection/library-collection)]
-      (t2/update! :model/Collection (:id library) {:is_remote_synced false}))
+      (t2/update! :model/Collection :id (:id library) {:is_remote_synced false}))
     (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                    :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                       :content "SELECT 1"
@@ -1042,14 +1042,14 @@
                                           :collection_id (:id remote-sync-collection)}]
         (t2/delete! :model/RemoteSyncObject)
         ;; Trash the doc
-        (t2/update! :model/Document (:id doc) {:archived true})
+        (t2/update! :model/Document :id (:id doc) {:archived true})
         (events/publish-event! :event/document-update
                                {:object (assoc doc :archived true)
                                 :user-id (mt/user->id :rasta)})
         (let [soft-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
           (is (= "delete" (:status soft-delete-entry))))
         ;; Permanently delete from trash
-        (t2/delete! :model/Document (:id doc))
+        (t2/delete! :model/Document :id (:id doc))
         (events/publish-event! :event/document-delete
                                {:object doc :user-id (mt/user->id :rasta)})
         ;; The remote sync object entry should still exist with delete status
@@ -1529,7 +1529,7 @@
                                            :model_table_id    (:id table)
                                            :status            "synced"
                                            :status_changed_at (t/offset-date-time)})
-      (t2/update! :model/Table (:id table) {:collection_id (:id normal)})
+      (t2/update! :model/Table :id (:id table) {:collection_id (:id normal)})
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)) "still only one RSO — no Field/FieldUserSettings RSO added")

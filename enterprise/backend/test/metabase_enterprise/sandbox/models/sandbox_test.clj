@@ -20,7 +20,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the table ID of a sandbox once it has been created"
-           (t2/update! :model/Sandbox (:id gtap) {:table_id (mt/id :checkins)}))))))
+           (t2/update! :model/Sandbox :id (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest disallow-queries-that-add-columns-test
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
@@ -39,7 +39,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (t2/update! :model/Sandbox (:id gtap) {:card_id (:id card)})
+                         (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -49,7 +49,7 @@
                                       :model/Sandbox _    {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))
                                                            :card_id  (:id card)}]
-                         (t2/update! :model/Card (:id card) {:dataset_query query})
+                         (t2/update! :model/Card :id (:id card) {:dataset_query query})
                          :ok))}]
       (testing (str "\n" msg "\n")
         (testing "sanity check"
@@ -82,7 +82,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (t2/update! :model/Sandbox (:id gtap) {:card_id (:id card)})
+                           (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"
@@ -92,7 +92,7 @@
                                         :model/Sandbox _    {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))
                                                              :card_id  (:id card)}]
-                           (t2/update! :model/Card (:id card) {:result_metadata metadata})
+                           (t2/update! :model/Card :id (:id card) {:result_metadata metadata})
                            :ok))}]
         (testing (str "\n" msg "\n")
           (is (thrown-with-msg?
@@ -205,7 +205,7 @@
               run-card     (fn [user]
                              (mt/rows (mt/user-http-request user :post 202 (format "card/%d/query" card-id))))]
           (mt/with-test-user :crowberto
-            (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME")}))
+            (t2/update! :model/Card :id card-id {:result_metadata (venues-cols "ID" "NAME")}))
           (testing "the non-admin's query succeeds"
             (is (seq (run-card :rasta))))
           (testing "the drifted metadata is not overwritten by the non-admin's run"

@@ -21,12 +21,12 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database database-id))
+  (t2/select-one-fn :engine :model/Database :id database-id))
 
 (mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
@@ -37,7 +37,7 @@
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
-  (t2/select-one :model/PythonLibrary library-id))
+  (t2/select-one :model/PythonLibrary :id library-id))
 
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."

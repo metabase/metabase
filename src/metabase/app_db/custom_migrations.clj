@@ -858,7 +858,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (t2/update! :report_dashboardcard id
+                (t2/update! :report_dashboardcard :id id
                             {:visualization_settings (json/encode visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
