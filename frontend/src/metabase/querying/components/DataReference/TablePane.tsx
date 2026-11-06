@@ -61,7 +61,12 @@ export function TablePane({
   const metrics = table.metrics ?? [];
 
   const handleColumnClick = (columnIndex: number) => {
-    onItemClick({ type: "field", tableId: id, columnIndex });
+    onItemClick({
+      type: "field",
+      kind: "table",
+      tableId: id,
+      columnIndex,
+    });
   };
 
   const connectedTables = foreignKeys

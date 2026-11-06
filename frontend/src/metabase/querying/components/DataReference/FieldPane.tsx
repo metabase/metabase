@@ -14,22 +14,23 @@ import * as Lib from "metabase-lib";
 import type {
   ColumnListInfo,
   DataReferenceCardFieldItem,
-  DataReferenceFieldItem,
   DataReferencePaneProps,
   DataReferenceTableFieldItem,
 } from "./types";
 import { getCardColumnListInfo, getTableColumnListInfo } from "./utils";
 
-type FieldPaneProps = DataReferencePaneProps<DataReferenceFieldItem>;
+type TableFieldPaneProps = DataReferencePaneProps<DataReferenceTableFieldItem>;
+type CardFieldPaneProps = DataReferencePaneProps<DataReferenceCardFieldItem>;
+type FieldPaneProps = TableFieldPaneProps | CardFieldPaneProps;
 
 export const FieldPane = (props: FieldPaneProps) => {
-  if ("cardId" in props) {
-    return <CardFieldPane {...props} />;
+  switch (props.kind) {
+    case "table":
+      return <TableFieldPane {...props} />;
+    case "card":
+      return <CardFieldPane {...props} />;
   }
-  return <TableFieldPane {...props} />;
 };
-
-type TableFieldPaneProps = DataReferencePaneProps<DataReferenceTableFieldItem>;
 
 function TableFieldPane({
   tableId,
@@ -58,8 +59,6 @@ function TableFieldPane({
     />
   );
 }
-
-type CardFieldPaneProps = DataReferencePaneProps<DataReferenceCardFieldItem>;
 
 function CardFieldPane({
   cardId,

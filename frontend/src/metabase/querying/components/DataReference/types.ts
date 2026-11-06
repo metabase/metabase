@@ -65,12 +65,14 @@ export type DataReferenceQuestionItem = {
 
 export type DataReferenceTableFieldItem = {
   type: "field";
+  kind: "table";
   tableId: ConcreteTableId;
   columnIndex: number;
 };
 
 export type DataReferenceCardFieldItem = {
   type: "field";
+  kind: "card";
   cardId: CardId;
   columnIndex: number;
 };
