@@ -1,4 +1,4 @@
-import { getIsSsoUser } from "metabase/account/selectors";
+import { getIsPasswordUser } from "metabase/account/selectors";
 import { useValidatePassword } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
 import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
@@ -10,12 +10,12 @@ import { UserPasswordForm } from "../../components/UserPasswordForm";
 
 const UserPasswordApp = () => {
   const user = checkNotNull(useSelector(getUser));
-  const isSsoUser = useSelector(getIsSsoUser);
+  const isPasswordUser = useSelector(getIsPasswordUser);
   const validatePassword = useValidatePassword();
 
   return (
     <Stack gap="xxl">
-      {!isSsoUser && (
+      {isPasswordUser && (
         <Stack gap="lg">
           <UserPasswordForm user={user} onValidatePassword={validatePassword} />
         </Stack>
