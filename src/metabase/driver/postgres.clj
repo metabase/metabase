@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
    [metabase.driver.sql :as driver.sql]
@@ -1536,11 +1537,6 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- user-exists?
-  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
-  [conn username]
-  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
-
 (defn- public-create-grant?
   "True if `schema-name` grants CREATE to the PUBLIC pseudo-role on PostgreSQL.
 
@@ -1833,23 +1829,216 @@
           (throw (role-exists-error user e))
           (throw e))))))
 
+(defn- grants-to-role
+  "Every privilege `role` holds on a relation, a schema or this database, or through a schema's default privileges, as
+  `{:kind :schema :object :privilege :for_role}` maps, where `:for_role` is the role whose future tables a default
+  privilege covers."
+  [conn role]
+  (jdbc/query
+   conn
+   [(str "WITH r AS (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = ?::text) "
+         "SELECT CASE WHEN c.relkind = 'S' THEN 'sequence' ELSE 'relation' END AS kind, n.nspname AS schema, "
+         "       c.relname AS object, a.privilege_type AS privilege, NULL AS for_role "
+         "FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+         "CROSS JOIN LATERAL pg_catalog.aclexplode(c.relacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) "
+         "UNION ALL "
+         "SELECT 'schema', n.nspname, NULL, a.privilege_type, NULL "
+         "FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(n.nspacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) "
+         "UNION ALL "
+         "SELECT 'default', n.nspname, NULL, a.privilege_type, pg_catalog.pg_get_userbyid(d.defaclrole) "
+         "FROM pg_catalog.pg_default_acl d JOIN pg_catalog.pg_namespace n ON n.oid = d.defaclnamespace "
+         "CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a "
+         "WHERE a.grantee = (SELECT oid FROM r) AND d.defaclobjtype = 'r' "
+         "UNION ALL "
+         "SELECT 'database', NULL, d.datname, a.privilege_type, NULL "
+         "FROM pg_catalog.pg_database d CROSS JOIN LATERAL pg_catalog.aclexplode(d.datacl) a "
+         "WHERE d.datname = pg_catalog.current_database() AND a.grantee = (SELECT oid FROM r) "
+         "ORDER BY 1, 2, 3, 4")
+    role]))
+
+(defn- revoke-statement
+  "The REVOKE undoing one grant from [[grants-to-role]]. It names the privilege granted rather than ALL: Postgres
+  picks the grantor of a REVOKE by its best-grantor rule, and `REVOKE ALL` can act as a different role than the GRANT
+  did and miss it."
+  [user {:keys [kind schema object privilege for_role]}]
+  (case kind
+    "relation" (format "REVOKE %s ON TABLE %s.%s FROM %s" privilege (quote-schema schema) (quote-table object)
+                       (quote-field user))
+    "sequence" (format "REVOKE %s ON SEQUENCE %s.%s FROM %s" privilege (quote-schema schema) (quote-table object)
+                       (quote-field user))
+    "database" (format "REVOKE %s ON DATABASE %s FROM %s" privilege (quote-field object) (quote-field user))
+    "schema"   (format "REVOKE %s ON SCHEMA %s FROM %s" privilege (quote-schema schema) (quote-field user))
+    "default"  (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s REVOKE %s ON TABLES FROM %s"
+                       (quote-field for_role) (quote-schema schema) privilege (quote-field user))))
+
+(defn- end-sessions!
+  "Ends every session of `user` that this login may end: all of them, since it holds the user's privileges."
+  [conn user]
+  (jdbc/query conn [(str "SELECT pg_catalog.pg_terminate_backend(pid) AS ended FROM pg_catalog.pg_stat_activity "
+                         "WHERE usename = ?::text AND pg_catalog.pg_has_role(current_user, usesysid, 'USAGE')")
+                    user]))
+
+(defn- other-members
+  "The roles other than this login that are members of `user`."
+  [conn user]
+  (map :member (jdbc/query conn [(str "SELECT m.rolname AS member FROM pg_catalog.pg_auth_members am "
+                                      "JOIN pg_catalog.pg_roles r ON r.oid = am.roleid "
+                                      "JOIN pg_catalog.pg_roles m ON m.oid = am.member "
+                                      "WHERE r.rolname = ?::text AND m.rolname <> current_user ORDER BY 1")
+                                 user])))
+
+(defn- reclaim-membership!
+  "This login is a member of the user again, and no other role is. Before Postgres 16 a role administers its own
+  membership, so the user may have revoked this login's membership, which teardown needs, or granted itself to another
+  role, which could then act as it."
+  [conn user]
+  (jdbc/execute! conn [(grant-membership-statement conn user)])
+  (when (> 160000 (server-version-num conn))
+    (doseq [member (other-members conn user)]
+      (jdbc/execute! conn [(format "REVOKE %s FROM %s" (quote-field user) (quote-field member))]))))
+
+(def ^:private lock-out-attempts 3)
+
+(defn- lock-timeout? [e]
+  (= "55P03" (sql-state (ex-cause e))))
+
+(defn- lock-out-workspace-user!
+  "The user can no longer log in. A session of the user that holds its own role row, such as an uncommitted
+  `ALTER ROLE` on itself, would make NOLOGIN wait out the lock timeout: its sessions are ended first, and again after
+  each timeout."
+  [step user]
+  (step #(end-sessions! % user))
+  (loop [attempt 1]
+    (let [locked-out? (try
+                        (step #(jdbc/execute! % [(format "ALTER ROLE %s NOLOGIN" (quote-field user))]))
+                        true
+                        (catch clojure.lang.ExceptionInfo e
+                          (if (and (lock-timeout? e) (< attempt lock-out-attempts))
+                            false
+                            (throw e))))]
+      (when-not locked-out?
+        (step #(end-sessions! % user))
+        (recur (inc attempt))))))
+
+(def ^:private session-exit-wait-ms
+  "How long teardown waits for the workspace user's sessions to exit once they are told to."
+  5000)
+
+(defn- check-no-sessions-left!
+  "Throws a 409 while any session of `user` is still open: teardown must not leave one holding what it is about to
+  revoke or drop."
+  [database user]
+  (loop [waited 0]
+    (let [sessions (do-in-workspace-transaction
+                    database []
+                    (fn [conn]
+                      ;; NOLOGIN has committed, so a session ended here cannot come back
+                      (end-sessions! conn user)
+                      (:n (first (jdbc/query conn [(str "SELECT count(*) AS n FROM pg_catalog.pg_stat_activity "
+                                                        "WHERE usename = ?::text AND pid <> pg_catalog.pg_backend_pid()")
+                                                   user])))))]
+      (cond
+        (zero? sessions)                nil
+        (< waited session-exit-wait-ms) (do (Thread/sleep 250) (recur (+ waited 250)))
+        :else
+        (throw (ex-info (format (str "%d session(s) of workspace user %s are still open, and this login could not end "
+                                     "them. The user can no longer log in and has lost its grants. End them with "
+                                     "`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '%s'`, "
+                                     "then retry.")
+                                sessions (quote-field user) user)
+                        {:status-code 409, :user user, :sessions sessions}))))))
+
+(defn- revoke-grants!
+  "Revokes every grant to `user` outside its output schema, each REVOKE under its own savepoint: one this login cannot
+  make (a grant from a role it cannot act for) leaves the rest revoked, and `DROP USER` then fails naming it."
+  [conn user output-schema]
+  (doseq [grant (remove #(= output-schema (:schema %)) (grants-to-role conn user))]
+    (jdbc/execute! conn ["SAVEPOINT workspace_revoke"])
+    (try
+      (jdbc/execute! conn [(revoke-statement user grant)])
+      (jdbc/execute! conn ["RELEASE SAVEPOINT workspace_revoke"])
+      (catch java.sql.SQLException e
+        (log/warnf "Could not revoke %s from workspace user %s: %s" (pr-str grant) user (ex-message e))
+        (jdbc/execute! conn ["ROLLBACK TO SAVEPOINT workspace_revoke"])))))
+
+(defn- connectable-databases
+  "The databases of the cluster that any login, the workspace user included, may connect to: those that allow
+  connections and grant CONNECT to PUBLIC. template0 never allows them."
+  [conn]
+  (map :datname (jdbc/query conn [(str "SELECT d.datname FROM pg_catalog.pg_database d WHERE d.datallowconn "
+                                       "AND d.datname <> 'template0' AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode("
+                                       "  COALESCE(d.datacl, pg_catalog.acldefault('d', d.datdba))) a "
+                                       "  WHERE a.grantee = 0 AND a.privilege_type = 'CONNECT') "
+                                       "ORDER BY d.datname")])))
+
+(defn- current-database [conn]
+  (:db (first (jdbc/query conn ["SELECT pg_catalog.current_database() AS db"]))))
+
+(defn- do-in-other-database
+  "Calls `(f conn)` in a transaction on database `db` of the same cluster, as the login of the caller's connection
+  scope, and returns what it returns."
+  [database db f]
+  (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+   :postgres
+   (assoc (driver.conn/effective-details (driver.u/lib-database (:id database))) :dbname db)
+   (fn [spec]
+     (jdbc/with-db-transaction [conn spec]
+       (start-workspace-transaction! conn)
+       (f conn)))))
+
+(defn- drop-user-error
+  "`DROP USER` failing on objects the user still owns or privileges it still holds, often in another database, as a 409
+  naming them."
+  [user ^Throwable e]
+  (let [e (driver.u/batch-exception e)]
+    (case (sql-state e)
+      "2BP01" (ex-info (format (str "Workspace user %s cannot be dropped yet: %s. It can no longer log in and holds no "
+                                    "grant from this login. Run `DROP OWNED BY %s` in each database named, then retry.")
+                               (quote-field user) (str/replace (str/trim (ex-message e)) #"\.$" "") (quote-field user))
+                       {:status-code 409, :user user}
+                       e)
+      "42501" (ex-info (format (str "This login may not drop workspace user %s: %s. It can no longer log in and holds "
+                                    "no grant from this login. This login needs the privileges of the workspace user: "
+                                    "make it a member (`GRANT %s TO <login>`) that inherits them (`ALTER ROLE <login> "
+                                    "INHERIT`), then retry.")
+                               (quote-field user) (str/replace (str/trim (ex-message e)) #"\.$" "") (quote-field user))
+                       {:status-code 409, :user user}
+                       e)
+      e)))
+
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name   (:schema workspace)
-        username      (-> workspace :database_details :user)
-        quoted-schema (quote-schema schema-name)
-        quoted-user   (quote-field username)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema)]
-                      (user-exists? t-conn username)
-                      (into [(format "DROP OWNED BY %s" quoted-user)
-                             (format "DROP USER IF EXISTS %s" quoted-user)]))]
-          (.addBatch ^Statement stmt ^String sql))
+  (let [schema-name (:schema workspace)
+        user        (-> workspace :database_details :user)
+        step        (fn [f] (do-in-workspace-transaction database [] (fn [conn] (when (role-exists? conn user) (f conn)))))]
+    ;; each step commits on its own, so a later failure leaves the user locked out and without access outside its
+    ;; output schema
+    (step #(reclaim-membership! % user))
+    (lock-out-workspace-user! step user)
+    ;; before waiting on sessions, so that one that stays open has lost its access to input schemas
+    (step #(revoke-grants! % user schema-name))
+    (when (step (constantly true))
+      (check-no-sessions-left! database user))
+    (do-in-workspace-transaction
+     database []
+     #(jdbc/execute! % [(format "DROP SCHEMA IF EXISTS %s CASCADE" (quote-schema schema-name))]))
+    ;; what it made in another database it may connect to, such as a large object, would keep DROP USER from succeeding
+    (when (step (constantly true))
+      (doseq [db (do-in-workspace-transaction database [] #(remove #{(current-database %)} (connectable-databases %)))]
         (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/batch-exception t))))))))
+          (do-in-other-database database db #(jdbc/execute! % [(format "DROP OWNED BY %s" (quote-field user))]))
+          (catch Exception e
+            (log/warnf "Could not run DROP OWNED BY %s in database %s: %s" user db (ex-message e))))))
+    (try
+      ;; this login holds the user's privileges, so DROP OWNED reaches everything it made in this database
+      (step (fn [conn]
+              (jdbc/execute! conn [(format "DROP OWNED BY %s" (quote-field user))])
+              (jdbc/execute! conn [(format "DROP USER %s" (quote-field user))])))
+      (catch java.sql.SQLException e
+        (throw (drop-user-error user e))))
+    nil))
 
 (defn- grant-workspace-read-access-sqls
   "Build the sequence of SQL statements that grant `username` read access to every
