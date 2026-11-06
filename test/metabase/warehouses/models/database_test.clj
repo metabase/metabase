@@ -828,6 +828,10 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"private or internal network address"
+             (t2/update! :model/Database :id (:id db) {:write_data_details {:host "127.0.0.1" :user "hummingbird"}})))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
              (t2/update! :model/Database :id (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
 (deftest disallowed-connection-parameters-are-refused-on-save-test
