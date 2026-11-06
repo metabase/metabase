@@ -34,6 +34,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
+   [metabase.test.liquibase]
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
@@ -78,6 +79,7 @@
   metabase.core.init/keep-me
   metabase.model-persistence.test-util/keep-me
   metabase.request.core/keep-me
+  metabase.test.liquibase/keep-me
   metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
   perms.test-util/keep-me
