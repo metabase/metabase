@@ -29,6 +29,15 @@
   [files]
   (update-vals files #(String. ^bytes % "UTF-8")))
 
+(defn- load-plugin!
+  "Load `ingested` as a new plugin, or over the plugin row `id`, and return the stored row."
+  ([ingested] (load-plugin! ingested nil))
+  ([ingested id]
+   (serdes/load-one! ingested (some->> id (t2/select-one :model/CustomVizPlugin :id)))
+   (if id
+     (t2/select-one :model/CustomVizPlugin :id id)
+     (t2/select-one :model/CustomVizPlugin :identifier (:identifier ingested)))))
+
 (deftest dot-path-bundle-round-trip-test
   (let [identifier "dot-path-viz"
         files      (bundle-files {:name identifier :icon "./icon.svg"})
@@ -43,14 +52,13 @@
                          :identifier identifier :files (vec (keys exported))}
                         exported)]
           (is (= (set (keys files)) (set (keys (:serdes/resources ingested)))))
-          (mt/with-temp [:model/CustomVizPlugin {id :id :as plugin} {:identifier   identifier
-                                                                     :display_name identifier
-                                                                     :status       :active
-                                                                     :bundle       bundle}]
-            (serdes/load-one! ingested plugin)
-            (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :id id)))
-            (is (= (update-vals files seq)
-                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)) seq)))))))))
+          (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   identifier
+                                                          :display_name identifier
+                                                          :status       :active
+                                                          :bundle       bundle}]
+            (let [row (load-plugin! ingested id)]
+              (is (= :active (:status row)))
+              (is (= (update-vals files seq) (update-vals (cache/bundle->files (:bundle row)) seq))))))))))
 
 (deftest table-name-test
   (is (= :custom_viz_plugin (t2/table-name :model/CustomVizPlugin))))
@@ -111,12 +119,10 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(deftest entity-id-test
+(deftest entity-id-and-path-test
   (testing "a plugin is identified by its entity_id, like every other entity"
     (is (= "eNtItYiD0000000000001"
-           (serdes/entity-id "CustomVizPlugin" {:identifier "my-viz" :entity_id "eNtItYiD0000000000001" :id 1})))))
-
-(deftest generate-path-test
+           (serdes/entity-id "CustomVizPlugin" {:identifier "my-viz" :entity_id "eNtItYiD0000000000001" :id 1}))))
   (testing "the path is the entity_id, labelled by the identifier"
     (is (= [{:model "CustomVizPlugin" :id "eNtItYiD0000000000001" :label "my_viz"}]
            (serdes/generate-path "CustomVizPlugin" {:identifier "My-Viz" :entity_id "eNtItYiD0000000000001"})))))
@@ -212,104 +218,77 @@
    :bundle       bundle
    :bundle_hash  (cv.tu/bundle-hash bundle)})
 
+(defn- load-as-new-and-over-existing
+  "The rows stored by loading `ingested` as a new plugin, and over an active plugin of its identifier."
+  [{:keys [identifier] :as ingested}]
+  [(mt/with-model-cleanup [:model/CustomVizPlugin]
+     (load-plugin! ingested))
+   (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row identifier (cv.tu/valid-bundle-bytes identifier))]
+     (load-plugin! ingested id))])
+
 (deftest load-insert-validates-bundle-test
-  (testing "loading an exported plugin with a valid bundle makes it :active"
-    (mt/with-model-cleanup [:model/CustomVizPlugin]
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (testing "loading an exported plugin with a valid bundle makes it :active"
       (let [bundle (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart.svg"})]
-        (serdes/load-one! (ingested-plugin "imported-viz" bundle) nil)
-        (is (=? {:status        :active
-                 :error_message nil
-                 :enabled       true
-                 :bundle_hash   (repacked-hash bundle)}
-                (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
-  (testing "loading a plugin whose files have no manifest makes it :error, keeping the files and their hash"
-    (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (is (=? {:status :active :error_message nil :enabled true :bundle_hash (repacked-hash bundle)}
+                (load-plugin! (ingested-plugin "imported-viz" bundle))))))
+    (testing "loading a plugin whose files have no manifest makes it :error, keeping the files and their hash"
       (let [packed (cache/files->bundle {"dist/index.js" (.getBytes "{}" "UTF-8")})]
-        (serdes/load-one! (ingested-plugin "broken-viz" nil :serdes/resources {"metabase-plugin.json" nil
-                                                                               "dist/index.js"        "{}"})
-                          nil)
         (is (=? {:status        :error
                  :error_message #(str/includes? % "metabase-plugin.json not found")
                  :display_name  "broken-viz"
-                 :bundle_hash   (cv.tu/bundle-hash packed)}
-                (t2/select-one :model/CustomVizPlugin :identifier "broken-viz")))
-        (is (= (seq packed) (seq (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "broken-viz")))))))
-  (testing "loading a plugin whose directory has none of the files makes it :error"
-    (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (serdes/load-one! (ingested-plugin "bundleless-viz" nil) nil)
-      (is (=? {:status        :error
-               :error_message #(str/includes? % "metabase-plugin.json not found")}
-              (t2/select-one :model/CustomVizPlugin :identifier "bundleless-viz"))))))
+                 :bundle_hash   (cv.tu/bundle-hash packed)
+                 :bundle        #(= (seq packed) (seq %))}
+                (load-plugin! (ingested-plugin "broken-viz" nil :serdes/resources {"metabase-plugin.json" nil
+                                                                                   "dist/index.js"        "{}"}))))))
+    (testing "loading a plugin whose directory has none of the files makes it :error"
+      (is (=? {:status :error :error_message #(str/includes? % "metabase-plugin.json not found")}
+              (load-plugin! (ingested-plugin "bundleless-viz" nil)))))))
 
 (deftest load-leaves-enabled-to-the-instance-test
   (let [bundle (cv.tu/valid-bundle-bytes "toggled-viz")]
     (testing "a new plugin loads enabled, as an upload does"
       (mt/with-model-cleanup [:model/CustomVizPlugin]
-        (serdes/load-one! (ingested-plugin "toggled-viz" bundle) nil)
-        (is (true? (t2/select-one-fn :enabled :model/CustomVizPlugin :identifier "toggled-viz")))))
-    (testing "a plugin an admin disabled here stays disabled when its files are loaded again"
+        (is (true? (:enabled (load-plugin! (ingested-plugin "toggled-viz" bundle)))))))
+    (testing "a plugin an admin disabled here stays disabled when loaded again, even from a file that says `enabled`"
       (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "toggled-viz" bundle) :enabled false)]
-        (serdes/load-one! (ingested-plugin "toggled-viz" bundle) (t2/select-one :model/CustomVizPlugin :id id))
-        (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :id id)))))
-    (testing "a file that still says `enabled` is loaded without it"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "toggled-viz" bundle) :enabled false)]
-        (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled true) (t2/select-one :model/CustomVizPlugin :id id))
-        (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :id id)))))))
+        (doseq [extra [{} {:enabled true}]]
+          (is (false? (:enabled (load-plugin! (ingested-plugin "toggled-viz" bundle extra) id)))))))))
 
 (deftest load-refuses-a-new-identifier-that-cannot-name-a-directory-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
+  (let [bundle (cv.tu/valid-bundle-bytes "bad/identifier")]
     (testing "a new plugin is a registration, held to the directory rule"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"bad/identifier\" must be letters, digits"
-                            (serdes/load-one! (ingested-plugin "bad/identifier" (cv.tu/valid-bundle-bytes "bad/identifier")) nil))))
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"bad/identifier\" must be letters, digits"
+                              (load-plugin! (ingested-plugin "bad/identifier" bundle))))))
     (testing "an existing plugin from before the rule still updates in place"
-      (let [bundle (cv.tu/valid-bundle-bytes "bad/identifier")]
-        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "bad/identifier" bundle)]
-          (serdes/load-one! (ingested-plugin "bad/identifier" bundle) (t2/select-one :model/CustomVizPlugin :id id))
-          (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :id id))))))))
+      (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "bad/identifier" bundle)]
+        (is (= :active (:status (load-plugin! (ingested-plugin "bad/identifier" bundle) id))))))))
 
-(deftest load-refuses-a-second-plugin-with-the-same-identifier-test
-  (testing "a plugin made on this instance holds its identifier under another entity_id; the import says what to do"
-    (let [bundle (cv.tu/valid-bundle-bytes "thumbs")]
-      (mt/with-temp [:model/CustomVizPlugin {id :id entity-id :entity_id} (active-plugin-row "thumbs" bundle)]
+(deftest load-identifier-uniqueness-test
+  (let [ingested (fn [identifier & kvs]
+                   (apply ingested-plugin identifier (cv.tu/valid-bundle-bytes identifier) kvs))]
+    (mt/with-temp [:model/CustomVizPlugin {id :id entity-id :entity_id} (active-plugin-row "thumbs" (cv.tu/valid-bundle-bytes "thumbs"))
+                   :model/CustomVizPlugin {ops-id :id ops-entity-id :entity_id} (active-plugin-row "ops" (cv.tu/valid-bundle-bytes "ops"))]
+      (testing "a new plugin can't take an identifier held here under another entity_id; the import says what to do"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"A custom viz plugin \"thumbs\" already exists on this instance\. Delete it and pull again"
-                              (serdes/load-one! (ingested-plugin "thumbs" bundle) nil)))
-        (testing "the local plugin is untouched: its entity_id is never replaced by the file's"
-          (is (= entity-id (t2/select-one-fn :entity_id :model/CustomVizPlugin :id id))))
-        (testing "the same file matched to the local row by its entity_id updates it in place"
-          (serdes/load-one! (ingested-plugin "thumbs" bundle :entity_id entity-id) (t2/select-one :model/CustomVizPlugin :id id))
-          (is (= [id entity-id] ((juxt :id :entity_id) (t2/select-one :model/CustomVizPlugin :identifier "thumbs")))))))))
-
-(deftest load-refuses-an-identifier-differing-only-in-case-test
-  (let [bundle (cv.tu/valid-bundle-bytes "Thumbs")]
-    (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "Thumbs" bundle)]
-      (testing "a new plugin whose identifier is an existing one in another case is refused, naming both"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"thumbs\" differs only in case from .*\"Thumbs\""
-                              (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")) nil))))
-      (testing "another plugin, matched by its entity_id, cannot be renamed to an existing identifier in another case"
-        (mt/with-temp [:model/CustomVizPlugin {other-id :id} (active-plugin-row "ops" (cv.tu/valid-bundle-bytes "ops"))]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"thumbs\" differs only in case from .*\"Thumbs\""
-                                (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs"))
-                                                  (t2/select-one :model/CustomVizPlugin :id other-id))))
-          (is (= ["Thumbs" "ops"] (t2/select-fn-vec :identifier :model/CustomVizPlugin :id [:in [id other-id]] {:order-by [[:id :asc]]}))))))))
-
-(deftest load-renames-the-matched-plugin-test
-  (testing "the plugin matched by its entity_id takes the file's identifier: the identifier is a name, not the identity"
-    (let [bundle (cv.tu/valid-bundle-bytes "thumbs2")]
-      (mt/with-temp [:model/CustomVizPlugin {id :id entity-id :entity_id} (active-plugin-row "thumbs" (cv.tu/valid-bundle-bytes "thumbs"))]
-        (serdes/load-one! (ingested-plugin "thumbs2" bundle :entity_id entity-id) (t2/select-one :model/CustomVizPlugin :id id))
-        (is (=? {:id id :entity_id entity-id :identifier "thumbs2" :display_name "thumbs2" :status :active}
-                (t2/select-one :model/CustomVizPlugin :id id)))
-        (testing "including a rename to its own identifier in another case"
-          (serdes/load-one! (ingested-plugin "THUMBS2" (cv.tu/valid-bundle-bytes "THUMBS2") :entity_id entity-id)
-                            (t2/select-one :model/CustomVizPlugin :id id))
-          (is (= "THUMBS2" (t2/select-one-fn :identifier :model/CustomVizPlugin :id id))))
-        (testing "but not to an identifier another plugin holds"
-          (mt/with-temp [:model/CustomVizPlugin _ (active-plugin-row "ops" (cv.tu/valid-bundle-bytes "ops"))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A custom viz plugin \"ops\" already exists on this instance"
-                                  (serdes/load-one! (ingested-plugin "ops" (cv.tu/valid-bundle-bytes "ops") :entity_id entity-id)
-                                                    (t2/select-one :model/CustomVizPlugin :id id))))
-            (is (= "THUMBS2" (t2/select-one-fn :identifier :model/CustomVizPlugin :id id)))))))))
+                              (load-plugin! (ingested "thumbs"))))
+        (is (= entity-id (t2/select-one-fn :entity_id :model/CustomVizPlugin :id id))
+            "the local plugin's entity_id is never replaced by the file's"))
+      (testing "nor one differing only in case, and the error names both"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"THUMBS\" differs only in case from .*\"thumbs\""
+                              (load-plugin! (ingested "THUMBS")))))
+      (testing "a plugin matched by its entity_id can't be renamed to an identifier another plugin holds, in any case"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A custom viz plugin \"thumbs\" already exists on this instance"
+                              (load-plugin! (ingested "thumbs" :entity_id ops-entity-id) ops-id)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"THUMBS\" differs only in case from .*\"thumbs\""
+                              (load-plugin! (ingested "THUMBS" :entity_id ops-entity-id) ops-id)))
+        (is (= "ops" (t2/select-one-fn :identifier :model/CustomVizPlugin :id ops-id))))
+      (testing "the plugin matched by its entity_id updates in place and takes the file's identifier, even its own in another case"
+        (doseq [identifier ["thumbs" "thumbs2" "THUMBS2"]]
+          (is (=? {:id id :entity_id entity-id :identifier identifier :display_name identifier :status :active}
+                  (load-plugin! (ingested identifier :entity_id entity-id) id))))))))
 
 (deftest load-update-validates-bundle-test
   (testing "re-importing over an existing plugin re-validates the new bundle"
@@ -318,43 +297,19 @@
       (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "updated-viz" old-bundle)
                                                             :status        :error
                                                             :error_message "stale")]
-        (serdes/load-one! (ingested-plugin "updated-viz" new-bundle) (t2/select-one :model/CustomVizPlugin :id id))
-        (is (=? {:id            id
-                 :status        :active
-                 :error_message nil
-                 :icon          "star.svg"
-                 :bundle_hash   (repacked-hash new-bundle)}
-                (t2/select-one :model/CustomVizPlugin :id id)))))))
+        (is (=? {:id id :status :active :error_message nil :icon "star.svg" :bundle_hash (repacked-hash new-bundle)}
+                (load-plugin! (ingested-plugin "updated-viz" new-bundle) id)))))))
 
 (deftest load-keeps-a-plugin-with-a-bitmap-icon-active-test
   (testing "a plugin exported with a bitmap icon, from before icons had to be SVG files, keeps working once imported"
-    (let [bundle (cv.tu/valid-bundle-bytes "bitmap-viz" {:icon "icon.png"})]
-      (testing "on insert"
-        (mt/with-model-cleanup [:model/CustomVizPlugin]
-          (serdes/load-one! (ingested-plugin "bitmap-viz" bundle) nil)
-          (is (=? {:status :active :error_message nil}
-                  (t2/select-one :model/CustomVizPlugin :identifier "bitmap-viz")))))
-      (testing "on update over an active plugin"
-        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "bitmap-viz" bundle)]
-          (serdes/load-one! (ingested-plugin "bitmap-viz" bundle) (t2/select-one :model/CustomVizPlugin :id id))
-          (is (=? {:status :active :error_message nil}
-                  (t2/select-one :model/CustomVizPlugin :id id))))))))
+    (is (=? (repeat 2 {:status :active :error_message nil})
+            (load-as-new-and-over-existing
+             (ingested-plugin "bitmap-viz" (cv.tu/valid-bundle-bytes "bitmap-viz" {:icon "icon.png"})))))))
 
 (deftest load-rejects-bundle-identifier-mismatch-test
   (testing "a bundle whose manifest name differs from the imported identifier lands as :error, never :active"
-    (let [ingested (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz"))]
-      (testing "on insert"
-        (mt/with-model-cleanup [:model/CustomVizPlugin]
-          (serdes/load-one! ingested nil)
-          (is (=? {:identifier    "calendar-heatmap-viz"
-                   :status        :error
-                   :error_message #(str/includes? % "does not match")}
-                  (t2/select-one :model/CustomVizPlugin :identifier "calendar-heatmap-viz")))))
-      (testing "on update over an active plugin"
-        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "calendar-heatmap-viz"
-                                                                          (cv.tu/valid-bundle-bytes "calendar-heatmap-viz"))]
-          (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
-          (is (=? {:id            id
-                   :status        :error
-                   :error_message #(str/includes? % "does not match")}
-                  (t2/select-one :model/CustomVizPlugin :id id))))))))
+    (is (=? (repeat 2 {:identifier    "calendar-heatmap-viz"
+                       :status        :error
+                       :error_message #(str/includes? % "does not match")})
+            (load-as-new-and-over-existing
+             (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz")))))))
