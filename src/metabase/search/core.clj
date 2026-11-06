@@ -336,7 +336,8 @@
   "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
   A search-model whose surviving documents cannot be enumerated is left alone.
-  A failure for one search-model is logged and does not stop the others."
+  A failure while checking one search-model's survivors is logged and does not stop the others.
+  Its queued work shares the ingestion worker's batches, where one failing message loses the whole batch."
   [cascading]
   (when (and (seq cascading) (supports-index?))
     (doseq [[search-model ids] cascading]
