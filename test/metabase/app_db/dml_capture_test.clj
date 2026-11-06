@@ -136,7 +136,7 @@
     (let [pks (t2/insert-returning-pks! ::bird [(bird 82 "a") (bird 82 "b")])]
       (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name), :where [:= :group_id 82]})))
       ;; The `{:delete [], :from [...]}` spelling has no case here: Funny SQL cannot compile a top-level `:delete`,
-      ;; so such a statement fails before capture is involved.
+      ;; so such a delete throws and nothing is captured.
       (is (= (rows-for pks 82) (captured-rows))))))
 
 (deftest delete-statement-counts-test

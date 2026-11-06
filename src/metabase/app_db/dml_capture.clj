@@ -11,7 +11,7 @@
 
   Each row is a narrow pre-image snapshot: a plain map of raw column values, holding only the columns named by
   [[capture-fields]], selected with the statement's own conditions immediately before it executes.
-  No instance decoration runs on them — no `after-select` methods, no type transforms.
+  No instance decoration runs on them: no `after-select` methods and no type transforms.
 
   Deletes are captured because they have no affordable row-level hook: toucan2's `before-delete` realizes a
   full instance per matching row.
@@ -28,8 +28,8 @@
   - A statement matching more rows than [[max-pre-image-rows]] delivers no event, so that a wide delete cannot
     materialize an unbounded result set on the caller's thread.
     This is a capture hole, and a loud one: the consumer's convergence backstop is what covers it.
-  - DML that bypasses the model — `(t2/delete! (t2/table-name model) ...)`, raw `t2/query` — delivers no
-    event, exactly as it bypasses every other Toucan 2 tool.
+  - DML that bypasses the model, such as `(t2/delete! (t2/table-name model) ...)` or a raw `t2/query`, delivers
+    no event, as it bypasses every other Toucan 2 tool.
   - A model mixing capture with `before-delete` selects the matching rows twice: once for the row-level hook,
     once for the narrow snapshot.
     Capture is deliberately the inner of the two.
@@ -59,8 +59,9 @@
   10000)
 
 (defmulti capture-fields
-  "The columns guaranteed present in `:rows` when capturing `op` (currently only `:delete`) statements against
-  `model`; return nil or empty to leave that op uncaptured.
+  "The columns guaranteed present in `:rows` when capturing `op` statements against `model`.
+  Only `:delete` is captured today.
+  Return nil or empty to leave that op uncaptured.
   Rows are narrowed to these columns."
   {:arglists '([model op])}
   (fn [model _op] (keyword model)))
@@ -110,10 +111,10 @@
 
 ;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
 ;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
+;; A caller may pass a DELETE map to `delete!`, and a SELECT built from it would keep the `:delete` and
+;; `:delete-from` keys and compile to nonsense.
 (defn- delete-query->select-query
-  "Restate an explicit HoneySQL DELETE map as something a SELECT can be built from.
-  Toucan 2 lets a caller pass one to `delete!`, and a SELECT built from it would keep the `:delete` and
-  `:delete-from` keys and compile to nonsense."
+  "Restate an explicit HoneySQL DELETE map as a map a SELECT can be built from."
   [query]
   (cond-> (dissoc query :delete)
     (contains? query :delete-from) (-> (dissoc :delete-from)
@@ -188,7 +189,7 @@
 ;;; below references another tool's semi-private dispatch keywords, and a tool-dispatch refactor upstream
 ;;; would break it here silently, whereas toucan2's own test suite could own that contract (the scratch-model
 ;;; tests port almost verbatim). Upstream could also replace [[pre-image-rows]]'s compile-then-execute-
-;;; modelless workaround with a proper decoration-free query type — a select.raw sibling of
+;;; modelless workaround with a proper decoration-free query type, such as a select.raw sibling of
 ;;; `:toucan.query-type/select.instances-from-pks`, skipped by after-select and transforms. Incubating here
 ;;; first: the contract is new, and its sharp edges (modelless execution, the row ceiling, at-least-once
 ;;; delivery) should survive production contact before being frozen behind a library release cadence.
