@@ -11,7 +11,7 @@
   ([id name] (card id name ""))
   ([id name extra]
    {:path    (str "collections/" name ".yaml")
-    :content (str "serdes/meta:\n- model: Card\n  id: " id "\n  label: " name "\nname: " name "\n" extra)}))
+    :content (str "serdes/meta:\n- model: Card\nentity_id: " id "\nname: " name "\n" extra)}))
 
 (defn- glossary-entry
   "Builds a `{:path :content}` spec for a Glossary entry with entity `id`, `term` (the file name, as the export
@@ -19,14 +19,14 @@
   ([id term] (glossary-entry id term "def"))
   ([id term definition]
    {:path    (str "glossary/" term ".yaml")
-    :content (str "serdes/meta:\n- model: Glossary\n  id: " id "\n  label: " term "\nentity_id: " id
+    :content (str "serdes/meta:\n- model: Glossary\nentity_id: " id
                   "\nterm: " term "\ndefinition: " definition "\n")}))
 
 (defn- ids
   "Sorted entity ids present in a merge result's :merged set."
   [result]
   (sort (map (fn [{:keys [content]}]
-               (second (re-find #"id: (\w+)" content)))
+               (second (re-find #"entity_id: (\w+)" content)))
              (:merged result))))
 
 (deftest ^:parallel clean-merge-disjoint-changes-test
@@ -142,13 +142,13 @@
   (testing "conflict-label uses the entity's name and path"
     (is (= "bar (collections/bar.yaml)"
            (remote-sync.merge/conflict-label
-            {:key   [["Card" "A"]]
+            {:key    [:model/Card "A"]
              :ours  (card "A" "bar")
              :theirs (card "A" "baz")}))))
   (testing "falls back to model + id when the content has no name"
     (is (= "Card A (collections/a.yaml)"
            (remote-sync.merge/conflict-label
-            {:key   [["Card" "A"]]
+            {:key    [:model/Card "A"]
              :ours  {:path "collections/a.yaml" :content "not-an-entity"}
              :theirs {:path "collections/a.yaml" :content "also-not"}}))))
   (testing "a path-fallback key uses the filename, not garbage from destructuring the path string"

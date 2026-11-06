@@ -35,17 +35,17 @@
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.metabot.tools.resources :as resources]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -1191,10 +1191,10 @@
 (defn- stub-content-store
   "Stands in for the app-DB store over a mock metadata provider, serving `row` by entity id and
   by numeric id. It answers from `row` rather than delegating to
-  [[metabase.models.serialization/lookup-by-id]], so code that bypassed the store could not
+  [[metabase.serialization.protocol.mp/unchecked-app-db-content-store]], so code that bypassed the store could not
   satisfy these tests by reaching the serdes resolver directly."
   [row]
-  (reify resolve.mp/ContentStore
+  (reify protocol.mp/ContentStore
     (card-by-entity-id    [_ eid] (when (= eid (:entity_id row)) row))
     (measure-by-entity-id [_ _] nil)
     (segment-by-entity-id [_ _] nil)
@@ -1388,7 +1388,7 @@
   "Run `body` with numeric ids accepted, the way
   `metabase.mcp.v2.common/execute-representations-query` binds it for the v2 dialect."
   [& body]
-  `(binding [serdes.resolve/*numeric-ids-allowed?* true]
+  `(binding [repr.resolve/*numeric-ids-allowed?* true]
      ~@body))
 
 (deftest numeric-ids-rejected-on-default-surface-test
@@ -1823,7 +1823,7 @@
 
 (def ^:private mock-db-id
   "Must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
-  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
+  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `protocol.mp/table-candidates`
   treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
   rather than this provider. With db id 1 that found the real Sample Database's ORDERS, which has
   no CAMPAIGN_ID, and the failure surfaced only once another namespace had booted the app DB."
@@ -1984,7 +1984,7 @@
           repair (mt/original-fn #'repr.repair/repair)]
       (mt/with-dynamic-fn-redefs
         [repr.repair/repair (fn [& args]
-                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (reset! seen shared.content-store/*audit-refusals?*)
                               (apply repair args))]
         (with-mp-and-stubs!
           (fn []

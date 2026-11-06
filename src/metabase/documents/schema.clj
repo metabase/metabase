@@ -51,11 +51,18 @@
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 
+(mr/def ::external-path
+  "An entity as a serialized document names it: its containers, outermost first, then the entity itself."
+  [:sequential [:map {:closed true}
+                [:model :string]
+                [:id    {:optional true} [:maybe :string]]
+                [:label {:optional true} [:maybe :string]]]])
+
 (def ^:private external-registry
   "[[lib.schema.id/external-registry]], plus the serdes paths serialization writes in place of the ids a document's
   nodes refer to, or the id it keeps when the entity is gone."
   (assoc lib.schema.id/external-registry
-         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::models.schema/external-meta]]))
+         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::external-path]]))
 
 (mr/def ::external-document
   "A Document as serialization writes it, with portable references in place of ids."

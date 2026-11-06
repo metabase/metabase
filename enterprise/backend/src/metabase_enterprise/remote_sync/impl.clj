@@ -13,7 +13,7 @@
    [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
@@ -21,8 +21,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
@@ -43,26 +43,17 @@
    then also checks if any Collection entities have namespace=transforms.
    Built-in TransformTags are excluded since they are system-created and always present."
   [ingestable]
-  (let [serdes-paths (serialization/ingest-list ingestable)
-        models-present (spec/models-in-import serdes-paths)]
+  (let [ks             (ee.serialization/ingest-list ingestable)
+        models-present (spec/models-in-import ks)
+        of-models      (fn [& models] (ee.serialization/ingested ingestable (filterv #((set models) (first %)) ks)))]
     (or (some (disj spec/transform-models "PythonLibrary") models-present)
-        (some (fn [path]
-                (when (= "PythonLibrary" (:model (last path)))
-                  (or (not= transforms-python/builtin-entity-id (:id (last path)))
-                      (not (str/blank? (:source (serialization/ingest-one ingestable path)))))))
-              serdes-paths)
-        ;; Check for non-built-in TransformTags
-        (when (contains? models-present "TransformTag")
-          (some (fn [path]
-                  (when (= "TransformTag" (:model (last path)))
-                    (let [entity (serialization/ingest-one ingestable path)]
-                      (nil? (:built_in_type entity)))))
-                serdes-paths))
-        (some (fn [path]
-                (when (= "Collection" (:model (last path)))
-                  (let [entity (serialization/ingest-one ingestable path)]
-                    (spec/transforms-namespace-collection? entity))))
-              serdes-paths))))
+        (some (fn [[[model id] entity]]
+                (case model
+                  :model/PythonLibrary (or (not= transforms-python/builtin-entity-id id)
+                                           (not (str/blank? (:source entity))))
+                  :model/TransformTag  (nil? (:built_in_type entity))
+                  :model/Collection    (spec/transforms-namespace-collection? entity)))
+              (of-models :model/PythonLibrary :model/TransformTag :model/Collection)))))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -129,6 +120,24 @@
        (remove nil?)
        (str/join " ")))
 
+(defn- cause-chain [e]
+  (take-while some? (iterate ex-cause e)))
+
+(defn- missing-target
+  "The error in the cause chain of `e` of a reference with no target, or nil."
+  [e]
+  (u/seek serialization/target-not-found? (cause-chain e)))
+
+(defn- load-error
+  "The [[serialization/load-error]] in the cause chain of `e`, naming the entity that failed to load, or nil."
+  [e]
+  (u/seek serialization/load-error? (cause-chain e)))
+
+(defn- entity-description
+  "The `{:model :id :name}` of the entity a [[serialization/load-error]]'s ex-data names."
+  [{:keys [model id] entity-name :name}]
+  {:model (some-> model name) :id (cond-> id (not (string? id)) pr-str) :name entity-name})
+
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
 
@@ -156,16 +165,16 @@
       (str/includes? message "Missing commit")
       "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
-      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
-      (let [{:keys [model id referrer]} (ex-data e)]
-        (missing-reference-message {:missing  {:model model :id id}
-                                    :referrer referrer}))
+      (missing-target e)
+      (let [{:keys [model id]} (ex-data (missing-target e))]
+        (missing-reference-message {:missing  {:model (some-> model name) :id (str id)}
+                                    :referrer (some-> (load-error e) ex-data entity-description)}))
 
-      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/load-failure)
-      (let [{:keys [entity stripped-keys]} (ex-data e)]
-        (load-failure-message {:entity        entity
-                               :reason        (some-> e ex-cause ex-message)
-                               :stripped-keys stripped-keys}))
+      (load-error e)
+      (let [error (load-error e)]
+        (load-failure-message {:entity        (entity-description (ex-data error))
+                               :reason        (some-> error ex-cause ex-message)
+                               :stripped-keys (:stripped (ex-data error))}))
 
       (seq (:ingest-errors (ex-data e)))
       (let [ingest-errors (:ingest-errors (ex-data e))]
@@ -197,22 +206,19 @@
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
-  (let [ingest-list (serialization/ingest-list ingestable)
-        imported-data (spec/extract-imported-entities ingest-list #(serialization/ingest-one ingestable %))
+  (let [ingest-list (ee.serialization/ingest-list ingestable)
+        imported-data (spec/extract-imported-entities ingest-list)
         models-present (spec/models-in-import ingest-list)
         ;; Extract namespace info from imported Collection entities
         import-ns-info
-        (reduce (fn [acc path]
-                  (if (= "Collection" (:model (last path)))
-                    (let [entity (serialization/ingest-one ingestable path)]
-                      (if-let [ns (some-> (:namespace entity) keyword name)]
-                        (-> acc
-                            (update :namespaces conj ns)
-                            (update-in [:entity-ids ns] (fnil conj #{}) (:entity_id entity)))
-                        acc))
+        (reduce (fn [acc [_ entity]]
+                  (if-let [ns (some-> (:namespace entity) keyword name)]
+                    (-> acc
+                        (update :namespaces conj ns)
+                        (update-in [:entity-ids ns] (fnil conj #{}) (:entity_id entity)))
                     acc))
                 {:namespaces #{} :entity-ids {}}
-                ingest-list)
+                (ee.serialization/ingested ingestable (filterv #(= :model/Collection (first %)) ingest-list)))
         import-namespace-collections (:namespaces import-ns-info)
         ;; TODO (epaget 2026-02-02) -- entity-id conflict checking (detect unsynced local entities with matching entity_ids)
         feature-conflicts (spec/check-feature-conflicts models-present import-namespace-collections)
@@ -247,35 +253,35 @@
   Returns:
    - [{:model_type :model_id :path :content_hash}] (entities that fail to serialize are omitted)"
   [rows repo-paths]
-  (let [storage-opts (serdes/storage-base-context)
-        repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)
-        serialize    (fn [model-type opts id->eid instance]
-                       (try
-                         (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type opts instance))
-                               repo-path (some->> (some-> id->eid (get (:id instance)))
-                                                  (vector model-type)
-                                                  repo-by-eid)]
-                           {:model_type   model-type
-                            :model_id     (:id instance)
-                            :path         (or repo-path (:path fspec))
-                            :content_hash (source/file-spec-hash fspec)})
-                         (catch Exception e
-                           (log/warnf "Skipping %s %s: failed to serialize for content hash: %s" model-type (:id instance) (ex-message e))
-                           nil)))]
-    ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
-    ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
+  (let [namer       (ee.serialization/file-namer)
+        repo-by-eid (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)]
     (into []
           (mapcat (fn [[model-type model-rows]]
                     (let [spec      (spec/spec-for-model-type model-type)
+                          model     (keyword "model" model-type)
                           model-key (:model-key spec)
-                          opts      (merge spec/git-sync-extract-opts
-                                           {:filter-column :id
-                                            :filter-ids    (mapv :model_id model-rows)})
-                          ;; entity-id models: map local id -> entity_id so we can look up the repo path
+                          instances (into [] (ee.serialization/select-rows
+                                              model (assoc spec/git-sync-extract-opts :ids (mapv :model_id model-rows))))
                           id->eid   (when (and model-key (= :entity-id (:identity spec)))
-                                      (remote-sync.db/entity-ids-by-id model-key (mapv :model_id model-rows)))]
-                      (eduction (keep #(serialize model-type opts id->eid %))
-                                (serdes/extract-query model-type opts)))))
+                                      (remote-sync.db/entity-ids-by-id model-key (mapv :model_id model-rows)))
+                          exported  (serialization/export-batch model instances)
+                          failed?   #(instance? Exception %)
+                          paths     (ee.serialization/entity-file-paths namer (remove failed? exported))]
+                      (doseq [[instance e] (map vector instances exported)
+                              :when (failed? e)]
+                        (log/warnf "Skipping %s %s: failed to serialize for content hash: %s"
+                                   model-type (:id instance) (ex-message e)))
+                      (map (fn [[instance entity] path]
+                             (let [fspec     (source/entity->file-spec-at path entity)
+                                   repo-path (some->> (some-> id->eid (get (:id instance)))
+                                                      (vector model-type)
+                                                      repo-by-eid)]
+                               {:model_type   model-type
+                                :model_id     (:id instance)
+                                :path         (or repo-path (:path fspec))
+                                :content_hash (source/file-spec-hash fspec)}))
+                           (remove (comp failed? second) (map vector instances exported))
+                           paths))))
           (group-by :model_type rows))))
 
 (defn- merge-content-metadata
@@ -293,9 +299,8 @@
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
   [rows repo-paths]
-  (serdes/with-cache
-    (doseq [chunk (partition-all app-db-batch-size rows)]
-      (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
+  (doseq [chunk (partition-all app-db-batch-size rows)]
+    (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))
 
 (defn- in-batches
   "The concatenated results of `f` called on `ids` in batches of [[app-db-batch-size]]."
@@ -304,24 +309,28 @@
 
 (defn- remove-unsynced-user-settings!
   "Deletes the TableUserSettings, FieldUserSettings, and Dimensions of the Tables published in
-  `synced-collection-ids` that `seen-paths` did not import, returning those Tables' ids."
-  [synced-collection-ids ingestable seen-paths]
+  `synced-collection-ids` that the import of the keys `seen` did not load, returning those Tables' ids."
+  [synced-collection-ids ingestable seen]
   (when-let [table-ids (some-> (not-empty synced-collection-ids) remote-sync.db/published-table-ids not-empty vec)]
-    (let [paths         (group-by (comp :model last) seen-paths)
-          parent-id     #(:id (serdes/load-find-local (pop %)))
-          imported      #(into #{} (keep parent-id) (get paths %))
-          legacy-tables (into #{}
-                              (comp (filter #(contains? (serialization/ingest-one ingestable %) :fields))
-                                    (keep parent-id))
-                              (get paths "TableUserSettings"))
-          kept-tables   (imported "TableUserSettings")
-          kept-fields   (imported "FieldUserSettings")
-          kept-dims     (into (imported "Dimension") (keep #(:id (serdes/load-find-local %))) (get paths "Field"))]
+    (let [ingested      (fn [model] (into [] (keep second)
+                                          (ee.serialization/ingested ingestable (filterv #(= model (first %)) seen))))
+          local         (fn [model entities column]
+                          (if (seq entities)
+                            (into #{} (keep column) (serialization/local-rows model entities))
+                            #{}))
+          kept-tables   (local :model/TableUserSettings (ingested :model/TableUserSettings) :table_id)
+          kept-fields   (local :model/FieldUserSettings
+                               (into (ingested :model/FieldUserSettings)
+                                     (comp (mapcat :fields) (map serialization/restore-identity))
+                                     (ingested :model/TableUserSettings))
+                               :field_id)
+          kept-dims     (into (local :model/Dimension (ingested :model/Dimension) :field_id)
+                              (local :model/Field (ingested :model/Field) :id))]
       (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
                          (remove kept-tables)
                          (partition-all app-db-batch-size))]
         (warehouse-schema/delete-table-user-settings! (vec batch)))
-      (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
+      (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings table-ids)
                          (remove kept-fields)
                          (partition-all app-db-batch-size))]
         (warehouse-schema/delete-field-user-settings! (vec batch)))
@@ -399,12 +408,11 @@
   state or drop captured dirty markers (see [[import-merged!]])."
   [snapshot report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
-  (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+  (let [path-filters        (mapv #(re-pattern (str % "/.*")) ee.serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
-        load-result         (serdes/with-cache
-                              (serialization/load-metabase! ingestable-snapshot :reindex? false))
+        load-result         (ee.serialization/load-metabase! ingestable-snapshot :reindex? false)
         seen-paths          (:seen load-result)
         imported-data       (spec/extract-imported-entities seen-paths)]
     (report 0.7 {:force? true})
@@ -450,12 +458,12 @@
   [^String path]
   (and (not (str/starts-with? path "."))
        (when-let [i (str/index-of path "/")]
-         (contains? serialization/legal-top-level-paths (subs path 0 i)))))
+         (contains? ee.serialization/legal-top-level-paths (subs path 0 i)))))
 
 (defn- legal-yaml-path?
   "True for a managed-directory `.yaml` entity file — the only changed paths the importer acts on."
   [^String path]
-  (serialization/entity-file-path? path))
+  (ee.serialization/entity-file-path? path))
 
 (defn- pulled-change-count
   "Total number of entities applied by a pull, across the entity-id models and the user settings in `imported-data`."
@@ -478,7 +486,7 @@
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
         add-models (if ingestable
-                     (into #{} (map #(:model (last %))) (serialization/ingest-list ingestable))
+                     (spec/models-in-import (ee.serialization/ingest-list ingestable))
                      #{})
         all-models (into add-models (map :model_type) deleted-rsos)]
     (cond
@@ -514,10 +522,9 @@
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
   (let [load-result   (when ingestable
-                        (serdes/with-cache
-                          (serialization/load-metabase!
-                           (source.ingestable/wrap-progress-ingestable report [0.05 0.7] ingestable)
-                           :reindex? false)))
+                        (ee.serialization/load-metabase!
+                         (source.ingestable/wrap-progress-ingestable report [0.05 0.7] ingestable)
+                         :reindex? false))
         imported-data (spec/extract-imported-entities (:seen load-result))
         loaded-eid?   (fn [model-type eid]
                         ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
@@ -587,11 +594,10 @@
     - Local changes stay dirty
     - Sets version to remote tip"
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
-  (let [{:keys [conflicts merged summary]} (serdes/with-cache
-                                             (let [targets (spec/exportable-entities)]
-                                               (source/compute-merge (spec/extract-entities-for-export targets)
-                                                                     snapshot base-snapshot task-id
-                                                                     :total (spec/exportable-entity-count targets))))]
+  (let [{:keys [conflicts merged summary]} (let [targets (spec/exportable-entities)]
+                                             (source/compute-merge (spec/extract-entities-for-export targets)
+                                                                   snapshot base-snapshot task-id
+                                                                   :total (spec/exportable-entity-count targets)))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -644,7 +650,7 @@
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
             finalize!             (fn [] (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
-            path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+            path-filters          (mapv #(re-pattern (str % "/.*")) ee.serialization/legal-top-level-paths)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
             ;; already-configured instance must not silently delete unsynced transforms). The get-conflicts tree scan
             ;; is itself deferred so it only runs when one of the gates is open (e.g. a forced import with
@@ -858,10 +864,6 @@
 
 ;;; ------------------------------------------- Incremental Export Fast-Path -------------------------------------------
 
-(def ^:private closure-opts
-  {:include-field-values false :include-database-secrets false
-   :continue-on-error false :skip-archived true})
-
 (defn- merge-incremental-export-plans-reducer [a b]
   (if (or (= :remote-sync/incremental-not-possible a)
           (= :remote-sync/incremental-not-possible b))
@@ -872,14 +874,22 @@
   (unreduced (merge-incremental-export-plans-reducer a b)))
 
 (defn- export-closure
-  "All `{:model_type :model_id}` entities a full export would pull for the entity `[model-type model-id]`
-  (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
+  "All `{:model_type :model_id}` entities the entity `[model-type model-id]` depends on, transitively through the
+  remote-sync content it depends on, the entity itself included."
   [model-type model-id]
-  ;; serdes works in [model-type id] tuples; map the closure keys to {:model_type :model_id} on the way out
-  (-> #{}
-      (into (keys (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))))
-      (into (keys (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %)))))
-      (->> (map (fn [[mt id]] {:model_type mt :model_id id})))))
+  (loop [seen #{[model-type model-id]} frontier {model-type #{model-id}}]
+    (if (empty? frontier)
+      (for [[mt id] seen] {:model_type mt :model_id id})
+      (let [deps (into #{}
+                       (comp (mapcat (fn [[mt ids]]
+                                       (let [model (keyword "model" mt)
+                                             rows  (into [] (ee.serialization/select-rows model {:ids (vec ids)}))]
+                                         (apply concat (serialization/export-dependencies model rows)))))
+                             (map (fn [[model id]] [(name model) id]))
+                             (filter (comp spec/spec-for-model-type first))
+                             (remove seen))
+                       frontier)]
+        (recur (into seen deps) (u/group-by first second conj #{} deps))))))
 
 (defn- untracked-content-deps
   "The `{:model_type :model_id}` entities in `[model-type model-id]`'s export closure that are remote-sync
@@ -909,16 +919,18 @@
   Return:
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
-  (let [pk-col  (serdes/primary-key model_type)
-        id->row (u/index-by :model_id rows)
-        opts    (merge spec/git-sync-extract-opts
-                       {:filter-column pk-col
-                        :filter-ids    (mapv :model_id rows)})]
-    ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
-    (into [] (keep (fn [instance]
-                     (when-let [row (id->row (get instance pk-col))]
-                       [row (serdes/extract-one model_type opts instance)])))
-          (serdes/extract-query model_type opts))))
+  (let [model     (keyword "model" model_type)
+        pk-col    (first (t2/primary-keys model))
+        id->row   (u/index-by :model_id rows)
+        instances (into [] (ee.serialization/select-rows model (assoc spec/git-sync-extract-opts
+                                                                      :ids (mapv :model_id rows))))]
+    (into []
+          (keep (fn [[instance exported]]
+                  (when-let [row (id->row (get instance pk-col))]
+                    (if (instance? Exception exported)
+                      (throw exported)
+                      [row exported]))))
+          (map vector instances (serialization/export-batch model instances)))))
 
 (defn- path-free?
   "Is this path free to write the entity with eid to?
@@ -943,19 +955,23 @@
      :file-eid     (when content (try (:entity_id (yaml/parse-string content))
                                       (catch Exception _ nil)))}))
 
-(defn- dependency->incremental-export-plan [snapshot opts [row entity]]
-  (let [path (serialization/entity-file-path opts entity)]
-    (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
-      {:writes [(assoc row :file_path path)]}
-      :remote-sync/incremental-not-possible)))
+(defn- with-paths
+  "Each `[row entity]` of `found` with the path of the file its entity serializes to, with the names `namer` has
+  given out."
+  [namer found]
+  (map conj found (ee.serialization/entity-file-paths namer (map second found))))
+
+(defn- dependency->incremental-export-plan [snapshot [row entity path]]
+  (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
+    {:writes [(assoc row :file_path path)]}
+    :remote-sync/incremental-not-possible))
 
 (defn- dependency-chunk->incremental-export-plan
   "Plan fragment ({:writes [{:model_type :model_id :file_path}]}) for one chunk of dependency rows, or
   `:remote-sync/incremental-not-possible` if any target path collides with a different entity."
   [snapshot opts chunk]
-  (->> chunk
-       (extract-chunk)
-       (map #(dependency->incremental-export-plan snapshot opts %))
+  (->> (with-paths opts (extract-chunk chunk))
+       (map #(dependency->incremental-export-plan snapshot %))
        (reduce merge-incremental-export-plans-reducer {})))
 
 (defn- dependencies->incremental-export-plan
@@ -1058,9 +1074,9 @@
   (let [found (extract-chunk chunk)]
     (if (< (count found) (count (:rows chunk)))
       :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
-      (->> found
-           (map (fn [[row entity]]
-                  (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
+      (->> (with-paths opts found)
+           (map (fn [[row entity path]]
+                  (row->incremental-export-plan row (entity-path-info snapshot path (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- incremental-export-plan
@@ -1070,7 +1086,7 @@
    - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
    - :remote-sync/incremental-not-possible when any row can't go incrementally"
   [snapshot rows]
-  (let [opts          (serdes/storage-base-context)
+  (let [opts          (ee.serialization/file-namer)
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
         {cu-rows true other-rows false} (group-by #(boolean (and (#{"create" "update"} (:status %))
@@ -1102,8 +1118,8 @@
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
-(defn- stage-write [commit opts [row entity]]
-  (let [path  (or (:file_path row) (serialization/entity-file-path opts entity))
+(defn- stage-write [commit [row entity path]]
+  (let [path  (or (:file_path row) path)
         fspec (source/entity->file-spec-at path entity)]
     (run! #(source.p/stage-upsert! commit %) (source/file-specs fspec))
     (when (:id row)
@@ -1111,9 +1127,8 @@
 
 (defn- chunk-stage-writes
   [commit opts chunk]
-  (->> chunk
-       (extract-chunk)
-       (mapcat #(stage-write commit opts %))
+  (->> (with-paths opts (extract-chunk chunk))
+       (mapcat #(stage-write commit %))
        (doall)))
 
 (defn- stage-writes
@@ -1188,7 +1203,7 @@
           total  (count export-rows)
           span   (- export-progress-serialize export-progress-plan-done)]
       (report export-progress-plan-done {:force? true})
-      (let [opts             (serdes/storage-base-context)
+      (let [opts             (ee.serialization/file-namer)
             [synced version] (commit-staged! snapshot message
                                              (fn [commit]
                                                (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
@@ -1220,7 +1235,7 @@
         total        (max 1 (count writes))
         span         (- export-progress-serialize export-progress-plan-done)]
     (report export-progress-plan-done {:force? true})
-    (let [opts             (serdes/storage-base-context)
+    (let [opts             (ee.serialization/file-namer)
           [synced version] (commit-staged! snapshot message
                                            (fn [commit]
                                              (let [synced (stage-writes commit opts writes
@@ -1265,60 +1280,59 @@
   (let [sync-timestamp (t/instant)]
     (try
       (analytics/inc! :metabase-remote-sync/exports)
-      (serdes/with-cache
-        (let [base-version   (remote-sync.task/last-version)
-              remote-version (source.p/version snapshot)
-              diverged?      (and (some? base-version)
-                                  (not= base-version remote-version))
-              disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
-                                             (source.p/list-files snapshot)))
-              dirty-rows     (delay (remote-sync.object/dirty-rows))
-              plan           (delay (when (seq @dirty-rows)
-                                      (incremental-export-plan snapshot @dirty-rows)))]
+      (let [base-version   (remote-sync.task/last-version)
+            remote-version (source.p/version snapshot)
+            diverged?      (and (some? base-version)
+                                (not= base-version remote-version))
+            disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
+                                           (source.p/list-files snapshot)))
+            dirty-rows     (delay (remote-sync.object/dirty-rows))
+            plan           (delay (when (seq @dirty-rows)
+                                    (incremental-export-plan snapshot @dirty-rows)))]
+        (cond
+          ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
+          force?
+          (do
+            (log/info "Remote sync full export: forced overwrite")
+            (full-export! snapshot task-id message sync-timestamp))
+
+          (and diverged? merge?)
           (cond
-            ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
-            force?
-            (do
-              (log/info "Remote sync full export: forced overwrite")
-              (full-export! snapshot task-id message sync-timestamp))
-
-            (and diverged? merge?)
-            (cond
-              (nil? base-snapshot)
-              {:status    :conflict
-               :version   remote-version
-               :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-               :outcome   {:kind "history-rewritten"}
-               :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
-
-              :else
-              (let [targets (spec/exportable-entities)]
-                (export-merged! src snapshot base-snapshot task-id message sync-timestamp
-                                (spec/extract-entities-for-export targets)
-                                :total (spec/exportable-entity-count targets))))
-
-            diverged? ;; and not merge? option
+            (nil? base-snapshot)
             {:status    :conflict
              :version   remote-version
-             ;; Nothing collided: the divergence itself is why it stopped, so the cause rides in `:outcome`.
-             :conflicts []
-             :outcome   {:kind "remote-changed"}
-             :message   "The remote branch has changed since your last sync. Choose how to proceed."}
+             :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+             :outcome   {:kind "history-rewritten"}
+             :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
-            ;; There's nothing to export: no dirty rows and no stale files.
-            (and (empty? @dirty-rows) (empty? @disabled-files))
-            (do
-              (log/info "Remote sync export: no changes to export")
-              {:status :success
-               :outcome {:kind "push-skipped"}})
+            :else
+            (let [targets (spec/exportable-entities)]
+              (export-merged! src snapshot base-snapshot task-id message sync-timestamp
+                              (spec/extract-entities-for-export targets)
+                              :total (spec/exportable-entity-count targets))))
 
-            (not= @plan :remote-sync/incremental-not-possible)
-            (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
+          diverged? ;; and not merge? option
+          {:status    :conflict
+           :version   remote-version
+           ;; Nothing collided: the divergence itself is why it stopped, so the cause rides in `:outcome`.
+           :conflicts []
+           :outcome   {:kind "remote-changed"}
+           :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
-            :else ;; fall back to full
-            (do
-              (log/info "Remote sync full export: a pending change can't be applied incrementally")
-              (full-export! snapshot task-id message sync-timestamp)))))
+          ;; There's nothing to export: no dirty rows and no stale files.
+          (and (empty? @dirty-rows) (empty? @disabled-files))
+          (do
+            (log/info "Remote sync export: no changes to export")
+            {:status :success
+             :outcome {:kind "push-skipped"}})
+
+          (not= @plan :remote-sync/incremental-not-possible)
+          (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
+
+          :else ;; fall back to full
+          (do
+            (log/info "Remote sync full export: a pending change can't be applied incrementally")
+            (full-export! snapshot task-id message sync-timestamp))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
@@ -1715,7 +1729,7 @@
     (if (or (nil? base-version) (= base-version remote-version))
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
-        (serdes/with-cache
+        (serialization/with-export-transaction
           (let [targets (spec/exportable-entities)]
             (if (seq targets)
               (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
@@ -1725,7 +1739,7 @@
         ;; still offered, so surface what it would discard (every remote entity not identical to ours).
         {:diverged? true :clean? false :reason :history-rewritten
          :conflicts [] :summary {:added 0 :updated 0 :removed 0}
-         :force-push-casualties (serdes/with-cache
+         :force-push-casualties (serialization/with-export-transaction
                                   (let [targets (spec/exportable-entities)]
                                     (if (seq targets)
                                       (source/force-push-casualties-no-base

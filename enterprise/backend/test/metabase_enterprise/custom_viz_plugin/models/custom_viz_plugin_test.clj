@@ -6,7 +6,7 @@
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -72,35 +72,29 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(deftest entity-id-test
-  (testing "entity-id is based on identifier"
-    (is (= "my-viz"
-           (serdes/entity-id "CustomVizPlugin" {:identifier "my-viz" :id 1})))))
-
-(deftest generate-path-test
-  (testing "generate-path uses identifier for both id and label"
-    (is (= [{:model "CustomVizPlugin" :id "my-viz" :label "my-viz"}]
-           (serdes/generate-path "CustomVizPlugin" {:identifier "my-viz"})))))
+(deftest key-test
+  (testing "ref is identifier"
+    (is (= [:model/CustomVizPlugin "my-viz"]
+           (serialization/key-of {:serdes/meta [{:model "CustomVizPlugin"}] :identifier "my-viz"})))))
 
 (deftest storage-path-test
-  (testing "storage-path places under custom_viz_plugins directory"
-    (let [entity {:identifier  "my-viz"
-                  :serdes/meta [{:model "CustomVizPlugin" :id "my-viz" :label "my-viz"}]}]
-      (is (= [{:label "custom_viz_plugins"} {:label "my-viz"}]
-             (serdes/storage-path entity nil))))))
+  (testing "storage path places plugin under custom_viz_plugins directory"
+    (is (= [[{:label "custom_viz_plugins"} {:label "my-viz"}]]
+           (serialization/batch-storage-paths [{:identifier "my-viz" :serdes/meta [{:model "CustomVizPlugin"}]}])))))
 
-(deftest load-find-local-test
-  (testing "load-find-local finds plugin by identifier"
+(deftest local-rows-test
+  (testing "local-rows finds plugin by identifier"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "find-local"
                                                     :display_name "find-local"
                                                     :status       :active}]
-      (let [found (serdes/load-find-local [{:model "CustomVizPlugin" :id "find-local"}])]
-        (is (some? found))
-        (is (= id (:id found)))))))
+      (is (=? [{:id id} nil]
+              (serialization/local-rows :model/CustomVizPlugin
+                                        [{:serdes/meta [{:model "CustomVizPlugin"}] :identifier "find-local"}
+                                         {:serdes/meta [{:model "CustomVizPlugin"}] :identifier "absent-viz"}]))))))
 
-(deftest make-spec-test
-  (testing "make-spec copies identity fields and bundle_hash, skips dev/error state"
-    (let [spec (serdes/make-spec "CustomVizPlugin" {})]
+(deftest spec-test
+  (testing "spec copies identity fields and bundle_hash, skips dev/error state"
+    (let [spec (serialization/spec-of :model/CustomVizPlugin)]
       (is (contains? (set (:copy spec)) :identifier))
       (is (contains? (set (:copy spec)) :display_name))
       (is (contains? (set (:copy spec)) :manifest))
@@ -110,26 +104,23 @@
 
 (deftest bundle-b64-round-trip-test
   (testing "bundle bytes base64-encode on export and decode back to bytes on import"
-    (let [spec      (serdes/make-spec "CustomVizPlugin" {})
-          export-fn (get-in spec [:transform :bundle :export])
-          import-fn (get-in spec [:transform :bundle :import])
-          bytes     (.getBytes "pretend tgz bytes" "UTF-8")
-          out       (export-fn bytes)]
-      (is (string? out))
-      (is (not= (String. bytes "UTF-8") out)
-          "exported value should be b64-encoded, not the raw string")
-      (is (= (seq bytes) (seq (import-fn out))))))
+    (let [bytes (.getBytes "pretend tgz bytes" "UTF-8")]
+      (mt/with-temp [:model/CustomVizPlugin plugin {:identifier "b64-viz" :display_name "b64-viz" :status :active :bundle bytes}]
+        (let [[exported] (serialization/export-batch :model/CustomVizPlugin [plugin])]
+          (is (string? (:bundle exported)))
+          (is (not= (String. bytes "UTF-8") (:bundle exported))
+              "exported value should be b64-encoded, not raw string")
+          (is (= (seq bytes) (seq (:bundle (first (serialization/import :model/CustomVizPlugin [exported]))))))))))
   (testing "nil bundle round-trips as nil"
-    (let [spec      (serdes/make-spec "CustomVizPlugin" {})
-          export-fn (get-in spec [:transform :bundle :export])
-          import-fn (get-in spec [:transform :bundle :import])]
-      (is (nil? (export-fn nil)))
-      (is (nil? (import-fn nil))))))
+    (mt/with-temp [:model/CustomVizPlugin plugin {:identifier "nil-viz" :display_name "nil-viz" :status :active :bundle nil}]
+      (let [[exported] (serialization/export-batch :model/CustomVizPlugin [plugin])]
+        (is (nil? (:bundle exported)))
+        (is (nil? (:bundle (first (serialization/import :model/CustomVizPlugin [exported])))))))))
 
 (defn- ingested-plugin
   "What serdes ingests for an export of plugin `identifier` whose bundle bytes are `bundle`."
   [identifier ^bytes bundle]
-  {:serdes/meta  [{:model "CustomVizPlugin" :id identifier :label identifier}]
+  {:serdes/meta  [{:model "CustomVizPlugin"}]
    :identifier   identifier
    :display_name identifier
    :manifest     {:name identifier}
@@ -152,7 +143,7 @@
   (testing "loading an exported plugin with a valid bundle makes it :active"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (let [bundle (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart"})]
-        (serdes/load-one! (ingested-plugin "imported-viz" bundle) nil)
+        (serialization/load :model/CustomVizPlugin [(ingested-plugin "imported-viz" bundle)])
         (is (=? {:status        :active
                  :error_message nil
                  :enabled       true
@@ -160,7 +151,7 @@
                 (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
   (testing "loading a plugin whose bundle is not a valid archive makes it :error"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (serdes/load-one! (ingested-plugin "broken-viz" (.getBytes "not a tgz" "UTF-8")) nil)
+      (serialization/load :model/CustomVizPlugin [(ingested-plugin "broken-viz" (.getBytes "not a tgz" "UTF-8"))])
       (is (=? {:status        :error
                :error_message string?}
               (t2/select-one :model/CustomVizPlugin :identifier "broken-viz"))))))
@@ -172,7 +163,7 @@
       (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "updated-viz" old-bundle)
                                                             :status        :error
                                                             :error_message "stale")]
-        (serdes/load-one! (ingested-plugin "updated-viz" new-bundle) (t2/select-one :model/CustomVizPlugin :id id))
+        (serialization/load :model/CustomVizPlugin [(ingested-plugin "updated-viz" new-bundle)])
         (is (=? {:id            id
                  :status        :active
                  :error_message nil
@@ -185,7 +176,7 @@
     (let [ingested (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz"))]
       (testing "on insert"
         (mt/with-model-cleanup [:model/CustomVizPlugin]
-          (serdes/load-one! ingested nil)
+          (serialization/load :model/CustomVizPlugin [ingested])
           (is (=? {:identifier    "calendar-heatmap-viz"
                    :status        :error
                    :error_message #(str/includes? % "does not match")}
@@ -193,7 +184,7 @@
       (testing "on update over an active plugin"
         (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "calendar-heatmap-viz"
                                                                           (cv.tu/valid-bundle-bytes "calendar-heatmap-viz"))]
-          (serdes/load-one! ingested (t2/select-one :model/CustomVizPlugin :id id))
+          (serialization/load :model/CustomVizPlugin [ingested])
           (is (=? {:id            id
                    :status        :error
                    :error_message #(str/includes? % "does not match")}
