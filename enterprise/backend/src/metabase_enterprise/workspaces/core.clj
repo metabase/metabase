@@ -269,7 +269,8 @@
    row is deleted and the provisioning error is rethrown with its own
    `:status-code` (500 when it has none). When the cleanup itself fails, the
    workspace is kept with the failed rows (`:unprovisioned`), so the leak stays
-   visible and the teardown can be retried via delete, and the error is a 500.
+   visible and the teardown can be retried via delete, and the error is a 500,
+   as it is when the cleanup succeeds but deleting the Workspace row fails.
    Either way the error's `:cleanup_required` says whether the workspace was kept
    and still needs that delete."
   [{:keys [name creator_id database_ids]}]
@@ -292,18 +293,20 @@
                               ;; kept so the teardown can be retried via delete. The
                               ;; errors are not logged (raw warehouse errors are
                               ;; sensitive); the caller gets them in the response.
-                              (catch Throwable cleanup-t cleanup-t))]
-          (when-not cleanup-error
-            (try
-              (workspace/delete-workspace! (:id ws))
-              (catch Throwable delete-t
-                (.addSuppressed t delete-t))))
+                              (catch Throwable cleanup-t cleanup-t))
+              delete-error  (when-not cleanup-error
+                              (try
+                                (workspace/delete-workspace! (:id ws))
+                                nil
+                                (catch Throwable delete-t delete-t)))
+              ;; either way the Workspace row survives, and only a delete removes it
+              kept-error    (or cleanup-error delete-error)]
           ;; a single failure keeps its status, like a driver's 409 for a role it refuses
-          (throw (combined-exception (cond-> [t] cleanup-error (conj cleanup-error))
-                                     {:status-code      (if cleanup-error
+          (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
+                                     {:status-code      (if kept-error
                                                           500
                                                           (or (:status-code (ex-data t)) 500))
-                                      :cleanup_required (some? cleanup-error)
+                                      :cleanup_required (some? kept-error)
                                       :response/keys    #{:cleanup_required}})))))
     (workspace/get-workspace (:id ws))))
 
