@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
@@ -28,6 +29,8 @@
   [{:keys [card-id slack-channel schedule send-condition send-once]
     :or   {send-once false}}]
   (let [card         (some-> (metabot.db/card card-id) api/read-check)
+        _            (when (and card (shared/curated-only?))
+                       (curation/check-curated-subject! (str "card " card-id) ["card" card-id]))
         channel-name (some->> slack-channel
                               channel.settings/find-cached-slack-channel-or-username
                               :display-name)]
