@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { isNative } from "metabase/common/utils/card";
-import { displayNameForColumn } from "metabase/value-formatting";
+import {
+  DEFAULT_IMAGE_SIZE,
+  displayNameForColumn,
+} from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
@@ -34,6 +37,7 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
+  ImageSize,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -336,7 +340,9 @@ export const TABLE_DEFINITION = {
       defaultValue = "email_link";
       options.push({ name: t`Email link`, value: "email_link" });
     }
-    if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
+    const canDisplayAsImage =
+      !column.semantic_type || isImageURL(column) || isAvatarURL(column);
+    if (canDisplayAsImage) {
       defaultValue = isAvatarURL(column) ? "image" : "link";
       options.push({ name: t`Image`, value: "image" });
     }
@@ -352,6 +358,23 @@ export const TABLE_DEFINITION = {
         getDefault: () => defaultValue,
         getProps: () => ({
           options,
+        }),
+      };
+    }
+
+    if (canDisplayAsImage) {
+      settings["image_size"] = {
+        title: t`Image size`,
+        widget: "select",
+        getDefault: () => DEFAULT_IMAGE_SIZE,
+        getHidden: (_, settings) => settings["view_as"] !== "image",
+        readDependencies: ["view_as"],
+        getProps: () => ({
+          options: [
+            { name: t`Small`, value: "small" },
+            { name: t`Medium`, value: "medium" },
+            { name: t`Large`, value: "large" },
+          ] satisfies { name: string; value: ImageSize }[],
         }),
       };
     }

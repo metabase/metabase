@@ -230,6 +230,13 @@ export const useDataGridInstance = <TData, TValue>({
     return columnsOptions.filter((column) => column.wrap);
   }, [columnsOptions]);
 
+  // Columns that can make a row taller than the default row height
+  const sizedColumnsOptions = useMemo(() => {
+    return columnsOptions.filter(
+      (column) => column.wrap || column.minRowHeight != null,
+    );
+  }, [columnsOptions]);
+
   // Pagination state management
   const [pagination, setPagination] = useState<PaginationState>(
     pageSize != null && pageSize > 0
@@ -273,7 +280,7 @@ export const useDataGridInstance = <TData, TValue>({
     data,
     defaultRowHeight,
     columnSizingMap,
-    wrappedColumnsOptions,
+    sizedColumnsOptions,
     measureBodyCellDimensions,
   });
 

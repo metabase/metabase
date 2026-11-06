@@ -11,6 +11,7 @@ export {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "./date";
+export { DEFAULT_IMAGE_SIZE, getImageHeightPx } from "./image";
 export {
   isSafeUrl,
   renderLinkURLForClick,

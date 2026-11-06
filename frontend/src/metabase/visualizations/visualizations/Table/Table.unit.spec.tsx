@@ -716,3 +716,100 @@ describe("text_wrapping", () => {
     });
   });
 });
+
+describe("image_size", () => {
+  const imageColumn = createMockColumn({
+    name: "photo",
+    display_name: "Photo",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    semantic_type: "type/ImageURL",
+  });
+
+  const getImageSizeSetting = (column: DatasetColumn) => {
+    const imageSizeSetting = Table.columnSettings(column)["image_size"];
+    if (imageSizeSetting == null) {
+      throw new Error("image_size setting should be defined");
+    }
+    return imageSizeSetting;
+  };
+
+  describe("in columnSettings", () => {
+    it("should not be available for columns that cannot be displayed as images", () => {
+      const categoryColumn = createMockCategoryColumn();
+
+      expect(
+        Table.columnSettings(categoryColumn)["image_size"],
+      ).toBeUndefined();
+    });
+
+    it("should default to small", () => {
+      const imageSizeSetting = getImageSizeSetting(imageColumn);
+
+      expect(imageSizeSetting.getDefault?.(imageColumn, {})).toBe("small");
+    });
+
+    it.each([
+      ["image", false],
+      ["link", true],
+      ["auto", true],
+      [null, true],
+    ])(
+      "when view_as is %s, should have hidden=%s",
+      (viewAs, expectedHidden) => {
+        const imageSizeSetting = getImageSizeSetting(imageColumn);
+
+        expect(
+          imageSizeSetting.getHidden?.(imageColumn, { view_as: viewAs }),
+        ).toBe(expectedHidden);
+      },
+    );
+  });
+
+  describe("rendering", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
+
+    it.each([
+      [undefined, 30],
+      ["small" as const, 30],
+      ["medium" as const, 75],
+      ["large" as const, 150],
+    ])(
+      "should render images with image_size %s at %ipx",
+      (imageSize, heightPx) => {
+        const series = [
+          createMockSingleSeries(
+            {
+              display: "table",
+              visualization_settings: {
+                column_settings: {
+                  [getColumnKey(imageColumn)]: {
+                    view_as: "image",
+                    image_size: imageSize,
+                  },
+                },
+              },
+            },
+            {
+              data: {
+                cols: [imageColumn],
+                rows: [["https://example.com/photo.png"]],
+              },
+            },
+          ),
+        ];
+
+        renderWithProviders(
+          <Visualization rawSeries={series} width={600} height={400} />,
+        );
+
+        const [_rowIdCell, imageCell] = screen.getAllByRole("gridcell");
+        expect(within(imageCell).getByRole("img")).toHaveStyle({
+          height: `${heightPx}px`,
+        });
+      },
+    );
+  });
+});

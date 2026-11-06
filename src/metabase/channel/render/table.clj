@@ -243,7 +243,7 @@
                (and (= (get col-settings ::mb.viz/view-as) "image")
                     (image-url? cell))
                [:img {:src (hiccup.util/escape-html cell)
-                      :style (style/style style/view-as-img-style)}]
+                      :style (style/style (style/view-as-img-style (::mb.viz/image-size col-settings)))}]
 
                :else
                (hiccup.util/escape-html cell))]))]))])

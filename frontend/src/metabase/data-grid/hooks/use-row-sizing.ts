@@ -7,7 +7,7 @@ type UseRowSizingProps<TData extends RowData, TValue> = {
   data: TData[];
   defaultRowHeight: number;
   columnSizingMap: ColumnSizingState;
-  wrappedColumnsOptions: ColumnOptions<TData, TValue>[];
+  sizedColumnsOptions: ColumnOptions<TData, TValue>[];
   measureBodyCellDimensions: (
     text: React.ReactNode,
     width?: number,
@@ -18,12 +18,12 @@ export const useRowSizing = <TData extends RowData, TValue>({
   data,
   defaultRowHeight,
   columnSizingMap,
-  wrappedColumnsOptions,
+  sizedColumnsOptions,
   measureBodyCellDimensions,
 }: UseRowSizingProps<TData, TValue>) => {
   const getRowHeight = useCallback(
     (index: number): number =>
-      wrappedColumnsOptions.reduce((max, column) => {
+      sizedColumnsOptions.reduce((max, column) => {
         const value = column.accessorFn(data[index]);
         const formatted = column.formatter
           ? column.formatter(value, index, column.id)
@@ -32,19 +32,25 @@ export const useRowSizing = <TData extends RowData, TValue>({
         if (value === null || value === undefined || formatted === "") {
           return max;
         }
+
+        const minHeight = Math.max(column.minRowHeight ?? 0, max);
+        if (!column.wrap) {
+          return minHeight;
+        }
+
         const width = columnSizingMap[column.id];
         try {
           const height = measureBodyCellDimensions(formatted, width).height;
-          return Math.max(height, max);
+          return Math.max(height, minHeight);
         } catch {
-          return max;
+          return minHeight;
         }
       }, defaultRowHeight),
     [
       data,
       defaultRowHeight,
       columnSizingMap,
-      wrappedColumnsOptions,
+      sizedColumnsOptions,
       measureBodyCellDimensions,
     ],
   );

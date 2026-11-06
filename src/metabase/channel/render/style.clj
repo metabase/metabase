@@ -257,10 +257,18 @@
   []
   (format "%s33" (mb-secondary-color)))
 
-(def ^:const view-as-img-style
-  "CSS Styles for img elements in cells of a column with {:view-as 'image'} setting"
+(def ^:private view-as-img-max-heights-px
+  ;; Keep in sync with the image heights in frontend/src/metabase/value-formatting/image.tsx
+  {"small"  30
+   "medium" 75
+   "large"  150})
+
+(defn view-as-img-style
+  "CSS Styles for img elements in cells of a column with {:view-as 'image'} setting, sized by the column's
+  `image_size` setting. An unknown or missing `image-size` gets the small size."
+  [image-size]
   {:max-width  "100%"
-   :max-height "30px"
+   :max-height (format "%dpx" (get view-as-img-max-heights-px image-size (get view-as-img-max-heights-px "small")))
    :object-fit "contain"
    :display    "block"})
 

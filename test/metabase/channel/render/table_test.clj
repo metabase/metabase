@@ -387,6 +387,30 @@
           (is (contains? s :min-width))
           (is (not (contains? s :width))))))))
 
+(deftest view-as-image-size-test
+  (testing "a `view_as: image` cell's max-height follows the column's `image_size` setting"
+    (doseq [[image-size expected-max-height] [[nil      "30px"]
+                                              ["small"  "30px"]
+                                              ["medium" "75px"]
+                                              ["large"  "150px"]
+                                              ["huge"   "30px"]]]
+      (testing (pr-str image-size)
+        (let [columns       [{:name "url"}]
+              query-results {:cols columns
+                             :rows [["https://example.com/a.png"]]}
+              col-settings  (cond-> {::mb.viz/view-as "image"}
+                              image-size (assoc ::mb.viz/image-size image-size))
+              viz-settings  {::mb.viz/column-settings {{::mb.viz/column-name "url"} col-settings}}
+              rendered      (#'table/render-table (select-keys query-results [:cols :rows])
+                                                  {:col-names ["url"] :cols-for-color-lookup ["url"]}
+                                                  (query-results->header+rows query-results)
+                                                  columns viz-settings nil)
+              img-styles    (postwalk-collect (fn [node] (and (vector? node) (= :img (first node))))
+                                              (fn [node] (:style (second node)))
+                                              rendered)]
+          (is (= 1 (count img-styles)))
+          (is (str/includes? (first img-styles) (str "max-height: " expected-max-height ";"))))))))
+
 (deftest view-as-image-only-renders-http-urls-test
   (testing "a `view_as: image` cell only becomes an <img> when it holds an http(s) URL"
     (let [columns       [{:name "url"}]
