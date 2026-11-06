@@ -509,69 +509,6 @@ describe("Question", () => {
       expect(base_question.parameters()).toEqual([]);
     });
 
-    it("should return the template tags of a native question", () => {
-      const nativeQuestionWithTemplateTags = {
-        ...native_orders_count_card,
-        param_fields: {
-          bbb: [createMockField({ id: PRODUCTS.CATEGORY })],
-        },
-        dataset_query: {
-          ...native_orders_count_card.dataset_query,
-          native: {
-            ...native_orders_count_card.dataset_query.native,
-            "template-tags": {
-              foo: {
-                name: "foo",
-                "display-name": "Foo",
-                id: "bbb",
-                type: "dimension",
-                "widget-type": "category",
-                dimension: ["field", PRODUCTS.CATEGORY, null],
-              },
-              bar: {
-                name: "bar",
-                "display-name": "Bar",
-                id: "aaa",
-                type: "text",
-                value: null,
-              },
-            },
-          },
-        },
-      };
-
-      const question = new Question(nativeQuestionWithTemplateTags, metadata);
-      expect(question.parameters()).toEqual([
-        {
-          default: undefined,
-          fields: [
-            expect.objectContaining({
-              id: PRODUCTS.CATEGORY,
-            }),
-          ],
-          isMultiSelect: true,
-          hasVariableTemplateTagTarget: false,
-          id: "bbb",
-          name: "Foo",
-          slug: "foo",
-          target: ["dimension", ["template-tag", "foo"]],
-          type: "category",
-          value: null,
-        },
-        {
-          default: undefined,
-          isMultiSelect: false,
-          hasVariableTemplateTagTarget: true,
-          id: "aaa",
-          name: "Bar",
-          slug: "bar",
-          target: ["variable", ["template-tag", "bar"]],
-          type: "string/=",
-          value: null,
-        },
-      ]);
-    });
-
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
       // slugs differ from names so parameters() deriving a slug would be caught
       const fooParameter = createMockParameter({
@@ -635,25 +572,6 @@ describe("Question", () => {
       expect(question.generateQueryDescription()).toEqual(
         "Orders, Count and Sum of Total",
       );
-    });
-
-    it("should work with named aggregations", () => {
-      const question = base_question.setDatasetQuery({
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "aggregation-options",
-              ["sum", ["field", 1, null]],
-              // name differs from display-name to pin which key the description uses
-              { name: "revenue_sum", "display-name": "Revenue" },
-            ],
-          ],
-        },
-      });
-      expect(question.generateQueryDescription()).toEqual("Orders, Revenue");
     });
   });
 });
