@@ -906,24 +906,24 @@
   "Helper to compute the cache key for a swapped pool, matching the implementation in connection.clj.
   Takes a db map (with :id, :engine, :details) and returns [db-id, jdbc-spec-hash]."
   [db]
-  [(:id db) (#'sql-jdbc.conn/jdbc-spec-hash db)])
+  [(:id db) (#'sql-jdbc.conn/jdbc-spec-hash (driver.u/ensure-lib-database db))])
 
 (deftest with-swapped-connection-details-test
   (testing "Swap connection details temporarily"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
-        (let [original-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
+        (let [original-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
           (testing "Swap map is merged into details when creating connection"
             (driver.w/with-swapped-connection-details db-id {:test-swap true}
               (testing "spec is swapped"
-                (is (not= original-spec (sql-jdbc.conn/db->pooled-connection-spec db))))
+                (is (not= original-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))))
               (testing "Pool was created with swap in swapped pools cache"
                 (is (= 1 (count-swapped-pools-for-db db-id)))))))
         (testing "Connection works normally outside swap scope"
-          (sql-jdbc.conn/invalidate-pool-for-db! db)
-          (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+          (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
+          (let [spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
             (is (some? spec))))))))
 
 (deftest different-swap-details-get-separate-pools-test
@@ -931,22 +931,22 @@
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         (let [pool-a-1 (atom nil)
               pool-b   (atom nil)
               pool-a-2 (atom nil)]
           (testing "User A swaps with their credentials"
             (driver.w/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
-              (reset! pool-a-1 (sql-jdbc.conn/db->pooled-connection-spec db))
+              (reset! pool-a-1 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))
               (is (= 1 (count-swapped-pools-for-db db-id)) "First swap creates one pool")))
           (testing "User B swaps with different credentials"
             (driver.w/with-swapped-connection-details db-id {:user "user-b" :password "pass-b" :log-level 99}
-              (reset! pool-b (sql-jdbc.conn/db->pooled-connection-spec db))
+              (reset! pool-b (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))
               (is (= 2 (count-swapped-pools-for-db db-id)) "Different swap details create a second pool")
               (is (not (identical? @pool-a-1 @pool-b)) "Different swap details return different pool instances")))
           (testing "User A returns - should reuse their original pool (still in cache due to TTL)"
             (driver.w/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
-              (reset! pool-a-2 (sql-jdbc.conn/db->pooled-connection-spec db))
+              (reset! pool-a-2 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))
               (is (= 2 (count-swapped-pools-for-db db-id)) "Identical swap details reuse existing pool")
               (is (identical? @pool-a-1 @pool-a-2) "Identical swap details return the same pool instance"))))))))
 
@@ -955,15 +955,15 @@
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db    (mt/db)
             db-id (u/the-id db)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         (driver.w/with-swapped-connection-details db-id {:outer-swap true}
-          (sql-jdbc.conn/db->pooled-connection-spec db)
+          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
           (testing "Attempting nested swap for same database throws"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Nested connection detail swaps are not supported"
                  (driver.w/with-swapped-connection-details db-id {:inner-swap true}
-                   (sql-jdbc.conn/db->pooled-connection-spec db)))))))))
+                   (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))))))))))
   (testing "Different databases can have concurrent swaps"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (let [db-1    (mt/db)
@@ -971,7 +971,7 @@
         ;; We can only test this with one db in most test setups, but the code path works
         (driver.w/with-swapped-connection-details db-1-id {:swap-1 true}
           ;; This would work for a different db-id
-          (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
+          (is (some? (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db-1)))))))))
 
 (deftest invalidate-pool-clears-both-canonical-and-swapped-test
   (testing "invalidate-pool-for-db! clears canonical pools (default and write) and swapped pools"
@@ -980,9 +980,9 @@
             db-id             (u/the-id db)
             default-cache-key [db-id :default]
             write-cache-key   [db-id :write-data]]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         ;; Create default canonical pool
-        (sql-jdbc.conn/db->pooled-connection-spec db)
+        (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
         (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
             "default canonical pool exists")
         ;; Insert a fake write pool entry to verify it gets cleared.
@@ -995,11 +995,11 @@
             "write canonical pool exists")
         ;; Create swapped pool (for default connection type)
         (driver.w/with-swapped-connection-details db-id {:test-swap true}
-          (sql-jdbc.conn/db->pooled-connection-spec db))
+          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))
         (is (= 1 (count-swapped-pools-for-db db-id))
             "swapped pool exists")
         ;; Now invalidate - should clear all pools
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         (testing "Default canonical pool is cleared"
           (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))))
         (testing "Write canonical pool is cleared"
@@ -1014,14 +1014,14 @@
             db-id        (u/the-id db)
             swap-details {:test-swap true}
             create-count (atom 0)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
                                                                  (fn [db]
                                                                    (swap! create-count inc)
                                                                    (original db)))]
           (driver.w/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
-            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
+            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
               (is (= 1 @create-count))
               (is (some? pool-1))
               ;; Simulate password expiration by modifying the cached pool
@@ -1033,7 +1033,7 @@
                     expired-timestamp 1577836800000]
                 (.put cache cache-key (assoc pool-1 :password-expiry-timestamp expired-timestamp)))
               ;; Next call should detect invalid pool and recreate
-              (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
+              (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
                 (is (= 2 @create-count) "Pool should have been recreated due to expired password")
                 (is (some? pool-2))
                 (is (not (identical? pool-1 pool-2)) "Should be a different pool instance")))))))))
@@ -1045,14 +1045,14 @@
             db-id        (u/the-id db)
             swap-details {:test-swap true}
             create-count (atom 0)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
                                                                  (fn [db]
                                                                    (swap! create-count inc)
                                                                    (original db)))]
           (driver.w/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
-            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
+            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
               (is (= 1 @create-count))
               (is (some? pool-1))
               ;; Simulate closed tunnel by modifying the cached pool
@@ -1066,7 +1066,7 @@
               (mt/with-dynamic-fn-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
                                                                  (not= :mock-closed-session (:tunnel-session pool-spec)))]
                 ;; Next call should detect invalid pool and recreate
-                (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
+                (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
                   (is (= 2 @create-count) "Pool should have been recreated due to closed tunnel")
                   (is (some? pool-2))
                   (is (not (identical? pool-1 pool-2)) "Should be a different pool instance"))))))))))
@@ -1077,18 +1077,18 @@
       (let [db           (mt/db)
             db-id        (u/the-id db)
             create-count (atom 0)]
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
         (mt/with-dynamic-fn-redefs [sql-jdbc.conn/create-pool! (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
                                                                  (fn [db]
                                                                    (swap! create-count inc)
                                                                    (original db)))]
           (driver.w/with-swapped-connection-details db-id {:test-swap true}
             ;; First call creates a pool
-            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
+            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
               (is (= 1 @create-count))
               (is (some? pool-1))
               ;; Second call should reuse the same pool
-              (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
+              (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))]
                 (is (= 1 @create-count) "Pool should be reused, not recreated")
                 (is (identical? pool-1 pool-2) "Should be the same pool instance")))))))))
 
