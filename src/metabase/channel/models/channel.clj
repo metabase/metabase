@@ -8,7 +8,6 @@
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -95,24 +94,6 @@
       ;; We rename deactivated channels so that new channels can reuse the name
       ;; Limit to 254 characters to avoid hitting character limit
       (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
-
-(defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
-
-(defmethod serdes/load-find-local "Channel"
-  [path]
-  (channel.db/channel-by-name (:id (last path))))
-
-(defmethod serdes/generate-path "Channel" [_ channel]
-  [(serdes/infer-self-path "Channel" channel)])
-
-(defmethod serdes/storage-path "Channel" [channel _ctx]
-  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
-
-(defmethod serdes/make-spec "Channel"
-  [_model-name _opts]
-  {:schema    ::channel.schema/external-channel
-   :copy           [:name :description :type :details :active]
-   :defaults {:active true}})
 
 (defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
   (mapv (fn [channel]
