@@ -317,6 +317,17 @@ describe("HealthChecksPage", () => {
       actionName: "Open permissions",
       href: "/admin/permissions/data/group/1",
     },
+    {
+      checkId: "all-users-permissions",
+      item: {
+        status: "fail",
+        entity_type: "database",
+        entity_id: 3,
+        entity_name: "Warehouse",
+      },
+      actionName: "Open permissions",
+      href: "/admin/permissions/data/database/3",
+    },
   ])(
     "links a $item.status $item.entity_type of $checkId to its page",
     async ({ checkId, item, actionName, href }) => {

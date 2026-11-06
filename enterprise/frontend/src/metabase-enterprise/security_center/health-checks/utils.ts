@@ -89,6 +89,13 @@ export const getHealthCheckItemAction = (
       }),
     )
     .with(
+      { checkId: "all-users-permissions", item: { entity_type: "database" } },
+      ({ item }) => ({
+        label: t`Open permissions`,
+        url: Urls.databaseDataPermissions(item.entity_id),
+      }),
+    )
+    .with(
       { checkId: "all-users-permissions", item: { entity_type: "group" } },
       ({ item }) => ({
         label: t`Open permissions`,

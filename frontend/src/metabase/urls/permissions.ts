@@ -16,5 +16,8 @@ export function tableDataPermissions(
 export const groupDataPermissions = (groupId: GroupId) =>
   `/admin/permissions/data/group/${groupId}`;
 
+export const databaseDataPermissions = (databaseId: DatabaseId) =>
+  `/admin/permissions/data/database/${databaseId}`;
+
 export const collectionPermissions = (collectionId: CollectionId) =>
   `/admin/permissions/collections/${collectionId}`;
