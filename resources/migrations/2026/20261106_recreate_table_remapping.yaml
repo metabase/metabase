@@ -1,0 +1,111 @@
+## Recreate the table_remapping table that 064/20260724_drop_workspace_tables dropped, in the shape that
+## migration's rollback describes. The changesets are those of
+## 066/20261021_recreate_workspace_tables.yaml in #85175 (v66.2026-10-21T00:00:08 to :11), with version-less ids.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: gve1yq
+      author: escherize
+      comment: Recreate table_remapping table
+      changes:
+        - createTable:
+            tableName: table_remapping
+            remarks: Maps production tables to workspace tables for query remapping
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: Database this remapping applies to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_db
+                  type: varchar(254)
+                  remarks: Source database/project (top-level identifier; e.g. BigQuery project, ClickHouse db). Empty string when driver does not emit this level.
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_schema
+                  type: varchar(254)
+                  remarks: Source schema name. Empty string for schema-less drivers.
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_table_name
+                  type: varchar(254)
+                  remarks: Source table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_db
+                  type: varchar(254)
+                  remarks: Target database/project (top-level identifier). Empty string when driver does not emit this level.
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_schema
+                  type: varchar(254)
+                  remarks: Target schema name. Empty string for schema-less drivers.
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_table_name
+                  type: varchar(254)
+                  remarks: Target table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this remapping was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  ## This constraint's leading column is `database_id`, so MySQL reuses its index to satisfy the FK
+  ## added below; no separate `idx_..._database_id` is needed.
+  - changeSet:
+      id: 5stg1n
+      author: escherize
+      comment: Unique constraint on table_remapping (database_id, from_db, from_schema, from_table_name)
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: lt5wi6
+      author: escherize
+      comment: Unique constraint on table_remapping (database_id, to_db, to_schema, to_table_name) so two source tables can't map to the same target
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_db, to_schema, to_table_name
+
+  - changeSet:
+      id: m6tckg
+      author: escherize
+      comment: FK table_remapping.database_id -> metabase_database.id (cascade on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: table_remapping
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_table_remapping_database_id
+            deleteCascade: true
