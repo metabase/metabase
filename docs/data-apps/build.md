@@ -203,7 +203,9 @@ The sandbox also blocks `DOMParser`, so an app can't parse HTML the usual way. I
 
 Allow only sites that you trust, because the app can send a site any data that the person who opens the app can see. Metabase permissions don't apply to data from other sites.
 
-The request goes from the browser of the person who opens the app, not from Metabase. So that person's browser must be able to reach the site, and the app has no safe place for an API key: a key in the app's code goes into the app's bundle, and the bundle goes to your repository and to each person who opens the app.
+### Exclude any API keys from your app
+
+Requests to external sites goes from the browser of the person who opens the app, not from Metabase. So that person's browser must be able to reach the site, and **the app has no safe place for an API key**: a key in the app's code goes into the app's bundle, and the bundle goes to your repository and to _each person who opens the app._
 
 ## Have fun
 
