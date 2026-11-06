@@ -25,6 +25,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -866,18 +867,19 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? (task.impl/scheduler) temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
-          (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
-                                                  ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                                                  ;; after it's done, but we need the scheduler for testing
-                                                  qs/shutdown (constantly nil)]
-            (thunk)))
+        (mc/binding (task.impl/scheduler-handle) temp-scheduler
+                    (fn []
+                      ;; keep the scheduler up during the thunk: some custom migrations shut the scheduler down when
+                      ;; they finish, but the test still needs it
+                      (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
+                                                              qs/shutdown   (constantly nil)]
+                        (thunk))))
         (finally
           (qs/shutdown temp-scheduler))))))
 
@@ -887,7 +889,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task.impl/*quartz-scheduler*)
+     (qs/start (task.impl/scheduler))
      (thunk))))
 
 (defmacro with-temp-scheduler!
