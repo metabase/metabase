@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -8,7 +7,7 @@ import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSegmentGroups } from "metabase/metadata/segment-groups";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useSelector } from "metabase/redux";
-import { Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { Button, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -17,6 +16,7 @@ import {
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
+import { ListSection } from "../ListSection";
 import { useTableSegmentsModel } from "../table-segments";
 
 import {
@@ -139,7 +139,7 @@ export function SegmentList({ table }: SegmentListProps) {
       )}
 
       {systemSegments.length > 0 && (
-        <SegmentGroup title={t`System segments`}>
+        <ListSection title={t`System segments`}>
           {systemSegments.map((segment) => (
             <SystemSegmentItem
               key={segment.role}
@@ -156,11 +156,11 @@ export function SegmentList({ table }: SegmentListProps) {
               }
             />
           ))}
-        </SegmentGroup>
+        </ListSection>
       )}
 
       {(!isSearching || segmentGroups.length > 0) && (
-        <SegmentGroup
+        <ListSection
           title={t`Segment groups`}
           description={t`Named sets of segments. When they don't overlap, they split rows into groups to compare.`}
           action={
@@ -192,11 +192,11 @@ export function SegmentList({ table }: SegmentListProps) {
           ) : (
             <Text c="text-secondary">{t`No segment groups yet.`}</Text>
           )}
-        </SegmentGroup>
+        </ListSection>
       )}
 
       {(!isSearching || customSegments.length > 0) && (
-        <SegmentGroup title={t`Custom segments`}>
+        <ListSection title={t`Custom segments`}>
           {customSegments.length > 0 ? (
             customSegments.map((segment) => (
               <SegmentItem
@@ -212,11 +212,11 @@ export function SegmentList({ table }: SegmentListProps) {
           ) : (
             <Text c="text-secondary">{t`No custom segments yet.`}</Text>
           )}
-        </SegmentGroup>
+        </ListSection>
       )}
 
       {hasProposals && (
-        <SegmentGroup
+        <ListSection
           title={t`Proposed cohorts`}
           description={t`Groups to compare, from statuses, flags, values, and milestones. Accept one to make its segments.`}
         >
@@ -249,7 +249,7 @@ export function SegmentList({ table }: SegmentListProps) {
               onDismiss={() => dismiss(proposal)}
             />
           ))}
-        </SegmentGroup>
+        </ListSection>
       )}
 
       {editingGroupId !== undefined && (
@@ -269,38 +269,6 @@ export function SegmentList({ table }: SegmentListProps) {
           onClose={() => setEditingGroupId(undefined)}
         />
       )}
-    </Stack>
-  );
-}
-
-function SegmentGroup({
-  title,
-  description,
-  action,
-  children,
-}: {
-  title: string;
-  description?: string;
-  /** Sits at the end of the title row */
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <Stack gap="sm">
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={0}>
-          <Text fw="bold">{title}</Text>
-          {description && (
-            <Text size="sm" c="text-secondary">
-              {description}
-            </Text>
-          )}
-        </Stack>
-        {action}
-      </Group>
-      <Stack gap={rem(12)} role="list">
-        {children}
-      </Stack>
     </Stack>
   );
 }
