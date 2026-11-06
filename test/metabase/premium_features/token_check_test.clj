@@ -4,6 +4,7 @@
    [clj-http.core :as http.core]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.test-util :as global-system.tu]
@@ -1002,16 +1003,41 @@
                {:began-on    {:installed? (some? (:entry @began-on)), :in-flight (:in-flight @began-on)}
                 :replacement {:installed? (some? (:entry @replacement)), :in-flight (:in-flight @replacement)}}))))))
 
+(defn- recording-executor
+  "An executor that records the tasks it is given, and runs none of them."
+  [tasks]
+  (reify java.util.concurrent.ScheduledExecutorService
+    (execute [_ task]
+      (swap! tasks conj task))))
+
 (deftest ^:synchronized early-tick-writes-the-state-once-test
-  (testing "repeated reads for the same new token write the state once"
-    (let [exec   (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)
+  (testing "repeated reads for the same new token write the state once, and ask for one tick"
+    (let [tasks  (atom [])
           writes (atom 0)]
-      (try
-        (add-watch @(token-check/state-handle) ::writes (fn [& _] (swap! writes inc)))
-        (mt/with-dynamic-fn-redefs [token-check/safe-tick! (fn [] nil)]
-          (global-system.tu/with-root @#'token-check/refresher-component exec
-            (dotimes [_ 3]
-              (#'token-check/tick-for-new-token! "new-token-hash"))))
-        (is (= 1 @writes))
-        (finally
-          (.shutdownNow exec))))))
+      (add-watch @(token-check/state-handle) ::writes (fn [& _] (swap! writes inc)))
+      (global-system.tu/with-root @#'token-check/refresher-component (recording-executor tasks)
+        (dotimes [_ 3]
+          (#'token-check/tick-for-new-token! "new-token-hash")))
+      (is (= {:writes 1, :ticks 1}
+             {:writes @writes, :ticks (count @tasks)})))))
+
+(deftest ^:synchronized early-tick-runs-without-the-requesting-user-test
+  (testing "an early tick asked for by a user under a bound state runs against that state, without the user's bindings"
+    (let [tasks (atom [])
+          seen  (promise)
+          box   (token-check/initial-state)]
+      ;; for every thread, since the task runs on one that has none of this test's bindings, and is built around the
+      ;; var's value when the tick is asked for
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (with-redefs [token-check/safe-tick! #(deliver seen {:user-id     api/*current-user-id*
+                                                           :same-state? (identical? box @(token-check/state-handle))})]
+        (global-system.tu/with-root @#'token-check/refresher-component (recording-executor tasks)
+          (mc/binding (token-check/state-handle) box
+                      (fn []
+                        (mt/with-current-user (mt/user->id :rasta)
+                          (#'token-check/tick-for-new-token! "new-token-hash")))))
+        (doto (Thread. ^Runnable (first @tasks))
+          (.start)
+          (.join 5000)))
+      (is (= {:user-id nil, :same-state? true}
+             (deref seen 1000 ::not-run))))))
