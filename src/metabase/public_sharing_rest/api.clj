@@ -42,6 +42,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [throttle.core :as throttle]
@@ -176,6 +177,34 @@
   [results]
   (error-response results))
 
+(mr/def ::query-result
+  "What [[transform-qp-result]] leaves of a completed query result for a public or embed endpoint: its rows and the
+  column metadata needed to show them."
+  [:map {:closed true}
+   [:status     [:= :completed]]
+   [:data       [:map {:closed true}
+                 [:cols               ::qp.schema/result-metadata.columns]
+                 [:rows               [:sequential [:sequential :any]]]
+                 [:rows_truncated     {:optional true} :int]
+                 [:insights           {:optional true} [:maybe [:sequential ::qp.schema/insight]]]
+                 [:requested_timezone {:optional true} [:maybe :string]]
+                 [:results_timezone   {:optional true} [:maybe :string]]]]
+   [:json_query {:optional true} [:map {:closed true}
+                                  [:parameters {:optional true} [:maybe [:sequential :map]]]]]])
+
+(mr/def ::query-error
+  "The body [[error-response]] builds for a failed public or embed query.
+  It goes out with a 4XX or 5XX status, never as a streamed result."
+  [:map {:closed true}
+   [:status     [:= :failed]]
+   [:error      {:optional true} [:maybe :string]]
+   [:error_type {:optional true} :keyword]])
+
+(mr/def ::query-result-response
+  "Response schema for a public or embed endpoint that streams a query result through [[transform-qp-result]].
+  A failed query is written as an error response instead, with a [[query-error]] body."
+  (qp.streaming/response-schema ::query-result))
+
 (defn- process-query-for-card-with-id-run-fn
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
@@ -233,12 +262,9 @@
   (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
     (apply process-query-for-card-with-id card export-format parameters options)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/card/:uuid/query"
+  :- ::query-result-response
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map {:closed true}
@@ -428,12 +454,9 @@
       (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
                                                   parameters zoom x y lat-field lon-field))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+  :- ::query-result-response
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
@@ -697,12 +720,9 @@
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/pivot/card/:uuid/query"
+  :- ::query-result-response
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map {:closed true}
@@ -713,12 +733,9 @@
   (process-query-for-card-with-public-uuid uuid :api parameters
                                            :qp qp.pivot/run-pivot-query))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
+  :- ::query-result-response
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
   sharing must be enabled."
   [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
@@ -904,11 +921,8 @@
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
+  :- ::query-result-response
   "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
   be enabled."
   [{:keys [uuid card-id]} :- [:map {:closed true}

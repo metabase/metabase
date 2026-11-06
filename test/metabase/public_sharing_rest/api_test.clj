@@ -8,6 +8,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
@@ -34,6 +36,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
@@ -2152,6 +2155,28 @@
             (assert-generic-query-error
              (client/client-full-response :get (format "public/card/%s/query" uuid)
                                           :parameters unparseable-date-param))))))))
+
+(defn- matches?
+  "Whether `body`, a response as the test client parsed its JSON, matches `schema` once decoded the way a JSON client
+  would read that schema."
+  [schema body]
+  (mr/validate schema (mc/decode schema body (mtx/json-transformer))))
+
+(deftest public-query-result-schema-test
+  (testing "GET /api/public/card/:uuid/query returns the bodies its schemas document"
+    (mt/dataset test-data
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :table)]
+          (let [url (format "public/card/%s/query" uuid)]
+            (testing "a completed query"
+              (let [body (client/client :get 202 url)]
+                (is (= "completed" (:status body)))
+                (is (matches? ::api.public/query-result body))))
+            (testing "a failed query"
+              (let [{:keys [status body]} (client/client-full-response :get url :parameters unparseable-date-param)]
+                (is (contains? #{400 500} status))
+                (is (= "failed" (:status body)))
+                (is (matches? ::api.public/query-error body))))))))))
 
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
