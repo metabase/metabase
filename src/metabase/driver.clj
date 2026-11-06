@@ -2265,6 +2265,11 @@
    The return value is unspecified; callers should persist the precomputed details,
    not anything returned from here.
 
+   An implementation that finds the user already there may throw `ex-info` with
+   `:workspace/cleanup? false` in its data and change nothing. That user may belong
+   to another parent, so the caller must not run [[destroy-workspace-isolation!]]
+   for this workspace after that error.
+
    This is an enterprise feature. Drivers must also return true for
    (database-supports? driver :workspace database) to indicate support.
 

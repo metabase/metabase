@@ -93,6 +93,12 @@
 
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
+(defn refused-existing-user?
+  "Whether `t` is init refusing a workspace user that was already there, which may belong to another parent: see
+  [[driver/init-workspace-isolation!]]. Nothing in the warehouse is this workspace's to tear down after it."
+  [t]
+  (false? (:workspace/cleanup? (ex-data t))))
+
 (defn provision-workspace-database!
   "Provision an isolated output schema and user for a `:provisioning`
   WorkspaceDatabase row. State transitions: `:provisioning` -> `:provisioned`
@@ -115,11 +121,12 @@
             (init! provisioner driver db ws-details)
             (grant! provisioner driver db ws-details schemas)
             (catch Throwable t
-              (try
-                (destroy! provisioner driver db ws-details)
-                (catch Throwable destroy-t
-                  (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
-                             workspace-database-id)))
+              (when-not (refused-existing-user? t)
+                (try
+                  (destroy! provisioner driver db ws-details)
+                  (catch Throwable destroy-t
+                    (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
+                               workspace-database-id))))
               (throw t)))
           (ws.db/update-workspace-database! workspace-database-id
                                             {:output_namespace (:schema ws-details)

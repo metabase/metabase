@@ -104,6 +104,23 @@
                 "the failed create must not leave a Workspace row behind")
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
                 "the failed create must not leave WorkspaceDatabase rows behind")))
+        (testing "init refusing a user that was already there: nothing is torn down, and no rows are left"
+          (let [destroyed (atom 0)
+                refusing  (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   (throw (ex-info "user exists" {:status-code        409
+                                                                                 :workspace/cleanup? false})))
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))]
+            (with-redefs [provisioning/dispatching-provisioner refusing]
+              (is (thrown-with-msg? ExceptionInfo #"user exists"
+                                    (ws/create-workspace! {:name         "Refused"
+                                                           :creator_id   (mt/user->id :crowberto)
+                                                           :database_ids [db-id]}))))
+            (is (zero? @destroyed)
+                "destroy would drop the user init refused, which may belong to another parent")
+            (is (not (t2/exists? :model/Workspace :name "Refused")))
+            (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id)))))
         (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
