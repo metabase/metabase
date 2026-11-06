@@ -53,6 +53,7 @@ export * from "./pagination";
 export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
+export * from "./product-analytics";
 export * from "./persist";
 export * from "./query";
 export * from "./remote-sync";

@@ -33,6 +33,7 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { getRoutes as getProductAnalyticsRoutes } from "metabase/product-analytics";
 import {
   QuestionHashRedirect,
   loadMetabotQueryBuilder,
@@ -452,6 +453,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // MODELS
               ...toRouteObjects(getModelRoutes(IsAdmin)),
+
+              // PRODUCT ANALYTICS
+              ...toRouteObjects(getProductAnalyticsRoutes()),
 
               {
                 path: "/model",
