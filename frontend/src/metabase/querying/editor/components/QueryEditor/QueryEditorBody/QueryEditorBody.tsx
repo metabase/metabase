@@ -23,6 +23,7 @@ import type {
 } from "../../../types";
 
 import S from "./QueryEditorBody.module.css";
+import { RefreshButton } from "./RefreshButton";
 
 const DEFAULT_EDITOR_HEIGHT = 550;
 const NATIVE_HEADER_HEIGHT = 55;
@@ -243,6 +244,15 @@ export function QueryEditorBody({
           runQuestionQuery={onRunQuery}
           dataPickerOptions={dataPickerOptions}
         />
+        {!readOnly && !hideRunButton && isRunnable && !isResultDirty ? (
+          <Box p="md" pos="absolute" right={0} bottom={0}>
+            <RefreshButton
+              isRunning={isRunning}
+              runQuery={onRunQuery}
+              cancelQuery={onCancelQuery}
+            />
+          </Box>
+        ) : null}
       </Box>
     </ResizableBox>
   );

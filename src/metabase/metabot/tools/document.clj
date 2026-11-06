@@ -1,14 +1,18 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [clojure.string :as str]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.util.i18n :refer [tru]]
    [metabase.warehouses.core :as warehouses]))
 
@@ -42,39 +46,100 @@
               (remove nil?))
         references))
 
-(defn- mentioned-database-id
-  "Return the ID of the one database that the user `@`-mentioned, from the references in `ctx`.
-  Throw an unrecoverable error, which ends the turn, when the user mentioned no database or more than one."
-  [ctx]
-  (let [references   (get-in (some-> (:memory-atom ctx) deref) [:context :references])
-        database-ids (referenced-database-ids references)]
-    (cond
-      (empty? database-ids)
-      (tools/unrecoverable! ::no-database-mentioned
-                            {:user-message (tru "Mention a database with @ to create this chart with SQL.")})
+(def ^:private find-database-id-step
+  {:uses #{"list_available_data_sources"}
+   :text "Call `list_available_data_sources` and retry with the `database_id` of a model that holds the data."})
 
-      (next database-ids)
-      (tools/unrecoverable! ::several-databases-mentioned
-                            {:user-message (tru "Mention only one database with @ to create this chart with SQL.")
-                             :data         {:database-ids database-ids}})
+(tools/defrecoverable no-database-chosen!
+  "The user did not `@`-mention a database, and the call did not set `database_id`."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "No database was `@`-mentioned, so set `database_id` to the database that holds the data."
+   :recovery [find-database-id-step]})
 
-      :else
-      (first database-ids))))
+(tools/defrecoverable unmentioned-database!
+  "The user `@`-mentioned several databases, and the call did not choose one of them."
+  {:payload [:map {:closed true} [:database-ids [:sequential :int]]]}
+  [{:keys [database-ids]}]
+  {:message  (str "The user `@`-mentioned databases " (str/join ", " database-ids)
+                  ". Set `database_id` to one of them.")
+   :recovery []})
 
-(defn- mentioned-database
-  "Return the database with `database-id`. Throw an unrecoverable error, which ends the turn, when the database doesn't
-  exist or the current user can't read it."
-  [database-id]
-  (try
-    (warehouses/get-database database-id)
-    (catch clojure.lang.ExceptionInfo e
-      (if (contains? tools/refusal-status-codes (:status-code (ex-data e)))
-        (tools/unrecoverable!
-         ::database-unavailable
-         {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
-          :data         {:database-id database-id}
-          :cause        e})
-        (throw e)))))
+(tools/defrecoverable chosen-database-not-found!
+  "The database the call chose does not exist, or the current user can't read it.
+
+  Not `recoverable.common/unknown-database!`, because that error tells the model to call `document_schema_collect`,
+  which is the tool that failed here."
+  {:payload     [:map {:closed true} [:database-id :int]]
+   :status-code 404}
+  [{:keys [database-id]}]
+  {:message  (str "Database " database-id " was not found.")
+   :recovery [find-database-id-step]})
+
+(tools/defrecoverable chosen-database-without-sql-access!
+  "The current user can read the database the call chose, but can't write SQL against it, for example because the user
+  has only query builder access or a sandbox on it."
+  {:payload     [:map {:closed true} [:database-id :int]]
+   :status-code 403}
+  [{:keys [database-id]}]
+  {:message  (str "The user can't write SQL against database " database-id ".")
+   :recovery [find-database-id-step]})
+
+(defn- chosen-database-id
+  "Return the ID of the database to collect the schema of.
+
+  The user can choose the database with an `@` mention. The model chooses it with `database-id` when the user mentioned
+  no database, or chooses one of the databases that the user mentioned when there are several."
+  [mentioned-ids database-id]
+  (cond
+    (= 1 (count mentioned-ids))
+    (first mentioned-ids)
+
+    (some #{database-id} mentioned-ids)
+    database-id
+
+    (seq mentioned-ids)
+    (unmentioned-database! {:database-ids mentioned-ids})
+
+    (nil? database-id)
+    (no-database-chosen! {})
+
+    :else
+    database-id))
+
+(defn- chosen-database
+  "Return the database to collect the schema of. When the database doesn't exist or the current user can't read it,
+  throw an unrecoverable error, which ends the turn, if the user mentioned it, because only the user can mention another
+  one. Throw a recoverable error if the model chose it.
+
+  When the model chose the database, also throw a recoverable error if the current user can't write SQL against it.
+  `document_construct_sql_chart` makes the same check, but there a failure ends the turn."
+  [ctx database-id]
+  (let [references    (get-in (some-> (:memory-atom ctx) deref) [:context :references])
+        mentioned-ids (referenced-database-ids references)
+        database-id   (chosen-database-id mentioned-ids database-id)
+        db            (try
+                        (warehouses/get-database database-id)
+                        (catch clojure.lang.ExceptionInfo e
+                          (cond
+                            (not (contains? tools/refusal-status-codes (:status-code (ex-data e))))
+                            (throw e)
+
+                            (seq mentioned-ids)
+                            (tools/unrecoverable!
+                             ::database-unavailable
+                             {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
+                              :data         {:database-id database-id}
+                              :cause        e})
+
+                            :else
+                            (tools.error/throw-recoverable! ::chosen-database-not-found
+                                                            {:database-id database-id}
+                                                            {:cause e}))))]
+    (when-not (or (seq mentioned-ids)
+                  (sql.common/native-query-access? database-id))
+      (chosen-database-without-sql-access! {:database-id database-id}))
+    db))
 
 (def ^:private schema-collect-description
   "Collects the schema of a database in order to construct a SQL query.
@@ -92,13 +157,14 @@
      :description          schema-collect-description
      :scope                scope/agent-document-read
      :metabot/capabilities #{:permission-write-sql-queries}
-     :args                 [:map {:closed true}]})
-  (handle [_ _args ctx]
-    (let [database-id (mentioned-database-id ctx)
-          db          (mentioned-database database-id)
+     :args                 [:map {:closed true}
+                            [:database_id {:optional true} [:maybe [:int {:min 1}]]]]})
+  (handle [_ {:keys [database_id]} ctx]
+    (let [db          (chosen-database ctx database_id)
+          database-id (:id db)
           schema-ddl  (table-utils/schema-full database-id)]
       {:output            (str "<result>\n"
-                               "The database the user selected has this schema:\n"
+                               "The database has this schema:\n"
                                "<database_schema>\n"
                                schema-ddl
                                "\n</database_schema>\n"
@@ -127,13 +193,30 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
+(defn- without-stack-frames
+  "`message` up to the first stack frame in it, or `message` when it has none.
+
+    (without-stack-frames \"ERROR processing query\\n\\tat com.example.Client.run(Unknown Source)\")
+    ;; => \"ERROR processing query\""
+  [message]
+  ;; Some JDBC drivers, such as Databricks, put a stack trace in their error text.
+  ;; `qp.catch-exceptions/exception-response` cuts its `:error` at the same place.
+  (some-> message (str/split #"\n\tat " 2) first))
+
 (defn- check-query!
-  "Validate one row of `query`, throwing [[sql.common/query-failed!]] if it fails."
+  "Validate one row of `query`.
+
+  When the caller may see the failure, such as a database rejection, throw [[sql.common/query-failed!]] with its
+  message, less any stack frames a driver put in it. Rethrow any other failure, such as an app DB error, unchanged."
   [query]
   (try
     (qp/process-query (assoc query :constraints {:max-results 1 :max-results-bare-rows 1}))
     (catch Exception e
-      (sql.common/query-failed! {:error-message (ex-message e)}))))
+      ;; The outer message, not `:error`: `:error` swaps in an inner exception's text, which can drop curated text
+      ;; such as the saturated-pool message, or the tag and question that a `{{#123}}` failure names.
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (sql.common/query-failed! {:error-message (without-stack-frames (ex-message e))})
+        (throw e)))))
 
 (defrecord DocumentConstructSqlChartTool []
   tools/Tool

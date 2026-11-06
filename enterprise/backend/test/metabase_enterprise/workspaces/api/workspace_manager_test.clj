@@ -209,7 +209,7 @@
                                                :output_namespace ""
                                                :input_schemas    ["shop"]
                                                :status           :provisioned}]
-      (t2/update! :model/Field fk-id {:description "Who placed the order"})
+      (t2/update! :model/Field :id fk-id {:description "Who placed the order"})
       (is (= {:databases [{:id db-id :name "Meta DW" :engine "postgres"}]
               :tables    [{:id orders-id :db_id db-id :schema "shop" :name "orders" :description "One row per order"}
                           {:id people-id :db_id db-id :schema "shop" :name "people"}]
@@ -270,12 +270,15 @@
                                                :output_namespace ""
                                                :input_schemas    ["shop"]
                                                :status           :provisioned}]
-      ;; curated as a user would, through the user-settings tables
-      (t2/insert! :model/TableUserSettings {:table_id orders-id :description "One row per order"})
-      (t2/insert! :model/TableUserSettings {:table_id audit-id :visibility_type :hidden})
-      (t2/insert! :model/FieldUserSettings {:field_id fk-id :semantic_type :type/FK :fk_target_field_id people-pk
-                                            :description "Who placed the order" :display_name "Buyer"})
-      (t2/insert! :model/FieldUserSettings {:field_id card-id :visibility_type :sensitive})
+      ;; curated as a user would: the value on the row, and a settings row recording that a user set it
+      (doseq [[model settings-model id-key id values]
+              [[:model/Table :model/TableUserSettings :table_id orders-id {:description "One row per order"}]
+               [:model/Table :model/TableUserSettings :table_id audit-id {:visibility_type :hidden}]
+               [:model/Field :model/FieldUserSettings :field_id fk-id {:semantic_type :type/FK :fk_target_field_id people-pk
+                                                                       :description "Who placed the order" :display_name "Buyer"}]
+               [:model/Field :model/FieldUserSettings :field_id card-id {:visibility_type :sensitive}]]]
+        (t2/insert! settings-model (assoc values id-key id))
+        (t2/update! model :id id values))
       (is (= {:databases
               [{:name   "Load DW"
                 :tables [{:schema "shop" :name "audit_log" :display_name "Audit Log" :visibility_type "hidden"

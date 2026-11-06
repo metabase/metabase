@@ -450,7 +450,7 @@
   ;; Same as the inherited `:sql-jdbc` impl, but inlines a sortkey when one is present. Non-transform callers
   ;; (e.g. uploads) pass no `:indexes`, so the rendered SQL is unchanged for them.
   (let [sql (create-table-sql driver table-name column-definitions opts)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -564,10 +564,6 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                  (driver-api/database (driver-api/metadata-provider)))
-                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)

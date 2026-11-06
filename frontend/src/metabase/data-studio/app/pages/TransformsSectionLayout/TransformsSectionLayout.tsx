@@ -4,7 +4,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet, useParams } from "metabase/router";
+import { Outlet } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
@@ -15,7 +15,6 @@ import { SectionLayout } from "../../components/SectionLayout";
 import { NoWritableDatabasesEmptyState } from "./NoWritableDatabasesEmptyState";
 
 export function TransformsSectionLayout() {
-  const params = useParams();
   usePageTitle(t`Transforms`, { titleIndex: 1 });
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsSetupComplete = useSetting("transforms-setup-complete");
@@ -29,16 +28,7 @@ export function TransformsSectionLayout() {
     return <EnableTransformsPage />;
   }
 
-  // Transform-detail pages (`/data-studio/transforms/:transformId/...`) must remain reachable
-  // even when no writable database exists, so the analyst can read the SQL/Python body of an
-  // orphaned transform after its source DB has been deleted (GDGT-2447).
-  const isTransformDetailRoute = Boolean(params.transformId);
-
-  if (
-    !isLoadingDatabases &&
-    transformsDatabases?.length === 0 &&
-    !isTransformDetailRoute
-  ) {
+  if (!isLoadingDatabases && transformsDatabases?.length === 0) {
     return (
       <SectionLayout>
         <NoWritableDatabasesEmptyState />

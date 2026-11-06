@@ -17,7 +17,6 @@ describe("scenarios > organization > timelines > collection", () => {
     cy.intercept("POST", "/api/timeline-event").as("createEvent");
     cy.intercept("PUT", "/api/timeline-event/*").as("updateEvent");
     cy.intercept("DELETE", "/api/timeline-event/*").as("deleteEvent");
-    cy.intercept("GET", "/api/timeline/*").as("getTimeline");
   });
 
   describe("as admin", () => {
@@ -540,7 +539,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection events");
       cy.wait("@createTimeline");
-      cy.icon("close").click();
+      H.modal().findByLabelText("Close").click();
 
       cy.findByDisplayValue("First collection")
         .clear()
@@ -594,7 +593,6 @@ describe("scenarios > organization > timelines > collection", () => {
         "type/Temporal": { time_style: "HH:mm" },
       });
       cy.visit("/collection/root/timelines");
-      cy.wait("@getTimeline");
 
       cy.findByTestId("event-list")
         .findByText("October 12, 2022, 18:15")
@@ -699,7 +697,11 @@ describe("scenarios > collections > timelines", () => {
 });
 
 const openMenu = (name) => {
-  return cy.findByText(name).parent().parent().icon("ellipsis").click();
+  return cy
+    .findByText(name)
+    .closest(":has(.Icon-ellipsis)")
+    .icon("ellipsis")
+    .click();
 };
 
 const setFormattingSettings = (settings) => {

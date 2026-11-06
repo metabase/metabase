@@ -255,7 +255,11 @@ const AgentPart = ({
       <AgentToolCallPart part={p} onSelect={onToolCallSelect} />
     ))
     .with({ type: "chain_of_thought" }, (p) => (
-      <MetabotChainOfThought part={p} supportsReasoning={supportsReasoning} />
+      <MetabotChainOfThought
+        conversationId={conversationId}
+        part={p}
+        supportsReasoning={supportsReasoning}
+      />
     ))
     .exhaustive();
 

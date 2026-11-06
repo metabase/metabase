@@ -14,7 +14,8 @@
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,6 +24,17 @@
 (def ^:private cell
   "A value as a failure report carries it: a string, a number, a boolean, or null."
   [:maybe [:or :boolean number? :string]])
+
+(mr/def ::cell-mismatch
+  "A cell that differs between the one missing row and the one extra row."
+  [:map {:closed true}
+   [:column   :string]
+   [:expected cell]
+   [:actual   cell]])
+
+(mr/def ::expectation
+  "A built `equals` expectation."
+  [:fn #(satisfies? expectations.protocol/Expectation %)])
 
 (def ^:private base
   "The shared result keys, pinned to this type."
@@ -40,10 +52,7 @@
                        [:expected :int]]]
     [:extra-rows      [:sequential ::transform-testing.schema/row]]
     [:missing-rows    [:sequential ::transform-testing.schema/row]]
-    [:cell-mismatches [:sequential [:map {:closed true}
-                                    [:column   :string]
-                                    [:expected cell]
-                                    [:actual   cell]]]]
+    [:cell-mismatches [:sequential ::cell-mismatch]]
     [:truncated       :int]]])
 
 (mr/def ::result
@@ -61,13 +70,15 @@
 
 ;;; --------------------------------------------- Reporting ---------------------------------------------
 
-(defn- cell-mismatches
+(mu/defn- cell-mismatches :- [:maybe [:sequential ::cell-mismatch]]
   "The cells that differ between the one missing row and the one extra row, or nil when the diff is
   not one-for-one.
 
   Only the unambiguous case is paired. Sorting both sides and pairing positionally for a larger
   diff produces output that reads as authoritative and is arbitrary."
-  [column-names [missing :as missing-rows] [extra :as extra-rows]]
+  [column-names                 :- [:sequential :string]
+   [missing :as missing-rows]   :- [:sequential ::transform-testing.schema/row]
+   [extra :as extra-rows]       :- [:sequential ::transform-testing.schema/row]]
   (when (= 1 (count missing-rows) (count extra-rows))
     (not-empty
      (vec (for [c     column-names
@@ -77,7 +88,7 @@
 
 ;;; ---------------------------------------- Resolving declared columns ----------------------------------
 
-(defn- resolve-column
+(mu/defn- resolve-column :- :string
   "The output table's own spelling of `declared-name`.
 
   The author writes the name as it appears in the transform's SQL; the warehouse stores whatever its
@@ -85,7 +96,9 @@
   and lower on Postgres. Resolving against the materialized table means the comparison names a
   column the table actually has — and, since the result is always one of the output's own names, no
   author-supplied string ever reaches the SQL as an identifier."
-  [expectation-name output-columns declared-name]
+  [expectation-name :- :string
+   output-columns   :- [:sequential :string]
+   declared-name    :- :string]
   (let [folded (filter #(.equalsIgnoreCase ^String % declared-name) output-columns)]
     (or (first (filter #(= % declared-name) output-columns))
         (when (= 1 (count folded)) (first folded))
@@ -110,12 +123,13 @@
                    :column      declared-name
                    :available   (vec output-columns)}))))))
 
-(defn resolve-columns
+(mu/defn resolve-columns :- [:sequential :string]
   "The output table's own spelling of each column `expectation` declares, in declared order.
 
   Only the SQL uses these. A failure reports the column under the name the author wrote, which is
   what they can find in their own test."
-  [{:keys [name columns]} output-columns]
+  [{:keys [name columns]} :- ::expectation
+   output-columns         :- [:sequential ::transform-testing.schema/result-column]]
   (let [output-names (mapv :name output-columns)]
     (mapv #(resolve-column name output-names (:name %)) columns)))
 
@@ -175,7 +189,8 @@
         (cell-mismatches column-names missing extra)
         (assoc :cell-mismatches (cell-mismatches column-names missing extra))))))
 
-(defn- not-implemented [expectation-name]
+(mu/defn- not-implemented :- (ms/InstanceOfClass clojure.lang.ExceptionInfo)
+  [expectation-name :- :string]
   (transform-testing.errors/ex
    ::transform-testing.errors/unsupported-format
    (tru "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."

@@ -2,6 +2,7 @@
   "Malli schemas for the warehouses module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.cron]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -97,3 +98,17 @@
   [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
    [:lib-metadata :metabase.lib.schema.metadata/database]
    [:row          ::database]])
+
+(mr/def ::external-database
+  "A Database as serialization writes it, with portable references in place of ids. Connection details and sync
+  schedules are never exported, but older files may carry them."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::database [:auto_run_queries :caveats :description :engine :is_audit :is_attached_dwh
+                              :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
+                              :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
+                              :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
+                              :write_data_details :creator_id :router_database_id :initial_sync_status :is_sample
+                              :is_stub]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

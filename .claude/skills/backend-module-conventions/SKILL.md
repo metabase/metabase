@@ -5,7 +5,7 @@ description: Where Metabase backend code goes and how it reaches the app DB. Cov
 
 # Backend module conventions
 
-This skill decides where a line of backend code lives and how it reaches the app DB. Project `CLAUDE.md`
+This skill decides where a line of backend code lives and how it reaches the app DB. Project `AGENTS.md`
 covers the module config keys, nested modules, test commands, and ratchets. When the two disagree, the
 source tree wins. Read the linter or test that enforces a rule before you trust any prose about it,
 including this file.

@@ -7,7 +7,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mr/def ::status
@@ -101,8 +100,7 @@
 (mu/defn active-table-schemas
   "The set of schemas of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                    {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :schema :model/Table :db_id database-id :active true))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
@@ -124,13 +122,12 @@
 ;;; ------------------------------------------------- Metadata -------------------------------------------------
 
 (mu/defn metadata-tables
-  "The active, visible Tables of the Database with `database-id`, as users see them (user-set values merged in),
+  "The active, visible Tables of the Database with `database-id` (user-set values included),
   restricted to `schemas` unless it is nil."
   [database-id :- ::lib.schema.id/database
    schemas     :- [:maybe [:sequential :string]]]
   (t2/select [:model/Table :id :db_id :name :schema :description]
-             {:from     [(warehouse-schema-overlay/table-query)]
-              :where    [:and
+             {:where    [:and
                          [:= :db_id database-id]
                          [:= :active true]
                          [:= :visibility_type nil]
@@ -139,12 +136,11 @@
 
 (mu/defn metadata-fields
   "The active Fields of the Tables with ids in `table-ids` whose visibility is normal or details-only (not hidden,
-  sensitive or retired), as users see them (user-set values merged in)."
+  sensitive or retired) (user-set values included)."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Field :id :table_id :name :description :base_type :database_type :effective_type
               :semantic_type :coercion_strategy :nfc_path :parent_id :fk_target_field_id]
-             {:from     [(warehouse-schema-overlay/field-query)]
-              :where    [:and
+             {:where    [:and
                          [:in :table_id table-ids]
                          [:= :active true]
                          [:in :visibility_type ["normal" "details-only"]]]
@@ -153,27 +149,25 @@
 ;;; ------------------------------------------------ Load metadata -----------------------------------------------
 
 (mu/defn load-metadata-tables
-  "The active Tables of the Database with `database-id`, hidden ones included, as users see them (user-set values
-  merged in), restricted to `schemas` unless it is nil."
+  "The active Tables of the Database with `database-id`, hidden ones included, user-set values
+  included, restricted to `schemas` unless it is nil."
   [database-id :- ::lib.schema.id/database
    schemas     :- [:maybe [:sequential :string]]]
   (t2/select [:model/Table :id :name :schema :display_name :description :visibility_type]
-             {:from     [(warehouse-schema-overlay/table-query)]
-              :where    [:and
+             {:where    [:and
                          [:= :db_id database-id]
                          [:= :active true]
                          (if schemas [:in :schema schemas] true)]
               :order-by [:schema :name]}))
 
 (mu/defn load-metadata-fields
-  "The active top-level Fields of the Tables with ids in `table-ids`, whatever their visibility, as users see them
-  (user-set values merged in)."
+  "The active top-level Fields of the Tables with ids in `table-ids`, whatever their visibility (user-set
+  values included)."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Field :id :table_id :name :display_name :description :base_type :effective_type
               :coercion_strategy :database_type :semantic_type :visibility_type :position :database_position
               :fk_target_field_id]
-             {:from     [(warehouse-schema-overlay/field-query)]
-              :where    [:and
+             {:where    [:and
                          [:in :table_id table-ids]
                          [:= :active true]
                          [:= :parent_id nil]]
@@ -182,8 +176,7 @@
 (mu/defn database-has-tables?
   "Whether the Database with `database-id` has any Table rows."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id
-              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/exists? :model/Table :db_id database-id))
 
 (mu/defn insert-tables!
   "Insert the Table rows `tables`."
@@ -195,8 +188,7 @@
   [database-id :- ::lib.schema.id/database]
   (into {}
         (map (juxt (juxt :schema :name) :id))
-        (t2/select [:model/Table :id :schema :name] :db_id database-id
-                   {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})))
+        (t2/select [:model/Table :id :schema :name] :db_id database-id)))
 
 (mu/defn insert-fields!
   "Insert the Field rows `fields`."
@@ -208,27 +200,34 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (into {}
         (map (juxt (juxt :table_id :name) :id))
-        (t2/select [:model/Field :id :table_id :name] :table_id [:in table-ids] :parent_id nil
-                   {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+        (t2/select [:model/Field :id :table_id :name] :table_id [:in table-ids] :parent_id nil)))
 
 (mu/defn insert-table-user-settings!
   "Insert the TableUserSettings rows `settings`, one statement per set of columns: a multi-row insert writes NULL for a
   column a row leaves out, and the insert hook only sets the `_set` flags of the columns a row has."
   [settings :- [:sequential ::table-user-settings.insert]]
   (doseq [rows (vals (group-by (comp set keys) settings))]
-    (t2/insert! :model/TableUserSettings rows)))
+    (t2/insert! :model/TableUserSettings rows))
+  ;; `metabase_table` holds the values; the settings rows only record that a user set them.
+  ;; ponytail: one update per table, batch it if loading large schemas gets slow
+  (doseq [{:keys [table_id] :as row} settings]
+    (t2/update! :model/Table :id table_id (dissoc row :table_id))))
 
 (mu/defn insert-field-user-settings!
   "Insert the FieldUserSettings rows `settings`, one statement per set of columns: a multi-row insert writes NULL for a
   column a row leaves out, and the insert hook only sets the `_set` flags of the columns a row has."
   [settings :- [:sequential ::field-user-settings.insert]]
   (doseq [rows (vals (group-by (comp set keys) settings))]
-    (t2/insert! :model/FieldUserSettings rows)))
+    (t2/insert! :model/FieldUserSettings rows))
+  ;; `metabase_field` holds the values; the settings rows only record that a user set them.
+  ;; ponytail: one update per field, batch it if loading large schemas gets slow
+  (doseq [{:keys [field_id] :as row} settings]
+    (t2/update! :model/Field :id field_id (dissoc row :field_id))))
 
 (mu/defn mark-database-synced!
   "Set the Database with `database-id`'s initial sync status to complete."
   [database-id :- ::lib.schema.id/database]
-  (t2/update! :model/Database database-id {:initial_sync_status "complete"}))
+  (t2/update! :model/Database :id database-id {:initial_sync_status "complete"}))
 
 ;;; ------------------------------------------------- Workspace ------------------------------------------------
 

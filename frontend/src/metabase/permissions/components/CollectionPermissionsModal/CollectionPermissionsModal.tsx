@@ -2,14 +2,17 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  skipToken,
+  useListCollectionsQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button } from "metabase/ui";
+import { Button, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
@@ -69,7 +72,7 @@ const mapDispatchToProps = {
   saveCollectionPermissions,
 };
 
-interface CollectionPermissionsModalProps {
+interface CollectionPermissionsModalBodyProps {
   permissionEditor: PermissionEditorType | null;
   isDirty: boolean;
   onClose: () => void;
@@ -82,7 +85,7 @@ interface CollectionPermissionsModalProps {
   saveCollectionPermissions: (namespace: CollectionNamespace) => void;
 }
 
-const CollectionPermissionsModal = ({
+const CollectionPermissionsModalBody = ({
   permissionEditor,
   isDirty,
   onClose,
@@ -92,9 +95,10 @@ const CollectionPermissionsModal = ({
   initialize,
   updateCollectionPermission,
   saveCollectionPermissions,
-}: CollectionPermissionsModalProps) => {
+}: CollectionPermissionsModalBodyProps) => {
   const { data: collectionsList } =
     useListCollectionsTreeQuery(collectionsQuery);
+  useListCollectionsQuery(namespace != null ? { namespace } : skipToken);
 
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
@@ -146,33 +150,7 @@ const CollectionPermissionsModal = ({
   );
 
   return (
-    <ModalContent
-      title={modalTitle}
-      onClose={onClose}
-      className={CS.overflowHidden}
-      footer={[
-        ...(isFolderNamespace(namespace)
-          ? []
-          : [
-              <Link
-                key="all-permissions"
-                className={CS.link}
-                to="/admin/permissions/collections"
-              >
-                {t`See all collection permissions`}
-              </Link>,
-            ]),
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button
-          key="save"
-          variant="filled"
-          disabled={!isDirty}
-          onClick={handleSave}
-        >
-          {t`Save`}
-        </Button>,
-      ]}
-    >
+    <Modal opened size="lg" title={modalTitle} onClose={onClose}>
       <div className={S.PermissionTableContainer}>
         {permissionEditor && (
           <PermissionsTable
@@ -181,11 +159,41 @@ const CollectionPermissionsModal = ({
           />
         )}
       </div>
-    </ModalContent>
+      <Modal.Footer>
+        {!isFolderNamespace(namespace) && (
+          <Link className={CS.link} to="/admin/permissions/collections">
+            {t`See all collection permissions`}
+          </Link>
+        )}
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+          {t`Save`}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
-  CollectionPermissionsModal,
-);
+const ConnectedCollectionPermissionsModalBody = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+)(CollectionPermissionsModalBody);
+
+type CollectionPermissionsModalProps = {
+  params: { slug?: string };
+  namespace?: CollectionNamespace;
+  onClose: () => void;
+};
+
+export function CollectionPermissionsModal({
+  params,
+  namespace,
+  onClose,
+}: CollectionPermissionsModalProps) {
+  return (
+    <ConnectedCollectionPermissionsModalBody
+      params={params}
+      namespace={namespace}
+      onClose={onClose}
+    />
+  );
+}

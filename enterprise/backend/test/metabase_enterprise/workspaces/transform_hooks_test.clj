@@ -109,11 +109,11 @@
           (ws.table-remapping/clear-mappings-for-db! (mt/id))
           (let [captured        (atom nil)
                 python-transform {:id     999
-                                  :source {:type :python}
+                                  :source {:type :python :source-tables [] :body ""}
                                   :target {:database (mt/id)
                                            :schema   "PUBLIC"
                                            :name     "FOO"
-                                           :type     :table}}]
+                                           :type     "table"}}]
             (with-stubbed-execute-multimethod!
               captured
               (fn []
@@ -137,11 +137,11 @@
   (testing "When no WorkspaceDatabase is provisioned, the wrapper passes target through unchanged"
     (let [captured        (atom nil)
           python-transform {:id     998
-                            :source {:type :python}
+                            :source {:type :python :source-tables [] :body ""}
                             :target {:database (mt/id)
                                      :schema   "PUBLIC"
                                      :name     "BAR"
-                                     :type     :table}}]
+                                     :type     "table"}}]
       (with-stubbed-execute-multimethod!
         captured
         (fn []

@@ -1,7 +1,7 @@
 import { useMountedState } from "react-use";
 import { t } from "ttag";
 
-import { getIsSsoUser } from "metabase/account/selectors";
+import { getIsPasswordUser } from "metabase/account/selectors";
 import { hasAuthenticationSettings } from "metabase/account/utils";
 import { Api, useDisconnectSlackMutation } from "metabase/api";
 import { getErrorStatus } from "metabase/api/client/errors";
@@ -25,7 +25,7 @@ import { UserPasswordForm } from "../../components/UserPasswordForm";
 const UserPasswordApp = () => {
   const { data, isFetching } = useGetCurrentUserQuery();
   const user = checkNotNull(data);
-  const isSsoUser = useSelector(getIsSsoUser);
+  const isPasswordUser = useSelector(getIsPasswordUser);
   const validatePassword = useValidatePassword();
   const [disconnectSlack, { isLoading }] = useDisconnectSlackMutation();
   const [sendToast] = useToast();
@@ -75,7 +75,7 @@ const UserPasswordApp = () => {
     // Form labels have a tighter line-height than the body text the other account tabs
     // start with, so nudge the content down to line their first lines up.
     <Stack gap="xxl" pt={rem(3)}>
-      {!isSsoUser && (
+      {isPasswordUser && (
         <Stack gap="lg">
           <UserPasswordForm user={user} onValidatePassword={validatePassword} />
         </Stack>

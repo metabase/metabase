@@ -82,6 +82,7 @@ liability it usually is.
 - [ ] Separate `deftest` forms for distinct test cases
 - [ ] Pure tests marked `^:parallel`
 - [ ] Test names end in `-test` or `-test-<number>`
+- [ ] Test queries, fixtures included, built with `lib/` (`lib/query`, `lib/native-query`), never hand-written maps
 
 ### Modules
 

@@ -6,7 +6,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -54,15 +53,13 @@
 
 (defn- tables-as-users-see-them [db-id]
   (t2/select [:model/Table :id :schema :name :display_name :description :visibility_type :initial_sync_status]
-             {:from     [(warehouse-schema-overlay/table-query)]
-              :where    [:= :db_id db-id]
+             {:where    [:= :db_id db-id]
               :order-by [:name]}))
 
 (defn- field-as-users-see-it [table-id field-name]
   (t2/select-one [:model/Field :id :name :display_name :description :base_type :effective_type :coercion_strategy
                   :database_type :semantic_type :visibility_type :fk_target_field_id :position :database_position]
-                 {:from  [(warehouse-schema-overlay/field-query)]
-                  :where [:and [:= :table_id table-id] [:= :name field-name]]}))
+                 {:where [:and [:= :table_id table-id] [:= :name field-name]]}))
 
 (deftest load-metadata-file-builds-tables-and-fields-test
   (mt/with-temp [:model/Database {db-id :id} {:name "Load DW" :engine :h2 :details {}}]
@@ -70,7 +67,7 @@
       (write-document! path sample-document)
       (is (= #{db-id} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
       (testing "the database is marked synced, so the initial sync is skipped"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database db-id))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))))
       (let [tables   (tables-as-users-see-them db-id)
             by-name  (into {} (map (juxt :name identity)) tables)
             people   (by-name "people")
@@ -94,18 +91,17 @@
           (is (=? {:base_type :type/Text :effective_type :type/DateTime
                    :coercion_strategy :Coercion/ISO8601->DateTime}
                   (field-as-users-see-it (:id orders) "created_at"))))
-        (testing "the field rows themselves have effective_type = base_type, as sync leaves them"
+        (testing "only a coerced field's row has an effective_type other than its base_type"
           (is (= {"id"            [:type/BigInteger :type/BigInteger]
                   "email"         [:type/Text :type/Text]
                   "person_id"     [:type/BigInteger :type/BigInteger]
-                  "created_at"    [:type/Text :type/Text]
+                  "created_at"    [:type/Text :type/DateTime]
                   "internal_note" [:type/Text :type/Text]
                   "ghost_id"      [:type/Integer :type/Integer]}
                  (into {}
                        (map (juxt :name (juxt :base_type :effective_type)))
                        (t2/select [:model/Field :name :base_type :effective_type]
-                                  {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
-                                   :where [:in :table_id [(:id people) (:id orders)]]})))))
+                                  :table_id [:in [(:id people) (:id orders)]])))))
         (testing "an FK resolves to the child's own field, matched by schema.table.field"
           (is (=? {:display_name       "Buyer"
                    :description        "Who placed the order"
@@ -115,9 +111,7 @@
         (testing "an FK whose target isn't in the document is dropped"
           (is (=? {:fk_target_field_id nil}
                   (field-as-users-see-it (:id orders) "ghost_id"))))
-        (testing "curated values live in the user-settings tables, so sync can't overwrite them"
-          (is (=? {:description nil :visibility_type nil}
-                  (t2/select-one [:model/Table :description :visibility_type] (:id orders))))
+        (testing "curated values are recorded in the user-settings tables, so sync can't overwrite them"
           (is (=? {:description "One row per order"}
                   (t2/select-one :model/TableUserSettings :table_id (:id orders))))
           (is (=? {:visibility_type :hidden}
@@ -137,12 +131,12 @@
                      :model/Table    _           {:db_id db-id :schema "other" :name "unrelated"}]
         (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
         (is (= 1 (t2/count :model/Table :db_id db-id)))
-        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id)))))
+        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id)))))
     (testing "a database the document lists no tables for is left to sync, not marked synced"
       (mt/with-temp [:model/Database {db-id :id} {:name "Load DW" :engine :h2 :details {}}]
         (write-document! path {:databases [{:name "Load DW" :tables []}]})
         (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
-        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id))))
+        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))))
       (write-document! path sample-document))
     (testing "a database the document doesn't name is left alone"
       (mt/with-temp [:model/Database {db-id :id} {:name "Other DW" :engine :h2 :details {}}]
@@ -172,7 +166,7 @@
           (write! path)
           (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
           (is (zero? (t2/count :model/Table :db_id db-id)))
-          (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id))))))))
+          (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))))))))
 
 (deftest load-metadata-file-rolls-back-a-failed-load-test
   (testing "a load that fails after creating rows leaves the database empty and unsynced, for sync to fill"
@@ -182,4 +176,4 @@
         (mt/with-dynamic-fn-redefs [ws.db/insert-field-user-settings! (fn [_] (throw (ex-info "boom" {})))]
           (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id}))))
         (is (zero? (t2/count :model/Table :db_id db-id)))
-        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id)))))))
+        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id)))))))

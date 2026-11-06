@@ -29,7 +29,12 @@ function setup() {
     <Route path="collection/:slug">
       <Route
         path="timelines/new"
-        element={<NewTimelineModal params={{ slug: "7-launches" }} />}
+        element={
+          <NewTimelineModal
+            params={{ slug: "7-launches" }}
+            onClose={jest.fn()}
+          />
+        }
       />
       <Route path="timelines/:timelineId" element={<div>Timeline page</div>} />
     </Route>,

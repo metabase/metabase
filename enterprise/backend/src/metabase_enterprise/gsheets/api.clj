@@ -340,7 +340,7 @@
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- :gsheets/response
+  []
   (handle-get-connection))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
@@ -400,7 +400,6 @@
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
-    #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (gsheets.db/attached-dwh-database))))
+     (:id (gsheets.db/attached-dwh-database)))))

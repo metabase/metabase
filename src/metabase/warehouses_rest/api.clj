@@ -657,7 +657,6 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map {:closed true}
@@ -694,7 +693,6 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map {:closed true}
@@ -813,7 +811,7 @@
                                  :database     engine
                                  :database-id  (u/the-id <>)
                                  :source       connection_source
-                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+                                 :dbms-version (:version (driver/dbms-version (keyword engine) (driver.u/lib-database (u/the-id <>))))}))
       ;; failed to connect, return error
       (do
         (analytics/track-event! :snowplow/database
@@ -1036,16 +1034,16 @@
                                           (let [would-be-database (cond-> existing-database
                                                                     details-with-secrets            (assoc :details details-with-secrets)
                                                                     write-data-details-with-secrets (assoc :write_data_details write-data-details-with-secrets))]
-                                            (driver.conn/with-write-connection
-                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                                   (driver.conn/effective-details would-be-database)))))
+                                            (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                 (merge (driver.conn/details-for-exact-type would-be-database :default)
+                                                                                        (driver.conn/details-for-exact-type would-be-database :write-data)))))
         admin-conn-error                (when (or admin-details-changed? engine-changed?)
                                           (let [would-be-database (cond-> existing-database
                                                                     details-with-secrets       (assoc :details details-with-secrets)
                                                                     admin-details-with-secrets (assoc :admin_details admin-details-with-secrets))]
-                                            (driver.conn/with-admin-connection
-                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                                   (driver.conn/effective-details would-be-database)))))
+                                            (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                 (merge (driver.conn/details-for-exact-type would-be-database :default)
+                                                                                        (driver.conn/details-for-exact-type would-be-database :admin)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
     (if-let [conn-error (or main-conn-error write-conn-error admin-conn-error)]
@@ -1181,10 +1179,10 @@
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
         (quick-task/submit-task!
          (fn []
-           (database-routing/with-database-routing-off
+           (database-routing/with-anonymous-router-access
              ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
-             (sync/sync-db-metadata-explicit! db)
-             (sync/analyze-db-explicit! db))))
+             (sync/sync-db-metadata-explicit! (u/the-id db))
+             (sync/analyze-db-explicit! (u/the-id db)))))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1239,12 +1237,12 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
-      (database-routing/with-database-routing-off
+      (database-routing/with-anonymous-router-access
         (if *rescan-values-async*
           (quick-task/submit-task!
            (fn []
-             (sync/update-field-values! db)))
-          (sync/update-field-values! db)))))
+             (sync/update-field-values! (u/the-id db))))
+          (sync/update-field-values! (u/the-id db))))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
@@ -1287,7 +1285,7 @@
                        (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
-    (->> db
+    (->> (driver.u/lib-database (:id db))
          (driver/syncable-schemas (:engine db))
          (vec)
          (sort))))
@@ -1515,7 +1513,7 @@
      [:sequential [:map
                    [:key :keyword]
                    [:type [:enum :error :warning]]
-                   [:message [:or :string [:fn i18n/localized-string?]]]]]]]])
+                   [:message [:or :string [:fn {:json-schema {:type "string"}} i18n/localized-string?]]]]]]]])
 
 (api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
   "Get all database-local settings and their availability for the given database."

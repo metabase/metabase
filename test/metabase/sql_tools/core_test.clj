@@ -212,7 +212,7 @@
         (is (= :skipped status))
         (is (= :missing-dialect reason))))))
 
-(deftest ^:parallel is-single-stmt-of-type?-test
+(deftest ^:parallel validate-executable-stmt-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))
@@ -221,32 +221,39 @@
                     (lib/filter (lib/= product-category "Widget")))
           native-query (:query (qp.compile/compile-with-inline-parameters query))]
       (testing "A single SELECT statement returns true and the reconstructed SQL"
-        (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?}
-                       (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
+        (are [sql] (=? {:verdict :allowed :single-stmt? true :sql string?}
+                       (sql-tools/validate-executable-stmt driver/*driver* sql "read"))
           native-query
           "SELECT 1"
           "SELECT * FROM table"
           "WITH x AS (SELECT * FROM foo) SELECT * from x"
           "WITH x AS (SELECT a FROM foo), y AS (SELECT b FROM bar), z AS (SELECT c FROM baz) SELECT x.a, y.b, z.c FROM x, y, z")))
     (testing "All other read queries are rejected"
-      (are [sql is-single-stmt?] (=? {:is-single-stmt? is-single-stmt? :allowed-stmt-type? false}
-                                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
-        "SELECT (" false
+      (are [sql single-stmt?] (=? {:verdict :disallowed :single-stmt? single-stmt?}
+                                  (sql-tools/validate-executable-stmt driver/*driver* sql "read"))
         "SELECT 1; SELECT 2" false
         "SET ROLE NONE" true
         "DROP TABLE table" true
         "SET ROLE NONE; DROP TABLE table" false
-        "SELECT set_config('role', 'none', false); DROP TABLE table" false
-        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" (isa? driver/hierarchy driver/*driver* :postgres)))
+        "SELECT set_config('role', 'none', false); DROP TABLE table" false))
+    (testing "SQL the dialect cannot parse is :unknown, not :disallowed — nothing was read, so nothing is claimed"
+      (is (=? {:verdict :unknown :reason "unparseable"}
+              (sql-tools/validate-executable-stmt driver/*driver* "SELECT (" "read"))))
+    (testing "a DO block smuggling SET ROLE is refused: one disallowed statement to a dialect that reads PL/pgSQL, unparseable to the rest"
+      (is (=? (if (isa? driver/hierarchy driver/*driver* :postgres)
+                {:verdict :disallowed :single-stmt? true}
+                {:verdict :unknown :reason "unparseable"})
+              (sql-tools/validate-executable-stmt
+               driver/*driver* "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" "read"))))
     (testing "A single insert, update or delete statement returns true and the reconstructed SQL"
-      (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?}
-                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
+      (are [sql] (=? {:verdict :allowed :single-stmt? true :sql string?}
+                     (sql-tools/validate-executable-stmt driver/*driver* sql "write"))
         "INSERT INTO table VALUES (1)"
         "UPDATE table SET column = 1"
         "DELETE FROM table WHERE id = 1"))
     (testing "All other write queries are rejected"
-      (are [sql is-single-stmt?] (=? {:is-single-stmt? is-single-stmt? :allowed-stmt-type? false}
-                                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
+      (are [sql single-stmt?] (=? {:verdict :disallowed :single-stmt? single-stmt?}
+                                  (sql-tools/validate-executable-stmt driver/*driver* sql "write"))
         "SELECT 1" true
         "INSERT INTO table VALUES (1); SELECT 1" false
         "UPDATE table SET column = 1; SELECT 1" false
@@ -257,10 +264,10 @@
       (doseq [op ["UNION ALL" "INTERSECT ALL" "EXCEPT ALL"]
               ts [["foo" "bar"] ["foo" "bar" "baz"]]
               :let [sql (str/join (str " " op " ") (map #(str "SELECT * FROM " %) ts))]]
-        (is (=? {:is-single-stmt? true, :sql string?}
-                (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))))
-      (are [sql] (=? {:is-single-stmt? true, :allowed-stmt-type? true :sql string?}
-                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
+        (is (=? {:verdict :allowed, :sql string?}
+                (sql-tools/validate-executable-stmt driver/*driver* sql "read"))))
+      (are [sql] (=? {:verdict :allowed, :single-stmt? true :sql string?}
+                     (sql-tools/validate-executable-stmt driver/*driver* sql "read"))
         "SELECT * FROM foo UNION ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"
         "SELECT * FROM foo UNION ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
         "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
@@ -272,50 +279,83 @@
   [sql]
   (count (re-seq #"\?" sql)))
 
-(deftest ^:parallel is-single-stmt-of-type-placeholder-cast-test
+(deftest ^:parallel validate-executable-stmt-placeholder-cast-test
   (testing "queries with `?::` are parsed correctly"
     (doseq [sql ["SELECT ?::date"
                  "SELECT (?::date - x::date)"
                  "SELECT ?::text, ?::integer, ?::boolean FROM t WHERE x = ?"
                  "SELECT (?::date - CURRENT_DATE) AS diff"]]
-      (let [{out-sql :sql :as result} (sql-tools/is-single-stmt-of-type? :postgres sql "read")]
-        (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?} result))
+      (let [{out-sql :sql :as result} (sql-tools/validate-executable-stmt :postgres sql "read")]
+        (is (=? {:verdict :allowed :single-stmt? true :sql string?} result))
         (is (= (placeholder-count sql) (placeholder-count out-sql))))))
   (testing "a query with `?::` inside string literals are left untouched"
-    (is (= {:is-single-stmt? true :allowed-stmt-type? true :sql "SELECT '?::date'"}
-           (sql-tools/is-single-stmt-of-type? :postgres "select '?::date'" "read"))))
+    (is (= {:verdict :allowed :single-stmt? true :sql "SELECT '?::date'"}
+           (sql-tools/validate-executable-stmt :postgres "select '?::date'" "read"))))
   (testing "multi-statement queries with placeholder casts are still rejected"
-    (are [sql] (=? {:is-single-stmt? false :allowed-stmt-type? false}
-                   (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+    (are [sql] (=? {:verdict :disallowed :single-stmt? false}
+                   (sql-tools/validate-executable-stmt :postgres sql "read"))
       "SELECT ?::date; DROP TABLE t"
       "SET ROLE NONE; SELECT ?::date")))
 
-(deftest ^:parallel is-single-stmt-of-type-qdcolon-dialects-test
+(deftest ^:parallel validate-executable-stmt-qdcolon-dialects-test
   (testing "databricks' native `expr?::type` try-cast operator is not split apart"
-    (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
-            (sql-tools/is-single-stmt-of-type? :databricks "SELECT x?::date FROM t" "read")))))
+    (is (=? {:verdict :allowed :single-stmt? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
+            (sql-tools/validate-executable-stmt :databricks "SELECT x?::date FROM t" "read")))))
 
-(deftest ^:parallel is-single-stmt-of-type-not-stripped-test
-  (testing "we don't remove value clauses when validating impersonated queries (#74284)"
-    (let [values-query (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")]
-      (are [sql is-single-stmt? allowed-stmt-type?]
-           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
-              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
-        values-query true true
-        (str "SELECT 1; " values-query) false false
-        (str "SET ROLE none; " values-query) false false
-        (str values-query "; SELECT 1") false false
-        (str values-query "; SET ROLE none") false false)))
-  (testing "we don't remove large IN lists, tuple lists, or arrays when validating impersonated queries"
-    (doseq [query [(str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
-                   (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
-                   (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")]]
-      (are [sql is-single-stmt? allowed-stmt-type?]
-           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
-              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
-        query true true
-        (str "SELECT 1; " query) false false
-        (str query "; SELECT 1") false false))))
+(deftest ^:parallel validate-executable-stmt-large-literal-lists-test
+  ;; A classification reads the ORIGINAL SQL, never a collapsed rewrite of it. A large but
+  ;; ordinary literal list — the values a Number variable inlines for `IN ({{ids}})` — validates normally,
+  ;; and a second statement nested in such a list is counted as a second statement however it is written,
+  ;; because the parser sees the real input. Collapsing only guards, at a much higher threshold, against a
+  ;; list so huge it would OOM GraalPy — those are refused outright rather than substituted.
+  (testing "a large-but-under-ceiling literal list validates normally (the IN ({{ids}}) idiom)"
+    (are [sql] (=? {:verdict :allowed :single-stmt? true :sql string?}
+                   (sql-tools/validate-executable-stmt :postgres sql "read"))
+      (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")
+      (str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
+      (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
+      (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")))
+  (testing "a second statement alongside such a list is counted as a second statement"
+    (let [base (str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")]
+      (are [sql] (=? {:verdict :disallowed}
+                     (sql-tools/validate-executable-stmt :postgres sql "read"))
+        (str "SELECT 1; " base)
+        (str "SET ROLE none; " base)
+        (str base "; SELECT 1")
+        (str base "; SET ROLE none"))))
+  (testing "a statement separator nested in a comment inside an oversized VALUES list is still counted"
+    ;; a `--` comment can unbalance the JVM-side paren scan that decides whether to collapse a list; parsing
+    ;; the original rather than the collapsed form, sqlglot counts two statements either way
+    (let [sql (str "SELECT * FROM (VALUES " (str/join "," (repeat 101 "(1)"))
+                   ",( -- ((\n 1 )) t ; SELECT 2 --)) t")]
+      (is (=? {:verdict :disallowed}
+              (sql-tools/validate-executable-stmt :postgres sql "read")))))
+  (testing "a literal list beyond the ceiling comes back unchecked (memory guard), not parsed"
+    (let [huge (str "SELECT x FROM t WHERE x IN (" (str/join "," (range 2500)) ")")]
+      (is (= {:verdict :unknown, :reason "large-literal-list", :sql huge}
+             (sql-tools/validate-executable-stmt :postgres huge "read")))
+      (testing "and the gate, whose ceiling is far lower, says the same of a list over its own"
+        (is (= {:verdict :unknown, :reason "large-literal-list", :sql huge}
+               (sql-tools/classify-stmt :postgres huge "read"))))))
+  (testing "a driver with no SQLGlot dialect cannot be validated for execution"
+    ;; sqlglot would otherwise parse in its generic dialect and hand back a confident verdict plus a
+    ;; generically-regenerated `:sql` string, which a caller that executes the `:sql` would go on to run.
+    (is (= {:verdict :unknown, :reason "unknown-dialect", :sql "SELECT 1"}
+           (sql-tools/validate-executable-stmt :h2 "SELECT 1" "read")))
+    (testing "while the gate, which executes nothing, accepts the generic dialect"
+      (is (=? {:verdict :allowed} (sql-tools/classify-stmt :h2 "SELECT 1" "read")))
+      (is (true? (sql-tools/read-only-select? :h2 "SELECT 1"))))))
+
+(deftest ^:parallel classify-stmt-length-cap-test
+  (testing "the gate stops reading SQL past its length cap, however harmless"
+    (let [padded (fn [n] (str "SELECT 1" (str/join (repeat (- n 8) " "))))
+          limit  (* 16 1024)]
+      (is (=? {:verdict :allowed} (sql-tools/classify-stmt :postgres (padded limit) "read")))
+      (is (= {:verdict :unknown, :reason "too-long", :sql (padded (inc limit))}
+             (sql-tools/classify-stmt :postgres (padded (inc limit)) "read")))))
+  (testing "a caller that will execute the SQL has no length cap: long native queries are legitimate"
+    (let [long-sql (str "SELECT 1 FROM t WHERE x = '" (str/join (repeat (* 32 1024) "a")) "'")]
+      (is (=? {:verdict :allowed} (sql-tools/validate-executable-stmt :postgres long-sql "read"))))))
 
 (deftest ^:parallel read-only-select?-test
   (doseq [driver [:postgres :mysql :h2]]
@@ -427,6 +467,58 @@
       :databricks "SELECT http_request(conn => 'c', method => 'POST', path => '/')"
       :snowflake  "SELECT SYSTEM$SEND_EMAIL('i', 'a@b.c', 's', 'b')")))
 
+(deftest ^:parallel read-only-select?-transaction-id-and-admin-function-test
+  (testing "a SELECT that assigns a Postgres transaction id or writes to the write-ahead log is not read-only"
+    (are [sql] (= {:reason :writes-or-locks, :detail nil} (sql-tools/read-only-select-problem :postgres sql))
+      "SELECT txid_current()"
+      "SELECT pg_current_xact_id()"
+      "SELECT pg_logical_emit_message(true, 'p', 'x')"))
+  (testing "a SELECT that administers the Postgres server or runs a MySQL UDF program is not read-only"
+    (are [driver function sql] (= {:reason :session-function, :detail function}
+                                  (sql-tools/read-only-select-problem driver sql))
+      :postgres "pg_switch_wal"                     "SELECT pg_switch_wal()"
+      :postgres "pg_create_logical_replication_slot" "SELECT pg_create_logical_replication_slot('s', 'pgoutput')"
+      :postgres "pg_promote"                        "SELECT pg_promote()"
+      :mysql    "sys_exec"                          "SELECT sys_exec('id')"
+      :mysql    "sys_eval"                          "SELECT sys_eval('id')"
+      :postgres "pg_export_snapshot"                "SELECT pg_export_snapshot()"
+      :mysql    "load_file"                         "SELECT load_file('/etc/passwd')")))
+
+(deftest ^:parallel read-only-select?-outside-the-database-test
+  (testing "a SELECT that reads another server, a URL or a file through a table function is not read-only"
+    (are [driver function sql] (= {:reason :session-function, :detail function}
+                                  (sql-tools/read-only-select-problem driver sql))
+      :clickhouse "url"              "SELECT * FROM url('http://h/x', CSV, 'a String')"
+      :clickhouse "s3"               "SELECT * FROM s3('http://h/x', 'CSV')"
+      :clickhouse "remote"           "SELECT * FROM remote('h:9000', db.t)"
+      :clickhouse "remotesecure"     "SELECT * FROM remoteSecure('h:9440', db.t)"
+      :clickhouse "mysql"            "SELECT * FROM mysql('h:3306', 'db', 't', 'u', 'p')"
+      :clickhouse "postgresql"       "SELECT * FROM postgresql('h:5432', 'db', 't', 'u', 'p')"
+      :clickhouse "file"             "SELECT * FROM file('x.csv', CSV)"
+      :clickhouse "hdfs"             "SELECT * FROM hdfs('hdfs://h/x', 'CSV')"
+      :clickhouse "azureblobstorage" "SELECT * FROM azureBlobStorage('c', 'x')"
+      :clickhouse "jdbc"             "SELECT * FROM jdbc('ds', 't')"
+      :clickhouse "odbc"             "SELECT * FROM odbc('ds', 't')"
+      :clickhouse "cosn"             "SELECT * FROM cosn('http://h/x', 'CSV')"
+      :clickhouse "oss"              "SELECT * FROM oss('http://h/x', 'CSV')"
+      :clickhouse "hive"             "SELECT * FROM hive('thrift://h:9083', 'db', 't', 'a String', 'a')"
+      :clickhouse "cluster"          "SELECT * FROM cluster('c', db.t)"
+      :clickhouse "clusterallreplicas" "SELECT * FROM clusterAllReplicas('c', db.t)"
+      :duckdb     "read_csv"         "SELECT * FROM read_csv('x.csv')"
+      :duckdb     "read_parquet"     "SELECT * FROM read_parquet('s3://b/x.parquet')"
+      :duckdb     "read_json"        "SELECT * FROM read_json('x.json')"))
+  (testing "DuckDB reads a file or a URL named as a table"
+    (are [sql] (= {:reason :external-table, :detail nil} (sql-tools/read-only-select-problem :duckdb sql))
+      "SELECT * FROM 'x.csv'"
+      "SELECT * FROM 'https://h/x.parquet'"
+      "SELECT * FROM \"s3://b/x.parquet\""))
+  (testing "the same names are ordinary elsewhere"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :clickhouse "SELECT url FROM t"
+      :postgres   "SELECT url('x')"
+      :postgres   "SELECT * FROM \"x.csv\""
+      :duckdb     "SELECT * FROM main.t JOIN s.u ON true")))
+
 (deftest ^:parallel read-only-select?-sql-executing-function-test
   (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
     ;; The parser reads the inner SQL as an opaque literal, so a write, a lock or a session change hidden in it
@@ -452,6 +544,21 @@
       :postgres  "SELECT id, name FROM t WHERE id = 5"
       :postgres  "SELECT * FROM generate_series(1, 10) g"
       :starburst "SELECT query FROM system.runtime.queries")))
+
+(deftest ^:parallel read-only-select?-dynamic-function-call-test
+  (testing "a SELECT that calls a function named through Snowflake's IDENTIFIER is not read-only, whatever it names"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :snowflake "SELECT IDENTIFIER('SYSTEM$CANCEL_QUERY')('01b2')"
+      :snowflake "SELECT IDENTIFIER('SYSTEM$ABORT_SESSION')()"
+      :snowflake "SELECT * FROM TABLE(IDENTIFIER('TO_QUERY')('SELECT seq.NEXTVAL'))"
+      :snowflake "SELECT * FROM TABLE(IDENTIFIER('GETNEXTVAL')(seq))"
+      :snowflake "SELECT a FROM t WHERE b IN (SELECT IDENTIFIER($fn)(1))"
+      :snowflake "SELECT IDENTIFIER('my_udf')(a) FROM t"))
+  (testing "IDENTIFIER used as a table or column name is still read-only"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :snowflake "SELECT * FROM IDENTIFIER('db.schema.t')"
+      :snowflake "SELECT * FROM IDENTIFIER($t)"
+      :snowflake "SELECT IDENTIFIER('a') FROM t WHERE IDENTIFIER('b') = 1")))
 
 (deftest ^:parallel read-only-select?-hidden-sql-test
   (testing "SQL the database would run and the parser reads as something else is not read-only"
@@ -481,6 +588,70 @@
       :postgres  "SELECT a --no space\n FROM t"
       :postgres  "SELECT 1 AS exec")))
 
+(deftest ^:parallel read-only-select?-dash-comment-unicode-space-test
+  (testing "-- before a non-ASCII space is not a comment on MySQL, so the text after it is refused"
+    (doseq [space ["\u00a0" "\u2000" "\u2003" "\u200a" "\u3000" "\u0085" "\u2028"]]
+      (testing (format "U+%04X" (int (first space)))
+        (is (= {:reason :bare-dash-comment, :detail nil}
+               (sql-tools/read-only-select-problem
+                :mysql (str "select 1 --" space ", sleep(5)\nfrom (select 1 as `" space "`) t")))))))
+  (testing "-- before ASCII whitespace or at the end of the text is a comment, and allowed"
+    (are [sql] (true? (sql-tools/read-only-select? :mysql sql))
+      "select 1 -- note\nfrom t"
+      "select 1 --\nfrom t"
+      "select 1 --\tnote\nfrom t"
+      "select 1 -- note\r\nfrom t\r\n"
+      "select 1 --")))
+
+(deftest ^:parallel read-only-select?-lone-carriage-return-test
+  (testing "a carriage return with no newline after it is refused: the parser ends a comment there, MySQL does not"
+    (are [sql] (= {:reason :lone-carriage-return, :detail nil}
+                  (sql-tools/read-only-select-problem :mysql sql))
+      "select 1 -- x\r'\n, sleep(5) -- '"
+      "select 1 # x\r'\n, sleep(5) -- '"
+      "select 1\rfrom t")
+    (doseq [driver [:postgres :sqlserver :h2 :snowflake :oracle]]
+      (testing driver
+        (are [sql] (false? (sql-tools/read-only-select? driver sql))
+          "select 1 -- x\r'\n, sleep(5) -- '"
+          "select 1\rfrom t"))))
+  (testing "\\r\\n line endings are allowed"
+    (doseq [driver [:mysql :postgres :sqlserver :h2]]
+      (testing driver
+        (is (true? (sql-tools/read-only-select? driver "select 1 -- note\r\nfrom t\r\nwhere 1 = 1\r\n")))))))
+
+(deftest ^:parallel read-only-select?-tsql-alias-lock-hint-test
+  (testing "a locking hint after a table alias, without WITH, is not read-only"
+    (are [sql] (= {:reason :writes-or-locks, :detail nil}
+                  (sql-tools/read-only-select-problem :sqlserver sql))
+      "select * from dbo.t a (tablockx, holdlock)"
+      "select * from t as a (xlock)"
+      "select * from t join u b (updlock) on 1=1"
+      "select * from t a (paglock)"
+      "select * from t a (nolock, xlock)"
+      "select * from t (rowlock)"
+      "select * from t (paglock)"))
+  (testing "a non-locking hint, and a derived table's column list, are read-only"
+    (are [sql] (true? (sql-tools/read-only-select? :sqlserver sql))
+      "select * from t a (nolock)"
+      "select * from t as a (nolock)"
+      "select * from t with (nolock)"
+      "select * from t a with (nolock)"
+      "select * from (select 1 as a) d(a)"
+      "select * from (select 1 as xlock) d(xlock)"
+      "select top 10 a.id, b.name from dbo.t a join dbo.u b on a.id = b.id where a.x > 1 order by a.id")))
+
+(deftest ^:parallel read-only-select?-tsql-statement-word-in-token-test
+  (testing "a statement word glued to a name by a character that is not part of a word is refused"
+    (doseq [glue ["\u200b" "\u200c" "\u2060" "\ufeff"]]
+      (testing (format "U+%04X" (int (first glue)))
+        (is (= {:reason :statement-word, :detail "EXEC"}
+               (sql-tools/read-only-select-problem :sqlserver (str "select * from t" glue "EXEC('select 1')")))))))
+  (testing "a statement word inside a longer name is allowed"
+    (are [sql] (true? (sql-tools/read-only-select? :sqlserver sql))
+      "select executed_at, @exec_count, updated_by from t"
+      "select [exec] from #temp_exec")))
+
 (deftest ^:parallel read-only-select-problem-test
   (testing "SQL that is a read-only select has no problem"
     (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
@@ -495,10 +666,12 @@
       :mysql     :session-function    "get_lock"         "SELECT GET_LOCK('x', 10)"
       :postgres  :sql-executing-function "query_to_xml"  "SELECT query_to_xml('SELECT pg_advisory_lock(1)', true, false, '')"
       :starburst :sql-executing-function "system.query"  "SELECT * FROM TABLE(system.query(query => 'SELECT 1'))"
+      :snowflake :dynamic-function-call nil              "SELECT IDENTIFIER('f')(1)"
       :postgres  :unparseable         nil                "SELECT ("
       :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
       :mysql     :bare-dash-comment   nil                "SELECT id --1 FROM t"
+      :mysql     :lone-carriage-return nil               "SELECT 1\rFROM t"
       :mysql     :backslash-quote     nil                "SELECT 'it\\'s' FROM t"
       :postgres  :unicode-identifier  nil                "SELECT U&\"pg_\\0073leep\"(10)"
       :postgres  :not-a-select        nil                "-- nothing here"

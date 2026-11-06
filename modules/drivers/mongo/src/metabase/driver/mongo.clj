@@ -487,7 +487,7 @@
 
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
-  [database        :- :metabase.warehouses.schema/database
+  [database        :- driver-api/schema.metadata.database
    collection-name :- :string]
   (let [pipeline (describe-table-pipeline {:collection-name       collection-name
                                            :sample-size           (* table-rows-sample/nested-field-sample-limit 2)

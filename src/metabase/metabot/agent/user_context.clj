@@ -176,16 +176,21 @@
 
 (defmethod format-entity "model"
   [entity]
-  (fetch-and-format entity
-                    "The user is currently looking at the rows of a model:"
-                    #(do (resources-tools/check-card-resource-database (:id entity))
-                         (entity-details/get-table-details {:entity-type :model
-                                                            :entity-id (:id entity)
-                                                            :with-field-values? false
-                                                            :with-metrics? false
-                                                            :with-measures? true
-                                                            :with-segments? true}))
-                    llm-shape/model->xml))
+  ;; A model the user cannot read is omitted, together with its query ID, SQL and query error.
+  (some-> (fetch-and-format entity
+                            "The user is currently looking at the rows of a model:"
+                            #(do (resources-tools/check-card-resource-database (:id entity))
+                                 (entity-details/get-table-details {:entity-type :model
+                                                                    :entity-id (:id entity)
+                                                                    :with-field-values? false
+                                                                    :with-metrics? false
+                                                                    :with-measures? true
+                                                                    :with-segments? true}))
+                            llm-shape/model->xml)
+          (te/lines (te/field "Query ID" (:query_id entity))
+                    (te/field "Current SQL query" (te/code (metabot.u/extract-sql-content (:query entity)) "sql"))
+                    (when-some [error (:error entity)]
+                      (te/field "Query error" (quoting/quoted error))))))
 
 (defn- format-chart-config-ids
   "Format chart config IDs for a viewing context item.
@@ -207,13 +212,17 @@
   [[format-viewing-context]]) there is no SQL editor, so the item is described as a query the user is
   looking at rather than an editor they are in."
   [item]
-  (let [{:keys [database-id query-str]} (native-query-details (:query item))]
+  (let [{:keys [database-id query-str]} (native-query-details (:query item))
+        question? (= "question" (effective-context-type item))]
     (te/lines
      (if (:in_host_app item)
        "The user is currently looking at a SQL query."
        "The user is currently in the SQL editor.")
-     (when (:id item)
-       (te/field "Query ID" (:id item)))
+     (when question?
+       (te/field "Question ID" (:id item)))
+     ;; The `:id` of a saved question is its card ID. Its query has a different ID, which
+     ;; `metabase.metabot.agent.core/assign-context-ids` sets as `:query_id`.
+     (te/field "Query ID" (if question? (:query_id item) (:id item)))
      (te/field "Current SQL query" (te/code query-str "sql"))
      (te/field "Database ID" database-id)
      (te/field "Database SQL engine" (:sql_engine item))
@@ -229,12 +238,14 @@
   [entity]
   (if (native-query-item? entity)
     (format-native-query entity)
-    (fetch-and-format entity
-                      "The user is currently looking at the results of a report:"
-                      #(do (resources-tools/check-card-resource-database (:id entity))
-                           (entity-details/get-report-details {:report-id (:id entity)
-                                                               :with-field-values? false}))
-                      llm-shape/question->xml)))
+    ;; A question the user cannot read is omitted, together with its query ID.
+    (some-> (fetch-and-format entity
+                              "The user is currently looking at the results of a report:"
+                              #(do (resources-tools/check-card-resource-database (:id entity))
+                                   (entity-details/get-report-details {:report-id (:id entity)
+                                                                       :with-field-values? false}))
+                              llm-shape/question->xml)
+            (te/lines (te/field "Query ID" (:query_id entity))))))
 
 (defmethod format-entity "metric"
   [entity]

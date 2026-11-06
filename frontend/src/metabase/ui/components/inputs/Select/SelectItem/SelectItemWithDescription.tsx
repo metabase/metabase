@@ -32,7 +32,7 @@ export const SelectItemWithDescription = forwardRef(
           </Text>
 
           {description && (
-            <Text c="text-disabled" className={S.description} lh="1rem">
+            <Text c="text-secondary" className={S.description} lh="1rem">
               {description}
             </Text>
           )}

@@ -6,6 +6,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -107,7 +108,9 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-or-internal-query]
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (run-streaming-query
    (-> query
        (dissoc :cache-strategy)
@@ -145,7 +148,8 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     csv-include-bom               :csv_include_bom
-    visualization-settings        :visualization_settings}
+    visualization-settings        :visualization_settings
+    display                       :display}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map {:closed true}
@@ -158,9 +162,17 @@
                                                        {:decode/api (fn [x]
                                                                       (cond-> x
                                                                         (string? x) (json/decode viz-setting-key-fn)))})]
+       ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
+       [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
+                                                                  {:decode/api (fn [x]
+                                                                                 (cond-> x
+                                                                                   (and (string? x) (= (first x) \"))
+                                                                                   json/decode))})]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
-       [:csv_include_bom         {:default false} ms/BooleanValue]]]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -172,6 +184,7 @@
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
                                                                           :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
+                                                                          :display                (some-> display keyword)
                                                                           :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query
@@ -197,7 +210,9 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query]
+   query :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -220,7 +235,9 @@
    _query-params
    {:keys [database pretty] :as query} :- [:map {:closed true}
                                            [:pretty {:default true} [:maybe :boolean]]
-                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]]
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query (dissoc query :pretty)))
   (ws.table-remapping/with-display-context
     (model-persistence/with-persisted-substituion-disabled
       (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
@@ -254,7 +271,9 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
+   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -296,7 +315,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys     [parameter]
@@ -311,7 +329,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  {:scope api-scope/data-app}
   [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
@@ -341,7 +358,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys [parameter value field_ids]} :- [:map {:closed true}

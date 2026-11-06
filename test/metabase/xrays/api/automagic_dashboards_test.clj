@@ -452,7 +452,7 @@
                                  :pk-ref    id-field-ref
                                  :value-ref title-field-ref}]
             ;; need user metadata edits to find linked tables to an otherwise opaque native query
-            (t2/update! :model/Card (:id model)
+            (t2/update! :model/Card :id (:id model)
                         {:result_metadata (annotating results-meta id-field-ref
                                                       #(assoc % :id id-field-id))})
             (assert (= (-> (t2/select-one-fn :result_metadata :model/Card
@@ -650,7 +650,7 @@
       (testing schema
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
-          (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
+          (is (re-matches pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
 
 (deftest ^:parallel cell-query-decode-strips-extra-properties-test
   (testing "the ::cell-query schema decodes a base64 JSON filter clause, validates it, and strips undeclared properties"

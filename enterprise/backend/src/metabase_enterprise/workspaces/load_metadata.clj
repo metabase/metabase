@@ -5,7 +5,7 @@
 
   Rows are matched by name, never by the parent's ids: a database by its config name, a table by schema and name, a
   field by name within its table, an FK target by schema, table and field. Curated values (display names,
-  descriptions, semantic types, visibility, FK targets, coercions) go into the user-settings tables, so the child's
+  descriptions, semantic types, visibility, FK targets, coercions) are recorded as user-set, so the child's
   scheduled syncs, which reconcile the warehouse later, don't overwrite them. Fingerprints, FieldValues and nested
   fields aren't carried."
   (:require
@@ -150,8 +150,8 @@
    :initial_sync_status "complete"})
 
 (defn- field-row
-  "The sync-owned columns of `field`. `effective_type` is the base type, as sync leaves it: a coerced effective type
-  goes into the user settings with its coercion, and sync never fills in a NULL one."
+  "The sync-owned columns of `field`. `effective_type` starts as the base type, as sync leaves it: a coerced effective
+  type is set afterwards as a user setting with its coercion."
   [table-id field]
   {:table_id          table-id
    :name              (:name field)

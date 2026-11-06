@@ -106,7 +106,7 @@
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
@@ -311,12 +311,11 @@
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
    :ok))
 
-(defn boot-initialize!
-  "Boot-time entry point: read the config file from disk and run [[initialize!]]
-   with `{{env VAR}}` template expansion enabled. No-op when no file is present.
-   When the config contains a `:workspace` section, locks the workspace against
-   runtime mutation (see
-   [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+(defenterprise boot-initialize!
+  "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
+  Does nothing when there is no config file. When the config has a `:workspace` section, locks the
+  workspace against runtime mutation (see [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+  :feature :none
   []
   (let [parsed (config-from-disk)
         result (initialize! parsed {:expand-templates? true})]

@@ -4,6 +4,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
   type CollectionEndpoints,
+  findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -26,6 +27,7 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
@@ -33,6 +35,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   BaseEntityId,
   CollectionId,
+  CollectionItem,
   DashboardId,
 } from "metabase-types/api";
 import {
@@ -68,8 +71,10 @@ const ROOT_TEST_COLLECTION = createMockCollection({
   id: "root",
 });
 
+const FOO_DASH_ID = 1;
+
 const FOO_DASH = createMockDashboard({
-  id: 1,
+  id: FOO_DASH_ID,
   collection_id: 1,
   name: "Foo Dashboard",
   tabs: [
@@ -92,12 +97,21 @@ const setup = async (
   originalQuestion: Question | null = null,
   {
     collectionEndpoints,
+    createError,
+    personalCollectionItems = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
+    createError?: unknown;
+    personalCollectionItems?: CollectionItem[];
   } = {},
 ) => {
-  const onCreateMock = jest.fn((question, _options) =>
-    Promise.resolve(question),
+  const onCreateMock = jest.fn<
+    ReturnType<SaveQuestionProps["onCreate"]>,
+    Parameters<SaveQuestionProps["onCreate"]>
+  >((question) =>
+    createError === undefined
+      ? Promise.resolve(question)
+      : Promise.reject(createError),
   );
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
@@ -117,7 +131,7 @@ const setup = async (
 
   setupCollectionItemsEndpoint({
     collection: BOBBY_TEST_COLLECTION,
-    collectionItems: [],
+    collectionItems: personalCollectionItems,
   });
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
@@ -302,7 +316,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -326,7 +340,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -368,7 +382,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -391,7 +405,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -465,7 +479,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -490,7 +504,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call: Question[] = onCreateMock.mock.calls[0];
+      const call = onCreateMock.mock.calls[0];
       expect(call.length).toBe(2);
 
       const newQuestion = call[0];
@@ -539,6 +553,33 @@ describe("SaveQuestionModal", () => {
       expect(inputEl).toHaveAttribute("aria-invalid", "true");
       expect(inputEl).toHaveAttribute("aria-describedby", alertEl.id);
       expect(alertEl).toHaveTextContent("required");
+    });
+
+    it("should show the server error message when saving fails (metabase#21597)", async () => {
+      const message =
+        'Invalid Field Filter: Field 164574 "PRODUCTS"."CATEGORY" belongs to Database 2276 "sample-dataset", but the query is against Database 2275 "test-data"';
+      const { onCreateMock, onCloseMock } = await setup(
+        new Question(
+          {
+            dataset_query: {
+              type: "native",
+              database: SAMPLE_DB_ID,
+              native: { query: "SELECT 1" },
+            },
+            display: "table",
+          },
+          metadata,
+        ),
+        null,
+        { createError: { status: 400, data: { message } } },
+      );
+
+      await userEvent.type(screen.getByLabelText("Name"), "The question name");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(onCreateMock).toHaveBeenCalledTimes(1);
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(onCloseMock).not.toHaveBeenCalled();
     });
 
     it("should show humanized validation message for saving a structured query question", async () => {
@@ -605,6 +646,49 @@ describe("SaveQuestionModal", () => {
           await screen.findByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
+    });
+
+    it("should show a picked dashboard as the save location and record it as a recent selection", async () => {
+      mockGetBoundingClientRect();
+      await setup(getQuestion(), null, {
+        personalCollectionItems: [
+          createMockCollectionItem({
+            id: FOO_DASH_ID,
+            model: "dashboard",
+            name: FOO_DASH.name,
+            collection_id: BOBBY_TEST_COLLECTION.id,
+            can_write: true,
+          }),
+        ],
+      });
+
+      await userEvent.click(saveLocDropdown());
+      await userEvent.click(
+        await screen.findByRole("link", {
+          name: new RegExp(BOBBY_TEST_COLLECTION.name),
+        }),
+      );
+      await userEvent.click(await screen.findByText(FOO_DASH.name));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select this dashboard" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("dashboard-and-collection-picker-button"),
+        ).toHaveTextContent(FOO_DASH.name),
+      );
+      const recentSelections = await findRequests("POST");
+      expect(recentSelections).toEqual([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/activity/recents"),
+          body: {
+            context: "selection",
+            model: "dashboard",
+            model_id: FOO_DASH_ID,
+          },
+        }),
+      ]);
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {

@@ -629,6 +629,28 @@
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
+(deftest ^:parallel compile-native-query-with-parameters-test
+  (testing "POST /api/dataset/native"
+    (let [query (mt/native-query
+                 {:query         "SELECT * FROM VENUES WHERE NAME = {{name}}"
+                  :template-tags {"name" {:id           "name-tag"
+                                          :name         "name"
+                                          :display-name "Name"
+                                          :type         :text}}})]
+      (testing "\nTemplate tag values are spliced into the native query"
+        (is (= {:query  "SELECT * FROM VENUES WHERE NAME = 'Gadget'"
+                :params []}
+               (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                     (assoc query
+                                            :parameters [{:type   :category
+                                                          :target [:variable [:template-tag "name"]]
+                                                          :value  "Gadget"}]
+                                            :pretty false)))))
+      (testing "\nA template tag without a value is reported as a missing parameter"
+        (is (=? {:cause "Cannot run the query: missing required parameters: #{\"name\"}"}
+                (mt/user-http-request :crowberto :post "dataset/native"
+                                      (assoc query :pretty false))))))))
+
 (deftest ^:parallel compile-disable-max-results-test
   (testing "POST /api/dataset/native"
     (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
@@ -1220,7 +1242,7 @@
           (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
                          :model/Collection collection {}]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)

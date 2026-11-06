@@ -7,7 +7,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.query-repair :as query-repair]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -36,20 +38,16 @@
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query)
-           ;; `:stages` alone (no `:lib/type`) also counts: a query round-tripped through
-           ;; the frontend's viewing context (`user_is_viewing` / `chart_configs`) comes
-           ;; back MBQL 5 but stripped of its internal `:lib/*` keys. Guarding on
-           ;; `:lib/type` alone let such a query fall through unconverted, leaking raw
-           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with
-           ;; "Stage 0 does not exist" (BOT-1604 follow-up).
+           ;; `:stages` alone (no `:lib/type`) also counts: a query stripped of its internal `:lib/*` keys is
+           ;; still MBQL 5. Guarding on `:lib/type` alone let such a query fall through unconverted, leaking raw
+           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with "Stage 0 does not exist"
+           ;; (BOT-1604 follow-up).
            (or (:lib/type query) (:stages query)))
     (try
-      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (lib/->legacy-MBQL (query-repair/normalize-query query))
       (catch Exception e
-        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
-        ;; match positional aggregation/expression refs embedded elsewhere in the query
-        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
-        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        ;; A ref that [[query-repair/normalize-query]] cannot repoint, such as one of several aggregations in a
+        ;; `:lib/*`-stripped query, fails conversion. Fall back to the raw query rather than failing the whole agent turn over a link.
         (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
         query))
     query))
@@ -62,12 +60,14 @@
   Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
   `dataset_query.type` is `\"native\"`.
 
-  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query.
-  All other values go through [[->legacy-mbql]]."
+  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query; see
+  [[query-repair/normalize-query]] for the refs it repairs on the way. Conversation state repairs such a query as it
+  is read, so this is the last guard, for a query that reaches a link by another way. All other values go through
+  [[->legacy-mbql]]."
   [query]
   (or (when (and (map? query) (or (:lib/type query) (:stages query)))
         (try
-          (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+          (let [normalized (query-repair/normalize-query query)]
             (when (and (not (lib/native-only-query? normalized))
                        (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
               (cond-> (lib/prepare-for-serialization normalized)
@@ -144,14 +144,31 @@
                                                          :available-queries (keys queries-state)})
         nil))))
 
-(defn- resolve-entity-link
-  "Resolve a metabase://{type}/{id} link to a proper URL."
-  [entity-type entity-id]
-  (if-let [path (get link-type-paths entity-type)]
-    (str path "/" entity-id)
-    (do
-      (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
-      nil)))
+(def ^:private entity-id-pattern
+  "Matches the ID of a `metabase://{type}/{id}` link that names an entity, and captures the numeric ID. It takes a
+  bare numeric ID, a numeric ID with a frontend slug (lowercase, because that is the output of `slugg`), and a numeric
+  ID with a `read_resource` sub-path or query string."
+  #"(\d+)(?:-[a-z0-9-]+|[/?#].*)?")
+
+(defn- resolve-entity-or-conversation-link
+  "Resolve a metabase://{type}/{id} link to a proper URL. `entity-path` is the [[link-type-paths]] value of the type.
+  The frontend reads the ID with `parseInt`, so a leading digit selects an entity. Thus only a value that matches
+  [[entity-id-pattern]] goes to an entity page, and the page gets the numeric ID alone.
+  A canonical UUID never goes to an entity page: chart IDs are UUIDs, and a UUID can match the slug form of
+  [[entity-id-pattern]] when it starts with eight digits.
+  A bare numeric ID is an entity, also when a chart seeded from that entity has the same ID. The model can also put
+  the ID of a query or chart from this conversation in such a link, so any other ID that is in the conversation opens
+  the ad-hoc query. Any other ID resolves to nil."
+  [entity-path entity-id charts-state queries-state]
+  (let [numeric-id       (when-not (re-matches u/uuid-regex entity-id)
+                           (second (re-matches entity-id-pattern entity-id)))
+        in-conversation? (or (contains? charts-state entity-id)
+                             (contains? queries-state entity-id))]
+    (if (and numeric-id
+             (or (= numeric-id entity-id)
+                 (not in-conversation?)))
+      (str entity-path "/" numeric-id)
+      (resolve-chart-link entity-id charts-state queries-state))))
 
 (defn- resolve-measure-link
   "Resolve a metabase://measure/{id} link to the measure's Data Studio page, or nil when the measure is
@@ -182,7 +199,7 @@
   Supported URI formats:
   - metabase://query/{uuid} - Links to query results
   - metabase://chart/{uuid} - Links to chart visualizations
-  - metabase://question/{uuid} - Links to saved questions
+  - metabase://question/{id} - Links to saved questions
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
   - metabase://dashboard/{id} - Links to dashboards
@@ -191,6 +208,9 @@
   - metabase://measure/{id} - Links to measures
   - metabase://segment/{id} - Links to segments (as questions)
   - metabase://transform/{id} - Links to transforms
+
+  Types that map to an entity path also open a query or chart from this conversation when `{id}` is its ID. See
+  [[resolve-entity-or-conversation-link]].
 
   Returns the resolved URL or nil if resolution fails."
   [uri queries-state charts-state]
@@ -201,11 +221,11 @@
         (case entity-type
           "query"    (resolve-query-link entity-id queries-state)
           "chart"    (resolve-chart-link entity-id charts-state queries-state)
-          "question" (resolve-entity-link "question" entity-id)
           "measure"  (resolve-measure-link entity-id)
           "segment"  (resolve-segment-link entity-id)
-          ;; For other types, use simple path mapping
-          (resolve-entity-link entity-type entity-id))))))
+          (if-let [entity-path (get link-type-paths entity-type)]
+            (resolve-entity-or-conversation-link entity-path entity-id charts-state queries-state)
+            (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})))))))
 
 ;;; Markdown Link Processing
 

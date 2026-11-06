@@ -8,7 +8,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.core :as lib-be]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -163,9 +162,7 @@
               row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
                               db-id
                               (fn []
-                                (into [] (driver/describe-fks driver
-                                                              (lib-be/instance->metadata database :metadata/database)
-                                                              expanded-args))))
+                                (into [] (driver/describe-fks driver database expanded-args))))
               raw-rows       (vec (mapcat identity row-batches))
               rewritten-rows (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)]
           (cond->> rewritten-rows

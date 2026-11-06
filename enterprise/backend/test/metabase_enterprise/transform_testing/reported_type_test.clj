@@ -27,7 +27,7 @@
   [driver sql]
   (driver/do-with-test-connection
    driver
-   (mt/db)
+   (lib.metadata/database (mt/metadata-provider))
    (fn [conn]
      (let [table (driver/temp-table-name driver)]
        (try
@@ -43,8 +43,8 @@
             mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             transform-sql                 (str "SELECT id AS total FROM " schema "." table)]
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:source {:type  "query"
+        (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                       {:source {:type  :query
                                  :query (lib/native-query mp transform-sql)}
                         :target {:type "table" :schema schema :name "people_total" :database (mt/id)}}
                        :model/TransformTest transform-test
@@ -55,7 +55,7 @@
                                         :format  :rows
                                         :columns [{:name "total" :cast_type declared}]
                                         :rows    [{"total" 1}]}]}]
-          (let [result (transform-testing.runner/run-transform-test! transform-test)]
+          (let [result (transform-testing.runner/run-saved-test! transform transform-test)]
             (testing "the run passes, so nothing here reaches the author as a problem"
               (is (= :passed (:status result))))
             (testing "the transform's output column is not the type the author declared"

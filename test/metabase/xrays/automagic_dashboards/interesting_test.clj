@@ -511,7 +511,7 @@
                        (remove (fn [dimension] (= "Lat" (ffirst dimension))) dimensions))}
                      candidate-bindings)))))))
       (testing "A table with a more specific entity-type will match to more specific binding definitions."
-        (let [table (t2/select-one :model/Table (mt/id :people))
+        (let [table (t2/select-one :model/Table :id (mt/id :people))
               {{:keys [entity_type]} :source :as root} (#'magic/->root table)
               base-context       (#'magic/make-base-context root)
               dimensions         [{"Loc" {:field_type [:type/Location], :score 60}}

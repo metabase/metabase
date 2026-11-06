@@ -92,6 +92,7 @@ export const FkTargetPicker = ({
     <Select
       aria-label={t`Foreign key target`}
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {
@@ -144,7 +145,7 @@ export const FkTargetPicker = ({
 
               {field?.description && (
                 <Text
-                  c="text-disabled"
+                  c="text-secondary"
                   className={S.description}
                   component="span"
                   lh="1rem"

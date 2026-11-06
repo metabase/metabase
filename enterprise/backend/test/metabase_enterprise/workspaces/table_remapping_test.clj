@@ -11,6 +11,7 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.driver.connection.workspaces :as driver.conn.w]
+   [metabase.driver.util :as driver.u]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -28,7 +29,7 @@
   (try (f)
        (finally (ws.table-remapping/clear-mappings-for-db! db-id)
                 (sync-tables/sync-tables-and-database!
-                 (t2/select-one :model/Database db-id)))))
+                 (driver.u/lib-database db-id)))))
 
 (defn- with-provisioned-workspace-db!
   "Set the `instance-workspace` setting so `db-workspace-namespace` returns
@@ -227,7 +228,7 @@
                                                                 {:swap-active?  (driver.conn.w/has-connection-swap? db-id)
                                                                  :schema-names  schema-names})
                                                          [])]
-            (let [db (t2/select-one :model/Database :id db-id)]
+            (let [db (driver.u/lib-database db-id)]
               ;; Sync FK probe runs with the canonical input-schema patterns. On MySQL `:schema` is
               ;; never populated, so the iso DB swap is the only way the probe reaches `appdata_ws`.
               (doall (fetch-metadata/fk-metadata db :schema-names ["appdata"]))))
@@ -288,7 +289,7 @@
            (let [logical-table (t2/instance :model/Table
                                             {:id 999 :name "ORDERS" :schema "PUBLIC" :db_id db-id})]
              (fetch-metadata/table-fields-metadata
-              (t2/select-one :model/Database :id db-id)
+              (driver.u/lib-database db-id)
               logical-table))
            (is (= 1 (count @describe-calls)))
            (let [call (first @describe-calls)]
@@ -561,7 +562,7 @@
 (deftest spec-for-table-clickhouse-engine-test
   (when (workspaces.tu/driver-loadable? :clickhouse)
     (testing "ClickHouse fills :schema from the Table row's :schema column (CH sync stores its database name there)"
-      (let [database (assoc (t2/select-one :model/Database :id (mt/id)) :engine :clickhouse)
+      (let [database (assoc (driver.u/lib-database (mt/id)) :engine :clickhouse)
             table    (t2/select-one :model/Table :id (mt/id :orders))
             {:keys [db schema]} (ws.table-remapping/spec-for-table database table)]
         (is (= "" db) "no catalog level on ClickHouse")
@@ -799,7 +800,7 @@
          (let [fake-metadata {:tables #{{:schema "public"      :name "dev_1898_orders"}
                                         {:schema "ws_dev_1898" :name "dev_1898_orders"}}}]
            (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
-             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
+             (sync-tables/sync-tables-and-database! (driver.u/lib-database (mt/id)))))
          (let [created-pairs (set (t2/select-fn-set (juxt :schema :name)
                                                     :model/Table
                                                     :db_id (mt/id)
@@ -977,7 +978,7 @@
          (let [fake-metadata {:tables #{{:schema "public"   :name "unrelated_table"}
                                         {:schema "ws_alice" :name "ws_canonical_keep"}}}]
            (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
-             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
+             (sync-tables/sync-tables-and-database! (driver.u/lib-database (mt/id)))))
          (let [{:keys [active]} (t2/select-one [:model/Table :active] :db_id (mt/id) :name "ws_canonical_keep")]
            (is (true? active)
                "canonical Table row with an active remap stays active across syncs")))))))

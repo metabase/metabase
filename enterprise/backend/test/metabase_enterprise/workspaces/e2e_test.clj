@@ -623,7 +623,7 @@
                           ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
                           ;; provision succeeded fully or partially.
                           (ws/clear-instance-workspace!)
-                          (t2/update! :model/Database (:id ws-db) {:details admin-details})
+                          (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
                           ;; Cleanup tries [[ws/delete-workspace!]] first. A failed warehouse
                           ;; teardown throws and keeps the workspace + rows for retry. For test
                           ;; cleanup we don't retry: fall back to force-clearing the rows so
@@ -769,7 +769,7 @@
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
                     (ws/clear-instance-workspace!)
-                    (t2/update! :model/Database (:id ws-db) {:details admin-details})
+                    (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
                     (try (ws/delete-workspace! ws-id)
                          (catch Throwable t
                            (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))

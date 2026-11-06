@@ -10,4 +10,4 @@
            ["candies" 2 "candy" "candies"]
            ["books" 2 "book" nil]]]
     (testing (format "format-plural %d %s %s" n singular plural)
-      (= expected (u/format-plural n singular plural)))))
+      (is (= expected (u/format-plural n singular plural))))))

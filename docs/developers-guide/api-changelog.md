@@ -16,6 +16,22 @@ title: API changelog
   (`sensitive`). Pass the new `include_sensitive_fields=true` to get them, for tables whose data model the current user
   can edit, as with `GET /api/table/:id/query_metadata`.
 
+- `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
+  that does not start with `.` or `-`. Other values get `400 Bad Request`.
+
+- `PUT /api/field/:id` no longer accepts `nfc_path`, which only sync sets, and answers `null` for `has_field_values`,
+  `display_name`, `visibility_type` or `json_unfolding` with `400 Bad Request`. Leave a key out to keep its value.
+  `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
+  way.
+
+- `POST /api/pulse` and `PUT /api/pulse/:id` answer `collection_id` and `collection_position` on a dashboard
+  subscription with `400 Bad Request` when they do not fit the dashboard. A dashboard subscription is always in its
+  dashboard's collection, and it has no collection position. `POST` accepts a `collection_id` that is absent, `null`
+  or equal to the dashboard's collection, and no `collection_position`. `PUT` accepts values equal to the stored
+  ones. In 0.65, `POST` asked for write access to a non-nil `collection_id` and answered `403` without it. With that
+  access, it saved the subscription in that collection. It stored a `collection_position` for any caller who passed
+  these checks. `PUT` accepted a new `collection_position`.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with

@@ -136,7 +136,7 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (->> (merge (:details db)
+   :details (->> (merge (apply dissoc (:details db) parent-login-keys)
                         (:database_details wsd)
                         (schema-filter-entries db wsd)
                         {:let-user-control-scheduling false})

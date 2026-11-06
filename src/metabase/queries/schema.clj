@@ -7,8 +7,10 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.query-permissions.schema :as query-permissions.schema]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -186,7 +188,7 @@
    [:archived                                  {:optional true} [:maybe :boolean]]
    [:collection_id                             {:optional true} [:maybe ::lib.schema.id/collection]]
    [:public_uuid                               {:optional true} [:maybe :string]]
-   [:made_public_by_id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:made_public_by_id                         {:optional true} [:maybe ::lib.schema.id/user]]
    [:enable_embedding                          {:optional true} [:maybe :boolean]]
    [:embedding_params                          {:optional true} [:maybe ms/EmbeddingParams]]
    [:cache_ttl                                 {:optional true} [:maybe :int]]
@@ -209,7 +211,7 @@
    [:source_card_id                            {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id                              {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:card_schema                               {:optional true} [:maybe :int]]
-   [:document_id                               {:optional true} [:maybe ::documents.schema/document.id]]
+   [:document_id                               {:optional true} [:maybe ::lib.schema.id/document]]
    [:legacy_query                              {:optional true} [:maybe :string]]
    [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
@@ -334,6 +336,9 @@
   "The `:data_access_token` column of a StoredResult, decoded."
   ::permissions.schema/data-access-token)
 
+(mr/def ::stored-result.resolved-source-ids
+  ::query-permissions.schema/resolved-source-ids)
+
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:merge
@@ -344,14 +349,15 @@
 (mr/def ::stored-result.update
   "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
   [:map {:closed true}
-   [:result_data       {:optional true} [:maybe [:or bytes? :string]]]
-   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
-   [:database_id       {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query     {:optional true} [:maybe ::stored-result.dataset-query]]
-   [:data_access_token {:optional true} [:maybe ::stored-result.data-access-token]]
-   [:row_count         {:optional true} [:maybe :int]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:result_data         {:optional true} [:maybe [:or bytes? :string]]]
+   [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:database_id         {:optional true} [:maybe ::lib.schema.id/database]]
+   [:dataset_query       {:optional true} [:maybe ::stored-result.dataset-query]]
+   [:data_access_token   {:optional true} [:maybe ::stored-result.data-access-token]]
+   [:resolved_source_ids {:optional true} [:maybe ::stored-result.resolved-source-ids]]
+   [:row_count           {:optional true} [:maybe :int]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::stored-result-use
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
@@ -368,3 +374,15 @@
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
+
+(mr/def ::external-card
+  "A Card as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::card [:archived :archived_directly :collection_position :collection_preview :description :display
+                          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
+                          :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
+                          :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
+                          :dashboard_id :made_public_by_id :document_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

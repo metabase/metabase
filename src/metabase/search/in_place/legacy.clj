@@ -20,7 +20,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private honeysql-registry
@@ -359,6 +358,7 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:card.database_id :database_id]
         :dashboard_id
         bookmark-col dashboardcard-count-col
         [:display :display_type]))
@@ -618,12 +618,12 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]

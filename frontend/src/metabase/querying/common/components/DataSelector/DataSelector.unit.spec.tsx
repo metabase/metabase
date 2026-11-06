@@ -11,6 +11,7 @@ import {
 } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { DatabaseId } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSavedQuestionsDatabase,
@@ -257,6 +258,46 @@ describe("DataSelector", () => {
     );
     await delay(1); // state isn't updated until the next tick
     expect(await screen.findByText("Orders")).toBeInTheDocument();
+  });
+
+  it("should not select a database when there are several to choose from", async () => {
+    const setDatabaseFn = jest.fn<void, [DatabaseId]>();
+    render(
+      <DataSelector
+        {...defaultProps}
+        steps={["DATABASE"]}
+        triggerElement={<div />}
+        databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
+        entityLookups={entityLookups}
+        isOpen={true}
+        setDatabaseFn={setDatabaseFn}
+      />,
+    );
+    await delay(1); // state isn't updated until the next tick
+
+    expect(await screen.findByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+    expect(screen.getByText(ANOTHER_DATABASE.name)).toBeInTheDocument();
+    expect(setDatabaseFn).not.toHaveBeenCalled();
+  });
+
+  it("should select the only enabled database", async () => {
+    const setDatabaseFn = jest.fn<void, [DatabaseId]>();
+    render(
+      <DataSelector
+        {...defaultProps}
+        steps={["DATABASE"]}
+        triggerElement={<div />}
+        databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
+        databaseIsDisabled={(database) => database.id !== ANOTHER_DATABASE.id}
+        entityLookups={entityLookups}
+        isOpen={true}
+        setDatabaseFn={setDatabaseFn}
+      />,
+    );
+    await delay(1); // state isn't updated until the next tick
+
+    expect(setDatabaseFn).toHaveBeenCalledTimes(1);
+    expect(setDatabaseFn).toHaveBeenCalledWith(ANOTHER_DATABASE.id);
   });
 
   it("should auto-advance past a single schema that loads asynchronously", async () => {

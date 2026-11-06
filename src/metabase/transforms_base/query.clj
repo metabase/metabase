@@ -9,7 +9,6 @@
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -52,7 +51,15 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [transform-type transform]
+(mu/defn- transform-opts :- [:or
+                             [:map {:closed true} [:overwrite? :boolean]]
+                             [:map {:closed true}
+                              [:merge [:map {:closed true}
+                                       [:unique-key [:maybe [:sequential :string]]]
+                                       [:columns    [:maybe [:sequential :string]]]]]]
+                             [:map {:closed true}]]
+  [transform-type :- [:enum :table :table-incremental]
+   transform      :- ::transforms-base.schema/transform]
   (case transform-type
     :table {:overwrite? true}
     :table-incremental
@@ -95,11 +102,7 @@
     (when (and cancelled? (cancelled?))
       (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
     (let [db (get-in source [:query :database])
-          {driver :engine :as database} (when db (transforms-base.db/database db))
-          _ (when-not database
-              (throw (ex-info "Source database for this transform has been deleted."
-                              {:transform-id (:id transform)
-                               :source-database-id db})))
+          {driver :engine :as database} (driver.u/lib-database db)
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
           ;; Full incremental runs (no watermark — either the first ever, or one that follows a
           ;; checkpoint-config reset) drop and recreate the table rather than appending.

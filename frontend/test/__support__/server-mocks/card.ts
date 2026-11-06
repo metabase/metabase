@@ -8,7 +8,10 @@ import type {
   ConcreteTableId,
   DashboardId,
   Dataset,
+  FieldValue,
   GetPublicCard,
+  ParameterId,
+  ParameterValues,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -141,8 +144,35 @@ export function setupForbiddenCardEndpoints(cardId: CardId) {
   });
 }
 
-export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {
-  fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+type SetupCardQueryEndpointsOpts = {
+  /**
+   * Return the request's parameters in `json_query.parameters`, as the real
+   * API does. The query builder compares them with the next-run parameters.
+   */
+  echoParameters?: boolean;
+};
+
+export function setupCardQueryEndpoints(
+  card: Card,
+  dataset: Dataset,
+  { echoParameters = false }: SetupCardQueryEndpointsOpts = {},
+) {
+  if (!echoParameters) {
+    fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+    return;
+  }
+
+  fetchMock.post(`path:/api/card/${card.id}/query`, (call) => {
+    const body: unknown = JSON.parse(String(call.options.body ?? "{}"));
+    const parameters =
+      typeof body === "object" && body != null && "parameters" in body
+        ? body.parameters
+        : [];
+    return {
+      ...dataset,
+      json_query: { ...dataset.json_query, parameters },
+    };
+  });
 }
 
 export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
@@ -170,4 +200,58 @@ export function setupCardDashboardsEndpoint(
   fetchMock.get(`path:/api/card/${cardId}/dashboards`, dashboards, {
     name: `card-${cardId}-dashboards`,
   });
+}
+
+export function setupCardParameterValuesEndpoint({
+  cardId,
+  parameterId,
+  parameterValues,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/values`,
+    parameterValues,
+  );
+}
+
+export function setupCardParameterRemappingEndpoint({
+  cardId,
+  parameterId,
+  remappings,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  remappings: FieldValue[];
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/remapping`,
+    ({ url }) => {
+      const value = new URL(url).searchParams.get("value");
+      return (
+        remappings.find(
+          ([remappedValue]) => String(remappedValue) === value,
+        ) ?? [value]
+      );
+    },
+  );
+}
+
+export function setupCardParameterSearchEndpoint({
+  cardId,
+  parameterId,
+  query,
+  parameterValues,
+}: {
+  cardId: CardId;
+  parameterId: ParameterId;
+  query: string;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/card/${cardId}/params/${parameterId}/search/${encodeURIComponent(query)}`,
+    parameterValues,
+  );
 }

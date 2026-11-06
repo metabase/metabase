@@ -1,27 +1,13 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import {
-  useCreateGlossaryMutation,
-  useDeleteGlossaryMutation,
-  useListGlossaryQuery,
-  useUpdateGlossaryMutation,
-} from "metabase/api";
-import S from "metabase/common/components/Glossary/Glossary.module.css";
-import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
+import { Glossary } from "metabase/common/components/Glossary/Glossary";
 import CS from "metabase/css/core/index.css";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
-import { Card, Group, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 
 export function GlossaryContainer() {
-  const { data } = useListGlossaryQuery();
-  const glossary = data?.data ?? [];
-  const canWrite = data?.can_write ?? false;
-  const [createGlossary] = useCreateGlossaryMutation();
-  const [updateGlossary] = useUpdateGlossaryMutation();
-  const [deleteGlossary] = useDeleteGlossaryMutation();
-
   return (
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
@@ -44,22 +30,7 @@ export function GlossaryContainer() {
           m={0}
           className={cx(CS.wrapper, CS.wrapperTrim)}
         >
-          <Card px="xl" pb="sm" withBorder shadow="none" className={S.card}>
-            <GlossaryTable
-              className={S.table}
-              glossary={glossary}
-              readOnly={!canWrite}
-              onCreate={async (term, definition) => {
-                await createGlossary({ term, definition });
-              }}
-              onEdit={async (id, term, definition) => {
-                await updateGlossary({ id, term, definition });
-              }}
-              onDelete={async (id) => {
-                await deleteGlossary({ id });
-              }}
-            />
-          </Card>
+          <Glossary />
         </Stack>
       </Stack>
     </SidebarLayout>

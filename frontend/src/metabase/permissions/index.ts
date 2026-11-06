@@ -1,6 +1,6 @@
 export { ApplicationPermissionsHelp } from "./components/ApplicationPermissionsHelp";
 export { CollectionPermissionsHelp } from "./components/CollectionPermissionsHelp";
-export { default as CollectionPermissionsModal } from "./components/CollectionPermissionsModal/CollectionPermissionsModal";
+export { CollectionPermissionsModal } from "./components/CollectionPermissionsModal/CollectionPermissionsModal";
 export { DataPermissionsHelp } from "./components/DataPermissionsHelp";
 export { LegacyPermissionsModal } from "./components/LegacyPermissionsModal/LegacyPermissionsModal";
 export { PermissionsConfirm } from "./components/PermissionsConfirm";

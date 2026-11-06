@@ -104,7 +104,7 @@
                      {:workspace_id     ws-id :database_id db-id
                       :database_details {:user "iso" :password "iso-pass"}
                       :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
-        (let [stored  (t2/select-one-fn :details :model/Database db-id)
+        (let [stored  (t2/select-one-fn :details :model/Database :id db-id)
               details (->> (config/build-workspace-config ws-id) :config :databases
                            (some #(when (= "Cert DW" (:name %)) (:details %))))]
           (testing "precondition: the parent stores both certs as Secrets"

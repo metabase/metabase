@@ -941,7 +941,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      H.modal().scrollTo("bottom");
       H.modal().findByText(ERROR_MESSAGE);
     });
 
