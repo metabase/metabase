@@ -360,6 +360,8 @@
                  (agent/run-agent-loop
                   {:messages        messages
                    :state           baseline-state
+                   ;; the internal Metabot, as the context above: its `use_verified_content` gates the tools
+                   :metabot-id      metabot.config/internal-metabot-id
                    :profile-id      :slackbot
                    :conversation-id conversation-id
                    :context         context

@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -125,6 +126,10 @@
       (when (some-> card mi/can-read?)
         (when (= :metric (:type card))
           (throw (metric-refusal query-id card)))
+        ;; The rows go to the model: a curated-only Metabot runs a saved question only when `read_resource` would
+        ;; read it.
+        (when (shared/curated-only?)
+          (curation/check-curated-subject! (str "question " card-id) ["card" card-id]))
         {:saved-card card
          :query      {:lib/type :mbql/query
                       :database (:database_id card)
@@ -583,6 +588,12 @@
     (check-private-conversation!)
     (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
           runnable                   (runnable-query query_id query allow-non-sql?)]
+      ;; A query the conversation holds came from construct_notebook_query, which judged it, or from the user's
+      ;; viewing context, which nothing judged: the rows go to the model either way. A saved question was judged
+      ;; in [[saved-question]]. SQL the query holds itself is left to the SQL gates above; its structured stages,
+      ;; and a notebook query over a SQL question Metabot saved, are judged like any other.
+      (when (and (shared/curated-only?) (nil? saved-card))
+        (curation/check-curated-query! (str "query " query_id) (:query runnable)))
       (when-not (or allow-non-sql? (:checked-sql runnable))
         (throw (refusal (str "You may only run SQL queries, and query " query_id " is not one. "
                              (recovery-hint allow-non-sql?)))))

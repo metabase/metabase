@@ -3,8 +3,10 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
@@ -77,6 +79,18 @@
       (when-let [allowed (get (metabot.perms/sandbox-restricted-fields #{table-id}) table-id)]
         (api/check-403 (contains? allowed field-id))))))
 
+(defn- check-curated-field-owner!
+  "Under [[shared/curated-only?]], require that the Field behind `col`, a result column of the card `card-id`, belongs
+  to a Table the card's definition reads or one FK hop from it. A card's result metadata can map a column to any
+  Field, so without this a curated model could serve, and fingerprint, a column of a table it never reads."
+  [card-id col]
+  (when (shared/curated-only?)
+    (let [field-id (:id col)
+          owner    (when (pos-int? field-id)
+                     (get (metabot.perms/field-id->table-id #{field-id}) field-id))]
+      (when (and owner (not (contains? (metabot.tools.u/card-definition-table-ids card-id) owner)))
+        (curation/not-curated! {:label (str "field " field-id)})))))
+
 (defn- table-field-stats
   [table-id field-id limit]
   (try
@@ -93,12 +107,19 @@
 (defn- card-field-stats
   [card-id field-id limit card-type]
   (try
-    (let [query        (or (metabot.tools.u/card-query card-id)
+    (let [;; A curated-only read may see what a curated card exposes, its result columns and their FK neighbours,
+          ;; which is what `construct_notebook_query` lets a curated card cover (see
+          ;; `metabase.metabot.curation`). The definition of a question reads more: a verified `count` over a raw
+          ;; table would otherwise serve every column of that table.
+          query        (or (if (shared/curated-only?)
+                             (metabot.tools.u/card-results-query card-id)
+                             (metabot.tools.u/card-query card-id))
                            (throw (ex-info (str "No " card-type " found with ID " card-id)
                                            {:agent-error? true :status-code 404})))
           visible-cols (lib/visible-columns query)
           col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
       (check-column-table-perms! col)
+      (check-curated-field-owner! card-id col)
       (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
@@ -112,6 +133,7 @@
           filterable-cols (lib/filterable-columns query)
           col             (metabot.tools.u/find-column-by-field-id field-id filterable-cols)]
       (check-column-table-perms! col)
+      (check-curated-field-owner! metric-id col)
       (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))

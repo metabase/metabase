@@ -12,6 +12,7 @@
    which is the intended failure mode: a missing hint reads as terse, a wrong one sends the
    agent at a tool it does not have."
   (:require
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -89,5 +90,10 @@
 
     :missing-source-in-first-stage
     (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")
+
+    ;; the construct tools record their profile's tools, so the sentence names `search` only where it is offered
+    :uncurated-source
+    (when (shared/tool-offered? "search")
+      (tru "Call `search` to find curated tables, models, or metrics and build the query on those instead. A table related to a curated one may be joined, but not used as the query''s source."))
 
     nil))
