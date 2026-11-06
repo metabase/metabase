@@ -27,7 +27,7 @@
   (try (f)
        (finally (ws.table-remapping/clear-mappings-for-db! db-id)
                 (sync-tables/sync-tables-and-database!
-                 (t2/select-one :model/Database db-id)))))
+                 (t2/select-one :model/Database :id db-id)))))
 
 (defn- with-provisioned-workspace-db!
   "Set the `instance-workspace` setting so `db-workspace-namespace` returns
@@ -798,7 +798,7 @@
          (let [fake-metadata {:tables #{{:schema "public"      :name "dev_1898_orders"}
                                         {:schema "ws_dev_1898" :name "dev_1898_orders"}}}]
            (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
-             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
+             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database :id (mt/id)))))
          (let [created-pairs (set (t2/select-fn-set (juxt :schema :name)
                                                     :model/Table
                                                     :db_id (mt/id)
@@ -976,7 +976,7 @@
          (let [fake-metadata {:tables #{{:schema "public"   :name "unrelated_table"}
                                         {:schema "ws_alice" :name "ws_canonical_keep"}}}]
            (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (constantly fake-metadata)]
-             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database (mt/id)))))
+             (sync-tables/sync-tables-and-database! (t2/select-one :model/Database :id (mt/id)))))
          (let [{:keys [active]} (t2/select-one [:model/Table :active] :db_id (mt/id) :name "ws_canonical_keep")]
            (is (true? active)
                "canonical Table row with an active remap stays active across syncs")))))))
