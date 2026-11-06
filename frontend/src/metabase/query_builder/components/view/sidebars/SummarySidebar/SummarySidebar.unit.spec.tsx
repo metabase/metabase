@@ -244,6 +244,17 @@ describe("SummarySidebar", () => {
     expect(getLastQuery().dimensions).toEqual(["Created At: Month"]);
   });
 
+  it("doesn't rerun when the clicked field is all its well holds", async () => {
+    const { onQueryChange } = setup({ query: createQueryWithMetric() });
+
+    await userEvent.click(getFieldButton("Metrics", "Revenue"));
+    await userEvent.click(getFieldButton("Metrics", "Revenue"));
+    await userEvent.click(getFieldButton("Product", "Category"));
+    await userEvent.click(getFieldButton("Product", "Category"));
+
+    expect(onQueryChange).toHaveBeenCalledTimes(2);
+  });
+
   it("replaces the values on a metric click", async () => {
     const { getLastQuery } = setup({ query: createQueryWithMetric() });
 

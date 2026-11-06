@@ -15,6 +15,7 @@ import { SummaryWells } from "./SummaryWells";
 import type { SummaryField, SummaryFieldSection, SummaryWellId } from "./types";
 import {
   addField,
+  areQueriesEqual,
   clearWell,
   getFieldSections,
   replaceWellWithField,
@@ -55,11 +56,12 @@ export function SummarySidebar({
     const isGroupingWithoutValues =
       wellId === "columns" &&
       Lib.aggregations(nextQuery, stageIndex).length === 0;
-    onQueryChange(
-      isGroupingWithoutValues
-        ? Lib.aggregateByCount(nextQuery, stageIndex)
-        : nextQuery,
-    );
+    const nextSummary = isGroupingWithoutValues
+      ? Lib.aggregateByCount(nextQuery, stageIndex)
+      : nextQuery;
+    if (!areQueriesEqual(query, nextSummary)) {
+      onQueryChange(nextSummary);
+    }
   };
 
   const { bar, formulaInputs } = useSummaryFormulaBar({
@@ -68,12 +70,8 @@ export function SummarySidebar({
     onAdd: handleWellAdd,
   });
 
-  const handleAdd = (wellId: SummaryWellId, field: SummaryField) => {
-    const nextQuery = addField(query, stageIndex, wellId, field);
-    if (nextQuery !== query) {
-      handleWellAdd(nextQuery, wellId);
-    }
-  };
+  const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
+    handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
 
   const handleFieldSelect = (field: SummaryField) => {
     const wellId = getFieldWellId(field);

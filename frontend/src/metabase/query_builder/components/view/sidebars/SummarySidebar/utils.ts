@@ -48,7 +48,6 @@ function withoutEmptySections(sections: SummaryFieldSection[]) {
   return sections.filter((section) => section.items.length > 0);
 }
 
-// measures and metrics first, then the tables in the order the query reaches them
 export function getFieldSections(
   query: Lib.Query,
   stageIndex: number,
@@ -193,7 +192,6 @@ function getColumnAggregation(
     : null;
 }
 
-// result column names are unique within the stage; clause display names can repeat
 function getResultColumnNames(query: Lib.Query, stageIndex: number) {
   const infos = Lib.returnedColumns(query, stageIndex).map((column) =>
     Lib.displayInfo(query, stageIndex, column),
@@ -291,7 +289,6 @@ export function getDimensionItems(
   }));
 }
 
-// a column from the field list keeps the breakout positions of the query it was listed for
 function findBreakoutableColumn(
   query: Lib.Query,
   stageIndex: number,
@@ -322,7 +319,6 @@ function getMetricKey(
   return JSON.stringify(Lib.legacyRef(query, stageIndex, metric));
 }
 
-// measures have no legacy ref; their names are unique within the source they come from
 function getMeasureKey(
   query: Lib.Query,
   stageIndex: number,
@@ -331,7 +327,6 @@ function getMeasureKey(
   return Lib.displayInfo(query, stageIndex, measure).name;
 }
 
-// a metric or measure from the field list carries no position in this query, so the query's own is looked up
 function hasValue(
   query: Lib.Query,
   stageIndex: number,
@@ -368,7 +363,16 @@ function hasValue(
   }
 }
 
-/** Returns `query` itself when the well already has the field, or when a column can't be aggregated. */
+export function areQueriesEqual(query: Lib.Query, other: Lib.Query): boolean {
+  return (
+    query === other ||
+    Lib.areLegacyQueriesEqual(
+      Lib.toLegacyQuery(query),
+      Lib.toLegacyQuery(other),
+    )
+  );
+}
+
 export function addField(
   query: Lib.Query,
   stageIndex: number,

@@ -1,6 +1,4 @@
 .sidebar {
-  --summary-footer-height: 3rem;
-
   display: flex;
   height: 100%;
   overflow: hidden;
@@ -68,7 +66,6 @@
   min-height: var(--well-field-height);
 }
 
-/* beats the design system's extra inset for a field with no pills beside it */
 .wellField .wellFieldInput,
 .wellField .wellFieldInput:only-child {
   flex: 1 1 8rem;
@@ -153,7 +150,6 @@
   font-weight: inherit;
 }
 
-/* widens the remove target to the chip's edge and half the gap to the next chip */
 .chipRemove {
   overflow: visible;
 
@@ -166,12 +162,10 @@
 
 .wellsFooter {
   flex-shrink: 0;
-  height: var(--summary-footer-height);
+  height: 3rem;
   padding: 0 var(--mantine-spacing-md) 0 var(--mantine-spacing-lg);
 }
 
-/* the panel's halves are container units, so the card keeps its width while the drawer
-   collapses and slides it out past the panel's edge */
 .fieldListDrawer {
   display: flex;
   flex: 0 0 50cqw;
@@ -201,14 +195,11 @@
   transition: visibility 0s;
 }
 
-/* out of the tab order once it's slid away, but only after the slide */
 .fieldListDrawer:not([data-open]) .fieldListCard {
   visibility: hidden;
   transition: visibility 0s linear 200ms;
 }
 
-/* a panel resize (marked with `data-resizing`) changes the container units every frame, which
-   would restart the slide and trail the drag */
 [data-resizing] .fieldListDrawer,
 [data-resizing] .fieldListCard {
   transition: none;
@@ -219,7 +210,6 @@
   margin-bottom: var(--mantine-spacing-xs);
 }
 
-/* the design system's TextInput keeps a border even when unstyled */
 .searchField .searchInput {
   padding-inline: 1.5rem;
   border-width: 0;
@@ -246,7 +236,6 @@
   color: var(--mb-color-text-primary);
 }
 
-/* bleeds into the card's padding so the section chevrons line up with the search icon */
 .fieldListScroll {
   flex: 1;
   min-height: 0;
@@ -310,7 +299,6 @@
     background-color: var(--mb-color-background_surface-hover);
   }
 
-  /* the ring would be clipped by the scroll container at the card's edges */
   &:focus-visible {
     outline-offset: -2px;
   }

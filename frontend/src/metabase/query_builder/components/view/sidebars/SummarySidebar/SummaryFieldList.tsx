@@ -28,9 +28,7 @@ import { filterFieldSections } from "./utils";
 
 type SummaryFieldListProps = {
   sections: SummaryFieldSection[];
-  /** A field was clicked: it replaces what its well holds. */
   onSelect: (field: SummaryField) => void;
-  /** A field was alt-clicked (option-clicked on a Mac): it joins what its well holds. */
   onAdd: (field: SummaryField) => void;
 };
 
