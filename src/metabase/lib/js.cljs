@@ -201,6 +201,15 @@
   (-> (lib.convert/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export xray-cell-query
+  "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
+  dashboard URL, or nil when the stage has no filter."
+  [a-query]
+  (some-> (lib.convert/->legacy-MBQL a-query)
+          (get-in [:query :filter])
+          fix-namespaced-values
+          (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export append-stage
   "Adds a new, blank *stage* to the provided `query`.
 

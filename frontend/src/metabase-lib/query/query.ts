@@ -41,6 +41,10 @@ export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
 }
 
+export function xrayCellQuery(query: Query): unknown {
+  return ML.xray_cell_query(query);
+}
+
 export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }

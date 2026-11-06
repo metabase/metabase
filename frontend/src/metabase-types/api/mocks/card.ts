@@ -36,6 +36,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
   type: "question",
+  query_type: "query",
   can_write: true,
   can_restore: false,
   can_delete: false,
@@ -79,7 +80,7 @@ export const createMockStructuredCard = (
 export const createMockNativeCard = (
   opts?: Partial<Card<NativeDatasetQuery>>,
 ): Card<NativeDatasetQuery> => ({
-  ...createMockCard(opts),
+  ...createMockCard({ query_type: "native", ...opts }),
   dataset_query: createMockNativeDatasetQuery(opts?.dataset_query),
 });
 

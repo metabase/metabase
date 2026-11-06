@@ -41,6 +41,8 @@ import type {
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
+export type CardQueryType = "query" | "native";
+
 export type CardCreationType =
   | "simple_question"
   | "custom_question"
@@ -66,6 +68,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
+  query_type: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */

@@ -4,7 +4,7 @@
 // (See entity-select-fields map)
 
 import type { WritebackActionBase, WritebackActionType } from "./actions";
-import type { Card, CardType } from "./card";
+import type { Card, CardQueryType, CardType } from "./card";
 import type { Collection } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
@@ -117,7 +117,7 @@ export type CardDependencyNodeData = Pick<
   | "last-edit-info"
 > & {
   view_count?: number | null;
-  query_type?: "native" | "query";
+  query_type?: CardQueryType;
 };
 
 export type SnippetDependencyNodeData = Pick<
