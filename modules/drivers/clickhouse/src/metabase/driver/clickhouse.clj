@@ -23,7 +23,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import

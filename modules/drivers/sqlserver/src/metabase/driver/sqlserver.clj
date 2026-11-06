@@ -84,6 +84,7 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
+                              :workspace                              true
                               :table-privileges                       true
                               :stage-ctes                             true
                               :stage-ctes/nested                      false}]

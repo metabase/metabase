@@ -130,7 +130,8 @@
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/testing                     false
-                              :stage-ctes                             true}]
+                              :stage-ctes                             true
+                              :workspace                              false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
