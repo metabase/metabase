@@ -9,10 +9,11 @@
    another.
 
    A component can also be started on first use with [[ensure-started!]], which records how to stop it, and [[halt!]]
-   stops every started component, last started first."
+   stops every started component, each before the components it uses, and otherwise last started first."
   (:require
    [clojure.pprint :as pprint]
-   [metabase.global-system.mutable-component :as mc])
+   [metabase.global-system.mutable-component :as mc]
+   [weavejester.dependency :as dep])
   (:import
    (clojure.lang IDeref)
    (java.io Writer)
@@ -306,11 +307,28 @@
                         {:failures failures}
                         cause))))))
 
+(defn- dependency-graph
+  "The graph of `dependencies`, a map from a component key to the keys of the components it uses.
+   Throws if they form a cycle."
+  [dependencies]
+  (reduce-kv (fn [graph k uses]
+               (reduce #(dep/depend %1 k %2) graph uses))
+             (dep/graph)
+             dependencies))
+
 (defn- halt-order
-  "The handles of the running components, in the order [[halt!]] stops them: the reverse of their first-start order."
-  []
-  (let [running @started-components]
-    (keep #(get-in running [% :handle]) (rseq @start-order))))
+  "The handles of the running components, in the order [[halt!]] stops them.
+   Each comes before every component it uses in `graph`, directly or through components that are not running.
+   Components with no such path between them come in the reverse of their first-start order."
+  [graph]
+  (let [running  @started-components
+        position (zipmap @start-order (range))
+        ;; every running component uses a placeholder, so each is a node even when it has no edges
+        graph    (reduce #(dep/depend %1 %2 ::placeholder) graph (keys running))]
+    ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
+    ;; greatest position last
+    (keep #(get-in running [% :handle])
+          (reverse (dep/topo-sort #(compare (position %1 -1) (position %2 -1)) graph)))))
 
 (defn- close-admission!
   "Refuse every later start, once the starts already running have finished and registered."
@@ -323,13 +341,20 @@
         (.unlock write-lock)))))
 
 (defn halt!
-  "Stop every running component [[start!]] started, in the reverse of the order they first started in.
+  "Stop every running component [[start!]] started.
+   `dependencies` maps a component key to the keys of the components it uses, and defaults to none.
+   A component stops before everything it uses, directly or through other components, even one that started later.
+   Components with no such path between them stop in the reverse of the order they first started in.
+   Throws before stopping anything if `dependencies` has a cycle.
    From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
    left running.
    Throws after trying them all if any stop threw; see [[stop-all!]]."
-  []
-  (close-admission!)
-  (stop-all! (halt-order)))
+  ([]
+   (halt! {}))
+  ([dependencies]
+   (let [graph (dependency-graph dependencies)]
+     (close-admission!)
+     (stop-all! (halt-order graph)))))
 
 (defn reopen!
   "Let components start again after [[halt!]], for a REPL that halts the system and starts it again in one JVM."
