@@ -240,7 +240,10 @@ describe("DashCardCardParameterMapper", () => {
   });
 
   it("shows only curated metric dimensions", async () => {
-    const card = createMockCard({ type: "metric" });
+    const card = createMockCard({
+      type: "metric",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
     setupMetricDimensionsEndpoints(card.id, {
       added: [
         createMockMetricDimension({

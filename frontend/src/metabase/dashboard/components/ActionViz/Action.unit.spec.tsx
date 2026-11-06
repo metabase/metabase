@@ -50,6 +50,9 @@ const DATABASE_ID = 1;
 const ACTION = createMockQueryAction({
   name: "My Awesome Action",
   database_id: DATABASE_ID,
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "SELECT 1",
+  }),
   model_id: ACTION_MODEL_ID,
   can_write: true,
   parameters: [

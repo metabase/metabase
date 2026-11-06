@@ -6,6 +6,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -58,6 +60,7 @@ describe("MetricTabs", () => {
   } = {}) {
     const card = createMockCard({
       type: "metric",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       can_write: true,
       last_query_start: "2024-01-01T00:00:00Z",
       result_metadata: [createMockField({ base_type: "type/Integer" })],

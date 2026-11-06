@@ -12,15 +12,23 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { Route } from "metabase/router";
 import * as Lib from "metabase-lib";
-import { createMetadataProvider } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 import {
+  PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { QuestionSources } from "./QuestionSources";
+
+const PRODUCTS_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+});
 
 interface SetupOpts {
   card?: Card;
@@ -54,6 +62,7 @@ describe("QuestionSources", () => {
   it("should show table source information", async () => {
     const card = createMockCard({
       name: "Question",
+      dataset_query: PRODUCTS_QUERY,
     });
     setup({ card });
     const databaseLink = await screen.findByRole("link", {
@@ -133,6 +142,7 @@ describe("QuestionSources", () => {
     const model = createMockCard({
       name: "My Model",
       type: "model",
+      dataset_query: PRODUCTS_QUERY,
     });
 
     await setup({ card: model });

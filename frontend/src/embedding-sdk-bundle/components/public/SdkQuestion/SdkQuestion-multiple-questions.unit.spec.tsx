@@ -13,6 +13,8 @@ import { mockGetBoundingClientRect, screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -28,6 +30,7 @@ import {
 
 import { SdkQuestion } from "./SdkQuestion";
 
+const TEST_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
 const TEST_DB = createMockDatabase({ id: TEST_DB_ID });
@@ -52,7 +55,7 @@ function getMockDataset(row: string) {
 const setup = ({
   mocks = [
     {
-      card: createMockCard(),
+      card: createMockCard({ dataset_query: TEST_QUERY }),
       dataset: getMockDataset("Test Row"),
     },
   ],
@@ -125,7 +128,7 @@ describe("InteractiveQuestion - multiple interactive questions", () => {
     const rows = ["A", "B"];
 
     const mocks = rows.map((row, id) => ({
-      card: createMockCard({ id: id + 1 }),
+      card: createMockCard({ id: id + 1, dataset_query: TEST_QUERY }),
       dataset: getMockDataset(row),
     }));
 
