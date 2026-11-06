@@ -33132,15 +33132,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -34306,15 +34299,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -34564,15 +34550,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35419,15 +35398,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35463,15 +35435,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36571,15 +36536,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -39452,15 +39410,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -40915,15 +40866,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -42397,15 +42341,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -44180,15 +44117,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -44484,15 +44414,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -44933,15 +44856,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -46959,15 +46875,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -51481,15 +51390,8 @@
         "operationId" : "delete-api-ee-email-override",
         "parameters" : [ ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -57363,15 +57265,8 @@
         "operationId" : "delete-api-email",
         "parameters" : [ ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -57627,15 +57522,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -59939,15 +59827,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -60419,15 +60300,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -60596,15 +60470,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -61026,15 +60893,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -63560,15 +63420,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -63692,15 +63545,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -63854,15 +63700,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -64165,15 +64004,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "200" : {
+            "description" : "Acknowledged, with no body"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -64304,15 +64136,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -65573,15 +65398,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -66595,15 +66413,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67043,15 +66854,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67407,15 +67211,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67635,15 +67432,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67671,15 +67461,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67799,15 +67582,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67835,15 +67611,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67871,15 +67640,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67936,15 +67698,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67963,15 +67718,8 @@
         "operationId" : "post-api-persist-disable",
         "parameters" : [ ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67990,15 +67738,8 @@
         "operationId" : "post-api-persist-enable",
         "parameters" : [ ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -68035,15 +67776,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -71724,15 +71458,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -72753,15 +72480,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -73021,15 +72741,8 @@
           }
         },
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -76817,15 +76530,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -77076,15 +76782,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -83235,15 +82934,8 @@
           }
         } ],
         "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            },
-            "description" : "Successful response"
+          "204" : {
+            "description" : "No content"
           },
           "4XX" : {
             "description" : "Client error response"
