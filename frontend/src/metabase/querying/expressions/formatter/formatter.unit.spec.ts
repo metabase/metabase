@@ -4,10 +4,10 @@ import expression from "ts-dedent";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { SAMPLE_DB_ID } from "../../../../../../e2e/support/cypress_data";
 import { compileExpression } from "../compile-expression";
@@ -289,13 +289,10 @@ describe("format", () => {
 
     const provider = createMetadataProvider({ metadata });
 
-    const otherQuery = Lib.fromJsQuery(provider, {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    });
+    const otherQuery = Lib.fromJsQuery(
+      provider,
+      Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    );
 
     it.each([
       { result: "[Unknown Field]", parts: fields.orders.TOTAL },

@@ -5,7 +5,6 @@ import {
   createMockCard,
   createMockMeasure,
   createMockSegment,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -107,11 +106,8 @@ describe("createTestQuery", () => {
             createMockCard({
               id: QUESTION_ID,
               name: "Orders question",
-              dataset_query: createMockStructuredDatasetQuery({
-                database: SAMPLE_DATABASE.id,
-                query: {
-                  "source-table": ORDERS_ID,
-                },
+              dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [{ source: { type: "table", id: ORDERS_ID } }],
               }),
             }),
           ],
@@ -129,13 +125,7 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.toJsQuery(query)).toMatchObject({
-        stages: [
-          {
-            "source-card": QUESTION_ID,
-          },
-        ],
-      });
+      expect(Lib.primarySourceCardId(query)).toBe(QUESTION_ID);
     });
 
     it("should create a query with a metric aggregation", () => {
@@ -148,12 +138,13 @@ describe("createTestQuery", () => {
               id: METRIC_ID,
               name: "Revenue",
               type: "metric",
-              dataset_query: createMockStructuredDatasetQuery({
-                database: SAMPLE_DATABASE.id,
-                query: {
-                  "source-table": ORDERS_ID,
-                  aggregation: [["count"]],
-                },
+              dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    aggregations: [{ type: "operator", operator: "count" }],
+                  },
+                ],
               }),
             }),
           ],
@@ -492,11 +483,22 @@ describe("createTestQuery", () => {
             createMockSegment({
               id: SEGMENT_ID,
               table_id: PRODUCTS_ID,
-              definition: createMockStructuredDatasetQuery({
-                query: {
-                  "source-table": PRODUCTS_ID,
-                  filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
-                },
+              definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    filters: [
+                      {
+                        type: "operator",
+                        operator: "=",
+                        args: [
+                          { type: "column", fieldId: PRODUCTS.CATEGORY },
+                          { type: "literal", value: "Widget" },
+                        ],
+                      },
+                    ],
+                  },
+                ],
               }),
             }),
           ],
@@ -514,9 +516,9 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.toLegacyQuery(query)).toMatchObject({
-        query: { filter: ["segment", SEGMENT_ID] },
-      });
+      const filters = Lib.filters(query, 0);
+      expect(filters).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, filters[0]).displayName).toBe("Segment");
     });
 
     it("should create a query with filters", () => {
@@ -587,17 +589,11 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.toLegacyQuery(query)).toMatchObject({
-        query: {
-          aggregation: [
-            [
-              "aggregation-options",
-              expect.anything(),
-              { "display-name": "Measure" },
-            ],
-          ],
-        },
-      });
+      const aggregations = Lib.aggregations(query, 0);
+      expect(aggregations).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, aggregations[0]).displayName).toBe(
+        "Measure",
+      );
     });
 
     it("should create a query with aggregations", () => {

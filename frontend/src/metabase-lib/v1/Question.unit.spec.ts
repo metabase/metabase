@@ -1,5 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -25,13 +27,9 @@ const metadata = createMockMetadata({
 const card = {
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
 };
 const base_question = new Question(card, metadata);
 
@@ -41,13 +39,9 @@ const orders_raw_card = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
 };
 const orders_raw_question = new Question(orders_raw_card, metadata);
 
@@ -56,14 +50,14 @@ const orders_count_card = {
   name: "# orders data",
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+      },
+    ],
+  }),
 };
 const orders_count_question = new Question(orders_count_card, metadata);
 const ordersCountData = createMockDatasetData({
@@ -114,15 +108,15 @@ const orders_count_by_id_card = {
   can_write: false,
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.ID, null]],
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [{ type: "column", fieldId: ORDERS.ID }],
+      },
+    ],
+  }),
 };
 
 const orders_count_by_id_question = new Question(
@@ -621,14 +615,23 @@ describe("Question", () => {
 
   describe("Question.generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
-      const question = base_question.setDatasetQuery({
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      });
+      const question = base_question.setDatasetQuery(
+        Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                { type: "operator", operator: "count" },
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", fieldId: ORDERS.TOTAL }],
+                },
+              ],
+            },
+          ],
+        }),
+      );
       expect(question.generateQueryDescription()).toEqual(
         "Orders, Count and Sum of Total",
       );
