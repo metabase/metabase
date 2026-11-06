@@ -152,6 +152,10 @@ export function generalSettings() {
   return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
 }
 
+export const authenticationSettings = () => "/admin/settings/authentication";
+
+export const updatesSettings = () => "/admin/settings/updates";
+
 export function domainsSettings() {
   return "/admin/settings/domains";
 }

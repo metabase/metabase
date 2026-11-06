@@ -1,3 +1,4 @@
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { listTag } from "metabase-enterprise/api/tags";
 import type {
@@ -5,6 +6,7 @@ import type {
   AcknowledgeAdvisoryResponse,
   AdvisoryId,
   ListAdvisoriesResponse,
+  ListHealthChecksResponse,
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
@@ -55,6 +57,29 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
+    listHealthChecks: builder.query<ListHealthChecksResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/security-center/health-checks",
+      }),
+      providesTags: [listTag("security-health-check")],
+    }),
+    recheckHealthChecks: builder.mutation<ListHealthChecksResponse, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/security-center/health-checks/recheck",
+      }),
+      onQueryStarted: (_arg, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (response) =>
+          dispatch(
+            securityCenterApi.util.upsertQueryData(
+              "listHealthChecks",
+              undefined,
+              response,
+            ),
+          ),
+        ),
+    }),
   }),
 });
 
@@ -64,4 +89,6 @@ export const {
   useAcknowledgeAdvisoriesMutation,
   useSyncSecurityAdvisoriesMutation,
   useSendTestNotificationMutation,
+  useListHealthChecksQuery,
+  useRecheckHealthChecksMutation,
 } = securityCenterApi;
