@@ -12,7 +12,7 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { getColumnListInfo } from "metabase/querying/common/utils";
+import { getTableColumnListInfo } from "metabase/querying/common/utils";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
@@ -55,7 +55,7 @@ export function TablePane({
     );
   }
 
-  const columnListInfo = getColumnListInfo(metadataProvider, table.id);
+  const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
 
   const handleColumnClick = (columnIndex: number) => {
     onItemClick({ type: "field", tableId: table.id, columnIndex });
