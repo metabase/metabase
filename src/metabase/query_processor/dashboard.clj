@@ -248,8 +248,10 @@
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
                              (dissoc options :dashboard :card :export-format)
-                             {:parameters   resolved-params
-                              :dashboard-id dashboard-id})]
+                             {:parameters          resolved-params
+                              :dashboard-id        dashboard-id
+                              :dashboard-name      (:name dashboard)
+                              :dashboard-entity-id (:entity_id dashboard)})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"
                     dashboard-id card-id dashcard-id)
         ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again

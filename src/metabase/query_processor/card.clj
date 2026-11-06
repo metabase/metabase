@@ -394,7 +394,8 @@
   transformed query is returned but not persisted to the Card."
   [card :- ::queries.schema/card
    export-format :- ::qp.schema/export-format
-   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
+   & {:keys [parameters constraints context dashboard-id dashboard-name dashboard-entity-id dashcard middleware qp
+             make-run ignore-cache card-transform]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -405,6 +406,8 @@
                [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
                [:context        {:optional true} [:maybe ::lib.schema.info/context]]
                [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
+               [:dashboard-name {:optional true} [:maybe :string]]
+               [:dashboard-entity-id {:optional true} [:maybe :string]]
                [:dashcard       {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
                [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
                [:qp             {:optional true} [:maybe ifn?]]
@@ -445,7 +448,11 @@
                              :context                context
                              :card-id                card-id
                              :card-name              (:name card)
+                             :card-entity-id         (:entity_id card)
+                             :collection-id          (:collection_id card)
                              :dashboard-id           dashboard-id
+                             :dashboard-name         (not-empty dashboard-name)
+                             :dashboard-entity-id    (not-empty dashboard-entity-id)
                              :visualization-settings merged-viz}
                       (and (= (:type card) :model) (seq (:result_metadata card)))
                       (assoc :metadata/model-metadata (:result_metadata card)

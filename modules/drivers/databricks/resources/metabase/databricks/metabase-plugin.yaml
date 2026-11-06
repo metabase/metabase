@@ -112,6 +112,25 @@ driver:
       - merge:
           - additional-options
           - placeholder: IgnoreTransactions=0
+      - name: query-tags
+        display-name: Query tags
+        type: text
+        placeholder: |-
+          app: metabase
+          env: prod
+          user: {{user.id}}
+          card: {{card.id}}
+          dashboard: {{dashboard.id}}
+          dashboard_url: {{instance.url}}/dashboard/{{dashboard.id}}
+          company: {{parameter.company_id}}
+        helper-text: >-
+          Databricks query tags to attach to every query, one "key: value" per line, up to 20 tags; keys up to 32
+          characters, values up to 128. Values can use {{query.hash}}, {{query.context}}, {{card.id}}, {{card.name}},
+          {{card.entity_id}}, {{dashboard.id}}, {{dashboard.name}}, {{dashboard.entity_id}}, {{user.id}},
+          {{user.email}}, {{user.attributes.NAME}}, {{parameter.SLUG}} and {{instance.url}}. A tag whose variable has
+          no value for a query is skipped. Native queries can add tags with a "-- query_tags: team:data" comment.
+        visible-if:
+          advanced-options: true
       - default-advanced-options
 init:
   - step: load-namespace
