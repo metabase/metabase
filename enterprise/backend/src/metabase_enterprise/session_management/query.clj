@@ -35,10 +35,8 @@
   [:case
    [:= :auth_identity.provider nil]
    (h2x/literal "unknown")
-
    [:like :auth_identity.provider (h2x/literal custom-oidc-provider-pattern)]
    (h2x/literal "custom-oidc")
-
    :else
    :auth_identity.provider])
 
