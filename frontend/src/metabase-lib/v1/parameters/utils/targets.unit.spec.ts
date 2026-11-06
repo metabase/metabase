@@ -26,7 +26,6 @@ import {
   createMockField,
   createMockParameter,
   createMockSavedQuestionsDatabase,
-  createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -254,14 +253,12 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      const question = db.nativeQuestion({
-        query: "select * from PRODUCTS where CATEGORY = {{foo}}",
-        "template-tags": {
-          foo: createMockTemplateTag({
-            type: "text",
-          }),
-        },
-      });
+      const question = createQuestion(
+        Lib.createTestNativeQuery(provider, {
+          query: "select * from PRODUCTS where CATEGORY = {{foo}}",
+          templateTags: { foo: { type: "text" } },
+        }),
+      );
       const parameter = createMockParameter();
 
       expect(
@@ -277,15 +274,14 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["template-tag", "foo"],
       ];
-      const question = db.nativeQuestion({
-        query: "select * from PRODUCTS where {{foo}}",
-        "template-tags": {
-          foo: createMockTemplateTag({
-            type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-          }),
-        },
-      });
+      const question = createQuestion(
+        Lib.createTestNativeQuery(provider, {
+          query: "select * from PRODUCTS where {{foo}}",
+          templateTags: {
+            foo: { type: "dimension", dimension: PRODUCTS.CATEGORY },
+          },
+        }),
+      );
       const parameter = createMockParameter();
 
       expect(getParameterTargetField(question, parameter, target)).toEqual(

@@ -11,25 +11,18 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { FieldReference, TemporalUnit } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockField,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersIdField,
   createOrdersTable,
   createSampleDatabase,
-  createSavedNativeCard,
 } from "metabase-types/api/mocks/presets";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
@@ -567,12 +560,13 @@ describe("BreakoutStep", () => {
   });
 
   describe("saved native question source", () => {
-    const NATIVE_CARD = createSavedNativeCard({
+    const NATIVE_CARD = createMockCard({
+      display: "table",
+      visualization_settings: {},
       id: 2,
       name: "Native products",
-      dataset_query: createMockNativeDatasetQuery({
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({ query: "select * from products" }),
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "select * from products",
       }),
       result_metadata: [
         createNativeCardField({ name: "ID", baseType: "type/BigInteger" }),
@@ -740,10 +734,10 @@ describe("BreakoutStep", () => {
       const question = new Question(
         createMockCard({
           type: "metric",
-          dataset_query: createMockStructuredDatasetQuery({
-            database: SAMPLE_DB_ID,
-            query: { "source-table": ORDERS_ID },
-          }),
+          dataset_query: Lib.createTestJsQuery(
+            createMetadataProvider({ metadata }),
+            DEFAULT_TEST_QUERY,
+          ),
         }),
         metadata,
       );
