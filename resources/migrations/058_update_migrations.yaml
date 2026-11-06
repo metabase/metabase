@@ -1635,6 +1635,94 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.BackfillExampleDashboardIdValueWithAad"
 
+  - changeSet:
+      id: v58.2026-10-29T00:00:00
+      author: ranquild
+      comment: Add impersonation_query_cache
+      changes:
+        - createTable:
+            tableName: impersonation_query_cache
+            remarks: Cached validation results of native query stages run on impersonated databases
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_impersonation_query_cache
+              - column:
+                  name: input_version
+                  type: varchar(255)
+                  remarks: Metabase version that validated the query; rows from other versions are never read
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_engine
+                  type: varchar(254)
+                  remarks: Driver that validated the query
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_allow_write
+                  type: ${boolean.type}
+                  remarks: Whether the query was validated as a write statement rather than a select
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_admin
+                  type: ${boolean.type}
+                  remarks: Whether the query was validated for an admin, who is allowed more than other users
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_query_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex of input_query, used to look the row up
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_query
+                  type: ${text.type}
+                  remarks: Native SQL of the stage after parameter substitution
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result
+                  type: varchar(32)
+                  remarks: 'Validation outcome: valid, unparseable, unvalidatable or invalid'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result_query
+                  type: ${text.type}
+                  remarks: Validated SQL to run in place of input_query, set only when result is valid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: result_reason
+                  type: varchar(64)
+                  remarks: Why the validator could not check the query, when it says
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the result was cached
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-10-29T00:00:01
+      author: ranquild
+      comment: Add the lookup key of impersonation_query_cache
+      changes:
+        - addUniqueConstraint:
+            tableName: impersonation_query_cache
+            columnNames: input_query_hash, input_engine, input_allow_write, input_admin, input_version
+            constraintName: uq_impersonation_query_cache_input
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

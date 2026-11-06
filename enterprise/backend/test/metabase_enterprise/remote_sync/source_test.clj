@@ -7,7 +7,11 @@
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jgit.lib ObjectChecker)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -84,6 +88,19 @@
             (is (or (str/includes? (:content file) "test-id-1")
                     (str/includes? (:content file) "test-id-2"))
                 "Content should include entity ID")))))))
+
+(deftest store!-uses-git-path-separators-test
+  (testing "paths are git tree paths joined with / and never the host filesystem separator (#74095)"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [written-files (atom nil)
+            mock-source   (->MockSource written-files)]
+        (source/store! [(create-test-entity "A" "a" "Card")] (source.p/snapshot mock-source) task-id "msg")
+        (let [[{:keys [path]}] (:files @written-files)]
+          (is (= "collections/main/test_a.yaml" path))
+          (is (not (str/includes? path "\\")))
+          (testing "JGit's Windows path checker accepts the path, so pushing from a Windows host does not fail"
+            (let [checker (doto (ObjectChecker.) (.setSafeForWindows true))]
+              (is (nil? (.checkPath checker ^String path))))))))))
 
 (deftest store!-progress-tracking-test
   (testing "store! updates task progress as files are written"

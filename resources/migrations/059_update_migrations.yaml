@@ -3482,6 +3482,21 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
+  - changeSet:
+      id: v59.2026-07-10T22:29:18
+      author: ranquild
+      comment: >-
+        Retire the changelog rows of v59.2026-07-10T22:29:16 and v59.2026-07-10T22:29:17, which moved to
+        migrations/063/20260710_auth_identity_confirmed_at.yaml as v63.2026-07-10T22:29:16 and v63.2026-07-10T22:29:17.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id IN (
+                'v59.2026-07-10T22:29:16',
+                'v59.2026-07-10T22:29:17'
+              );
+      rollback: # not needed
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

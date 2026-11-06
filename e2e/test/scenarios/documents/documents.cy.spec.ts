@@ -1854,6 +1854,8 @@ describe("documents", () => {
       cy.findByTestId("toast-undo")
         .should("be.visible")
         .and("contain.text", "Document saved");
+      H.undoToast().icon("close").click({ force: true });
+      H.undoToastList().should("have.length", 0);
 
       cy.log("Make another change");
       H.documentContent().click();
@@ -1862,6 +1864,8 @@ describe("documents", () => {
       cy.contains('[data-testid="toast-undo"]', "Document saved").should(
         "be.visible",
       );
+      H.undoToast().icon("close").click({ force: true });
+      H.undoToastList().should("have.length", 0);
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();
@@ -1911,7 +1915,10 @@ describe("documents", () => {
         .click();
       cy.wait("@failedRevert");
 
-      H.undoToast().should("contain.text", "Cannot revert: missing document");
+      cy.contains(
+        '[data-testid="toast-undo"]',
+        "Cannot revert: missing document",
+      ).should("be.visible");
     });
   });
 });

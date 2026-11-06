@@ -10,9 +10,7 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
-   [methodical.core :as methodical])
-  (:import
-   (java.io File)))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,7 +49,7 @@
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)
         basename (str (last resolved) ".yaml")]
-    (str/join File/separator (concat dirnames [basename]))))
+    (str/join "/" (concat dirnames [basename]))))
 
 (defn- ->file-spec
   "Converts entity from serdes stream into file spec for source write-files!"

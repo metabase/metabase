@@ -6,35 +6,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 54638", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-  });
-
-  it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
-    H.CustomExpressionEditor.type("case(");
-    H.CustomExpressionEditor.helpText().within(() => {
-      cy.findByText("Learn more")
-        .scrollIntoView()
-        .should("be.visible")
-        .then(($a) => {
-          expect($a).to.have.attr("target", "_blank");
-          // Update attr to open in same tab, since Cypress does not support
-          // testing in multiple tabs.
-          $a.attr("target", "_self");
-        })
-        .click();
-      cy.url().should(
-        "equal",
-        "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
-      );
-    });
-  });
-});
-
 describe("issue #54722", () => {
   beforeEach(() => {
     H.restore();

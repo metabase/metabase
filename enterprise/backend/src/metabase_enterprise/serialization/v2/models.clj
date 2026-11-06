@@ -86,6 +86,7 @@
    "DocumentBookmark"
    "HTTPAction"
    "ImplicitAction"
+   "ImpersonationQueryCache"
    "LoginHistory"
    "McpQueryHandle"
    "MetabotConversation"
