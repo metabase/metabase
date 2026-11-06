@@ -171,9 +171,7 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
     questions: [card],
   });
   const provider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
-  const cardMetadata = checkNotNull(
-    Lib.tableOrCardMetadata(provider, `card__${MODEL_ID}`),
-  );
+  const cardMetadata = checkNotNull(Lib.cardMetadata(provider, MODEL_ID));
   const query = Lib.queryFromTableOrCardMetadata(provider, cardMetadata);
   const findColumn = columnFinder(
     query,

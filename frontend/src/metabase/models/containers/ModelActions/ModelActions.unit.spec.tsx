@@ -231,16 +231,7 @@ async function setup({
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
-    createMockCardQueryMetadata({
-      databases,
-      tables: [
-        createMockTable({
-          id: `card__${card.id}`,
-          name: card.name,
-          fields: card.result_metadata ?? [],
-        }),
-      ],
-    }),
+    createMockCardQueryMetadata({ databases }),
   );
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });

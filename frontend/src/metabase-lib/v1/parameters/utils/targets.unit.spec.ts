@@ -9,7 +9,6 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getParameterColumns,
   getParameterTargetField,
@@ -27,7 +26,6 @@ import {
   createMockField,
   createMockParameter,
   createMockSavedQuestionsDatabase,
-  createMockTable,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -842,21 +840,10 @@ function createModel(
   const card = createMockCard({ type: "model", result_metadata });
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
-    tables: [getModelVirtualTable(card)],
     questions: [card],
   });
 
   return new Question(card, metadata).setQuery(query);
-}
-
-function getModelVirtualTable(card: Card) {
-  return createMockTable({
-    id: getQuestionVirtualTableId(card.id),
-    db_id: savedQuestionsDb.id,
-    name: card.name,
-    display_name: card.name,
-    fields: card.result_metadata ?? [],
-  });
 }
 
 function getColumnsInfos(

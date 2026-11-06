@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   CardId,
@@ -114,12 +113,6 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
     body: PERMISSION_ERROR,
   });
   fetchMock.get(`path:/api/card/${card.id}/query_metadata`, {
-    status: 403,
-    body: PERMISSION_ERROR,
-  });
-
-  const virtualTableId = getQuestionVirtualTableId(card.id);
-  fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
     status: 403,
     body: PERMISSION_ERROR,
   });

@@ -15,7 +15,6 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, Filter, Join, JoinCondition } from "metabase-types/api";
 import {
   createMockCard,
@@ -682,10 +681,7 @@ describe("QuestionDataSource", () => {
     const newQuery = Lib.queryFromTableOrCardMetadata(
       newMetadataProvider,
       checkNotNull(
-        Lib.tableOrCardMetadata(
-          newMetadataProvider,
-          getQuestionVirtualTableId(originalQuestion.id()),
-        ),
+        Lib.cardMetadata(newMetadataProvider, originalQuestion.id()),
       ),
     );
     const newQuestion = Question.create().setQuery(newQuery);

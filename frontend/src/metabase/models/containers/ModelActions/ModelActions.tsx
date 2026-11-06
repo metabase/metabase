@@ -66,7 +66,6 @@ function ModelActions({
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
 
-  // A card source (`card__123`) has no foreign keys of its own.
   const mainTableId = useMemo(() => {
     const query = model.query();
     const { isNative } = Lib.queryDisplayInfo(query);
