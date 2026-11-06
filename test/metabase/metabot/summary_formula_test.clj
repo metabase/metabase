@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
@@ -62,6 +63,53 @@
 (defn- column-listed?
   [user-prompt column-name]
   (str/includes? user-prompt (str "[" column-name "]")))
+
+(defn- check-refused
+  "Check that a request for `query`, made as `user`, gets a 403 without reaching the LLM."
+  ([query]
+   (check-refused :rasta query))
+  ([user query]
+   (do-with-llm
+    {:expression "Count" :name "Count"}
+    (fn [calls]
+      (is (= {:message "You don't have permission to run this query." :error-code "query_permission_denied"}
+             (mt/user-http-request user :post 403 endpoint
+                                   (request-body {:dataset_query (lib/prepare-for-serialization query)}))))
+      (is (empty? @calls))))))
+
+(defn- check-no-match
+  "Check that a request for `query`, made as Rasta, finds nothing to offer without reaching the LLM."
+  [query]
+  (do-with-llm
+   {:expression "Count" :name "Count"}
+   (fn [calls]
+     (is (= {:expression nil :name nil :error "Nothing in this data matches that."}
+            (mt/user-http-request :rasta :post 200 endpoint
+                                  (request-body {:dataset_query (lib/prepare-for-serialization query)}))))
+     (is (empty? @calls)))))
+
+(defn- grant-query-access!
+  "Let all users query the tables named by `table-keys`, and nothing else."
+  [& table-keys]
+  (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+  (doseq [table-key table-keys]
+    (perms/set-table-permission! (perms-group/all-users) (mt/id table-key) :perms/create-queries :query-builder)))
+
+(defn- card-query
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
+
+(defn- field
+  [table-key field-key]
+  (lib.metadata/field (mt/metadata-provider) (mt/id table-key field-key)))
+
+(defn- join-table
+  "`query` joined to the table named by `table-key`, on `lhs-field` of Orders and that table's ID."
+  [query table-key lhs-field]
+  (let [mp (mt/metadata-provider)]
+    (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id table-key))
+                                     [(lib/= (field :orders lhs-field) (field table-key :id))]))))
 
 ;;; ------------------------------------------------- Success ---------------------------------------------------
 
@@ -206,16 +254,48 @@
        (is (empty? @calls))))))
 
 (deftest summary-formula-native-query-test
-  (testing "POST /api/metabot/summary-formula returns a 400 for a query ending in a native stage"
+  (testing "POST /api/metabot/summary-formula returns a 400 for a query with a native first stage"
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")]
+      (doseq [[description query] {"with only a native stage" query
+                                   "with an appended stage"   (lib/append-stage query)}]
+        (testing description
+          (do-with-llm
+           {:expression "Count" :name "Count"}
+           (fn [calls]
+             (is (= {:message    "Formulas can't be suggested for a native query."
+                     :error-code "native_query_not_supported"}
+                    (mt/user-http-request :crowberto :post 400 endpoint
+                                          (request-body {:dataset_query (lib/prepare-for-serialization query)}))))
+             (is (empty? @calls)))))))))
+
+(deftest summary-formula-native-stage-permission-test
+  (testing "POST /api/metabot/summary-formula returns a 403 for a native first stage the user can't run"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-query-access! :orders)
+      (check-refused (lib/append-stage (lib/native-query (mt/metadata-provider) "SELECT 1"))))))
+
+(deftest summary-formula-virtual-database-test
+  (testing "POST /api/metabot/summary-formula returns a 403 for the saved questions virtual database"
     (do-with-llm
      {:expression "Count" :name "Count"}
      (fn [calls]
-       (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")]
-         (is (= {:message    "Formulas can't be suggested for a native query."
-                 :error-code "native_query_not_supported"}
-                (mt/user-http-request :crowberto :post 400 endpoint
-                                      (request-body {:dataset_query (lib/prepare-for-serialization query)})))))
+       (let [query (assoc (lib/prepare-for-serialization (orders-query)) :database -1337)]
+         (is (= {:message    "You don't have permission to run this query."
+                 :error-code "query_permission_denied"}
+                (mt/user-http-request :rasta :post 403 endpoint (request-body {:dataset_query query})))))
        (is (empty? @calls))))))
+
+(deftest summary-formula-mismatched-database-test
+  (testing "POST /api/metabot/summary-formula returns a 403 for a table outside the query's database"
+    (mt/with-temp [:model/Database {database-id :id} {}]
+      (do-with-llm
+       {:expression "Count" :name "Count"}
+       (fn [calls]
+         (let [query (assoc (lib/prepare-for-serialization (orders-query)) :database database-id)]
+           (is (= {:message    "You don't have permission to run this query."
+                   :error-code "query_permission_denied"}
+                  (mt/user-http-request :crowberto :post 403 endpoint (request-body {:dataset_query query})))))
+         (is (empty? @calls)))))))
 
 (deftest summary-formula-unknown-database-test
   (testing "POST /api/metabot/summary-formula doesn't reach the LLM for a database that doesn't exist"
@@ -318,16 +398,114 @@
         (is (not (column-listed? user "Discount")))))))
 
 (deftest summary-formula-sensitive-column-explicit-ref-test
-  (testing "POST /api/metabot/summary-formula doesn't send a sensitive column an earlier stage selects explicitly"
+  (testing "POST /api/metabot/summary-formula returns a 403 when an earlier stage selects a sensitive column"
     (mt/with-temp-vals-in-db :model/Field (mt/id :orders :discount) {:visibility_type "sensitive"}
-      (let [mp    (mt/metadata-provider)
-            query (-> (orders-query)
-                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :discount))
-                                        (lib.metadata/field mp (mt/id :orders :total))])
-                      lib/append-stage)
-            user  (sent-to-llm {:dataset_query (lib/prepare-for-serialization query)})]
-        (is (column-listed? user "Total"))
-        (is (not (column-listed? user "Discount")))))))
+      (check-refused (-> (orders-query)
+                         (lib/with-fields [(field :orders :discount) (field :orders :total)])
+                         lib/append-stage)))))
+
+(deftest summary-formula-derived-column-reference-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a derived column names a field the user can't see"
+    (doseq [visibility-type ["hidden" "sensitive" "retired"]]
+      (testing visibility-type
+        (mt/with-temp-vals-in-db :model/Field (mt/id :orders :discount) {:visibility_type visibility-type}
+          (check-refused (-> (orders-query)
+                             (lib/aggregate (lib/sum (field :orders :discount)))
+                             lib/append-stage)))))))
+
+(deftest summary-formula-unqueryable-field-reference-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a derived column names a field the user can't query"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-query-access! :orders)
+      (check-refused (-> (orders-query)
+                         (lib/aggregate (lib/sum (field :people :latitude)))
+                         lib/append-stage)))))
+
+(deftest summary-formula-hidden-table-field-reference-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a derived column names a field of a hidden table"
+    (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden"}
+      (check-refused (-> (orders-query)
+                         (lib/aggregate (lib/sum (field :people :latitude)))
+                         lib/append-stage)))))
+
+(deftest summary-formula-hidden-implicit-join-test
+  (testing "POST /api/metabot/summary-formula doesn't send columns of an implicitly joined hidden table"
+    (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden"}
+      (doseq [user [:rasta :crowberto]]
+        (testing user
+          (let [prompt (sent-to-llm user {})]
+            (is (column-listed? prompt "Total"))
+            (is (column-listed? prompt "Product → Title"))
+            (is (not (column-listed? prompt "User → Name")))))))))
+
+(deftest summary-formula-hidden-source-table-test
+  (testing "POST /api/metabot/summary-formula has nothing to offer for a hidden source table"
+    (mt/with-temp-vals-in-db :model/Table (mt/id :products) {:visibility_type "hidden"}
+      (let [mp (mt/metadata-provider)]
+        (check-no-match (lib/query mp (lib.metadata/table mp (mt/id :products))))))))
+
+(deftest summary-formula-hidden-table-behind-model-test
+  (testing "POST /api/metabot/summary-formula keeps the columns a model publishes from a hidden table"
+    (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type "hidden"}
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (orders-query)}]
+        (is (column-listed? (sent-to-llm {:dataset_query (lib/prepare-for-serialization (card-query model-id))})
+                            "Total"))))))
+
+(deftest summary-formula-model-over-unqueryable-table-test
+  (testing "POST /api/metabot/summary-formula accepts a query on a readable model's columns"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-query-access! :products)
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (orders-query)}]
+        (let [query  (card-query model-id)
+              total  (m/find-first #(= "TOTAL" (:name %)) (lib/filterable-columns query))
+              query  (lib/filter query (lib/> total 10))
+              prompt (sent-to-llm {:dataset_query (lib/prepare-for-serialization query)})]
+          (is (column-listed? prompt "Total")))))))
+
+(deftest summary-formula-view-only-user-test
+  (testing "POST /api/metabot/summary-formula returns a 403 for a user who can't read the database"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-query-access!)
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (orders-query)}]
+        (check-refused (card-query model-id))))))
+
+(deftest summary-formula-database-manager-test
+  (testing "POST /api/metabot/summary-formula accepts a user who can read the database by managing its metadata"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-query-access!)
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/manage-table-metadata :yes)
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (orders-query)}]
+        (is (column-listed? (sent-to-llm {:dataset_query (lib/prepare-for-serialization (card-query model-id))})
+                            "Total"))))))
+
+(deftest summary-formula-model-join-to-unqueryable-table-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a model is joined to a table the user can't query"
+    (mt/with-no-data-perms-for-all-users!
+      (grant-query-access! :orders)
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (orders-query)}]
+        (check-refused (join-table (card-query model-id) :people :user_id))))))
+
+(deftest summary-formula-model-join-to-unreadable-card-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a model is joined to a card the user can't read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Collection {readable-collection :id}   {}
+                       :model/Collection {unreadable-collection :id} {}
+                       :model/Card {model-id :id} {:type          :model
+                                                   :collection_id readable-collection
+                                                   :dataset_query (orders-query)}
+                       :model/Card {private-id :id} {:collection_id   unreadable-collection
+                                                     :dataset_query   (lib/native-query mp "SELECT 1 AS SECRET")
+                                                     :result_metadata [{:name         "SECRET"
+                                                                        :display_name "Secret"
+                                                                        :base_type    :type/Integer}]}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+          (let [query   (card-query model-id)
+                private (lib.metadata/card mp private-id)
+                secret  (first (lib/returned-columns (lib/query mp private)))]
+            (check-refused (lib/join query (lib/join-clause private
+                                                            [(lib/= (first (lib/filterable-columns query))
+                                                                    secret)])))))))))
 
 (deftest summary-formula-metric-permission-test
   (testing "POST /api/metabot/summary-formula only sends metrics the user can read, in aggregation mode"
@@ -348,3 +526,50 @@
           (is (not (column-listed? user "Unreadable metric"))))
         (testing "with no metrics in expression mode"
           (is (not (str/includes? (sent-to-llm {:mode "expression"}) "Metrics:"))))))))
+
+(deftest summary-formula-unreadable-metric-reference-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a derived column names a metric the user can't read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {readable-collection :id}   {}
+                     :model/Collection {unreadable-collection :id} {}
+                     :model/Card {model-id :id}  {:type          :model
+                                                  :collection_id readable-collection
+                                                  :dataset_query (orders-query)}
+                     :model/Card {metric-id :id} {:type          :metric
+                                                  :collection_id unreadable-collection
+                                                  :dataset_query (lib/aggregate (orders-query) (lib/count))}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) readable-collection)
+        (let [mp (mt/metadata-provider)]
+          (check-refused (-> (card-query model-id)
+                             (lib/aggregate (lib.metadata/metric mp metric-id))
+                             lib/append-stage)))))))
+
+(defn- measure-reference-query
+  "An Orders query with a new stage after an aggregation on the measure with `measure-id`."
+  [measure-id]
+  (-> (orders-query)
+      (lib/aggregate (lib.metadata/measure (mt/metadata-provider) measure-id))
+      lib/append-stage))
+
+(deftest summary-formula-unqueryable-measure-reference-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when a derived column names a measure the user can't query"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-no-data-perms-for-all-users!
+        (grant-query-access! :orders)
+        (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :products)
+                                                        :name       "Secret measure"
+                                                        :creator_id (mt/user->id :crowberto)
+                                                        :definition (lib/aggregate
+                                                                     (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                                     (lib/count))}]
+          (check-refused (measure-reference-query measure-id)))))))
+
+(deftest summary-formula-readable-measure-reference-test
+  (testing "POST /api/metabot/summary-formula accepts a measure on a table the user can query"
+    (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
+                                                    :name       "Open measure"
+                                                    :creator_id (mt/user->id :crowberto)
+                                                    :definition (lib/aggregate (orders-query) (lib/count))}]
+      (is (column-listed? (sent-to-llm {:dataset_query (lib/prepare-for-serialization
+                                                        (measure-reference-query measure-id))})
+                          "Open measure")))))

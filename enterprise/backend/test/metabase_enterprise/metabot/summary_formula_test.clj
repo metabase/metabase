@@ -64,6 +64,20 @@
           (is (not (column-listed? user "Price")))
           (is (not (column-listed? user "Latitude"))))))))
 
+(deftest summary-formula-sandbox-missing-attribute-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when the QP can't apply the user's sandbox"
+    (met/with-gtaps! {:gtaps {:venues {:remappings {"cat" ["variable" [:field (mt/id :venues :category_id) nil]]}}}}
+      (let [mp    (mt/metadata-provider)
+            calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                    metabot.self/call-llm-structured         (fn [& _]
+                                                                               (swap! calls inc)
+                                                                               {:expression "Count" :name "Count"})]
+          (is (= {:message "You don't have permission to run this query." :error-code "query_permission_denied"}
+                 (mt/user-http-request :rasta :post 403 endpoint
+                                       (request-body (lib/query mp (lib.metadata/table mp (mt/id :venues)))))))
+          (is (zero? @calls)))))))
+
 (deftest summary-formula-managed-lock-test
   (testing "POST /api/metabot/summary-formula returns a 402 when the managed AI lock is reached"
     (let [mp (mt/metadata-provider)]

@@ -12,7 +12,10 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.query-permissions.core :as query-perms]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -88,6 +91,15 @@
     (lib.types.isa/temporal? column)              "date"
     (lib.types.isa/string-or-string-like? column) "text"))
 
+(def ^:private direct-table-sources
+  "Column sources that read a table directly, unlike a card's columns, which its author chose to publish."
+  #{:source/table-defaults :source/joins :source/implicitly-joinable})
+
+(defn- hidden-table?
+  [query table-id]
+  (and (pos-int? table-id)
+       (some? (:visibility-type (lib.metadata/table query table-id)))))
+
 (defn- formula-columns
   "The columns a formula in `mode` can reference, for the last stage of `query`, that the current user can see."
   [query mode]
@@ -96,7 +108,9 @@
          (lib/expressionable-columns query nil))
        ;; lib reads an unfiltered metadata provider, and the run check only accepts or rejects the query's sources
        metabot.perms/permission-filter-columns
-       (remove (comp #{:hidden} :visibility-type))))
+       (remove (comp #{:hidden} :visibility-type))
+       (remove #(and (direct-table-sources (:lib/source %))
+                     (hidden-table? query (:table-id %))))))
 
 (defn- formula-metrics
   "The metrics a formula in `mode` can reference, for the last stage of `query`, that the current user can read."
@@ -106,17 +120,74 @@
           readable (metabot.tools.u/readable-source-cards (into #{} (map :id) metrics))]
       (filter (comp readable :id) metrics))))
 
-(defn- check-can-run-query!
-  [query]
-  (when-not (query-perms/can-run-query? query)
-    (let [message "You don't have permission to run this query."]
-      (throw (ex-info message {:status-code 403
-                               :error-code  "query_permission_denied"
-                               :message     message})))))
+(defn- query-permission-error []
+  (let [message "You don't have permission to run this query."]
+    (ex-info message {:status-code 403
+                      :error-code  "query_permission_denied"
+                      :message     message})))
 
-(defn- check-mbql-last-stage!
+(defn- check-can-run-query!
+  "The check the QP runs. It needs a preprocessed query: a raw one with a card as its primary source only checks that
+  card. Preprocessing also fails for missing routing, impersonation and sandbox attributes, and a formula is no use on
+  a query that can't run, so any failure refuses the request."
   [query]
-  (when (lib/native-stage? query -1)
+  (try
+    (qp.setup/with-qp-setup [query query]
+      (qp.perms/check-query-permissions* (qp.preprocess/preprocess query)))
+    (catch Exception e
+      (log/debug e "Summary formula query failed the run check")
+      (throw (query-permission-error)))))
+
+(defn- check-can-read-database!
+  "The frontend can't edit a query when the user can't read its database, so it offers no formula editors."
+  [query]
+  (when-not (mi/can-read? :model/Database (:database query))
+    (throw (query-permission-error))))
+
+(defn- visible-field?
+  [query {:keys [table-id visibility-type]}]
+  (and (not (#{:hidden :sensitive :retired} visibility-type))
+       (not (hidden-table? query table-id))))
+
+(defn- queryable-columns
+  "The `columns` the current user can query. Marking them implicitly joined makes the column filter require query
+  access to their tables, not just view access, since nothing in the query has established access to them."
+  [columns]
+  (metabot.perms/permission-filter-columns (map #(assoc % :lib/source :source/implicitly-joinable) columns)))
+
+(defn- fields-visible?
+  [query field-ids]
+  (let [columns (lib.metadata/bulk-metadata query :metadata/column field-ids)
+        visible (into #{}
+                      (comp (filter #(visible-field? query %)) (map :id))
+                      (queryable-columns columns))]
+    (every? visible field-ids)))
+
+(defn- measures-visible?
+  [query measure-ids]
+  (let [measures  (lib.metadata/bulk-metadata query :metadata/measure measure-ids)
+        queryable (metabot.perms/queryable-table-ids (map :table-id measures))]
+    (and (= (count measure-ids) (count measures))
+         (every? (fn [{:keys [table-id]}]
+                   (and (queryable table-id)
+                        (not (hidden-table? query table-id))))
+                 measures))))
+
+(defn- check-references-visible!
+  "Field, metric and measure references name their targets in derived columns, like `Sum of Secret`, and those columns
+  have no field id for the column filter to check."
+  [query]
+  (let [{:keys [metric measure]} (lib/all-referenced-entity-ids [query])]
+    (when-not (and (fields-visible? query (lib/all-field-ids query))
+                   (every? (metabot.tools.u/readable-source-cards metric) metric)
+                   (measures-visible? query measure))
+      (throw (query-permission-error)))))
+
+(defn- check-mbql-query!
+  "Only the first stage can be native. The frontend offers no formula editors for a query that starts with one, and
+  the columns of any stages after it come from client-supplied metadata."
+  [query]
+  (when (lib/native-stage? query 0)
     (let [message "Formulas can't be suggested for a native query."]
       (throw (ex-info message {:status-code 400
                                :error-code  "native_query_not_supported"
@@ -260,9 +331,15 @@
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
-  (let [query (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query)]
+  (let [query (try
+                (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query)
+                (catch Exception e
+                  (log/debug e "Summary formula query is invalid")
+                  (throw (query-permission-error))))]
+    (check-can-read-database! query)
     (check-can-run-query! query)
-    (check-mbql-last-stage! query)
+    (check-mbql-query! query)
+    (check-references-visible! query)
     (let [{:keys [columns metrics] :as context} (formula-context query mode)]
       (if (or (seq columns) (seq metrics))
         (draft-formula (assoc context :mode mode :prompt prompt))
