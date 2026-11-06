@@ -808,6 +808,45 @@
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
+(deftest check-reset-token-valid-throttling-test
+  (let [checks (atom 0)
+        check! (fn [status ip-address token]
+                 (mt/client :get status "session/password_reset_token_valid"
+                            {:request-options {:headers {"x-test-ip" ip-address}}}
+                            :token token))]
+    (mt/with-dynamic-fn-redefs [request/ip-address (fn [request] (get-in request [:headers "x-test-ip"]))
+                                auth-identity/with-fallback (fn [_method _providers {:keys [token]}]
+                                                              (swap! checks inc)
+                                                              {:success? (= token "valid-token")})]
+      (testing "both valid and invalid checks count toward the same per-IP quota"
+        (dotimes [n 10]
+          (is (= {:valid (even? n)}
+                 (check! 200 "192.0.2.1" (if (even? n) "valid-token" (str n "_" (random-uuid)))))))
+        (is (=? {:errors {:token #"^Too many attempts!.*"}}
+                (check! 400 "192.0.2.1" "another-token")))
+        (is (= 10 @checks) "throttled requests do not reach token verification"))
+      (testing "another IP has its own quota"
+        (is (= {:valid false} (check! 200 "192.0.2.2" "another-token"))))
+      (testing "validation does not exhaust the password submission quota"
+        (is (= {:errors {:password "Invalid reset token"}}
+               (mt/client :post 400 "session/reset_password"
+                          {:request-options {:headers {"x-test-ip" "192.0.2.1"}}}
+                          {:token "another-token" :password "SomePassword12!!"})))))))
+
+(deftest check-reset-token-valid-concurrent-throttling-test
+  (mt/with-dynamic-fn-redefs [request/ip-address (constantly "192.0.2.1")
+                              auth-identity/with-fallback (constantly {:success? false})]
+    (let [start    (promise)
+          requests (mapv (fn [_]
+                           (future
+                             @start
+                             (client/client-full-response :get "session/password_reset_token_valid"
+                                                          :token (str (random-uuid)))))
+                         (range 20))]
+      (deliver start true)
+      (is (= {200 10, 400 10}
+             (frequencies (map #(-> (deref % 30000 {:status ::timeout}) :status) requests)))))))
+
 (deftest reset-token-ttl-hours-test
   (testing "Test reset-token-ttl-hours-test"
     (testing "reset-token-ttl-hours-test is reset to default when not set"
