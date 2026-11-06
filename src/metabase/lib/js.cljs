@@ -2211,6 +2211,15 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
+(defn ^:export database-metadata
+  "Returns the metadata of the database `query-or-metadata-provider` is bound to.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider]
+  (lib.metadata/database query-or-metadata-provider))
+
 (defn ^:export table-metadata
   "Given an integer `table-id`, returns the table's metadata.
 

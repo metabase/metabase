@@ -1,18 +1,13 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import {
-  getQuestionIdFromVirtualTableId,
-  getQuestionVirtualTableId,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { IconName } from "metabase-types/api";
+import type { ConcreteTableId, DatabaseId, IconName } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -25,22 +20,53 @@ type DataSourceBadgePart = {
   name?: string;
   href?: string;
   icon?: IconName;
-  model?: "database" | "schema" | "table" | "question" | "model" | "metric";
+  model?: DataSourceModel;
 };
 
-export function getDataSourceParts({
-  question,
-  subHead,
-  isObjectDetail,
-  formatTableAsComponent = true,
-  hasMultipleSchemas = false,
-}: {
-  question: Question;
+type DataSourceModel =
+  | "database"
+  | "schema"
+  | "table"
+  | "question"
+  | "model"
+  | "metric";
+
+type TableDataSourceItem = {
+  type: "table";
+  key: string;
+  name: string;
+  href: string;
+  tableId: ConcreteTableId;
+  schemaName: string | null;
+  description: string | null;
+};
+
+type CardDataSourceItem = {
+  type: "card";
+  key: string;
+  name: string;
+  href: string;
+  model: CardDataSourceModel;
+};
+
+type CardDataSourceModel = Extract<
+  DataSourceModel,
+  "question" | "model" | "metric"
+>;
+
+type DataSourceItem = TableDataSourceItem | CardDataSourceItem;
+
+type DataSourcePartsOpts = {
   subHead?: boolean;
   isObjectDetail?: boolean;
   formatTableAsComponent?: boolean;
   hasMultipleSchemas?: boolean;
-}): DataSourcePart[] {
+};
+
+export function getDataSourceParts({
+  question,
+  ...opts
+}: DataSourcePartsOpts & { question: Question }): DataSourcePart[] {
   if (!question) {
     return [];
   }
@@ -53,10 +79,17 @@ export function getDataSourceParts({
     return [];
   }
 
-  const parts: DataSourcePart[] = [];
+  return isNative
+    ? getNativeDataSourceParts(question, opts)
+    : getQueryDataSourceParts(query, opts);
+}
 
-  const metadata = question.metadata();
-  const database = metadata.database(Lib.databaseID(query));
+function getNativeDataSourceParts(
+  question: Question,
+  { subHead, isObjectDetail }: DataSourcePartsOpts,
+): DataSourcePart[] {
+  const database = question.metadata().database(question.databaseId());
+  const parts: DataSourcePart[] = [];
 
   if (database) {
     parts.push({
@@ -67,67 +100,114 @@ export function getDataSourceParts({
     });
   }
 
-  const table = !isNative
-    ? metadata.table(Lib.sourceTableOrCardId(query))
-    : // Unjustified type cast. FIXME
-      (question.legacyNativeQuery() as NativeQuery).table();
-  if (table?.schema_name && hasMultipleSchemas) {
-    const isBasedOnSavedQuestion = isVirtualCardId(table.id);
-    if (database != null && !isBasedOnSavedQuestion) {
-      parts.push({
-        model: "schema",
-        name: table.schema_name,
-        href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
-      });
-    }
+  // Unjustified type cast. FIXME
+  const table = (question.legacyNativeQuery() as NativeQuery).table();
+  if (table == null) {
+    return filterParts(parts);
   }
 
-  if (table) {
-    const hasTableLink = subHead || isObjectDetail;
-    if (isNative) {
-      return [
-        {
-          name: table.displayName(),
-          href: hasTableLink ? getTableURL(table) : "",
-        },
-      ];
-    }
+  const hasTableLink = subHead || isObjectDetail;
+  return [
+    {
+      name: table.displayName(),
+      href: hasTableLink ? Urls.question(table.newQuestion()) : "",
+    },
+  ];
+}
 
-    const allTables = [
-      table,
-      ...Lib.joins(query, -1)
-        .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-        .map((pickerInfo) => {
-          if (pickerInfo?.tableId != null) {
-            return metadata.table(pickerInfo.tableId);
-          }
+function getQueryDataSourceParts(
+  query: Lib.Query,
+  {
+    subHead,
+    isObjectDetail,
+    formatTableAsComponent = true,
+    hasMultipleSchemas = false,
+  }: DataSourcePartsOpts,
+): DataSourcePart[] {
+  const parts: DataSourcePart[] = [];
+  const databaseId = Lib.databaseID(query);
+  const database = Lib.databaseMetadata(query);
 
-          if (pickerInfo?.cardId != null) {
-            return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
-          }
+  if (databaseId != null && database != null) {
+    const databaseInfo = Lib.displayInfo(query, -1, database);
+    parts.push({
+      icon: !subHead ? "database" : undefined,
+      name: databaseInfo.displayName,
+      href:
+        databaseId >= 0
+          ? Urls.browseDatabase({ id: databaseId, name: databaseInfo.name })
+          : undefined,
+      model: "database",
+    });
+  }
 
-          return undefined;
-        }),
-    ].filter(isNotNull);
+  const items = [
+    getPrimarySourceMetadata(query),
+    ...Lib.joins(query, -1).map((join) => Lib.joinedThing(query, join)),
+  ]
+    .filter(isNotNull)
+    .map((source) => getDataSourceItem(query, source))
+    .filter(isNotNull);
 
-    const part: DataSourcePart = formatTableAsComponent ? (
+  const [sourceItem] = items;
+  if (sourceItem == null) {
+    return filterParts(parts);
+  }
+
+  const schemaPart = getSchemaPart(sourceItem, databaseId, hasMultipleSchemas);
+  if (schemaPart != null) {
+    parts.push(schemaPart);
+  }
+
+  const hasTableLink = subHead || isObjectDetail;
+  parts.push(
+    formatTableAsComponent ? (
       <QuestionTableBadges
-        tables={allTables}
+        items={items}
         subHead={subHead}
         hasLink={hasTableLink}
         isLast={!isObjectDetail}
       />
     ) : (
       {
-        name: table.displayName(),
-        href: hasTableLink ? getTableURL(table) : "",
-        model: table.type ?? "table",
+        name: sourceItem.name,
+        href: hasTableLink ? sourceItem.href : "",
+        model: sourceItem.type === "table" ? "table" : sourceItem.model,
       }
-    );
+    ),
+  );
 
-    parts.push(part);
+  return filterParts(parts);
+}
+
+function getSchemaPart(
+  sourceItem: DataSourceItem,
+  databaseId: DatabaseId | null,
+  hasMultipleSchemas: boolean,
+): DataSourceBadgePart | undefined {
+  if (
+    sourceItem.type !== "table" ||
+    sourceItem.schemaName == null ||
+    databaseId == null ||
+    !hasMultipleSchemas
+  ) {
+    return undefined;
   }
 
+  return {
+    model: "schema",
+    name: sourceItem.schemaName,
+    href:
+      databaseId >= 0
+        ? Urls.browseSchema({
+            db_id: databaseId,
+            schema_name: sourceItem.schemaName,
+          })
+        : undefined,
+  };
+}
+
+function filterParts(parts: DataSourcePart[]): DataSourcePart[] {
   return parts.filter(
     (part) =>
       isValidElement(part) ||
@@ -136,15 +216,68 @@ export function getDataSourceParts({
   );
 }
 
+function getDataSourceItem(
+  query: Lib.Query,
+  source: Lib.TableMetadata | Lib.CardMetadata,
+): DataSourceItem | undefined {
+  const pickerInfo = Lib.pickerInfo(query, source);
+  if (pickerInfo == null) {
+    return undefined;
+  }
+
+  const sourceInfo = Lib.displayInfo(query, -1, source);
+  if (pickerInfo.cardId != null) {
+    return {
+      type: "card",
+      key: `card:${pickerInfo.cardId}`,
+      name: sourceInfo.displayName,
+      href: Urls.card({ id: pickerInfo.cardId, name: sourceInfo.displayName }),
+      model: getCardModel(sourceInfo),
+    };
+  }
+
+  return {
+    type: "table",
+    key: `table:${pickerInfo.tableId}`,
+    name: sourceInfo.displayName,
+    href: getTableQueryUrl(query, source),
+    tableId: pickerInfo.tableId,
+    schemaName: sourceInfo.schema ?? null,
+    description: sourceInfo.description ?? null,
+  };
+}
+
+function getTableQueryUrl(
+  query: Lib.Query,
+  table: Lib.TableMetadata | Lib.CardMetadata,
+) {
+  const tableQuery = Lib.queryFromTableOrCardMetadata(query, table);
+  return Urls.serializedQuestion({
+    display: "table",
+    visualization_settings: {},
+    dataset_query: Lib.toJsQuery(tableQuery),
+  });
+}
+
+function getCardModel(cardInfo: Lib.CardDisplayInfo): CardDataSourceModel {
+  if (cardInfo.isModel) {
+    return "model";
+  }
+  if (cardInfo.isMetric) {
+    return "metric";
+  }
+  return "question";
+}
+
 type QuestionTableBadgesProps = {
-  tables: Table[];
+  items: DataSourceItem[];
   subHead?: boolean;
   hasLink?: boolean;
   isLast?: boolean;
 };
 
 function QuestionTableBadges({
-  tables,
+  items,
   subHead,
   hasLink,
   isLast,
@@ -152,18 +285,18 @@ function QuestionTableBadges({
   const badgeInactiveColor =
     isLast && !subHead ? "text-primary" : "text-secondary";
 
-  const parts = tables.map((table) => (
+  const parts = items.map((item) => (
     <HeadBreadcrumbs.Breadcrumb
-      key={table.id}
-      to={hasLink ? getTableURL(table) : ""}
+      key={item.key}
+      to={hasLink ? item.href : ""}
       color={badgeInactiveColor}
     >
       <span>
-        {table.displayName()}
-        {!subHead && (
+        {item.name}
+        {!subHead && item.type === "table" && (
           <span className={S.IconWrapper}>
             <TableInfoIcon
-              table={table}
+              table={{ id: item.tableId, description: item.description }}
               icon="info"
               size={16}
               position="bottom"
@@ -183,14 +316,4 @@ function QuestionTableBadges({
       data-testid="question-table-badges"
     />
   );
-}
-
-function getTableURL(table: Table) {
-  if (isVirtualCardId(table.id)) {
-    const cardId = getQuestionIdFromVirtualTableId(table.id);
-    if (cardId != null) {
-      return Urls.card({ id: cardId, name: table.displayName() });
-    }
-  }
-  return Urls.question(table.newQuestion());
 }

@@ -32,10 +32,10 @@ import type {
  Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
  */
 export function queryFromTableOrCardMetadata(
-  metadataProvider: MetadataProvider,
+  queryOrMetadataProvider: Query | MetadataProvider,
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
-  return ML.query(metadataProvider, tableOrCardMetadata);
+  return ML.query(queryOrMetadataProvider, tableOrCardMetadata);
 }
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
