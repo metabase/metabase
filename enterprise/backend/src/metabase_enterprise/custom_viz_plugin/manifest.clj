@@ -114,7 +114,7 @@
 ;;; ------------------------------------------------ Assets ------------------------------------------------
 
 (def ^:private icon-extension
-  "The one file type a plugin icon may have."
+  "The one file type a plugin icon may have: SVG is text, so a plugin's files travel serialization as text."
   ".svg")
 
 (defn- svg-file?
