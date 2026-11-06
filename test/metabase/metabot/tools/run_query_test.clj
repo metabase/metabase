@@ -170,6 +170,71 @@
           {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
       (is (=? {:returned 3, :truncated? false} structured-output)))))
 
+(defn- run-while-viewing!
+  "Run a turn as rasta, in a conversation of rasta's own, while rasta views `viewed` as a table with no chart series.
+   The model calls `run_query` with `row_limit` 2 on the ID that `pick-id` returns for the model's request. Return the
+   call's output."
+  [viewed pick-id]
+  (let [llm-calls (atom 0)]
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [request]
+                                                            (mut/mock-llm-response
+                                                             (if (= 1 (swap! llm-calls inc))
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "run_query"
+                                                                 :arguments {:query_id  (pick-id (pr-str request))
+                                                                             :row_limit 2}}]
+                                                               [{:type :text, :text "Done."}])))]
+          (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+            (mt/with-current-user (mt/user->id :rasta)
+              (->> (agent/run-agent-loop
+                    {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                     :messages        [{:role :user, :content "What does this table show?"}]
+                     :profile-id      :internal
+                     :conversation-id conversation-id
+                     :state           {}
+                     :context         {:user_is_viewing [(assoc viewed :chart_configs [{:display_type "table"
+                                                                                        :title        "Venues"
+                                                                                        :series       {}}])]}})
+                   (into [])
+                   (some #(when (= :tool-output (:type %)) (:result %)))
+                   :output))))))))
+
+(deftest run-query-truncated-page-advice-test
+  (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+    (doseq [[client-ids rebuild-advice?] [[#{} true] [#{"q1"} false]]]
+      (testing (if rebuild-advice?
+                 "a query that Metabot built is to be aggregated and run again"
+                 "a query from the user's viewing context is not, since that would mean building a new query")
+        (let [output (:output (call-tool-in-conversation! {:state      {:queries {"q1" (venues-by-id)}}
+                                                           :client-ids client-ids}
+                                                          {:query_id "q1", :row_limit 2}))]
+          (is (str/includes? output "Only the first 2 rows are shown, so do not count or total them to answer."))
+          (is (= rebuild-advice? (str/includes? output "Aggregate, filter, or limit the query and run it again."))))))
+    (mt/with-temp [:model/Card {question-id :id} {:dataset_query (venues-by-id)}
+                   :model/Card {model-id :id}    {:dataset_query (venues-by-id), :type :model}
+                   :model/Card {other-id :id}    {:dataset_query (venues-by-id)}]
+      (let [query            (lib/prepare-for-serialization (venues-by-id))
+            viewed-question  {:type "question", :id question-id, :query query}
+            advises-rebuild? (fn [output]
+                               (is (str/includes? output "Only the first 2 rows are shown"))
+                               (str/includes? output "Aggregate, filter, or limit the query and run it again."))]
+        (testing "a saved question or model on screen that runs by its own ID gets no advice to rebuild it"
+          (doseq [[viewed card-id] [[viewed-question question-id]
+                                    [{:type "model", :id model-id, :query query} model-id]]]
+            (testing (:type viewed)
+              (let [output (run-while-viewing! viewed (constantly (str card-id)))]
+                (is (str/includes? output "This ran the saved version"))
+                (is (not (advises-rebuild? output)))))))
+        (testing "nor does the query on screen of a saved question, run by its query ID"
+          (is (not (advises-rebuild? (run-while-viewing! viewed-question
+                                                         #(second (re-find #"Query ID: ([^\s\\\"]+)" %)))))))
+        (testing "a saved question that the user is not viewing keeps the advice"
+          (is (advises-rebuild? (run-while-viewing! viewed-question (constantly (str other-id))))))))))
+
 (deftest run-query-records-a-metabot-run-test
   (let [info (atom nil)]
     (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
@@ -558,9 +623,8 @@
                      (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen "
                                   "are not applied. Link to it as `metabase://%s/%d`, not as a query.")
                              item-type card-id item-type card-id)))
-                (testing "only a question has a query ID for the query on screen"
-                  (is (= (= "question" item-type)
-                         (str/includes? output "run its query ID to read the query on the user's screen")))))))))
+                (testing "and that its query ID reads the query on the user's screen"
+                  (is (str/includes? output "run its query ID to read the query on the user's screen"))))))))
       (testing "a query the conversation holds says nothing about a saved version"
         (is (not (str/includes? (:output (run-tool! {"q1" (venues-count)} {:query_id "q1"})) "saved version"))))
       (testing "a saved question the user is not viewing runs by its id too"
@@ -753,6 +817,9 @@
 
       "It holds a backslash before a quote. Write a quote inside a string by doubling it."
       :mysql "SELECT 'it\\'s' FROM t"
+
+      "It holds a carriage return with no newline after it. End lines with a newline."
+      :mysql "SELECT 1\rFROM t"
 
       "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
       :postgres "SELECT U&\"pg_\\0073leep\"(10)"
@@ -1270,6 +1337,122 @@
                    :text      "Done."
                    :finish    :stop}
                   (run-turn! profile rejected-sql))))))))
+
+(defn- do-with-sql-conversation!
+  "Call `f` with the ID of a conversation of rasta's own, as rasta, with query and SQL execution on and every Metabot
+   permission granted."
+  [f]
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (mt/with-temporary-setting-values [llm-providers                    llm.tu/default-connections
+                                       llm-metabot-provider             "openrouter/anthropic/claude-haiku-4-5"
+                                       metabot-query-execution-enabled? true
+                                       metabot-sql-execution-enabled?   true]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-current-user (mt/user->id :rasta)
+          (f conversation-id))))))
+
+(defn- run-viewing-turn!
+  "Run a Chat turn as the current user in `conversation-id`, with `item` on screen and `state` from the turns before.
+   The model's first response holds the tool calls that `first-calls` returns for the query ID that the request shows,
+   and its second answers in text. Return the result of the call with the ID `run`, and the turn's final state."
+  [conversation-id item state first-calls]
+  (let [llm-calls (atom 0)
+        parts     (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                              (fn [request]
+                                                (mut/mock-llm-response
+                                                 (if (= 1 (swap! llm-calls inc))
+                                                   (first-calls
+                                                    (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request))))
+                                                   [{:type :text, :text "Done."}])))]
+                    (into [] (agent/run-agent-loop
+                              {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                               :messages        [{:role :user, :content "Fix this query"}]
+                               :profile-id      :internal
+                               :conversation-id conversation-id
+                               :state           state
+                               :context         {:capabilities    ["permission:write_sql_queries"]
+                                                 :user_is_viewing [item]}})))]
+    {:run   (some #(when (and (= :tool-output (:type %)) (= "run" (:id %))) (:result %)) parts)
+     :state (some #(when (= "state" (:data-type %)) (:data %)) parts)}))
+
+(defn- sql-on-screen
+  "The SQL query `sql` in the serialized form that the query builder sends for the query on screen."
+  [sql]
+  (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) sql)))
+
+(defn- run-call
+  "A `run_query` call on `query-id`, with the call ID `run`."
+  [query-id]
+  {:type :tool-input, :id "run", :function "run_query", :arguments {:query_id query-id}})
+
+(defn- edit-call
+  "A call with the ID `call-id` to the SQL edit tool `tool-name` on `query-id`, with the arguments `edit-args` that
+   only that tool takes."
+  [call-id tool-name query-id edit-args]
+  {:type      :tool-input
+   :id        call-id
+   :function  tool-name
+   :arguments (merge {:query_id query-id, :checklist "Checked", :title "Venues"} edit-args)})
+
+(deftest run-query-runs-the-edited-sql-test
+  (let [broken      (sql-on-screen "SELECT COUNT(*) AS N FROM VENUE")
+        edited-rows ["| N |" "| --- |" "| 100 |"]]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query broken}]
+      (do-with-sql-conversation!
+       (fn [conversation-id]
+         (doseq [[on-screen item]      {"a saved SQL question" {:type "question", :id card-id, :query broken}
+                                        "an ad hoc SQL query"  {:type "adhoc", :query broken}}
+                 [tool-name edit-args] {"edit_sql_query"    {:edits [{:old_string "FROM VENUE"
+                                                                      :new_string "FROM VENUES"}]}
+                                        "replace_sql_query" {:new_query "SELECT COUNT(*) AS N FROM VENUES"}}]
+           (testing (str on-screen " fixed with " tool-name)
+             (let [edited-id  (atom nil)
+                   edit-turn  (run-viewing-turn! conversation-id item {}
+                                                 (fn [shown-id]
+                                                   (reset! edited-id shown-id)
+                                                   [(edit-call "edit" tool-name shown-id edit-args)
+                                                    (run-call shown-id)]))
+                   later-turn (run-viewing-turn! conversation-id item (:state edit-turn)
+                                                 (fn [_] [(run-call @edited-id)]))]
+               (testing "a run in the same model response as the edit runs the edited SQL"
+                 (is (= edited-rows (data-lines (:output (:run edit-turn)))) (:output (:run edit-turn))))
+               (testing "a run in a later turn runs the edited SQL, while the screen still shows the SQL from before"
+                 (is (= edited-rows (data-lines (:output (:run later-turn)))) (:output (:run later-turn))))))))))))
+
+(deftest run-query-runs-the-sql-of-dependent-edits-test
+  (testing "edits that build on each other in one model response all survive its end"
+    ;; With ten calls in the response, the executor's map of them no longer keeps their order
+    (do-with-sql-conversation!
+     (fn [conversation-id]
+       (let [item       {:type "adhoc", :query (sql-on-screen "SELECT 0 AS N")}
+             edited-id  (atom nil)
+             last-rows  ["| N |" "| --- |" "| 9 |"]
+             edit-turn  (run-viewing-turn! conversation-id item {}
+                                           (fn [shown-id]
+                                             (reset! edited-id shown-id)
+                                             (conj (mapv #(edit-call (str "edit-" %) "edit_sql_query" shown-id
+                                                                     {:edits [{:old_string (str (dec %))
+                                                                               :new_string (str %)}]})
+                                                         (range 1 10))
+                                                   (run-call shown-id))))
+             later-turn (run-viewing-turn! conversation-id item (:state edit-turn) (fn [_] [(run-call @edited-id)]))]
+         (testing "a run after the edits in the same response runs the last edit's SQL"
+           (is (= last-rows (data-lines (:output (:run edit-turn)))) (:output (:run edit-turn))))
+         (testing "a run in a later turn runs the last edit's SQL"
+           (is (= last-rows (data-lines (:output (:run later-turn)))) (:output (:run later-turn)))))))))
+
+(deftest run-query-after-a-failed-edit-runs-the-unchanged-sql-test
+  (do-with-sql-conversation!
+   (fn [conversation-id]
+     (doseq [[tool-name edit-args] {"edit_sql_query"    {:edits [{:old_string "NOT IN THE SQL" :new_string "1"}]}
+                                    "replace_sql_query" {:new_query " "}}]
+       (testing (str "a run in the same model response as a failed " tool-name " runs the SQL from before it")
+         (let [item          {:type "adhoc", :query (sql-on-screen "SELECT 0 AS N")}
+               {:keys [run]} (run-viewing-turn! conversation-id item {}
+                                                (fn [shown-id]
+                                                  [(edit-call "edit" tool-name shown-id edit-args)
+                                                   (run-call shown-id)]))]
+           (is (= ["| N |" "| --- |" "| 0 |"] (data-lines (:output run))) (:output run))))))))
 
 (defn- test-database-error-after-first-row! [sql first-row error-text]
   (let [query    (lib/native-query (mt/metadata-provider) sql)

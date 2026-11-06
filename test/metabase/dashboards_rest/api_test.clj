@@ -6623,6 +6623,28 @@
       (is (=? {:archived false :collection_id collection-id}
               (t2/select-one :model/Dashboard :id dashboard-id))))))
 
+(deftest restore-dashboard-and-save-dashcards-test
+  (testing "PUT /api/dashboard/:id with `:archived false` and `:dashcards` restores the dashboard and saves the cards (BOT-2578)"
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {:archived true}]
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
+                            {:archived  false
+                             :dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]
+                             :tabs      []})
+      (is (=? {:archived  false
+               :dashcards [{:card_id card-id}]}
+              (-> (t2/select-one :model/Dashboard :id dashboard-id)
+                  (t2/hydrate :dashcards)))))))
+
+(deftest save-dashcards-on-trashed-dashboard-without-restoring-test
+  (testing "PUT /api/dashboard/:id with `:dashcards` on an archived dashboard still fails as archived"
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {:archived true}]
+      (is (=? {:error_code "archived"}
+              (mt/user-http-request :crowberto :put 404 (str "dashboard/" dashboard-id)
+                                    {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]
+                                     :tabs      []}))))))
+
 (deftest two-temporal-unit-params-same-field-different-breakouts-test
   (testing "dashboard/public/embed persistence for two parameter_mappings on the same field, disambiguated by :temporal-unit (#46536, #46776)"
     (let [mp         (mt/metadata-provider)

@@ -34,6 +34,33 @@
   }
 }
 
+.backButton {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: rem(24px);
+  color: var(--mb-color-text-secondary);
+}
+
+/* Keyed on the Back button so `Modal.Heading` in custom headers gets it too.
+   The title goes back as well, so hovering either one highlights both */
+.header:has(.backButton) {
+  /* Only the title text goes back, not the empty space beside it */
+  .title {
+    flex: 0 1 auto;
+    align-self: flex-start;
+    max-width: 100%;
+    cursor: pointer;
+  }
+
+  &:has(.backButton:hover, .title:hover) {
+    .backButton,
+    .title {
+      color: var(--mb-color-text-brand);
+    }
+  }
+}
+
 .ModalCloseButton {
   --cb-size: rem(24px);
   --cb-icon-size: rem(12px);

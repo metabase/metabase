@@ -40,7 +40,7 @@
                        "Provide a query_id in data_source, a chart_type in viz_settings, and a short, "
                        "human-friendly `title` shown above the chart. Also provide a concise one- or two-sentence "
                        "`description` explaining what the chart shows (the metric, the grouping, and any notable "
-                       "filter); it is used as the saved question's description.")
+                       "filter); if the chart is saved, it becomes the description of the saved question.")
      :scope       scope/agent-viz-create
      :args        create-chart-schema})
 
@@ -78,16 +78,16 @@
     {:name        "edit_chart"
      :description (str "Edit an existing chart's visualization type.\n\n"
                        "Provide a new chart_type in new_viz_settings and a short, human-friendly `title` shown above "
-                       "the chart. Also provide a concise `description` of what the chart shows; it is used as the "
-                       "saved question's description.")
+                       "the chart. Also provide a concise `description` of what the chart shows; if the chart is saved, it "
+                       "becomes the description of the saved question.")
      :scope       scope/agent-viz-edit
      :args        edit-chart-schema})
 
   (handle [_ {:keys [chart_id new_viz_settings title description]} _ctx]
     (let [new-viz (keyword (get new_viz_settings :chart_type))
           chart (get (shared/current-charts-state) chart_id)
-          query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))
+          query (or (get (shared/current-queries-state) (:query_id chart))
+                    (first (:queries chart)))
 
           {:keys [new-chart-data result]}
           (edit-chart-tools/edit-chart

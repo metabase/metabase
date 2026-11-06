@@ -2,7 +2,7 @@
   "One declared recoverable error per `:error` code the representations pipeline raises.
 
   The pipeline (`metabase.agent-lib.representations*`, `metabase.metabot.tools.construct`,
-  `metabase.models.serialization.resolve.mp`) throws a bare statement of what went wrong plus
+  `metabase.serialization.protocol.mp`) throws a bare statement of what went wrong plus
   structured `ex-data` carrying an `:error` keyword. It deliberately knows nothing about which tools
   its caller has, so it cannot say how to recover. This namespace supplies that half: each `:error`
   code gets a declaration whose recovery steps are written in the tool vocabulary — `read_resource`,
@@ -154,11 +154,12 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
-(def ^:private cross-database-step
+(def cross-database-step
+  "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
-   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
-              "from its own database. Use one from that database, or change the source to a table "
-              "in the referenced item's database.")})
+   :text (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "
+              "notebook query or in SQL. Tell the user that you can't combine data from these two databases in one "
+              "query, and say what you can do instead.")})
 
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
@@ -218,6 +219,10 @@
                    :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the "
                               "available tables and retry with a more specific portable FK.")}
                   (with-id database-id))]})
+
+(defpipeline-error cross-database-table!
+  "A portable table FK names a different database than the query's."
+  [cross-database-step])
 
 ;;; Database resolution
 

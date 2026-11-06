@@ -35,17 +35,19 @@ describe("canPlaceEntityInCollection", () => {
     expect(canPlaceEntityInCollection("table", "library-metrics")).toBe(false);
   });
 
-  it("should only allow dashboards and collections in Library Dashboards collections", () => {
-    expect(canPlaceEntityInCollection("dashboard", "library-dashboards")).toBe(
-      true,
-    );
-    expect(canPlaceEntityInCollection("collection", "library-dashboards")).toBe(
-      true,
-    );
-    expect(canPlaceEntityInCollection("card", "library-dashboards")).toBe(
-      false,
-    );
-    expect(canPlaceEntityInCollection("metric", "library-dashboards")).toBe(
+  it("should allow everything but tables in Library Dashboards collections", () => {
+    for (const entityType of [
+      "dashboard",
+      "card",
+      "dataset",
+      "metric",
+      "collection",
+    ] as const) {
+      expect(canPlaceEntityInCollection(entityType, "library-dashboards")).toBe(
+        true,
+      );
+    }
+    expect(canPlaceEntityInCollection("table", "library-dashboards")).toBe(
       false,
     );
   });
@@ -65,22 +67,19 @@ describe("canPlaceEntityInCollectionOrDescendants", () => {
     setupEnterpriseOnlyPlugin("library");
   });
 
-  it("should let questions reach the dashboards inside the Library", () => {
+  it("should let cards and dashboards reach Library through its Dashboards collection", () => {
     expect(canPlaceEntityInCollectionOrDescendants("card", "library")).toBe(
       true,
     );
     expect(
-      canPlaceEntityInCollectionOrDescendants("card", "library-dashboards"),
+      canPlaceEntityInCollectionOrDescendants("dashboard", "library"),
     ).toBe(true);
+  });
+
+  it("should keep Library Data and Metrics descendants to their own types", () => {
     expect(
       canPlaceEntityInCollectionOrDescendants("card", "library-data"),
     ).toBe(false);
-  });
-
-  it("should let dashboards reach the Library's Dashboards collection", () => {
-    expect(
-      canPlaceEntityInCollectionOrDescendants("dashboard", "library"),
-    ).toBe(true);
     expect(
       canPlaceEntityInCollectionOrDescendants("dashboard", "library-metrics"),
     ).toBe(false);
