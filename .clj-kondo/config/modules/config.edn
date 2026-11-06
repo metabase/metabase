@@ -4693,7 +4693,6 @@
            lib.metadata
            lib.schema
            query-processor
-           server
            sql-tools
            tracing
            transforms

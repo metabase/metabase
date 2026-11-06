@@ -250,11 +250,7 @@
                               :object <>
                               :previous-object group}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/group/:group-id"
+(api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
@@ -338,11 +334,7 @@
     (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
     (permissions-rest.db/group-membership (:id old))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/membership/:group-id/clear"
+(api.macros/defendpoint :put "/membership/:group-id/clear" :- ::api/generic-204-no-content
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
@@ -353,11 +345,7 @@
   (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/membership/:id"
+(api.macros/defendpoint :delete "/membership/:id" :- ::api/generic-204-no-content
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

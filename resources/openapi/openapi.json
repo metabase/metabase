@@ -14943,9 +14943,8 @@
           "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?" : {
             "type" : "boolean"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "minimum" : 0,
-            "type" : "integer"
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases" : {
             "items" : {
@@ -15050,9 +15049,8 @@
           "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?" : {
             "type" : "boolean"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "minimum" : 0,
-            "type" : "integer"
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases" : {
             "items" : {
@@ -15160,9 +15158,8 @@
           "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?" : {
             "type" : "boolean"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "minimum" : 0,
-            "type" : "integer"
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases" : {
             "items" : {
@@ -20085,6 +20082,10 @@
             } ],
             "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
           },
+          "card-reference?" : {
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs.",
+            "type" : "boolean"
+          },
           "csv-include-bom?" : {
             "anyOf" : [ {
               "type" : "boolean"
@@ -20108,6 +20109,14 @@
               "type" : "null"
             } ],
             "description" : "Whether to skip the remapped (human-readable) columns that `metabase.query-processor.middleware.add-remaps`\n  normally splices in. Set by callers that want the query's own columns and nothing else -- calculating a Card's\n  result metadata, or fetching field values for a filter widget; default `false`."
+          },
+          "display" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ],
+            "description" : "The `:display` of the Card or unsaved question whose results are being exported, e.g. `:table`. Used by\n     `metabase.query-processor.streaming` to leave the columns the table visualization hides out of exports."
           },
           "format-rows?" : {
             "description" : "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing\n     results? Used by `metabase.query-processor.middleware.format-rows`default `false`.",
@@ -32971,6 +32980,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -34115,6 +34131,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -34366,6 +34389,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35214,6 +35244,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35251,6 +35288,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35870,6 +35914,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35957,6 +36015,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -36331,6 +36396,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -36919,6 +36991,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -39198,6 +39284,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -39543,6 +39636,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40262,6 +40362,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40633,6 +40740,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42108,6 +42222,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42458,6 +42579,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42487,6 +42622,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42717,6 +42866,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -43038,6 +43201,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -43539,6 +43716,18 @@
                     "description" : "value must be a valid boolean string ('true' or 'false').",
                     "type" : "boolean"
                   },
+                  "display" : {
+                    "anyOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "string"
+                      } ],
+                      "description" : "value must be a keyword or string."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "format_rows" : {
                     "default" : false,
                     "description" : "value must be a valid boolean string ('true' or 'false').",
@@ -43816,6 +44005,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -44113,6 +44309,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -44555,6 +44758,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -46574,6 +46784,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -48449,6 +48666,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -50762,6 +50993,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -50874,6 +51112,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "not-connected"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -56743,6 +56995,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -57003,16 +57262,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -59321,6 +59571,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59408,6 +59665,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59513,6 +59784,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59716,6 +60001,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59752,6 +60051,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59922,6 +60228,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -60345,6 +60658,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -62875,16 +63195,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -63013,6 +63324,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63168,6 +63486,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63472,6 +63797,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63607,16 +63939,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -64882,6 +65205,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -65897,6 +66227,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -65955,6 +66292,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66029,6 +66380,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66310,6 +66675,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66667,6 +67039,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66888,6 +67267,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66917,6 +67303,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67038,6 +67431,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67067,6 +67467,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67096,6 +67503,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67154,6 +67568,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67174,6 +67595,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67194,6 +67622,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67232,6 +67667,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -70285,6 +70727,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "ok" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "ok" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -70900,6 +71356,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -71719,6 +72182,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "message" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -71908,6 +72385,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -72169,6 +72653,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -72492,6 +72983,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "valid" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "valid" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -73961,6 +74466,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -74248,6 +74767,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -74277,6 +74810,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -76076,6 +76623,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -76328,6 +76882,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -82110,6 +82671,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -82299,6 +82874,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -82455,17 +83044,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "additionalProperties" : false,
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
