@@ -671,8 +671,28 @@
                            :wif-token-file-path "/some/other/path"))]
           (is (= "from-aws-env" (:Auth_AccessToken spec))))))))
 
+(deftest ^:parallel connection-details->spec-wif-provider-gcp-test
+  (testing "WIF provider GCP calls the metadata server with the configured audience and embeds the token"
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body "  gcp-jwt-from-metadata\n"})]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :databricks
+                  (assoc wif-base-details :wif-provider "GCP" :wif-audience "databricks"))]
+        (is (= "gcp-jwt-from-metadata" (:Auth_AccessToken spec)))
+        (is (= 11 (:AuthMech spec)))
+        (is (= 0 (:Auth_Flow spec)))))))
+
+(deftest ^:parallel connection-details->spec-wif-provider-gcp-missing-audience-test
+  (testing "GCP requires a non-blank :wif-audience"
+    (are [details] (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"requires an audience"
+                    (sql-jdbc.conn/connection-details->spec :databricks details))
+      (assoc wif-base-details :wif-provider "GCP")
+      (assoc wif-base-details :wif-provider "GCP" :wif-audience "")
+      (assoc wif-base-details :wif-provider "GCP" :wif-audience nil))))
+
 (deftest ^:parallel connection-details->spec-wif-provider-unknown-test
-  (testing "any WIF provider that isn't exactly OIDC/AWS/AZURE is rejected"
+  (testing "any WIF provider that isn't exactly OIDC/AWS/AZURE/GCP is rejected"
     (are [provider] (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"Unsupported WIF provider"
@@ -685,12 +705,14 @@
       "aws"
       "Aws"
       "Azure"
-      "azure")))
+      "azure"
+      "Gcp"
+      "gcp")))
 
 (deftest connection-details->spec-wif-hosted-rejects-ambient-providers-test
   (testing "on Metabase Cloud, ambient WIF providers are not allowed"
     (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
-      (doseq [provider ["AWS" "AZURE"]]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
         (testing provider
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -716,9 +738,9 @@
     (testing "on Metabase Cloud, ambient options are stripped from the wif-provider select"
       (mt/with-premium-features #{:hosting}
         (is (= ["OIDC"] (wif-provider-values)))))
-    (testing "off Metabase Cloud, OIDC + AWS + AZURE are offered"
+    (testing "off Metabase Cloud, OIDC + AWS + AZURE + GCP are offered"
       (mt/with-premium-features #{}
-        (is (= ["OIDC" "AWS" "AZURE"] (wif-provider-values)))))))
+        (is (= ["OIDC" "AWS" "AZURE" "GCP"] (wif-provider-values)))))))
 
 (defn- fake-jwt
   "A parseable (but not verifiable) JWT with `claims` as the payload."

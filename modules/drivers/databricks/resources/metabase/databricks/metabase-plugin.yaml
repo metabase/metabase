@@ -38,6 +38,7 @@ driver:
           - {name: "OpenID Connect (JWT)", value: "OIDC"}
           - {name: "AWS",                  value: "AWS",   hidden-when-hosted: true}
           - {name: "Azure",                value: "AZURE", hidden-when-hosted: true}
+          - {name: "Google Cloud",         value: "GCP",   hidden-when-hosted: true}
         visible-if:
           auth-mode: wif
       - merge:
@@ -79,6 +80,12 @@ driver:
         placeholder: "/var/run/secrets/tokens/oidc-token"
         visible-if:
           wif-provider: OIDC
+      - name: wif-audience
+        display-name: Token audience
+        helper-text: The audience configured on the Databricks federation policy.
+        required: true
+        visible-if:
+          wif-provider: GCP
       - merge:
         - multi-level-schema
         - display-name: Enable multiple catalogs
