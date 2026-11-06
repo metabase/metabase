@@ -1257,9 +1257,10 @@
                                         {}
                                         {:discouraged-var-counts [:dv-new]}
                                         {}))))
-  (testing "every line for a key other keys count under names them"
-    (is (= ["dropped :dv-gone (also counts :dv-g) (no ignores left)"
-            "lowered :dv-low (also counts :dv-l) 3 -> 1"
+  (testing "the seeded, over-budget and missing-budget lines for a key other keys count under name them"
+    (is (= ["seeded :dv-s (also counts :dv-t) at 2"
+            "dropped :dv-gone (no ignores left)"
+            "lowered :dv-low 3 -> 1"
             "WARNING: :dv-x (also counts :dv-y) is over budget (1 recorded, 2 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-x`"
             "WARNING: :dv-new (also counts :dv-n) has 1 ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed :discouraged-var/dv-new`"]
            (kondo-ratchet/change-report {:ignore-counts          {}
@@ -1268,13 +1269,14 @@
                                          :comment-exempt         #{}}
                                         {}
                                         []
-                                        {:actual {:discouraged-var {:dv-low 1, :dv-new 1, :dv-x 2}}}
+                                        {:actual {:discouraged-var {:dv-low 1, :dv-new 1, :dv-s 2, :dv-x 2}}}
                                         {}
                                         {}
-                                        {}
+                                        {:discouraged-var-counts [:dv-s]}
                                         {:dv-g :dv-gone
                                          :dv-l :dv-low
                                          :dv-n :dv-new
+                                         :dv-t :dv-s
                                          :dv-y :dv-x})))))
 
 (deftest ^:parallel shrink-summary-test

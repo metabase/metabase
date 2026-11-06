@@ -254,6 +254,18 @@
               (check-with! ratchets occurrences
                            (with-attribution {:unresolved (finding-at 2)})))))))
 
+(deftest check-test-ratchets-alias-note-test
+  (testing "an over-budget key in the test ratchets file names the alias keys that count under it"
+    (let [none   {:actual {}, :unattributed [], :unresolved []}
+          over   {:actual {:discouraged-var {:a/x 2}}, :unattributed [], :unresolved []}
+          result (check-with! {:ignore-counts {}
+                               :test-counts   {:ignore-counts {}, :discouraged-var-counts {:a/x 1}}}
+                              [{:file "test/g.clj", :line 1, :linters [:discouraged-var], :justified? true}]
+                              {:attribute (constantly [none over])
+                               :aliases   (constantly {:b/x :a/x})})]
+      (is (:thrown? result))
+      (is (some #{"  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :b/x)"} (:lines result))))))
+
 (deftest check-unconfigured-budget-test
   (let [ratchets {:ignore-counts {:a 1}, :discouraged-var-counts {:a/gone 2, :a/x 1}}]
     (mt/with-dynamic-fn-redefs [kondo-ratchet/discouraged-count-keys (constantly #{:a/x})]

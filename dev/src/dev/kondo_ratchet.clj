@@ -1022,27 +1022,28 @@
 
 (defn- seed-lines
   "[[fix!]]'s report lines for `seeded` keys in one count field: seeded at its actual count, or a warning
-  when there's nothing to seed."
-  [recorded actual seeded]
+  when there's nothing to seed.
+  A seeded entry is named by what `label` returns for it."
+  [recorded actual seeded label]
   (for [name seeded
         :let [n (get actual name 0)]]
     (cond
-      (pos? n)                  (format "seeded %s at %d" name n)
+      (pos? n)                  (format "seeded %s at %d" (label name) n)
       (contains? recorded name) (format "WARNING: %s has no inline ignores -- dropping its policy" name)
       :else                     (format "WARNING: %s has no inline ignores -- nothing to seed" name))))
 
 (defn- budget-lines
   "[[fix!]]'s report lines for bounded (non-`:unlimited`), non-seeded entries in one count field: dropped
   at zero, lowered to actual, or over budget (suggesting `--seed` on the name `seed-hint` returns for it).
-  Each entry is named by what `label` returns for it."
+  An over-budget entry is named by what `label` returns for it."
   [recorded actual seeded seed-hint label]
   (for [[name budget] (sort-by (comp str first) (apply dissoc recorded seeded))
         :let          [n (get actual name 0)]
         ;; a hand-written 0 with no ignores is dropped too, so it needs a line
         :when         (and (integer? budget) (or (not= n budget) (zero? budget)))]
     (cond
-      (zero? n)    (format "dropped %s (no ignores left)" (label name))
-      (< n budget) (format "lowered %s %d -> %d" (label name) budget n)
+      (zero? n)    (format "dropped %s (no ignores left)" name)
+      (< n budget) (format "lowered %s %d -> %d" name budget n)
       :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
                            (label name) budget n (seed-hint name)))))
 
@@ -1065,7 +1066,7 @@
   lowered/dropped/over-budget counts, unused `:unlimited` policies, and ignores with no budget entry, for
   `:ignore-counts` and each [[discouraged-count-field]], then stale discouraged-var and discouraged-namespace ignores.
   The `seeds` are [[resolve-seed]]'s, and `attribution` and `aliases` are [[fix!]]'s `:attribute` and `:aliases`.
-  A line for a key that other keys count under names them.
+  A seeded, over-budget or missing-budget line for a key that other keys count under names them.
   Its :comment-exempt is reported separately, via [[stale-exemptions-warning]].
   Shared by [[change-report]] (the prod ratchets file) and [[fix!]]'s pass over the test ratchets file."
   [{:keys [ignore-counts], :as ratchets} occurrences {:keys [unattributed], :as attribution} seeds aliases]
@@ -1073,7 +1074,7 @@
         actual        (actual-counts (ignore-counts-occurrences occurrences))
         seeded        (get seeds :ignore-counts [])]
     (concat
-     (seed-lines ignore-counts actual seeded)
+     (seed-lines ignore-counts actual seeded str)
      (budget-lines ignore-counts actual seeded identity str)
      (some-> (unexercised-unlimited-warning (apply dissoc ignore-counts seeded) actual) vector)
      (missing-budget-lines ignore-counts actual seeded identity str)
@@ -1088,7 +1089,7 @@
                      reported  (cond->> seeded
                                  (contains? (:bulk seeds) field)
                                  (filter #(or (contains? actual %) (contains? recorded %))))]
-                 (concat (seed-lines recorded actual reported)
+                 (concat (seed-lines recorded actual reported label)
                          (budget-lines recorded actual seeded seed-hint label)
                          (missing-budget-lines recorded actual seeded seed-hint label))))
              (sort discouragement-linters))
