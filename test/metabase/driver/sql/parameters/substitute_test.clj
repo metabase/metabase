@@ -60,6 +60,13 @@
              (substitute
               ["select * from foobars " (optional " where bird_type = " (lib/parsed-param "bird_type"))]
               {"bird_type" "Steller's Jay"})))))
+  (testing "required param not present"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot run the query: missing required parameters: #\{\"category\"\}"
+         (substitute
+          ["select * from products where category = " (lib/parsed-param "category")]
+          {}))))
   (testing "optional substitution -- param not present"
     (is (= ["select * from foobars" nil]
            (substitute

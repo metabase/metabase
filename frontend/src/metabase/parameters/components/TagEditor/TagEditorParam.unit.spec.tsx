@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
+  setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -25,6 +26,7 @@ import type {
   ParameterValues,
   TemplateTag,
   TemplateTagType,
+  TemporalUnit,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -196,6 +198,49 @@ describe("TagEditorParam", () => {
         dimension: undefined,
         "widget-type": undefined,
       });
+    });
+
+    it("should clear the default value and the parameter value when the type is changed (metabase#11480)", async () => {
+      const tag = createMockTemplateTag({
+        type: "text",
+        required: true,
+        default: "some text",
+      });
+      const { setTemplateTag, setParameterValue } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByRole("option", { name: "Number" }));
+
+      expect(setTemplateTag).toHaveBeenCalledTimes(1);
+      expect(setTemplateTag).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "number", default: undefined }),
+      );
+      expect(setParameterValue).toHaveBeenCalledTimes(1);
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, null);
+    });
+
+    it("should show the selected type of the tag (metabase#11580)", () => {
+      setup({ tag: createMockTemplateTag({ type: "number" }) });
+
+      expect(screen.getByTestId("variable-type-select")).toHaveValue("Number");
+    });
+
+    it("should be able to change the type of a text tag to a field filter (metabase#15700)", async () => {
+      const tag = createMockTemplateTag({ type: "text" });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(
+        screen.getByRole("option", { name: "Field Filter" }),
+      );
+
+      expect(setTemplateTag).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "dimension",
+          dimension: undefined,
+          "widget-type": "none",
+        }),
+      );
     });
 
     it("should be able to change the type of the tag to boolean", async () => {
@@ -410,6 +455,27 @@ describe("TagEditorParam", () => {
       });
     }, 40000);
 
+    it("should default to id for a new primary key field filter (metabase#31606)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      await waitForElementsToLoad("Products");
+
+      await userEvent.click(await screen.findByText("Products"));
+      await userEvent.click(await screen.findByText("ID"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", PRODUCTS.ID, null],
+        "widget-type": "id",
+        options: undefined,
+      });
+    }, 40000);
+
     it("should allow to change the field for a field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
@@ -571,6 +637,47 @@ describe("TagEditorParam", () => {
       });
     });
 
+    it("should be able to set a negated widget type for a category field (metabase#15700)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "string/=",
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(
+        await screen.findByTestId("filter-widget-type-select"),
+      );
+      await userEvent.click(screen.getByText("String is not"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith(
+        expect.objectContaining({ "widget-type": "string/!=" }),
+      );
+    });
+
+    it("should clear the default value and the parameter value when the widget type is changed (metabase#16756)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CREATED_AT, null],
+        "widget-type": "date/range",
+        default: "2027-03-31~2028-03-31",
+      });
+      const { setTemplateTag, setParameterValue } = setup({ tag });
+
+      const select = await screen.findByTestId("filter-widget-type-select");
+      expect(select).toHaveValue("Date Range");
+      await userEvent.click(select);
+      await userEvent.click(screen.getByText("Single Date"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        default: null,
+        "widget-type": "date/single",
+        options: undefined,
+      });
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, null);
+    });
+
     it("should replace old location widget-type values with string/=", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
@@ -687,6 +794,105 @@ describe("TagEditorParam", () => {
       },
     );
 
+    it("should set the default value and the parameter value of a text tag (metabase#11480)", async () => {
+      const tag = createMockTemplateTag({ type: "text", required: true });
+      const { setTemplateTag, setParameterValue } = setup({ tag });
+
+      await userEvent.click(screen.getByLabelText("Enter a default value…"));
+      await userEvent.type(
+        await screen.findByPlaceholderText("Enter a default value…"),
+        "some text{enter}",
+      );
+
+      expect(setTemplateTag).toHaveBeenLastCalledWith({
+        ...tag,
+        default: ["some text"],
+      });
+      expect(setParameterValue).toHaveBeenLastCalledWith(tag.id, ["some text"]);
+    });
+
+    it("should set the default value of a field filter to null when its last value is removed (metabase#31606)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PRODUCTS.ID, null],
+        "widget-type": "id",
+        default: "2",
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      const defaultValue = await screen.findByText("2");
+      expect(
+        screen.queryByText("Enter a default value…"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(defaultValue);
+      await userEvent.click(await screen.findByLabelText("Remove"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Update filter" }),
+      );
+
+      expect(setTemplateTag).toHaveBeenLastCalledWith({
+        ...tag,
+        default: null,
+      });
+    });
+
+    describe("static list values source (metabase#44665, metabase#49577)", () => {
+      const values: ParameterValues["values"] = [
+        ["foo"],
+        ["bar"],
+        ["baz"],
+        ["foobar"],
+      ];
+      const tag = createMockTemplateTag({ type: "text" });
+
+      const setupStaticList = (queryType: "search" | "list") =>
+        setup({
+          tag,
+          parameter: {
+            ...getTemplateTagParameter(tag),
+            values_query_type: queryType,
+            values_source_type: "static-list",
+            values_source_config: { values },
+          },
+          parameterValues: { values, has_more_values: false },
+        });
+
+      it("should use a search input for the default value of a search box", async () => {
+        setupParameterSearchValuesEndpoint("foo", {
+          values: [["foo"], ["foobar"]],
+          has_more_values: false,
+        });
+        setupStaticList("search");
+
+        await userEvent.click(screen.getByText("Enter a default value…"));
+        const input = await screen.findByPlaceholderText(
+          "Enter a default value…",
+        );
+        expect(screen.queryByText("foo")).not.toBeInTheDocument();
+        expect(screen.queryByText("bar")).not.toBeInTheDocument();
+
+        await userEvent.type(input, "foo");
+        expect(await screen.findByText("foobar")).toBeInTheDocument();
+        expect(screen.getByText("foo")).toBeInTheDocument();
+        expect(screen.queryByText("bar")).not.toBeInTheDocument();
+        expect(screen.queryByText("baz")).not.toBeInTheDocument();
+      });
+
+      it("should list all values for the default value of a dropdown list", async () => {
+        setupStaticList("list");
+
+        await userEvent.click(screen.getByText("Enter a default value…"));
+        expect(
+          await screen.findByPlaceholderText("Enter a default value…"),
+        ).toBeInTheDocument();
+        expect(await screen.findByText("foo")).toBeInTheDocument();
+        expect(screen.getByText("bar")).toBeInTheDocument();
+        expect(screen.getByText("baz")).toBeInTheDocument();
+        expect(screen.getByText("foobar")).toBeInTheDocument();
+      });
+    });
+
     it("should show the labels of a static list when picking the default value", async () => {
       const values: ParameterValues["values"] = [
         [10, "Ten"],
@@ -715,6 +921,85 @@ describe("TagEditorParam", () => {
       await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
 
       expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: [20] });
+    });
+  });
+
+  describe("time grouping", () => {
+    const TIME_GROUPING_OPTIONS: TemporalUnit[] = ["month", "year"];
+
+    const getTimeGroupingTag = (opts?: Partial<TemplateTag>) =>
+      createMockTemplateTag({
+        type: "temporal-unit",
+        name: "unit",
+        "display-name": "Unit",
+        dimension: ["field", ORDERS.CREATED_AT, null],
+        ...opts,
+      });
+
+    it("should be able to update the parameter widget label", async () => {
+      const tag = getTimeGroupingTag();
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: "Parameter widget label" }),
+        " updated",
+      );
+      await userEvent.tab();
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "display-name": "Unit updated",
+      });
+    });
+
+    it("should be able to set a default time grouping", async () => {
+      const tag = getTimeGroupingTag({ required: true });
+      const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByText("Enter a default value…"));
+      await userEvent.click(await screen.findByText("Year"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: "year" });
+    });
+
+    it("should reset the default value when it is removed from the time grouping options", async () => {
+      const tag = getTimeGroupingTag({ default: "year" });
+      const parameter = {
+        ...getTemplateTagParameter(tag),
+        temporal_units: TIME_GROUPING_OPTIONS,
+      };
+      const { setTemplateTag, setTemplateTagConfig, setParameterValue } = setup(
+        { tag, parameter },
+      );
+
+      await userEvent.click(screen.getByText("Month, Year"));
+      await userEvent.click(await screen.findByLabelText("Year"));
+
+      expect(setTemplateTagConfig).toHaveBeenCalledWith(tag, {
+        temporal_units: ["month"],
+      });
+      expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: null });
+      expect(setParameterValue).toHaveBeenCalledWith(tag.id, null);
+    });
+
+    it("should keep the default value when it stays in the time grouping options", async () => {
+      const tag = getTimeGroupingTag({ default: "year" });
+      const parameter = {
+        ...getTemplateTagParameter(tag),
+        temporal_units: TIME_GROUPING_OPTIONS,
+      };
+      const { setTemplateTag, setTemplateTagConfig, setParameterValue } = setup(
+        { tag, parameter },
+      );
+
+      await userEvent.click(screen.getByText("Month, Year"));
+      await userEvent.click(await screen.findByLabelText("Month"));
+
+      expect(setTemplateTagConfig).toHaveBeenCalledWith(tag, {
+        temporal_units: ["year"],
+      });
+      expect(setTemplateTag).not.toHaveBeenCalled();
+      expect(setParameterValue).not.toHaveBeenCalled();
     });
   });
 
