@@ -513,9 +513,9 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
           databaseName: "Sample Database",
         });
-        verifyTableSelected({
-          tableName: modelDetails.name,
-        });
+        H.getNotebookStep("join")
+          .findByText(modelDetails.name)
+          .should("be.visible");
       });
     });
   });
