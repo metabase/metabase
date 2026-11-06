@@ -288,11 +288,11 @@
             data-source (reify com.mchange.v2.c3p0.PooledDataSource
                           (getConnection [_]
                             (throw (java.sql.SQLException. "password authentication failed")))
-                          (getNumConnectionsDefaultUser [_] num-connections))
+                          (getNumConnectionsDefaultUser [_] num-connections)
+                          (getIdentityToken [_] "fake-pool"))
             pool-spec   {:datasource data-source}
-            destroyed   (atom [])
-            pool-cache  @#'sql-jdbc.conn/pool-cache-key->connection-pool]
-        (swap! pool-cache assoc cache-key pool-spec)
+            destroyed   (atom [])]
+        (#'sql-jdbc.conn/swap-pools-state! assoc-in [:pools cache-key] pool-spec)
         (try
           (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                       (fn [_driver _db-or-id-or-spec _options] data-source)
@@ -305,9 +305,9 @@
             (is (= (if destroyed? [[db-id pool-spec]] [])
                    @destroyed))
             (is (= (not destroyed?)
-                   (contains? @pool-cache cache-key))))
+                   (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) cache-key))))
           (finally
-            (swap! pool-cache dissoc cache-key)))))))
+            (#'sql-jdbc.conn/swap-pools-state! update :pools dissoc cache-key)))))))
 
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
