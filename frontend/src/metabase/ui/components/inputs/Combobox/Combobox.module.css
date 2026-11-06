@@ -66,6 +66,12 @@
   background-color: var(--mb-color-background_surface-secondary-inverse);
 }
 
+/* On hover, Mantine fades the checkbox colors but the row changes instantly,
+   so with quick mouse moves an empty checkbox blinks in the wrong color */
+.option input[type="checkbox"] {
+  transition: none;
+}
+
 .option[data-combobox-disabled] {
   cursor: not-allowed;
   opacity: 1;
