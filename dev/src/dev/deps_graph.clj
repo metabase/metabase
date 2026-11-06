@@ -176,7 +176,8 @@
    [:friends        {:optional true} [:set :symbol]]
    [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
    [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
-   [:module-exports {:optional true} [:set :symbol]]])
+   [:module-exports {:optional true} [:set :symbol]]
+   [:codeowners     {:optional true} [:= true]]])
 
 (def ^:private ModulesConfig
   [:map-of :symbol ModuleConfig])
@@ -446,7 +447,8 @@
   ([deps]
    (let [kondo-config (kondo-config)]
      (-> (ddiff/diff
-          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix))
+          (update-vals kondo-config
+                       #(dissoc % :team :codeowners :friends :model-imports :model-exports :module-exports :ns-prefix))
           (generate-config deps kondo-config))
          ddiff/minimize
          kondo-config-diff-ignore-any
@@ -695,12 +697,6 @@
 (def ^:private test-source-file-extensions
   [".clj" ".cljc" ".cljs" ".bb"])
 
-(defn- module->test-path-prefix [modules-config module]
-  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
-    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "test/"
-         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
-
 (defn- existing-test-file-paths [path-prefix]
   (into (sorted-set)
         (keep (fn [extension]
@@ -717,7 +713,7 @@
   ([modules-config :- ModulesConfig
     prefix->module :- PrefixToModule
     module-sym :- :symbol]
-   (let [path-prefix  (module->test-path-prefix modules-config module-sym)
+   (let [path-prefix  (modules/module-dir modules-config module-sym "test")
          test-dir     (io/file path-prefix)
          nested-tests (when (.isDirectory test-dir)
                         (into

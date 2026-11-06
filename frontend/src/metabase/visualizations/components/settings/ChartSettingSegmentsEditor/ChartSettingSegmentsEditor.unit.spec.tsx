@@ -6,7 +6,13 @@ import {
   setupCardEndpoints,
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -403,13 +409,14 @@ describe("ChartSettingSegmentsEditor", () => {
 
     await userEvent.clear(min);
     await userEvent.type(min, "20");
-    fireEvent.blur(min);
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
-        expect.objectContaining(DEFAULT_VALUE[1]),
-      ]),
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
+          expect.objectContaining(DEFAULT_VALUE[1]),
+        ]),
+      ),
     );
   });
 

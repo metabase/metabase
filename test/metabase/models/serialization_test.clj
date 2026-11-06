@@ -12,6 +12,17 @@
   [n]
   (format "00000000-0000-0000-0000-%012d" n))
 
+(deftest validate-external!-test
+  (let [spec {:schema [:map {:closed true} [:name :string]]}]
+    (testing "an export matching its spec's schema passes"
+      (is (nil? (serdes/validate-external! "Model" spec {:name "x"}))))
+    (testing "an export with a key its spec's schema does not declare throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid export of Model"
+                            (serdes/validate-external! "Model" spec {:name "x" :id 1}))))
+    (testing "a spec without a schema throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No :schema"
+                            (serdes/validate-external! "Model" {} {:name "x"}))))))
+
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
   (binding [serdes/*export-field-fk* (constantly ::field-id)]
     (is (= [:field {} :metabase.models.serialization-test/field-id]
@@ -543,3 +554,20 @@
     (binding [serdes/*export-fk* (fn [id _model] (when (= 1 id) card-eid))]
       (is (= {["Card" 1] {"Dashboard" 1}}
              (serdes/visualization-settings-descendants (in-visualizer goal-viz-settings) {"Dashboard" 1}))))))
+
+(deftest ^:parallel document-link-card-test
+  (let [viz {:virtual_card {:display "link"}
+             :link         {:entity {:id 2 :model "document" :name "My document"}}}]
+    (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))
+              serdes/*import-fk* (fn [eid model] (format "%s___%s" (name model) eid))]
+      (testing "export converts the linked document's id to a portable reference"
+        (is (= "Document___2"
+               (get-in (serdes/export-visualization-settings viz) [:link :entity :id]))))
+      (testing "dependencies are computed for the linked document"
+        (is (= #{[{:model "Document" :id 2}]}
+               (serdes/visualization-settings-deps true viz))))
+      (testing "import resolves the portable reference"
+        (is (= "Document___abc"
+               (get-in (serdes/import-visualization-settings
+                        (assoc-in viz [:link :entity :id] "abc"))
+                       [:link :entity :id])))))))

@@ -129,7 +129,8 @@
                               :transforms/accurate-rows-affected      false
                               :transforms/python                      true
                               :transforms/table                       true
-                              :transforms/testing                     false}]
+                              :transforms/testing                     false
+                              :stage-ctes                             true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
@@ -226,16 +227,6 @@
   [details keep-mode]
   (transduce cat dissoc details (vals (dissoc auth-mode->credential-keys keep-mode))))
 
-(defn- jwt-expiry-ms
-  "Parse the `exp` claim from the payload of `jwt`, in ms since epoch. Returns nil when the token
-  has no `exp` or isn't a parseable JWT."
-  [^String jwt]
-  (try
-    (let [[_ payload _] (str/split jwt #"\.")
-          json-str      (String. (.decode (java.util.Base64/getUrlDecoder) ^String payload) "UTF-8")]
-      (some-> (json/decode+kw json-str) :exp long (* 1000)))
-    (catch Throwable _ nil)))
-
 (def ^:private hosted-allowed-wif-providers
   ;; OIDC is the only WIF mode on Metabase Cloud where the identity is admin-supplied (a token or a
   ;; token file). Every other provider — AWS/AZURE/GCP today, and anything the Snowflake JDBC
@@ -267,7 +258,7 @@
 
                       (not (str/blank? wif-token))
                       wif-token))
-        expiry-ms (some-> token jwt-expiry-ms)]
+        expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
     (cond-> {:authenticator            "WORKLOAD_IDENTITY"
              :workloadIdentityProvider provider}
       token     (assoc :token token)
@@ -679,10 +670,6 @@
   ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
   ;; to a different one, so no promotions are possible
   {})
-
-(defmethod sql.qp/use-ctes-for-stages? :snowflake
-  [_driver]
-  true)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])

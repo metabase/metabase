@@ -2,12 +2,18 @@ import { t } from "ttag";
 
 import { FeatureEmptyState } from "metabase/common/data-studio/components/FeatureEmptyState";
 
+import {
+  DataAppBuildDocsLink,
+  getDataAppsIntroDescription,
+  getDataAppsIntroTitle,
+} from "../DataAppBuildGuide";
+
 export function DataAppListEmptyState() {
   return (
     <FeatureEmptyState
-      title={t`Apps built on your semantic layer`}
-      description={t`Use the mb CLI to create a data app. Deploy it to your production instance with Remote Sync.`}
-      actions={null}
+      title={getDataAppsIntroTitle()}
+      description={getDataAppsIntroDescription()}
+      actions={<DataAppBuildDocsLink />}
       features={[
         {
           icon: "ai",

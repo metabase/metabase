@@ -112,14 +112,15 @@ function setup({
 }
 
 describe("GoalValueInput", () => {
-  it("commits a typed static value on blur", () => {
+  it("commits a typed static value while the input still has focus", async () => {
     const { onChange } = setup({ value: 5 });
 
     const input = screen.getByRole("textbox", { name: "Min" });
-    fireEvent.change(input, { target: { value: "12.5" } });
-    fireEvent.blur(input);
+    await userEvent.clear(input);
+    await userEvent.type(input, "12.5");
 
-    expect(onChange).toHaveBeenCalledWith(12.5);
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(12.5));
+    expect(input).toHaveFocus();
   });
 
   it("shows the two source options in the root menu", async () => {

@@ -516,10 +516,8 @@
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"
                                                   :source {:type  :query
-                                                           :query {:database (mt/id)
-                                                                   :type     "query"
-                                                                   :query    {:source-table (mt/id :venues)}}}
-                                                  :target {:type   :table
+                                                           :query (venues-query)}
+                                                  :target {:type   "table"
                                                            :schema (t2/select-one-fn :schema :model/Table
                                                                                      :id (mt/id :venues))
                                                            :name   "t1_out"}}]

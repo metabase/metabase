@@ -134,7 +134,7 @@
    :model/ImplicitAction      #{:table_id}
    :model/Field               field-columns
    :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
-   :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)})
+   :model/FieldUserSettings   (conj field-columns :custom_position :json_unfolding)})
 
 (mu/defn- mark-dependents!
   "Mark the result metadata and analysis statuses of the entities directly depending on the entity `entity-type`
@@ -313,8 +313,8 @@
     (trigger-jobs!)))
 
 (defenterprise before-delete
-  "Mark what deleting `row` of `model` changes: the entity it is a part of, what reads a deleted entity, or
-  the transforms reading a deleted Database; and trigger the jobs once it commits."
+  "Mark what deleting `row` of `model` changes, the entity it is a part of and what reads a deleted entity, and
+  trigger the jobs once it commits."
   :feature :dependencies
   [model row]
   (when (contains? part-columns model)
@@ -328,10 +328,6 @@
     nil)
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
     (mark-output-changed! entity-type row))
-  (when (= model :model/Database)
-    (when-let [transform-ids (not-empty (dependencies.db/source-database-transform-ids (:id row)))]
-      (dependencies.db/mark-dependency-statuses-stale! {:transform transform-ids})
-      (dependencies.db/mark-analysis-finding-statuses-stale! {:transform transform-ids})))
   (trigger-jobs!))
 
 (defenterprise after-transform-run

@@ -122,6 +122,8 @@ categories:
       - name: "Data apps"
         url: "data-apps/start"
         pages:
+          - name: "Getting started"
+            url: "data-apps/getting-started"
           - name: "Build a data app"
             url: "data-apps/build"
           - name: "Manage data apps"
@@ -255,7 +257,7 @@ categories:
             url: "data-modeling/models/models"
           - name: "Model persistence"
             url: "data-modeling/models/model-persistence"
-          - name: "Actions"
+          - name: "Model actions"
             pages:
               - name: "Overview"
                 url: "data-modeling/models/actions/introduction"
@@ -488,6 +490,10 @@ categories:
             url: "installation-and-operation/development-instance"
           - name: "Monitoring your Metabase"
             url: "monitor/start"
+          - name: "Dependency diagnostics"
+            url: "monitor/dependency-diagnostics"
+          - name: "Content diagnostics"
+            url: "monitor/content-diagnostics"
           - name: "Observability with Prometheus"
             url: "installation-and-operation/observability-with-prometheus"
           - name: "Serialization"

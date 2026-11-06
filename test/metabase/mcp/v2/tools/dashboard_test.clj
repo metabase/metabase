@@ -2,18 +2,21 @@
   "Contract tests for the `dashboard_write` v2 MCP tool, driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
    gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
-   free. The op grammar itself is covered by `metabase.mcp.v2.dashboard-ops-test`; this suite
+   free. The op grammar itself is covered by `metabase.metabot.toolkit.dashboard-ops-test`; this suite
    pins the tool's contract, permission inheritance, and dry-run behavior on top of it."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
+   [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
+   [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -89,6 +92,12 @@
   (testing "GHY-4147: update without an id is a teaching error"
     (is (re-find #"\"id\" is required"
                  (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" (wire {:method "update"})))))))
+
+(deftest unknown-op-lists-the-valid-ops-test
+  (testing "an unknown op, refused by the registry before the handler runs, names the ops there are"
+    (is (re-find #"\"op\": \"should be one of: add_card, add_text, .*, unwire_parameter\""
+                 (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                         (wire {:method "create" :name "Sales" :ops [{:op "frobnicate"}]})))))))
 
 (deftest create-with-ops-in-one-call-test
   (testing "GHY-4147: create accepts ops, so a dashboard and its cards land in a single call"
@@ -222,7 +231,8 @@
   (testing "`parameter_mappings` is advertised as patchable, and a mapping arrives as raw JSON with string
             clause heads. Without the same target coercion `wire_parameter` does, every such patch failed
             validation with \"should be :dimension\" — a documented key that could never be used."
-    (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
+    (mt/with-temp [:model/Dashboard     dash {:name       "Sales"
+                                              :parameters [{:id "p1" :name "P1" :slug "p1" :type "category"}]}
                    :model/Card          card {:name "Revenue"}
                    :model/DashboardCard dc   {:dashboard_id (:id dash) :card_id (:id card)}]
       (let [result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
@@ -284,6 +294,32 @@
           (is (= hidden-dc (:id dc)))
           (is (= {:id hidden-card} (:card dc))
               "the unreadable card comes back as an id with no name"))))))
+
+(deftest set-series-with-an-unreadable-stored-card-test
+  ;; The save leaves stored card references alone, so a writer can overlay a card the dashboard already holds even
+  ;; when they cannot read it. The dry run fetches no row for that card.
+  (testing "a dry run overlays an unreadable stored card as an id, and the save goes through"
+    (mt/with-temp [:model/Collection    {open-id :id}     {}
+                   :model/Collection    {locked-id :id}   {}
+                   :model/Dashboard     {dash-id :id}     {:name "Sales" :collection_id open-id}
+                   :model/Card          {open-card :id}   {:name "Revenue" :collection_id open-id}
+                   :model/Card          {hidden-card :id} {:name "CONFIDENTIAL" :collection_id locked-id}
+                   :model/DashboardCard _                 {:dashboard_id dash-id :card_id hidden-card :row 0 :col 0}
+                   :model/DashboardCard {open-dc :id}     {:dashboard_id dash-id :card_id open-card :row 4 :col 0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (doseq [validate-only? [true false]]
+          (testing (str "validate_only " validate-only?)
+            (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                                  (wire {:method        "update"
+                                                         :id            dash-id
+                                                         :validate_only validate-only?
+                                                         :ops           [{:op          "set_series"
+                                                                          :dashcard_id open-dc
+                                                                          :card_ids    [hidden-card]}]})))]
+              (is (= [{:id hidden-card}]
+                     (:series (first (filter #(= open-dc (:id %)) (:dashcards result)))))))))
+        (is (= [hidden-card] (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id open-dc))
+            "the save went through")))))
 
 (deftest parameter-ops-accept-json-shapes-test
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"
@@ -386,20 +422,76 @@
                                      (wire {:method "update" :id (:id dash)
                                             :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
 
+(deftest dry-run-rejects-an-unreadable-parameter-source-card-test
+  (testing "validate_only rejects a parameter drawing its values from a card the user cannot read, as the save does"
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (is (= "op 0 (\"add_parameter\"): no card with id 9999999 that you can read."
+             (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                     (wire {:method        "update"
+                                            :id            (:id dash)
+                                            :validate_only true
+                                            :ops           [{:op                   "add_parameter"
+                                                             :parameter_id         "p"
+                                                             :name                 "P"
+                                                             :type                 "string/="
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id 9999999}}]}))))))))
+
+(deftest dry-run-checks-a-reactivated-source-card-test
+  (testing "an op that makes a parameter's existing source card its source is checked against that card"
+    (mt/with-temp [:model/Card      card {}
+                   :model/Dashboard dash {:name       "Sales"
+                                          :parameters [{:id                   "p"
+                                                        :name                 "P"
+                                                        :slug                 "p"
+                                                        :type                 "string/="
+                                                        :values_source_type   "static-list"
+                                                        :values_source_config {:card_id (:id card) :values ["a"]}}]}]
+      (is (=? {:parameters [{:id "p"}]}
+              (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                       (wire {:method        "update"
+                                              :id            (:id dash)
+                                              :validate_only true
+                                              :ops           [{:op                 "update_parameter"
+                                                               :parameter_id       "p"
+                                                               :values_source_type "card"}]}))))))))
+
+(deftest published-patch-mapping-schema-test
+  (testing "a strict client can send every key of a patched parameter mapping, card_id included"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [schema   (:inputSchema (first (filter #(= "dashboard_write" (:name %)) (registry/list-tools))))
+            mapping? (fn [x]
+                       (let [props (when (map? x) (:properties x))]
+                         ;; an op object (wire_parameter) has these keys too, but also `op`
+                         (and (contains? props :target) (contains? props :parameter_id) (not (contains? props :op)))))
+            mappings (filter mapping? (tree-seq coll? seq schema))]
+        (is (= [{:keys     #{:parameter_id :card_id :target}
+                 :required #{:parameter_id :card_id :target}
+                 :closed?  true}]
+               (for [m mappings]
+                 {:keys     (set (keys (:properties m)))
+                  :required (set (map keyword (:required m)))
+                  :closed?  (false? (:additionalProperties m))})))))))
+
 (deftest archived-on-create-error-text-test
   (testing "GHY-4544: `archived` on a create is a teaching error"
     (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."
            (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
                                    (wire {:method "create" :name "Sales" :archived true})))))))
 
-;; not ^:parallel: the `!` in validate-payload! trips the kondo deftest lint
+;; not ^:parallel: the `!` in write! trips the kondo deftest lint
 (deftest invalid-payload-error-text-test
-  (testing "GHY-4544: an invalid compiled payload is explained as humanized, quoted schema detail"
-    (let [text (try (#'tools.dashboard/validate-payload! {:parameters "nope"})
-                    nil
-                    (catch clojure.lang.ExceptionInfo e (ex-message e)))]
-      (is (str/starts-with? text "The requested ops produce an invalid dashboard: \"parameters\": "))
-      (is (not (str/includes? text "\n"))))))
+  (testing "GHY-4544: a payload the save would reject is explained as humanized, quoted schema detail"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {}]
+        (let [text (try (dashboard-errors/do-with-teaching-errors
+                         #(dashboard-write/write! {:dashboard      (t2/hydrate dash [:dashcards :series :card] :tabs)
+                                                   :attrs          {:cache_ttl 0}
+                                                   :validate-only? true}))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e (ex-message e)))]
+          (is (str/starts-with? text "This change would produce an invalid dashboard: \"cache_ttl\": "))
+          (is (not (str/includes? text "\n"))))))))
 
 (deftest unreadable-card-is-refused-for-a-non-admin-test
   (testing "a card that EXISTS but the caller cannot read is refused the same way a nonexistent one is, before
@@ -421,6 +513,44 @@
                 "the refusal must not leak the card's name"))))
       (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id dash)))
           "nothing may be written before the refusal"))))
+
+(deftest reactivated-source-card-is-refused-for-a-non-admin-test
+  (testing "switching a parameter to the card its config already names checks that card, so a non-admin is refused one
+            they cannot read before any write"
+    (mt/with-temp [:model/Collection {secret-id :id} {}
+                   :model/Card       {hidden-id :id} {:name "CONFIDENTIAL" :collection_id secret-id}
+                   :model/Dashboard  dash            {:name       "Sales"
+                                                      :parameters [{:id                   "p"
+                                                                    :name                 "P"
+                                                                    :slug                 "p"
+                                                                    :type                 "string/="
+                                                                    :values_source_type   "static-list"
+                                                                    :values_source_config {:card_id hidden-id
+                                                                                           :values  ["a"]}}]}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (doseq [validate-only? [true false]]
+        (testing (str "validate_only " validate-only?)
+          (is (re-find #"no card with id \d+ that you can read"
+                       (tool-error (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                               (wire {:method        "update"
+                                                      :id            (:id dash)
+                                                      :validate_only validate-only?
+                                                      :ops           [{:op                 "update_parameter"
+                                                                       :parameter_id       "p"
+                                                                       :values_source_type "card"}]})))))))
+      (is (= :static-list (:values_source_type (first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))))
+          "nothing may be written before the refusal"))))
+
+(deftest stored-card-ids-match-the-save-test
+  (testing "the compiler exempts exactly the card references the save treats as stored"
+    (let [dash {:dashcards  [{:id 7 :card_id 9 :series [{:id 11}]} {:id 8 :card_id nil}]
+                :parameters [{:id "p1" :values_source_type "card" :values_source_config {:card_id 45}}
+                             {:id "p2" :values_source_type :card :values_source_config {:card_id 46}}
+                             {:id "p3" :values_source_type "static-list" :values_source_config {:card_id 47}}
+                             {:id "p4"}]}]
+      (is (= #{9 11 45 46}
+             (:cards (#'dashboards.write/references dash))
+             (#'dashboard-ops/dashboard-card-ids dash))))))
 
 (deftest create-applies-display-attributes-test
   (testing "GHY-4147: width and auto_apply_filters are honored on create, not silently dropped"

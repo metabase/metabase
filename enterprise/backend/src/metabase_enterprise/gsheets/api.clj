@@ -400,7 +400,6 @@
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
-    #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
      (:id (gsheets.db/attached-dwh-database)))))

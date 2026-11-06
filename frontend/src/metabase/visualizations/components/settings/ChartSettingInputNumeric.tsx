@@ -1,6 +1,8 @@
 import debounce from "lodash.debounce";
 import {
   type ChangeEvent,
+  type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useMemo,
@@ -12,6 +14,7 @@ import { useLatest } from "react-use";
 import { TextInput } from "metabase/ui";
 import type { ChartSettingWidgetProps } from "metabase/viz-core";
 
+export const DEBOUNCE_MS = 200;
 const ALLOWED_CHARS = new Set([
   "0",
   "1",
@@ -38,10 +41,14 @@ interface ChartSettingInputProps extends Omit<
     isInteger?: boolean;
     isNonNegative?: boolean;
   };
+  "aria-label"?: string;
   id?: string;
+  inputRef?: Ref<HTMLInputElement>;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  rightSection?: ReactNode;
+  rightSectionWidth?: number;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -49,9 +56,13 @@ export const ChartSettingInputNumeric = ({
   value,
   placeholder,
   options,
+  "aria-label": ariaLabel,
   id,
+  inputRef,
   className,
   disabled,
+  rightSection,
+  rightSectionWidth,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const isFocusedRef = useRef(false);
@@ -87,7 +98,7 @@ export const ChartSettingInputNumeric = ({
   const processValueDebounced = useMemo(() => {
     return debounce((rawValue: string) => {
       processValueRef.current(rawValue);
-    }, 200);
+    }, DEBOUNCE_MS);
   }, [processValueRef]);
 
   const handleFocus = useCallback(() => {
@@ -108,21 +119,27 @@ export const ChartSettingInputNumeric = ({
 
   return (
     <TextInput
+      aria-label={ariaLabel}
       id={id}
+      ref={inputRef}
       placeholder={placeholder}
       type="text"
       disabled={disabled}
       error={inputValue && isNaN(Number(inputValue))}
       value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
-          setInputValue(e.target.value);
-          processValueDebounced(e.target.value);
+        const value = e.target.value.replaceAll(",", ".");
+        if (value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
+          setInputValue(value);
+          processValueDebounced(value);
         }
       }}
       onFocus={handleFocus}
       onBlur={handleBlur}
       className={className}
+      rightSection={rightSection}
+      rightSectionPointerEvents="all"
+      rightSectionWidth={rightSectionWidth}
     />
   );
 };

@@ -12,14 +12,13 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db))
 (defn- mark-synced!
@@ -1205,8 +1204,8 @@
                      :model/Field      remapped {:name "remapped" :table_id (:id table) :base_type :type/Integer}
                      :model/Field      _plain   {:name "plain" :table_id (:id table) :base_type :type/Text}
                      :model/Dimension  _        {:field_id (:id remapped) :name "Remapped" :type :internal}]
-        (t2/insert! :model/FieldUserSettings {:field_id (:id curated) :description "curated"})
-        (t2/insert! :model/TableUserSettings {:table_id (:id table) :is_published true :collection_id (:id coll)})
+        (field-user-settings/upsert-field-user-settings! curated {:description "curated"})
+        (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id (:id coll)})
         (t2/delete! :model/RemoteSyncObject)
         (let [tracked (fn [] (into #{} (map (juxt :model_type :model_id :status)) (t2/select :model/RemoteSyncObject)))]
           (events/publish-event! :event/table-publish
@@ -1216,7 +1215,7 @@
                    ["FieldUserSettings" (:id curated) "update"]
                    ["Dimension" (:id remapped) "update"]}
                  (tracked)))
-          (t2/update! :model/TableUserSettings :table_id (:id table) {:is_published false :collection_id nil})
+          (table-user-settings/upsert-table-user-settings! table {:is_published false :collection_id nil})
           (events/publish-event! :event/table-unpublish
                                  {:object  (assoc table :is_published false :collection_id nil)
                                   :user-id (mt/user->id :rasta)})
@@ -1442,8 +1441,8 @@
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T"}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
-      (t2/insert! :model/TableUserSettings {:table_id (:id table) :is_published true :collection_id (:id coll)})
-      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id (:id coll)})
+      (field-user-settings/upsert-field-user-settings! field {:description "curated"})
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (is (=? [{:model_type "FieldUserSettings" :model_id (:id field) :status "update"}]

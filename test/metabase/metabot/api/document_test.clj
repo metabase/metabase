@@ -121,6 +121,21 @@
                      :draft_card {:name "Orders by day"}}
                     response))))))))
 
+(defn- scripted-llm
+  "A stand-in for `openrouter/openrouter` that records each request in the `requests` atom and answers the nth request
+  with the nth entry of `responses`, then with a text reply."
+  [requests responses]
+  (fn [request]
+    (let [n (count (swap! requests conj request))]
+      (mut/mock-llm-response
+       (get responses (dec n) [{:type :text :text "Chart created"}])))))
+
+(defn- input-includes?
+  "Whether some string in the input of the LLM `request` includes `text`."
+  [request text]
+  (some #(and (string? %) (str/includes? % text))
+        (tree-seq coll? seq (:input request))))
+
 (deftest generate-content-model-chart-round-trip-test
   (testing "the model loads the query skills, then charts a model by its column names"
     (let [mp (mt/metadata-provider)]
@@ -146,18 +161,13 @@
                                                                                      "CREATED_AT"]]}]}
                                          :viz_settings {:chart_type "line"}}}]]]
             (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                        (fn [request]
-                                          (let [n (count (swap! requests conj request))]
-                                            (mut/mock-llm-response
-                                             (get responses (dec n) [{:type :text :text "Chart created"}]))))]
+                                        (scripted-llm requests responses)]
               (let [response (mt/user-http-request :crowberto
                                                    :post 200 "metabot/document/generate-content"
                                                    {:instructions "Chart orders by month"})
                     [first-request second-request] @requests]
                 (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
-                (is (some #(and (string? %)
-                                (str/includes? % "<skill id=\"construct-notebook-query-advanced\">"))
-                          (tree-seq coll? seq (:input second-request)))
+                (is (input-includes? second-request "<skill id=\"construct-notebook-query-advanced\">")
                     "the skill body reaches the model before it writes the query")
                 (is (=? {:error      nil
                          :draft_card {:name          "Orders by month"
@@ -166,60 +176,127 @@
                                       :dataset_query {:stages [{:source-card (:id model)}]}}}
                         response))))))))))
 
-(deftest generate-content-database-mention-test
-  (testing "a SQL chart without exactly one @-mentioned database stops after one call, with a message for the user"
-    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                       llm-metabot-provider test-provider]
-      (doseq [[references message] [[nil "Mention a database with @ to create this chart with SQL."]
-                                    [{"database:1" "Sample" "database:2" "Other"}
-                                     "Mention only one database with @ to create this chart with SQL."]]]
-        (testing (pr-str references)
-          (let [calls (atom 0)]
-            (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                        (fn [_]
-                                          (mut/mock-llm-response
-                                           [{:type      :tool-input
-                                             :id        (str "t" (swap! calls inc))
-                                             :function  "document_schema_collect"
-                                             :arguments {}}]))]
-              (is (= {:draft_card  nil
-                      :description nil
-                      :error       message}
-                     (mt/user-http-request :crowberto
-                                           :post 200 "metabot/document/generate-content"
-                                           (cond-> {:instructions "Chart revenue by month with SQL"}
-                                             references (assoc :references references)))))
-              (is (= 1 @calls)))))))))
-
-(deftest generate-content-failed-calls-error-test
-  (testing "when the model runs out of steps on failed calls, the error is not the text written for the model"
+(deftest generate-content-sql-chart-without-mention-test
+  (testing "without an @-mentioned database, the model chooses the database for a SQL chart"
     (let [db-id (mt/id)]
       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider test-provider]
+        (let [requests  (atom [])
+              responses [[{:type      :tool-input
+                           :id        "t1"
+                           :function  "document_schema_collect"
+                           :arguments {:database_id db-id}}]
+                         [{:type      :tool-input
+                           :id        "t2"
+                           :function  "document_construct_sql_chart"
+                           :arguments {:database_id  db-id
+                                       :name         "Orders count"
+                                       :description  "Count of orders"
+                                       :analysis     "Simple count"
+                                       :approach     "Direct SQL"
+                                       :sql          "SELECT COUNT(*) FROM ORDERS"
+                                       :viz_settings {:chart_type "scalar"}}}]]]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (scripted-llm requests responses)]
+            (is (=? {:error      nil
+                     :draft_card {:name        "Orders count"
+                                  :database_id db-id}}
+                    (mt/user-http-request :crowberto
+                                          :post 200 "metabot/document/generate-content"
+                                          {:instructions "Chart the number of orders"})))
+            (is (= 2 (count @requests)))
+            (is (input-includes? (second @requests) "The database has this schema")
+                "the schema of the chosen database reaches the model before it writes the SQL")))))))
+
+(deftest generate-content-failed-calls-error-test
+  (testing "when a turn of failed calls ends without a chart, the error is not the text written for the model"
+    (let [db-id       (mt/id)
+          failed-call (fn []
+                        [{:type      :tool-input
+                          :id        (str (random-uuid))
+                          :function  "document_construct_sql_chart"
+                          :arguments {:database_id  db-id
+                                      :name         "Orders"
+                                      :description  "Count of orders"
+                                      :analysis     "Simple count"
+                                      :approach     "Direct SQL"
+                                      :sql          "SELECT COUNT(*) FROM"
+                                      :viz_settings {:chart_type "bar"}}}])]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (doseq [[ending later-response error]
+                [["by reaching the step limit" failed-call
+                  "Metabot reached its step limit before it could finish. Try a more specific request."]
+                 ["by returning nothing" (constantly [])
+                  "Metabot could not complete this step."]]]
+          (testing ending
+            (let [calls (atom 0)]
+              (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                          (fn [_]
+                                            {:validation-result {:valid?        false
+                                                                 :dialect       "h2"
+                                                                 :error-message "syntax error near FROM"}})
+                                          openrouter/openrouter
+                                          (fn [_]
+                                            (mut/mock-llm-response
+                                             (if (= 1 (swap! calls inc))
+                                               (failed-call)
+                                               (later-response))))]
+                (is (= {:draft_card  nil
+                        :description nil
+                        :error       error}
+                       (mt/user-http-request :crowberto
+                                             :post 200 "metabot/document/generate-content"
+                                             {:instructions "chart it"})))))))))))
+
+(deftest generate-content-step-limit-reply-test
+  (let [db-id       (mt/id)
+        chart-query {:database db-id
+                     :type     "native"
+                     :native   {:query "SELECT COUNT(*) FROM ORDERS" :template-tags {}}}
+        read-call   [{:type      :tool-input
+                      :function  "list_available_fields"
+                      :arguments {:table_ids [] :model_ids [] :metric_ids []}}]
+        chart-call  [{:type      :tool-input
+                      :function  "document_construct_sql_chart"
+                      :arguments {:database_id  db-id
+                                  :name         "Orders by day"
+                                  :description  "Count of orders"
+                                  :analysis     "Simple count"
+                                  :approach     "Direct SQL"
+                                  :sql          "SELECT COUNT(*) FROM ORDERS"
+                                  :viz_settings {:chart_type "bar"}}}]
+        generate!   (fn [last-step-response after-limit-response]
+                      (let [requests (atom [])]
+                        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                                    (fn [request]
+                                                      (let [n (count (swap! requests conj request))]
+                                                        (mut/mock-llm-response
+                                                         (cond
+                                                           (< n 15)  (assoc-in read-call [0 :id] (str "t" n))
+                                                           (= n 15)  (assoc-in last-step-response [0 :id] "t15")
+                                                           :else     after-limit-response))))]
+                          {:response (mt/user-http-request :crowberto
+                                                           :post 200 "metabot/document/generate-content"
+                                                           {:instructions "Chart revenue by customer segment"})
+                           :requests @requests})))]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (testing "a turn that reaches the step limit returns the reply of its last call, made with no tool use, as the
+               error"
+        (let [reply "No table that the orders link to holds a customer segment, so I couldn't chart revenue by it."
+              {:keys [response requests]} (generate! read-call [{:type :text :text reply}])]
+          (is (= {:draft_card nil :description nil :error reply} response))
+          (is (= [16 "none"] [(count requests) (:tool_choice (last requests))]))))
+      (testing "a chart made on the last step is the answer, with no call after it"
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                     (fn [_]
-                                      {:validation-result {:valid?        false
-                                                           :dialect       "h2"
-                                                           :error-message "syntax error near FROM"}})
-                                    openrouter/openrouter
-                                    (fn [_]
-                                      (mut/mock-llm-response
-                                       [{:type      :tool-input
-                                         :id        (str (random-uuid))
-                                         :function  "document_construct_sql_chart"
-                                         :arguments {:database_id  db-id
-                                                     :name         "Orders"
-                                                     :description  "Count of orders"
-                                                     :analysis     "Simple count"
-                                                     :approach     "Direct SQL"
-                                                     :sql          "SELECT COUNT(*) FROM"
-                                                     :viz_settings {:chart_type "bar"}}}]))]
-          (is (= {:draft_card  nil
-                  :description nil
-                  :error       "Metabot could not complete this step."}
-                 (mt/user-http-request :crowberto
-                                       :post 200 "metabot/document/generate-content"
-                                       {:instructions "chart it"}))))))))
+                                      {:validation-result {:valid? true, :dialect "h2"}
+                                       :action-result     {:query-id "q-1" :query chart-query}})
+                                    qp/process-query (fn [_] nil)]
+          (let [{:keys [response requests]} (generate! chart-call [{:type :text :text "Unexpected"}])]
+            (is (=? {:error nil :draft_card {:name "Orders by day"}} response))
+            (is (= 15 (count requests)))))))))
 
 (deftest generate-content-internal-failure-error-test
   (testing "a failure inside Metabase while the chart query runs ends the turn with the generic error"
