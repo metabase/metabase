@@ -73,6 +73,7 @@
     "dataset"    (urls/card-url id)
     "collection" (urls/collection-url id)
     "dashboard"  (urls/dashboard-url id)
+    "document"   (urls/document-url id)
     "database"   (urls/database-url id)
     "table"      (urls/table-url db_id id)))
 

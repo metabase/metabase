@@ -117,16 +117,34 @@ describe("QueryVisualization", () => {
     jest.useRealTimers();
   });
 
-  it("should show the loading message while the query runs", async () => {
-    setupWithoutResult({ isRunning: true });
+  it("should show a run button before the query is ran", async () => {
+    setupWithoutResult({ isRunning: false, isResultDirty: true });
 
-    expect(await screen.findByText("Doing science...")).toBeInTheDocument();
-  });
-
-  it("should not show the loading message when the query does not run", () => {
-    setupWithoutResult({ isRunning: false });
+    const runButton = screen.getByTestId("run-button");
+    expect(runButton).toBeVisible();
+    expect(runButton).not.toHaveAttribute("aria-hidden", "true");
 
     expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
+  });
+
+  it("should show the loading message while the query runs", async () => {
+    setupWithoutResult({ isRunning: true, isResultDirty: false });
+
+    expect(await screen.findByText("Doing science...")).toBeInTheDocument();
+    expect(screen.getByTestId("run-button")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("should not show the loading message or run button once loaded", async () => {
+    setupWithoutResult({ isRunning: false, isResultDirty: false });
+
+    expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
+    expect(screen.getByTestId("run-button")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 
   it("shows a red warning that opens the display settings when the goal value cannot be resolved", async () => {
@@ -220,7 +238,13 @@ describe("QueryVisualization", () => {
   });
 });
 
-function setupWithoutResult({ isRunning }: { isRunning: boolean }) {
+function setupWithoutResult({
+  isRunning,
+  isResultDirty,
+}: {
+  isRunning: boolean;
+  isResultDirty: boolean;
+}) {
   const question = new Question(
     {
       dataset_query: {
@@ -235,7 +259,12 @@ function setupWithoutResult({ isRunning }: { isRunning: boolean }) {
   );
 
   renderWithProviders(
-    <QueryVisualization question={question} isRunning={isRunning} />,
+    <QueryVisualization
+      question={question}
+      isRunning={isRunning}
+      isRunnable
+      isResultDirty={isResultDirty}
+    />,
     { storeInitialState: state },
   );
 }

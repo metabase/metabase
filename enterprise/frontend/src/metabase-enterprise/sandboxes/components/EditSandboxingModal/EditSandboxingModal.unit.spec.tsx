@@ -136,10 +136,6 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup();
 
         expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
-
-        expect(
           screen.getByText("Filter by a column in the table"),
         ).toBeInTheDocument();
 
@@ -181,10 +177,6 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup({ features: [] });
 
         expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
-
-        expect(
           screen.queryByText("Filter by a column in the table"),
         ).not.toBeInTheDocument();
 
@@ -224,10 +216,6 @@ describe("EditSandboxingModal", () => {
 
       it("should allow creating a new policy based on a card", async () => {
         const { onSave } = await setup({ shouldMockQuestions: true });
-
-        expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
@@ -279,10 +267,6 @@ describe("EditSandboxingModal", () => {
           },
         },
       });
-
-      expect(
-        screen.getByText("Configure row and column security for this table"),
-      ).toBeInTheDocument();
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 

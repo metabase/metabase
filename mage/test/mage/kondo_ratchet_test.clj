@@ -564,6 +564,55 @@
                                                  []
                                                  (assoc known :discouraged-var #{'clojure.core/eval})))))))
 
+(deftest alias-edges-test
+  (testing "an import-vars re-export points at the var it imports"
+    (is (= '{oss.core/f oss.mirror/f}
+           (kondo-ratchet/alias-edges {:var-definitions [{:ns "oss.core", :name "f", :imported-ns "oss.mirror"}]}))))
+  (testing "an enterprise defenterprise points at the OSS var that dispatches to it"
+    (is (= '{ee.core/f oss.mirror/f}
+           (kondo-ratchet/alias-edges
+            {:var-definitions [{:ns "oss.mirror", :name "f", :meta {:metabase/enterprise-ns "ee.core"}}
+                               {:ns "ee.core", :name "f"}]})))))
+
+(deftest source-aliases-test
+  (let [edges '{oss.core/f oss.mirror/f, ee.core/f oss.mirror/f, lib.core/g lib.convert/g}]
+    (testing "a re-export and an enterprise defenterprise each count under the OSS var"
+      (is (= '{oss.core/f oss.mirror/f, ee.core/f oss.mirror/f}
+             (kondo-ratchet/source-aliases edges '#{oss.core/f oss.mirror/f ee.core/f}))))
+    (testing "a chain through an unconfigured var ends at the last configured one"
+      (is (= '{a/f c/f}
+             (kondo-ratchet/source-aliases '{a/f b/f, b/f c/f} '#{a/f c/f}))))
+    (testing "a cycle stops instead of looping"
+      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f}))))
+    (testing "a var whose source isn't configured counts under itself"
+      (is (= {} (kondo-ratchet/source-aliases edges '#{lib.core/g}))))))
+
+(deftest alias-edges!-test
+  (testing "each pass lints the namespaces where the chains end so far, following them through unconfigured vars"
+    (let [analyses {"a.clj" {:var-definitions [{:ns "a", :name "f", :imported-ns "b"}]}
+                    "b.clj" {:var-definitions [{:ns "b", :name "f", :imported-ns "c"}]}
+                    "c.clj" {:var-definitions [{:ns "c", :name "f"}]}}
+          linted   (atom [])
+          analyze  (fn [files]
+                     (swap! linted conj (vec files))
+                     {:var-definitions (mapcat (comp :var-definitions analyses) files)})]
+      (is (= '{a/f b/f, b/f c/f}
+             (kondo-ratchet/alias-edges! '#{a/f c/f} #(vector (str % ".clj")) analyze)))
+      (is (= [["a.clj" "c.clj"] ["b.clj"]] @linted)))))
+
+(deftest attribute-discouraged-alias-test
+  (testing "an ignore on a re-exported var counts under its source"
+    (is (= {:lib.convert/->legacy-MBQL 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"d.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(lib/->legacy-MBQL q)\n"}
+                {:findings [{:filename "d.clj", :row 2, :col 2, :type "discouraged-var"}]
+                 :analysis {:var-usages       [{:filename "d.clj", :row 2, :col 2, :to "metabase.lib.core", :alias "lib", :name "->legacy-MBQL"}]
+                            :namespace-usages [{:filename "d.clj", :row 1, :col 1, :to "metabase.lib.core", :alias "lib"}]}}
+                []
+                {:discouraged-var #{'metabase.lib.convert/->legacy-MBQL 'metabase.lib.core/->legacy-MBQL}}
+                '{metabase.lib.core/->legacy-MBQL metabase.lib.convert/->legacy-MBQL})
+               (get-in [:actual :discouraged-var]))))))
+
 (deftest parse-kondo-output-test
   (testing "a run that reported findings still parses"
     (is (= {:findings [{:type :x}]}

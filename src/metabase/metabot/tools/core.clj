@@ -124,7 +124,11 @@
    [:metabot/title-fn       {:optional true} [:maybe fn?]]
    ;; Set by a tool that saves something. A failure it did not declare may have come after the save,
    ;; so `metabase.metabot.tools.runtime/invoke` ends the turn instead of letting the model try again.
-   [:metabot/writes?        {:optional true} [:maybe :boolean]]])
+   [:metabot/writes?        {:optional true} [:maybe :boolean]]
+   ;; Set by a tool whose call changes state that other calls read, such as a stored query. In one model response,
+   ;; `metabase.metabot.self.core/tool-executor-xf` starts its call once the calls before it have finished, and the
+   ;; calls after it once it has finished.
+   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.
@@ -428,7 +432,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (and (not (contains? (ex-data e) tools.error/error-key))
+      (if (and (not (tools.error/declared? e))
                (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
@@ -475,6 +479,11 @@
       (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
+          ;; Its payload and recovery steps are more specific than anything below would rebuild. A declared
+          ;; not-found carries a 404, and a declared recoverable carries `:agent-error?`, so both would match.
+          (tools.error/declared? e)
+          (throw e)
+
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
@@ -499,7 +508,8 @@
     (with-pipeline-errors
       (construct/execute-representations-query query))
 
-  Three cases:
+  Four cases:
+  - a declared tool error passes through unchanged, so a nested `with-entity` keeps the entity it names;
   - an `:agent-error?` exception whose ex-data carries an `:error` code declared in
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;

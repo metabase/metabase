@@ -15,11 +15,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -166,15 +165,11 @@
     (-> (merge defaults field)
         enforce-effective-type-invariant)))
 
-(def field-user-settings
-  "Set of user-settable values for a Field; see [[warehouse-schema-overlay/user-settable-field-columns]]."
-  warehouse-schema-overlay/user-settable-field-columns)
-
 (t2/define-before-update :model/Field
   [field]
   (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
+    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
+    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
   (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field
@@ -463,7 +458,8 @@
     field))
 
 (defmethod serdes/make-spec "Field" [_model-name _opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
+  {:schema    ::warehouse-schema.schema/external-field
+   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate

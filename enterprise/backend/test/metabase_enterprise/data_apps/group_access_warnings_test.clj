@@ -9,6 +9,7 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -275,8 +276,8 @@
                      :model/Table owls {:db_id (:id aviary) :name "owls" :display_name "Owls" :schema "PUBLIC"}
                      :model/Table albatrosses {:db_id (:id zoo) :name "albatrosses"
                                                :display_name "Albatrosses" :schema nil}
-                     :model/TableUserSettings _ {:table_id (:id finches) :display_name "Finches"}
                      :model/PermissionsGroup group {}]
+        (table-user-settings/upsert-table-user-settings! finches {:display_name "Finches"})
         (with-app-reading! [app [(:id albatrosses) (:id owls) (:id finches)]]
           (doseq [group-id [(:id (perms/all-users-group)) (:id group)]
                   database-id [(:id aviary) (:id zoo)]]

@@ -2,7 +2,8 @@
 ;; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).
 ;; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline
 ;; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened
-;; to `ee.`.
+;; to `ee.`. A re-exported var counts under the var it re-exports, and an enterprise `defenterprise` under
+;; its OSS counterpart.
 ;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other
 ;; budget is a non-negative integer.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
@@ -26,7 +27,7 @@
                                 :main-without-gen-class                                    1
                                 :metabase/discourage-dynamic-vars                          323
                                 :metabase/discourage-millis-duration                       1
-                                :metabase/modules                                          23
+                                :metabase/modules                                          16
                                 :metabase/namespace-name                                   3
                                 :metabase/validate-defendpoint-has-response-schema         424
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
@@ -54,7 +55,7 @@
                                 :legacy-mbql.schema    14
                                 :legacy-mbql.util      2
                                 :query-processor.store 8
-                                :toucan2.core          3
+                                :toucan2.core          4
                                 :util.malli.schema     2}
  :discouraged-var-counts       {:clojure.core/eval                                     6
                                 :clojure.core/print                                    1
@@ -72,7 +73,7 @@
                                 :ee.transform-testing.expectations.empty/->Empty       1
                                 :ee.transform-testing.expectations.equals/->EqualsRows 1
                                 :ee.transform-testing.expectations.equals/->EqualsSql  1
-                                :lib.core/->legacy-MBQL                                10
+                                :lib.convert/->legacy-MBQL                             10
                                 :lib.equality/find-column-indexes-for-refs             1
                                 :malli.core/explain                                    1
                                 :malli.core/explainer                                  1
@@ -80,8 +81,7 @@
                                 :malli.core/validator                                  1
                                 :me.flowthing.pp/pprint                                2
                                 :next.jdbc/active-tx?                                  1
-                                :search.entity-retrieval.core/search-unfiltered        1
-                                :search.entity-retrieval.mirror/search-unfiltered      1}
+                                :search.entity-retrieval.mirror/search-unfiltered      2}
  :config-counts                {:constant-condition                      1
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16
@@ -92,9 +92,9 @@
                                 :metabase/defsetting-must-specify-export 1
                                 :metabase/defsetting-namespace           1
                                 :metabase/discourage-dynamic-vars        1
+                                :metabase/modules                        1
                                 :metabase/prefer-with-dynamic-fn-redefs  4
                                 :metabase/t2-query-namespace             2
-                                :metabase/table-or-field-query           1
                                 :metabase/unsafe-app-db-query            1
                                 :missing-docstring                       1
                                 :private-call                            1

@@ -127,6 +127,7 @@ Metabase's reference documentation.
 ### Data apps
 
 - [Data apps overview](./data-apps/start.md)
+- [Getting started with data apps](./data-apps/getting-started.md)
 - [Build a data app](./data-apps/build.md)
 - [Manage data apps](./data-apps/manage.md)
 
@@ -148,8 +149,9 @@ Metabase's reference documentation.
 
 ### Actions
 
-- [Actions overview](./data-modeling/models/actions/start.md)
-- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Data actions](./data-modeling/data-actions.md)
+- [Model actions](./data-modeling/models/actions/start.md)
+- [Introduction to model actions](./data-modeling/models/actions/introduction.md)
 - [Basic actions](./data-modeling/models/actions/basic.md)
 - [Custom actions](./data-modeling/models/actions/custom.md)
 
@@ -258,6 +260,7 @@ Metabase's reference documentation.
 
 - [Monitor overview](./monitor/start.md)
 - [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Content diagnostics](./monitor/content-diagnostics.md)
 - [Erroring questions](./monitor/erroring-questions.md)
 - [Alerts management](./monitor/alerts-management.md)
 - [Background tasks](./monitor/background-tasks.md)

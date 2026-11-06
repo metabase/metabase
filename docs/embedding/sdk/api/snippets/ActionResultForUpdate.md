@@ -1,17 +1,17 @@
 ```ts
 type ActionResultForUpdate = {
-  rows-updated: readonly RowValue[];
+  rows-updated: number;
 };
 ```
 
-Response from a single-row update — the affected primary keys.
+Response from a single-row update — the number of rows updated.
 
 ## Properties
 
 <!-- [<snippet properties>] -->
 
-| Property                                 | Type                                                                |
-| :--------------------------------------- | :------------------------------------------------------------------ |
-| <a id="rows-updated"></a> `rows-updated` | readonly [`RowValue`](/docs/latest/embedding/sdk/api/RowValue.md)[] |
+| Property                                 | Type     |
+| :--------------------------------------- | :------- |
+| <a id="rows-updated"></a> `rows-updated` | `number` |
 
 <!-- [<endsnippet properties>] -->

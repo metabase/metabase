@@ -77,9 +77,3 @@
                    [(:id inst)
                     (boolean (contains? remote-synced-coll-ids (:collection_id inst)))]))
             instances))))
-
-(defenterprise collection-syncable?
-  "Whether `collection` can be remote-synced, never on OSS."
-  metabase-enterprise.remote-sync.core
-  [_collection]
-  false)

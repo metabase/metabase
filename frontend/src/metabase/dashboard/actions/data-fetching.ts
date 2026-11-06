@@ -54,6 +54,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
+import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import { hasUnansweredGoalReferences } from "metabase/viz-core";
@@ -967,7 +968,7 @@ export const fetchDashboard = createAsyncThunk(
 
       // A request without the signal, such as the prefetched path's metadata,
       // can outlive a newer fetch or an unmount, so its result is dropped here
-      signal.throwIfAborted();
+      throwIfSignalAborted(signal);
       fetchDashboardCancellation = null;
 
       const isUsingCachedResults = entities != null;

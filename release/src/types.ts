@@ -81,13 +81,6 @@ export type Milestone = {
   description: string | null;
 };
 
-export type Commit = {
-  sha: string;
-  commit: {
-    message: string;
-  };
-};
-
 export type Tag = {
   ref: string;
   node_id: string;

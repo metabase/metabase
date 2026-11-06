@@ -176,7 +176,8 @@
 
 (defmethod serdes/make-spec "DataApp"
   [_model-name _opts]
-  {:copy      [:entity_id :description :version :allowed_hosts]
+  {:schema    ::data-apps.schema/external-data-app
+   :copy      [:entity_id :description :version :allowed_hosts]
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself

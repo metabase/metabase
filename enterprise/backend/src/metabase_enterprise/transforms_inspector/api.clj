@@ -19,6 +19,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
@@ -64,7 +65,7 @@
    Returns structural metadata and available lens types."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [transform (api/read-check :model/Transform id)
-        _         (transforms.core/check-feature-enabled! transform)
+        _         (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
         result    (tracing/with-span :transforms "transforms.inspector.discover"
                     {:transform/id          id
                      :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))}
@@ -90,7 +91,7 @@
                             [:lens-id ms/NonBlankString]]
    params :- ::inspector.schema/lens-params.request]
   (let [transform (api/read-check :model/Transform id)
-        _         (transforms.core/check-feature-enabled! transform)
+        _         (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
         result    (tracing/with-span :transforms "transforms.inspector.lens"
                     {:transform/id          id
                      :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))
@@ -125,7 +126,7 @@
        [:query ::lib-be.schema/maybe-legacy-query]
        [:lens_params {:optional true} [:maybe ::inspector.schema/lens-params.request]]]]
   (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
+    (transforms.core/check-feature-enabled! (transforms.u/->definition transform))
     (let [info {:executed-by  api/*current-user-id*
                 :context      :transform-inspector
                 :transform-id id

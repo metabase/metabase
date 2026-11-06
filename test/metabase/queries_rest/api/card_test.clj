@@ -860,10 +860,10 @@
           type-schema            (resolve-schema (get body-properties "type"))
           result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema..card.type"} {:type :null}]}
+        (is (=? {:anyOf [{:$ref "#/components/schemas/metabase.queries.schema..card.type"} {:type :null}]}
                 type-schema)))
       (testing 'result_metadata
-        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"} {:type :null}]}
+        (is (=? {:anyOf [{:$ref "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"} {:type :null}]}
                 result-metadata-schema))))))
 
 (deftest create-a-card
@@ -3571,6 +3571,27 @@
               :collections ["Horseshoe Collection" "Horseshoe Collection"]}
              (POST-card-collections! :rasta 403 nil [card-1 card-2]))))))
 
+(deftest bulk-move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+    (mt/with-temp [:model/Collection collection {:name "Writable Collection"}
+                   :model/Card       card-1     {:collection_id (u/the-id collection)}
+                   :model/Card       card-2     {:collection_id (u/the-id collection)}
+                   :model/Card       root-card  {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (testing "moving cards into root without root write perms is forbidden"
+        (is (= {:response    "You don't have permissions to do that."
+                :collections ["Writable Collection" "Writable Collection"]}
+               (POST-card-collections! :rasta 403 nil [card-1 card-2]))))
+      (testing "moving a card out of root without root write perms is forbidden"
+        (is (= {:response    "You don't have permissions to do that."
+                :collections [nil]}
+               (POST-card-collections! :rasta 403 collection [root-card]))))
+      (testing "a user with root write perms can move cards into root"
+        (is (= {:response    {:status "ok"}
+                :collections [nil nil]}
+               (POST-card-collections! :crowberto 200 nil [card-1 card-2])))))))
+
 (deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-the-card
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection  collection {}
@@ -4413,7 +4434,12 @@
       (is (= {:has_more_values false,
               :values          [["African" "Af"]]}
              (mt/user-http-request :rasta :get 200
-                                   (param-values-url card (:static-list-label param-keys) "af")))))
+                                   (param-values-url card (:static-list-label param-keys) "af"))))
+      (testing "labeled values match the label, not the value"
+        (is (= {:has_more_values false,
+                :values          []}
+               (mt/user-http-request :rasta :get 200
+                                     (param-values-url card (:static-list-label param-keys) "ican"))))))
     (testing "we could edit the values list"
       (let [card (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
                                        {:parameters [{:name                  "Static Category",

@@ -87,7 +87,12 @@ export const useRemoteSyncSubmit = ({
         }
       }
 
-      const initialCollections = initialValues[COLLECTIONS_KEY] ?? {};
+      const initialCollections: Record<number, boolean> = {
+        ...initialValues[COLLECTIONS_KEY],
+        ...(libraryCollection && {
+          [libraryCollection.id]: libraryCollection.is_remote_synced ?? false,
+        }),
+      };
       const changedCollections: Record<number, boolean> = {};
       for (const [idStr, desired] of Object.entries(collectionsMap)) {
         const id = Number(idStr);
