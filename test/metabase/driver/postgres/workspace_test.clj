@@ -993,3 +993,22 @@
            (finally
              (reset! stop true)
              (deref reconnector 5000 nil))))))))
+
+(deftest destroy-while-the-user-holds-its-own-role-row-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd  (new-wsd database 1050)
+           user (-> wsd :database_details :user)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
+       (when (> 160000 (server-version spec))
+         ;; before Postgres 16 the user may also have taken away the membership that lets teardown end its sessions
+         (is (= [0] (as-workspace-user wsd (format "REVOKE %s FROM %s" user (:user provisioner))))))
+       (let [session (hold-session! wsd ["ALTER ROLE CURRENT_USER PASSWORD 'HeldOpenPassw0rd'"])]
+         (try
+           (testing "an uncommitted ALTER ROLE on itself, held open in another session, does not stop destroy"
+             (with-redefs [postgres/workspace-lock-timeout "2s"]
+               (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd)))))
+             (is (not (role-exists? spec user))))
+           (finally
+             (.close session))))))))

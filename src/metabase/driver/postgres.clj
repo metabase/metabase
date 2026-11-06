@@ -2138,17 +2138,38 @@
                                       "WHERE r.rolname = ?::text AND m.rolname <> current_user ORDER BY 1")
                                  user])))
 
-(defn- lock-out-workspace-user!
-  "The user can no longer log in, this login is a member of it again, and no other role is. Before Postgres 16 a role
-  administers its own membership, so the user may have revoked this login's membership, which teardown needs, or
-  granted itself to another role, which could then act as it."
+(defn- reclaim-membership!
+  "This login is a member of the user again, and no other role is. Before Postgres 16 a role administers its own
+  membership, so the user may have revoked this login's membership, which teardown needs, or granted itself to another
+  role, which could then act as it."
   [conn user]
-  (doseq [sql [(format "ALTER ROLE %s NOLOGIN" (quote-role user))
-               (grant-membership-statement conn user)]]
-    (jdbc/execute! conn [sql]))
+  (jdbc/execute! conn [(grant-membership-statement conn user)])
   (when (> 160000 (:v (first (jdbc/query conn ["SELECT pg_catalog.current_setting('server_version_num')::int AS v"]))))
     (doseq [member (other-members conn user)]
       (jdbc/execute! conn [(format "REVOKE %s FROM %s" (quote-role user) (quote-role member))]))))
+
+(def ^:private lock-out-attempts 3)
+
+(defn- lock-timeout? [e]
+  (= "55P03" (sql-state (ex-cause e))))
+
+(defn- lock-out-workspace-user!
+  "The user can no longer log in. A session of the user that holds its own role row, such as an uncommitted
+  `ALTER ROLE` on itself, would make NOLOGIN wait out the lock timeout: its sessions are ended first, and again after
+  each timeout."
+  [step user]
+  (step #(end-sessions! % user))
+  (loop [attempt 1]
+    (let [locked-out? (try
+                        (step #(jdbc/execute! % [(format "ALTER ROLE %s NOLOGIN" (quote-role user))]))
+                        true
+                        (catch clojure.lang.ExceptionInfo e
+                          (if (and (lock-timeout? e) (< attempt lock-out-attempts))
+                            false
+                            (throw e))))]
+      (when-not locked-out?
+        (step #(end-sessions! % user))
+        (recur (inc attempt))))))
 
 (def ^:private session-exit-wait-ms
   "How long teardown waits for the workspace user's sessions to exit once they are told to."
@@ -2198,17 +2219,17 @@
   [user ^Throwable e]
   (let [e (driver.u/batch-exception e)]
     (case (sql-state e)
-      "2BP01" (ex-info (format (str "Workspace user %s cannot be dropped yet: %s It can no longer log in and holds no "
+      "2BP01" (ex-info (format (str "Workspace user %s cannot be dropped yet: %s. It can no longer log in and holds no "
                                     "grant from the provisioning login. Run `DROP OWNED BY %s` in each database named, "
                                     "then retry.")
-                               (quote-role user) (ex-message e) (quote-role user))
+                               (quote-role user) (str/replace (str/trim (ex-message e)) #"\.$" "") (quote-role user))
                        {:status-code 409, :user user}
                        e)
-      "42501" (ex-info (format (str "The provisioning login may not drop workspace user %s: %s It can no longer log in "
+      "42501" (ex-info (format (str "The provisioning login may not drop workspace user %s: %s. It can no longer log in "
                                     "and holds no grant from the provisioning login. The provisioning login needs the "
                                     "privileges of the workspace user: make it a member (`GRANT %s TO <provisioning "
                                     "login>`) that inherits them (`ALTER ROLE <provisioning login> INHERIT`), then retry.")
-                               (quote-role user) (ex-message e) (quote-role user))
+                               (quote-role user) (str/replace (str/trim (ex-message e)) #"\.$" "") (quote-role user))
                        {:status-code 409, :user user}
                        e)
       e)))
@@ -2218,7 +2239,8 @@
   (let [user (workspace-user-name wsd)
         step (fn [f] (do-in-workspace-transaction database [] (fn [conn] (when (role-exists? conn user) (f conn)))))]
     ;; each step commits on its own, so a later failure leaves the user locked out and without main access
-    (step #(lock-out-workspace-user! % user))
+    (step #(reclaim-membership! % user))
+    (lock-out-workspace-user! step user)
     ;; before waiting on sessions, so that one that stays open has lost its main access
     (step #(revoke-grants! % user))
     (when (step (constantly true))
