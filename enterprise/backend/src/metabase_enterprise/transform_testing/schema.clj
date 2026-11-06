@@ -138,43 +138,79 @@
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
 
-(mr/def ::transform-test.definition
-  "A transform test as a client writes it, without the transform it covers."
+(mr/def ::test.definition
+  "A test as a client writes it, without the subject it covers."
   [:map {:closed true}
    [:name         ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       ::inputs]
    [:expectations ::expectations]])
 
-(mr/def ::transform-test.create
-  "What a client sends to create a transform test."
+(defn- test-create
+  "What a client sends to create a test of the subject that `subject-key` names, a `subject-id`."
+  [subject-key subject-id]
   [:merge
    [:map {:closed true}
-    [:transform_id ::lib.schema.id/transform]]
-   ::transform-test.definition])
+    [subject-key subject-id]]
+   ::test.definition])
 
-(mr/def ::transform-test
-  "A saved transform test: the transform it covers, the inputs that stand in for its source
-  tables, and the expectations checked against its output."
+(defn- saved-test
+  "A saved test of the subject that `subject-key` names, a `subject-id`: the subject, the inputs that stand in for the
+  tables it reads, and the expectations checked against its output."
+  [subject-key subject-id]
   [:merge
-   ::transform-test.definition
+   ::test.definition
    [:map {:closed true}
-    [:id           ms/PositiveInt]
-    [:entity_id    :string]
-    [:transform_id ::lib.schema.id/transform]
-    [:creator_id   ::lib.schema.id/user]
-    [:description  {:optional true} [:maybe :string]]
-    [:created_at   ms/TemporalInstant]
-    [:updated_at   ms/TemporalInstant]]])
+    [:id          ms/PositiveInt]
+    [:entity_id   :string]
+    [subject-key  subject-id]
+    [:creator_id  ::lib.schema.id/user]
+    [:description {:optional true} [:maybe :string]]
+    [:created_at  ms/TemporalInstant]
+    [:updated_at  ms/TemporalInstant]]])
 
-(mr/def ::transform-test.update
-  "What a client sends to update a transform test. Omitted fields are left unchanged."
+(defn- test-update
+  "What a client sends to update a test of the subject that `subject-key` names, a `subject-id`. Omitted fields are
+  left unchanged."
+  [subject-key subject-id]
   [:map {:closed true}
-   [:transform_id {:optional true} ::lib.schema.id/transform]
+   [subject-key   {:optional true} subject-id]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]])
+
+(mr/def ::transform-test.definition
+  "A transform test as a client writes it, without the transform it covers."
+  ::test.definition)
+
+(mr/def ::transform-test.create
+  "What a client sends to create a transform test."
+  (test-create :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test
+  "A saved transform test."
+  (saved-test :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test.update
+  "What a client sends to update a transform test. Omitted fields are left unchanged."
+  (test-update :transform_id ::lib.schema.id/transform))
+
+(mr/def ::card-test.definition
+  "A card test as a client writes it, without the card it covers."
+  ::test.definition)
+
+(mr/def ::card-test.create
+  "What a client sends to create a card test."
+  (test-create :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test
+  "A saved card test."
+  (saved-test :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test.update
+  "What a client sends to update a card test. Omitted fields are left unchanged."
+  (test-update :card_id ::lib.schema.id/card))
 
 (mr/def ::run-status
   "The persisted lifecycle state of a transform test run."
