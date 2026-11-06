@@ -604,6 +604,20 @@ describe("NativeQuery", () => {
       expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
     });
 
+    it("should preserve the order of template tags when the type of a tag changes (metabase#11580)", () => {
+      const oldQuery = makeQuery().setQueryText("SELECT {{foo}} {{bar}}");
+      const newQuery = oldQuery.setTemplateTag("foo", {
+        ...oldQuery.templateTagsMap()["foo"],
+        type: "number",
+      });
+
+      expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+        "foo",
+        "bar",
+      ]);
+      expect(newQuery.templateTagsMap()["foo"].type).toBe("number");
+    });
+
     it("should allow setting source settings for tags", () => {
       const oldQuery = makeQuery().setQueryText(
         "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
