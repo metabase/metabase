@@ -156,8 +156,8 @@
                     readable)]
     (filter #(or (:action_id %) (nil? (:card_id %)) (contains? visible (:card_id %))) dashcards)))
 
-(defn- with-filter-connections
-  "Each of `parameters` with the ids of the `dashcards` it filters, as `:connected_dashcards`."
+(defn with-filter-connections
+  "Each of the dashboard filters `parameters` with the ids of the `dashcards` it filters, as `:connected_dashcards`."
   [parameters dashcards]
   (for [{parameter-id :id :as parameter} parameters]
     (assoc parameter :connected_dashcards (for [{:keys [id parameter_mappings]} dashcards

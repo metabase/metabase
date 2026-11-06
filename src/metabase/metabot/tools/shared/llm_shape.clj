@@ -741,8 +741,7 @@
 
 (defn dashboard-filter->xml
   "The `<filter>` element for the dashboard filter `parameter`.
-  It shows the filter's default value and `:connected_dashcards`, the ids of the dashcards it filters, when it has
-  them."
+  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them."
   [{:keys [id name type default connected_dashcards]}]
   (str "<filter id=\"" (escape-xml id)
        "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
