@@ -206,6 +206,13 @@ export function tableOrCardMetadata(
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
 
+export function cardMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  cardId: CardId,
+): CardMetadata | null {
+  return ML.card_metadata(queryOrMetadataProvider, cardId);
+}
+
 export function fieldMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   fieldID: FieldId,

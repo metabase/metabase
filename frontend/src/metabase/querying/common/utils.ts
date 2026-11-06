@@ -1,6 +1,7 @@
 import type { ComboboxItem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
+  CardId,
   DatasetColumn,
   Field,
   FieldValue,
@@ -32,6 +33,21 @@ export type TableQueryAndColumns = {
   columns: Lib.ColumnMetadata[];
 };
 
+const getMetadataQueryAndColumns = (
+  metadataProvider: Lib.MetadataProvider,
+  tableOrCardMetadata: Lib.TableMetadata | Lib.CardMetadata,
+): TableQueryAndColumns => {
+  const query = Lib.queryFromTableOrCardMetadata(
+    metadataProvider,
+    tableOrCardMetadata,
+  );
+  return {
+    query,
+    stageIndex: STAGE_INDEX,
+    columns: Lib.returnedColumns(query, STAGE_INDEX),
+  };
+};
+
 export const getTableQueryAndColumns = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
@@ -40,16 +56,18 @@ export const getTableQueryAndColumns = (
   if (tableMetadata == null) {
     return undefined;
   }
+  return getMetadataQueryAndColumns(metadataProvider, tableMetadata);
+};
 
-  const query = Lib.queryFromTableOrCardMetadata(
-    metadataProvider,
-    tableMetadata,
-  );
-  return {
-    query,
-    stageIndex: STAGE_INDEX,
-    columns: Lib.returnedColumns(query, STAGE_INDEX),
-  };
+export const getCardQueryAndColumns = (
+  metadataProvider: Lib.MetadataProvider,
+  cardId: CardId,
+): TableQueryAndColumns | undefined => {
+  const cardMetadata = Lib.cardMetadata(metadataProvider, cardId);
+  if (cardMetadata == null) {
+    return undefined;
+  }
+  return getMetadataQueryAndColumns(metadataProvider, cardMetadata);
 };
 
 export const getQueryAndColumns = (
