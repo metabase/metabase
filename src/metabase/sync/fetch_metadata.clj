@@ -154,10 +154,23 @@
                           (:schema-names args)
                           (update :schema-names ws.table-remapping/expand-schema-names-with-workspace db-id))]
       (when (driver.u/supports? driver :metadata/key-constraints database)
-        (cond->> (driver/describe-fks driver database args)
-          ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-          (mu.fn/instrument-ns? *ns*)
-          (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
+        (let [ ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
+              ;; *different* bound database than the canonical) need describe-fks to
+              ;; run with the JDBC connection pointed at the iso DB. Loop per iso-DB
+              ;; via the workspace hook and concatenate row results. OSS fallback
+              ;; calls the thunk once with no swap, preserving today's behavior.
+              row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
+                              db-id
+                              (fn []
+                                (into [] (driver/describe-fks driver
+                                                              database
+                                                              expanded-args))))
+              raw-rows       (vec (mapcat identity row-batches))
+              rewritten-rows (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)]
+          (cond->> rewritten-rows
+            ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
+            (mu.fn/instrument-ns? *ns*)
+            (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
   "Get information about the indexes belonging to `table`. In workspace mode,
