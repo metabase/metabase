@@ -90,6 +90,13 @@
   []
   false)
 
+(defenterprise workspace-database-exists?
+  "True if any workspace has a database row for the Database with `database-id`. The OSS
+   fallback returns false, since OSS has no workspaces."
+  metabase-enterprise.workspaces.core
+  [_database-id]
+  false)
+
 (defn check-not-in-workspace-mode!
   "Throws an HTTP 400 `ex-info` if this instance is running in workspace mode.
 

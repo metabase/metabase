@@ -149,7 +149,19 @@
                                      :name "Test Transform"}]
     (is (= "Cannot enable database routing for a database with transforms"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"})))))
+                                 {:user_attribute "db_name"}))))
+  (testing "workspace rows refuse routing even with the setting off, since their teardown would follow routing"
+    (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-workspaces false}}
+                   :model/Workspace {ws-id :id} {:name "w" :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {:user "mb__isolation_w" :password "secret"}
+                                               :output_namespace "mb__isolation_w"
+                                               :input_schemas    []
+                                               :status           :provisioned}]
+      (is (= "Cannot enable database routing for a database used by a workspace"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"}))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}

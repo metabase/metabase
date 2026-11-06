@@ -118,6 +118,7 @@
     (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
     (api/check-400 (not (:admin_details db)) "Cannot enable database routing for a database with an admin connection configured")
     (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms")
+    (api/check-400 (not (workspaces/workspace-database-exists? id)) "Cannot enable database routing for a database used by a workspace")
     (setting/with-database db
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")

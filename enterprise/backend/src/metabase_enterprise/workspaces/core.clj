@@ -155,6 +155,14 @@
   []
   (some? (ws.settings/instance-workspace)))
 
+(defenterprise workspace-database-exists?
+  "EE impl: whether any WorkspaceDatabase row references the Database with `database-id`.
+   Ungated like [[workspace-mode?]]: rows outlive a lapsed token, and their teardown
+   still connects to the database."
+  :feature :none
+  [database-id]
+  (ws.db/database-has-workspace-databases? database-id))
+
 (defn db-workspace-namespace
   "Return the workspace-isolated output namespace map for `db-id` on this
    instance, or `nil` when this instance is not running a workspace or the

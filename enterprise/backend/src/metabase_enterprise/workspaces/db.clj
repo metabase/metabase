@@ -186,6 +186,11 @@
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/WorkspaceDatabase :workspace_id workspace-id :status [:not= :unprovisioned]))
 
+(mu/defn database-has-workspace-databases?
+  "Whether any WorkspaceDatabase references the Database with `database-id`, whatever its status."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/WorkspaceDatabase :database_id database-id))
+
 (mu/defn database-has-active-workspace-databases?
   "Whether the Database with `database-id` has a WorkspaceDatabase that is not `:unprovisioned`."
   [database-id :- ::lib.schema.id/database]
