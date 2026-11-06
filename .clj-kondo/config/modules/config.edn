@@ -4424,6 +4424,7 @@
            analytics.interface
            api
            app-db
+           audit-app
            channel
            driver
            events
