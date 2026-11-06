@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { Alert, Card, Flex, Radio, Stack, Text } from "metabase/ui";
+import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { getEmbedExperiences } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
@@ -73,12 +73,11 @@ export const ExperienceCard = () => {
           </Stack>
         </Radio.Group>
 
-        {showSsoNotConfiguredWarning &&
-          (experience === "data-app" ? (
-            <Alert color="warning">{t`Configure JWT or SAML single sign-on to embed a data app.`}</Alert>
-          ) : (
-            <SetupSsoAlert />
-          ))}
+        {showSsoNotConfiguredWarning && (
+          <SetupSsoAlert
+            variant={experience === "data-app" ? "data-app" : "local-testing"}
+          />
+        )}
       </Stack>
     </Card>
   );

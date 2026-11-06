@@ -340,4 +340,47 @@ describe("data app embedding setup", () => {
 
     expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
   });
+
+  it.each(["Data Apps", "Exploration", "Browser"])(
+    "lets the admin switch to and from %s before accepting the usage conditions",
+    async (experience) => {
+      setupDataApps({
+        modularEmbeddingEnabled: false,
+        showModularEmbedTerms: true,
+      });
+
+      await waitForRequestsToSettle();
+
+      const experienceRadio = screen.getByRole("radio", { name: experience });
+      const dashboardRadio = screen.getByRole("radio", { name: /Dashboard/ });
+
+      await userEvent.click(experienceRadio);
+      expect(experienceRadio).toBeChecked();
+
+      await userEvent.click(dashboardRadio);
+      expect(dashboardRadio).toBeChecked();
+    },
+  );
+
+  it("links to SSO setup when SSO is not configured", async () => {
+    setupDataApps({
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+      jwtReady: false,
+    });
+
+    await waitForRequestsToSettle();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Configure JWT SSO or SAML to embed a data app.",
+    );
+
+    const setupSsoLink = screen.getByRole("link", {
+      name: "JWT SSO or SAML",
+    });
+
+    expect(setupSsoLink).toHaveAttribute("target", "_blank");
+    expect(setupSsoLink).toHaveStyle({
+      fontSize: "inherit",
+      lineHeight: "inherit",
+    });
+  });
 });
