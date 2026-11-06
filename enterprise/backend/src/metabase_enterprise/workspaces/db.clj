@@ -7,7 +7,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mr/def ::status
@@ -64,8 +63,7 @@
 (mu/defn active-table-schemas
   "The set of schemas of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                    {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :schema :model/Table :db_id database-id :active true))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
