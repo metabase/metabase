@@ -561,7 +561,9 @@
     :session-management
     :session-timeout-config
     :sso-oidc
-    :admin-security-center})
+    :admin-security-center
+    ;; tracked by the workspaces storage slice, which brings the :model/Workspace its stats line reads
+    :workspaces})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
