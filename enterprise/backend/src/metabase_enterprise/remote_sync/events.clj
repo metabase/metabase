@@ -16,7 +16,7 @@
    - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
    - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)
-   - DataApp, and CustomVizPlugin while it has a stored bundle"
+   - DataApp, CustomVizPlugin"
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]

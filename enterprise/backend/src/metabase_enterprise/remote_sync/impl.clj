@@ -449,13 +449,9 @@
 
 (def ^:private full-import-models
   "Models whose change forces a full import on the incremental fast-path: Collection (a rename moves every
-  descendant's file, a delete cascades to its contents), the feature models (their presence drives the
-  remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly), and the
-  models whose YAML files carry resource files (the incremental ingestable is filtered to the changed YAML paths, so
-  it could not read the resources beside them)."
-  (into #{"Collection" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"}
-        (keep (fn [spec] (when (:resources? spec) (:model-type spec))))
-        (vals spec/remote-sync-specs)))
+  descendant's file, a delete cascades to its contents) and the feature models (their presence drives the
+  remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly)."
+  #{"Collection" "CustomVizPlugin" "DataApp" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
 
 (defn- managed-path?
   "True for a file under a managed directory."

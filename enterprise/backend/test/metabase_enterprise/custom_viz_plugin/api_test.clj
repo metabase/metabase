@@ -348,7 +348,7 @@
 (deftest asset-endpoint-serves-icon-with-dot-segments-test
   (mt/with-premium-features #{:custom-viz}
     (let [bundle (cvp.tu/make-tgz-bytes [["metabase-plugin.json" (json/encode {:name "dot-icon" :icon "./icon.svg"})]
-                                         ["dist/index.js" "{}"]
+                                         ["dist/index.js" "console.log('hi')"]
                                          ["dist/assets/icon.svg" "<svg xmlns='http://www.w3.org/2000/svg'/>"]])]
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dot-icon"
                                                       :display_name "dot-icon"
@@ -374,7 +374,7 @@
                                                  :icon     "icon.svg"
                                                  :metabase {:version ">=1.59.0"}
                                                  :sdk      {:version "2.0.0"}})]
-                       ["dist/index.js" "{}"]])
+                       ["dist/index.js" "console.log('hi')"]])
                 resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
                 row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
             (is (= "new-register-viz" (:identifier resp)))
@@ -418,7 +418,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "POST returns 400 when zip is missing metabase-plugin.json"
-        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "{}"]])
+        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"metabase-plugin\.json" (or (:message resp) (str resp)))))))))
 
@@ -437,7 +437,7 @@
       (testing "POST returns 400 when manifest has no name field"
         (let [zip  (cvp.tu/make-tgz-bytes
                     [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
-                     ["dist/index.js" "{}"]])
+                     ["dist/index.js" "console.log('hi')"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"\"name\"" (or (:message resp) (str resp)))))))))
 
