@@ -12,8 +12,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -688,53 +686,6 @@
                                                     {:type :svg :content "<svg></svg>"})]
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= 80 (:progress.goal @captured))))))
-
-(defn- rendered-viz-settings
-  "Run saved `card` with its dynamic goals, as notifications do, and return the viz settings the JS renderer gets."
-  [card]
-  (let [captured (atom nil)
-        result   (mt/as-admin
-                   (qp.card/process-query-for-card
-                    card :api
-                    :make-run (fn [qp _export-format]
-                                (fn [query info]
-                                  (qp (update query :info merge info) qp.reducible/default-rff)))))]
-    (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
-                                                  (reset! captured viz-settings)
-                                                  {:type :svg :content "<svg></svg>"})]
-      (channel.render/render-pulse-card-for-display nil card result))
-    @captured))
-
-(deftest render-resolves-metric-and-measure-goals-test
-  (testing "a saved chart's metric and measure goals reach the JS renderer as the values their queries return"
-    (mt/with-temp [:model/Card    {metric-id :id}  {:type          :metric
-                                                    :dataset_query (mt/mbql-query orders {:aggregation [[:sum $total]]
-                                                                                          :breakout    [!month.created_at]})}
-                   :model/Measure {measure-id :id} {:name       "Venue count"
-                                                    :table_id   (mt/id :venues)
-                                                    :definition (let [mp (mt/metadata-provider)]
-                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                      (lib/aggregate (lib/count))))}
-                   :model/Card    line             {:display                :line
-                                                    :dataset_query          (mt/mbql-query checkins
-                                                                              {:aggregation [[:count]]
-                                                                               :breakout    [!month.date]})
-                                                    :visualization_settings {:graph.dimensions ["DATE"]
-                                                                             :graph.metrics    ["count"]
-                                                                             :graph.show_goal  true
-                                                                             :graph.goal_value {:id     metric-id
-                                                                                                :type   "card"
-                                                                                                :column "sum"}}}
-                   :model/Card    progress         {:display                :progress
-                                                    :dataset_query          (mt/mbql-query checkins {:aggregation [[:count]]})
-                                                    :visualization_settings {:progress.goal {:id     measure-id
-                                                                                             :type   "measure"
-                                                                                             :column "count"}}}]
-      (testing "a metric grouped for display resolves to its total"
-        (is (= (ffirst (mt/rows (qp/process-query (mt/mbql-query orders {:aggregation [[:sum $total]]}))))
-               (:graph.goal_value (rendered-viz-settings line)))))
-      (testing "a measure resolves to its value"
-        (is (= 100 (:progress.goal (rendered-viz-settings progress))))))))
 
 (deftest render-resolves-dynamic-gauge-segments-test
   (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"

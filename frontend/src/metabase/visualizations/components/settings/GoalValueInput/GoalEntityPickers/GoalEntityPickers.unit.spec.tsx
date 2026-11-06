@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
   setupSearchEndpoints,
@@ -57,7 +57,7 @@ function setup() {
   setupDatabasesEndpoints([]);
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
-  fetchMock.get("path:/api/ee/library", { message: "not found" });
+  setupLibraryEndpoints();
   setupCollectionsEndpoints({
     collections: [],
     rootCollection: createMockCollection(ROOT_COLLECTION),

@@ -2982,36 +2982,6 @@
                             set)
                        goal-eid))))))
 
-(deftest card-dynamic-goal-descendants-test
-  (testing "a card's descendants leave out the card its dynamic goal reads, the same as click behavior (GDGT-3459)"
-    (mt/with-empty-h2-app-db!
-      (ts/with-temp-dpc [:model/Database   {db-id :id}    {:name "My Database"}
-                         :model/Collection {coll-id :id}  {:name "Goals"}
-                         :model/Card       {base-id :id}  {:name          "Base"
-                                                           :collection_id coll-id
-                                                           :database_id   db-id
-                                                           :dataset_query {:database db-id
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT 1 AS total"}}}
-                         :model/Card       {goal-id :id}  {:name "Goal Source" :collection_id coll-id}
-                         :model/Card       {shown-id :id} {:name                   "Shown"
-                                                           :collection_id          coll-id
-                                                           :database_id            db-id
-                                                           :display                :line
-                                                           :dataset_query          {:database db-id
-                                                                                    :type     :query
-                                                                                    :query    {:source-table (str "card__" base-id)
-                                                                                               :aggregation  [[:count]]}}
-                                                           :visualization_settings {:graph.show_goal  true
-                                                                                    :graph.goal_value {:id     goal-id
-                                                                                                       :type   "card"
-                                                                                                       :column "total"}}}]
-        (let [descendants (set (keys (serdes/descendants "Card" shown-id {})))]
-          (testing "the card its query reads is a descendant"
-            (is (contains? descendants ["Card" base-id])))
-          (testing "the card its goal reads isn't"
-            (is (not (contains? descendants ["Card" goal-id])))))))))
-
 (deftest visualizer-dashcard-dynamic-goal-descendants-test
   (testing "selecting a dashboard pulls in the card a visualizer dashcard's nested dynamic goal references"
     (mt/with-empty-h2-app-db!

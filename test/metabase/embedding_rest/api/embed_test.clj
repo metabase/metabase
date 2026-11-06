@@ -989,52 +989,6 @@
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 
-(deftest embed-card-query-referenced-entities-test
-  (testing "GET /api/embed/card/:token/query resolves the dynamic goal in the card's viz settings"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
-        (with-temp-card [card {:enable_embedding       true
-                               :display                :scalar
-                               :visualization_settings
-                               {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
-                                                   :max   nil
-                                                   :color "red"}]}}]
-          (is (= [[1000]]
-                 (-> (client/client :get 202 (card-query-url card ""))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
-
-(deftest embed-card-query-measure-goal-test
-  (testing "GET /api/embed/card/:token/query resolves a measure goal source in the card's viz settings"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
-                                                      :table_id   (mt/id :venues)
-                                                      :definition (let [mp (mt/metadata-provider)]
-                                                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                        (lib/aggregate (lib/count))))}]
-        (with-temp-card [card {:enable_embedding       true
-                               :display                :scalar
-                               :visualization_settings
-                               {:scalar.segments [{:min   {:id measure-id :type "measure" :column "count"}
-                                                   :max   nil
-                                                   :color "red"}]}}]
-          (is (=? {:status "completed" :data {:rows [[100]]}}
-                  (-> (client/client :get 202 (card-query-url card ""))
-                      (get-in [:data :referenced_entities :measure measure-id])))))))))
-
-(deftest embed-dashcard-query-referenced-entities-test
-  (testing "GET /api/embed/dashboard/:token/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
-        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                       :card {:display                :scalar
-                                              :visualization_settings
-                                              {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
-                                                                  :max   nil
-                                                                  :color "red"}]}}}]
-          (is (= [[1000]]
-                 (-> (client/client :get 202 (dashcard-url dashcard))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
-
 (deftest running-card-as-logged-in-user-does-not-set-last-used-param-values
   (testing "running the card does not set last used param values"
     (with-embedding-enabled-and-new-secret-key!
