@@ -8,8 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.classloader.core :as classloader]
-   [metabase.models.resolution :as models.resolution]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.resolution :as models.resolution]))
 
 (set! *warn-on-reflection* true)
 
@@ -177,14 +176,13 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "FieldUserSettings"]))
-             (set (->> (concat entity-id-models
-                               entities-external-name)
-                       (map name))))))
+                          [:model/DashboardCard :model/DashboardTab :model/Dimension :model/MetabotPrompt
+                           :model/FieldUserSettings]))
+             (set (concat entity-id-models entities-external-name)))))
     (doseq [model entity-id-models]
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
         ;; the property is registered by the model's own namespace, which nothing else here loads
         (classloader/require (models.resolution/model->namespace model))
-        (is (serdes/has-entity-id? model))))))
+        (is (isa? model :hook/entity-id))))))

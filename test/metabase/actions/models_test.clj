@@ -12,8 +12,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -650,35 +650,35 @@
 (deftest load-skips-http-actions-test
   (testing "HTTP actions from older exports are skipped on load"
     (let [entity-id (u/generate-nano-id)]
-      (serdes/load-one! {:type        "http"
-                         :name        "Old HTTP action"
-                         :entity_id   entity-id
-                         :serdes/meta [{:model "Action" :id entity-id}]}
-                        nil)
+      (serialization/load :model/Action [{:type        "http"
+                                          :name        "Old HTTP action"
+                                          :entity_id   entity-id
+                                          :serdes/meta [{:model "Action"}]}])
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
 
 (deftest load-table-action-without-its-table-test
-  (testing "a table action doesn't depend on its table for serdes, and loading it makes a stub of a table that isn't there"
+  (testing "table action doesn't depend on its table for serdes, and loading it makes stub of table that isn't there"
     (mt/with-model-cleanup [:model/Action :model/Table]
       (let [action-id (action/insert! {:type :implicit :name "On categories" :kind :row/create
                                        :table_id (mt/id :categories) :creator_id (mt/user->id :crowberto)})
             entity-id (u/generate-nano-id)
-            exported  (-> (u/rfirst (serdes/extract-all "Action" {:filter-column :id :filter-ids [action-id]}))
-                          (assoc :entity_id entity-id :serdes/meta [{:model "Action" :id entity-id :label "copy"}])
+            exported  (-> (u/rfirst (serialization/export :model/Action (t2/select :model/Action :id action-id)))
+                          (assoc :entity_id entity-id)
                           (assoc-in [:implicit 0 :table_id] [(:name (mt/db)) "PUBLIC" "NOT_SYNCED_YET"]))]
-        (is (= #{} (set (filter #(= "Table" (:model (last %))) (serdes/deserialization-dependencies exported)))))
-        (serdes/load-one! exported nil)
+        (is (= #{} (set (filter #(= :model/Table (first %)) (first (serialization/import-dependencies :model/Action [exported]))))))
+        (serialization/load :model/Action [exported])
         (let [table-id (t2/select-one-fn :table_id :model/ImplicitAction
                                          :action_id (t2/select-one-pk :model/Action :entity_id entity-id))]
           (is (= "NOT_SYNCED_YET" (t2/select-one-fn :name :model/Table :id table-id))))))))
 
 (deftest storage-path-test
-  (testing "actions without a model in the data actions root or namespace are stored in the data_actions folder"
+  (testing "actions without model in data actions root or namespace are stored in data_actions folder"
     (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
                    :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
       (let [folder-label (fn [action]
-                           (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
+                           (:label (second (first (serialization/batch-storage-paths
+                                                   [(assoc action :serdes/meta [{:model "Action"}])])))))]
         (is (= "data_actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
         (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
-        (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
+        (is (= "data_apps" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))

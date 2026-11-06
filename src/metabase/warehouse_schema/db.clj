@@ -6,7 +6,6 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.db :as models.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -21,13 +20,6 @@
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
-
-(mu/defn field-in-path
-  "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
-  `table-id`, or nil. See `metabase.models.db/field-in-path`, which owns the shared query."
-  [table-id    :- [:maybe ::lib.schema.id/table]
-   field-names :- [:sequential :string]]
-  (models.db/field-in-path table-id field-names))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -198,24 +190,6 @@
                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                           :where [:= :f.table_id table-id]})))
 
-(mu/defn dimension-ids-for-table :- [:set ::lib.schema.id/dimension]
-  "The ids of the Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (set (t2/select-pks-set :model/Dimension
-                          {:from  [[(t2/table-name :model/Dimension) :d]]
-                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]]
-                           :where [:= :f.table_id table-id]})))
-
-(mu/defn field-user-settings-for-tables
-  "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/FieldUserSettings
-             {:select   [:u.* [:f.table_id :table_id] [:f.name :field_name]]
-              :from     [[(t2/table-name :model/FieldUserSettings) :u]]
-              :join     [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
-              :where    [:in :f.table_id table-ids]
-              :order-by [[:f.name :asc]]}))
-
 (mu/defn insert-field-user-settings!
   "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
   [rows :- [:or (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]]
@@ -282,11 +256,6 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/TableUserSettings :table_id table-id))
 
-(mu/defn table-user-settings-exist?
-  "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings :table_id table-id))
-
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]
@@ -324,13 +293,6 @@
   (if (seq table-ids)
     (t2/delete! :model/TableUserSettings :table_id [:in table-ids])
     0))
-
-(mu/defn table-user-settings-for-tables
-  "The TableUserSettings of the Tables with `table-ids`, or every TableUserSettings when nil."
-  [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
-  (if table-ids
-    (t2/select :model/TableUserSettings :table_id [:in table-ids])
-    (t2/select :model/TableUserSettings)))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
@@ -515,22 +477,10 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
-(mu/defn segment-ids-for-table
-  "The IDs of the Segments of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
-  [table-id       :- ::lib.schema.id/table
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Segment {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
-
 (mu/defn unarchived-measures-for-tables
   "The unarchived Measures of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
-
-(mu/defn measure-ids-for-table
-  "The IDs of the Measures of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
-  [table-id       :- ::lib.schema.id/table
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Measure {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
 
 (mu/defn unarchived-metric-cards-for-tables
   "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
@@ -579,11 +529,6 @@
   "The name of the ::warehouses.schema/database with `database-id`."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name :model/Database :id database-id))
-
-(mu/defn database-id-by-name
-  "The ID of the ::warehouses.schema/database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-pk :model/Database :name database-name))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 

@@ -24,10 +24,10 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -595,9 +595,9 @@
                   drill-in  (fn [field-id]
                               (let [alias (atom nil)]
                                 (mt/with-dynamic-fn-redefs [field-stats/field-metadata-output
-                                                            (fn [query col field-id limit]
+                                                            (fn [query columns all-columns col field-id limit]
                                                               (reset! alias (:lib/desired-column-alias col))
-                                                              (output-fn query col field-id limit))]
+                                                              (output-fn query columns all-columns col field-id limit))]
                                   (let [{:keys [portable_fk]} (:structured-output
                                                                (field-stats/field-values {:entity-type "question"
                                                                                           :entity-id   card-id
@@ -698,7 +698,7 @@
   current user cannot read. Swapped in for both so a test can tell which one a caller picked."
   [tag recorded]
   (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
-    (reify resolve.mp/ContentStore
+    (reify protocol.mp/ContentStore
       (card-by-entity-id    [_ _] (refuse))
       (measure-by-entity-id [_ _] (refuse))
       (segment-by-entity-id [_ _] (refuse))

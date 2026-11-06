@@ -3,7 +3,7 @@
   on-disk file path.
 
   Why identity and not path: the storage path is derived from entity *names* and the names of the
-  collections containing them (see [[metabase-enterprise.serialization.v2.storage.util/resolve-storage-path]]),
+  collections containing them (see [[metabase-enterprise.serialization.v2.storage.util/resolve-storage-paths]]),
   so renaming or moving an entity changes its file path. A path-keyed merge would therefore treat a rename
   as delete+add and could produce two files with the same entity_id (silent corruption) or report false
   conflicts when a collection is renamed on one side. Keying on the stable serdes identity avoids all of
@@ -18,23 +18,20 @@
   differently on both sides)."
   (:require
    [clojure.string :as str]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
 (defn- entity-identity
-  "Returns a stable, rename-independent identity key for a serialized entity's YAML `content`, or nil if the
-  content can't be parsed or has no serdes path. The key is a vector of `[model id]` pairs (the serdes path
-  restored by [[serdes/restore-path]], with labels dropped)."
+  "Returns a stable, rename-independent identity key for an entity's YAML `content`, its `[model ref]` key (see
+  [[serialization/key-of]]), or nil if the content can't be parsed or names no model."
   [content]
   (try
-    (some->> (yaml/parse-string content)
-             serdes/restore-path
-             serdes/path
-             seq
-             (mapv (fn [seg] [(str (:model seg)) (str (:id seg))])))
+    (let [entity (serialization/restore-identity (yaml/parse-string content))]
+      (when (serialization/model-of entity)
+        (serialization/key-of entity)))
     (catch Exception e
       ;; A serialized entity that won't parse is abnormal (malformed/partially-written file) and demotes
       ;; this side to a path key while the other side stays identity-keyed — which reads as a phantom
@@ -93,11 +90,9 @@
   (let [content    (or (:content ours) (:content theirs))
         entity     (try (yaml/parse-string content) (catch Exception _ nil))
         path       (or (:path ours) (:path theirs))
-        ;; identity keys are [[model id] ...]; the path-fallback key is [::by-path path] for a non-serdes
-        ;; file — don't destructure the path string into a "model"/"id" (which yields garbage like "s o").
         descriptor (if (= ::by-path (first key))
                      (or path "unknown file")
-                     (let [[model id] (last key)] (str model " " id)))]
+                     (let [[model id] key] (str (name model) " " id)))]
     (cond-> (or (:name entity) descriptor)
       (and path (not= descriptor path)) (str " (" path ")"))))
 
