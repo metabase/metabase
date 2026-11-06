@@ -961,6 +961,20 @@
               :databases {"newer-token" [:h2 {}]}}
              (#'sql-jdbc.conn/without-pool (assoc-in state [:pools cache-key] newer-pool) cache-key old-pool))))))
 
+(deftest ^:synchronized checkout-after-a-halt-test
+  (testing "a checkout on a pool left over from a halt closes the connection and does not start the pools again"
+    (let [pools  @#'sql-jdbc.conn/pools-component
+          closed (atom false)
+          conn   (reify java.sql.Connection
+                   (close [_] (reset! closed true)))]
+      (system/stop! pools)
+      (.onCheckOut ^com.mchange.v2.c3p0.ConnectionCustomizer (#'sql-jdbc.conn/->WarehouseConnectionCustomizer)
+                   conn "token-from-before-the-halt")
+      (is (= {:closed? true, :error "This connection pool is closed.", :pools-state nil}
+             {:closed?     @closed
+              :error       (ex-message (sql-jdbc.conn/take-checkout-error!))
+              :pools-state @pools})))))
+
 (deftest halting-closes-pools-test
   (testing "the stop the pools component registers for a halt destroys every open pool"
     (#'sql-jdbc.conn/pools-state)
