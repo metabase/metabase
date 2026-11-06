@@ -58,6 +58,7 @@ export function TablePane({
   const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
   const hasColumns =
     columnListInfo != null && columnListInfo.columns.length > 0;
+  const metrics = table.metrics ?? [];
 
   const handleColumnClick = (columnIndex: number) => {
     onItemClick({ type: "field", tableId: table.id, columnIndex });
@@ -101,20 +102,20 @@ export function TablePane({
               />
             </>
           ) : null}
-          {table.metrics?.length ? (
+          {metrics.length > 0 ? (
             <>
               <NodeListTitle>
                 <NodeListIcon name="metric" />
                 <NodeListTitleText>
                   {ngettext(
-                    msgid`${table.metrics.length} metric`,
-                    `${table.metrics.length} metrics`,
-                    table.metrics.length,
+                    msgid`${metrics.length} metric`,
+                    `${metrics.length} metrics`,
+                    metrics.length,
                   )}
                 </NodeListTitleText>
               </NodeListTitle>
               <ul>
-                {table.metrics.map((metric) => (
+                {metrics.map((metric) => (
                   <li key={metric.id}>
                     <NodeListItemLink
                       onClick={() =>
