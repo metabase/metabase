@@ -887,4 +887,211 @@ describe("ExpressionBar", () => {
       expect(Lib.filters(onChange.mock.calls[0][0], 0)).toHaveLength(1);
     });
   });
+
+  describe("undo", () => {
+    const createQuery = () =>
+      Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const addNumberFilter = (
+      query: Lib.Query,
+      columnName: string,
+      value: number,
+    ) => {
+      const column = columnFinder(query, Lib.filterableColumns(query, 0))(
+        "ORDERS",
+        columnName,
+      );
+      return Lib.filter(
+        query,
+        0,
+        toFilterClause(
+          query,
+          0,
+          Lib.numberFilterClause({ operator: ">", column, values: [value] }),
+        ),
+      );
+    };
+    const createQueryWithFilters = () =>
+      addNumberFilter(addNumberFilter(createQuery(), "TOTAL", 10), "TAX", 5);
+
+    const UndoBar = ({
+      initialQuery,
+      externalQuery,
+      onChange,
+    }: {
+      initialQuery: Lib.Query;
+      externalQuery: Lib.Query;
+      onChange: (query: Lib.Query) => void;
+    }) => {
+      const [query, setQuery] = useState(initialQuery);
+      return (
+        <>
+          <ExpressionBar
+            query={query}
+            stageIndex={0}
+            isAutoApply
+            onChange={(nextQuery) => {
+              setQuery(nextQuery);
+              onChange(nextQuery);
+            }}
+            openKey={0}
+          />
+          <button onClick={() => setQuery(externalQuery)}>External</button>
+        </>
+      );
+    };
+
+    type SetupOpts = { query?: Lib.Query };
+
+    const setup = ({ query = createQueryWithFilters() }: SetupOpts = {}) => {
+      fetchMock.get("path:/api/prototype/field-categories", []);
+      fetchMock.get("path:/api/prototype/filter-usage", []);
+      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
+      const onChange = jest.fn<void, [Lib.Query]>();
+      renderWithProviders(
+        <UndoBar
+          initialQuery={query}
+          externalQuery={addNumberFilter(createQuery(), "QUANTITY", 1)}
+          onChange={onChange}
+        />,
+      );
+      return { onChange };
+    };
+
+    const getPills = () => screen.queryAllByTestId("filter-pill");
+    const getLastFilterCount = (onChange: jest.Mock<void, [Lib.Query]>) =>
+      Lib.filters(checkNotNull(onChange.mock.lastCall)[0], 0).length;
+    const undo = () => userEvent.keyboard("{Control>}z{/Control}");
+    const addQuantityFilter = async () => {
+      await userEvent.type(screen.getByRole("textbox"), "Quantity");
+      await userEvent.click(
+        await within(screen.getByRole("listbox")).findByText("Quantity"),
+      );
+      await userEvent.click(
+        await within(screen.getByRole("listbox")).findByText(">"),
+      );
+      await userEvent.type(screen.getByRole("textbox"), "5{Enter}");
+    };
+    const removeLastPill = async () => {
+      await act(async () => screen.getByRole("textbox").focus());
+      await userEvent.keyboard("{Backspace}");
+    };
+
+    it("takes back an added filter", async () => {
+      const { onChange } = setup();
+      await addQuantityFilter();
+      expect(getPills()).toHaveLength(3);
+
+      await undo();
+
+      expect(getPills()).toHaveLength(2);
+      expect(getLastFilterCount(onChange)).toBe(2);
+    });
+
+    it("brings an undone filter back with Shift", async () => {
+      const { onChange } = setup();
+      await addQuantityFilter();
+      await undo();
+
+      await userEvent.keyboard("{Control>}{Shift>}z{/Shift}{/Control}");
+
+      expect(getPills()).toHaveLength(3);
+      expect(getLastFilterCount(onChange)).toBe(3);
+    });
+
+    it("brings an undone filter back with Ctrl+Y", async () => {
+      setup();
+      await addQuantityFilter();
+      await undo();
+
+      await userEvent.keyboard("{Control>}y{/Control}");
+
+      expect(getPills()).toHaveLength(3);
+    });
+
+    it("restores a pill removed with Backspace", async () => {
+      const { onChange } = setup();
+      await removeLastPill();
+      expect(getPills()).toHaveLength(1);
+
+      await undo();
+
+      expect(getPills()).toHaveLength(2);
+      expect(getLastFilterCount(onChange)).toBe(2);
+    });
+
+    it("restores every pill removed through Select All", async () => {
+      const { onChange } = setup();
+      await act(async () => screen.getByRole("textbox").focus());
+      await userEvent.keyboard("{Control>}a{/Control}");
+      await userEvent.keyboard("{Backspace}");
+      expect(getPills()).toHaveLength(0);
+
+      await undo();
+
+      expect(getPills()).toHaveLength(2);
+      expect(getLastFilterCount(onChange)).toBe(2);
+    });
+
+    it("takes back a paste", async () => {
+      const source = createQueryWithFilters();
+      const payload = serializeTokens(source, 0, readTokens(source, 0));
+      const { onChange } = setup({ query: createQuery() });
+      fireEvent.paste(screen.getByRole("textbox"), {
+        clipboardData: {
+          getData: (type: string) =>
+            type === FILTER_CLIPBOARD_TYPE ? JSON.stringify(payload) : "",
+        },
+      });
+      expect(getPills()).toHaveLength(2);
+
+      await undo();
+
+      expect(getPills()).toHaveLength(0);
+      expect(getLastFilterCount(onChange)).toBe(0);
+    });
+
+    it("works from a focused pill", async () => {
+      setup();
+      await removeLastPill();
+      await act(async () => getPills()[0].focus());
+
+      await undo();
+
+      expect(getPills()).toHaveLength(2);
+    });
+
+    it("does nothing without an edit to undo", async () => {
+      const { onChange } = setup();
+      await act(async () => screen.getByRole("textbox").focus());
+
+      await undo();
+
+      expect(getPills()).toHaveLength(2);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("leaves the key to an input with text", async () => {
+      setup();
+      await removeLastPill();
+      await userEvent.type(screen.getByRole("textbox"), "tot");
+
+      await undo();
+
+      expect(getPills()).toHaveLength(1);
+    });
+
+    it("forgets its edits when the query changes from outside", async () => {
+      const { onChange } = setup();
+      await removeLastPill();
+      await userEvent.click(screen.getByRole("button", { name: "External" }));
+      expect(getPills()).toHaveLength(1);
+      const changeCount = onChange.mock.calls.length;
+
+      await act(async () => screen.getByRole("textbox").focus());
+      await undo();
+
+      expect(getPills()).toHaveLength(1);
+      expect(onChange).toHaveBeenCalledTimes(changeCount);
+    });
+  });
 });

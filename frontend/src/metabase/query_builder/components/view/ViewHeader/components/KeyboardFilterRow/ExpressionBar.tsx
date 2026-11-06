@@ -90,6 +90,10 @@ import {
 } from "./tokens";
 import type { DraftState, SuggestionGroup } from "./types";
 import { useExpressionClipboard } from "./use-expression-clipboard";
+import {
+  type HistorySnapshot,
+  useExpressionHistory,
+} from "./use-expression-history";
 import { getDraftColumn, getDraftStateFromFilter } from "./utils";
 
 export type ExpressionBarProps = {
@@ -239,6 +243,8 @@ type PillEdit = {
   original: Token;
   initialState: DraftState;
   part: FilterPillPart;
+  /** The history group of the edit, so that it undoes as one step. */
+  group: string;
 };
 
 /**
@@ -384,6 +390,8 @@ export function ExpressionBar({
     tokens.length > 0,
   );
   const [caret, setCaret] = useState(committedTokens.length);
+  // Removing tokens can leave the caret past the end; clamp it.
+  const caretIndex = Math.min(caret, tokens.length);
   const [text, setText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   // Prototype: tokens that a drag or Shift + an arrow key selected, between
@@ -411,12 +419,32 @@ export function ExpressionBar({
   // Prototype: every change of the tokens goes through the glide, so that the
   // tokens around an added or removed one slide to their new place.
   const { capture } = useGlide(barRef);
-  const setTokens = useCallback(
+  // Only the user's edits make history: the bar's own re-syncs and settles
+  // set the tokens silently.
+  const setTokensSilently = useCallback(
     (next: SetStateAction<Token[]>) => {
       capture();
       setTokensState(next);
     },
     [capture],
+  );
+  const history = useExpressionHistory({
+    tokens,
+    caretIndex,
+    barRef,
+    onRestore: ({ tokens: nextTokens, caret: nextCaret }: HistorySnapshot) => {
+      setTokensSilently(nextTokens);
+      setSelectionState(undefined);
+      endPillEdit();
+      moveCaret(nextCaret, { open: false });
+    },
+  });
+  const setTokens = useCallback(
+    (next: SetStateAction<Token[]>, { group }: { group?: string } = {}) => {
+      history.record({ group });
+      setTokensSilently(next);
+    },
+    [history, setTokensSilently],
   );
   const tokenKeys = useMemo(
     () =>
@@ -454,9 +482,10 @@ export function ExpressionBar({
       isSelfCommitRef.current = false;
       skipFlashRef.current = true;
     } else {
-      setTokens(committedTokens);
+      setTokensSilently(committedTokens);
       setCaret(committedTokens.length);
       setPillEdit(undefined);
+      history.reset();
     }
   }
   const flashed = useFlashedLabels(
@@ -485,8 +514,6 @@ export function ExpressionBar({
     }
   });
 
-  // Removing tokens can leave the caret past the end; clamp it.
-  const caretIndex = Math.min(caret, tokens.length);
   const isDirty = ![committedTokens, lastAutoCommitRef.current].includes(
     tokens,
   );
@@ -524,7 +551,7 @@ export function ExpressionBar({
   const { areAndsVisible, onTypeAnd } = useConnectors({
     tokens,
     isExpanded,
-    setTokens,
+    setTokens: setTokensSilently,
     setCaret,
   });
   const isHiddenAnd = (token: Token | undefined) =>
@@ -920,7 +947,7 @@ export function ExpressionBar({
    * changes the selection. True when the key was for the selection.
    */
   const handleSelectionKey = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (clipboard.handleKeyDown(event)) {
+    if (clipboard.handleKeyDown(event) || history.handleKeyDown(event)) {
       return true;
     }
     if (
@@ -1199,10 +1226,10 @@ export function ExpressionBar({
     const isAppliedDraft =
       tokens === lastAutoCommitRef.current && tokens !== committedTokens;
     if (!isExpanded && isAppliedDraft && !isSelfCommitRef.current) {
-      setTokens(committedTokens);
+      setTokensSilently(committedTokens);
       setCaret(committedTokens.length);
     }
-  }, [isExpanded, tokens, committedTokens, setTokens]);
+  }, [isExpanded, tokens, committedTokens, setTokensSilently]);
 
   // Prototype: Clear empties the bar and opens a new pill at its start, as in
   // an empty bar. The parent removes the filters of every stage in one
@@ -1211,7 +1238,7 @@ export function ExpressionBar({
   const resetForClear = () => {
     const emptyTokens: Token[] = [];
     lastAutoCommitRef.current = emptyTokens;
-    setTokens(emptyTokens);
+    setTokensSilently(emptyTokens);
     moveCaret(0);
   };
 
@@ -1393,6 +1420,7 @@ export function ExpressionBar({
 
   // Editing a pill in place: its token is replaced on submit, or at each
   // change with auto-apply, and restored if the user gives up.
+  const pillEditCountRef = useRef(0);
   const startPillEdit = (index: number, part: FilterPillPart) => {
     const token = tokens[index];
     const initialState =
@@ -1404,15 +1432,27 @@ export function ExpressionBar({
     }
     resetDraft();
     setIsOpen(false);
-    setPillEdit({ index, original: token, initialState, part });
+    pillEditCountRef.current += 1;
+    setPillEdit({
+      index,
+      original: token,
+      initialState,
+      part,
+      group: `pill-edit-${pillEditCountRef.current}`,
+    });
   };
-  const replacePill = (index: number, filterable: Lib.Filterable) => {
-    setTokens((current) =>
-      replaceTokenAt(
-        current,
-        index,
-        filterToken(toFilterClause(query, stageIndex, filterable)),
-      ),
+  const replacePill = (
+    { index, group }: Pick<PillEdit, "index" | "group">,
+    filterable: Lib.Filterable,
+  ) => {
+    setTokens(
+      (current) =>
+        replaceTokenAt(
+          current,
+          index,
+          filterToken(toFilterClause(query, stageIndex, filterable)),
+        ),
+      { group },
     );
   };
   const endPillEdit = () => {
@@ -1428,17 +1468,18 @@ export function ExpressionBar({
       return;
     }
     if (source === "selection") {
-      replacePill(pillEdit.index, filter);
+      replacePill(pillEdit, filter);
     } else {
       typingTimeoutRef.current = setTimeout(
-        () => replacePill(pillEdit.index, filter),
+        () => replacePill(pillEdit, filter),
         TYPING_PAUSE_MS,
       );
     }
   };
   const cancelPillEdit = () => {
     if (pillEdit != null) {
-      setTokens((current) =>
+      history.discard(pillEdit.group);
+      setTokensSilently((current) =>
         replaceTokenAt(current, pillEdit.index, pillEdit.original),
       );
     }
@@ -1580,9 +1621,12 @@ export function ExpressionBar({
         onCopy={clipboard.handleCopy}
         onPaste={clipboard.handlePaste}
         onKeyDown={(event) => {
-          // The inputs take the clipboard keys through their own handlers.
-          if (!(event.target instanceof HTMLInputElement)) {
-            clipboard.handleKeyDown(event);
+          // The inputs take the clipboard and history keys through their own handlers.
+          if (
+            !(event.target instanceof HTMLInputElement) &&
+            !clipboard.handleKeyDown(event)
+          ) {
+            history.handleKeyDown(event);
           }
         }}
         onClickCapture={(event) => {
@@ -1630,7 +1674,7 @@ export function ExpressionBar({
                   hasPlaceholder={false}
                   onDraftChange={handlePillEditDraftChange}
                   onSubmit={(filterable) => {
-                    replacePill(index, filterable);
+                    replacePill(pillEdit, filterable);
                     endPillEdit();
                   }}
                   onSubmitFilters={handlePickFilters}

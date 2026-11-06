@@ -9,6 +9,7 @@ import { msgid, ngettext, t } from "ttag";
 import { useToast } from "metabase/common/hooks/use-toast";
 import type * as Lib from "metabase-lib";
 
+import { isOwnBarEvent, isTypingTarget } from "./bar-events";
 import {
   FILTER_CLIPBOARD_TYPE,
   deserializeTokens,
@@ -67,10 +68,7 @@ export function useExpressionClipboard({
   const pendingEntriesRef = useRef<Record<string, string>>(undefined);
 
   const isOwnEvent = (target: EventTarget | null) =>
-    target instanceof Element &&
-    target.closest("[data-expression-bar]") === barRef.current;
-  const isTypingTarget = (target: EventTarget | null) =>
-    target instanceof HTMLInputElement && target.value.length > 0;
+    isOwnBarEvent(barRef, target);
 
   /**
    * Copies the range through the browser's own Copy command. The command only
