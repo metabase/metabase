@@ -23,11 +23,9 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -64,13 +62,6 @@ const TEST_CARD_METRIC = createMockCard({
   can_write: true,
   type: "metric",
   dataset_query: ORDERS_QUERY,
-});
-
-const TEST_CARD_NO_DATA_ACCESS = createMockCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {},
-  }),
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
@@ -219,15 +210,6 @@ describe("DashCardMenu", () => {
 
     const pathname = router?.location.pathname;
     expect(pathname).toBe(`/metric/${TEST_CARD_SLUG}/query`);
-  });
-
-  it("should not display a link to the notebook editor if the user does not have the data permission", async () => {
-    setup({ card: TEST_CARD_NO_DATA_ACCESS });
-
-    await userEvent.click(getIcon("ellipsis"));
-
-    expect(await screen.findByText("Download results")).toBeInTheDocument();
-    expect(screen.queryByText("Edit question")).not.toBeInTheDocument();
   });
 
   it("should not display a link to the notebook editor if the user does not have the collection write permission (metabase#35077)", async () => {

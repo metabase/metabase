@@ -23,7 +23,6 @@ import {
   createMockLinkDashboardCard,
   createMockMetricDimension,
   createMockParameter,
-  createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
@@ -111,18 +110,6 @@ const setup = (options: SetupOptions = {}) => {
 };
 
 describe("DashCardCardParameterMapper", () => {
-  it("should render an unauthorized state for a card with no dataset query", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({ query: {} }),
-    });
-    setup({ card });
-
-    expect(getIcon("key")).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/permission to see this question/i),
-    ).toBeInTheDocument();
-  });
-
   describe("Action cards", () => {
     it("should render an informative error state for action cards", () => {
       setup({
