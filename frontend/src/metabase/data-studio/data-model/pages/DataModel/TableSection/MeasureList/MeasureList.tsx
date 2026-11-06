@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
-import { Button, type ButtonProps, Icon, Stack } from "metabase/ui";
+import { Button, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
@@ -17,7 +16,6 @@ import {
   matchesListSearch,
 } from "../ListSearchBar";
 import { ListEmptyItem, ListSection } from "../ListSection";
-import S from "../TableSection.module.css";
 
 import { MeasureGroupModal } from "./MeasureGroupModal";
 import {
@@ -88,52 +86,13 @@ export function MeasureList({ table }: MeasureListProps) {
     tableId: table.id,
   });
 
-  const renderNewMeasureButton = (variant?: ButtonProps["variant"]) =>
-    canWriteMeasures && (
-      <Button
-        variant={variant}
-        component={ForwardRefLink}
-        leftSection={<Icon name="add" />}
-        onAuxClick={onNewMeasureClick}
-        onClickCapture={onNewMeasureClick}
-        to={newMeasureUrl}
-      >
-        {t`New measure`}
-      </Button>
-    );
-
-  // The action sits under the message, centered and blue, as the next step
-  if (measures.length === 0) {
-    return (
-      <Stack
-        align="center"
-        gap="lg"
-        mt={80}
-        className={S.EmptyState}
-        data-testid="table-measures-page"
-      >
-        <EmptyState
-          spacing="sm"
-          illustrationElement={
-            <Icon name="ruler" size={32} c="text-secondary" />
-          }
-          title={t`No measures yet`}
-          message={t`Create a measure to define a reusable aggregation for this table.`}
-        />
-        {renderNewMeasureButton("filled")}
-      </Stack>
-    );
-  }
-
   return (
     <Stack gap="xl" data-testid="table-measures-page">
       <ListSearchBar
         value={query}
         placeholder={t`Search measures`}
         onChange={setQuery}
-      >
-        {renderNewMeasureButton()}
-      </ListSearchBar>
+      />
 
       {isSearching && !hasMatches && (
         <ListSearchEmptyState>{t`No measures match "${query}"`}</ListSearchEmptyState>
@@ -175,15 +134,36 @@ export function MeasureList({ table }: MeasureListProps) {
         </ListSection>
       )}
 
-      {matchingMeasures.length > 0 && (
-        <ListSection title={t`Measures`}>
-          {matchingMeasures.map((measure) => (
-            <MeasureItem
-              key={measure.id}
-              measure={measure}
-              href={getMeasureHref(measure.id)}
-            />
-          ))}
+      {(!isSearching || matchingMeasures.length > 0) && (
+        <ListSection
+          title={t`Measures`}
+          action={
+            canWriteMeasures && (
+              <Button
+                component={ForwardRefLink}
+                to={newMeasureUrl}
+                size="compact-sm"
+                variant="subtle"
+                leftSection={<Icon name="add" />}
+                onAuxClick={onNewMeasureClick}
+                onClickCapture={onNewMeasureClick}
+              >
+                {t`New measure`}
+              </Button>
+            )
+          }
+        >
+          {matchingMeasures.length > 0 ? (
+            matchingMeasures.map((measure) => (
+              <MeasureItem
+                key={measure.id}
+                measure={measure}
+                href={getMeasureHref(measure.id)}
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No measures yet`}</ListEmptyItem>
+          )}
         </ListSection>
       )}
 

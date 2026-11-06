@@ -129,7 +129,11 @@ export function SegmentList({ table }: SegmentListProps) {
       <Stack gap="md">
         <ListSearchBar
           value={query}
-          placeholder={t`Search segments`}
+          placeholder={
+            view === "custom"
+              ? t`Search segments and groups`
+              : t`Search segments`
+          }
           onChange={setQuery}
         />
         <SegmentedControl<SegmentView>
