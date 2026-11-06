@@ -76,7 +76,12 @@ export const QuestionPane = ({
   const lastEditInfo = card["last-edit-info"];
 
   const handleColumnClick = (columnIndex: number) => {
-    onItemClick({ type: "field", cardId: card.id, columnIndex });
+    onItemClick({
+      type: "field",
+      kind: "card",
+      cardId: card.id,
+      columnIndex,
+    });
   };
 
   return (
