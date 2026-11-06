@@ -333,6 +333,10 @@ const configs = [
             "ora",
             "cross-fetch",
           ],
+          // icepick returns `any` from helpers like `getIn`. Use optional
+          // chaining, spreads, immer, or `deepMerge` from
+          // "metabase/utils/deep-merge" instead.
+          modules: ["icepick"],
         },
       ],
 

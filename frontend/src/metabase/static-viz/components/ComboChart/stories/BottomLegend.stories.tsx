@@ -1,5 +1,3 @@
-import { updateIn } from "icepick";
-
 import { StaticVisualization } from "../../StaticVisualization";
 import { data } from "../stories-data";
 
@@ -55,10 +53,19 @@ export const ManyRowsFitWithinBounds = {
 export const Reversed = {
   render: Template,
   args: {
-    rawSeries: updateIn(
-      data.twoBarsTwoAreasOneLineLinear,
-      [0, "card", "visualization_settings"],
-      (settings) => ({ ...settings, "legend.is_reversed": true }),
+    rawSeries: data.twoBarsTwoAreasOneLineLinear.map((series, index) =>
+      index === 0
+        ? {
+            ...series,
+            card: {
+              ...series.card,
+              visualization_settings: {
+                ...series.card.visualization_settings,
+                "legend.is_reversed": true,
+              },
+            },
+          }
+        : series,
     ),
     renderingContext,
   },
