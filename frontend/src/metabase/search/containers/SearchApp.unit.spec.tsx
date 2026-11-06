@@ -235,6 +235,34 @@ describe("SearchApp", () => {
     });
   });
 
+  describe("accessing full page search with `Enter`", () => {
+    it("should only search and open full page search when a text query is entered (search-app request)", async () => {
+      await setup({ searchText: "orders" });
+
+      expect(screen.getByText('Results for "orders"')).toBeInTheDocument();
+
+      const searchRequests = fetchMock.callHistory.calls().filter((call) => {
+        return new URL(call.url).pathname === "/api/search";
+      });
+      expect(searchRequests).toHaveLength(1);
+      const params = new URL(searchRequests[0].url).searchParams;
+      expect(params.get("context")).toBe("search-app");
+      expect(params.get("q")).toBe("orders");
+    });
+  });
+
+  describe("empty state", () => {
+    it("should work for user without data permissions (metabase#16855) (empty state on the search page)", async () => {
+      await setup({ searchText: "product" });
+
+      const searchApp = within(screen.getByTestId("search-app"));
+      expect(searchApp.getByText("Didn't find anything")).toBeInTheDocument();
+      expect(
+        searchApp.getByText("There weren't any results for your search."),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("filtering search results with the sidebar", () => {
     it.each(TEST_SEARCH_RESULTS)(
       "should reload with filtered searches when type=$model is changed in the dropdown sidebar filter",
