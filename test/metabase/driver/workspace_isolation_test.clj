@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.workspaces.driver-isolation-test
+(ns ^:mb/driver-tests metabase.driver.workspace-isolation-test
   "Driver-agnostic tests for workspace database isolation. For any driver that
    supports the `:workspace` feature, exercises the full provisioning lifecycle
    (`init-workspace-isolation!` → `grant-workspace-read-access!` →
