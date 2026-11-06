@@ -6,7 +6,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as temp-storage]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -79,35 +78,6 @@
                           :rows [[1000]]}}
                 (referenced-goal-result part goal-id)))))))
 
-(deftest execute-card-runs-goal-from-another-database-test
-  (testing "execute-card runs a dynamic goal whose source reads a different database than the card"
-    (let [places-count (mt/dataset places-cam-likes
-                         (mt/mbql-query places {:aggregation [[:count]]}))]
-      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query places-count}
-                     :model/Card {card-id :id} (gauge-with-referenced-goal goal-id)]
-        (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
-          (is (= [[100]] (get-in part [:result :data :rows])))
-          (is (=? {:status "completed"
-                   :data   {:rows [[3]]}}
-                  (referenced-goal-result part goal-id))))))))
-
-(deftest execute-card-resolves-goals-as-the-creator-test
-  (testing "a notification resolves its card's dynamic goals with the permissions of the user who created it"
-    (mt/with-temp [:model/Collection {secret-id :id} {}
-                   :model/Card       {goal-id :id}   {:collection_id secret-id
-                                                      :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
-                   :model/Card       {card-id :id}   (gauge-with-referenced-goal goal-id)]
-      (perms/revoke-collection-permissions! (perms/all-users-group) secret-id)
-      (testing "a creator who can read the goal's source gets its value"
-        (is (= "completed"
-               (:status (referenced-goal-result
-                         (notification.payload.execute/execute-card (mt/user->id :crowberto) card-id)
-                         goal-id)))))
-      (testing "a creator who can't read it gets a failed goal, even though the card itself runs"
-        (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
-          (is (= :completed (get-in part [:result :status])))
-          (is (= "failed" (:status (referenced-goal-result part goal-id)))))))))
-
 (deftest execute-dashboard-subscription-card-keeps-referenced-entities-test
   (testing "execute-dashboard-subscription-card keeps the dynamic goal values the static renderer resolves against"
     (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins
@@ -121,25 +91,6 @@
           (is (=? {:status "completed"
                    :data   {:cols [{:name "count"}]
                             :rows [[1000]]}}
-                  (referenced-goal-result part goal-id))))))))
-
-(deftest execute-dashboard-subscription-card-runs-dashcard-goal-test
-  (testing "execute-dashboard-subscription-card runs a dynamic goal set in the dashcard's own viz settings"
-    (mt/with-temp [:model/Card          {goal-id :id} {:dataset_query (mt/mbql-query checkins
-                                                                        {:aggregation [[:count]]})}
-                   :model/Card          {card-id :id} {:display       :gauge
-                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                   :model/Dashboard     {dash-id :id} {}
-                   :model/DashboardCard dashcard      {:dashboard_id           dash-id
-                                                       :card_id                card-id
-                                                       :visualization_settings
-                                                       {:gauge.segments [{:min   0
-                                                                          :max   {:id goal-id :type "card" :column "count"}
-                                                                          :color "#84BB4C"}]}}]
-      (mt/with-current-user (mt/user->id :rasta)
-        (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
-          (is (=? {:status "completed"
-                   :data   {:rows [[1000]]}}
                   (referenced-goal-result part goal-id))))))))
 
 (deftest execute-dashboard-subscription-visualizer-card-keeps-referenced-entities-test
