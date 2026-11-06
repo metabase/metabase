@@ -113,8 +113,9 @@ describe.each(["pulse", "notification"] as const)(
 
       await screen.findByRole("button", { name: "Confirm unsubscribe" });
       expect(
-        screen.getByText("Are you sure you want to unsubscribe?"),
+        screen.getByText("Unsubscribe from these emails?"),
       ).toBeInTheDocument();
+      expect(screen.getByText("recipient@example.com")).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(`path:${endpoint}`)).toHaveLength(0);
       expect(fetchMock.callHistory.calls(`path:${endpoint}/undo`)).toHaveLength(
         0,
@@ -124,7 +125,7 @@ describe.each(["pulse", "notification"] as const)(
         screen.getByRole("button", { name: "Confirm unsubscribe" }),
       );
       expect(
-        await screen.findByText("You've unsubscribed."),
+        await screen.findByText('You\'ve unsubscribed from "Orders alert".'),
       ).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(`path:${endpoint}`)).toHaveLength(1);
       const body: unknown = await fetchMock.callHistory
@@ -139,7 +140,7 @@ describe.each(["pulse", "notification"] as const)(
 
       await userEvent.click(screen.getByRole("button", { name: "Undo" }));
       expect(
-        await screen.findByText("You're subscribed again."),
+        await screen.findByText('You\'re subscribed to "Orders alert" again.'),
       ).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(`path:${endpoint}/undo`)).toHaveLength(
         1,

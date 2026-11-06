@@ -42,7 +42,7 @@ export const UnsubscribePage = (): JSX.Element => {
   const notificationHandlerId =
     searchParams.get("notification-handler-id") ?? undefined;
 
-  const { isLoading, error } = useUnsubscribeRequest({
+  const { data, isLoading, error } = useUnsubscribeRequest({
     hash,
     email,
     pulseId,
@@ -75,7 +75,10 @@ export const UnsubscribePage = (): JSX.Element => {
       <UnsubscribeRoot>
         <Stack align="center">
           <Text fw={700} c="text-secondary" ta="center">
-            {t`Are you sure you want to unsubscribe?`}
+            {t`Unsubscribe from these emails?`}
+          </Text>
+          <Text c="text-secondary" ta="center">
+            {email}
           </Text>
           <Button
             variant="filled"
@@ -92,10 +95,12 @@ export const UnsubscribePage = (): JSX.Element => {
     <UnsubscribeRoot>
       {subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE ? (
         <SuccessfulUnsubscribe
+          title={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.RESUBSCRIBE)}
         />
       ) : (
         <SuccessfulResubscribe
+          title={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
         />
       )}
@@ -103,20 +108,28 @@ export const UnsubscribePage = (): JSX.Element => {
   );
 };
 
-function SuccessfulUnsubscribe({ action }: SubscriptionDetailProps) {
+function SuccessfulUnsubscribe({ title, action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={t`You've unsubscribed.`}
+      text={
+        title
+          ? t`You've unsubscribed from "${title}".`
+          : t`You've unsubscribed.`
+      }
       buttonText={t`Undo`}
       action={action}
     />
   );
 }
 
-function SuccessfulResubscribe({ action }: SubscriptionDetailProps) {
+function SuccessfulResubscribe({ title, action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={t`You're subscribed again.`}
+      text={
+        title
+          ? t`You're subscribed to "${title}" again.`
+          : t`You're subscribed again.`
+      }
       buttonText={t`Unsubscribe`}
       action={action}
     />
@@ -279,6 +292,7 @@ function ErrorDisplay() {
 }
 
 interface SubscriptionDetailProps {
+  title: string | undefined;
   action: () => void;
 }
 
