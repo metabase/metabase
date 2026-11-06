@@ -57,22 +57,27 @@
 
 (defn database-ids-with-remappings
   "The set of Database ids that have a TableRemapping, as this process last read it. Reads the app DB on first use
-  and after every insert or delete this process makes; every other call costs no query.
+  and after every insert or delete this process commits; every other call costs no query.
+
+  Inside a transaction it queries and leaves the cache alone: that transaction may have written rows it later rolls
+  back, and a rollback runs no hook to drop what it cached.
 
   A write on another node does not invalidate it, so it is only safe where no other node can insert rows: outside
   workspace mode, where nothing in production inserts them."
   []
   (let [{:keys [generation database-ids]} @database-ids-cache]
-    (or database-ids
-        (let [ids (ws.db/table-remapping-database-ids)]
-          (swap! database-ids-cache #(cond-> % (= generation (:generation %)) (assoc :database-ids ids)))
-          ids))))
+    (cond
+      (app-db/in-transaction?) (ws.db/table-remapping-database-ids)
+      database-ids             database-ids
+      :else
+      (let [ids (ws.db/table-remapping-database-ids)]
+        (swap! database-ids-cache #(cond-> % (= generation (:generation %)) (assoc :database-ids ids)))
+        ids))))
 
 (defn- invalidate! [row]
   (cache/invalidate-config! {:databases [(:database_id row)]})
-  ;; Now, so this transaction's own reads see its write; again after commit, so a read by another thread that
-  ;; ran before the commit doesn't stay cached.
-  (invalidate-database-ids!)
+  ;; After commit, not now: a read by another thread before the commit can't see the write, and a rollback must
+  ;; leave the cache as it was. The writing transaction's own reads bypass the cache.
   (app-db/do-after-commit invalidate-database-ids!))
 
 (t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)

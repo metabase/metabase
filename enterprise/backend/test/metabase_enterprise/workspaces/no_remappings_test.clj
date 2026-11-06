@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.middleware]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
@@ -138,4 +139,32 @@
           (is (true? (ws.remapping/enabled-for-db? (mt/id))))
           (finally
             (ws/clear-instance-workspace!)
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(deftest rolled-back-write-leaves-cache-correct-test
+  (let [from {:schema "PUBLIC" :table "VENUES"}
+        to   {:schema "ws_rollback" :table "VENUES"}
+        rolled-back! (fn [thunk]
+                       (try
+                         (t2/with-transaction [_]
+                           (thunk)
+                           (throw (ex-info "roll back" {})))
+                         (catch clojure.lang.ExceptionInfo _)))]
+    (with-no-remappings!
+      (fn []
+        (try
+          (testing "a delete read back in its own transaction and then rolled back leaves the remap in effect"
+            (ws.table-remapping/add-mapping! (mt/id) from to)
+            (is (true? (ws.remapping/enabled-for-db? (mt/id))))
+            (rolled-back! #(do (ws.table-remapping/clear-mappings-for-db! (mt/id))
+                               (is (false? (ws.remapping/enabled-for-db? (mt/id))) "the transaction sees its delete")))
+            (is (t2/exists? :model/TableRemapping :database_id (mt/id)))
+            (is (true? (ws.remapping/enabled-for-db? (mt/id)))))
+          (testing "an insert read back in its own transaction and then rolled back leaves no remap"
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (ws.remapping/enabled-for-db? (mt/id))
+            (rolled-back! #(do (ws.table-remapping/add-mapping! (mt/id) from to)
+                               (is (true? (ws.remapping/enabled-for-db? (mt/id))) "the transaction sees its insert")))
+            (is (not (contains? (table-remapping/database-ids-with-remappings) (mt/id)))))
+          (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))

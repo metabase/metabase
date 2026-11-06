@@ -65,7 +65,18 @@
 
   In workspace mode any node may insert a row at any time (transforms record one per target), and a node can't see
   another node's write, so there the answer is always true and the caller queries. Outside workspace mode nothing
-  in production inserts rows, so this process's cache of the Database ids that have them is current."
+  in production inserts rows, so this process's cache of the Database ids that have them is current.
+
+  Two bounded windows let a node trust its cache while another node of the same instance is in workspace mode:
+  - A workspace set at runtime through the API on one node reaches the other nodes' settings caches only after the
+    settings-cache check interval (1 minute).
+  - During a rollout that sets `MB_INSTANCE_WORKSPACE`, nodes that don't have it yet are outside workspace mode until
+    they restart with it.
+
+  Rows outlive workspace mode when `MB_INSTANCE_WORKSPACE` was the only source of the workspace and a restart drops
+  it, since the env var is never stored in the app DB. Removing the `config.yml` section and restarting keeps
+  workspace mode, because boot never clears the stored setting, and `DELETE /current` on the workspace-instance API
+  clears the setting and the rows together."
   [db-id]
   (or (ws/workspace-mode?)
       (contains? (table-remapping/database-ids-with-remappings) db-id)))
