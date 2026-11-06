@@ -166,8 +166,10 @@
   ["DROP TABLE IF EXISTS DATABASECHANGELOG"
    "DROP TABLE IF EXISTS DATABASECHANGELOGLOCK"])
 
-(def ^:private mysql-family
-  "Flavors reached through the MySQL driver, and the only ones [[session-guards]] relaxes anything for."
+(def mysql-family
+  "Flavors reached through the MySQL driver.
+  They are the only ones [[session-guards]] relaxes anything for, and the only ones whose dumps escape with a
+  backslash."
   #{:mysql :mariadb :mariadb-legacy-timestamp})
 
 (defn- session-guards

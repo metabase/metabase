@@ -49,8 +49,9 @@
 (defn- value-tuples
   "The `(...)` tuples of a `VALUES` list `s`, or nil unless every character of it is accounted for.
   Tuples are split on the paren closing each one rather than on the commas between them, so a value holding a comma,
-  a newline or a paren of its own is not read as a boundary."
-  [^String s]
+  a newline or a paren of its own is not read as a boundary.
+  With `backslash-escapes?`, as in MySQL dumps, a backslash escapes the character after it inside a string."
+  [^String s backslash-escapes?]
   ;; returning nil rather than a guess is what makes it safe for the caller to fall back to leaving a statement alone
   (loop [i 0, depth 0, in-string? false, start nil, acc []]
     (if (<= (.length s) i)
@@ -61,7 +62,7 @@
         (cond
           ;; a doubled '' reads as two toggles, which lands back inside the string, the same as escaping it does
           in-string?    (case c
-                          \\ (recur (+ i 2) depth true start acc)
+                          \\ (recur (if backslash-escapes? (+ i 2) (inc i)) depth true start acc)
                           \' (recur (inc i) depth false start acc)
                           (recur (inc i) depth true start acc))
           (= c \')      (recur (inc i) depth true start acc)
@@ -78,22 +79,23 @@
 
 (defn- single-row-inserts
   "A multi-row `INSERT ... VALUES (...),(...)` split into one statement per row, as a vector.
-  Any other statement, or one that cannot be taken apart with certainty, comes back alone and unchanged."
-  [statement]
+  Any other statement, or one that cannot be taken apart with certainty, comes back alone and unchanged.
+  See [[value-tuples]] for `backslash-escapes?`."
+  [statement backslash-escapes?]
   ;; Two dumps of the very same rows can frame them differently: H2's SCRIPT packs rows into multi-row inserts by size,
   ;; so a value one character longer pushes a row into the next statement. That is a difference in batching, not in
   ;; content, and comparing statement by statement would report it as drift.
   (or (when-let [[_ prefix tuples] (re-matches #"(?is)^(.*?\bVALUES\s*)(\(.*)$" statement)]
-        (when-let [tuples (value-tuples tuples)]
+        (when-let [tuples (value-tuples tuples backslash-escapes?)]
           (when (next tuples)
             (mapv #(str prefix %) tuples))))
       [statement]))
 
 (defn- comparable-statements
-  "The statements of a snapshot file, one row per insert and with the [[unstable-literals]] masked."
-  [snapshot-text]
+  "The statements of a snapshot file for `flavor`, one row per insert and with the [[unstable-literals]] masked."
+  [snapshot-text flavor]
   (into []
-        (comp (mapcat single-row-inserts)
+        (comp (mapcat #(single-row-inserts % (contains? snapshot/mysql-family flavor)))
               (map unstable-values-masked))
         (snapshot/statements snapshot-text)))
 
@@ -134,14 +136,14 @@
                 (format "a snapshot should be checked in for %s" (name flavor)))
             (when checked-in
               (let [{:keys [content]} (generate/dump-snapshot! flavor)]
-                (is (nil? (first-difference (comparable-statements (slurp checked-in))
-                                            (comparable-statements content)))
+                (is (nil? (first-difference (comparable-statements (slurp checked-in) flavor)
+                                            (comparable-statements content flavor)))
                     (format (str "regenerating the %s snapshot would change it; if that is intended, run "
                                  "(metabase.app-db.snapshot-test-util.generate/generate! %s)")
                             (name flavor) flavor))))))))))
 
 (deftest single-row-inserts-test
-  (are [statement expected] (= expected (single-row-inserts statement))
+  (are [statement expected] (= expected (single-row-inserts statement false))
     ;; one statement per row, each with the full prefix
     "INSERT INTO t VALUES (1, 'a'), (2, 'b')"    ["INSERT INTO t VALUES (1, 'a')" "INSERT INTO t VALUES (2, 'b')"]
     ;; commas, parens and doubled quotes inside a value are not boundaries
@@ -149,7 +151,12 @@
     ;; a single row, or anything that is not a plain list of tuples, is left alone
     "INSERT INTO t VALUES (1)"                   ["INSERT INTO t VALUES (1)"]
     "INSERT INTO t VALUES (1), (2) RETURNING *"  ["INSERT INTO t VALUES (1), (2) RETURNING *"]
-    "CREATE TABLE t (id INT, name TEXT)"         ["CREATE TABLE t (id INT, name TEXT)"]))
+    "CREATE TABLE t (id INT, name TEXT)"         ["CREATE TABLE t (id INT, name TEXT)"])
+  (testing "a value ending in a backslash closes its string, unless the dialect escapes with backslashes"
+    (is (= ["INSERT INTO t VALUES ('C:\\')" "INSERT INTO t VALUES ('x')"]
+           (single-row-inserts "INSERT INTO t VALUES ('C:\\'), ('x')" false)))
+    (is (= ["INSERT INTO t VALUES ('it\\'s')" "INSERT INTO t VALUES ('x')"]
+           (single-row-inserts "INSERT INTO t VALUES ('it\\'s'), ('x')" true)))))
 
 (deftest first-difference-test
   (are [checked-in regenerated expected] (= expected (first-difference checked-in regenerated))
