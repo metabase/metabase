@@ -2,12 +2,12 @@ import * as ML from "cljs/metabase.lib.js";
 import type {
   CardId,
   CardType,
-  TableId,
   DatabaseId,
   DatasetColumn,
   Field,
   FieldId,
   NormalizedField,
+  TableId,
 } from "metabase-types/api";
 
 /**

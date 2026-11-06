@@ -6,7 +6,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
-import type { TableId, SchemaName, Table } from "./table";
+import type { SchemaName, Table, TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 

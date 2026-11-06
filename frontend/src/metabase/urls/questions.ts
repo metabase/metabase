@@ -5,8 +5,8 @@ import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
-  TableId,
   Card as SavedCard,
+  TableId,
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";

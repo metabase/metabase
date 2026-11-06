@@ -1,8 +1,8 @@
 import type {
-  TableId,
   GroupInfo,
   GroupsPermissions,
   PermissionsDatabase,
+  TableId,
 } from "metabase-types/api";
 import { DataPermission } from "metabase-types/api";
 

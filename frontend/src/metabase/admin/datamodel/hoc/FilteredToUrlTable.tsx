@@ -9,7 +9,7 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/com
 import type { Location } from "metabase/router";
 import { queryToSearch, useNavigate } from "metabase/router";
 import { Icon } from "metabase/ui";
-import type { TableId, Segment } from "metabase-types/api";
+import type { Segment, TableId } from "metabase-types/api";
 
 type FilteredToUrlTableInnerProps = {
   location: Location;

@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useUserKeyValue } from "metabase/current-user";
-import type { TableId, DatabaseId, SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 type UseSchemaPreferencesStoreArgs = {
   databaseId: DatabaseId | undefined;

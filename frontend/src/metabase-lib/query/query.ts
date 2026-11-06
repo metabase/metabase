@@ -3,11 +3,11 @@ import { type Metadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
-  TableId,
   DatasetQuery,
   FieldId,
   LegacyDatasetQuery,
   OpaqueDatasetQuery,
+  TableId,
   TestNativeQuerySpec,
   TestQuerySpec,
 } from "metabase-types/api";

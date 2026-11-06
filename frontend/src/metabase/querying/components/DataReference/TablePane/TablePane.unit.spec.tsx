@@ -7,7 +7,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { TableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { TablePane } from "./TablePane";

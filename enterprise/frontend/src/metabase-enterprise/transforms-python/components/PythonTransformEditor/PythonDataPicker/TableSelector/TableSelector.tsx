@@ -20,7 +20,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type { TableId, DatabaseId, Table } from "metabase-types/api";
+import type { DatabaseId, Table, TableId } from "metabase-types/api";
 
 import S from "./TableSelector.module.css";
 

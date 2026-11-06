@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import type { TableId, ErdField } from "metabase-types/api";
+import type { ErdField, TableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
 

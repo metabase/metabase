@@ -24,9 +24,9 @@ import { useDispatch } from "metabase/redux";
 import { Box, Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
-  TableId,
   DatasetColumn,
   DatasetData,
+  TableId,
   WritebackActionId,
 } from "metabase-types/api";
 

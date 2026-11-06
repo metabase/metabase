@@ -1,9 +1,9 @@
 import type {
-  TableId,
   DatabaseId,
   FieldId,
   SchemaName,
   Table,
+  TableId,
   TableVisibilityType,
 } from "./";
 

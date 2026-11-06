@@ -10,7 +10,7 @@ import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { TableId, SchemaName } from "./table";
+import type { SchemaName, TableId } from "./table";
 
 export type UserId = number;
 export type UserAttributeKey = string;

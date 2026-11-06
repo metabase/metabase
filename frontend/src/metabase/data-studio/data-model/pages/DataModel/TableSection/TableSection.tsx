@@ -32,7 +32,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { dependencyGraph } from "metabase/urls/dependencies";
-import { type FieldId, type Table } from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";

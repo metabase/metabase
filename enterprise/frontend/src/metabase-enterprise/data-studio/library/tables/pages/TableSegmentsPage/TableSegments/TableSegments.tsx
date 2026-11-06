@@ -9,7 +9,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { TableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
 type TableSegmentsProps = {
   table: Table;

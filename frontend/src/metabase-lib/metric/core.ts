@@ -4,12 +4,12 @@ import * as LibMetric from "cljs/metabase.lib_metric.js";
 import { type Dayjs, dayjs } from "metabase/dayjs";
 import type { Metadata } from "metabase-lib";
 import type {
-  TableId,
   JsMetricDefinition,
   MeasureId,
   MetricDimension,
   MetricId,
   SegmentId,
+  TableId,
 } from "metabase-types/api";
 
 import type {

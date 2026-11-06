@@ -7,7 +7,7 @@ import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
 import { getSchemaViewerParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
-import type { TableId, DatabaseId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
 import { useSchemaPreferencesStore } from "../../components/SchemaViewer/hooks/useSchemaPreferencesStore";

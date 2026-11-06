@@ -17,7 +17,7 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import { type Card, type SearchResult, type Table } from "metabase-types/api";
+import type { Card, SearchResult, Table } from "metabase-types/api";
 
 import {
   NodeListContainer,

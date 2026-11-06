@@ -26,10 +26,10 @@ import {
   useColorScheme,
 } from "metabase/ui";
 import type {
-  TableId,
   DatabaseId,
   ErdResponse,
   SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 import S from "./SchemaViewer.module.css";

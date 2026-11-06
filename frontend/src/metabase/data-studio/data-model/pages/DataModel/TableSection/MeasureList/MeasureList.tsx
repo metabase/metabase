@@ -7,7 +7,7 @@ import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { TableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
 import S from "../TableSection.module.css";
 

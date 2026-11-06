@@ -14,7 +14,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
-import type { TableId, Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type GetDependencyCountsRequest = {

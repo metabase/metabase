@@ -1,4 +1,4 @@
-import type { Card, CardId, TableId, Table } from "metabase-types/api";
+import type { Card, CardId, Table, TableId } from "metabase-types/api";
 
 export type TableEntityItem = {
   id: TableId;

@@ -4,7 +4,7 @@ import { skipToken, useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
 import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { Box, Icon, Text } from "metabase/ui";
 import { browseDatabase, browseSchema, table as tableUrl } from "metabase/urls";
-import { type Database, type SearchResult } from "metabase-types/api";
+import type { Database, SearchResult } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";

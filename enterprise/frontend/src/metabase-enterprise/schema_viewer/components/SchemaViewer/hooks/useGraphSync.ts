@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 
-import type { TableId, DatabaseId, SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 import { applyLayout, getNodeId } from "../utils";

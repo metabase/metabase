@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { CardId, TableId, DatabaseId } from "metabase-types/api";
+import type { CardId, DatabaseId, TableId } from "metabase-types/api";
 
 import type {
   Bucket,

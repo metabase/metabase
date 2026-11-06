@@ -1,9 +1,9 @@
 import type {
-  TableId,
   InspectorField,
   InspectorFieldStats,
   InspectorSource,
   InspectorTarget,
+  TableId,
 } from "metabase-types/api";
 
 export type FieldInfoSectionProps = {

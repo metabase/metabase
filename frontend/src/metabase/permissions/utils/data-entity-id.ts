@@ -1,11 +1,11 @@
 import type {
-  TableId,
   Database,
   DatabaseEntityId,
   PermissionEntityId,
   SchemaEntityId,
   Table,
   TableEntityId,
+  TableId,
 } from "metabase-types/api";
 
 import type { PermissionsSchema } from "./metadata";

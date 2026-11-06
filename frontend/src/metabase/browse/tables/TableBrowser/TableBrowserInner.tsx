@@ -14,7 +14,7 @@ import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import { type TableId, type DatabaseId, type Table } from "metabase-types/api";
+import type { DatabaseId, Table, TableId } from "metabase-types/api";
 
 import {
   trackBrowseXRayClicked,

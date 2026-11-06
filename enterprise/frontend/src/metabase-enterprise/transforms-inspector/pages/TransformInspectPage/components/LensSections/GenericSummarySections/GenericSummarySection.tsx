@@ -14,10 +14,10 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
-  TableId,
   InspectorCard,
   InspectorSource,
   InspectorTarget,
+  TableId,
 } from "metabase-types/api";
 
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";

@@ -1,11 +1,11 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
-  TableId,
   DatabaseId,
   PermissionsDatabase,
   SchemaName,
   Table,
   TableEntityId,
+  TableId,
 } from "metabase-types/api";
 
 /**

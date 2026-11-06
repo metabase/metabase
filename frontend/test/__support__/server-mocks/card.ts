@@ -4,13 +4,13 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
-  TableId,
   DashboardId,
   Dataset,
   FieldValue,
   GetPublicCard,
   ParameterId,
   ParameterValues,
+  TableId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 

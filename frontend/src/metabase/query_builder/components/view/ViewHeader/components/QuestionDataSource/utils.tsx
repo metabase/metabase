@@ -7,7 +7,7 @@ import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { TableId, DatabaseId, IconName } from "metabase-types/api";
+import type { DatabaseId, IconName, TableId } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";

@@ -10,7 +10,7 @@ import {
   TEMPORAL,
 } from "metabase-lib/v1/types/constants";
 import { getFieldType } from "metabase-lib/v1/types/utils/isa";
-import { type FieldId, type FieldReference } from "metabase-types/api";
+import type { FieldId, FieldReference } from "metabase-types/api";
 
 const ICON_MAPPING: Record<string, string> = {
   [TEMPORAL]: "calendar",

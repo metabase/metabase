@@ -1,8 +1,8 @@
 import type {
   CardId,
-  TableId,
   DatabaseId,
   SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 import { DatabasePane } from "./DatabasePane";
