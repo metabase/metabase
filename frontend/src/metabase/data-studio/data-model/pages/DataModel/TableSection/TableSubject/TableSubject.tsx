@@ -4,11 +4,9 @@ import { t } from "ttag";
 import { DetailsRow } from "metabase/common/components/DetailSidebar";
 import {
   type ResolvedSubject,
-  type RowNouns,
   getTableSubjectLabel,
   useTableSemantics,
 } from "metabase/metadata/semantic-types";
-import { Divider, Flex } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import {
@@ -68,18 +66,36 @@ export function TableRowNounsRow({ table, disabled }: TableSubjectRowsProps) {
   const { subject, setRowNouns } = useTableSemantics(table);
 
   return (
-    <DetailsRow
-      label={t`Rows are called`}
-      fillValue
-      value={
-        <RowNounsInput
-          key={`${subject.rowNouns.singular}/${subject.rowNouns.plural}`}
-          rowNouns={subject.rowNouns}
-          disabled={disabled}
-          onChange={(rowNouns) => setRowNouns(table, rowNouns)}
-        />
-      }
-    />
+    <>
+      <DetailsRow
+        label={t`One row is called`}
+        fillValue
+        value={
+          <DetailsEditableText
+            key={subject.rowNouns.singular}
+            initialValue={subject.rowNouns.singular}
+            placeholder={subject.defaultRowNouns.singular}
+            isDisabled={disabled}
+            onChange={(value) => setRowNouns(table, { singular: value.trim() })}
+            data-testid="table-row-noun-singular-input"
+          />
+        }
+      />
+      <DetailsRow
+        label={t`Many rows are called`}
+        fillValue
+        value={
+          <DetailsEditableText
+            key={subject.rowNouns.plural}
+            initialValue={subject.rowNouns.plural}
+            placeholder={subject.defaultRowNouns.plural}
+            isDisabled={disabled}
+            onChange={(value) => setRowNouns(table, { plural: value.trim() })}
+            data-testid="table-row-noun-plural-input"
+          />
+        }
+      />
+    </>
   );
 }
 
@@ -88,34 +104,4 @@ function getSubjectInference({
   isOverridden,
 }: ResolvedSubject): string | null {
   return isOverridden ? null : t`Inferred: ${inference.signal}`;
-}
-
-function RowNounsInput({
-  rowNouns,
-  disabled,
-  onChange,
-}: {
-  rowNouns: RowNouns;
-  disabled: boolean;
-  onChange: (rowNouns: Partial<RowNouns>) => void;
-}) {
-  return (
-    <Flex flex={1} miw={0}>
-      <DetailsEditableText
-        initialValue={rowNouns.singular}
-        placeholder={t`One row`}
-        isDisabled={disabled}
-        onChange={(value) => onChange({ singular: value.trim() })}
-        data-testid="table-row-noun-singular-input"
-      />
-      <Divider orientation="vertical" />
-      <DetailsEditableText
-        initialValue={rowNouns.plural}
-        placeholder={t`Many rows`}
-        isDisabled={disabled}
-        onChange={(value) => onChange({ plural: value.trim() })}
-        data-testid="table-row-noun-plural-input"
-      />
-    </Flex>
-  );
 }
