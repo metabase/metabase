@@ -1,3 +1,5 @@
+import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
+import cx from "classnames";
 import { type MouseEvent, type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
@@ -17,14 +19,17 @@ import type { IconName } from "metabase-types/api";
 import S from "./SummarySidebar.module.css";
 import { SummaryWellInput } from "./SummaryWellInput";
 import type {
+  SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
   SummaryValueItem,
   SummaryWellId,
 } from "./types";
 import {
+  canDropOnWell,
   changeValueOperator,
   getDimensionItems,
+  getDragItem,
   getValueItems,
   getWellFieldSections,
 } from "./utils";
@@ -51,6 +56,8 @@ export function SummaryWells({
   onPick,
   onChange,
 }: SummaryWellsProps) {
+  const { active } = useDndContext();
+  const draggedItem = getDragItem(active?.data.current);
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -73,9 +80,22 @@ export function SummaryWells({
     clause: Lib.AggregationClause | Lib.BreakoutClause,
   ) => onChange(Lib.removeClause(query, stageIndex, clause), wellId);
 
+  const getDropState = (wellId: SummaryWellId): WellDropState | null => {
+    if (draggedItem == null) {
+      return null;
+    }
+    return canDropOnWell(query, stageIndex, draggedItem, wellId)
+      ? "accepts"
+      : "rejects";
+  };
+
   return (
     <Box className={S.wells} data-testid="summary-wells">
-      <SummaryWell wellId="values" title={t`Summarize by`}>
+      <SummaryWell
+        wellId="values"
+        title={t`Summarize by`}
+        dropState={getDropState("values")}
+      >
         <SummaryWellInput
           wellId="values"
           sections={valueSections}
@@ -101,7 +121,11 @@ export function SummaryWells({
           ))}
         </SummaryWellInput>
       </SummaryWell>
-      <SummaryWell wellId="columns" title={t`Group by`}>
+      <SummaryWell
+        wellId="columns"
+        title={t`Group by`}
+        dropState={getDropState("columns")}
+      >
         <SummaryWellInput
           wellId="columns"
           sections={columnSections}
@@ -117,7 +141,7 @@ export function SummaryWells({
           {dimensionItems.map((item) => (
             <WellChip
               key={item.key}
-              label={item.label}
+              drag={{ kind: "dimension", item }}
               onRemove={() => handleRemove("columns", item.clause)}
             >
               <span className={S.chipLabel}>{item.label}</span>
@@ -133,14 +157,24 @@ export function SummaryWells({
 const INTERACTIVE_SELECTOR =
   "button, input, a, [role='button'], [contenteditable='true']";
 
+type WellDropState = "accepts" | "rejects" | "over";
+
 type SummaryWellProps = {
   wellId: SummaryWellId;
   title: string;
+  dropState: WellDropState | null;
   children: ReactNode;
 };
 
 /** A card that's one big input: clicking anywhere outside its chips focuses its field. */
-function SummaryWell({ wellId, title, children }: SummaryWellProps) {
+function SummaryWell({ wellId, title, dropState, children }: SummaryWellProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `well:${wellId}`,
+    data: { wellId },
+  });
+  const effectiveDropState =
+    dropState === "accepts" && isOver ? "over" : dropState;
+
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     if (
       !(event.target instanceof Element) ||
@@ -158,11 +192,13 @@ function SummaryWell({ wellId, title, children }: SummaryWellProps) {
 
   return (
     <Card
+      ref={setNodeRef}
       className={S.well}
       radius="lg"
       shadow="xs_outline"
       p="md"
       data-testid={`summary-well-${wellId}`}
+      data-drop={effectiveDropState ?? undefined}
       onMouseDown={handleMouseDown}
     >
       <Flex className={S.wellHeader}>
@@ -174,14 +210,25 @@ function SummaryWell({ wellId, title, children }: SummaryWellProps) {
 }
 
 type WellChipProps = {
-  label: string;
+  drag: Exclude<SummaryDragItem, { kind: "field" }>;
   children: ReactNode;
   onRemove: () => void;
 };
 
-function WellChip({ label, children, onRemove }: WellChipProps) {
+function WellChip({ drag, children, onRemove }: WellChipProps) {
+  const { label, key } = drag.item;
+  const { listeners, setNodeRef, isDragging } = useDraggable({
+    id: `chip:${drag.kind}:${key}`,
+    data: drag,
+  });
+
   return (
-    <Box className={S.chip} data-testid="summary-well-item">
+    <Box
+      ref={setNodeRef}
+      className={cx(S.chip, { [S.isDragging]: isDragging })}
+      data-testid="summary-well-item"
+      {...listeners}
+    >
       {children}
       <ActionIcon
         className={S.chipRemove}
@@ -223,7 +270,7 @@ function ValueChip({
   onRemove,
 }: ValueChipProps) {
   return (
-    <WellChip label={item.label} onRemove={onRemove}>
+    <WellChip drag={{ kind: "value", item }} onRemove={onRemove}>
       {item.kind === "column" ? (
         <ColumnValueMenu
           query={query}

@@ -58,3 +58,8 @@ export type SummaryDimensionItem = {
   key: string;
   label: string;
 };
+
+export type SummaryDragItem =
+  | { kind: "field"; field: SummaryField; label: string }
+  | { kind: "value"; item: SummaryValueItem }
+  | { kind: "dimension"; item: SummaryDimensionItem };

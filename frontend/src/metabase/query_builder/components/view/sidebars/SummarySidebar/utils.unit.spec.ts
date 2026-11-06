@@ -19,11 +19,17 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { SummaryField, SummaryFieldSection } from "./types";
+import type {
+  SummaryDragItem,
+  SummaryField,
+  SummaryFieldSection,
+} from "./types";
 import {
   addField,
+  canDropOnWell,
   changeValueOperator,
   clearWell,
+  dropOnWell,
   filterFieldSections,
   getDimensionItems,
   getFieldSections,
@@ -506,6 +512,145 @@ describe("replaceWellWithField", () => {
     expect(
       getDimensionLabels(clearWell(query, STAGE_INDEX, "columns")),
     ).toEqual([]);
+  });
+});
+
+describe("drag and drop", () => {
+  const query = createOrdersQueryWithMetricsAndMeasures({
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [
+          { type: "operator", operator: "count" },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "TOTAL" }],
+          },
+          { type: "metric", id: 1 },
+        ],
+        breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+      },
+    ],
+  });
+  const sections = getFieldSections(query, STAGE_INDEX);
+  const fieldDrag = (name: string): SummaryDragItem => ({
+    kind: "field",
+    field: findField(sections, name),
+    label: name,
+  });
+  const valueDrag = (label: string): SummaryDragItem => {
+    const item = getValueItems(query, STAGE_INDEX).find(
+      (item) => item.label === label,
+    );
+    if (item == null) {
+      throw new Error(`No value named ${label}`);
+    }
+    return { kind: "value", item };
+  };
+  const dimensionDrag = (): SummaryDragItem => ({
+    kind: "dimension",
+    item: getDimensionItems(query, STAGE_INDEX)[0],
+  });
+
+  it("lets a column field drop on either well, a metric or measure only on Summarize by", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Quantity"), "values"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Quantity"), "columns"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Order count"), "values"),
+    ).toBe(true);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, fieldDrag("Order count"), "columns"),
+    ).toBe(false);
+  });
+
+  it("adds a dropped field the way the list would", () => {
+    const grouped = dropOnWell(
+      query,
+      STAGE_INDEX,
+      fieldDrag("Quantity"),
+      "columns",
+    );
+    expect(getDimensionLabels(grouped)).toEqual([
+      "Created At: Month",
+      "Quantity: Auto binned",
+    ]);
+
+    const summed = dropOnWell(
+      query,
+      STAGE_INDEX,
+      fieldDrag("Quantity"),
+      "values",
+    );
+    expect(getValueLabels(summed).map(([, label]) => label)).toEqual([
+      "Count",
+      "Sum of Total",
+      "Revenue",
+      "Sum of Quantity",
+    ]);
+  });
+
+  it("moves a column value to Group by and a grouping to Summarize by", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, valueDrag("Sum of Total"), "columns"),
+    ).toBe(true);
+    const grouped = dropOnWell(
+      query,
+      STAGE_INDEX,
+      valueDrag("Sum of Total"),
+      "columns",
+    );
+    expect(getValueLabels(grouped).map(([, label]) => label)).toEqual([
+      "Count",
+      "Revenue",
+    ]);
+    expect(getDimensionLabels(grouped)).toEqual([
+      "Created At: Month",
+      "Total: Auto binned",
+    ]);
+
+    expect(canDropOnWell(query, STAGE_INDEX, dimensionDrag(), "values")).toBe(
+      true,
+    );
+    const summed = dropOnWell(query, STAGE_INDEX, dimensionDrag(), "values");
+    expect(getDimensionLabels(summed)).toEqual([]);
+    expect(getValueLabels(summed).map(([, label]) => label)).toEqual([
+      "Count",
+      "Sum of Total",
+      "Revenue",
+      "Distinct values of Created At",
+    ]);
+  });
+
+  it("keeps a chip on its own well and keeps non-column values out of Group by", () => {
+    expect(
+      canDropOnWell(query, STAGE_INDEX, valueDrag("Sum of Total"), "values"),
+    ).toBe(false);
+    expect(canDropOnWell(query, STAGE_INDEX, dimensionDrag(), "columns")).toBe(
+      false,
+    );
+    expect(
+      canDropOnWell(query, STAGE_INDEX, valueDrag("Count"), "columns"),
+    ).toBe(false);
+    expect(
+      canDropOnWell(query, STAGE_INDEX, valueDrag("Revenue"), "columns"),
+    ).toBe(false);
+    expect(
+      isSameQuery(
+        dropOnWell(query, STAGE_INDEX, valueDrag("Count"), "columns"),
+        query,
+      ),
+    ).toBe(true);
+    expect(
+      isSameQuery(
+        dropOnWell(query, STAGE_INDEX, dimensionDrag(), "columns"),
+        query,
+      ),
+    ).toBe(true);
   });
 });
 
