@@ -235,7 +235,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
       cy.findByRole("tab", { name: "Conditional colors" }).click();
       cy.findByRole("button", { name: /Add a range/ }).click();
       cy.findByLabelText("Range 1 maximum").clear().blur();
-      cy.findAllByTestId("color-selector-button").first().click();
+      cy.findByTestId("color-selector-button").click();
     });
     const rangeColor = "#F9D45C";
     H.popover().findByRole("button", { name: rangeColor }).click();
