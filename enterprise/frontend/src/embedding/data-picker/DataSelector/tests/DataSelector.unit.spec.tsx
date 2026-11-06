@@ -113,7 +113,7 @@ describe("DataSelector", () => {
     loaded: false,
     allLoading: false,
     fetchDatabases: () => Promise.resolve(),
-    fetchFields: () => Promise.resolve(),
+    fetchFields: () => Promise.resolve(createMockTable()),
     fetchQuestion: () => Promise.resolve(),
     fetchSchemas: () => Promise.resolve(),
     fetchSchemaTables: () => Promise.resolve(),
