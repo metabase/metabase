@@ -183,26 +183,15 @@
                                   (map #(into {} (t2.realize/realize %))))
                             conj []
                             (t2.execute/reducible-query sql-args))]
-        (cond
-          ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
-          ;; compiled query instead of running it, without calling the reducing function, so `transduce` above
-          ;; returns that query as is.
-          ;; Only rows are rows: anything else means no statement ran, so there is nothing to capture.
-          (not (every? map? rows))
-          nil
-
-          (< max-pre-image-rows (count rows))
+        (if (< max-pre-image-rows (count rows))
           (do (log/errorf "Skipping DML capture for %s: statement matches more than %d rows"
                           model max-pre-image-rows)
               nil)
-
-          :else
           rows)))))
 
 (defn- literal-pks
-  "The integer primary keys a pk condition value names, or nil for any other shape.
-  Accepts what `toucan2` itself accepts for `:toucan/pk`: a lone value, `[value]`, `[:= value]` and
-  `[:in values]`."
+  "The integer primary keys a pk condition value names, or nil for any other shape or a non-integer key.
+  Accepts the shapes `toucan2` accepts for `:toucan/pk`: a lone value, `[value]`, `[:= value]` and `[:in values]`."
   [v]
   (let [pks (cond
               (int? v)                                     [v]
@@ -210,7 +199,7 @@
               (and (vector? v) (#{:= :in} (first v))
                    (= 2 (count v)))                        (let [x (second v)] (if (int? x) [x] x))
               :else                                        nil)]
-    (when (and (or (sequential? pks) (set? pks)) (every? int? pks))
+    (when (and (coll? pks) (every? int? pks))
       (distinct (seq pks)))))
 
 (defn- pk-only-rows

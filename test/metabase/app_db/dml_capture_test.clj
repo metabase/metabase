@@ -176,8 +176,8 @@
 (defmethod dml-capture/captured! ::pk-transformed-bird [_ event] (swap! captured conj event))
 
 (defn- pk-delete-statements!
-  "Delete with `args` built from two fresh `::bird` ids, capturing only `:id`.
-  Returns the statement count and the captured ids."
+  "Delete with the args `args-fn` builds from two fresh `::bird` ids, capturing only `:id`.
+  Returns the statement count, the captured rows and the inserted ids."
   [args-fn]
   (reset-capture!)
   (swap! bird-capture-fields assoc :delete [:id])
@@ -194,15 +194,15 @@
 
 (deftest pk-only-capture-needs-no-snapshot-query-test
   (testing "a delete by literal pk builds its rows from the pks when capture only asks for the pk"
-    (doseq [[shape args-fn] {"a lone pk"          (fn [ids] [(first ids)])
-                             ":id [:in ids]"      (fn [ids] [:id [:in ids]])
-                             ":id [:in #{ids}]"   (fn [ids] [:id [:in (set ids)]])
-                             ":toucan/pk [:in]"   (fn [ids] [:toucan/pk [:in ids]])
-                             ":id [:= id]"        (fn [ids] [:id [:= (first ids)]])}]
+    ;; Each shape maps to its args and how many of the two ids it names.
+    (doseq [[shape [args-fn n]] {"a lone pk"        [(fn [ids] [(first ids)])          1]
+                                 ":id [:in ids]"    [(fn [ids] [:id [:in ids]])        2]
+                                 ":id [:in #{ids}]" [(fn [ids] [:id [:in (set ids)]])  2]
+                                 ":toucan/pk [:in]" [(fn [ids] [:toucan/pk [:in ids]]) 2]
+                                 ":id [:= id]"      [(fn [ids] [:id [:= (first ids)]]) 1]}]
       (testing shape
-        (let [{:keys [statements rows expected]} (pk-delete-statements! args-fn)
-              expected (if (#{"a lone pk" ":id [:= id]"} shape) (take 1 expected) expected)]
-          (is (= {:statements 1, :rows (set (map (fn [id] {:id id}) expected))}
+        (let [{:keys [statements rows expected]} (pk-delete-statements! args-fn)]
+          (is (= {:statements 1, :rows (set (map (fn [id] {:id id}) (take n expected)))}
                  {:statements statements, :rows rows}))))))
   (testing "pks that match nothing are still reported"
     (reset-capture!)
