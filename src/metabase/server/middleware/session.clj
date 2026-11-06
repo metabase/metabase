@@ -118,15 +118,6 @@
             ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
             (update :is-group-manager? boolean))))
 
-(def ^:private api-key-that-should-never-match (str (random-uuid)))
-(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
-
-(defn do-useless-hash
-  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
-  attacks."
-  []
-  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
-
 (defn- matching-api-key?
   "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
   path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
@@ -137,7 +128,7 @@
   (if-let [stored-hash (when api-key
                          (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
     (u.password/verify-password passed-api-key "" stored-hash)
-    (do-useless-hash)))
+    (u.password/do-useless-hash)))
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"

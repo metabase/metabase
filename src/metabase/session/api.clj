@@ -423,6 +423,10 @@
                          [:provider/emailed-secret-password-reset]
                          (assoc credentials :session/skip? skip-session)))]
     (cond
+      (= :password-unchanged (:error auth-result))
+      (api/throw-invalid-param-exception
+       :password (tru "New password must be different from your current password."))
+
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
 
