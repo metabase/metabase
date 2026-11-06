@@ -797,6 +797,7 @@ export type SyncableEntity =
   | "question";
 
 export interface EnterpriseSettings extends Settings {
+  "allow-data-studio-in-iframe"?: boolean;
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
   "remote-sync-enabled"?: boolean | null;

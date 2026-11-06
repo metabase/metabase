@@ -10,7 +10,8 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.warehouses.core :as warehouses]
+   [metabase.workspaces.core :as workspaces]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -36,6 +37,7 @@
                                                    [:map {:closed true}
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/DatabaseDetails]]]]]]
+  (workspaces/check-not-in-workspace-mode! "Database routing")
   (api/check-400 (database-routing.db/router-exists? router_database_id))
   (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
                  "A destination database with that name already exists.")
@@ -108,11 +110,13 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+  (workspaces/check-not-in-workspace-mode! "Database routing")
   (let [db (database-routing.db/database id)]
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
     (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
     (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
+    (api/check-400 (not (:admin_details db)) "Cannot enable database routing for a database with an admin connection configured")
     (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms")
     (setting/with-database db
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
