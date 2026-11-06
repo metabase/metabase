@@ -66,7 +66,7 @@ const setup = async ({ item, card }: SetupOpts) => {
 describe("FieldPane", () => {
   it("should show column of question with aggregation (metabase#86298)", async () => {
     await setup({
-      item: { type: "field", cardId: CARD_ID, columnIndex: 0 },
+      item: { type: "field", kind: "card", cardId: CARD_ID, columnIndex: 0 },
       card: createMockCard({
         id: CARD_ID,
         database_id: SAMPLE_DB_ID,
@@ -102,7 +102,7 @@ describe("FieldPane", () => {
     const { name } = Lib.displayInfo(query, STAGE_INDEX, column);
 
     await setup({
-      item: { type: "field", tableId: PRODUCTS_ID, columnIndex },
+      item: { type: "field", kind: "table", tableId: PRODUCTS_ID, columnIndex },
     });
 
     expect(screen.getByText(name)).toBeInTheDocument();
@@ -110,7 +110,12 @@ describe("FieldPane", () => {
 
   it("should show error for missing column index", async () => {
     await setup({
-      item: { type: "field", tableId: PRODUCTS_ID, columnIndex: 100 },
+      item: {
+        type: "field",
+        kind: "table",
+        tableId: PRODUCTS_ID,
+        columnIndex: 100,
+      },
     });
 
     expect(

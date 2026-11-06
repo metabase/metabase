@@ -84,6 +84,7 @@ describe("QuestionPane", () => {
     await userEvent.click(screen.getByText("count"));
     expect(onItemClick).toHaveBeenCalledWith({
       type: "field",
+      kind: "card",
       cardId: CARD_ID,
       columnIndex: 0,
     });
