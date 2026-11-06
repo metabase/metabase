@@ -33,8 +33,10 @@
   "A fresh database with a provisioning login that is not a superuser, and `sales`, an input schema owned by
   `mb_ws_test_etl`, a role the provisioning login is a member of."
   [spec]
-  (exec! spec ["DROP SCHEMA IF EXISTS sales, noselect CASCADE"])
-  (doseq [role ["mb_ws_test_etl" (:user provisioner)]]
+  (exec! spec ["DROP SCHEMA IF EXISTS sales, noselect, loose, pubwrite, sq, nogrant CASCADE"
+               ;; the default before Postgres 15, which init refuses
+               "REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
+  (doseq [role ["mb_ws_test_etl" "mb_ws_test_pubwriter" (:user provisioner)]]
     (drop-role-if-exists! spec role))
   (exec! spec [(format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" (:user provisioner) (:password provisioner))
                (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user provisioner))
@@ -46,7 +48,31 @@
                "INSERT INTO sales.orders VALUES (1), (2)"
                ;; tables in `noselect` grant nothing to the provisioning login
                "CREATE SCHEMA noselect"
-               "CREATE TABLE noselect.other (id int)"]))
+               "CREATE TABLE noselect.other (id int)"
+               (format "GRANT USAGE ON SCHEMA noselect TO %s WITH GRANT OPTION" (:user provisioner))
+               ;; `nogrant` grants the provisioning login nothing at all
+               "CREATE SCHEMA nogrant"
+               ;; `pubwrite` and `sq` let PUBLIC write, in each way the precondition names
+               "CREATE ROLE mb_ws_test_pubwriter NOLOGIN"
+               "CREATE SCHEMA pubwrite AUTHORIZATION mb_ws_test_etl"
+               (str "SET ROLE mb_ws_test_etl; "
+                    "CREATE TABLE pubwrite.audit (id int); GRANT INSERT ON pubwrite.audit TO PUBLIC; "
+                    "CREATE TABLE pubwrite.upd (id int); GRANT UPDATE ON pubwrite.upd TO PUBLIC; "
+                    "CREATE TABLE pubwrite.del (id int); GRANT DELETE ON pubwrite.del TO PUBLIC; "
+                    "CREATE TABLE pubwrite.trunc (id int); GRANT TRUNCATE ON pubwrite.trunc TO PUBLIC; "
+                    "CREATE TABLE pubwrite.trig (id int); GRANT TRIGGER ON pubwrite.trig TO PUBLIC; "
+                    "CREATE TABLE pubwrite.refs (id int); GRANT REFERENCES ON pubwrite.refs TO PUBLIC; "
+                    "CREATE TABLE pubwrite.col (id int); GRANT UPDATE (id) ON pubwrite.col TO PUBLIC; "
+                    "ALTER DEFAULT PRIVILEGES IN SCHEMA pubwrite GRANT INSERT ON TABLES TO PUBLIC; RESET ROLE")
+               "CREATE TABLE pubwrite.pw (id int)"
+               "ALTER TABLE pubwrite.pw OWNER TO mb_ws_test_pubwriter"
+               "GRANT mb_ws_test_pubwriter TO mb_ws_test_provisioner"
+               "ALTER DEFAULT PRIVILEGES FOR ROLE mb_ws_test_pubwriter GRANT DELETE ON TABLES TO PUBLIC"
+               "CREATE SCHEMA sq AUTHORIZATION mb_ws_test_etl"
+               (str "SET ROLE mb_ws_test_etl; CREATE SEQUENCE sq.s0; GRANT USAGE ON SEQUENCE sq.s0 TO PUBLIC; "
+                    "ALTER DEFAULT PRIVILEGES IN SCHEMA sq GRANT UPDATE ON SEQUENCES TO PUBLIC; RESET ROLE")
+               ;; `loose` will grant CREATE to PUBLIC, which init refuses: tests grant it
+               "CREATE SCHEMA loose"]))
 
 (defn- do-with-warehouse!
   "Calls `(f superuser-spec database)`, with `database` the Lib metadata of a Database whose own login is the superuser
@@ -227,7 +253,9 @@
        (exec! spec [(format "ALTER ROLE %s NOCREATEROLE" (:user provisioner))])
        (testing "the statements sent to the server never carry the password, which the server logs when one fails"
          ;; the batch wrapper's message quotes the statement as sent
-         (mt/with-dynamic-fn-redefs [driver.u/batch-exception identity]
+         ;; past the CREATEROLE precondition, so that CREATE USER itself runs and fails
+         (mt/with-dynamic-fn-redefs [driver.u/batch-exception                     identity
+                                     postgres/check-provisioning-login-privileges! (constantly nil)]
            (let [e (is (thrown? java.sql.SQLException
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
              (is (some #(str/includes? % "CREATE USER") (messages e)))
@@ -377,6 +405,9 @@
      (let [workspace (new-workspace! spec database 2109)
            user      (-> workspace :database_details :user)]
        (tx/drop-if-exists-and-create-db! :postgres other-db-name)
+       ;; the default before Postgres 15, which init refuses
+       (exec! (sql-jdbc.conn/connection-details->spec :postgres (other-db-details))
+              ["REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
        (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name other-db-name])]
          (provisioned! database workspace)
          (testing "a large object the user makes in another database it may connect to does not stop destroy"
@@ -412,3 +443,235 @@
                                         (java.sql.SQLException. "ERROR: permission denied to drop objects" "42501"))]
       (is (= {:status-code 409, :user "mb__isolation_abcde_1"} (ex-data e)))
       (is (str/includes? (ex-message e) "`GRANT \"mb__isolation_abcde_1\" TO <login>`")))))
+
+(defn- public-create! [spec schema]
+  (exec! spec [(format "GRANT CREATE ON SCHEMA %s TO PUBLIC" schema)]))
+
+(deftest grant-preconditions-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2201)
+           user      (-> workspace :database_details :user)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (doseq [[schema message extra]
+               [["pubwrite" (re-pattern
+                             (java.util.regex.Pattern/quote
+                              (str "Run `REVOKE UPDATE (\"id\") ON TABLE \"pubwrite\".\"col\" FROM PUBLIC; "
+                                   "ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_pubwriter\" REVOKE DELETE ON TABLES FROM PUBLIC; "
+                                   "ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_etl\" IN SCHEMA \"pubwrite\" REVOKE INSERT ON TABLES FROM PUBLIC; "
+                                   "REVOKE INSERT ON TABLE \"pubwrite\".\"audit\" FROM PUBLIC; "
+                                   "REVOKE DELETE ON TABLE \"pubwrite\".\"del\" FROM PUBLIC; "
+                                   "REVOKE REFERENCES ON TABLE \"pubwrite\".\"refs\" FROM PUBLIC; "
+                                   "REVOKE TRIGGER ON TABLE \"pubwrite\".\"trig\" FROM PUBLIC; "
+                                   "REVOKE TRUNCATE ON TABLE \"pubwrite\".\"trunc\" FROM PUBLIC; "
+                                   "REVOKE UPDATE ON TABLE \"pubwrite\".\"upd\" FROM PUBLIC;`")))
+                 {:objects ["col.id" "database-wide default privileges for mb_ws_test_pubwriter"
+                            "default privileges for mb_ws_test_etl" "audit" "del" "refs" "trig" "trunc" "upd"]}]
+                ["sq" (re-pattern
+                       (java.util.regex.Pattern/quote
+                        (str "ALTER DEFAULT PRIVILEGES FOR ROLE \"mb_ws_test_etl\" IN SCHEMA \"sq\" REVOKE UPDATE ON SEQUENCES "
+                             "FROM PUBLIC; REVOKE USAGE ON SEQUENCE \"sq\".\"s0\" FROM PUBLIC;")))
+                 {:objects ["default sequence privileges for mb_ws_test_etl" "sequence s0"]}]
+                ["nogrant" #"run `GRANT USAGE ON SCHEMA \"nogrant\" TO \"mb_ws_test_provisioner\" WITH GRANT OPTION`" {}]
+                ["noselect" #"run `GRANT SELECT ON ALL TABLES IN SCHEMA \"noselect\" TO \"mb_ws_test_provisioner\" WITH GRANT OPTION`"
+                 {:objects ["\"noselect\".\"other\""]}]]]
+         (testing (format "grant on %s throws a 412 naming the fix, before any change" schema)
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/grant-workspace-read-access! :postgres database workspace [schema]))))]
+             (is (= (merge {:status-code 412, :schema schema} extra) (ex-data e)))
+             (is (re-find message (ex-message e)))
+             (is (= [{:kind "schema", :name (:schema workspace)}] (distinct (grants-to spec user)))))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest init-refuses-public-create-anywhere-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2202)
+           user      (-> workspace :database_details :user)]
+       (public-create! spec "loose")
+       (testing "init returns a 412 naming each schema that grants CREATE to PUBLIC, before any change"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+           (is (= {:status-code 412, :schemas [(str db-name ".loose")], :unverifiable []} (ex-data e)))
+           (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose\" FROM PUBLIC;` in database \"%s\""
+                                                     db-name)))
+           (is (not (role-exists? spec user)))
+           (is (nil? (schema-owner spec (:schema workspace))))))
+       (testing "after the REVOKE, init succeeds"
+         (exec! spec ["REVOKE CREATE ON SCHEMA loose FROM PUBLIC"])
+         (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+         (is (role-exists? spec user)))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest public-create-check-includes-this-database-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2203)]
+       (public-create! spec "loose")
+       ;; as when this database does not grant CONNECT to PUBLIC
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [])]
+         (testing "this database is checked even when it is not among those PUBLIC may connect to"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= [(str db-name ".loose")] (:schemas (ex-data e)))))))))))
+
+(deftest cluster-public-create-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace  (new-workspace! spec database 2204)
+           closed     "workspace_isolation_closed"
+           other-spec (sql-jdbc.conn/connection-details->spec :postgres (other-db-details))]
+       (doseq [db [other-db-name closed]]
+         (tx/drop-if-exists-and-create-db! :postgres db))
+       (exec! other-spec ["REVOKE CREATE ON SCHEMA public FROM PUBLIC" "CREATE SCHEMA loose2"
+                          "GRANT CREATE ON SCHEMA loose2 TO PUBLIC"])
+       (exec! (sql-jdbc.conn/connection-details->spec
+               :postgres (mt/dbdef->connection-details :postgres :db {:database-name closed}))
+              ["REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
+       ;; the provisioning login may not connect to `closed`, but the stubbed list says the workspace user could
+       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" closed)])
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name other-db-name closed])]
+         (testing "init lists each other database's PUBLIC CREATE schema, and each database it could not check"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :schemas [(str other-db-name ".loose2")], :unverifiable [closed]} (ex-data e)))
+             (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose2\" FROM PUBLIC;` in database \"%s\""
+                                                       other-db-name)))
+             (is (str/includes? (ex-message e) (format "`REVOKE CONNECT ON DATABASE \"%s\" FROM PUBLIC;`" closed)))
+             (is (not (role-exists? spec (-> workspace :database_details :user))))))
+         (testing "after the fixes, init succeeds"
+           (exec! other-spec ["REVOKE CREATE ON SCHEMA loose2 FROM PUBLIC"])
+           (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO %s" closed (:user provisioner))])
+           (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
+
+(deftest cluster-check-reports-a-database-it-cannot-name-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2205)
+           bad       "workspace_isolation_bad?name"]
+       (tx/drop-if-exists-and-create-db! :postgres bad)
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name bad])]
+         (testing "a database whose name the connection guard refuses is listed as unverifiable"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :schemas [], :unverifiable [bad]} (ex-data e))))))))))
+
+(deftest connectable-databases-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec _database]
+     (tx/drop-if-exists-and-create-db! :postgres "workspace_isolation_noconnect")
+     (tx/drop-if-exists-and-create-db! :postgres "workspace_isolation_noallow")
+     (exec! spec ["REVOKE CONNECT ON DATABASE workspace_isolation_noconnect FROM PUBLIC"
+                  "ALTER DATABASE workspace_isolation_noallow ALLOW_CONNECTIONS false"])
+     (testing "databases any login may connect to: this one, not one without CONNECT for PUBLIC, one refusing connections, or template0"
+       (let [dbs (set (jdbc/with-db-transaction [conn spec]
+                        (doall (#'postgres/connectable-databases conn))))]
+         (is (contains? dbs db-name))
+         (is (not-any? dbs ["workspace_isolation_noconnect" "workspace_isolation_noallow" "template0"]))))
+     (exec! spec ["ALTER DATABASE workspace_isolation_noallow ALLOW_CONNECTIONS true"]))))
+
+(deftest planted-functions-never-run-as-the-provisioning-login-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [planter (new-workspace! spec database 2206)
+           other   (new-workspace! spec database 2207)
+           user    (-> planter :database_details :user)
+           acl     #(:relacl (first (jdbc/query spec ["SELECT relacl::text FROM pg_class WHERE oid = 'sales.orders'::regclass"])))]
+       (provisioned! database planter)
+       ;; public is on every login's default search_path; granted to the user directly, so the PUBLIC CREATE check passes
+       (exec! spec [(format "GRANT CREATE ON SCHEMA public TO \"%s\"" user)])
+       (let [grant-self (fn [privilege]
+                          (format "BEGIN EXECUTE 'GRANT %s ON sales.orders TO \"%s\"'; EXCEPTION WHEN OTHERS THEN NULL; END;"
+                                  privilege user))]
+         ;; better matches than the catalog's for a varchar parameter, so unpinned resolution picks them
+         (is (= [0] (as-workspace-user planter (str "CREATE FUNCTION public.has_schema_privilege(name, varchar, text) "
+                                                    "RETURNS bool LANGUAGE plpgsql AS $f$ BEGIN " (grant-self "INSERT")
+                                                    " RETURN pg_catalog.has_schema_privilege($1, $2::text, $3); END $f$"))))
+         (is (= [0] (as-workspace-user planter (str "CREATE FUNCTION public.evil_eq(name, varchar) RETURNS bool "
+                                                    "LANGUAGE plpgsql AS $f$ BEGIN " (grant-self "DELETE")
+                                                    " RETURN $1::text = $2::text; END $f$"))))
+         (is (= [0] (as-workspace-user planter (str "CREATE OPERATOR public.= (LEFTARG = name, RIGHTARG = varchar, "
+                                                    "FUNCTION = public.evil_eq)")))))
+       (let [before (acl)]
+         (testing "another workspace's init, grant and destroy never call them"
+           (provisioned! database other)
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database other))
+           (is (= before (acl)))
+           (is (re-find #"permission denied" (as-workspace-user planter "INSERT INTO sales.orders VALUES (666)")))))
+       (exec! spec [(format "DROP OWNED BY \"%s\"" user)])
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database planter))))))
+
+(deftest init-refuses-a-noinherit-provisioning-login-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2208)
+           user      (-> workspace :database_details :user)]
+       (exec! spec [(format "ALTER ROLE %s NOINHERIT" (:user provisioner))])
+       (try
+         (if (> 160000 (server-version spec))
+           (testing "before Postgres 16, a NOINHERIT login would hold the membership without its privileges: a 412"
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+               (is (= {:status-code 412, :user user} (ex-data e)))
+               (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" INHERIT`" (:user provisioner)))))
+             (is (not (role-exists? spec user))))
+           (testing "from Postgres 16, the membership inherits whatever the login's attribute, so init and destroy work"
+             (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
+             (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+         (finally
+           (exec! spec [(format "ALTER ROLE %s INHERIT" (:user provisioner))])))))))
+
+(deftest init-gives-connect-where-public-lacks-it-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2209)
+           user      (-> workspace :database_details :user)]
+       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" db-name)
+                    (format "GRANT CONNECT ON DATABASE %s TO %s" db-name (:user provisioner))])
+       (try
+         (testing "without the grant option on CONNECT, init returns a 412 naming it"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :user user} (ex-data e)))
+             (is (str/includes? (ex-message e) (format "`GRANT CONNECT ON DATABASE \"%s\" TO \"%s\" WITH GRANT OPTION`"
+                                                       db-name (:user provisioner)))))
+           (is (not (role-exists? spec user))))
+         (testing "with it, init grants CONNECT to the workspace user, which logs in; destroy takes it back"
+           (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO %s WITH GRANT OPTION" db-name (:user provisioner))])
+           (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+           (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one")))
+           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+           (is (not (role-exists? spec user))))
+         (finally
+           (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO PUBLIC" db-name)])))))))
+
+(deftest init-names-missing-provisioning-privileges-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2210)
+           user      (-> workspace :database_details :user)]
+       (exec! spec [(format "ALTER ROLE %s NOCREATEROLE" (:user provisioner))
+                    (format "REVOKE CREATE ON DATABASE %s FROM %s" db-name (:user provisioner))])
+       (try
+         (testing "a login without CREATEROLE or CREATE on the database gets a 412 naming both grants, before any change"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (= {:status-code 412, :user user} (ex-data e)))
+             (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" CREATEROLE; GRANT CREATE ON DATABASE \"%s\" TO \"%s\";`"
+                                                       (:user provisioner) db-name (:user provisioner)))))
+           (is (not (role-exists? spec user)))
+           (is (nil? (schema-owner spec (:schema workspace)))))
+         (finally
+           (exec! spec [(format "ALTER ROLE %s CREATEROLE" (:user provisioner))
+                        (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user provisioner))])))))))

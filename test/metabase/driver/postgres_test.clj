@@ -2853,7 +2853,10 @@
                                            "CREATE SCHEMA %s AUTHORIZATION %s;")
                                       qgrantor qgrantor qschema qgrantor)])
               (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
-                    _             (driver/init-workspace-isolation! :postgres (mt/db) workspace+det)
+                    ;; the shared test cluster grants CREATE on public to PUBLIC before Postgres 15, which init
+                    ;; refuses; metabase.driver.postgres.workspace-test covers that check
+                    _             (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                                    (driver/init-workspace-isolation! :postgres (mt/db) workspace+det))
                     iso-user      (-> workspace+det :database_details :user)
                     qiso          (sql.u/quote-name :postgres :field iso-user)]
                 (try
