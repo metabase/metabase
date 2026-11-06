@@ -53,7 +53,7 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless you explicitly specify them with the [Select collections](#select-collections) option)
 - Dashboards
 - Questions (cards)
-- Transforms (including tags and jobs)
+- Transforms (including tags, jobs, and tests)
 - Documents (without comments)
 - Actions
 - Models
