@@ -90,8 +90,9 @@
 
    - `:tunnel-enabled` falsey: all of them; the driver only opens the tunnel when it is set.
    - `:tunnel-auth-option` set: those of the other option. The driver offers every credential present, so this
-     follows what the admin chose rather than what the driver would try. Without the option (details created
-     through the API) both stay, since nothing says which one is in use."
+     follows what the admin chose rather than what the driver would try. `:tunnel-auth-option` is a UI flag that
+     the driver never reads, so this trusts it to match the credentials the tunnel uses. Without the option
+     (details created through the API) both stay, since nothing says which one is in use."
   [details]
   (let [all-keys (reduce into #{} (vals tunnel-secret-keys-by-auth-option))]
     (cond
