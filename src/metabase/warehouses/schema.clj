@@ -108,7 +108,7 @@
                               :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
                               :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                               :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
-                              :write_data_details :creator_id :router_database_id :initial_sync_status :is_sample
-                              :is_stub]]
+                              :write_data_details :admin_details :creator_id :router_database_id :initial_sync_status
+                              :is_sample :is_stub]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
