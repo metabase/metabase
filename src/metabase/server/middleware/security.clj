@@ -635,6 +635,15 @@
     (remove #(covers-instance-origin? self %) hosts)
     hosts))
 
+(defn- cacheable-status?
+  "Whether a response with this status may carry a far-future cache header. A 404 for a hashed
+  asset is transient: during a rolling deploy a client can ask an instance that does not have the
+  file yet. Caching that answer for a year leaves the asset unreachable long after the deploy."
+  [status]
+  (boolean (and status
+                (or (<= 200 status 299)
+                    (= status 304)))))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
@@ -649,7 +658,8 @@
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
-                 :allow-cache?                (request/cacheable? request)
+                 :allow-cache?                (and (request/cacheable? request)
+                                                   (cacheable-status? (:status response)))
                  :data-app-iframe?            (data-app-iframe-request? request)
                  ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
                  ;; doc) and `frame-src` (both the iframe doc and the top page,
