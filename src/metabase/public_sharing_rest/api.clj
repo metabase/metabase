@@ -178,28 +178,31 @@
   (error-response results))
 
 (mr/def ::query-result
-  "What [[transform-qp-result]] leaves of a query result for a public or embed endpoint.
-  A completed query keeps its rows and the column metadata needed to show them.
-  A failed one keeps its status and the error [[error-response]] allows."
-  [:or
-   [:map {:closed true}
-    [:status     [:= :completed]]
-    [:data       [:map {:closed true}
-                  [:cols               ::qp.schema/result-metadata.columns]
-                  [:rows               [:sequential [:sequential :any]]]
-                  [:rows_truncated     {:optional true} :int]
-                  [:insights           {:optional true} [:maybe [:sequential ::qp.schema/insight]]]
-                  [:requested_timezone {:optional true} [:maybe :string]]
-                  [:results_timezone   {:optional true} [:maybe :string]]]]
-    [:json_query {:optional true} [:map {:closed true}
-                                   [:parameters {:optional true} [:maybe [:sequential :map]]]]]]
-   [:map {:closed true}
-    [:status     [:= :failed]]
-    [:error      {:optional true} :string]
-    [:error_type {:optional true} :keyword]]])
+  "What [[transform-qp-result]] leaves of a completed query result for a public or embed endpoint: its rows and the
+  column metadata needed to show them."
+  [:map {:closed true}
+   [:status     [:= :completed]]
+   [:data       [:map {:closed true}
+                 [:cols               ::qp.schema/result-metadata.columns]
+                 [:rows               [:sequential [:sequential :any]]]
+                 [:rows_truncated     {:optional true} :int]
+                 [:insights           {:optional true} [:maybe [:sequential ::qp.schema/insight]]]
+                 [:requested_timezone {:optional true} [:maybe :string]]
+                 [:results_timezone   {:optional true} [:maybe :string]]]]
+   [:json_query {:optional true} [:map {:closed true}
+                                  [:parameters {:optional true} [:maybe [:sequential :map]]]]]])
+
+(mr/def ::query-error
+  "The body [[error-response]] builds for a failed public or embed query.
+  It goes out with a 4XX or 5XX status, never as a streamed result."
+  [:map {:closed true}
+   [:status     [:= :failed]]
+   [:error      {:optional true} [:maybe :string]]
+   [:error_type {:optional true} :keyword]])
 
 (mr/def ::query-result-response
-  "Response schema for a public or embed endpoint that streams a query result through [[transform-qp-result]]."
+  "Response schema for a public or embed endpoint that streams a query result through [[transform-qp-result]].
+  A failed query is written as an error response instead, with a [[query-error]] body."
   (qp.streaming/response-schema ::query-result))
 
 (defn- process-query-for-card-with-id-run-fn

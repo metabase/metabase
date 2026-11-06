@@ -2156,14 +2156,14 @@
              (client/client-full-response :get (format "public/card/%s/query" uuid)
                                           :parameters unparseable-date-param))))))))
 
-(defn- matches-public-query-result?
-  "Whether `body`, a public query response as the test client parsed its JSON, matches
-  [[api.public/query-result]] once decoded the way a JSON client would read that schema."
-  [body]
-  (mr/validate ::api.public/query-result (mc/decode ::api.public/query-result body (mtx/json-transformer))))
+(defn- matches?
+  "Whether `body`, a response as the test client parsed its JSON, matches `schema` once decoded the way a JSON client
+  would read that schema."
+  [schema body]
+  (mr/validate schema (mc/decode schema body (mtx/json-transformer))))
 
 (deftest public-query-result-schema-test
-  (testing "GET /api/public/card/:uuid/query streams the body its response schema documents"
+  (testing "GET /api/public/card/:uuid/query returns the bodies its schemas document"
     (mt/dataset test-data
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-card [{uuid :public_uuid} (date-param-native-card :table)]
@@ -2171,11 +2171,12 @@
             (testing "a completed query"
               (let [body (client/client :get 202 url)]
                 (is (= "completed" (:status body)))
-                (is (matches-public-query-result? body))))
+                (is (matches? ::api.public/query-result body))))
             (testing "a failed query"
-              (let [{:keys [body]} (client/client-full-response :get url :parameters unparseable-date-param)]
+              (let [{:keys [status body]} (client/client-full-response :get url :parameters unparseable-date-param)]
+                (is (contains? #{400 500} status))
                 (is (= "failed" (:status body)))
-                (is (matches-public-query-result? body))))))))))
+                (is (matches? ::api.public/query-error body))))))))))
 
 (deftest public-pivot-dashcard-error-does-not-leak-query-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
