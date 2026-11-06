@@ -746,10 +746,20 @@
 (deftest row-actions-refused-on-covered-database-without-remappings-test
   (do-with-postgres-workspace!
    (fn [_scratch]
-     (is (= [] (remappings)))
-     (t2/update! :model/Database :id (mt/id) {:settings {:database-enable-actions true}})
-     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tables are written only by transforms"
-                           (mt/with-current-user (mt/user->id :crowberto)
-                             (actions/perform-action! :model.row/create
-                                                      {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}
-                                                       :create-row {"name" "x"}})))))))
+     ;; a table of the test's own, so a broken guard writes nothing shared
+     (let [table-name (random-identifier "ws_rows")]
+       (execute-sql! (format "CREATE TABLE public.%s (id int)" table-name))
+       (try
+         (sync/sync-database! (mt/id) {:scan :schema})
+         (is (= [] (remappings)))
+         (t2/update! :model/Database :id (mt/id) {:settings {:database-enable-actions true}})
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tables are written only by transforms"
+                               (mt/with-current-user (mt/user->id :crowberto)
+                                 (actions/perform-action! :model.row/create
+                                                          {:database   (mt/id), :type :query
+                                                           :query      {:source-table (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                                                        :name table-name)}
+                                                           :create-row {"id" 1}}))))
+         (is (= [[0]] (query-sql (format "SELECT count(*)::int FROM public.%s" table-name))))
+         (finally
+           (execute-sql! (format "DROP TABLE public.%s" table-name))))))))
