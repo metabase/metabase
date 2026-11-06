@@ -6,6 +6,7 @@ import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import {
   getDataAppEmbedUrl,
+  getEmbeddedAppNameFromPath,
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
@@ -333,12 +334,9 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     oldVal: string | null,
     newVal: string | null,
   ) {
-    if (oldVal === newVal) {
-      return;
-    }
-
     if (!this._iframe) {
       if (
+        oldVal !== newVal &&
         this.isConnected &&
         this._componentName === "metabase-data-app" &&
         attrName === "path"
@@ -346,6 +344,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         this._initializeEmbed();
       }
 
+      return;
+    }
+
+    if (this._handleRepeatedDataAppPathWrite(attrName, oldVal, newVal)) {
+      return;
+    }
+
+    if (oldVal === newVal) {
       return;
     }
 
@@ -785,10 +791,32 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     return data.jwt;
   }
 
+  private _handleRepeatedDataAppPathWrite(
+    attrName: string,
+    oldValue: string | null,
+    newValue: string | null,
+  ): boolean {
+    const isRepeatedDataAppPathWrite =
+      this._componentName === "metabase-data-app" &&
+      attrName === "path" &&
+      oldValue === newValue &&
+      newValue !== null;
+
+    if (!isRepeatedDataAppPathWrite) {
+      return false;
+    }
+
+    this.sendMessage("metabase.embed.navigateToDataAppPath", {
+      path: newValue,
+    });
+
+    return true;
+  }
+
   /**
    * Data app path property can be changed after the embed is created.
    *
-   * Changes to the path prop remount the iframe.
+   * Switching app name re-mounts the iframe. Otherwise, only do client-side routing.
    */
   private _handleDataAppPathPropChange(
     settings: Partial<SdkIframeEmbedElementSettings>,
@@ -806,7 +834,15 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     this._validateEmbedSettings(nextValues);
 
-    // TODO(DAT-72): Use client-side routing when the path changes within the same app.
+    // Do not remount when the app name remains the same.
+    // `useDataAppPathNavigation` hook will do client-side routing.
+    if (
+      getEmbeddedAppNameFromPath(nextValues.path) ===
+      getEmbeddedAppNameFromPath(this._dataAppPath ?? "")
+    ) {
+      return false;
+    }
+
     this._removeMessageListener?.();
     this._isEmbedReady = false;
     this._iframe?.remove();
