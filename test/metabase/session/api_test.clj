@@ -439,6 +439,33 @@
                      (:email sso-user)
                      (re-pattern "single sign-on")))))))))))
 
+(deftest forgot-password-sso-user-with-used-password-test
+  (testing "POST /api/session/forgot_password - SSO user with enabled provider gets link only for used, unexpired password"
+    (doseq [[password-attrs expected-body] [[{:last_used_at (t/offset-date-time)}
+                                             "Click the button below to reset the password"]
+                                            [{} "You're using Google to log in to"]
+                                            [{:last_used_at (t/offset-date-time)
+                                              :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
+                                             "You're using Google to log in to"]]]
+      (testing (pr-str password-attrs)
+        (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                    (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                      (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+          (mt/with-temp [:model/User sso-user {:first_name "sso"
+                                               :last_name  "user"
+                                               :email      "sso-password-user@example.com"
+                                               :sso_source :google}
+                         :model/AuthIdentity _ (merge {:user_id     (:id sso-user)
+                                                       :provider    "password"
+                                                       :credentials {:plaintext_password "somePassword12!!"}}
+                                                      password-attrs)]
+            (mt/with-temporary-setting-values [site-url              "http://test.example.com"
+                                               google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                               google-auth-enabled   true]
+              (mt/with-fake-inbox
+                (mt/client :post 204 "session/forgot_password" {:email (:email sso-user)})
+                (is (mt/received-email-body? (:email sso-user) (re-pattern expected-body)))))))))))
+
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
@@ -710,6 +737,58 @@
                   "the user's existing sessions are not revoked")
               (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
                   "the reset token is not consumed"))))))))
+
+(deftest forgot-password-ldap-user-test
+  (testing "POST /api/session/forgot_password - LDAP user with used password gets link only when directory lacks them"
+    (ldap.test/with-ldap-server!
+      (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                  (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                    (fn [& args] (u/deref-with-timeout (apply orig args) 5000)))]
+        (doseq [[email sso-source expected-body] [["sally.brown@metabase.com" :ldap #"single sign-on"]
+                                                  ["sally.brown@metabase.com" nil #"single sign-on"]
+                                                  ["removed-ldap-user@metabase.com" :ldap
+                                                   #"Click the button below to reset the password"]]]
+          (testing (pr-str [email sso-source])
+            (mt/with-temp [:model/User user {:email email :sso_source sso-source}
+                           :model/AuthIdentity _ {:user_id      (:id user)
+                                                  :provider     "password"
+                                                  :credentials  {:plaintext_password "somePassword12!!"}
+                                                  :last_used_at (t/offset-date-time)}]
+              (mt/with-temporary-setting-values [site-url "http://test.example.com"]
+                (mt/with-fake-inbox
+                  (mt/client :post 204 "session/forgot_password" {:email email})
+                  (is (mt/received-email-body? email expected-body)))))))))))
+
+(deftest reset-password-gives-no-session-to-sso-user-test
+  (testing "POST /api/session/reset_password gives no session to user whose SSO provider is enabled"
+    (mt/with-temp [:model/User user {:sso_source :google}]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled   true]
+        (let [token (auth-identity/create-password-reset! (:id user))]
+          (is (= {:success true}
+                 (mt/client :post 200 "session/reset_password" {:token token :password "newPassUP12!!"})))
+          (is (not (t2/exists? :model/Session :user_id (:id user))))
+          (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")))
+          (is (nil? (t2/select-one-fn :last_used_at :model/AuthIdentity :user_id (:id user) :provider "password")))))
+      (testing "but gives session once provider is disabled"
+        (mt/with-temporary-setting-values [google-auth-enabled false]
+          (let [token (auth-identity/create-password-reset! (:id user))]
+            (is (=? {:success true :session_id string?}
+                    (mt/client :post 200 "session/reset_password" {:token token :password "otherPassUP12!!"})))))))))
+
+(deftest reset-password-keeps-ldap-check-for-directory-user-test
+  (testing "LDAP directory user gets no session from reset and cannot log in with password it sets"
+    (ldap.test/with-ldap-server!
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (mt/with-temp [:model/User user {:email "sally.brown@metabase.com" :sso_source :ldap}]
+          (let [token (auth-identity/create-password-reset! (:id user))]
+            (is (= {:success true}
+                   (mt/client :post 200 "session/reset_password" {:token token :password "newLocalUP12!!"})))
+            (is (not (t2/exists? :model/Session :user_id (:id user))))
+            (is (= {:errors {:password "did not match stored password"}}
+                   (mt/client :post 401 "session" {:username (:email user) :password "newLocalUP12!!"})))
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" {:username (:email user) :password "1234"})))))))))
 
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"

@@ -72,7 +72,7 @@
   [auth-identity :- ::auth-identity.schema/auth-identity]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
-(mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]
+(mu/defn parse-token-user-id :- [:maybe ms/PositiveInt]
   "The positive user ID that starts a `USER-ID_RANDOM-UUID` reset token, or nil for any other token."
   [token :- :string]
   (when-let [[_ user-id-str] (re-matches #"^([1-9]\d*)_.+$" token)]
