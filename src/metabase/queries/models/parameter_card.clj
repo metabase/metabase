@@ -71,14 +71,16 @@
         (queries.db/set-parameter-card-card-id! parameterized-object-type parameterized-object-id id card-id)
         (queries.db/insert-parameter-card! (merge conditions {:card_id card-id}))))))
 
+(defn values-source-card-id
+  "The id of the Card `parameter` draws its values from, or nil."
+  [{:keys [values_source_type values_source_config]}]
+  (when (= (keyword values_source_type) :card)
+    (:card_id values_source_config)))
+
 (defn values-source-card-ids
   "Returns the ids of the Cards `parameters` draw their values from."
   [parameters]
-  (into #{}
-        (keep (fn [{:keys [values_source_type values_source_config]}]
-                (when (= (keyword values_source_type) :card)
-                  (:card_id values_source_config))))
-        parameters))
+  (into #{} (keep values-source-card-id) parameters))
 
 (mu/defn check-parameter-source-card-permissions
   "Read-check the Cards `parameters` draw their values from."

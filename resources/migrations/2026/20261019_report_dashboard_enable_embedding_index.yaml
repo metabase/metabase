@@ -1,0 +1,14 @@
+## Index report_dashboard.enable_embedding, which the anonymous-reach query filters on.
+
+databaseChangeLog:
+  - changeSet:
+      id: 6tmxt4
+      author: johnswanson
+      comment: Index report_dashboard.enable_embedding for the anonymous-reach query
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_enable_embedding
+            columns:
+              - column:
+                  name: enable_embedding

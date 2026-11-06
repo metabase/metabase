@@ -11,6 +11,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -370,6 +371,195 @@
               :segment   0
               :transform 0}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
+
+(defn- anonymous-reach [db-id]
+  (mt/user-http-request :crowberto :get 200 (format "database/%d/anonymous-reach" db-id)))
+
+(deftest get-database-anonymous-reach-requires-superuser-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 (format "database/%d/anonymous-reach" db-id))))))
+
+(deftest get-database-anonymous-reach-404-test
+  (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404
+                                 (format "database/%d/anonymous-reach" non-existing-db-id))))))
+
+(deftest get-database-anonymous-reach-nothing-published-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
+    (testing "a database whose questions are neither shared nor published is reached by nothing"
+      (is (= {:total 0, :data []}
+             (anonymous-reach db-id))))))
+
+(deftest get-database-anonymous-reach-lists-published-entities-test
+  (mt/with-temporary-setting-values [enable-embedding-modular true]
+    (mt/with-temp
+      [:model/Database      {db-id :id}        {}
+       :model/Table         {table-id :id}     {:db_id db-id}
+       :model/Card          {question-id :id}  {:database_id      db-id
+                                                :table_id         table-id
+                                                :type             :question
+                                                :name             "A question"
+                                                :public_uuid      (str (random-uuid))
+                                                :enable_embedding true}
+       :model/Card          {on-dashboard :id} {:database_id db-id, :table_id table-id, :type :question}
+       :model/Dashboard     {dashboard-id :id} {:name "B dashboard", :enable_embedding true}
+       :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id on-dashboard}
+       :model/Document      {document-id :id}  {:name "C document", :public_uuid (str (random-uuid))}
+       :model/Card          {in-document :id}  {:database_id db-id
+                                                :table_id    table-id
+                                                :type        :question
+                                                :document_id document-id}]
+      (t2/update! :model/Document document-id
+                  {:document (documents.test-util/cards->prose-mirror-ast [in-document])})
+      (testing "each published entity reaching the database is one row, by name, saying which surfaces open it"
+        (is (= {:total 3
+                :data  [{:id                 question-id
+                         :model              "card"
+                         :name               "A question"
+                         :surfaces           ["guest-embed" "public-link"]
+                         :reaches_indirectly false}
+                        {:id                 dashboard-id
+                         :model              "dashboard"
+                         :name               "B dashboard"
+                         :surfaces           ["guest-embed"]
+                         :reaches_indirectly false}
+                        {:id                 document-id
+                         :model              "document"
+                         :name               "C document"
+                         :surfaces           ["public-link"]
+                         :reaches_indirectly false}]}
+               (anonymous-reach db-id))))
+      (testing "and the question on the dashboard is not itself a row -- nothing published opens it"
+        (is (not-any? #(= on-dashboard (:id %)) (:data (anonymous-reach db-id))))))))
+
+(deftest get-database-anonymous-reach-model-names-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :model
+                                     :name "A model", :public_uuid (str (random-uuid))}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :metric
+                                     :name "B metric", :public_uuid (str (random-uuid))}]
+    (testing "a published question's row says which kind of question it is, so a client can link to it"
+      (is (= [["A model" "dataset"] ["B metric" "metric"]]
+             (map (juxt :name :model) (:data (anonymous-reach db-id))))))))
+
+(defn- card-value-source-parameter
+  "A dashboard or question filter drawing its value list from the Card with `card-id`."
+  [card-id]
+  {:id                   "_FILTER_"
+   :name                 "Filter"
+   :slug                 "filter"
+   :type                 "string/="
+   :values_source_type   "card"
+   :values_source_config {:card_id card-id, :value_field ["field" 1 nil]}})
+
+(deftest get-database-anonymous-reach-indirect-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}       {}
+     :model/Table         {table-id :id}    {:db_id db-id}
+     :model/Card          {source-id :id}   {:database_id db-id, :table_id table-id, :type :question}
+     :model/Database      {other-db :id}    {}
+     :model/Table         {other-table :id} {:db_id other-db}
+     :model/Card          {elsewhere :id}   {:database_id other-db, :table_id other-table, :type :question}
+     :model/Dashboard     {only-filter :id} {:name        "A filter only"
+                                             :public_uuid (str (random-uuid))
+                                             :parameters  [(card-value-source-parameter source-id)]}
+     :model/DashboardCard _                 {:dashboard_id only-filter, :card_id elsewhere}
+     :model/Dashboard     {shows-it :id}    {:name        "B shows it too"
+                                             :public_uuid (str (random-uuid))
+                                             :parameters  [(card-value-source-parameter source-id)]}
+     :model/DashboardCard _                 {:dashboard_id shows-it, :card_id source-id}]
+    (testing "a dashboard reaching the database only through a filter's value list says so, and one that also shows a
+             question on the database does not -- its connection needs no explaining"
+      (is (= [{:id                 only-filter
+               :model              "dashboard"
+               :name               "A filter only"
+               :surfaces           ["public-link"]
+               :reaches_indirectly true}
+              {:id                 shows-it
+               :model              "dashboard"
+               :name               "B shows it too"
+               :surfaces           ["public-link"]
+               :reaches_indirectly false}]
+             (:data (anonymous-reach db-id)))))))
+
+(deftest get-database-anonymous-reach-caps-rows-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}]
+    (mt/with-model-cleanup [:model/Card]
+      (t2/insert! :model/Card
+                  (for [i (range 101)]
+                    (assoc (mt/with-temp-defaults :model/Card)
+                           :name        (format "Question %03d" i)
+                           :database_id db-id
+                           :table_id    table-id
+                           :type        :question
+                           :public_uuid (str (random-uuid)))))
+      (testing "the rows stop at the server's cap while the total stays exact, so a client can say how many of them
+               it is not showing"
+        (let [{:keys [total data]} (anonymous-reach db-id)]
+          (is (= 101 total))
+          (is (= 100 (count data)))
+          (is (= ["Question 000" "Question 099"]
+                 [(:name (first data)) (:name (last data))])
+              "and they are the first hundred by name, so an admin sees the same hundred each time"))))))
+
+(deftest get-database-anonymous-reach-question-reaches-indirectly-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Card     {source-id :id}   {:database_id db-id, :table_id table-id, :type :question}
+     :model/Database {other-db :id}    {}
+     :model/Table    {other-table :id} {:db_id other-db}
+     :model/Card     {question-id :id} {:database_id other-db
+                                        :table_id    other-table
+                                        :type        :question
+                                        :name        "Elsewhere"
+                                        :public_uuid (str (random-uuid))
+                                        :parameters  [(card-value-source-parameter source-id)]}]
+    (testing "a published question whose own query runs elsewhere, and which reaches this database only through its
+             filter's value list, says its reach is indirect too"
+      (is (= [{:id                 question-id
+               :model              "card"
+               :name               "Elsewhere"
+               :surfaces           ["public-link"]
+               :reaches_indirectly true}]
+             (:data (anonymous-reach db-id)))))))
+
+(deftest get-database-anonymous-reach-surfaces-are-the-ones-that-reach-test
+  (mt/with-temporary-setting-values [enable-embedding-modular true]
+    (mt/with-temp
+      [:model/Database      {db-id :id}        {}
+       :model/Table         {table-id :id}     {:db_id db-id}
+       :model/Card          {source-id :id}    {:database_id db-id, :table_id table-id, :type :question}
+       :model/Database      {other-db :id}     {}
+       :model/Table         {other-table :id}  {:db_id other-db}
+       :model/Card          {elsewhere :id}    {:database_id other-db, :table_id other-table, :type :question}
+       :model/Dashboard     {dashboard-id :id} {:name             "Both ways"
+                                                :public_uuid      (str (random-uuid))
+                                                :enable_embedding true
+                                                :embedding_params {}
+                                                :parameters       [(card-value-source-parameter source-id)]}
+       :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id elsewhere}]
+      (testing "a dashboard published both ways, reaching this database only through a filter its guest embed leaves
+               disabled, names only the public link -- the surface that would actually stop returning data"
+        (is (= [{:id                 dashboard-id
+                 :model              "dashboard"
+                 :name               "Both ways"
+                 :surfaces           ["public-link"]
+                 :reaches_indirectly true}]
+               (:data (anonymous-reach db-id)))))
+      (testing "and names both once the guest embed enables that filter"
+        (t2/update! :model/Dashboard dashboard-id {:embedding_params {:filter "enabled"}})
+        (is (= [["guest-embed" "public-link"]]
+               (map :surfaces (:data (anonymous-reach db-id)))))))))
 
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
