@@ -1,0 +1,9 @@
+.itemList > * + *,
+.passedContent > * {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+.passedContent {
+  padding: 0;
+  color: inherit;
+}

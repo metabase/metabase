@@ -39,7 +39,7 @@ function setup({
     slack: { configured: slackConfigured },
   });
 
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
     advisories,
   });
@@ -114,7 +114,7 @@ describe("SecurityCenterBanner", () => {
     const link = await screen.findByText("Security center");
     expect(link).toHaveAttribute(
       "href",
-      "/admin/security-center?open=notifications",
+      "/admin/security-center/advisories?open=notifications",
     );
   });
 });
