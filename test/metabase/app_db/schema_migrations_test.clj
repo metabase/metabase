@@ -4492,3 +4492,35 @@
           (testing "deleting the database deletes its remappings"
             (t2/delete! :metabase_database :id db-id)
             (is (not (t2/exists? :table_remapping :id rm-id)))))))))
+
+(deftest recreate-workspace-tables-test
+  (testing "ucb8em..xj2pfn recreate workspace and workspace_database as 064's drop left them"
+    (impl/test-migrations ["ucb8em" "xj2pfn"] [migrate!]
+      (let [user-id (:id (create-raw-user! (mt/random-email)))
+            db-id   (t2/insert-returning-pk! :metabase_database {:name       "Workspace DB"
+                                                                 :engine     "h2"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now
+                                                                 :details    "{}"})]
+        (migrate!)
+        (let [ws-id  (t2/insert-returning-pk! :workspace {:name "ws" :creator_id user-id})
+              row    {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details "{}"
+                      :output_namespace "ws_out"
+                      :input_schemas    "[\"public\"]"}
+              wsd-id (t2/insert-returning-pk! :workspace_database row)]
+          (is (=? {:creator_id user-id :created_at some? :updated_at some?}
+                  (t2/select-one :workspace :id ws-id)))
+          (is (=? {:status "unprovisioned" :created_at some? :updated_at some?}
+                  (t2/select-one :workspace_database :id wsd-id)))
+          (testing "a workspace configures a database at most once"
+            (is (thrown? Exception (t2/insert! :workspace_database row))))
+          (testing "a database with workspace rows cannot be deleted"
+            (is (thrown? Exception (t2/delete! :metabase_database :id db-id))))
+          (testing "deleting the creator keeps the workspace, without a creator"
+            (t2/delete! :core_user :id user-id)
+            (is (=? {:creator_id nil} (t2/select-one :workspace :id ws-id))))
+          (testing "deleting the workspace deletes its workspace_database rows"
+            (t2/delete! :workspace :id ws-id)
+            (is (not (t2/exists? :workspace_database :id wsd-id)))))))))
