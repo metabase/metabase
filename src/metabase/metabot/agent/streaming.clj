@@ -17,6 +17,7 @@
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
+(def dashboard-saved-type "AI-SDK data type for a dashboard that a tool saved." "dashboard_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
@@ -28,7 +29,12 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  ;; TODO (Chris 2026-11-05) -- Persist dashboard_saved once the frontend renders it (BOT-2573). Until then a
+  ;; reloaded conversation would hand it to the message renderer, whose exhaustive match throws on an unknown type.
+  #{dashboard-saved-type
+    search-results-type
+    state-type
+    tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -125,6 +131,16 @@
   [value]
   {:type :data
    :data-type entity-saved-type
+   :data value})
+
+(defn dashboard-saved-part
+  "Create a DASHBOARD_SAVED data part for streaming.
+  The `value` describes a dashboard a tool created, edited, trashed or restored:
+  `{:dashboard_id :action :name :url :collection_id :open :saved_charts}`.
+  The frontend links it, reloads it when it is open, and opens it after the reply when `:open` is true."
+  [value]
+  {:type :data
+   :data-type dashboard-saved-type
    :data value})
 
 (defn search-results-part
