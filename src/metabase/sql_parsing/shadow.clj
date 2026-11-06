@@ -75,7 +75,7 @@
      :add-insert-clause
      :replace-names)          (sql-tokens value)
     :field-references         (sets-of-used-fields (results/field-references value))
-    :single-stmt-of-type      (update value :sql sql-tokens)
+    :single-stmt-of-type      (-> value (update :sql sql-tokens) (update :error some?))
     :transpile-sql            (if (= "success" (:status value))
                                 (update value :transpiled_sql sql-tokens)
                                 (select-keys value [:status :reason]))))

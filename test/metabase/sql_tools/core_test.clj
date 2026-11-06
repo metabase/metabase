@@ -6,6 +6,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing are]]
+   [colorize.core :as colorize]
+   [environ.core :as env]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,13 +15,30 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
-   [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.test :as mt]))
+
+(def ^:private all-backends [:macaw :sqlglot])
+
+(defn- parser-backends-to-test
+  "Returns [[all-backends]], or just the one specified by MB_SQL_TOOLS_PARSER_BACKEND."
+  []
+  (if-let [explicit (env/env :mb-sql-tools-parser-backend)]
+    [(keyword explicit)]
+    all-backends))
+
+(defmacro ^:private test-parser-backends
+  "Run body against both parser backends (or just one if env var is set)."
+  {:style/indent 0}
+  [& body]
+  `(doseq [backend# (parser-backends-to-test)]
+     (testing (colorize/magenta (name backend#))
+       (binding [sql-tools.settings/*parser-backend-override* backend#]
+         ~@body))))
 
 ;;; ------------------------------------------------ validate-query ------------------------------------------------
 
 (deftest ^:parallel validate-query-syntax-error-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "complete nonsense query")]
        (testing "Gibberish SQL returns syntax error"
@@ -27,7 +46,7 @@
                 (sql-tools/validate-query driver/*driver* query))))))))
 
 (deftest ^:parallel validate-query-missing-column-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "select nonexistent from orders")]
        (testing "Reference to non-existent column returns missing-column error"
@@ -35,7 +54,7 @@
                 (sql-tools/validate-query driver/*driver* query))))))))
 
 (deftest ^:parallel validate-query-valid-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "select id, total from orders")]
        (testing "Valid query returns empty error set"
@@ -45,7 +64,7 @@
 ;;; ---------------------------------------------- referenced-tables -----------------------------------------------
 
 (deftest ^:parallel referenced-tables-basic-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider) "select id from orders")]
        (testing "Single table reference"
@@ -53,7 +72,7 @@
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
 (deftest ^:parallel referenced-tables-join-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (mt/test-driver :h2
      (let [query (lib/native-query (mt/metadata-provider)
                                    "select o.id from orders o join products p on o.product_id = p.id")]
@@ -66,7 +85,7 @@
   (testing "GHY-4251: referenced-tables looks up only the Tables the SQL names, never the Database's whole catalog.
            Fetching the catalog per entity made dependency analysis scale with warehouse size instead of query size,
            OOM-killing instances with ~20k synced tables."
-    (sql-tools.tu/test-parser-backends
+    (test-parser-backends
      (mt/test-driver :h2
        (let [catalog-fetches (atom 0)
              ;; capture via `original-fn`: once the var is proxied, a bare symbol ref resolves to the
@@ -86,7 +105,7 @@
 ;;; ------------------------------------------------ replace-names -------------------------------------------------
 
 (deftest ^:parallel replace-names-table-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (testing "Basic table replacement"
      (is (= "SELECT * FROM new_orders"
             (sql-tools/replace-names :h2
@@ -94,7 +113,7 @@
                                      {:tables {{:table "orders"} "new_orders"}}))))))
 
 (deftest ^:parallel replace-names-schema-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (testing "Schema replacement"
      (is (= "SELECT * FROM new_schema.orders"
             (sql-tools/replace-names :h2
@@ -104,20 +123,20 @@
 ;;; -------------------------------------------- referenced-tables-raw ---------------------------------------------
 
 (deftest ^:parallel referenced-tables-raw-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (testing "Returns table names without resolving to IDs"
      ;; SQLGlot includes {:schema nil} while Macaw omits it - use =? for partial match
      (is (=? [{:table "orders"}]
              (sql-tools/referenced-tables-raw :h2 "SELECT * FROM orders"))))))
 
 (deftest ^:parallel referenced-tables-raw-with-schema-test
-  (sql-tools.tu/test-parser-backends
+  (test-parser-backends
    (testing "Includes schema when present"
      (is (= [{:schema "public" :table "orders"}]
             (sql-tools/referenced-tables-raw :postgres "SELECT * FROM public.orders"))))))
 
 (deftest ^:parallel referenced-tables-raw-strict-parse-error-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "ordinary callers retain the fail-soft behavior"
       (is (= [] (sql-tools/referenced-tables-raw :postgres "SELECT !!!"))))
     (testing "Guard A can distinguish a parse failure from a query with no table reads"
@@ -131,7 +150,7 @@
 ;; under MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java) rather than using test-parser-backends.
 
 (deftest ^:parallel transpile-sql-no-added-quoting-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "unquoted identifiers stay unquoted, so folding dialects resolve them as written"
       (doseq [dialect ["snowflake" "postgres" "mysql"]]
         (testing dialect
@@ -142,7 +161,7 @@
             (is (not (re-find #"[\"`]" transpiled-sql)))))))))
 
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "Multiple SQL statements should be rejected"
       (let [{:keys [status reason error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
                                                                            "postgres" "postgres")]
@@ -173,7 +192,7 @@
              (sql-tools/transpile-sql "select from where venues" "postgres" "postgres"))))))
 
 (deftest ^:parallel transpile-sql-preserves-query-structure-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "Transpilation preserves query structure"
       (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql
                                              "SELECT a, b FROM t WHERE x > 1 ORDER BY a"
@@ -185,7 +204,7 @@
         (is (str/includes? transpiled-sql "ORDER BY"))))))
 
 (deftest ^:parallel transpile-sql-pretty-formatting-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "Transpilation applies pretty formatting (newlines)"
       (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT a,b,c FROM users WHERE id=1"
                                                                      "postgres" "postgres")]
@@ -193,7 +212,7 @@
         (is (str/includes? transpiled-sql "\n"))))))
 
 (deftest ^:parallel transpile-sql-template-tags-skipped-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "SQL with Metabase template tags is skipped"
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT * FROM {{#42}} WHERE id = {{user_id}}"
                                                              "postgres" "postgres")]
@@ -206,7 +225,7 @@
         (is (= :contains-templates reason))))))
 
 (deftest ^:parallel transpile-sql-missing-dialect-skipped-test
-  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
     (testing "Nil dialects are skipped"
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT 1" nil nil)]
         (is (= :skipped status))
