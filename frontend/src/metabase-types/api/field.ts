@@ -67,7 +67,7 @@ export type FieldDimension = {
 };
 
 export interface Field {
-  id: FieldId | FieldReference;
+  id: FieldId;
   table_id: TableId;
   table?: Table;
   field_ref?: DimensionReference;

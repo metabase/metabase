@@ -94,7 +94,7 @@ export interface DatasetColumn {
 }
 
 export interface ResultsMetadata {
-  columns: Field[];
+  columns: DatasetColumn[];
 }
 
 export interface DatasetData {

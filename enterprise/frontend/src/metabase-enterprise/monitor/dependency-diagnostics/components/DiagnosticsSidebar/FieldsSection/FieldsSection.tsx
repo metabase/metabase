@@ -13,6 +13,7 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  type DependencyNodeField,
   getNodeFields,
   getNodeFieldsLabel,
 } from "metabase-enterprise/dependencies/utils";
@@ -51,7 +52,7 @@ export function FieldsSection({ node }: FieldsSectionProps) {
 }
 
 type FieldListItemProps = {
-  field: Field;
+  field: DependencyNodeField;
 };
 
 function FieldListItem({ field }: FieldListItemProps) {

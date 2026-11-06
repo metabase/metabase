@@ -4,6 +4,7 @@ import type { Dashboard } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { Document } from "./document";
 import type { Field, FieldDimension, FieldId } from "./field";
+import type { FieldReference } from "./query";
 import type { Group } from "./group";
 import type { Measure, MeasureId } from "./measure";
 import type { Metric } from "./metric";
@@ -24,6 +25,9 @@ export type NormalizedDocument = Document;
 export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 export type NormalizedGroup = Group;
+
+export type NormalizedTableId = TableId | string;
+export type NormalizedFieldId = FieldId | FieldReference;
 
 export interface NormalizedDatabase extends Omit<
   Database,
@@ -65,7 +69,7 @@ export interface NormalizedRealTable extends NormalizedTableBase {
 }
 
 export interface NormalizedVirtualTable extends NormalizedTableBase {
-  id: string;
+  id: NormalizedTableId;
 }
 
 export type NormalizedTable = NormalizedRealTable | NormalizedVirtualTable;
@@ -100,8 +104,10 @@ export interface NormalizedRealTableField extends NormalizedFieldBase {
   table_id: TableId;
 }
 
-export interface NormalizedVirtualTableField extends NormalizedFieldBase {
-  table_id: string;
+export interface NormalizedVirtualTableField
+  extends Omit<NormalizedFieldBase, "id"> {
+  id: NormalizedFieldId;
+  table_id: NormalizedTableId;
 }
 
 export type NormalizedField =

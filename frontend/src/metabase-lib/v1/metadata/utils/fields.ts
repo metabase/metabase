@@ -10,7 +10,11 @@ import {
   TEMPORAL,
 } from "metabase-lib/v1/types/constants";
 import { getFieldType } from "metabase-lib/v1/types/utils/isa";
-import type { FieldId, FieldReference, TableId } from "metabase-types/api";
+import type {
+  FieldId,
+  FieldReference,
+  NormalizedTableId,
+} from "metabase-types/api";
 
 const ICON_MAPPING: Record<string, string> = {
   [TEMPORAL]: "calendar",
@@ -39,7 +43,7 @@ export function getUniqueFieldId({
 }: {
   id: FieldId | FieldReference | string;
   name?: string | undefined | null;
-  table_id?: TableId | string | undefined | null;
+  table_id?: NormalizedTableId | undefined | null;
 }): number | string {
   const fieldIdentifier = getFieldIdentifier({ id, name });
 

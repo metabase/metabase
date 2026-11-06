@@ -19,10 +19,9 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Field as ApiField,
-  Table as ApiTable,
   Card,
   DatabaseId,
+  Field as ApiField,
   FieldId,
   FieldReference,
   FieldValue,
@@ -30,6 +29,7 @@ import type {
   Metric,
   NormalizedDatabase,
   NormalizedField,
+  NormalizedFieldId,
   NormalizedForeignKey,
   NormalizedMeasure,
   NormalizedMetric,
@@ -38,6 +38,7 @@ import type {
   NormalizedTable,
   SchemaId,
   Segment,
+  Table as ApiTable,
   TableId,
 } from "metabase-types/api";
 
@@ -147,7 +148,7 @@ const isResolvedField = (
  */
 export const getShallowTableFieldIds = createSelector(
   [getVisibleTable, getVisibleFields],
-  (table, fields): ApiField["id"][] => {
+  (table, fields): NormalizedFieldId[] => {
     if (table == null) {
       return [];
     }

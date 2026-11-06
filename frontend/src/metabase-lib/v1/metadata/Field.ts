@@ -30,6 +30,7 @@ import type {
   FieldId,
   FieldReference,
   NormalizedField,
+  NormalizedFieldId,
 } from "metabase-types/api";
 
 import type Metadata from "./Metadata";
@@ -61,8 +62,10 @@ export type HydratedFieldDimension = Omit<
 // eslint-disable-next-line typescript-js/no-empty-object-type
 interface Field extends Omit<
   ApiField,
-  "table" | "target" | "name_field" | "fingerprint" | "dimensions"
-> {}
+  "id" | "table" | "target" | "name_field" | "fingerprint" | "dimensions"
+> {
+  id: NormalizedFieldId;
+}
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.

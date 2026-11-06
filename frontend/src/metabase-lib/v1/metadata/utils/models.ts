@@ -3,6 +3,7 @@ import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
+  DatasetColumn,
   Field,
   FieldId,
   FieldReference,
@@ -141,7 +142,7 @@ export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
 // but they only get updated after running a query (which is not triggered after reordering columns).
 // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
 export function getSortedModelFields(
-  columns: Field[],
+  columns: DatasetColumn[],
   visualizationSettings: VisualizationSettings,
 ) {
   const columnSettings = visualizationSettings["table.columns"];

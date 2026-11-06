@@ -12,7 +12,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { RowValue } from "./dataset";
+import type { DatasetColumn, RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
@@ -95,7 +95,7 @@ export interface Card<
   parameter_usage_count?: number | null;
   parameter_mappings?: CardParameterMapping[] | null;
 
-  result_metadata: Field[] | null;
+  result_metadata: DatasetColumn[] | null;
   param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
@@ -670,7 +670,7 @@ export interface CreateCardRequest {
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
   source_card_id?: CardId;
@@ -698,7 +698,7 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;
   delete_old_dashcards?: boolean;

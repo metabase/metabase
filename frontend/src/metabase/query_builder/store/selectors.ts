@@ -49,6 +49,8 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
+  NormalizedField,
+  NormalizedFieldId,
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
@@ -314,7 +316,7 @@ export const getTableMetadata = createSelector(
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: Field["id"][] = [];
+const NO_FIELD_IDS: NormalizedFieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
   const tableId = getSourceTableId(state);
@@ -397,7 +399,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: Field["id"][],
+  tableFieldIds: NormalizedFieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -422,7 +424,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: NormalizedFieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -470,7 +472,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: NormalizedFieldId[];
 }) {
   return (
     areLegacyQueriesEqual(
