@@ -371,8 +371,11 @@ export const metabot = createSlice({
     setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
-    dashboardSaved: (state, action: PayloadAction<MetabotSavedDashboard>) => {
-      state.reactions.savedDashboard = action.payload;
+    dashboardSaved: (
+      state,
+      { payload }: PayloadAction<MetabotSavedDashboard>,
+    ) => {
+      state.reactions.dashboardSaveIds[payload.dashboardId] = payload.saveId;
     },
     addSuggestedCodeEdit: (
       state,

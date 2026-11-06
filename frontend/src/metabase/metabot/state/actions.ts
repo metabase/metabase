@@ -7,12 +7,13 @@ import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { listTag } from "metabase/api/tags";
+import { idTag, listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
@@ -22,6 +23,7 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { getRouterLocation, matchPath, navigate } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
+import { getBasename } from "metabase/utils/basename";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -495,7 +497,11 @@ const findCodeEditBuffer = (
 
 const isViewingDashboard = (dashboardId: DashboardId) => {
   const pathname = getRouterLocation()?.pathname ?? "";
-  const match = matchPath({ path: "/dashboard/:slug", end: false }, pathname);
+  // the router's pathname keeps the basename of a subpath deployment
+  const match = matchPath(
+    { path: `${getBasename()}/dashboard/:slug`, end: false },
+    pathname,
+  );
   return Urls.extractEntityId(match?.params.slug) === dashboardId;
 };
 
@@ -609,7 +615,16 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-dashboard_saved" }, (part) => {
-                const { dashboard_id, open, saved_charts, url } = part.data;
+                const { dashboard_id, collection_id, open, saved_charts, url } =
+                  part.data;
+                // lists elsewhere, such as the dashboard's collection, refetch it
+                dispatch(
+                  Api.util.invalidateTags([
+                    listTag("dashboard"),
+                    idTag("dashboard", dashboard_id),
+                    idTag("collection", collection_id ?? "root"),
+                  ]),
+                );
                 saved_charts.forEach(({ chart_id, card_id }) =>
                   dispatch(
                     markChartSaved({ entityId: chart_id, cardId: card_id }),
