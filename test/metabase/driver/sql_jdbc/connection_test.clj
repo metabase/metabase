@@ -41,6 +41,7 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource)
    (java.sql DriverManager)
+   (java.util.concurrent.locks ReentrantReadWriteLock)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -973,7 +974,7 @@
 
 (deftest ^:synchronized pools-write-while-a-halt-waits-test
   (testing "a write that starts the pools while a halt waits behind another start finishes instead of deadlocking"
-    (let [^java.util.concurrent.locks.ReentrantReadWriteLock admission @#'system/admission
+    (let [admission ^ReentrantReadWriteLock @#'system/admission
           blocker   (system/mutable-component-handle ::blocker (constantly nil))
           go        (promise)
           result    (promise)
