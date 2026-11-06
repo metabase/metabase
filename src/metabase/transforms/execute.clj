@@ -18,7 +18,10 @@
   `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
   [transform :- ::transforms.schema/transform]
   (let [requests (table-index/select-applicable-for-transform (:id transform))]
-    (-> transform
+    (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
+          (assoc transform :target
+                 (transforms.query-impl/resolve-transform-target db-id (:target transform)))
+          transform)
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))

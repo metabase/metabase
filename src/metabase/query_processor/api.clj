@@ -44,6 +44,7 @@
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -222,7 +223,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
-  "Fetch a native version of an MBQL query."
+  "Fetch a native version of an MBQL query.
+
+  Display path: workspace remapping is suppressed via
+  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL
+  in the 'Show me the SQL' panel. The query still executes against the workspace
+  isolation schema at warehouse time (separate code path); this endpoint only
+  affects what the user reads."
   {:scope api-scope/data-app}
   [_route-params
    _query-params

@@ -3,7 +3,7 @@
 
    Direct access to `(:details database)` is an anti-pattern. It couples callers to
    the raw data layout, which means any change to how details are resolved — connection
-   routing, write credentials, security boundaries — requires
+   routing, write credentials, workspace isolation, security boundaries — requires
    finding and updating every call site. This namespace provides the indirection that
    makes those changes possible.
 
@@ -49,13 +49,14 @@
 ;; there's no corresponding classification for "this field doesn't need to be encrypted at all."
 ;;
 ;; This namespace centralizes all reads of `:details` (and `:write-data-details`) behind
-;; functions that can apply connection-type routing and — eventually — a proper separation
-;; of credentials from configuration. The immediate goal is to make direct
-;; `(:details database)` access a greppable code smell. The longer-term goal is to
+;; functions that can apply connection-type routing, workspace isolation, and — eventually —
+;; a proper separation of credentials from configuration. The immediate goal is to make
+;; direct `(:details database)` access a greppable code smell. The longer-term goal is to
 ;; make it possible to store non-sensitive configuration outside the encrypted column
 ;; without a codebase-wide refactor. The immediate need for this namespace was to make it
 ;; possible to access and *use* configuration in a controllable and auditable way as we
-;; are going from one master-connection to a database to two.
+;; are going from one master-connection to a database to two + any number of dynamic
+;; workspaces connections.
 ;;
 ;; Please use/adapt/augment/improve this namespace and avoid all such patterns:
 ;;  - (:details database)
@@ -126,6 +127,14 @@
   [& body]
   `(binding [*suppress-resolution-telemetry* true]
      ~@body))
+
+(defmacro with-swapped-connection-details
+  "Re-export of [[metabase.driver.connection.workspaces/with-swapped-connection-details]]
+   on the driver module's public API surface, so consumers outside the module can apply
+   per-database connection-detail overrides through `metabase.driver.connection`."
+  {:style/indent 2}
+  [database-id swap-map & body]
+  `(driver.w/do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
 
 (defenterprise database-write-data-details
   "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.

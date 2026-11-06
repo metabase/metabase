@@ -102,6 +102,8 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
+   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -119,7 +121,9 @@
   ;; for `users:` section code
   metabase-enterprise.advanced-config.file.users/keep-me
   ;; for `api-keys:` section code
-  metabase-enterprise.advanced-config.file.api-keys/keep-me)
+  metabase-enterprise.advanced-config.file.api-keys/keep-me
+  ;; for `workspace:` section code
+  advanced-config.file.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -286,6 +290,8 @@
          (when-not (premium-features/enable-config-text-file?)
            (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                            {}))))
+       (when (= section-name :workspace)
+         (premium-features/assert-has-feature :workspaces (tru "Workspaces")))
        (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
        (advanced-config.file.i/initialize-section! section-name section-config))
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
@@ -296,4 +302,10 @@
   Does nothing when there is no config file."
   :feature :none
   []
-  (initialize! (config-from-disk) {:expand-templates? true}))
+  (let [parsed (config-from-disk)
+        result (initialize! parsed {:expand-templates? true})]
+    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
+    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
+    (when (get-in parsed [:config :workspace])
+      (ws/mark-locked-by-config!))
+    result))
