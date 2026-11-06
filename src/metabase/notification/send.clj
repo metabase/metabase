@@ -274,7 +274,8 @@
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (throw-when-handlers-failed id @failures)
               (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type})
-              {:status (if skip-reason :skipped :sent)})))
+              {:status (if skip-reason :skipped :sent)
+               :skip_reason (-> skip-reason notification.payload/skip-reason->message str)})))
         (catch Exception e
           (let [undelivered? (delivery-failure? e)]
             ;; a delivery failure is already logged per channel, and the caller or the notification worker logs it

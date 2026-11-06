@@ -127,7 +127,9 @@ function toastForSendResult(result: SendNotificationResponse): Partial<Undo> {
     }))
     .with("skipped", () => ({
       variant: "warning",
-      message: t`No alert to send.`,
+      message: result.skip_reason
+        ? t`No alert to send (${result.skip_reason})`
+        : t`No alert to send.`,
     }))
     .exhaustive();
 }

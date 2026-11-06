@@ -1486,7 +1486,7 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:limit 0})}]
           (notification.tu/with-channel-fixtures [:channel/email]
             (notification.tu/with-captured-channel-send!
-              (is (=? {:status "skipped"}
+              (is (=? {:status "skipped" :skip_reason "No results"}
                       (mt/user-http-request :crowberto :post 200 "notification/send"
                                             {:handlers [{:channel_type :channel/email
                                                          :recipients   [{:type    :notification-recipient/user
