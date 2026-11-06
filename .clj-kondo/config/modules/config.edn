@@ -135,7 +135,8 @@
            settings
            users.schema
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1782,7 +1783,8 @@
            task.history
            tracing
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -3191,7 +3193,8 @@
            settings
            sync
            util
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3496,6 +3499,11 @@
            premium-features
            system
            util}}
+
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.core}
+   :uses #{premium-features util}}
 
   xrays
   {:team "Graphy"
@@ -3909,7 +3917,8 @@
            settings
            util
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -4698,7 +4707,19 @@
            permissions
            util
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
+
+  enterprise/workspaces
+  {:team "Graphy"
+   :api #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.init}
+   :uses #{api
+           cache
+           driver
+           lib.schema
+           premium-features
+           settings
+           util
+           workspaces}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
