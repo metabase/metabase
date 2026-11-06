@@ -27,6 +27,7 @@ import type {
   Series,
   Table,
 } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatasetData,
@@ -208,7 +209,9 @@ export const getTableQuery = createSelector(
       return undefined;
     }
 
-    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+    const tableMetadata = isConcreteTableId(table.id)
+      ? Lib.tableMetadata(metadataProvider, table.id)
+      : null;
     if (tableMetadata == null) {
       return undefined;
     }

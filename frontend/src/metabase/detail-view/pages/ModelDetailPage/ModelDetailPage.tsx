@@ -7,11 +7,8 @@ import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { DetailViewPage } from "metabase/detail-view/components";
-import {
-  filterByPk,
-  getRowName,
-  getTableQuery,
-} from "metabase/detail-view/utils";
+import { filterByPk, getRowName } from "metabase/detail-view/utils";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
@@ -19,7 +16,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
 import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { CardId } from "metabase-types/api";
 
 type ModelDetailPageParams = {
   slug: string;
@@ -37,23 +34,21 @@ export function ModelDetailPage() {
   } = useGetCardQuery(cardId == null ? skipToken : { id: cardId });
 
   const {
-    data: queryMetadata,
+    data: cardMetadata,
     error: metadataError,
     isLoading: isMetadataLoading,
   } = useGetCardQueryMetadataQuery(cardId == null ? skipToken : cardId);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
 
-  const virtualTableId =
-    cardId == null ? undefined : getQuestionVirtualTableId(cardId);
-  const table =
-    virtualTableId != null
-      ? queryMetadata?.tables?.find((table) => table.id === virtualTableId)
-      : undefined;
-  const tableQuery = useSelector((state) => getTableQuery(state, table));
   const objectQuery = useMemo(() => {
-    return tableQuery && table
-      ? filterByPk(tableQuery, table.fields ?? [], rowId)
+    if (card == null || cardMetadata == null) {
+      return undefined;
+    }
+    const cardQuery = getCardQuery(metadataProvider, card.id);
+    return cardQuery != null
+      ? filterByPk(cardQuery, card.result_metadata ?? [], rowId)
       : undefined;
-  }, [rowId, table, tableQuery]);
+  }, [rowId, card, cardMetadata, metadataProvider]);
 
   const {
     data: dataset,
@@ -79,16 +74,16 @@ export function ModelDetailPage() {
   const isNavBarOpen = useSelector(getIsNavbarOpen);
 
   useEffect(() => {
-    if (table) {
-      dispatch(setDetailView({ rowName, table, collectionId }));
+    if (card) {
+      dispatch(setDetailView({ type: "model", rowName, card, collectionId }));
     }
-  }, [dispatch, rowName, table, collectionId]);
+  }, [dispatch, rowName, card, collectionId]);
 
   useUnmount(() => {
     dispatch(setDetailView(null));
   });
 
-  if (!table || !dataset || !row || error || isLoading) {
+  if (!card || !dataset || !row || error || isLoading) {
     const rowError = !row && !isLoading ? t`Row not found` : undefined;
 
     return (
@@ -102,7 +97,16 @@ export function ModelDetailPage() {
       isNavBarOpen={isNavBarOpen}
       row={row}
       rowId={rowId}
-      table={table}
     />
   );
+}
+
+function getCardQuery(
+  metadataProvider: Lib.MetadataProvider,
+  cardId: CardId,
+): Lib.Query | undefined {
+  const cardMetadata = Lib.cardMetadata(metadataProvider, cardId);
+  return cardMetadata != null
+    ? Lib.queryFromTableOrCardMetadata(metadataProvider, cardMetadata)
+    : undefined;
 }

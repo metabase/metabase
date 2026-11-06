@@ -29,7 +29,7 @@ interface Props {
   isNavBarOpen: boolean;
   row: RowValues;
   rowId: string | number;
-  table: Table;
+  entityType?: Table["entity_type"];
   tableForeignKeys?: ForeignKey[];
 }
 
@@ -41,12 +41,12 @@ export function DetailViewPage({
   isNavBarOpen,
   row,
   rowId,
-  table,
+  entityType,
   tableForeignKeys,
 }: Props) {
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
-  const icon = getEntityIcon(table.entity_type);
+  const icon = getEntityIcon(entityType);
   const viewport = useViewportSize();
   const navBarWidth = isNavBarOpen ? parseInt(NAV_SIDEBAR_WIDTH, 10) : 0;
   const width = viewport.width - navBarWidth;
