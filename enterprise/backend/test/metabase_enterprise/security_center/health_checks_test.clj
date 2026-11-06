@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.security-center.schema :as security-center.schema]
@@ -378,3 +380,80 @@
                                                               (fn [support] (remove #(= 64 (:major %)) support)))]
         (is (=? {:status :unknown, :items [{:status :unknown, :message "Version 64 is not in the version info"}]}
                 (supported-version-with-major 64)))))))
+
+;;; Background checks
+
+(defn- background-check
+  "A background check for the tests. `refresh` returns the result to store; `:run` turns the stored result into one
+  item, or reports that nothing is stored yet."
+  [refresh & {:as overrides}]
+  (fake-check (merge {:id      :read-only-connections
+                      :refresh refresh
+                      :run     #(if-let [{:keys [status message]} (health-checks/stored-result :read-only-connections)]
+                                  [{:status (keyword status), :message message}]
+                                  [{:status :unknown, :message "Not checked yet"}])}
+                     overrides)))
+
+(defn- writable-refresh
+  "A refresh that counts its calls in `calls` and finds a writable database."
+  [calls]
+  (fn []
+    (swap! calls inc)
+    {:status :fail, :message "The connection user can write"}))
+
+(deftest refresh-and-run-checks-test
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results nil]
+      (let [calls (atom 0)]
+        (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh calls))
+                                            :https-redirect        (fake-check)}]
+          (testing "before the first refresh, the background check has no stored result"
+            (is (=? [{:id :https-redirect}
+                     {:id :read-only-connections, :status :unknown, :items [{:message "Not checked yet"}]}]
+                    (health-checks/run-checks)))
+            (is (true? (health-checks/background-check-without-result?))))
+          (testing "refreshes the background check, then runs every check"
+            (is (=? [{:id :https-redirect, :status :pass}
+                     {:id :read-only-connections, :status :fail, :items [{:message "The connection user can write"}]}]
+                    (health-checks/refresh-and-run-checks)))
+            (is (= 1 @calls))
+            (is (false? (health-checks/background-check-without-result?))))
+          (testing "a run without a refresh reads the stored result, with the time of the refresh"
+            (let [stored-at (t/offset-date-time (get-in (settings/security-center-health-check-results)
+                                                        [:read-only-connections :checked_at]))
+                  [_ check] (health-checks/run-checks)]
+              (is (=? {:status :fail, :items [{:message "The connection user can write"}]} check))
+              (is (t/= stored-at (:checked_at check)))
+              (is (= 1 @calls) "GET-style runs do not refresh"))))))))
+
+(deftest refresh-that-throws-keeps-the-stored-result-test
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results nil]
+      (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh (atom 0)))}]
+        (health-checks/refresh-and-run-checks))
+      (with-redefs [health-checks/checks {:read-only-connections
+                                          (background-check #(throw (ex-info "the database is gone" {})))}]
+        (is (=? [{:status :fail, :items [{:message "The connection user can write"}]}]
+                (health-checks/refresh-and-run-checks)))))))
+
+(deftest refresh-skips-a-check-that-does-not-apply-test
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results nil]
+      (let [calls (atom 0)]
+        (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh calls)
+                                                                                     :applicable? (constantly false))}]
+          (is (= [] (health-checks/refresh-and-run-checks)))
+          (is (zero? @calls))
+          (is (false? (health-checks/background-check-without-result?))
+              "a background check that does not apply needs no result"))))))
+
+(deftest refresh-keeps-the-results-of-other-checks-test
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results {:another-check {:result     {:n 1}
+                                                                                             :checked_at "2026-11-01T00:00:00Z"}}]
+      (with-redefs [health-checks/checks {:read-only-connections (background-check (writable-refresh (atom 0)))}]
+        (health-checks/refresh-and-run-checks)
+        (is (= {:n 1} (health-checks/stored-result :another-check)))
+        (is (= {:status "fail", :message "The connection user can write"}
+               (health-checks/stored-result :read-only-connections))
+            "the stored result is read back from JSON: keywords that are values come back as strings")))))
