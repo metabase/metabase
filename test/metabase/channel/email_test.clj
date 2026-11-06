@@ -445,6 +445,18 @@
                 (send!))
               (is (= [] @sent-hosts)))))))))
 
+(deftest send-message!-smtp-not-configured-metrics-test
+  (testing "an email that isn't sent because SMTP isn't configured is not counted as a message or an error (#86462)"
+    (tu/with-temporary-setting-values [email-smtp-host nil]
+      (tu/with-prometheus-system! [_ system]
+        (email/send-message!
+         :subject      "101 Reasons to use Metabase"
+         :recipients   ["test@test.com"]
+         :message-type :html
+         :message      "101. Metabase will make you a better person")
+        (is (= 0.0 (tu/metric-value system :metabase-email/messages)))
+        (is (= 0.0 (tu/metric-value system :metabase-email/message-errors)))))))
+
 (deftest throttle-test
   ;; The throttle is applied once per logical message in send-message-or-throw!; check-email-throttle is the unit
   ;; that does the recipient accounting, so we exercise it directly (no actual sending involved).
