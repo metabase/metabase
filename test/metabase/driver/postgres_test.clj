@@ -2906,3 +2906,15 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest ^:synchronized workspace-isolation-accepts-an-id-only-database-test
+  (mt/test-driver :postgres
+    (testing "init and destroy load the Database by id, so an id-only database map works, as it did before #85487"
+      (let [database  {:id (mt/id)}
+            ws-id     (str "idonly" (mt/random-hash))
+            workspace (merge {:id ws-id}
+                             (driver/workspace-isolation-details :postgres (mt/db) {:id ws-id}))]
+        (try
+          (is (= :ok (do (driver/init-workspace-isolation! :postgres database workspace) :ok)))
+          (finally
+            (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
