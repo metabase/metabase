@@ -50,6 +50,25 @@
       (assoc target :db to-db :schema to-schema :name to-name))
     target))
 
+(defenterprise call-with-transform-target-rollback
+  "Enterprise impl of the transform-target rollback hook. [[resolve-transform-target]] records
+   the canonical -> workspace `TableRemapping` before the run, because the post-run sync reads
+   it. When the run then throws, a row this run added would point the canonical table at a
+   workspace copy that was never written, so remove it. A row that existed before the run (from
+   an earlier successful run) stays as it was.
+
+   Deliberately ungated on premium features, like [[resolve-transform-target]]."
+  :feature :none
+  [db-id target thunk]
+  (if (and (some? (ws/db-workspace-namespace db-id))
+           (not (ws.table-remapping/transform-target-mapped? db-id target)))
+    (try
+      (thunk)
+      (catch Throwable t
+        (ws.table-remapping/remove-transform-target-mapping! db-id target)
+        (throw t)))
+    (thunk)))
+
 (defenterprise rewrite-native-sql-for-workspace
   "Workspace-isolation SQL rewrite for the native-transform exec path. Reuses the same
    `rewrite-sql` primitive as the QP's Phase 2 middleware, so canonical refs in a native

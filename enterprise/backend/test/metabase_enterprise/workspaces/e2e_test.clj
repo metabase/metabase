@@ -38,6 +38,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -825,6 +826,82 @@
               (try (jdbc/execute! admin-spec
                                   [(format "DROP TABLE IF EXISTS %s"
                                            (qualified-table-sql admin-driver admin-details main-schema tgt-b-name))])
+                   (catch Throwable _ nil)))))))))
+
+(deftest ^:synchronized failed-transform-run-leaves-remapping-state-unchanged-test
+  (mt/test-drivers #{:postgres :mysql}
+    (mt/with-premium-features #{:workspaces :config-text-file}
+      (testing "a transform run that fails at the warehouse leaves the TableRemapping rows as they were"
+        (let [admin-driver  driver/*driver*
+              admin-db      (mt/db)
+              admin-details (:details admin-db)
+              admin-spec    (admin-warehouse admin-driver admin-details)
+              run-id        (random-suffix)
+              main-schema   (canonical-schema-name admin-driver run-id admin-details)
+              tbl-schema    (table-row-schema-value admin-driver main-schema)
+              src-name      (str "x_input_" run-id)
+              tgt-name      (str "t_ok_" run-id)
+              new-tgt-name  (str "t_new_" run-id)]
+          (try
+            (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
+            (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
+            (mt/with-temp [:model/Database ws-db {:engine  admin-driver
+                                                  :details admin-details
+                                                  :name    (str "ws-failed-run-" run-id)}]
+              (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-failed-run-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)})]
+                (try
+                  (add-database! ws-id (:id ws-db)
+                                 [(workspace-input-schema admin-driver admin-details main-schema)])
+                  (advanced-config.file/initialize!
+                   (yaml/parse-string (ws.config/config->yaml (ws.config/build-workspace-config ws-id))))
+                  (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
+                    (mt/with-db ws-db
+                      (sync/sync-database! (:id ws-db) {:scan :schema})
+                      (let [src-table   (t2/select-one :model/Table :db_id (:id ws-db) :schema tbl-schema :name src-name)
+                            mp          (mt/metadata-provider)
+                            failing-q   (lib/native-query mp (format "SELECT * FROM %s"
+                                                                     (qualified-table-sql admin-driver admin-details
+                                                                                          main-schema (str "missing_" run-id))))
+                            remap-rows  #(t2/select :model/TableRemapping :database_id (:id ws-db))
+                            run-failed? (fn [transform]
+                                          (try (transforms.execute/execute! transform {:run-method :manual})
+                                               false
+                                               (catch Throwable _ true)))]
+                        (is (some? src-table) "input source table is synced")
+                        (mt/with-temp [:model/Transform ok-transform
+                                       {:name   (str "transform-ok-" run-id)
+                                        :source {:type :query :query (lib/query mp (lib.metadata/table mp (:id src-table)))}
+                                        :target {:type :table :schema main-schema :name tgt-name}}
+                                       :model/Transform new-target-transform
+                                       {:name   (str "transform-new-" run-id)
+                                        :source {:type :query :query failing-q}
+                                        :target {:type :table :schema main-schema :name new-tgt-name}}]
+                          (transforms.execute/execute! ok-transform {:run-method :manual})
+                          (let [after-success (remap-rows)]
+                            (is (= 1 (count after-success)) "the successful run recorded its remapping")
+                            (testing "a failed run on a target with no remapping records none"
+                              (is (run-failed? new-target-transform))
+                              (is (= :failed (t2/select-one-fn :status :model/TransformRun
+                                                               :transform_id (:id new-target-transform)))
+                                  "the run was booked and then failed at the warehouse")
+                              (is (= after-success (remap-rows))))
+                            (testing "a failed run on a target an earlier run remapped keeps that row as it was"
+                              (t2/update! :model/Transform :id (:id ok-transform) {:source {:type :query :query failing-q}})
+                              (is (run-failed? (t2/select-one :model/Transform :id (:id ok-transform))))
+                              (is (= after-success (remap-rows))))
+                            (testing "the main table still reads the earlier run's output"
+                              (let [tgt-table (t2/select-one :model/Table :db_id (:id ws-db) :schema tbl-schema :name tgt-name)]
+                                (is (= 3 (count (mt/rows (qp/process-query
+                                                          (lib/query mp (lib.metadata/table mp (:id tgt-table)))))))))))))))
+                  (finally
+                    (ws/clear-instance-workspace!)
+                    (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
+                    (try (ws/delete-workspace! ws-id)
+                         (catch Throwable t
+                           (log/warn t "delete-workspace! failed during failed-run cleanup")))))))
+            (finally
+              (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-name)
                    (catch Throwable _ nil)))))))))
 
 (comment

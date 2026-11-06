@@ -33,6 +33,16 @@
   [_db-id target]
   target)
 
+(defenterprise call-with-transform-target-rollback
+  "Hook for workspace isolation: call `thunk`, which runs a transform writing to the canonical
+  `target` on `db-id`. When the run throws, the EE impl restores the `TableRemapping` state for
+  `target` to what it was before the run.
+
+  OSS / no-workspace fallback: calls `thunk`."
+  metabase-enterprise.workspaces.transform-hooks
+  [_db-id _target thunk]
+  (thunk))
+
 (mu/defn- run-mbql-transform! :- :nil
   ([transform :- ::transforms-base.schema/transform]
    (run-mbql-transform! transform nil))

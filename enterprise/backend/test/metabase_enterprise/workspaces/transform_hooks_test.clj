@@ -130,6 +130,56 @@
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
+(defn- execute-failing-mid-run!
+  "Run a Python-typed transform at `target-name` whose per-type executor throws after the target
+  rewrite. Returns whether a remapping row for the canonical target existed while it ran."
+  [target-name]
+  (let [mapped-mid-run? (atom nil)]
+    (with-redefs [transforms.i/execute! (fn [_transform _opts]
+                                          (reset! mapped-mid-run?
+                                                  (ws.table-remapping/transform-target-mapped?
+                                                   (mt/id) {:schema "PUBLIC" :name target-name}))
+                                          (throw (ex-info "Transform failed mid-run" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transform failed mid-run"
+                            (transforms.execute/execute!
+                             {:id     997
+                              :source {:type :python :body "" :source-tables []}
+                              :target {:database (mt/id) :schema "PUBLIC" :name target-name :type "table"}}))))
+    @mapped-mid-run?))
+
+(deftest failed-run-removes-new-remapping-test
+  (testing "a run that fails after the target rewrite leaves no remapping row for its target"
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (is (true? (execute-failing-mid-run! "FAILS"))
+              "the remapping is in place while the run executes")
+          (is (empty? (t2/select :model/TableRemapping :database_id (mt/id)))
+              "the failed run's remapping row is gone")
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(deftest failed-run-keeps-earlier-remapping-test
+  (testing "a failed run leaves a remapping recorded by an earlier successful run exactly as it was"
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (with-stubbed-execute-multimethod! (atom nil)
+            (fn []
+              (transforms.execute/execute!
+               {:id     996
+                :source {:type :python :body "" :source-tables []}
+                :target {:database (mt/id) :schema "PUBLIC" :name "SUCCEEDED" :type "table"}})))
+          (let [before (t2/select :model/TableRemapping :database_id (mt/id))]
+            (is (= 1 (count before)) "the successful run recorded its remapping")
+            (execute-failing-mid-run! "SUCCEEDED")
+            (is (= before (t2/select :model/TableRemapping :database_id (mt/id)))
+                "the earlier row survives the failed run unchanged, id included"))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
 (deftest non-workspaced-db-target-passthrough-via-execute-test
   (testing "When no WorkspaceDatabase is provisioned, the wrapper passes target through unchanged"
     (let [captured        (atom nil)
