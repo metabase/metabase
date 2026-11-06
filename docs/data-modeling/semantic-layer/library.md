@@ -77,7 +77,7 @@ To add a snippet, see [SQL snippets](#sql-snippets). To manage the glossary, see
 
 ## Library organization
 
-![Library organization](./images/library-org.png)
+![The semantic layer in a development Metabase in Read-write mode, with subcollections in Data and Metrics](./images/library-org.png)
 
 The semantic layer lives in a special collection called Library, which has two root sections:
 
@@ -100,6 +100,10 @@ To create a subcollection in one of the Library's sections:
 2. Click **+ New** and select **Collection**.
 3. Under **Collection it's saved in**, select the parent collection.
 4. Add the name and description for the collection and click **Create**.
+
+If you use [Remote sync](./remote-sync.md), your production Metabase has the same organization as your development Metabase. But in Read-only mode, the semantic layer has no **+ New** button or branch menu, because you make your changes in your development Metabase.
+
+![The semantic layer in a production Metabase in Read-only mode, with no New button or branch menu](./images/library-org-read-only.png)
 
 ## Publishing tables
 
