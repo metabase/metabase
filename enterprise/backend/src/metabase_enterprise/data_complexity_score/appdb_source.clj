@@ -5,6 +5,7 @@
   Table reads and the write therefore go through raw queries here. The other reads still use the models: today their
   hooks and transforms touch none of the columns the CLI reads."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
@@ -16,10 +17,13 @@
 
 ;;; ---------------------------------------- appdb version ----------------------------------------
 
-(def ^:private floor-changeset-id
-  "The changeset that finishes converting the pre-v59 `data_layer` values, recorded on every appdb from v59 up.
-  Below it, Tables can still hold `bronze`, `silver`, `gold` and `copper`, which the raw Table read does not map."
-  "v59.2026-03-17T13:00:00")
+(def ^:private floor-changeset-ids
+  "The changesets that convert the pre-v59 `data_layer` values. Every appdb from v59 up records at least one.
+  Releases up to 0.59.3 ran `v58.2026-01-27T13:00:00` (and from 0.59.2.2 also `v59.2026-01-27T13:00:00`), and
+  `v59.2026-03-17T13:00:00` replaced both, marking itself ran when either already had.
+  Without any of them, Tables can still hold `bronze`, `silver`, `gold` and `copper`, which the raw Table read does
+  not map."
+  ["v58.2026-01-27T13:00:00" "v59.2026-01-27T13:00:00" "v59.2026-03-17T13:00:00"])
 
 (def ^:private user-settings-reset-changeset-id
   "The v64 changeset that moved user-set Table values into `metabase_table_user_settings` and reset them in
@@ -38,10 +42,11 @@
   "Return nil when the appdb is at v59 or later.
   Throw an `ex-info` with `:cli-validation true` when it is older."
   []
-  (when-not (changeset-ran? floor-changeset-id)
-    (throw (ex-info (str "This appdb is older than Metabase 0.59 (changeset " floor-changeset-id " has not run). "
+  (when-not (some changeset-ran? floor-changeset-ids)
+    (throw (ex-info (str "This appdb is older than Metabase 0.59 (none of the changesets "
+                         (str/join ", " floor-changeset-ids) " has run). "
                          "The complexity-score CLI needs 0.59 or later; score a migrated copy instead.")
-                    {:cli-validation true, :changeset-id floor-changeset-id}))))
+                    {:cli-validation true, :changeset-ids floor-changeset-ids}))))
 
 (defn- user-values-only-in-settings-table?
   "True when user-set Table values live only in `metabase_table_user_settings`: 64.0–64.5.1 and 65.0–65.3.1."

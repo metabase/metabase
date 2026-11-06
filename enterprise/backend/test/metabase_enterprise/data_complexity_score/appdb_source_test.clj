@@ -5,6 +5,7 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -60,6 +61,21 @@
                    (catch clojure.lang.ExceptionInfo e e))]
         (is (=? {:cli-validation true} (ex-data e)))
         (is (re-find #"data_complexity_score" (ex-message e)))))))
+
+;;; ---------------------------------------- appdb version ----------------------------------------
+
+(deftest verify-supported-appdb-accepts-each-data-layer-conversion-test
+  (testing "an appdb that recorded any of the changesets converting `data_layer` is supported"
+    ;; Released 0.59 appdbs recorded the conversion under ids the current changelog no longer has, so a migrated
+    ;; test appdb can't reproduce them.
+    (doseq [changeset-id ["v58.2026-01-27T13:00:00" "v59.2026-01-27T13:00:00" "v59.2026-03-17T13:00:00"]]
+      (testing changeset-id
+        (mt/with-dynamic-fn-redefs [mdb/changelog-by-id (fn [_app-db id] (when (= changeset-id id) {:id id}))]
+          (is (nil? (appdb-source/verify-supported-appdb!)))))))
+  (testing "an appdb with none of them is refused"
+    (mt/with-dynamic-fn-redefs [mdb/changelog-by-id (constantly nil)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"older than Metabase 0\.59"
+                            (appdb-source/verify-supported-appdb!))))))
 
 ;;; -------------------------------------------- reads --------------------------------------------
 
