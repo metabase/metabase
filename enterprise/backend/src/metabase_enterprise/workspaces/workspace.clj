@@ -90,7 +90,7 @@
                     (ws.db/workspace-databases-of-workspaces (mapv :id workspaces) (ws.status/staleness :database)))
         schemas   (when (seq databases)
                     (ws.db/workspace-schemas-of-workspace-databases (mapv :id databases)
-                                                              (ws.status/staleness :schema)))
+                                                                    (ws.status/staleness :schema)))
         users     (when-let [ids (seq (keep :creator_id workspaces))]
                     (ws.db/users (vec (distinct ids))))
         dbs       (when (seq databases)

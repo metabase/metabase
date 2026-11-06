@@ -68,11 +68,11 @@
   (mt/with-premium-features #{:workspaces}
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (mt/with-temp [:model/OAuthClient {client-id :client_id} {:client_id         (str (random-uuid))
-                                                                 :redirect_uris     ["https://example.com/callback"]
-                                                                 :grant_types       ["authorization_code"]
-                                                                 :response_types    ["code"]
-                                                                 :scopes            ["mb:workspace-manager"]
-                                                                 :registration_type "static"}]
+                                                                :redirect_uris     ["https://example.com/callback"]
+                                                                :grant_types       ["authorization_code"]
+                                                                :response_types    ["code"]
+                                                                :scopes            ["mb:workspace-manager"]
+                                                                :registration_type "static"}]
         (let [token (str "scope-test-" (random-uuid))]
           ;; through the provider's store, which hashes tokens at rest
           (oidc.store/save-access-token (:token-store (oauth-server/get-provider)) token
