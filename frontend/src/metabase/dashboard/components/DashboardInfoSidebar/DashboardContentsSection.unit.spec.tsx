@@ -130,6 +130,38 @@ describe("DashboardContentsSection", () => {
     ]);
   });
 
+  it("lists the cards added as series, each card once", () => {
+    const orders = createMockCard({ id: 1, name: "Orders by month" });
+    const returns = createMockCard({ id: 2, name: "Returns by month" });
+    const profit = createMockCard({ id: 4, name: "Profit by month" });
+    const restricted: UnreadableCard = { id: 3 };
+    setup({
+      dashboard: createMockDashboard({
+        dashcards: [
+          createMockDashboardCard({
+            id: 1,
+            card_id: orders.id,
+            card: orders,
+            // A series card the viewer cannot read is sent as only its id too.
+            series: [returns, restricted as Card],
+          }),
+          createMockDashboardCard({
+            id: 2,
+            card_id: profit.id,
+            card: profit,
+            series: [returns],
+          }),
+        ],
+      }),
+    });
+
+    expect(getRows().map((row) => row.textContent)).toEqual([
+      "Orders by monthQuestion",
+      "Profit by monthQuestion",
+      "Returns by monthQuestion",
+    ]);
+  });
+
   it("links each row to its card", () => {
     const question = createMockCard({ id: 1, name: "My question" });
     const model = createMockCard({ id: 3, name: "My model", type: "model" });

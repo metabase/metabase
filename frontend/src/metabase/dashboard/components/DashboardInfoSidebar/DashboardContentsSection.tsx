@@ -33,6 +33,7 @@ const byTypeThenName = (a: Card, b: Card) =>
   CARD_TYPE_RANK[a.type] - CARD_TYPE_RANK[b.type] ||
   a.name.localeCompare(b.name);
 
+// A dashcard shows its own card plus any cards added as series.
 // A card the viewer cannot read arrives as `{ id }` only (see `UnreadableCard`),
 // so it has nothing to show or open. A card can also sit on several tabs, or
 // more than once on one tab.
@@ -40,7 +41,7 @@ const listedCards = (dashcards: Dashboard["dashcards"]) =>
   _.uniq(
     dashcards
       .filter(isQuestionDashCard)
-      .map((dashcard) => dashcard.card)
+      .flatMap((dashcard) => [dashcard.card, ...(dashcard.series ?? [])])
       .filter(isReadableCard),
     false,
     (card) => card.id,
