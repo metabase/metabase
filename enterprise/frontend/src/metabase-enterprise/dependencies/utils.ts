@@ -15,6 +15,7 @@ import type {
   AnalysisFindingErrorType,
   CardType,
   Collection,
+  DatasetColumn,
   DependencyEntry,
   DependencyGroupType,
   DependencyId,
@@ -518,7 +519,11 @@ export function getNodeTransform(node: DependencyNode): Transform | null {
   return null;
 }
 
-export function getNodeFields(node: DependencyNode): Field[] | null {
+export type DependencyNodeField = Field | DatasetColumn;
+
+export function getNodeFields(
+  node: DependencyNode,
+): DependencyNodeField[] | null {
   switch (node.type) {
     case "card":
       return node.data.result_metadata ?? [];

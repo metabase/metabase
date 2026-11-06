@@ -57,7 +57,7 @@ function ObjectDetailSidesheetInner() {
   const canZoomNextRow = useSelector(getCanZoomNextRow);
 
   const { data: tableForeignKeys } = useListTableForeignKeysQuery(
-    table ? table.id : skipToken,
+    table && typeof table.id === "number" ? table.id : skipToken,
   );
 
   const data = useMemo(() => {
@@ -78,7 +78,7 @@ function ObjectDetailSidesheetInner() {
     : datasetData
       ? getIdValue({
           data: datasetData,
-          tableId: table?.id,
+          tableId: typeof table?.id === "number" ? table.id : undefined,
           cardId: sourceCardId,
         })
       : null;

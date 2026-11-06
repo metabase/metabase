@@ -11,7 +11,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
-  createMockField,
+  createMockColumn,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -63,7 +63,7 @@ describe("MetricTabs", () => {
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       can_write: true,
       last_query_start: "2024-01-01T00:00:00Z",
-      result_metadata: [createMockField({ base_type: "type/Integer" })],
+      result_metadata: [createMockColumn({ base_type: "type/Integer" })],
       ...cardOverrides,
     });
 

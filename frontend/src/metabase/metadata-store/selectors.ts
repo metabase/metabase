@@ -19,7 +19,6 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Field as ApiField,
   Table as ApiTable,
   Card,
   DatabaseId,
@@ -30,6 +29,7 @@ import type {
   Metric,
   NormalizedDatabase,
   NormalizedField,
+  NormalizedFieldId,
   NormalizedForeignKey,
   NormalizedMeasure,
   NormalizedMetric,
@@ -40,7 +40,6 @@ import type {
   Segment,
   TableId,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { type FieldEntity, FieldSchema } from "./schema";
 
@@ -148,7 +147,7 @@ const isResolvedField = (
  */
 export const getShallowTableFieldIds = createSelector(
   [getVisibleTable, getVisibleFields],
-  (table, fields): ApiField["id"][] => {
+  (table, fields): NormalizedFieldId[] => {
     if (table == null) {
       return [];
     }
@@ -461,7 +460,7 @@ function hydrateDatabaseTables(
 
   return Object.values(metadata.tables).filter(
     (table) =>
-      isConcreteTableId(table.id) &&
+      typeof table.id === "number" &&
       table.schema &&
       table.db_id === database.id,
   );
@@ -630,6 +629,7 @@ function hydrateMeasureTable(
     return undefined;
   }
   const {
+    id,
     db: _db,
     fields: _fields,
     fks: _fks,
@@ -641,7 +641,10 @@ function hydrateMeasureTable(
     original_fields: _original_fields,
     ...rest
   } = normalized;
-  return { ...rest, schema: schema_name ?? "" };
+  if (typeof id !== "number") {
+    return undefined;
+  }
+  return { ...rest, id, schema: schema_name ?? "" };
 }
 
 /**

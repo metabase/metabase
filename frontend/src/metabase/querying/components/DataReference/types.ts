@@ -1,8 +1,8 @@
 import type {
   CardId,
-  ConcreteTableId,
   DatabaseId,
   SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 import { DatabasePane } from "./DatabasePane";
@@ -54,7 +54,7 @@ export type DataReferenceSchemaItem = {
 
 export type DataReferenceTableItem = {
   type: "table";
-  id: ConcreteTableId;
+  id: TableId;
 };
 
 export type DataReferenceQuestionItem = {
@@ -65,7 +65,7 @@ export type DataReferenceQuestionItem = {
 export type DataReferenceTableFieldItem = {
   type: "field";
   kind: "table";
-  tableId: ConcreteTableId;
+  tableId: TableId;
   columnIndex: number;
 };
 

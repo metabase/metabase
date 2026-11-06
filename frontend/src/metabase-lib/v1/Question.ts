@@ -24,9 +24,9 @@ import type {
   DashCardId,
   DashboardId,
   DatabaseId,
+  DatasetColumn,
   DatasetData,
   DatasetQuery,
-  Field,
   LastEditInfo,
   ParameterId,
   Parameter as ParameterObject,
@@ -530,7 +530,7 @@ class Question {
     });
   }
 
-  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<DatasetColumn>>) {
     const metadata = this.getResultMetadata();
     const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];

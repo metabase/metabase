@@ -238,7 +238,9 @@ const TableSelector = ({
     data-testid="gui-builder-data"
   >
     <SchemaAndTableDataSelector
-      selectedTableId={selectedTable?.id || null}
+      selectedTableId={
+        typeof selectedTable?.id === "number" ? selectedTable.id : null
+      }
       selectedDatabaseId={database?.id}
       databases={database ? [database] : []}
       setSourceTableFn={setTableId}

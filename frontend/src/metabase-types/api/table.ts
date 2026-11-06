@@ -10,16 +10,8 @@ import type { UserId, UserInfo } from "./user";
 
 export type TableEntityType = string;
 
-export type ConcreteTableId = number;
-export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
-export type TableId = ConcreteTableId | VirtualTableId;
+export type TableId = number;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
-
-export function isConcreteTableId(
-  id: TableId | undefined,
-): id is ConcreteTableId {
-  return typeof id === "number";
-}
 
 export type TableVisibilityType =
   | null

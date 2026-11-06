@@ -41,6 +41,7 @@ import {
   createMockQueryAction as _createMockQueryAction,
   createMockCard,
   createMockCardQueryMetadata,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
@@ -90,6 +91,27 @@ const TEST_FIELDS = [
   }),
 ];
 
+const TEST_COLUMNS = [
+  createMockColumn({
+    id: 1,
+    display_name: "Field 1",
+    semantic_type: TYPE.PK,
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 2,
+    display_name: "Field 2",
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 3,
+    display_name: "Field 3",
+    table_id: TEST_TABLE_ID,
+    semantic_type: TYPE.FK,
+    fk_target_field_id: TEST_FK_FIELD_ID,
+  }),
+];
+
 const TEST_TABLE = createMockTable({
   id: TEST_TABLE_ID,
   name: "TEST_TABLE",
@@ -136,7 +158,7 @@ function createStructuredModelCard(card?: Partial<Card>) {
     display: "table",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
+    result_metadata: TEST_COLUMNS,
     dataset_query: Lib.toJsQuery(
       Lib.createTestQuery(TEST_PROVIDER, {
         stages: [{ source: { type: "table", id: TEST_TABLE_ID } }],
@@ -151,7 +173,7 @@ function createNativeModelCard(card?: Partial<Card>) {
     display: "table",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
+    result_metadata: TEST_COLUMNS,
     dataset_query: Lib.toJsQuery(
       Lib.createTestNativeQuery(TEST_PROVIDER, {
         query: `SELECT * FROM ${TEST_TABLE.name}`,

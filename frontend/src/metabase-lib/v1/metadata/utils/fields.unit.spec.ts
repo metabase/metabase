@@ -15,13 +15,9 @@ const DB_FIELD = createMockField({
   display_name: "foo",
 });
 
-const NESTED_DB_FIELD = createMockField({
-  id: NESTED_DB_FIELD_ID,
-});
-
 const DB_TABLE = createMockTable({
   id: DB_TABLE_ID,
-  fields: [DB_FIELD, NESTED_DB_FIELD],
+  fields: [DB_FIELD],
 });
 
 const setup = () => {
@@ -40,9 +36,9 @@ describe("metabase-lib/v1/metadata/utils", () => {
 
     describe("when the given field has a field ref id", () => {
       it("should return the field ref id", () => {
-        const metadata = setup();
-        const field = metadata.field(NESTED_DB_FIELD_ID);
-        expect(field && getUniqueFieldId(field)).toBe(NESTED_DB_FIELD_ID[1]);
+        expect(getUniqueFieldId({ id: NESTED_DB_FIELD_ID })).toBe(
+          NESTED_DB_FIELD_ID[1],
+        );
       });
     });
   });

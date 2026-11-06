@@ -3,17 +3,8 @@ import { t } from "ttag";
 import { skipToken, useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
 import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { Box, Icon, Text } from "metabase/ui";
-import {
-  browseDatabase,
-  browseSchema,
-  tableRowsQuery,
-  table as tableUrl,
-} from "metabase/urls";
-import {
-  type Database,
-  type SearchResult,
-  isConcreteTableId,
-} from "metabase-types/api";
+import { browseDatabase, browseSchema, table as tableUrl } from "metabase/urls";
+import type { Database, SearchResult } from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
@@ -59,9 +50,7 @@ export const InfoTextTableLink = ({
     return <LoadingText />;
   }
 
-  const link = isConcreteTableId(result.table_id)
-    ? tableUrl({ id: result.table_id, name: table?.display_name })
-    : tableRowsQuery(result.database_id, result.table_id);
+  const link = tableUrl({ id: result.table_id, name: table?.display_name });
   const label = table?.display_name ?? null;
 
   return (

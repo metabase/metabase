@@ -22,7 +22,6 @@ import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   FieldId,
-  FieldReference,
   ListDatabasesRequest,
   SchemaId,
   TableId,
@@ -85,7 +84,7 @@ export interface DataSelectorOwnProps {
   selectedDatabaseId?: DatabaseId | null;
   selectedSchemaId?: SchemaId | null;
   selectedTableId?: TableId | null;
-  selectedFieldId?: FieldId | FieldReference | null;
+  selectedFieldId?: FieldId | null;
 
   databaseQuery?: ListDatabasesRequest;
   databases?: DataSelectorDatabase[];
@@ -150,7 +149,7 @@ interface DataSelectorState extends ComputedDataSelectorState {
   selectedDatabaseId: DatabaseId | null;
   selectedSchemaId: SchemaId | null;
   selectedTableId: TableId | null;
-  selectedFieldId: FieldId | FieldReference | null;
+  selectedFieldId: FieldId | null;
 }
 
 type SelectedIdsState = Pick<
@@ -305,7 +304,7 @@ export class UnconnectedDataSelector extends Component<
       _.findWhere(schemas ?? [], { id }) || entityLookups.schema(id);
     const getTable = (id: TableId) =>
       _.findWhere(tables ?? [], { id }) || entityLookups.table(id);
-    const getField = (id: FieldId | FieldReference) =>
+    const getField = (id: FieldId) =>
       _.findWhere(fields ?? [], { id }) || entityLookups.field(id);
 
     const deriveFromDatabase = (database: DataSelectorDatabase | null) => {
@@ -773,11 +772,11 @@ export class UnconnectedDataSelector extends Component<
   };
 
   onChangeField = async (field?: DataSelectorField) => {
-    const fieldId = field?.id;
-    if (this.props.setFieldFn && typeof fieldId === "number") {
+    const fieldId = typeof field?.id === "number" ? field.id : null;
+    if (this.props.setFieldFn && fieldId != null) {
       this.props.setFieldFn(fieldId);
     }
-    await this.nextStep({ selectedFieldId: fieldId ?? null });
+    await this.nextStep({ selectedFieldId: fieldId });
   };
 
   getTriggerElement = () => {

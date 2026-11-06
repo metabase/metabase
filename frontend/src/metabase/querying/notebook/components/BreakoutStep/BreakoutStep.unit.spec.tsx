@@ -17,7 +17,7 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { FieldReference, TemporalUnit } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createOrdersIdField,
@@ -146,16 +146,16 @@ function createQueryWithMultipleBreakoutsAndTemporalBucket() {
   });
 }
 
-type NativeCardFieldOpts = {
+type NativeCardColumnOpts = {
   name: string;
   baseType: string;
 };
 
-function createNativeCardField({ name, baseType }: NativeCardFieldOpts) {
+function createNativeCardColumn({ name, baseType }: NativeCardColumnOpts) {
   const fieldRef: FieldReference = ["field", name, { "base-type": baseType }];
-  // Native result columns have no field id; the column ref stands in for it.
-  return createMockField({
-    id: fieldRef,
+  return createMockColumn({
+    id: undefined,
+    table_id: undefined,
     field_ref: fieldRef,
     name,
     display_name: name,
@@ -569,8 +569,8 @@ describe("BreakoutStep", () => {
         query: "select * from products",
       }),
       result_metadata: [
-        createNativeCardField({ name: "ID", baseType: "type/BigInteger" }),
-        createNativeCardField({
+        createNativeCardColumn({ name: "ID", baseType: "type/BigInteger" }),
+        createNativeCardColumn({
           name: "CREATED_AT",
           baseType: "type/DateTimeWithLocalTZ",
         }),

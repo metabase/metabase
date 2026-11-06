@@ -57,7 +57,7 @@ export const TableColumnCard = ({
 
   const handleTableSelect = useCallback(
     (item: MiniPickerPickableItem) => {
-      if (item.model === "table") {
+      if (item.model === "table" && typeof item.id === "number") {
         onChange({
           tableId: item.id,
           columnId: null,
@@ -72,7 +72,7 @@ export const TableColumnCard = ({
 
   const handleModalSelect = useCallback(
     (item: OmniPickerTableItem | OmniPickerQuestionItem) => {
-      if (item.model === "table") {
+      if (item.model === "table" && typeof item.id === "number") {
         onChange({
           tableId: item.id,
           columnId: null,
@@ -121,6 +121,7 @@ export const TableColumnCard = ({
     (pickerItem: MiniPickerItem | OmniPickerItem) => {
       const isAlreadySelected =
         pickerItem.model === "table" &&
+        typeof pickerItem.id === "number" &&
         selectedTableIds.includes(pickerItem.id);
       const isOurAnalytics =
         pickerItem.model === "collection" && pickerItem.id === "root";

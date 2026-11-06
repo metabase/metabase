@@ -14,12 +14,7 @@ import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import {
-  type ConcreteTableId,
-  type DatabaseId,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { DatabaseId, Table, TableId } from "metabase-types/api";
 
 import {
   trackBrowseXRayClicked,
@@ -94,10 +89,6 @@ const TableBrowserItem = ({
   canEditTables,
 }: TableBrowserItemProps) => {
   const tableId = table.id;
-  if (!isConcreteTableId(tableId)) {
-    return null;
-  }
-
   const isLoading = isSyncInProgress(table);
   const isTableWritable = table.is_writable;
   const tableUrl = Urls.table({ id: tableId, name: table.display_name });
@@ -125,7 +116,7 @@ const TableBrowserItem = ({
 };
 
 type TableBrowserItemButtonsProps = {
-  tableId: ConcreteTableId;
+  tableId: TableId;
   dbId: DatabaseId;
   xraysEnabled?: boolean;
   canEditTables?: boolean;

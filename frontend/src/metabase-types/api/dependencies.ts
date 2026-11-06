@@ -14,7 +14,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type GetDependencyCountsRequest = {
@@ -91,7 +91,7 @@ export type TableDependencyNodeData = Pick<
   | "fields"
   | "transform"
   | "owner"
-> & { table_id?: ConcreteTableId };
+> & { table_id?: TableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
@@ -155,7 +155,7 @@ export type DocumentDependencyNodeData = Pick<
 >;
 
 export type SandboxDependencyNodeData = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table?: Table | null;
 };
 

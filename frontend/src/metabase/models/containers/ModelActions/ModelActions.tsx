@@ -21,8 +21,7 @@ import { Outlet, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Card } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
 
 type ModelActionsParams = {
   slug: string;
@@ -34,7 +33,7 @@ type EntityLoadersProps = {
 
 type DispatchProps = {
   loadMetadataForCard: (card: Card) => void;
-  fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
+  fetchTableForeignKeys: (params: { id: TableId }) => void;
 };
 
 type Props = EntityLoadersProps & DispatchProps;

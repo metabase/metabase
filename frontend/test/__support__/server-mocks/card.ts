@@ -4,13 +4,13 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
-  ConcreteTableId,
   DashboardId,
   Dataset,
   FieldValue,
   GetPublicCard,
   ParameterId,
   ParameterValues,
+  TableId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -86,7 +86,7 @@ export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
 }
 
 export function setupCardsForTableEndpoint(
-  tableId: ConcreteTableId,
+  tableId: TableId,
   cards: Card[] = [],
 ) {
   fetchMock.get({

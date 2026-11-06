@@ -23,7 +23,8 @@ import {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-  createOrdersCreatedAtField,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersIdDatasetColumn,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -68,7 +69,9 @@ describe("parameters/utils/mapping-options", () => {
           }),
         ),
         result_metadata: [
-          createOrdersCreatedAtField({ display_name: "~*~Created At~*~" }),
+          createOrdersCreatedAtDatasetColumn({
+            display_name: "~*~Created At~*~",
+          }),
         ],
       });
       const modelMetadata = createMockMetadata({
@@ -108,7 +111,13 @@ describe("parameters/utils/mapping-options", () => {
         const metadata = createMockMetadata({
           databases: [createSampleDatabase()],
           questions: [
-            { ...card, result_metadata: createOrdersTable().fields ?? null },
+            {
+              ...card,
+              result_metadata: [
+                createOrdersIdDatasetColumn(),
+                createOrdersCreatedAtDatasetColumn(),
+              ],
+            },
           ],
         });
         const question = new Question(card, metadata);

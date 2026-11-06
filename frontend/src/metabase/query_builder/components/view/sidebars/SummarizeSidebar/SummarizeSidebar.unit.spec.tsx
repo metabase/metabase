@@ -18,7 +18,15 @@ import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
-  createOrdersTable,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersDiscountDatasetColumn,
+  createOrdersIdDatasetColumn,
+  createOrdersProductIdDatasetColumn,
+  createOrdersQuantityDatasetColumn,
+  createOrdersSubtotalDatasetColumn,
+  createOrdersTaxDatasetColumn,
+  createOrdersTotalDatasetColumn,
+  createOrdersUserIdDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -507,10 +515,17 @@ describe("SummarizeSidebar", () => {
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       id: 2,
       name: "11439",
-      result_metadata: (createOrdersTable().fields ?? []).map((field) => ({
-        ...field,
-        field_ref: ["field", Number(field.id), null],
-      })),
+      result_metadata: [
+        createOrdersIdDatasetColumn(),
+        createOrdersUserIdDatasetColumn(),
+        createOrdersProductIdDatasetColumn(),
+        createOrdersSubtotalDatasetColumn(),
+        createOrdersTaxDatasetColumn(),
+        createOrdersTotalDatasetColumn(),
+        createOrdersDiscountDatasetColumn(),
+        createOrdersCreatedAtDatasetColumn(),
+        createOrdersQuantityDatasetColumn(),
+      ],
     });
     const provider = createMetadataProvider({
       metadata: createMockMetadata({

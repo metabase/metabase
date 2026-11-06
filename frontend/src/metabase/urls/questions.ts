@@ -5,8 +5,8 @@ import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
-  ConcreteTableId,
   Card as SavedCard,
+  TableId,
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -128,13 +128,7 @@ export function tableRowsQuery(
  * Only concrete (numeric) table ids are supported — the `/table/:slug` route
  * parses ids via {@link extractEntityId}.
  */
-export function table({
-  id,
-  name,
-}: {
-  id: ConcreteTableId;
-  name?: string | null;
-}) {
+export function table({ id, name }: { id: TableId; name?: string | null }) {
   return appendSlug(`/table/${id}`, name ? slugg(name) : undefined);
 }
 

@@ -24,9 +24,9 @@ import { useDispatch } from "metabase/redux";
 import { Box, Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
-  ConcreteTableId,
   DatasetColumn,
   DatasetData,
+  TableId,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -149,7 +149,7 @@ export function ObjectDetailPanel({
 
     if (isDrillThroughDetail && table && _.isEmpty(table.fks)) {
       // Unjustified type cast. FIXME
-      fetchTableFks?.(table.id as ConcreteTableId);
+      fetchTableFks?.(table.id as TableId);
     }
   });
 
@@ -306,7 +306,7 @@ export function ObjectDetailPanel({
   const displayId = getDisplayId({
     cols: data.cols,
     zoomedRow,
-    tableId: table?.id,
+    tableId: typeof table?.id === "number" ? table.id : undefined,
     settings,
   });
 
