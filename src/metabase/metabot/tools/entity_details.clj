@@ -117,12 +117,11 @@
                                  {:glossary glossary}))}
     {:output "current user not found"}))
 
-(defn- person
-  "`{:name ...}` for `user`, a map with `:first_name`, `:last_name` and `:email`, or nil when it has none of them.
+(defn- person-name
+  "The name of `user`, a map with `:first_name`, `:last_name` and `:email`, or nil when it has none of them.
   A user without a first or last name goes by their email, as `:common_name` does."
   [{:keys [first_name last_name email]}]
-  (when-let [person-name (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email))]
-    {:name person-name}))
+  (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email)))
 
 (defn- dashboard-collection
   "The collection with `collection-id`, nil for the root collection, with the path to it the current user can see."
@@ -181,8 +180,8 @@
                (dissoc :collection_id :creator_id)
                (assoc :type           :dashboard
                       :verified       (verified-review? dashboard-id "dashboard")
-                      :creator        (person (metabot.db/user-summary (:creator_id dashboard)))
-                      :last_edited_by (person last-edit)
+                      :created_by     (person-name (metabot.db/user-summary (:creator_id dashboard)))
+                      :last_edited_by (person-name last-edit)
                       :last_edited_at (:timestamp last-edit)
                       :collection     (dashboard-collection (:collection_id dashboard)))
                (cond-> (seq (:parameters dashboard))

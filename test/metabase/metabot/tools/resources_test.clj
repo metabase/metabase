@@ -622,6 +622,9 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
+      (testing "a dashboard in the root collection gives the root as its path"
+        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" dashboard-id)]}))
+                           "name=\"Our analytics\" path=\"Our analytics\"")))
       (testing "fetches dashboard items through the cards alias"
         (is (=? {:resources [{:content {:structured-output {:list-type :dashboard-items}}}]}
                 (read-uris {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
