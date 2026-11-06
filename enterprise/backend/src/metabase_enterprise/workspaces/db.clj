@@ -74,12 +74,14 @@
   (t2/insert-returning-pk! :model/Workspace {:name workspace-name, :creator_id creator-id}))
 
 (mu/defn workspaces-page
-  "Up to `limit` Workspaces, or all of them when `limit` is nil, after skipping `offset`, in id order."
+  "Up to `limit` Workspaces after skipping `offset`, in id order; all of them when `limit` is nil, when `offset` must
+  be 0."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select :model/Workspace (cond-> {:order-by [[:id :asc]]
-                                       :offset   offset}
-                                limit (assoc :limit limit))))
+  (assert (or limit (zero? offset)) "offset without limit")
+  ;; MySQL has no OFFSET without LIMIT
+  (t2/select :model/Workspace (cond-> {:order-by [[:id :asc]]}
+                                limit (assoc :limit limit, :offset offset))))
 
 (mu/defn workspace
   "The Workspace with `id`, or nil."
