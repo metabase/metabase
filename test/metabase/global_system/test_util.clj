@@ -19,7 +19,7 @@
   "Install `value` as the root of the component behind `handle` for the extent of `thunk`, then restore the root it
   replaced, or remove the root if there was none.
   Unlike a binding, the root is seen by threads that do not inherit this thread's bindings, such as Quartz workers
-  and the threads serving `mt/client`, so tests that call this must be `^:synchronized`.
+  and the threads serving `mt/client`, so tests that call this must not be `^:parallel`.
   A thread that binds the component keeps reading its binding.
   Calls are serialized against each other."
   [handle value thunk]
