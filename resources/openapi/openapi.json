@@ -32774,7 +32774,7 @@
       "url" : "https://www.gnu.org/licenses/agpl-3.0.html"
     },
     "title" : "Metabase API",
-    "version" : "vLOCAL_DEV"
+    "version" : "v0.66.1-SNAPSHOT"
   },
   "openapi" : "3.1.0",
   "paths" : {
@@ -36367,13 +36367,6 @@
         },
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40460,13 +40453,6 @@
         },
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -44294,13 +44280,6 @@
         },
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -57835,13 +57814,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -57892,13 +57864,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -57971,13 +57936,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -58046,13 +58004,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -58204,13 +58155,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -58256,13 +58200,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63863,17 +63800,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "additionalProperties" : false,
-                  "properties" : {
-                    "body" : {
-                      "const" : ""
-                    },
-                    "status" : {
-                      "const" : 200
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -68018,13 +67945,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -68097,13 +68017,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -68255,13 +68168,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -68307,13 +68213,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -68764,13 +68663,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -68846,13 +68738,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -68965,13 +68850,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -69064,13 +68942,6 @@
         },
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -69407,13 +69278,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -69497,13 +69361,6 @@
         },
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -69616,13 +69473,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -69693,13 +69543,6 @@
         } ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
-                }
-              }
-            },
             "description" : "Successful response"
           },
           "4XX" : {
