@@ -1,17 +1,315 @@
-// usage: bun report-links.ts <report.md>
-// A non-empty report opens the Linear issue or replaces its description; an empty or missing one closes it.
-import { existsSync, readFileSync } from "node:fs";
+// usage: bun report-links.ts [--external <failures.txt>] [--quarantine <state.json>]
+//   [--excluded <urls.txt> --recheck <lychee.json>] <failures.txt>...
+// SITE_OUTCOME and EXTERNAL_OUTCOME mark a check as crashed when it failed without listing any links.
+import {
+  appendFileSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 
 import { reportIssue } from "./report-issue";
 
-const file = process.argv[2];
+export type Row = { where: string; link: string; status: string };
 
-await reportIssue({
-  title: "metabase/metabase broken links report",
-  report: file && existsSync(file) ? readFileSync(file, "utf8").trim() : "",
-  opened: (link) =>
-    `:link: The weekly link check found broken links in metabase/metabase: ${link}`,
-  closed: (link) =>
-    `:white_check_mark: All links in metabase/metabase pass again, closed ${link}`,
-  closedComment: `All links pass as of ${process.env.RUN_URL}`,
-});
+export type Quarantine = Record<string, { since: string; status: string }>;
+
+export type Stale = { pattern: string; reason: string; link?: string };
+
+type LycheeEntry = { url: string; status: { text: string; code?: number } };
+
+export type LycheeReport = {
+  error_map?: Record<string, LycheeEntry[]>;
+  timeout_map?: Record<string, LycheeEntry[]>;
+};
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Reads `path:line: url: status` lines. The status keeps a code alone, and drops a network error's url tail. */
+export function parseFailures(text: string): Row[] {
+  return text.split("\n").flatMap((line) => {
+    const match = line.match(/^(.+?): (.+?): (.*)$/);
+    if (!match) {
+      return [];
+    }
+    const [, where, link, status] = match;
+    return [
+      {
+        where,
+        link,
+        status: status
+          .replace(/^Rejected status code: (\d+).*/, "$1")
+          .replace(/ \(.*\)$/, ""),
+      },
+    ];
+  });
+}
+
+export function recheckFailures(report: LycheeReport) {
+  return [
+    ...Object.values(report.error_map ?? {}).flat(),
+    ...Object.values(report.timeout_map ?? {})
+      .flat()
+      .map((entry) => ({ ...entry, status: { text: "Timeout" } })),
+  ].map(({ url, status }) => ({
+    link: url,
+    status: String(status.code ?? status.text.replace(/ \(.*\)$/, "")),
+  }));
+}
+
+// A status change keeps the clock running; only a pass resets it.
+export function quarantine<T>(
+  items: readonly T[],
+  key: (item: T) => string,
+  status: (item: T) => string,
+  state: Quarantine,
+  today: string,
+): { due: T[]; state: Quarantine } {
+  const next: Quarantine = Object.fromEntries(
+    items.map((item) => [
+      key(item),
+      { since: state[key(item)]?.since ?? today, status: status(item) },
+    ]),
+  );
+  return {
+    due: items.filter(
+      (item) =>
+        Date.parse(today) - Date.parse(next[key(item)].since) >= 6 * DAY,
+    ),
+    state: next,
+  };
+}
+
+export function parseLycheeIgnore(text: string) {
+  const excludes: { pattern: string; expect?: string }[] = [];
+  let expect: string | undefined;
+  for (const line of text.split("\n").map((line) => line.trim())) {
+    const tag = line.match(/^#\s*expect:\s*(.+)$/);
+    if (tag) {
+      expect = tag[1];
+    } else if (line && !line.startsWith("#")) {
+      excludes.push({ pattern: line, expect });
+      expect = undefined;
+    }
+  }
+  return excludes;
+}
+
+export function staleExcludes(
+  excludes: readonly { pattern: string; expect?: string }[],
+  excluded: readonly string[],
+  failing: readonly { link: string; status: string }[],
+): Stale[] {
+  return excludes.flatMap(({ pattern, expect }) => {
+    const re = new RegExp(pattern);
+    if (!excluded.some((url) => re.test(url))) {
+      return [{ pattern, reason: "Matches no link" }];
+    }
+    const failures = failing.filter((failure) => re.test(failure.link));
+    if (failures.length === 0) {
+      return [{ pattern, reason: "Links pass" }];
+    }
+    return failures
+      .filter((failure) => expect && !failure.status.startsWith(expect))
+      .map((failure) => ({
+        pattern,
+        link: failure.link,
+        reason: `${escapeCell(failure.link)} returns ${escapeCell(failure.status)}, expected ${expect}`,
+      }));
+  });
+}
+
+type ReportContext = {
+  date: string;
+  runUrl: string;
+  blobUrl: string;
+  crashed?: readonly string[];
+  stale?: readonly Stale[];
+  max?: number;
+};
+
+const escapeCell = (text: string) => text.replaceAll("|", "\\|");
+
+export function formatReport(
+  rows: readonly Row[],
+  { date, runUrl, blobUrl, crashed = [], stale = [], max = 300 }: ReportContext,
+): string {
+  const unique = [
+    ...new Map(
+      rows.map((row) => [`${row.where}: ${row.link}: ${row.status}`, row]),
+    ),
+  ]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, row]) => row);
+  if (unique.length === 0 && crashed.length === 0 && stale.length === 0) {
+    return "";
+  }
+  const sections = [
+    `> Generated by [\`docs-links-site.yml\`](${blobUrl}/.github/workflows/docs-links-site.yml). Each weekly run replaces this description, so edits here are lost: comment instead.`,
+  ];
+  if (unique.length > 0) {
+    sections.push(
+      [
+        `The weekly link check found **${unique.length} broken links** on ${date} ([run](${runUrl})).`,
+        "A redirect counts as broken for metabase.com and our GitHub wikis: see `docs/util/README.md`.",
+        "A link to another site is listed once it has failed two weekly runs in a row.",
+      ].join("\n"),
+      [
+        "| Where | Link | Status |",
+        "| --- | --- | --- |",
+        ...unique.slice(0, max).map(({ where, link, status }) => {
+          const at = where.lastIndexOf(":");
+          const location = `${blobUrl}/${where.slice(0, at)}#L${where.slice(at + 1)}`;
+          return `| [\`${where}\`](${location}) | ${escapeCell(link)} | ${escapeCell(status)} |`;
+        }),
+      ].join("\n"),
+    );
+    if (unique.length > max) {
+      sections.push(`…and ${unique.length - max} more in the run.`);
+    }
+  }
+  if (stale.length > 0) {
+    sections.push(
+      [
+        "### Excludes to review",
+        "",
+        "Remove or update these in `.lycheeignore`:",
+        "",
+        "| Pattern | Reason |",
+        "| --- | --- |",
+        ...stale.map(
+          ({ pattern, reason }) => `| \`${escapeCell(pattern)}\` | ${reason} |`,
+        ),
+      ].join("\n"),
+    );
+  }
+  for (const check of crashed) {
+    sections.push(
+      `Checking ${check} failed on ${date} without listing any links. See the [run](${runUrl}).`,
+    );
+  }
+  return sections.join("\n\n");
+}
+
+const readFailures = (file: string) =>
+  existsSync(file) ? parseFailures(readFileSync(file, "utf8")) : [];
+
+const isOtherSite = (row: Row) =>
+  /^https?:\/\/(?!([\w-]+\.)*metabase\.com([/:?#]|$))/.test(row.link);
+
+// `import.meta.main` keeps the spec, which imports the helpers above, from running the script.
+if ((import.meta as ImportMeta & { main?: boolean }).main) {
+  const args = process.argv.slice(2);
+  const flag = (name: string) => {
+    const at = args.indexOf(name);
+    return at >= 0 ? args.splice(at, 2)[1] : undefined;
+  };
+  const externalFile = flag("--external");
+  const quarantineFile = flag("--quarantine");
+  const excludedFile = flag("--excluded");
+  const recheckFile = flag("--recheck");
+  const today = new Date().toISOString().slice(0, 10);
+
+  const site = args.flatMap(readFailures);
+  const external = externalFile ? readFailures(externalFile) : [];
+  const siteCrashed =
+    process.env.SITE_OUTCOME === "failure" && site.length === 0;
+  const externalCrashed =
+    process.env.EXTERNAL_OUTCOME === "failure" && external.length === 0;
+
+  const rechecked = Boolean(
+    externalFile &&
+    !externalCrashed &&
+    excludedFile &&
+    existsSync(excludedFile) &&
+    recheckFile &&
+    existsSync(recheckFile),
+  );
+  let stale = rechecked
+    ? staleExcludes(
+        parseLycheeIgnore(
+          readFileSync(new URL("../../.lycheeignore", import.meta.url), "utf8"),
+        ),
+        readFileSync(excludedFile!, "utf8").split("\n").filter(Boolean),
+        recheckFailures(
+          // Lychee's JSON report, from the workflow's recheck step.
+          JSON.parse(readFileSync(recheckFile!, "utf8")) as LycheeReport,
+        ),
+      )
+    : [];
+
+  const held = external.filter(isOtherSite);
+  let due = held;
+  // A crashed external check saw no links, so keeping its state keeps every clock running.
+  if (quarantineFile && !externalCrashed) {
+    const state = existsSync(quarantineFile)
+      ? // Only this script writes the file, which the workflow carries over between runs.
+        (JSON.parse(readFileSync(quarantineFile, "utf8")) as {
+          external?: Quarantine;
+          excludes?: Quarantine;
+        })
+      : {};
+    const links = quarantine(
+      held,
+      (row) => row.link,
+      (row) => row.status,
+      state.external ?? {},
+      today,
+    );
+    const excludes = quarantine(
+      stale,
+      (item) => item.link ?? item.pattern,
+      (item) => item.reason,
+      state.excludes ?? {},
+      today,
+    );
+    writeFileSync(
+      quarantineFile,
+      `${JSON.stringify(
+        {
+          external: links.state,
+          // Without a recheck there's nothing to compare, so the excludes' clocks keep running.
+          excludes: rechecked ? excludes.state : (state.excludes ?? {}),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    due = links.due.map((row) => ({
+      ...row,
+      status: `${row.status} since ${links.state[row.link].since}`,
+    }));
+    stale = excludes.due;
+  }
+
+  const report = formatReport(
+    [...site, ...external.filter((row) => !isOtherSite(row)), ...due],
+    {
+      date: today,
+      runUrl: process.env.RUN_URL ?? "",
+      blobUrl: process.env.BLOB_URL ?? "",
+      stale,
+      crashed: [
+        ...(siteCrashed ? ["metabase.com and GitHub wiki links"] : []),
+        ...(externalCrashed ? ["links to other sites"] : []),
+      ],
+    },
+  );
+  console.log(report);
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `broken=${report ? "true" : "false"}\n`,
+    );
+  }
+
+  await reportIssue({
+    title: "metabase/metabase broken links report",
+    report,
+    opened: (link) =>
+      `:link: The weekly link check found broken links in metabase/metabase: ${link}`,
+    closed: (link) =>
+      `:white_check_mark: All links in metabase/metabase pass again, closed ${link}`,
+    closedComment: `All links pass as of ${process.env.RUN_URL}`,
+  });
+}

@@ -1,16 +1,14 @@
 accept = ["200..=204", "429"]
+# npm pages answer CI runners with a Cloudflare 403 challenge, but the registry answers 404 for a missing package.
+remap = ["^https://www\\.npmjs\\.com/package/(.+)$ https://registry.npmjs.org/$1"]
+# Temporary excludes live in .lycheeignore, which the weekly check rechecks.
 exclude = [
+  # Local servers the docs tell you to start.
+  "^https?://localhost",
   # Liquid templates ({{page.version}}) in docs/embedding/sdk are rendered by the docs site, not here.
   "%7B%7B",
-  # Bot-blocked: 403 for anything that isn't a browser.
-  "^https://(www|dev)\\.mysql\\.com/",
-  "^https://platform\\.deepseek\\.com/",
-  "^https://console\\.x\\.ai/",
-  "^https://www\\.oreilly\\.com/",
   # API base URLs the docs give as values: they answer API requests, not page loads.
   "^https://ollama\\.com/v1$",
-  # Login-walled: redirects forever between console and auth.
-  "^https://console\\.mistral\\.ai/",
   # GitHub renders issue comments client-side, so lychee can't see #issuecomment anchors.
   "^https://github\\.com/.+/issues/\\d+#issuecomment-",
   # Same for a repo's #readme anchor.
