@@ -103,9 +103,12 @@
                               :transforms/table               true
                               :transforms/testing             true
                               :uploads                        true
-                              :uuid-type                      true
-                              :workspace                      true}]
+                              :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
+
+;; Postgres only, not the drivers that derive from it: they inherit the workspace isolation methods, whose catalog
+;; queries and role handling their warehouses may not support. A derived driver that implements them says so itself.
+(defmethod driver/database-supports? [:postgres :workspace] [driver _feature _db] (= driver :postgres))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
   [_driver _feat db]

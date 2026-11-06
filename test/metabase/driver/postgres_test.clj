@@ -16,6 +16,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.impl :as driver.impl]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.settings :as driver.settings]
@@ -2906,3 +2907,16 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest workspace-feature-is-postgres-only-test
+  (testing "Postgres reports the :workspace feature"
+    (is (true? (driver/database-supports? :postgres :workspace nil))))
+  (testing "a driver deriving from Postgres does not inherit it"
+    ;; derived only for this test, so tests that walk the driver hierarchy never see it; restored rather than
+    ;; underived, since `underive` rebuilds the hierarchy in an order drivers with several parents refuse
+    (let [hierarchy @#'driver.impl/hierarchy]
+      (alter-var-root #'driver.impl/hierarchy derive ::derived-from-postgres :postgres)
+      (try
+        (is (false? (driver/database-supports? ::derived-from-postgres :workspace nil)))
+        (finally
+          (alter-var-root #'driver.impl/hierarchy (constantly hierarchy)))))))
