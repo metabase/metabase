@@ -1005,7 +1005,8 @@
            util.classloader
            util.config
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   embedding
@@ -2892,7 +2893,8 @@
            util
            util.config
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
@@ -3116,7 +3118,8 @@
            query-processor
            sync
            transforms.indexes
-           util}}
+           util
+           workspaces}}
 
   transforms.feature-gating
   {:team "Graphy"
