@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.provisioning-connection :as ws.provisioning-connection]
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase-enterprise.workspaces.workspace :as ws.workspace]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption-test :as encryption-test]
@@ -247,6 +248,16 @@
                      (catch Exception e
                        (ex-data e)))))
            (is (= "warehouse.example" (:host (t2/select-one-fn :details :model/Database :id db-id))))))
+       (testing "a form that also sends the fields the Database did not have, as false or empty, is not a move"
+         (let [current (t2/select-one-fn :details :model/Database :id db-id)]
+           (t2/update! :model/Database :id db-id {:details (assoc current
+                                                                  :password "c"
+                                                                  :port "5432"
+                                                                  :tunnel-enabled false
+                                                                  :tunnel-host ""
+                                                                  :tunnel-port nil
+                                                                  :ssl false)})
+           (is (= "c" (:password (t2/select-one-fn :details :model/Database :id db-id))))))
        (testing "a new password is fine"
          (t2/update! :model/Database :id db-id {:details (assoc (t2/select-one-fn :details :model/Database :id db-id) :password "b")})
          (is (= "b" (:password (t2/select-one-fn :details :model/Database :id db-id)))))
@@ -268,3 +279,48 @@
          (is (thrown? Exception (ws.db/provisioning-connection db-id)) "the model cannot read it")
          (is (= db-id (t2/with-transaction [_conn]
                         (ws.db/lock-provisioning-connection! db-id)))))))))
+
+(deftest identity-guard-without-workspaces-test
+  (testing "with a provisioning login but no workspaces, a move is refused as provisioning_connection_exists"
+    (do-with-racing-database!
+     (fn [db-id _ws-id]
+       (t2/update! :model/Database :id db-id {:details {:host "warehouse.example", :dbname "dwh", :user "reader"}})
+       (ws.db/save-provisioning-connection! db-id {:user "provisioner"} nil)
+       (is (=? {:status-code 409, :error-code "provisioning_connection_exists", :workspaces []}
+               (try
+                 (t2/update! :model/Database :id db-id {:details {:host "elsewhere.example", :dbname "dwh", :user "reader"}})
+                 :updated
+                 (catch Exception e
+                   (ex-data e)))))))))
+
+(deftest audit-dev-database-is-refused-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details {:is-audit-dev true}}]
+      (is (= {:message "Workspaces are not supported on this database.", :error-code "workspaces_unsupported"}
+             (mt/user-http-request :crowberto :get 400 (format "ee/workspace-manager/database/%d/provisioning-connection" db-id)))))))
+
+(defn- do-with-encrypted-app-db!
+  "Calls `(f)` in a fresh H2 app DB set up and used under one encryption key, so its settings are encrypted like a real
+  instance's and any setting read under the key works."
+  [f]
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (encryption-test/with-secret-key "workspace-test-secret-key"
+      (mdb/setup-db! :create-sample-content? false)
+      (f))))
+
+(deftest deletes-over-an-undecryptable-login-test
+  (testing "a stored login that does not decrypt under the current key does not stop deleting it or its Database"
+    (do-with-encrypted-app-db!
+     (fn []
+       (let [db-id     (t2/insert-returning-pk! :model/Database {:name "warehouse", :engine :postgres, :details {}})
+             garbage!  #(t2/insert! :workspace_provisioning_connection
+                                    {:database_id db-id, :details "plaintext where ciphertext belongs"})]
+         (garbage!)
+         (is (thrown? Exception (ws.db/provisioning-connection db-id)) "the model cannot read it")
+         (testing "DELETE provisioning-connection"
+           (ws.provisioning-connection/delete! db-id)
+           (is (zero? (t2/count :workspace_provisioning_connection :database_id db-id))))
+         (testing "Database delete"
+           (garbage!)
+           (t2/delete! :model/Database :id db-id)
+           (is (not (t2/exists? :model/Database :id db-id)))))))))

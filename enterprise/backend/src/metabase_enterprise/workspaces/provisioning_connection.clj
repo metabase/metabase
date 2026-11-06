@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
@@ -31,7 +32,8 @@
   (let [database (or (ws.db/database database-id)
                      (throw (ex-info (tru "Database {0} not found." (str database-id))
                                      {:status-code 404, :database-id database-id})))]
-    (when (or (:is_audit database) (:is_sample database) (:is_attached_dwh database) (:router_database_id database))
+    (when (or (:is_audit database) (get-in database [:details :is-audit-dev]) (:is_sample database)
+              (:is_attached_dwh database) (:router_database_id database))
       (throw (ex-info (tru "Workspaces are not supported on this database.")
                       {:status-code 400, :error-code "workspaces_unsupported", :database-id database-id})))
     database))
@@ -102,14 +104,23 @@
     ;; [[metabase-enterprise.workspaces.workspace/insert-workspace-database!]]), so no workspace can appear between the
     ;; check below and the write. The foreign key alone would not do: H2 does not lock the parent row for it.
     (t2/with-transaction [_conn]
-      (let [existing (when (ws.db/lock-provisioning-connection! database-id)
-                       (provisioning-details database-id))]
+      (let [stored?  (some? (ws.db/lock-provisioning-connection! database-id))
+            existing (when stored?
+                       (try
+                         (provisioning-details database-id)
+                         (catch Exception e
+                           ;; stored under another encryption key, say: it is replaced, unless workspaces need it
+                           (log/warnf e "The stored provisioning login of database %d cannot be read" database-id)
+                           nil)))]
         (when-not (and existing (same-login? existing))
           ;; the workspaces' warehouse objects belong to the stored login on this server: while they exist, only its
           ;; password may change
           (throw-if-live-workspaces!
            database-id
-           (tru "Workspaces exist on this database; delete them before you change anything but the password of its provisioning login."))))
+           (tru "Workspaces exist on this database; delete them before you change anything but the password of its provisioning login.")))
+        ;; the save reads the stored row through the model, which cannot read this one
+        (when (and stored? (nil? existing))
+          (ws.db/delete-provisioning-connection! database-id)))
       (ws.db/save-provisioning-connection! database-id details user-id)
       ;; the check logs in through the :workspace-provisioning scope, which reads the login from the app DB on this
       ;; thread, so inside this transaction it sees the new row; a 412 rolls the row back
@@ -142,29 +153,48 @@
   (ws.db/lock-provisioning-connection! database-id)
   (throw-if-live-workspaces! database-id (tru "Delete the workspaces on this database before the database.")))
 
-(def ^:private connection-identity-keys
-  "The `:details` keys that decide which server, database and login a connection reaches. The provisioning login is
-  merged over them, and the workspaces' warehouse objects live there."
-  [:host :port :dbname :db :user :tunnel-enabled :tunnel-host :tunnel-port :tunnel-user])
+(defn- ->port
+  [port]
+  (cond
+    (integer? port) (long port)
+    (string? port)  (parse-long (str/trim port))))
+
+(defn- connection-identity
+  "The server, database, login and SSH tunnel that `details` reach, normalized so that equal connections compare equal
+  however a form or a config file spells them: blank and false values dropped, ports as integers, and the tunnel
+  fields only when the tunnel is on."
+  [details]
+  (let [tunnel? (true? (:tunnel-enabled details))]
+    (into {}
+          (remove (fn [[_k v]] (or (nil? v) (false? v) (and (string? v) (str/blank? v)))))
+          (merge {:host   (:host details)
+                  :port   (->port (:port details))
+                  :dbname (or (:dbname details) (:db details))
+                  :user   (:user details)}
+                 (when tunnel?
+                   {:tunnel-enabled true
+                    :tunnel-host    (:tunnel-host details)
+                    :tunnel-port    (->port (:tunnel-port details))
+                    :tunnel-user    (:tunnel-user details)})))))
 
 (defenterprise check-connection-identity-change!
-  "Throws a 409 listing the workspaces on the Database with `database-id` when it has a provisioning connection and the
-  update from `old-details` to `new-details` changes the server, database, login or SSH tunnel: the provisioning login
-  would be sent there, and teardown would miss the workspaces' users and schemas. A password change is allowed. Not
-  gated on `:workspaces`, like [[check-no-workspaces!]]."
+  "Throws a 409 when the Database with `database-id` has a provisioning connection and the update from `old-details` to
+  `new-details` changes the server, database, login or SSH tunnel they reach: the provisioning login would be sent
+  there, and teardown would miss the workspaces' users and schemas. A password change is allowed. The error code is
+  `workspaces_exist` when workspaces are on the database, else `provisioning_connection_exists`. Not gated on
+  `:workspaces`, like [[check-no-workspaces!]]."
   :feature :none
   [database-id old-details new-details]
   ;; details that are not maps (say, still encrypted under another key during a key rotation) carry no identity to
   ;; compare
   (when (and (map? old-details)
              (map? new-details)
-             (not= (select-keys old-details connection-identity-keys)
-                   (select-keys new-details connection-identity-keys))
+             (not= (connection-identity old-details) (connection-identity new-details))
              (ws.db/lock-provisioning-connection! database-id))
-    (throw (ex-info (tru "This database has a workspace provisioning connection. Delete its workspaces and the provisioning connection before you change its host, port, database, user or SSH tunnel.")
-                    {:status-code   409
-                     :error-code    "workspaces_exist"
-                     :database-id   database-id
-                     :workspaces    (mapv #(into {} (select-keys % [:id :name]))
-                                          (ws.db/live-workspaces-of-database database-id))
-                     :response/keys #{:workspaces}}))))
+    (let [workspaces (mapv #(into {} (select-keys % [:id :name])) (ws.db/live-workspaces-of-database database-id))]
+      (throw (ex-info (tru "This database has a workspace provisioning connection. Delete its workspaces and the provisioning connection before you change its host, port, database, user or SSH tunnel.")
+                      {:status-code   409
+                       :error-code    (if (seq workspaces) "workspaces_exist" "provisioning_connection_exists")
+                       :database-id   database-id
+                       :workspaces    workspaces
+                       :response/keys #{:workspaces}})))))

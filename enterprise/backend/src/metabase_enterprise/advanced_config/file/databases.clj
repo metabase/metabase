@@ -135,11 +135,19 @@
           existing
           (do
             (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
-            (advanced-config.db/update-database! (:id existing)
-                                                 (cond-> (normalize-settings database)
-                                                   (:is_attached_dwh database) strip-attached-dwh-update-ks
-                                                   (:is_stub existing)         (assoc :is_stub             false
-                                                                                      :initial_sync_status "incomplete")))
+            (try
+              (advanced-config.db/update-database! (:id existing)
+                                                   (cond-> (normalize-settings database)
+                                                     (:is_attached_dwh database) strip-attached-dwh-update-ks
+                                                     (:is_stub existing)         (assoc :is_stub             false
+                                                                                        :initial_sync_status "incomplete")))
+              (catch clojure.lang.ExceptionInfo e
+                ;; a Database pinned by a workspace provisioning login cannot move to another server or login; the
+                ;; rest of the config file still applies, and this Database keeps its current details
+                (if (#{"workspaces_exist" "provisioning_connection_exists"} (:error-code (ex-data e)))
+                  (log/errorf "Not updating Database %s with ID %s from the config file: %s"
+                              (:name database) (:id existing) (ex-message e))
+                  (throw e))))
             (when (:is_stub existing)
               (sync-if-configured! (advanced-config.db/database (:id existing)))))
 

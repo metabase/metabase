@@ -401,3 +401,30 @@
         (is (t2/exists? :model/Database :name test-db-name))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
+
+(deftest init-from-config-file-keeps-a-database-pinned-by-workspaces-test
+  (testing "a config file that moves a Database with a workspace provisioning login to another host leaves that Database
+            alone, logs why, and carries on with the rest of the file"
+    (let [db-type      (mdb/db-type)
+          details      (:details (mt/with-driver db-type (mt/db)))
+          other-name   (str test-db-name "-other")
+          config       (fn [pinned-details]
+                         {:version 1
+                          :config  {:databases [{:name test-db-name, :engine (name db-type), :details pinned-details}
+                                                {:name other-name, :engine (name db-type), :details details}]}})]
+      (try
+        (is (= :ok (advanced-config.file/initialize! (update-in (config details) [:config :databases] subvec 0 1))))
+        (let [db-id (t2/select-one-pk :model/Database :name test-db-name)]
+          (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "{}"})
+          (let [messages (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.databases :error]]
+                           (is (= :ok (advanced-config.file/initialize! (config (assoc details :host "elsewhere.example")))))
+                           (messages))]
+            (is (some #(re-find #"Not updating Database .* from the config file: This database has a workspace provisioning connection"
+                                (:message %))
+                      messages)))
+          (is (nil? (:host (t2/select-one-fn :details :model/Database :id db-id))))
+          (is (t2/exists? :model/Database :name other-name) "the next database in the file was still created"))
+        (finally
+          (t2/delete! :workspace_provisioning_connection
+                      :database_id [:in (t2/select-pks-vec :model/Database :name test-db-name)])
+          (t2/delete! :model/Database :name [:in [test-db-name other-name]]))))))

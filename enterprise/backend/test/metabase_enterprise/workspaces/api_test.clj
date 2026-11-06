@@ -6,14 +6,17 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.provisioning-connection :as ws.provisioning-connection]
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase-enterprise.workspaces.workspace :as ws.workspace]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util.encryption-test :as encryption-test]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
@@ -31,24 +34,30 @@
   (doseq [sql sqls]
     (jdbc/execute! spec [sql])))
 
+(defn- create-warehouse!
+  "Create the test warehouse with its logins, and return the superuser's spec."
+  []
+  (tx/drop-if-exists-and-create-db! :postgres db-name)
+  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (superuser-details))]
+    (doseq [{:keys [user]} [login-a login-b]]
+      (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" user]))
+        (exec! spec (format "DROP OWNED BY %s" user) (format "DROP ROLE %s" user))))
+    (doseq [{:keys [user password]} [login-a login-b]]
+      (exec! spec
+             (format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" user password)
+             (format "GRANT CREATE ON DATABASE %s TO %s" db-name user)))
+    (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" (:user login-weak)]))
+      (exec! spec (format "DROP OWNED BY %s" (:user login-weak)) (format "DROP ROLE %s" (:user login-weak))))
+    (exec! spec (format "CREATE ROLE %s LOGIN PASSWORD '%s'" (:user login-weak) (:password login-weak)))
+    spec))
+
 (defn- do-with-warehouse!
   "Calls `(f spec db-id)` with `db-id` a Database whose own login is the superuser and `spec` the superuser's spec,
   with two logins that can provision workspaces, [[login-a]] and [[login-b]], and one that cannot, [[login-weak]], in
   its warehouse."
   [f]
   (mt/test-driver :postgres
-    (tx/drop-if-exists-and-create-db! :postgres db-name)
-    (let [spec (sql-jdbc.conn/connection-details->spec :postgres (superuser-details))]
-      (doseq [{:keys [user]} [login-a login-b]]
-        (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" user]))
-          (exec! spec (format "DROP OWNED BY %s" user) (format "DROP ROLE %s" user))))
-      (doseq [{:keys [user password]} [login-a login-b]]
-        (exec! spec
-               (format "CREATE ROLE %s LOGIN CREATEROLE PASSWORD '%s'" user password)
-               (format "GRANT CREATE ON DATABASE %s TO %s" db-name user)))
-      (when (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" (:user login-weak)]))
-        (exec! spec (format "DROP OWNED BY %s" (:user login-weak)) (format "DROP ROLE %s" (:user login-weak))))
-      (exec! spec (format "CREATE ROLE %s LOGIN PASSWORD '%s'" (:user login-weak) (:password login-weak)))
+    (let [spec (create-warehouse!)]
       (mt/with-premium-features #{:workspaces}
         ;; a plain insert rather than mt/with-temp, which binds a connection that a `future` (and a test request
         ;; handled on this thread) would share, so racing requests would run in one transaction
@@ -224,7 +233,7 @@
                  (mt/user-http-request :crowberto :delete 409 (url db-id))))
          (is (true? (:configured (mt/user-http-request :crowberto :get 200 (url db-id)))))))
      (testing "PUT /api/database/:id cannot move the Database to another login while the provisioning login is stored"
-       (is (=? {:error-code "workspaces_exist"}
+       (is (=? {:error-code "provisioning_connection_exists"}
                (mt/user-http-request :crowberto :put 409 (format "database/%d" db-id)
                                      {:details (merge (superuser-details) (select-keys login-b [:user :password]))})))
        (is (= (:user (superuser-details)) (:user (t2/select-one-fn :details :model/Database :id db-id)))))
@@ -263,3 +272,18 @@
      (is (=? {:errors {:user string?}}
              (mt/user-http-request :crowberto :put 400 (url db-id) {:details {:password "x"}})))
      (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))))
+
+(deftest save-replaces-an-undecryptable-login-test
+  (testing "a stored login that does not decrypt under the current key is replaced when no workspaces need it"
+    (mt/test-driver :postgres
+      (create-warehouse!)
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (encryption-test/with-secret-key "workspace-api-test-secret-key"
+          (mdb/setup-db! :create-sample-content? false)
+          (let [db-id (t2/insert-returning-pk! :model/Database {:name    "warehouse"
+                                                                :engine  :postgres
+                                                                :details (superuser-details)})]
+            (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "plaintext where ciphertext belongs"})
+            (is (thrown? Exception (ws.db/provisioning-connection db-id)) "the model cannot read it")
+            (is (nil? (ws.provisioning-connection/save! db-id login-a nil)))
+            (is (= login-a (:details (ws.db/provisioning-connection db-id))))))))))
