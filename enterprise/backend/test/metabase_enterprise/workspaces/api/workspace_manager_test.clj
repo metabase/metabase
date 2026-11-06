@@ -88,6 +88,43 @@
               (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
+(deftest create-workspace-provisioning-failure-test
+  (testing "POST / never returns 200 when provisioning fails"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (letfn [(provisioner [init-error destroy-error]
+                  (reify provisioning/Provisioner
+                    (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                    (init!    [_ _ _ _]   (throw init-error))
+                    (grant!   [_ _ _ _ _] nil)
+                    (destroy! [_ _ _ _]   (when destroy-error (throw destroy-error)))))
+                (create! [status-code]
+                  (mt/user-http-request :crowberto :post status-code "ee/workspace-manager/"
+                                        {:name "Failing" :database_ids [db-id]}))]
+          (doseq [status-code [409 412]]
+            (testing (str "a database's " status-code " reaches the caller")
+              (with-redefs [provisioning/dispatching-provisioner
+                            (provisioner (ex-info "refused" {:status-code status-code}) nil)]
+                (is (=? {:message "refused" :cleanup_required false}
+                        (create! status-code))))))
+          (testing "an error without a status code is a 500"
+            (with-redefs [provisioning/dispatching-provisioner (provisioner (ex-info "boom" {}) nil)]
+              (is (=? {:message "boom" :cleanup_required false}
+                      (create! 500)))))
+          (is (not (t2/exists? :model/Workspace :name "Failing"))
+              "a create whose cleanup succeeded leaves no workspace")
+          (testing "a failed cleanup is a 500 that says the kept workspace needs a delete"
+            (with-redefs [provisioning/dispatching-provisioner
+                          (provisioner (ex-info "refused" {:status-code 409}) (ex-info "warehouse down" {}))]
+              (is (=? {:message "refused; warehouse down" :cleanup_required true}
+                      (create! 500))))
+            (let [ws-id (t2/select-one-pk :model/Workspace :name "Failing")]
+              (is (some? ws-id))
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))))))))))
+
 (deftest create-workspace-with-database-ids-test
   (testing "POST / attaches and provisions the given databases (each must be eligible) with their schemas"
     (mt/with-temp [:model/Database {eligible-id :id} {:engine   :postgres

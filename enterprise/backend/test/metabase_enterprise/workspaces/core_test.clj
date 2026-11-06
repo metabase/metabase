@@ -104,19 +104,20 @@
                 "the failed create must not leave a Workspace row behind")
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
                 "the failed create must not leave WorkspaceDatabase rows behind")))
-        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and throws for retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
-                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                         (init!    [_ _ _ _]   (throw (ex-info "boom" {:status-code 409})))
                          (grant!   [_ _ _ _ _] nil)
                          (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
             (with-redefs [provisioning/dispatching-provisioner wedged]
-              (is (=? {:name      "Wedged"
-                       :databases [{:status :unprovisioned}]}
-                      (ws/create-workspace! {:name         "Wedged"
-                                             :creator_id   (mt/user->id :crowberto)
-                                             :database_ids [db-id]}))
-                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
+              (let [e (is (thrown? ExceptionInfo
+                                   (ws/create-workspace! {:name         "Wedged"
+                                                          :creator_id   (mt/user->id :crowberto)
+                                                          :database_ids [db-id]})))]
+                (is (=? {:status-code 500 :cleanup_required true :message #"boom.*warehouse down"}
+                        (ex-data e))
+                    "two failures are a 500, and the kept workspace still needs a delete")))
             (let [ws (t2/select-one :model/Workspace :name "Wedged")]
               (is (some? ws)
                   "the workspace must be kept while any database row remains")
