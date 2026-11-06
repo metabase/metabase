@@ -1,21 +1,42 @@
 import { t } from "ttag";
 
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import {
+  useGetCardQuery,
+  useGetCardQueryMetadataQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useMetadataProvider } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 
-import type { DataReferenceFieldItem, DataReferencePaneProps } from "./types";
-import { getTableColumnListInfo } from "./utils";
+import type {
+  ColumnListInfo,
+  DataReferenceCardFieldItem,
+  DataReferenceFieldItem,
+  DataReferencePaneProps,
+  DataReferenceTableFieldItem,
+} from "./types";
+import { getCardColumnListInfo, getTableColumnListInfo } from "./utils";
 
-export const FieldPane = ({
-  onBack,
-  onClose,
+type FieldPaneProps = DataReferencePaneProps<DataReferenceFieldItem>;
+
+export const FieldPane = (props: FieldPaneProps) => {
+  if ("cardId" in props) {
+    return <CardFieldPane {...props} />;
+  }
+  return <TableFieldPane {...props} />;
+};
+
+type TableFieldPaneProps = DataReferencePaneProps<DataReferenceTableFieldItem>;
+
+function TableFieldPane({
   tableId,
   columnIndex,
-}: DataReferencePaneProps<DataReferenceFieldItem>) => {
+  onBack,
+  onClose,
+}: TableFieldPaneProps) {
   const {
     data: table,
     isLoading,
@@ -27,7 +48,76 @@ export const FieldPane = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
+  return (
+    <ColumnFieldPane
+      columnListInfo={getTableColumnListInfo(metadataProvider, table.id)}
+      columnIndex={columnIndex}
+      timezone={table.db?.timezone}
+      onBack={onBack}
+      onClose={onClose}
+    />
+  );
+}
+
+type CardFieldPaneProps = DataReferencePaneProps<DataReferenceCardFieldItem>;
+
+function CardFieldPane({
+  cardId,
+  columnIndex,
+  onBack,
+  onClose,
+}: CardFieldPaneProps) {
+  const {
+    data: card,
+    isLoading: isLoadingCard,
+    error: cardError,
+  } = useGetCardQuery({ id: cardId });
+  const {
+    data: cardMetadata,
+    isLoading: isLoadingCardMetadata,
+    error: cardMetadataError,
+  } = useGetCardQueryMetadataQuery(cardId);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
+
+  if (card == null || cardMetadata == null) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoadingCard || isLoadingCardMetadata}
+        error={cardError ?? cardMetadataError}
+      />
+    );
+  }
+
+  const database = cardMetadata.databases.find(
+    (database) => database.id === card.database_id,
+  );
+
+  return (
+    <ColumnFieldPane
+      columnListInfo={getCardColumnListInfo(metadataProvider, card.id)}
+      columnIndex={columnIndex}
+      timezone={database?.timezone}
+      onBack={onBack}
+      onClose={onClose}
+    />
+  );
+}
+
+type ColumnFieldPaneProps = {
+  columnListInfo: ColumnListInfo | undefined;
+  columnIndex: number;
+  timezone: string | undefined;
+  onBack?: () => void;
+  onClose?: () => void;
+};
+
+function ColumnFieldPane({
+  columnListInfo,
+  columnIndex,
+  timezone,
+  onBack,
+  onClose,
+}: ColumnFieldPaneProps) {
   const column = columnListInfo?.columns.at(columnIndex);
   if (columnListInfo == null || column == null) {
     return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
@@ -43,11 +133,11 @@ export const FieldPane = ({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          timezone={table.db?.timezone}
+          timezone={timezone}
           showAllFieldValues
           showFingerprintInfo
         />
       </SidebarContent.Pane>
     </SidebarContent>
   );
-};
+}
