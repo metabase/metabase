@@ -27,7 +27,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]))
 
 (def ^:private RequestParameters
   "Parameters as passed in from an endpoint, of shape `{<parameter-id> <value>}`."
