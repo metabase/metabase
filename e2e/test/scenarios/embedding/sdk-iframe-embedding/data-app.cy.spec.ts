@@ -1,5 +1,6 @@
 import type { EmbeddedDataApp } from "e2e/support/helpers";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import type { MetabaseDataAppElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 
 const { H } = cy;
 
@@ -24,12 +25,16 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
     cy.intercept("POST", "/api/dataset").as("ordersQuery");
   });
 
-  it("renders a query and keeps navigation inside the iframe", () => {
+  it("renders a query and handles in-app and host navigation", () => {
     loadDataApp("/orders?view=recent");
 
     H.getSimpleEmbedIframeContent()
       .findByLabelText("Order count", { timeout: 30_000 })
       .should("have.text", "18760");
+
+    H.getSimpleEmbedIframeContent()
+      .findByLabelText("Notes")
+      .type("Keep this note");
 
     cy.location("href").as("hostUrl");
 
@@ -57,6 +62,22 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
     cy.get<string>("@hostUrl").then((url) =>
       cy.location("href").should("eq", url),
     );
+
+    cy.log("host writes the same path again after in-app navigation");
+    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
+      cy.get<MetabaseDataAppElement>("metabase-data-app").then(([element]) => {
+        element.path = `${name}/orders?view=recent`;
+      });
+    });
+
+    cy.log("path should change to the new value");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("current-pathname")
+      .should("have.text", "/orders");
+
+    H.getSimpleEmbedIframeContent()
+      .findByLabelText("Notes")
+      .should("have.value", "Keep this note");
 
     cy.wait<unknown, MetabaseEmbeddingSessionToken>("@ssoSession").then(
       ({ response }) => {

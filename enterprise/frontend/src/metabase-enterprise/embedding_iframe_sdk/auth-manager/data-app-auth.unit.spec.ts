@@ -98,13 +98,13 @@ describe("metabase-data-app authentication replies", () => {
     );
   });
 
-  it("discards a pending session token after path changes", async () => {
+  it("discards a pending session token after the app changes", async () => {
     const { element, iframe, postMessage, tokenRequest, authentication } =
       await setupPendingAuth();
 
-    element.setAttribute("path", "sales/customers");
+    element.setAttribute("path", "franchises/products");
 
-    // iframe gets replaced after path changes
+    // Changing apps replaces the iframe.
     const nextIframe = element.querySelector("iframe")!;
     const nextIframePostMessage = jest.spyOn(
       nextIframe.contentWindow!,

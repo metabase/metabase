@@ -64,6 +64,10 @@ let detachPopstate: (() => void) | undefined;
 
 const notify = () => subscribers.forEach((subscriber) => subscriber());
 
+type NavigateOptions = {
+  replace?: boolean;
+};
+
 /**
  * Notifies on every in-app navigation: `<DataAppLink>` clicks, `navigate()` calls,
  * and browser back/forward. `pushState` fires no event of its own, so `navigate`
@@ -89,10 +93,18 @@ export const subscribeToDataAppRouting = (callback: () => void) => {
 
 /**
  * Switches to a bundle-relative sub-path (`/customers/42`) without a reload.
- * Goes through the native `pushState` on purpose: the host mirrors the iframe
- * URL into the parent's address bar by patching exactly that method.
+ * Goes through the native history methods on purpose: the host mirrors the
+ * iframe URL into the parent's address bar by patching those methods.
  */
-export const navigate = (to: string) => {
-  window.history.pushState(null, "", getBasename() + to);
+export const navigate = (
+  to: string,
+  { replace = false }: NavigateOptions = {},
+) => {
+  if (replace) {
+    window.history.replaceState(null, "", getBasename() + to);
+  } else {
+    window.history.pushState(null, "", getBasename() + to);
+  }
+
   notify();
 };
