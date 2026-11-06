@@ -144,7 +144,7 @@
     :model/Tenant
     :model/TimelineEvent
     ;; Run history is intentionally not serialized.
-    :model/TransformTestRun
+    :model/DataTestRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation

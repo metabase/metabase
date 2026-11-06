@@ -45,6 +45,7 @@
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
+    :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
@@ -156,7 +157,6 @@
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
     :model/TransformTest                     metabase-enterprise.data-testing.models
-    :model/TransformTestRun                  metabase-enterprise.data-testing.models.transform-test-run
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily

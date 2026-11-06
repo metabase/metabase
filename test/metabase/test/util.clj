@@ -422,7 +422,7 @@
        :inputs       []
        :expectations []}))
 
-   :model/TransformTestRun
+   :model/DataTestRun
    (fn [_]
      {:status         "started"
       :start_time     (t/instant)
