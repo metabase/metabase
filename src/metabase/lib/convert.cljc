@@ -763,7 +763,7 @@
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try
-    (let [base        (merge (disqualify (dissoc query :info))
+    (let [base        (merge (disqualify (dissoc query :info :analysis))
                              (select-keys query [:info]))
           parameters  (:parameters base)
           inner-query (chain-stages (:stages base))
