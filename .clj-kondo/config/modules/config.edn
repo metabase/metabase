@@ -3588,7 +3588,8 @@
            users
            users.schema
            util
-           warehouses}
+           warehouses
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/analytics
@@ -4713,7 +4714,7 @@
 
   enterprise/workspaces
   {:team "Graphy"
-   :api #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.init}
+   :api #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.core metabase-enterprise.workspaces.init}
    :uses #{api
            app-db
            cache
