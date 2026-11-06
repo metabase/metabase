@@ -4496,7 +4496,12 @@
 (deftest recreate-workspace-tables-test
   (testing "ucb8em..xj2pfn recreate workspace and workspace_database as 064's drop left them"
     (impl/test-migrations ["ucb8em" "xj2pfn"] [migrate!]
-      (let [user-id (:id (create-raw-user! (mt/random-email)))
+      (let [user-id (t2/insert-returning-pk! :core_user {:email       (mt/random-email)
+                                                         :first_name  "Workspace"
+                                                         :last_name   "Creator"
+                                                         :password    (str (random-uuid))
+                                                         :date_joined :%now
+                                                         :entity_id   (u/generate-nano-id)})
             db-id   (t2/insert-returning-pk! :metabase_database {:name       "Workspace DB"
                                                                  :engine     "h2"
                                                                  :created_at :%now
