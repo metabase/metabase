@@ -2034,11 +2034,21 @@
                                   (quote-field db) (quote-field db) (quote-field login))
                           {:status-code 412, :user user})))))))
 
+(defn- connection-failure?
+  "Whether `t`, or a cause of it, is the connection failing. When that happens during COMMIT, the server may have
+  committed."
+  [t]
+  (some (fn [cause]
+          (or (instance? java.io.IOException cause)
+              (some-> (sql-state cause) (str/starts-with? "08"))))
+        (take-while some? (iterate ex-cause t))))
+
 (defn- init-error
   "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
-  it leaves nothing behind, and a role of the workspace user's name may be one another session has just committed."
+  it leaves nothing behind, and a role of the workspace user's name may be one another session has just committed. A
+  connection failure stays unmarked: the transaction may have committed, and its objects then need the teardown."
   [t]
-  (if (contains? (ex-data t) :workspace/cleanup?)
+  (if (or (contains? (ex-data t) :workspace/cleanup?) (connection-failure? t))
     t
     (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t)))
 

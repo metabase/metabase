@@ -141,6 +141,25 @@
             (with-redefs [provisioning/dispatching-provisioner refusing]
               (is (nil? (ws/delete-workspace! (:id ws)))))
             (is (zero? @destroyed))))
+        (testing "a grant error with :workspace/cleanup? false still tears down what init made, and keeps the row"
+          (let [destroyed (atom 0)
+                failing   (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   nil)
+                            (grant!   [_ _ _ _ _] (throw (ex-info "grant failed" {:workspace/cleanup? false})))
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))
+                ws        (ws/create-workspace! {:name "Grant failed" :creator_id (mt/user->id :crowberto)})
+                wsd-id    (t2/insert-returning-pk! :model/WorkspaceDatabase {:workspace_id     (:id ws)
+                                                                             :database_id      db-id
+                                                                             :input_schemas    ["public"]
+                                                                             :database_details {}
+                                                                             :output_namespace ""
+                                                                             :status           :unprovisioned})]
+            (is (= 1 (provisioning/provision-workspace! (:id ws) failing)))
+            (is (= 1 @destroyed) "only init's error can say that nothing is left to tear down")
+            (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (is (nil? (ws/delete-workspace! (:id ws)))))))
         (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
