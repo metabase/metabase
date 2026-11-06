@@ -98,6 +98,7 @@ export const BrowseCard = ({
                 size="md"
                 lh={1.2}
                 display="inline"
+                textWrap="nowrap"
                 style={{ overflow: "hidden" }}
                 w="100%"
               >

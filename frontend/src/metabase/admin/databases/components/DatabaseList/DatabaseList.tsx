@@ -145,7 +145,7 @@ const EngineLogo = ({
   database,
   engines,
 }: {
-  database: Database;
+  database: Pick<Database, "engine" | "is_stub">;
   engines: Record<string, Engine>;
 }) => {
   const { engine, is_stub } = database;
