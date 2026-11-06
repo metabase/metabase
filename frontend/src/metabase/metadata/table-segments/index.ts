@@ -11,7 +11,6 @@ export {
   type SystemSegmentInference,
   type SystemSegmentRole,
   getMilestoneCohortProposals,
-  getStatusBucketCohortProposals,
   getSystemSegmentDescription,
   getSystemSegmentLabel,
   inferDefaultSegment,

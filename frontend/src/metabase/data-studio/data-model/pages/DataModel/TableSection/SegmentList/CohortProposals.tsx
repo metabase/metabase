@@ -3,14 +3,8 @@ import { t } from "ttag";
 import { useCreateSegmentMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
-  resolveStatusField,
-  useLifecycle,
-  useValueOrder,
-} from "metabase/metadata/lifecycle";
-import {
   type CohortProposal,
   getMilestoneCohortProposals,
-  getStatusBucketCohortProposals,
   useSegmentSettings,
   useTableSegments,
 } from "metabase/metadata/table-segments";
@@ -21,30 +15,18 @@ import type { Table } from "metabase-types/api";
 import { applyConditions, getFilterNames } from "../table-segments";
 
 /**
- * PROTOTYPE: mocked. Cohorts sync would propose from milestones and from the
- * buckets of the status column's lifecycle order, minus the ones an admin
- * already accepted or dismissed.
+ * PROTOTYPE: mocked. Cohorts sync would propose from milestones, minus the
+ * ones an admin already accepted or dismissed. A status column's buckets are
+ * proposed as a segment group instead.
  */
 export function useCohortProposals(table: Table): CohortProposal[] {
   const { getTableSegmentsOverrides } = useTableSegments();
   const { getSegmentSettings } = useSegmentSettings();
-  const { getTableProcess } = useLifecycle();
   const isGenerating = getSegmentSettings(table.db_id, table.schema)
     .generateSegments.value;
-  const fields = isGenerating ? (table.fields ?? []) : [];
-  // The process's status column, so cohorts follow an admin's pick
-  const statusField = resolveStatusField(
-    fields,
-    getTableProcess(table).statusFieldId,
-  );
-  const { values: orderedValues } = useValueOrder(statusField);
-
-  const proposals = [
-    ...getMilestoneCohortProposals(fields),
-    ...(statusField
-      ? getStatusBucketCohortProposals(statusField, orderedValues)
-      : []),
-  ];
+  const proposals = isGenerating
+    ? getMilestoneCohortProposals(table.fields ?? [])
+    : [];
   const { resolvedCohortKeys } = getTableSegmentsOverrides(table);
   return proposals.filter(({ key }) => !resolvedCohortKeys.includes(key));
 }
@@ -117,12 +99,9 @@ export function CohortProposalItem({
             <Text fw="bold">{proposal.name}</Text>
           </Flex>
           {filterName && <Text lh="lg">{filterName}</Text>}
-          {/* A status value's name already says where it comes from */}
-          {proposal.kind !== "status" && (
-            <Text size="sm" c="text-secondary">
-              {proposal.signal}
-            </Text>
-          )}
+          <Text size="sm" c="text-secondary">
+            {proposal.signal}
+          </Text>
         </Stack>
         {canAccept && (
           <Group gap="xs" wrap="nowrap" flex="0 0 auto">

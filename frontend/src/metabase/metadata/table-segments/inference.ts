@@ -1,11 +1,6 @@
 import { t } from "ttag";
 
-import {
-  type OrderedValue,
-  VALUE_BUCKETS,
-  getValueBucketLabel,
-  isMilestoneField,
-} from "metabase/metadata/lifecycle";
+import { isMilestoneField } from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isBoolean, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, SegmentId, Table } from "metabase-types/api";
@@ -64,8 +59,8 @@ export type RequiredFilterInference = {
 export type CohortProposal = {
   /** Stable across syncs, so a dismissal sticks */
   key: string;
-  /** A milestone date or flag, or one value of a status column */
-  kind: "milestone" | "status";
+  /** A milestone date or flag; status buckets are segment group proposals */
+  kind: "milestone";
   name: string;
   condition: FieldCondition;
   signal: string;
@@ -376,8 +371,8 @@ const humanize = (words: string) => {
 
 /**
  * Cohorts from milestones: a milestone date that's set, or a milestone flag
- * that's true. Status cohorts come from the status column's buckets; see
- * `getStatusBucketCohortProposals`.
+ * that's true. A status column's buckets are proposed as one partition
+ * instead; see `getProcessPartitionProposal` in segment-groups.
  */
 export function getMilestoneCohortProposals(fields: Field[]): CohortProposal[] {
   return fields.flatMap((field): CohortProposal[] => {
@@ -408,35 +403,4 @@ export function getMilestoneCohortProposals(fields: Field[]): CohortProposal[] {
     }
     return [];
   });
-}
-
-/**
- * One cohort per bucket of a status column's lifecycle order (Open, Won,
- * Lost, Cancelled), each covering all the values in that bucket. Values
- * still in Other aren't proposed.
- */
-export function getStatusBucketCohortProposals(
-  field: Field,
-  orderedValues: OrderedValue[],
-): CohortProposal[] {
-  return VALUE_BUCKETS.filter((bucket) => bucket !== "other").flatMap(
-    (bucket): CohortProposal[] => {
-      const values = orderedValues
-        .filter((value) => value.bucket === bucket)
-        .map(({ value }) => value);
-      if (values.length === 0) {
-        return [];
-      }
-      const bucketLabel = getValueBucketLabel(bucket);
-      return [
-        {
-          key: `bucket:${idOf(field)}:${bucket}`,
-          kind: "status",
-          name: t`${field.display_name}: ${bucketLabel}`,
-          condition: { fieldId: idOf(field), operator: "in", values },
-          signal: t`${bucketLabel} values of ${field.display_name}: ${values.join(", ")}`,
-        },
-      ];
-    },
-  );
 }

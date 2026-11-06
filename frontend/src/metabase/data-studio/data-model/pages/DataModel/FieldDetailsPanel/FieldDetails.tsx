@@ -34,6 +34,7 @@ import {
   useIsHistoryAttribute,
   useIsHistoryTable,
 } from "./FieldHistoryRoleInput";
+import { GroupingsSection } from "./GroupingsSection";
 import { ValueOrderSection } from "./ValueOrderSection";
 
 interface FieldDetailsProps {
@@ -160,6 +161,7 @@ export function FieldDetails({
         />
       </SidebarSection>
       <ValueOrderSection field={field} table={table} />
+      <GroupingsSection field={field} table={table} />
       <SidebarSection title={t`Behavior`}>
         <BehaviorSection
           field={field}
