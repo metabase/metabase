@@ -12,7 +12,6 @@ import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
   getFieldValues,
@@ -41,6 +40,7 @@ import type {
   Segment,
   TableId,
 } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
 
 import { type FieldEntity, FieldSchema } from "./schema";
 
@@ -461,7 +461,9 @@ function hydrateDatabaseTables(
 
   return Object.values(metadata.tables).filter(
     (table) =>
-      !isVirtualCardId(table.id) && table.schema && table.db_id === database.id,
+      isConcreteTableId(table.id) &&
+      table.schema &&
+      table.db_id === database.id,
   );
 }
 

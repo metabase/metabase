@@ -61,7 +61,7 @@ describe("FieldPane", () => {
         database_id: SAMPLE_DB_ID,
         result_metadata: [
           createMockField({
-            id: ["field", "count", { "base-type": "type/BigInteger" }],
+            id: undefined,
             name: "count",
             display_name: "Count",
             description: "Number of orders",
