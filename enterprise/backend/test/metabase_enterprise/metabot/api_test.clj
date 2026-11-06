@@ -86,28 +86,31 @@
                            :model/Tenant            {tenant-id :id}        {}
                            :model/User              {tenant-user-id :id}   {:tenant_id tenant-id}
                            :model/MetabotInstanceLimit _                   {:tenant_id tenant-id :max_usage 0}]
-              (doseq [[limit user-id] [["group" internal-user-id] ["tenant" tenant-user-id]]]
-                (testing (str limit " limit")
-                  (ee.metabot.usage/clear-limit-cache!)
-                  (let [llm-called? (atom false)]
-                    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
-                                                                        (reset! llm-called? true)
-                                                                        (mut/mock-llm-response
-                                                                         [{:type :text :text "should not be reached"}]))]
-                      (mt/with-model-cleanup [:model/MetabotMessage
-                                              [:model/MetabotConversation :created_at]]
-                        (let [response (mt/user-http-request user-id :post 202 "metabot/agent-streaming"
-                                                             {:message         "Hi"
-                                                              :context         {}
-                                                              :conversation_id (str (random-uuid))
-                                                              :history         []
-                                                              :state           {}})
-                              error-event (first (filter #(= "error" (:type %)) (sse-events response)))]
-                          (is (false? @llm-called?))
-                          (is (= (ee.metabot.settings/metabot-quota-reached-message)
-                                 (:errorText error-event)))))))))
-              ;; Do not leak a cached "exceeded" result into other tests.
-              (ee.metabot.usage/clear-limit-cache!))))))))
+              (try
+                (doseq [[limit user-id] [["group" internal-user-id] ["tenant" tenant-user-id]]]
+                  (testing (str limit " limit")
+                    (ee.metabot.usage/clear-limit-cache!)
+                    (let [llm-called? (atom false)]
+                      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                                          (reset! llm-called? true)
+                                                                          (mut/mock-llm-response
+                                                                           [{:type :text :text "should not be reached"}]))]
+                        (mt/with-model-cleanup [:model/MetabotMessage
+                                                [:model/MetabotConversation :created_at]]
+                          (let [response (mt/user-http-request user-id :post 202 "metabot/agent-streaming"
+                                                               {:message         "Hi"
+                                                                :context         {}
+                                                                :conversation_id (str (random-uuid))
+                                                                :history         []
+                                                                :state           {}})
+                                error-event (first (filter #(= "error" (:type %)) (sse-events response)))]
+                            (is (false? @llm-called?))
+                            (is (= (ee.metabot.settings/metabot-quota-reached-message)
+                                   (:errorText error-event)))
+                            (is (str/includes? response "ai_usage_limit_reached"))))))))
+                (finally
+                  ;; Do not leak a cached "exceeded" result into other tests.
+                  (ee.metabot.usage/clear-limit-cache!))))))))))
 
 (deftest agent-streaming-message-limit-counts-turns-test
   (testing "a message limit counts turns: a turn that calls a tool takes one message, not one per LLM call"
