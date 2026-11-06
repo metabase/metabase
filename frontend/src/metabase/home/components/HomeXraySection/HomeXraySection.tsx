@@ -163,8 +163,7 @@ const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
             <Combobox.Option
               key={schemaOption}
               value={schemaOption}
-              selected={schemaOption === schema}
-              p={0}
+              active={schemaOption === schema}
             >
               <DefaultSelectItem
                 value={schemaOption}

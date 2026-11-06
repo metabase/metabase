@@ -163,7 +163,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
         cy.findByTestId("chart-type-selector-button").click();
         cy.findByRole("listbox")
           .findByRole("option", { name: CUSTOM_VIZ_IDENTIFIER })
-          .should("have.attr", "data-combobox-selected", "true");
+          .should("have.attr", "data-combobox-active", "true");
       });
     });
 

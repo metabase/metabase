@@ -20,8 +20,8 @@ import {
 import {
   ActionIcon,
   Button,
+  DefaultSelectItem,
   Flex,
-  Group,
   Icon,
   Modal,
   Stack,
@@ -196,11 +196,12 @@ const EventForm = ({
               data={iconOptions}
               leftSection={values.icon ? <Icon name={values.icon} /> : null}
               renderOption={({ option }) => (
-                <Group p="sm" fw="bold">
-                  {/* Unjustified type cast. FIXME */}
-                  {option.value && <Icon name={option.value as IconName} />}
-                  <span>{option.label}</span>
-                </Group>
+                <DefaultSelectItem
+                  value={option.value}
+                  label={option.label}
+                  // Unjustified type cast. FIXME
+                  icon={option.value as IconName}
+                />
               )}
             />
             {timelines?.length > 1 && (

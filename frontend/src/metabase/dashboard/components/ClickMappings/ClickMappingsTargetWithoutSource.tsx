@@ -48,7 +48,6 @@ export function ClickMappingsTargetWithoutSource({
       store={combobox}
       position="bottom-start"
       width={300}
-      classNames={{ groupLabel: S.groupLabel }}
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.Target>
@@ -79,11 +78,9 @@ export function ClickMappingsTargetWithoutSource({
               {items.map((option) => {
                 const value = getValueForSource(option);
                 return (
-                  <Combobox.Option key={value} value={value} p={0}>
+                  <Combobox.Option key={value} value={value}>
                     <DefaultSelectItem
-                      pl="xl"
                       value={value}
-                      fw="700"
                       label={option.type === undefined ? t`None` : option.name}
                     />
                   </Combobox.Option>

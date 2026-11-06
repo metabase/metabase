@@ -24,13 +24,3 @@
 .checkbox {
   pointer-events: none;
 }
-
-/* The raw Combobox theme leaves the section-header color transparent (unlike Select),
-   so set a visible one; matches Select's group-label treatment. */
-.groupLabel {
-  color: var(--mb-color-text-secondary);
-
-  &::after {
-    display: none;
-  }
-}

@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { Box, DefaultSelectItem, Text } from "metabase/ui";
 import type { TemporalUnit } from "metabase-types/api";
 
+import S from "./TemporalUnitPicker.module.css";
+
 const MIN_WIDTH = 180;
 const INITIAL_VISIBLE_ITEMS_COUNT = 7;
 
@@ -51,8 +53,8 @@ export function TemporalUnitPicker({
       ))}
       {!isExpanded && (
         <DefaultSelectItem
+          className={S.moreItem}
           value={t`More…`}
-          c="core-brand"
           onClick={() => setIsExpanded(true)}
           role="option"
         />
