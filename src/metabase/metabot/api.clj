@@ -429,7 +429,7 @@
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
 
-(api.macros/defendpoint :post "/feedback"  :- ::api/generic-204-no-content
+(api.macros/defendpoint :post "/feedback" :- ::api/generic-204-no-content
   "Persist Metabot feedback."
   [_route-params
    _query-params
