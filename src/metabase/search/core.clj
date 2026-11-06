@@ -293,20 +293,20 @@
 (defn cascading-documents
   "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
   Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits.
-  A search-model whose enumeration fails is logged and left out."
+  A search-model whose enumeration fails, or reaches past the enumeration ceiling, is logged and left out."
   [instances]
   (when (supports-index?)
     (not-empty
-     (into {} (for [[search-model selectors] (cascading-selectors instances)
-                    :let  [ids (try
-                                 (search.ingestion/doc-ids search-model (into [:or] selectors))
-                                 ;; The id query runs in its own nested transaction, so a failure leaves the
-                                 ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
-                                 (catch Exception e
-                                   (log/errorf e "Skipping cascade enumeration for %s" search-model)
-                                   nil))]
-                    :when (seq ids)]
-                [search-model ids])))))
+     (u/for-map [[search-model selectors] (cascading-selectors instances)
+                 :let  [ids (try
+                              (search.ingestion/doc-ids search-model (into [:or] selectors))
+                              ;; The id query runs in its own nested transaction, so a failure leaves the
+                              ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
+                              (catch Exception e
+                                (log/errorf e "Skipping cascade enumeration for %s" search-model)
+                                nil))]
+                 :when (seq ids)]
+       [search-model ids]))))
 
 ;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so one unchunked id list
 ;; would put up to the enumeration ceiling's worth of bind parameters in every statement it joins. Chunking caps a
@@ -321,14 +321,12 @@
   [search-model ids]
   ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
   (when-some [alive (search.ingestion/existing-doc-ids search-model ids)]
-    (when (seq alive)
-      (search.ingestion/ingest-maybe-async!
-       (into #{}
-             (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
-             (partition-all reindex-batch-size alive))))
-    (when-let [gone (not-empty (set/difference ids alive))]
-      (search.ingestion/ingest-maybe-async!
-       [(search.ingestion/tombstone search-model gone)]))))
+    (let [gone     (set/difference ids alive)
+          messages (cond-> (mapv (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)])
+                                 (partition-all reindex-batch-size alive))
+                     (seq gone) (conj (search.ingestion/tombstone search-model gone)))]
+      (when (seq messages)
+        (search.ingestion/ingest-maybe-async! messages)))))
 
 ;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
 ;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
@@ -347,7 +345,8 @@
           (log/errorf e "Failed to reconcile cascaded %s documents" search-model))))))
 
 (defn delete!
-  "Queue removal of a model's corresponding search entries after all earlier re-index messages."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages.
+  Runs at once when ingestion is synchronous."
   [model ids]
   (when (supports-index?)
     (search.ingestion/ingest-maybe-async!

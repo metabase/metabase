@@ -419,12 +419,13 @@
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
   (warehouses.db/delete-transforms-for-database! id)
+  ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
+  ;; their search documents are enumerated first.
+  ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
+  ;; indexes, which Toucan never sees.
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
-        ;; This intentionally bypasses Card's row-level delete hook. Capture the affected search documents
-        ;; first, then delete in bounded statements; database cascades remove Actions and ModelIndexValues
-        ;; before Toucan can observe them.
         (warehouses.db/card-ids-for-database-reducible id))
        (run! (fn [batch]
                (let [ids       (mapv :id batch)

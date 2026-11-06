@@ -343,16 +343,12 @@
                               (reduce u/rconcat [])
                               query->documents)
         passed-documents (map extract-model-and-id updates)
-        ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
-        ;; The eduction will replay the streaming query when passed to update!.
+        ;; Keep only [model id] pairs, not whole documents; the eduction replays the streaming query when update!
+        ;; consumes it.
         indexed-pairs    (into #{} (map (juxt :model (comp str :id))) documents)
-        ;; TODO: The list of documents to delete is not completely accurate.
-        ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the
-        ;; rows that were actually indexed.
-        ;; This will not work for cases like indexed-entries with compound PKs,
-        ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during
-        ;; an update.
-        ;; Long-term, we should find a better approach to knowing what to purge.
+        ;; Only `:this.id` selectors name a document here, so this diff never purges documents reached through a
+        ;; relationship or keyed by a compound id.
+        ;; Deletes enumerate those up front instead, see [[metabase.search.core/cascading-documents]] and [[tombstone]].
         to-delete        (remove indexed-pairs passed-documents)]
     (update! documents to-delete)))
 

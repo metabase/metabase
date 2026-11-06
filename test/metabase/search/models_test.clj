@@ -80,11 +80,11 @@
   (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {}]
-        (is (= [#{["card" [:= id :this.id]]
+        (is (= [#{["action" [:= id :this.model_id]]
+                  ["card" [:= id :this.id]]
                   ["dataset" [:= id :this.id]]
-                  ["metric" [:= id :this.id]]
-                  ["action" [:= id :this.model_id]]
-                  ["indexed-entity" [:= id :model_index.model_id]]}]
+                  ["indexed-entity" [:= id :model_index.model_id]]
+                  ["metric" [:= id :this.id]]}]
                (capture-enqueues! #(t2/delete! :model/Card :id id))))))))
 
 (deftest delete-of-a-joined-model-enqueues-the-fed-models-test
