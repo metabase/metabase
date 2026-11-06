@@ -183,6 +183,35 @@
         (is (false? (t2/exists? :model/Card :id card-id)))
         (is (= 0 (indexed-count "card" card-id)))))))
 
+(deftest database-delete-keeps-a-card-that-moved-away-test
+  (testing "a card that moves to another database during the delete survives it, and keeps its search documents"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}    {}
+                     :model/Database {other-id :id} {}
+                     :model/Card     {card-id :id}  {:name "Db Delete Moved Model", :type :model, :database_id db-id}]
+        (is (= 1 (indexed-count "dataset" card-id)))
+        (let [add-cascading-documents (mt/original-fn #'search/add-cascading-documents)]
+          ;; A raw update, standing in for a concurrent move that lands between the scan and the delete.
+          (mt/with-dynamic-fn-redefs [search/add-cascading-documents
+                                      (fn [cascading instances]
+                                        (t2/query {:update :report_card
+                                                   :set    {:database_id other-id}
+                                                   :where  [:= :id card-id]})
+                                        (add-cascading-documents cascading instances))]
+            (t2/delete! :model/Database :id db-id)))
+        (is (t2/exists? :model/Card :id card-id))
+        (is (= 1 (indexed-count "dataset" card-id)))))))
+
+(deftest add-cascading-documents-stops-at-the-ceiling-test
+  (testing "a batched delete stops enumerating once its merged cascades reach the ceiling"
+    (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] {"action" #{3}})]
+      ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+      (with-redefs [search.ingestion/max-enumerated-documents 2]
+        (testing "below the ceiling, the batch is enumerated and merged"
+          (is (= {"action" #{1 3}} (search/add-cascading-documents {"action" #{1}} [::instance]))))
+        (testing "at the ceiling, the batch is not enumerated"
+          (is (= {"action" #{1 2}} (search/add-cascading-documents {"action" #{1 2}} [::instance]))))))))
+
 (deftest unrelated-cascade-documents-are-not-purged-test
   (testing "deleting one model card purges its action and leaves another card's action alone"
     (search.tu/with-appdb-search-if-available-without-fallback

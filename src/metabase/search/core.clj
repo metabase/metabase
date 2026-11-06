@@ -308,6 +308,25 @@
                  :when (seq ids)]
        [search-model ids]))))
 
+(defn- document-count
+  [cascading]
+  (transduce (map count) + 0 (vals cascading)))
+
+;; A delete issued in batches, such as a Database's cards, would otherwise hold one ceiling's worth of ids per batch
+;; until it commits.
+(defn add-cascading-documents
+  "Merge what [[cascading-documents]] enumerates for `instances` into `cascading`, an earlier result or nil.
+  Once `cascading` holds [[search.ingestion/max-enumerated-documents]] documents, `instances` are not enumerated, and
+  the documents they cascade to are left to the reindex."
+  [cascading instances]
+  (if (<= search.ingestion/max-enumerated-documents (document-count cascading))
+    cascading
+    (let [merged (merge-with into cascading (cascading-documents instances))]
+      (when (<= search.ingestion/max-enumerated-documents (document-count merged))
+        (log/warnf "Cascade enumeration reached %d documents; later batches' cascades are left to the reindex"
+                   search.ingestion/max-enumerated-documents))
+      merged)))
+
 ;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so one unchunked id list
 ;; would put up to the enumeration ceiling's worth of bind parameters in every statement it joins. Chunking caps a
 ;; worker batch at its message limit times this size; the synchronous path still ORs every chunk into one statement.

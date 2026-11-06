@@ -279,7 +279,7 @@
 ;; A single delete can fan out to arbitrarily many dependent documents, and this enumeration happens on the caller's
 ;; thread inside its transaction, so past the ceiling the documents are left to the convergence backstop rather than
 ;; held in heap.
-(def ^:private max-enumerated-documents
+(def max-enumerated-documents
   "Ceiling on how many documents one statement may enumerate before it runs."
   10000)
 
