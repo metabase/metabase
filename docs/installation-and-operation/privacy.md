@@ -1,5 +1,6 @@
 ---
 title: Privacy
+summary: Whether you need a Data Processing Agreement with Metabase for GDPR, depending on how you run Metabase.
 redirect_from:
   - /docs/latest/privacy
 ---

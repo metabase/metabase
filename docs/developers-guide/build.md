@@ -1,5 +1,6 @@
 ---
 title: Building Metabase
+summary: Build and run Metabase from source on your own computer to test features still in development.
 ---
 
 # Building Metabase

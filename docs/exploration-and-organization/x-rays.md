@@ -1,5 +1,6 @@
 ---
 title: X-rays
+summary: Get automatically generated charts and summaries of a table, model, or data point.
 redirect_from:
   - /docs/latest/users-guide/14-x-rays
 ---

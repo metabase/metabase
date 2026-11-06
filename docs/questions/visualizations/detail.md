@@ -1,5 +1,6 @@
 ---
 title: Detail
+summary: Show a single record in a readable two-column layout, and page through records one at a time.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/detail
 ---
