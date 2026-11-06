@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [some mapv not-empty])
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -337,17 +338,17 @@
   For the `api` format the body is a JSON object matching `api-result-schema`.
   The other formats give CSV, an XLSX workbook, or a JSON array of rows."
   [api-result-schema]
-  [:fn {:openapi/response {:description "Query results in the requested export format"
-                           :content     {"text/csv"
-                                         :string
+  (mut/update-properties
+   (streaming-response/streaming-response-schema api-result-schema)
+   assoc :openapi/response {:description "Query results in the requested export format"
+                            :content     {"text/csv"
+                                          :string
 
-                                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                         [:string {:json-schema/format "binary"}]
+                                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                          [:string {:json-schema/format "binary"}]
 
-                                         "application/json"
-                                         [:or ::json-export-rows api-result-schema]}}
-        :error/message    "Non-streaming response returned from streaming endpoint"}
-   #(instance? StreamingResponse %)])
+                                          "application/json"
+                                          [:or ::json-export-rows api-result-schema]}}))
 
 (mr/def ::export-response
   "Response schema for an endpoint that streams query results in the format the request names."
