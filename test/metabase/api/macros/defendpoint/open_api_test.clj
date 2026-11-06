@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [malli.json-schema :as mjs]
-   [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.server.core :as server]
@@ -120,6 +119,10 @@
             (is (contains? (:properties json-schema) "row_count"))
             (is (contains? (:properties json-schema) "status"))))))))
 
+(def ^:private no-content-204
+  [:map {:openapi/response {:status "204", :description "No content"}}
+   [:status [:= 204]]])
+
 (deftest ^:parallel response-override-test
   (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
     (testing "an override documents the status, description and media types it names"
@@ -134,7 +137,7 @@
                 any?]))))
     (testing "an override without content documents a response with no body"
       (is (= {"204" {:description "No content"}}
-             (#'defendpoint.open-api/schema->response-obj ::api/generic-204-no-content))))
+             (#'defendpoint.open-api/schema->response-obj no-content-204))))
     (testing "an override takes precedence over :openapi/response-schema"
       (is (= {"204" {:description "No content"}}
              (#'defendpoint.open-api/schema->response-obj
@@ -153,7 +156,7 @@
                                       :route           {:path "/test"}
                                       :docstr          "Delete it."
                                       :params          {}
-                                      :response-schema ::api/generic-204-no-content
+                                      :response-schema no-content-204
                                       :body            []})))))))
     (testing "an endpoint without a response schema keeps the 2XX stub"
       (is (= #{"2XX" "4XX" "5XX"}
