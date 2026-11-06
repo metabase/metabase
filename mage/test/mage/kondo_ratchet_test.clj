@@ -640,12 +640,12 @@
                                         metabase.search.core/f})))))
 
 (deftest ratchet-options-test
-  (testing "attribution and the aliases share one run of the alias passes"
-    (let [runs    (atom 0)
-          options (kondo-ratchet/ratchet-options (fn [_vars] (swap! runs inc) {}))]
+  (testing "attribution and the aliases share one run of the alias passes over the configured vars"
+    (let [runs    (atom [])
+          options (kondo-ratchet/ratchet-options (fn [vars] (swap! runs conj vars) {}))]
       ((:attribute options) [[]])
       (is (= {} ((:aliases options))))
-      (is (= 1 @runs))))
+      (is (= [(#'kondo-ratchet/discouraged-vars)] @runs))))
   (testing "a failed run's own exception reaches both, and the run isn't repeated"
     (let [runs    (atom 0)
           options (kondo-ratchet/ratchet-options (fn [_vars]

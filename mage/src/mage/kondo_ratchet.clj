@@ -250,10 +250,11 @@
       (finally
         (fs/delete-tree dir)))))
 
-;; TODO (Chris 2026-11-05) -- These roots leave out `modules/drivers` and `.cljs` files, so a configured var
-;; re-exported there keeps a budget of its own. Take the roots from `dev.kondo-ratchet/source-roots`, which
-;; the scan uses, instead of keeping a second list. Before adding `.cljs`, keep a var's clj and cljs
-;; definitions apart in [[alias-edges]], which keys edges by symbol only.
+;; TODO (Chris 2026-11-05) -- These roots leave out each driver's `modules/drivers/*/src` and `test` roots and
+;; `.cljs` files, so a configured var re-exported there keeps a budget of its own. Add the driver roots by
+;; glob. `dev.kondo-ratchet/source-roots` won't do, since it lists directories for the scan to walk, not the
+;; roots namespaces live under. Before adding `.cljs`, keep a var's clj and cljs definitions apart in
+;; [[alias-edges]], which keys edges by symbol only.
 (def ^:private source-dirs
   ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "dev/src"])
 
