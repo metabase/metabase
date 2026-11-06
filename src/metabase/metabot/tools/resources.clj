@@ -998,8 +998,8 @@
 
 (defn- fetch-dashboard-items
   "One item per dashcard in row/col (layout) order, each carrying its `dashcard_id`, position and size. On a tabbed
-   dashboard the items come grouped by tab (nil-tab dashcards belong to the first tab, where the
-   frontend renders them), each carries its `tab_id`, and the response's `:tabs` lists every tab —
+   dashboard the items come grouped by tab, each carries its `tab_id` (or `all_tabs` for a dashcard
+   with no tab, which shows on every tab, listed first), and the response's `:tabs` lists every tab —
    empty ones included — in display order. Card-backed dashcards keep the card fields; virtual
    dashcards (headings, text, links, ...) render their text; action buttons keep a `uri` to their
    backing model when it's readable. Dashcards whose card is archived or unreadable are omitted."
@@ -1035,13 +1035,15 @@
                        ;; group by tab without emitting tab pseudo-items — those would inflate the
                        ;; paginated total; the tab list rides on the response as `:tabs` instead.
                        ;; `sort-by` is stable, so the SQL row/col ordering survives within each
-                       ;; tab; a nil tab id means the frontend renders the card on the first tab.
+                       ;; tab. A dashcard with no tab predates the tabs, and the frontend shows it on
+                       ;; every tab (`getVisibleCards`), so it comes first, marked `all_tabs`.
                        (let [tab-pos (into {} (map-indexed (fn [i {:keys [id]}] [id i])) tabs)
-                             eff-tab #(or (:dashboard_tab_id %) (:id (first tabs)))]
+                             pos     #(if-let [tab-id (:dashboard_tab_id %)] (tab-pos tab-id) -1)]
                          (into []
-                               (keep (fn [dashcard]
-                                       (some-> (->item dashcard) (assoc :tab_id (eff-tab dashcard)))))
-                               (sort-by (comp tab-pos eff-tab) dashcards)))
+                               (keep (fn [{tab-id :dashboard_tab_id :as dashcard}]
+                                       (some-> (->item dashcard)
+                                               (assoc (if tab-id :tab_id :all_tabs) (or tab-id true)))))
+                               (sort-by pos dashcards)))
                        (into [] (keep ->item) dashcards))]
     (cond-> (list-result :dashboard-items items query-params)
       (seq tabs) (update :structured-output assoc :tabs (mapv #(select-keys % [:id :name]) tabs)))))
