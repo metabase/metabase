@@ -265,17 +265,17 @@
                     default-cache-key [db-id :default]
                     write-cache-key   [db-id :write-data]
                     admin-cache-key   [db-id :admin]]
-                (sql-jdbc.conn/db->pooled-connection-spec database)
+                (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                 (driver.conn/with-write-connection
-                  (sql-jdbc.conn/db->pooled-connection-spec database))
+                  (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database)))
                 (driver.conn/with-admin-connection
-                  (sql-jdbc.conn/db->pooled-connection-spec database))
+                  (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database)))
                 (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key)))
                 (testing "invalidate-pool-for-db! removes all pools"
-                  (sql-jdbc.conn/invalidate-pool-for-db! database)
+                  (sql-jdbc.conn/invalidate-pool-for-db! (:id database))
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key))))))))))))

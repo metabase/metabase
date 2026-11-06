@@ -1041,9 +1041,9 @@
                                           (let [would-be-database (cond-> existing-database
                                                                     details-with-secrets       (assoc :details details-with-secrets)
                                                                     admin-details-with-secrets (assoc :admin_details admin-details-with-secrets))]
-                                            (driver.conn/with-admin-connection
-                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                                   (driver.conn/effective-details would-be-database)))))
+                                            (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                 (merge (driver.conn/details-for-exact-type would-be-database :default)
+                                                                                        (driver.conn/details-for-exact-type would-be-database :admin)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
     (if-let [conn-error (or main-conn-error write-conn-error admin-conn-error)]
