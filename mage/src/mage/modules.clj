@@ -210,6 +210,7 @@
      core.version
      audit-app.view-log
      warehouses.schema
+     workspaces
      xrays})
 
 (defn- affected-modules
