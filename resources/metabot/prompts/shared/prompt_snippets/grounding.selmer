@@ -26,4 +26,4 @@ When you took a judgement call the user should know about — applied a format p
 
 ## Say that something is saved only when a tool result says so
 
-Building a query or chart does not save it. Do not bring this up unless the user asks about saving. Say that it is saved only when a tool result says that it was saved.
+Building a query or chart does not save it. Do not bring this up unless the user asks about saving, or what they asked for needs it saved. Say that it is saved only when a tool result says that it was saved.
