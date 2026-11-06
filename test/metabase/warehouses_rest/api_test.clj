@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -45,6 +46,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
@@ -165,7 +167,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :admin_details :initial_sync_error :schedules))
+                   (dissoc :details :write_data_details :initial_sync_error :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -295,18 +297,14 @@
      :model/Segment  _                {:table_id table-id-2}
      :model/Transform _                {:name   "Source DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
                                                  :name "source_db_transform_target"}}
      :model/Transform _                {:name   "Target DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
@@ -419,7 +417,7 @@
                                              {:name    (mt/random-name)
                                               :engine  (u/qualified-name ::test-driver)
                                               :details {:db "my_db"}}))
-                db   (t2/select-one :model/Database (:id resp))]
+                db   (t2/select-one :model/Database :id (:id resp))]
             (is (malli= [:merge
                          (into [:map] (m/map-vals (fn [v] [:= {} v]) (mt/object-defaults :model/Database)))
                          [:map
@@ -795,7 +793,7 @@
           (is (= {:message "H2 is not supported as a data warehouse"}
                  (update! db {:engine :h2})))
           (is (= :postgres
-                 (t2/select-one-fn :engine :model/Database (u/the-id db))))))
+                 (t2/select-one-fn :engine :model/Database :id (u/the-id db))))))
       (mt/with-temp [:model/Database db {:name    (mt/random-name)
                                          :details (:details (mt/db))
                                          :engine  :h2}]
@@ -803,7 +801,7 @@
           (is (= {:message "H2 is not supported as a data warehouse"}
                  (update! db {:details {:db "mem:test-data;USER=GUEST;PASSWORD=guest;WHATEVER=true"}})))
           (is (= (:details db)
-                 (t2/select-one-fn :details :model/Database (u/the-id db)))))))))
+                 (t2/select-one-fn :details :model/Database :id (u/the-id db)))))))))
 
 (deftest enable-model-actions-with-user-controlled-scheduling-test
   (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
@@ -879,12 +877,12 @@
             db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
                                                                                        :engine  (u/qualified-name driver/*driver*)
                                                                                        :details connection-details}))
-            _                  (sync/sync-database! db)
+            _                  (sync/sync-database! (:id db))
             ;; 2. start a long running process on another thread that uses a connection
             connections-stay-open? (future
                                      (sql-jdbc.execute/do-with-connection-with-options
                                       driver/*driver*
-                                      db
+                                      (driver.u/ensure-lib-database db)
                                       nil
                                       (fn [^Connection conn]
                                         ;; sleep long enough to make sure the PUT request below finishes processing,
@@ -906,7 +904,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :initial_sync_error :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1116,19 +1114,25 @@
 (deftest autocomplete-suggestions-honors-user-set-semantic-type-and-visibility-test
   (testing "GET /api/database/:id/autocomplete_suggestions honors the user's semantic_type/visibility_type"
     (let [field-id  (mt/id :venues :price)
-          base-type (t2/select-one-fn :base_type :model/Field field-id)
+          base-type (t2/select-one-fn :base_type :model/Field :id field-id)
           venues-row (fn [] (first (filter (fn [[_ desc]] (str/starts-with? desc "VENUES "))
                                            (mt/user-http-request :rasta :get 200
                                                                  (format "database/%d/autocomplete_suggestions" (mt/id))
                                                                  :prefix "price"))))]
-      (testing "a user-set semantic_type replaces the sync value"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
-                                                   :semantic_type     :type/Currency
-                                                   :semantic_type_set true}]
-          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
-      (testing "a user-set sensitive visibility_type hides the Field"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
-          (is (nil? (venues-row))))))))
+      (mt/with-temp-vals-in-db :model/Field field-id (select-keys (t2/select-one :model/Field :id field-id)
+                                                                  [:semantic_type :visibility_type])
+        (testing "a user-set semantic_type replaces the sync value"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
+            (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))
+        (testing "a user-set sensitive visibility_type hides the Field"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
+            (is (nil? (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
@@ -1237,7 +1241,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details :admin_details :initial_sync_error))]
+                                (disj :details :write_data_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -1656,7 +1660,7 @@
                                                            :cache_field_values schedule-map-for-last-friday-at-11pm}
                                             :is_on_demand false
                                             :is_full_sync false})
-                db   (t2/select-one :model/Database (:id resp))]
+                db   (t2/select-one :model/Database :id (:id resp))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
@@ -1677,7 +1681,7 @@
                                                            :cache_field_values schedule-map-for-last-friday-at-11pm}
                                             :is_on_demand true
                                             :is_full_sync false})
-                db   (t2/select-one :model/Database (:id resp))]
+                db   (t2/select-one :model/Database :id (:id resp))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))
@@ -1709,7 +1713,7 @@
                                  :is_on_demand false})
           (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
@@ -1723,7 +1727,7 @@
                                  :is_on_demand false})
           (is (= #{(sync-and-analyze-trigger-name db)}
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))
@@ -1736,7 +1740,7 @@
                                  :is_on_demand false})
           (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             ;; make sure the new schedule is randomized, not from the payload
             (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
                       (:metadata_sync_schedule db)))
@@ -1763,7 +1767,7 @@
                                  :is_on_demand false})
           (is (= #{(sync-and-analyze-trigger-name db)}
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))))))
@@ -1782,7 +1786,7 @@
                                  :is_on_demand true})
           (is (= #{(sync-and-analyze-trigger-name db)}
                  (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-          (let [db (t2/select-one :model/Database (:id db))]
+          (let [db (t2/select-one :model/Database :id (:id db))]
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
                    (:metadata_sync_schedule db)))
             (is (nil? (:cache_field_values_schedule db)))))))))
@@ -2021,16 +2025,16 @@
                    :model/Table    table {:db_id (u/the-id db) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database (:id db)))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))
       (testing "dismissed table spinner"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table (:id table))))))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table :id (:id table))))))))
 
 (deftest dismiss-spinner-test-2
   (testing "can we dissmiss the spinner if db has no tables? (#30837)"
     (mt/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"
-        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database (:id db))))))))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-sync
   (testing "Non-admins should not be allowed to trigger sync"
@@ -2983,18 +2987,13 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest log-an-error-if-contains-undefined-setting-test
-  (testing "should log an error message if database contains undefined settings"
+(deftest hide-undefined-setting-test
+  (testing "undefined settings are hidden from the response without logging an error"
     (mt/with-temp [:model/Database {db-id :id} {:settings {:undefined-setting true}}]
       (mt/with-log-messages-for-level [messages :error]
-        (testing "does not includes undefined keys by default"
-          (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
-                              :undefined-setting))))
-        (is (= (str "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
-                    " Error: Unknown setting: :undefined-setting")
-               (-> (messages)
-                   first
-                   :message)))))))
+        (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                            :undefined-setting)))
+        (is (not-any? #(str/includes? (:message %) "undefined-setting") (messages)))))))
 
 (deftest autocomplete-suggestions-do-not-include-dashboard-cards
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
@@ -3395,54 +3394,6 @@
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
                                        {:write_data_details {:host "write-host"
                                                              :write-data-connection true}}))))))))
-
-;;; ----------------------------------------- admin_details tests -----------------------------------------
-
-(deftest ^:parallel upsert-sensitive-fields-admin-details-test
-  (testing "upsert-sensitive-fields works with :admin_details key"
-    (is (= {:host "localhost"
-            :port 5432
-            :password "new-password"}
-           (#'api.database/upsert-sensitive-fields
-            {:engine :h2
-             :id (mt/id)
-             :details {:host "localhost" :port 5432 :password "main-pass"}
-             :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
-            {:host "localhost"
-             :port 5432
-             :password "new-password"}
-            :admin_details)))
-    (testing "protected passwords are replaced from original"
-      (is (= {:host "localhost"
-              :port 5432
-              :password "admin-pass"}
-             (#'api.database/upsert-sensitive-fields
-              {:engine :h2
-               :id (mt/id)
-               :details {:host "localhost" :port 5432 :password "main-pass"}
-               :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
-              {:host "localhost"
-               :port 5432
-               :password secret/protected-password}
-              :admin_details))))))
-
-(deftest get-database-admin-details-test
-  (testing "GET /api/database/:id"
-    (testing "Superusers see admin_details with sensitive fields redacted"
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                  :details {:host "localhost"}
-                                                  :admin_details {:host "admin-host"
-                                                                  :password "secret-admin-pass"}}]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
-          (is (= "admin-host" (get-in response [:admin_details :host])))
-          (is (= secret/protected-password (get-in response [:admin_details :password]))))))
-    (testing "Regular users do not see admin_details"
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                  :details {:host "localhost"}
-                                                  :admin_details {:host "admin-host"}}]
-        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-          (is (not (contains? response :admin_details)))
-          (is (not (contains? response :details))))))))
 
 (deftest update-database-preserves-overlay-details-test
   (testing "PUT /api/database/:id without write_data_details/provider_name keys"

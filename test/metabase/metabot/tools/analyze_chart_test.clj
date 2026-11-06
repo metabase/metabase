@@ -5,6 +5,7 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api-scope.core :as api-scope]
    [metabase.interestingness.core :as interestingness]
+   [metabase.lib.core :as lib]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.config :as metabot.config]
@@ -13,8 +14,15 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.analyze-chart :as analyze-chart]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
+   [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,39 +61,50 @@
                                            (memory chart-configs) nil :internal))]
     ((:fn (get entries "analyze_chart")) arguments)))
 
+(defn- agent-loop-parts!
+  "Run a Metabot turn in `profile-id` in which the model calls `analyze_chart` on the one chart of `viewed`, the item
+  that the user is viewing, and return the turn's parts. `user`, an admin unless given, runs it in their own
+  conversation with query execution on and every Metabot permission, so the profile offers `run_query`."
+  ([profile-id viewed]
+   (agent-loop-parts! profile-id viewed :crowberto))
+  ([profile-id viewed user]
+   (mt/with-current-user (mt/user->id user)
+     (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id user)}]
+       (mt/with-temporary-setting-values [llm-providers                    llm.tu/default-connections
+                                          llm-metabot-provider             "openrouter/anthropic/claude-haiku-4-5"
+                                          metabot-query-execution-enabled? true
+                                          metabot-eval-profiles-enabled?   true]
+         (let [calls (atom 0)]
+           (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)
+                                       openrouter/openrouter
+                                       (fn [_]
+                                         (test-util/mock-llm-response
+                                          (if (= 1 (swap! calls inc))
+                                            [{:type      :tool-input
+                                              :id        "t1"
+                                              :function  "analyze_chart"
+                                              :arguments {:chart_config_id (str (:id viewed))}}]
+                                            [{:type :text :text "Done."}])))]
+             (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+               (into [] (agent/run-agent-loop
+                         {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+                          :profile-id      profile-id
+                          :conversation-id conversation-id
+                          :messages        [{:role :user :content "What does this chart show?"}]
+                          :state           {}
+                          :context         {:capabilities    ["permission:write_sql_queries"]
+                                            :user_is_viewing [viewed]}}))))))))))
+
+(defn- tool-outcome
+  "The outcome of the one tool call among a turn's `parts`."
+  [parts]
+  (some #(when (= :tool-output (:type %)) (:result %)) parts))
+
 (defn- agent-loop-outcome!
-  "Run a Metabot turn in `profile-id` in which the model calls `analyze_chart` on `chart-config`, the one chart that
-  the user is viewing, and return the call's outcome. An admin runs it in their own conversation with query
-  execution on, so the profile offers `run_query`."
+  "Run [[agent-loop-parts!]] for an unsaved query on screen whose one chart is `chart-config`, and return the outcome
+  of the `analyze_chart` call."
   [profile-id chart-config]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-      (mt/with-temporary-setting-values [llm-providers                    llm.tu/default-connections
-                                         llm-metabot-provider             "openrouter/anthropic/claude-haiku-4-5"
-                                         metabot-query-execution-enabled? true
-                                         metabot-eval-profiles-enabled?   true]
-        (let [calls (atom 0)]
-          (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)
-                                      openrouter/openrouter
-                                      (fn [_]
-                                        (test-util/mock-llm-response
-                                         (if (= 1 (swap! calls inc))
-                                           [{:type      :tool-input
-                                             :id        "t1"
-                                             :function  "analyze_chart"
-                                             :arguments {:chart_config_id "c1"}}]
-                                           [{:type :text :text "Done."}])))]
-            (some #(when (= :tool-output (:type %)) (:result %))
-                  (into [] (agent/run-agent-loop
-                            {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
-                             :profile-id      profile-id
-                             :conversation-id conversation-id
-                             :messages        [{:role :user :content "What does this chart show?"}]
-                             :state           {}
-                             :context         {:capabilities    ["permission:write_sql_queries"]
-                                               :user_is_viewing [{:id            "c1"
-                                                                  :type          "adhoc"
-                                                                  :chart_configs [chart-config]}]}})))))))))
+  (tool-outcome (agent-loop-parts! profile-id {:id "c1" :type "adhoc" :chart_configs [chart-config]})))
 
 (defn- numeric-series-config
   "A well-formed single-series row chart config."
@@ -116,7 +135,7 @@
    :code  ::analyze-chart/no-series-data
    :text  (str "This chart has no series data to analyze.\n"
                "To read the chart's values instead, call `run_query` with the ID of the query or question that the"
-               " user is viewing.\n"
+               " user is viewing, and answer from its rows.\n"
                "If you can't read the chart's values, tell the user that this chart can't be analyzed.")})
 
 (deftest ^:parallel analyze-chart-tool-chart-not-found-test
@@ -200,7 +219,7 @@
              :text  (str "Series " quoted " has non-numeric y-values. "
                          "Chart analysis requires a numeric y-axis metric.\n"
                          "To read the chart's values instead, call `run_query` with the ID of the query or question"
-                         " that the user is viewing.\n"
+                         " that the user is viewing, and answer from its rows.\n"
                          "If you can't read the chart's values, tell the user that this chart can't be analyzed"
                          " because its y-axis values aren't numbers.")}
             (failure "c1" (text-series-config series-name)))
@@ -209,7 +228,7 @@
       (str/join (repeat 150 "x"))            (str "\"" (str/join (repeat 100 "x")) "...\""))))
 
 (deftest ^:parallel analyze-chart-tool-unexpected-error-test
-  (testing "an unexpected error ends the turn without reaching the model"
+  (testing "an unexpected error is `:internal`, so its text never reaches the model"
     (mt/with-dynamic-fn-redefs [interestingness/compute-chart-stats (fn [& _] (throw (ex-info "boom" {})))]
       (is (= {:class :unrecoverable :code :internal}
              (failure "c1" (numeric-series-config)))))))
@@ -254,3 +273,78 @@
       (is (=? {:error  {:class :recoverable :code ::analyze-chart/non-numeric-series}
                :output #(str/includes? % sql-steps)}
               (agent-loop-outcome! :internal-sql (get (text-series-config "Count") "c1")))))))
+
+(defn- run-query-as-rasta!
+  "Call `run_query` on `query-id` as rasta, in a conversation of rasta's own that holds `state`, and return the
+  outcome."
+  [state query-id]
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+      (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                      (metabot.tools/->entries [#'metabot.tools/run-query-tool]
+                                               (atom {:state state :conversation-id conversation-id})
+                                               nil
+                                               :internal))]
+        ((:fn (get entries "run_query")) {:query_id query-id})))))
+
+(deftest analyze-chart-tool-viewed-question-query-id-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+    (let [query    (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))
+          parts    (agent-loop-parts! :internal {:type          "question"
+                                                 :id            card-id
+                                                 :query         query
+                                                 :chart_configs [{:display_type "scalar" :title "Total" :series {}}]})
+          outcome  (tool-outcome parts)
+          query-id (second (re-find #"call `run_query` with query ID \"([^\"]+)\", and answer from its rows\."
+                                    (:output outcome)))
+          state    (some #(when (= "state" (:data-type %)) (:data %)) parts)]
+      (testing "with no series to analyze, the first step names the ID that the turn holds the question's query under"
+        (is (=? {:error {:class :recoverable :code ::analyze-chart/no-series-data}} outcome))
+        (is (= "SELECT 1" (some-> (get-in state [:queries query-id]) metabot.u/extract-sql-content))))
+      (testing "the next step offers the question's own ID, which reads its saved version"
+        (is (str/includes? (:output outcome)
+                           (str "If `run_query` refuses that ID, call it with question ID " card-id
+                                ", which reads the saved version of the question."))))
+      (testing "where run_query refuses the SQL on screen, the question's own ID still reads its rows"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (let [refused-then-read (fn [refusal]
+                                    (is (=? {:error {:code refusal}} (run-query-as-rasta! state query-id)))
+                                    (is (str/includes? (:output (run-query-as-rasta! state (str card-id)))
+                                                       "<query_results")))]
+            (testing "with SQL execution off"
+              (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+                (refused-then-read ::run-query/sql-not-allowed)))
+            (testing "without native query access"
+              (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+                (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                          scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                    scope/all-yes-permissions)]
+                  (mt/with-no-data-perms-for-all-users!
+                    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries
+                                                    :query-builder)
+                    (refused-then-read ::run-query/no-sql-permission)))))))))))
+
+(deftest analyze-chart-tool-unreadable-saved-question-test
+  (testing "a saved question on screen that the user can no longer read is not offered by its own ID"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+      (t2/update! :model/Card :id card-id
+                  {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))})
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (not (mi/can-read? :model/Card card-id))))
+      (let [parts   (agent-loop-parts! :internal
+                                       {:type          "question"
+                                        :id            card-id
+                                        :query         (lib/prepare-for-serialization
+                                                        (lib/native-query (mt/metadata-provider) "SELECT 1"))
+                                        :chart_configs [{:display_type "scalar" :title "Total" :series {}}]}
+                                       :rasta)
+            outcome (tool-outcome parts)]
+        (is (=? {:error {:class :recoverable :code ::analyze-chart/no-series-data}} outcome))
+        (is (str/includes? (:output outcome) "call `run_query` with query ID"))
+        (is (not (str/includes? (:output outcome) (str "question ID " card-id))))
+        (testing "and run_query still refuses that ID when it runs"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+            (is (=? {:error {:code ::recoverable.common/unknown-query-id}}
+                    (run-query-as-rasta! (some #(when (= "state" (:data-type %)) (:data %)) parts)
+                                         (str card-id))))))))))

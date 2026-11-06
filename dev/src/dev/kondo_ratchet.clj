@@ -319,17 +319,21 @@
 (defn discouraged-count-keys
   "The [[discouraged-count-key]] of every symbol configured under `linter` ([[discouraged-symbols]]).
   Throws when two symbols share a key."
-  ([linter]
-   (discouraged-count-keys linter (kondo-config)))
-  ([linter config]
-   (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
-     ;; two symbols on one key would share a budget without anyone noticing
-     (doseq [[k syms] by-key
-             :when    (< 1 (count syms))]
-       (throw (ex-info (format "%s symbols %s share the ratchet key %s"
-                               linter (str/join ", " (sort-by str syms)) k)
-                       {:linter linter, :key k, :symbols (vec syms)})))
-     (set (keys by-key)))))
+  [linter config]
+  (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
+    ;; two symbols on one key would share a budget without anyone noticing
+    (doseq [[k syms] by-key
+            :when    (< 1 (count syms))]
+      (throw (ex-info (format "%s symbols %s share the ratchet key %s"
+                              linter (str/join ", " (sort-by str syms)) k)
+                      {:linter linter, :key k, :symbols (vec syms)})))
+    (set (keys by-key))))
+
+(defn- validate-count-keys!
+  "Throw when two symbols configured under one of the [[discouragement-linters]] share a ratchet key."
+  []
+  (let [config (kondo-config)]
+    (run! #(discouraged-count-keys % config) discouragement-linters)))
 
 (defn known-linters
   "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]]."
@@ -427,10 +431,12 @@
                             (known-linter-hint))
                     {:unknown (vec unknown)}))))
 
-(def ^:private source-roots
+(def source-roots
+  "Directories, relative to the repo root, whose source files [[scan]] reads."
   ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
 
-(def ^:private source-extensions
+(def source-extensions
+  "File extensions [[scan]] reads."
   [".clj" ".cljc" ".cljs"])
 
 ;; Concatenated so the scan does not count this definition as an ignore.
@@ -472,6 +478,19 @@
 (def ^:private namespaced-ignore-prefix-re
   (re-pattern (str reader-form-start "#:clj-kondo" ignore-marker-boundary)))
 
+;; One alternative per thing to mask: a string, a line comment, a char literal.
+;; The string's closing quote is captured so that an unterminated string, which runs to the end of the input,
+;; can be told apart. The loops are unrolled and possessive: `(?:a|b)*` recurses once per character and
+;; overflows the regex engine's stack on a long string.
+(def ^:private maskable-re
+  #"\"[^\"\\]*+(?:\\[\s\S]?[^\"\\]*+)*+(\")?|;[^\n]*|\\[\s\S]?")
+
+(defn- blank
+  "`s` with everything but its newlines replaced by spaces, at the same length."
+  [s]
+  ;; a character class matches a whole code point, so the run is measured in chars to keep the length
+  (str/replace s #"[^\n]+" (fn [^String run] (.repeat " " (.length run)))))
+
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
   Same length as the input, so offsets and line numbers carry over.
@@ -480,35 +499,18 @@
   [[has-justification-comment?]] can locate real trailing comments."
   [content]
   (let [sb (StringBuilder. ^String content)
-        n  (count content)]
-    (loop [i 0, state :code]
-      (if (>= i n)
-        (str sb)
-        (let [c (.charAt sb i)]
-          (case state
-            :code    (case c
-                       \" (recur (inc i) :string)
-                       \; (recur (inc i) :comment)
-                       ;; char literal: mask the next char so it can't open a string or start a comment
-                       \\ (do (when (< (inc i) n)
-                                (when-not (= (.charAt sb (inc i)) \newline)
-                                  (.setCharAt sb (inc i) \space)))
-                              (recur (+ i 2) :code))
-                       (recur (inc i) :code))
-            :string  (case c
-                       \" (recur (inc i) :code)
-                       \\ (do (.setCharAt sb i \space)
-                              (when (< (inc i) n)
-                                (when-not (= (.charAt sb (inc i)) \newline)
-                                  (.setCharAt sb (inc i) \space)))
-                              (recur (+ i 2) :string))
-                       \newline (recur (inc i) :string)
-                       (do (.setCharAt sb i \space)
-                           (recur (inc i) :string)))
-            :comment (if (= c \newline)
-                       (recur (inc i) :code)
-                       (do (.setCharAt sb i \space)
-                           (recur (inc i) :comment)))))))))
+        m  (re-matcher maskable-re content)]
+    (while (.find m)
+      ;; the opening quote, `;` or backslash survives, and so does a string's closing quote
+      (let [start (inc (.start m))
+            end   (cond
+                    (.group m 1)                            (dec (.end m))
+                    ;; a char literal masks one char, though the regex takes a whole code point
+                    (= \\ (.charAt content (.start m)))     (min (.end m) (inc start))
+                    :else                                   (.end m))]
+        (when (< start end)
+          (.replace sb start end ^String (blank (subs content start end))))))
+    (str sb)))
 
 (defn- linter-keywords
   [vector-contents]
@@ -573,14 +575,13 @@
         :when  (not-any? #(<= (:start %) offset (dec (:end %))) matches)]
     (offset->line masked offset)))
 
-(defn ignore-matches
-  "Inline ignore matches in `content`, in file order:
-  `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
+(defn- ignore-forms
+  "Inline ignore forms in `masked` ([[mask-strings-and-comments]]), in file order: `{:start _, :end _, :linters [...]}`
+  with character offsets.
   The ignore must be the first key of its map. Any other spelling is rejected rather than guessed at,
-  so a suppression cannot silently bypass the ratchet. Matches inside strings and comments are excluded."
-  [content]
-  (let [masked      (mask-strings-and-comments content)
-        matches     (vec (concat (matches-with-offsets vector-form-re masked false)
+  so a suppression cannot silently bypass the ratchet."
+  [masked]
+  (let [matches     (vec (concat (matches-with-offsets vector-form-re masked false)
                                  (matches-with-offsets bare-form-re masked true)))
         unsupported (vec (unsupported-ignore-lines masked matches))]
     (when (seq unsupported)
@@ -589,11 +590,26 @@
                               (if (= 1 (count unsupported)) "" "s")
                               (str/join ", " unsupported))
                       {:lines unsupported})))
-    (->> matches
-         (sort-by :start)
-         (map #(assoc %
-                      :line       (offset->line masked (:start %))
-                      :justified? (has-justification-comment? content masked (:start %) (:end %)))))))
+    (sort-by :start matches)))
+
+(defn ignored-linters
+  "Linter keywords suppressed by the inline ignore forms in `content`, one per form that names it.
+  The bare vector-less form counts as `:all`. Forms inside strings and comments are excluded.
+  Throws on an ignore that is not the first key of its map, as [[ignore-matches]] does."
+  [content]
+  (mapcat :linters (ignore-forms (mask-strings-and-comments content))))
+
+(defn ignore-matches
+  "Inline ignore matches in `content`, in file order:
+  `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
+  The ignore must be the first key of its map. Any other spelling is rejected rather than guessed at,
+  so a suppression cannot silently bypass the ratchet. Matches inside strings and comments are excluded."
+  [content]
+  (let [masked (mask-strings-and-comments content)]
+    (map #(assoc %
+                 :line       (offset->line masked (:start %))
+                 :justified? (has-justification-comment? content masked (:start %) (:end %)))
+         (ignore-forms masked))))
 
 (defn line-linters
   "Linter keywords suppressed by inline ignore forms on `line`.
@@ -759,7 +775,8 @@
 (def ^:private shared-header
   (str ";; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline\n"
        ";; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened\n"
-       ";; to `ee.`.\n"
+       ";; to `ee.`. A re-exported var counts under the var it re-exports, and an enterprise `defenterprise` under\n"
+       ";; its OSS counterpart.\n"
        ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other\n"
        ";; budget is a non-negative integer.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
@@ -1211,7 +1228,7 @@
           linter            (keyword linter-name)]
       (if-not (contains? discouragement-linters linter)
         {:ignore-counts [(keyword seed)]}
-        (let [known (discouraged-count-keys linter)
+        (let [known (discouraged-count-keys linter (kondo-config))
               k     (some-> sym symbol discouraged-count-key)]
           ;; an empty suffix (`:discouraged-var/`) is a typo, not a request to seed every symbol
           (when (and sym (not (contains? known k)))
@@ -1234,6 +1251,15 @@
                     {})))
   (vec (repeat (count groups) {:actual {}, :unattributed [], :unresolved []})))
 
+(defn- follow-aliases
+  "`seeds` from [[resolve-seed]], with each :discouraged-var key that counts under another in `aliases` (see
+  [[fix!]]) replaced by that one."
+  [seeds aliases]
+  (let [field (discouraged-count-field :discouraged-var)]
+    (cond-> seeds
+      (contains? seeds field)
+      (update field #(vec (sort-by str (distinct (map (fn [k] (get aliases k k)) %))))))))
+
 (defn- lowered-policies
   "The inline-ignore budgets of `ratchets`, one ratchets file's policies, lowered to the counts in
   `occurrences` and `attribution`, with `seeds` applied (see [[fix!]])."
@@ -1250,15 +1276,14 @@
 
 (defn- read-policies
   "Validate `ratchets`, the prod policies, against the known linters, and read the module and test ratchet files.
-  Returns `{:known _, :configured _, :module-ratchets _, :test-ratchets _, :test-disabled? _}`, with `:configured`
-  from [[configured-count-keys]].
-  Throws when two configured symbols share a ratchet key."
+  Returns `{:known _, :module-ratchets _, :test-ratchets _, :test-disabled? _}`.
+  Throws when two configured symbols share a ratchet key ([[validate-count-keys!]])."
   [ratchets]
   (let [known (known-linters)]
     (validate-linters! ratchets known)
+    (validate-count-keys!)
     (let [test-ratchets (read-validated-test-ratchets known *ratchets-file*)]
       {:known           known
-       :configured      (configured-count-keys)
        :module-ratchets (read-module-ratchets)
        :test-ratchets   test-ratchets
        :test-disabled?  (disabled? test-ratchets)})))
@@ -1284,13 +1309,15 @@
   `:attribute` (default [[no-attribution]]) takes a seq of occurrence seqs from [[scan]] and returns, for each
   in order, the per-symbol counts of the [[discouragement-linters]] ignores among them,
   `{:actual {linter {key count}}, :unattributed _, :unresolved _}`.
+  `:aliases` (default none) is a function of no arguments returning a map from the ratchet key of each configured
+  :discouraged-var symbol that is another under a second name to the key its ignores count under.
   Throws before writing when any `:unresolved` finding has no symbol to budget it under.
   Prints a [[change-report]] per file, or `unchanged` on a no-op.
   Does nothing, including seeding, when [[*ratchets-file*]] sets `:disabled` to `true`; the test ratchets
   file honors its own `:disabled` independently, skipping only its own pass."
   ([]
    (fix! nil))
-  ([{:keys [seed attribute], :or {attribute no-attribution}}]
+  ([{:keys [seed attribute aliases], :or {attribute no-attribution, aliases (constantly {})}}]
    ;; Attribution is passed in because it needs a kondo run through mage, which isn't on the JVM classpath.
    (let [{:keys [config-counts] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
@@ -1300,6 +1327,8 @@
              seeds            (resolve-seed seed)
              _                (validate-seed! (:ignore-counts seeds) known)
              {:keys [prod-occ test-occ attribution test-attribution]} (scan-and-attribute attribute test-disabled?)
+             aliases          (aliases)
+             seeds            (follow-aliases seeds aliases)
              unresolved       (concat (:unresolved attribution) (:unresolved test-attribution))
              _                (when (seq unresolved)
                                 (throw (ex-info (str/join "\n" (cons unresolved-header (unresolved-lines unresolved)))
@@ -1434,8 +1463,9 @@
      (let [ratchets (read-ratchets)]
        (if (disabled? ratchets)
          (println (str *ratchets-file* " is disabled -- nothing to check"))
-         (let [{:keys [configured module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
+         (let [{:keys [module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
                {:keys [prod-occ test-occ attribution test-attribution]} (scan-and-attribute attribute test-disabled?)
+               configured       (configured-count-keys)
                lines            (concat
                                  (check-report ratchets module-ratchets prod-occ attribution
                                                (config-suppressions) (module-escape-hatches)

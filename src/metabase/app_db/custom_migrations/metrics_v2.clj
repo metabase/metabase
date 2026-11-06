@@ -131,8 +131,8 @@
       (run! (fn [card]
               (let [dataset-query (:dataset_query card)]
                 (when-let [rewritten (rewrite-metric-consuming-card dataset-query metric-id->metric-card-id)]
-                  (t2/update! :report_card (:id card) {:dataset_query rewritten
-                                                       :dataset_query_metrics_v2_migration_backup dataset-query}))))
+                  (t2/update! :report_card :id (:id card) {:dataset_query rewritten
+                                                           :dataset_query_metrics_v2_migration_backup dataset-query}))))
             (t2/reducible-query {:select [:id :dataset_query]
                                  :from [:report_card]
                                  :where [:like [:lower :dataset_query] "%[\"metric\",%"]})))))
@@ -148,4 +148,4 @@
                     "   SET dataset_query = dataset_query_metrics_v2_migration_backup"
                     " WHERE dataset_query_metrics_v2_migration_backup IS NOT NULL")])
     (t2/delete! :report_card :collection_id metric-v2-coll-id)
-    (t2/delete! :collection metric-v2-coll-id)))
+    (t2/delete! :collection :id metric-v2-coll-id)))

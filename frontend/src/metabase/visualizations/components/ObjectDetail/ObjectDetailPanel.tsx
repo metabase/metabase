@@ -18,7 +18,7 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
-import { Box, Center, Flex, Loader, Modal } from "metabase/ui";
+import { Box, Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
@@ -369,14 +369,13 @@ export function ObjectDetailPanel({
         onSuccess={onActionSuccess}
       />
 
-      <Modal opened={isDeleteModalOpen} onClose={handleDeleteModalClose}>
-        <DeleteObjectModal
-          actionId={deleteActionId}
-          objectId={zoomedRowID}
-          onClose={handleDeleteModalClose}
-          onSuccess={handleDeleteSuccess}
-        />
-      </Modal>
+      <DeleteObjectModal
+        opened={isDeleteModalOpen}
+        actionId={deleteActionId}
+        objectId={zoomedRowID}
+        onClose={handleDeleteModalClose}
+        onSuccess={handleDeleteSuccess}
+      />
     </>
   );
 }
