@@ -26,7 +26,7 @@ export function HistoryShapeExample({
   example: ShapeExample;
 }) {
   return (
-    <Stack gap="sm" py={4}>
+    <Stack gap="md">
       <Text c="inherit" size="sm" className={S.text}>
         {description}
       </Text>
