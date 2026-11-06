@@ -202,10 +202,7 @@
 
 (deftest restore-uses-the-state-it-checked-test
   (testing "a restore fills the cache whose clock and lock it checked, even if the state this thread sees changes"
-    (let [new-state (fn []
-                      {:cache             (atom nil)
-                       :last-update-check (java.util.concurrent.atomic.AtomicLong. 0)
-                       :restore-lock      (java.util.concurrent.locks.ReentrantLock.)})
+    (let [new-state #'setting.cache/new-state
           checked   (new-state)
           calls     (atom 0)]
       ;; Only the first state is checked: the restore's own settings reads, such as the encryption settings, also see
