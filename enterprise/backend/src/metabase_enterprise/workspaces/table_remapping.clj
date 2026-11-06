@@ -77,7 +77,7 @@
   "A driver-resolved table identifier. `:table` is required; `:schema` and `:db` default
    to the empty-string sentinel when absent. Produced by [[spec-for-table]] and consumed
    by [[add-mapping!]]."
-  [:map {::mr/deliberately-open true}
+  [:map {:closed true}
    [:table  :string]
    [:schema {:optional true} [:maybe :string]]
    [:db     {:optional true} [:maybe :string]]])
