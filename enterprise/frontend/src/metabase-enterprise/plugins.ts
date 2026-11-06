@@ -37,6 +37,7 @@ import { initializePlugin as initializeMonitorContentDiagnostics } from "./monit
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
 import { initializePlugin as initializeMonitorSessionManagement } from "./monitor/session-management";
 import { initializePlugin as initializeTools } from "./monitor/tools";
+import { initializePlugin as initializeMonitorRelay } from "./monitor_relay";
 import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
@@ -95,6 +96,7 @@ export function initializePlugins() {
   initializeMonitorContentDiagnostics();
   initializeMonitorDependencyDiagnostics();
   initializeMonitorSessionManagement();
+  initializeMonitorRelay();
   initializeMultiFactorAuth();
   initializeRemoteSync();
   initializeReplacement();

@@ -166,6 +166,7 @@ export {
   type DependencyGraphPageContextType,
 } from "./oss/dependencies";
 export { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "./oss/monitor";
+export { PLUGIN_MONITOR_RELAY } from "./oss/monitor-relay";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {

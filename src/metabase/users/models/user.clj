@@ -36,7 +36,8 @@
 (doto :model/User
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/change-log))
 
 (events/derive! :event/user-create :metabase/event)
 

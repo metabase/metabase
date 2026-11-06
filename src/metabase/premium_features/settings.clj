@@ -393,6 +393,14 @@
   "Should we allow users to view database schemas as ER diagrams?"
   :schema-viewer)
 
+(define-premium-feature enable-change-log?
+  "Should we log which rows each write changes (the change log)?"
+  :change-log)
+
+(define-premium-feature enable-monitor-relay?
+  "Should we enable the Metabase Monitor relay?"
+  :monitor-relay)
+
 (defn- -token-features []
   {:admin_security_center          (security-center-enabled?)
    :advanced_permissions           (enable-advanced-permissions?)
@@ -429,6 +437,7 @@
    :hosting                        (is-hosted?)
    :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :monitor_relay                  (enable-monitor-relay?)
    :multi-factor-auth              (enable-multi-factor-auth?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
