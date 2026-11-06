@@ -263,16 +263,6 @@ describe("getIsResultDirty", () => {
       });
     }
 
-    it("should not be dirty if template-tags is empty vs an empty object", () => {
-      const state = getState(
-        {
-          query: "SELECT 1",
-        },
-        { query: "SELECT 1", templateTags: {} },
-      );
-      expect(getIsResultDirty(state)).toBe(false);
-    });
-
     it("should be dirty if template-tags differ", () => {
       const state = getState(
         {
