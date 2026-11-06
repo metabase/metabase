@@ -46,6 +46,8 @@
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 (def hook
   "Models deriving from this keyword get statement-level DML capture."
   ::captured)
@@ -84,30 +86,38 @@
   [model event]
   (try
     (captured! model event)
+    ;; The delete has already run, so a consumer's interrupt is not ours to swallow: log it, and keep the thread's
+    ;; interrupt status for whoever is waiting on it.
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (log/errorf e "Interrupted delivering DML capture event for %s %s" model (:op event)))
     (catch Exception e
       (log/errorf e "Error delivering DML capture event for %s %s" model (:op event)))))
 
 (defn- restatable-as-select?
   "Whether a DELETE's resolved query can be rebuilt as the SELECT a pre-image snapshot needs."
   [query]
-  (and
-   ;; Only a HoneySQL map can be restated.
-   ;; A SQL-args vector or a raw SQL string is a valid DELETE input, but toucan2 would execute it as written, running
-   ;; the DELETE before the actual statement.
-   (map? query)
-   (not (or
-         ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
-         ;; duplicate target rows).
-         ;; Capture is deliberately best-effort, so leave those statements uncaptured.
-         (contains? query :using)
-         ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second
-         ;; time.
-         (contains? query :with)
-         (contains? query :with-recursive)
-         ;; Without an ORDER BY, a limited DELETE removes arbitrary rows, which a separate SELECT need not pick.
-         (contains? query :limit)
-         ;; RETURNING is DELETE-only syntax, and a SELECT carrying it fails to execute rather than to build.
-         (contains? query :returning)))))
+  (or
+   ;; A bare primary key, as in `(t2/delete! model 5)`, selects by that key like `(t2/select model 5)`.
+   (int? query)
+   (and
+    ;; Otherwise only a HoneySQL map can be restated.
+    ;; A SQL-args vector or a raw SQL string is a valid DELETE input, but toucan2 would execute it as written,
+    ;; running the DELETE before the actual statement.
+    (map? query)
+    (not (or
+          ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
+          ;; duplicate target rows).
+          ;; Capture is deliberately best-effort, so leave those statements uncaptured.
+          (contains? query :using)
+          ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second
+          ;; time.
+          (contains? query :with)
+          (contains? query :with-recursive)
+          ;; Without an ORDER BY, a limited DELETE removes arbitrary rows, which a separate SELECT need not pick.
+          (contains? query :limit)
+          ;; RETURNING is DELETE-only syntax, and a SELECT carrying it fails to execute rather than to build.
+          (contains? query :returning))))))
 
 ;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
 ;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
@@ -136,7 +146,8 @@
     (when-let [sql-args (try
                           (let [built (-> (t2.pipeline/build query-type model
                                                              (assoc parsed-args :columns (vec fields))
-                                                             (delete-query->select-query resolved-query))
+                                                             (cond-> resolved-query
+                                                               (map? resolved-query) delete-query->select-query))
                                           (assoc :limit (inc max-pre-image-rows)))]
                             (t2.pipeline/compile query-type model built))
                           (catch Exception e

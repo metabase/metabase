@@ -123,6 +123,13 @@
     (let [id (first (t2/insert-returning-pks! ::bird (bird 80 "a")))]
       (is (= 1 (t2/delete! ::bird :id id)))
       (is (=? [{:op :delete, :model ::bird, :rows [{:id id, :group_id 80}]}] (events)))))
+  (testing "delete by a bare pk captures the pre-image rows"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 84 "a"))]
+      ;; The bare pk is the shape under test. The linter steers production code away from it, but toucan2 accepts
+      ;; it, and `apply` keeps the call out of the linter's sight.
+      (is (= 1 (apply t2/delete! ::bird [id])))
+      (is (=? [{:op :delete, :model ::bird, :rows [{:id id, :group_id 84}]}] (events)))))
   (testing "delete with a honeysql where-map captures the pre-image rows"
     (reset-capture!)
     (let [pks (t2/insert-returning-pks! ::bird [(bird 81 "a") (bird 81 "b")])]
@@ -182,9 +189,9 @@
     (let [queries         (atom [])
           reducible-query t2.execute/reducible-query]
       (with-redefs [dml-capture/max-pre-image-rows 2
-                    t2.execute/reducible-query      (fn [sql-args]
-                                                      (swap! queries conj sql-args)
-                                                      (reducible-query sql-args))]
+                    t2.execute/reducible-query     (fn [sql-args]
+                                                     (swap! queries conj sql-args)
+                                                     (reducible-query sql-args))]
         (is (= 1 (t2/delete! ::bird :group_id 64))))
       (is (=? [[#"(?is).*\bLIMIT 3\b.*"]] @queries)))))
 
@@ -232,6 +239,20 @@
         (is (= 1 (t2/delete! ::bird :id id))))
       (is (false? (t2/exists? ::bird :id id))))))
 
+(deftest consumer-interrupt-test
+  ;; `captured!` is a multimethod, which with-dynamic-fn-redefs refuses.
+  (with-redefs [dml-capture/captured! (fn [_model _event] (throw (InterruptedException. "consumer interrupted")))]
+    (testing "an interrupt from captured! is logged, and the thread's interrupt status is restored"
+      (#'dml-capture/deliver-captured! ::bird {:op :delete, :model ::bird, :rows []})
+      ;; Also clears the status again, so later tests run on a thread that is not interrupted.
+      (is (true? (Thread/interrupted))))
+    (testing "the delete it reports on still succeeds"
+      (reset-capture!)
+      (let [id (t2/insert-returning-pk! ::bird (bird 74 "consumer-interrupt"))]
+        (is (= 1 (t2/delete! ::bird :id id)))
+        (Thread/interrupted)
+        (is (false? (t2/exists? ::bird :id id)))))))
+
 (deftest rollback-fires-at-least-once-test
   (reset-capture!)
   (testing "a captured delete in a transaction that then throws still fired its event and left the rows"
@@ -275,6 +296,9 @@
           ;; a CTE, which the snapshot would run a second time
           {:with  [[:doomed {:select [:id], :from [(keyword table-name)]}]]
            :where [:in :id {:select [:id], :from [:doomed]}]}
+          ;; a recursive CTE, likewise
+          {:with-recursive [[:doomed {:select [:id], :from [(keyword table-name)]}]]
+           :where          [:in :id {:select [:id], :from [:doomed]}]}
           ;; a LIMIT, which picks arbitrary rows without an ORDER BY
           {:where [:= :group_id 112], :limit 1}
           ;; a RETURNING clause, which a SELECT cannot carry
