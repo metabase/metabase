@@ -174,7 +174,13 @@
     (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
                                         :body    (json/encode {:name 123})})]
       (is (thrown-with-msg? Exception #"is invalid"
-                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
+                            (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "rejects a non-SVG icon while developing, same as the upload path"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name "dev-viz" :icon "icon.png"})})]
+      (let [e (is (thrown-with-msg? Exception #"Plugin icon \"icon.png\" must be an SVG file"
+                                    (cache/fetch-dev-manifest "http://localhost:5174")))]
+        (is (= 400 (:status-code (ex-data e))))))))
 
 (deftest dev-fetch-surfaces-validation-errors-test
   (testing "a URL that fails validation surfaces as a 400, not as a silently-down dev server --
