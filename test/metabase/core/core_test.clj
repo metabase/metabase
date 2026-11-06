@@ -57,14 +57,15 @@
         (is (= :sqlite (:engine sample-db)))))))
 
 (deftest destroy-runs-every-step-test
-  (testing "a step that throws is logged, and does not stop the steps after it"
-    (let [ran (atom [])]
-      (mt/with-dynamic-fn-redefs [core/shutdown-steps (constantly [["first" #(swap! ran conj :first)]
-                                                                   ["fails" #(throw (ex-info "boom" {}))]
-                                                                   ["last" #(swap! ran conj :last)]])]
-        (mt/with-log-messages-for-level [messages [metabase.core.core :warn]]
+  (testing "a step that throws is logged before the next step runs, and does not stop the steps after it"
+    (mt/with-log-messages-for-level [messages [metabase.core.core :warn]]
+      (let [ran         (atom [])
+            logged-yet? #(boolean (some (comp #{"Shutdown step failed: fails"} :message) (messages)))]
+        (mt/with-dynamic-fn-redefs [core/shutdown-steps (constantly [["first" #(swap! ran conj :first)]
+                                                                     ["fails" #(throw (ex-info "boom" {}))]
+                                                                     ["last" #(swap! ran conj [:last (logged-yet?)])]])]
           (#'core/destroy!)
-          (is (=? {:ran      [:first :last]
+          (is (=? {:ran      [:first [:last true]]
                    :messages [{:level :error, :message "Shutdown step failed: fails"}
                               {:level :warn, :message "Metabase Shutdown COMPLETE, with 1 failed steps"}]}
                   {:ran      @ran
