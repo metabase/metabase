@@ -21,9 +21,10 @@ The Library helps you create a source of truth for analytics by providing a cent
 
 ![The Library in Data Studio](./images/library-in-data-studio.png)
 
-The Library has two parts, both of which you manage in [Data Studio](../data-studio.md):
+The Library includes these parts, which you manage in [Data Studio](../data-studio.md):
 
-- **[Semantic layer](#semantic-layer)**: Curated tables, metrics, and SQL snippets.
+- **[Semantic layer](#semantic-layer)**: Curated tables and metrics.
+- **[SQL snippets](#sql-snippets)**: Reusable bits of SQL.
 - **[Glossary](#glossary)**: Definitions of your business terms.
 
 Once you [create the Library](#create-the-library):
@@ -31,13 +32,13 @@ Once you [create the Library](#create-the-library):
 - A **Library** section appears in the navigation sidebar of the main app, with the **Data** and **Metrics** collections of your semantic layer.
 - The data picker in the query builder defaults to showing tables and metrics from the Library to encourage people to use your vetted content.
 - If you turn on Metabot's [Verified or curated content](../../ai/settings.md#verified-or-curated-content) setting, Metabot will only use content that's verified, in an official collection, or published to the Library.
-- You can [sync the Library to Git](#versioning-the-library) to version your semantic layer and glossary.
+- You can [sync the Library to Git](#versioning-the-library) to version your semantic layer, SQL snippets, and glossary.
 
 ### Semantic layer
 
 _Data Studio > Semantic layer_
 
-The semantic layer is a collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)), [metrics](metrics.md), and [SQL snippets](../../questions/native-editor/snippets.md) that people and AI can use to build authoritative questions and dashboards.
+The semantic layer is a collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)) and [metrics](metrics.md) that people and AI can use to build authoritative questions and dashboards.
 
 The semantic layer is what people see in the **Library** section of the main app's navigation sidebar, and in the data picker.
 
