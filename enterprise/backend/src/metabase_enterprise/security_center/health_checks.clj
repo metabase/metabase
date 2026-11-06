@@ -91,7 +91,8 @@
 
 (defn- store-result!
   [id result]
-  ;; Overlapping refreshes of the same check are harmless: each one rewrites only its own key, and the last one wins.
+  ;; Read, then write the whole map: two refreshes of different checks that store at the same moment can lose one
+  ;; key. Acceptable while there is one background check; the next refresh stores it again.
   (settings/security-center-health-check-results!
    (assoc (settings/security-center-health-check-results) id {:result     result
                                                               :checked_at (t/offset-date-time)})))
