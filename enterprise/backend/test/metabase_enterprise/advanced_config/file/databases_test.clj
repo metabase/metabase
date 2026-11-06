@@ -407,6 +407,8 @@
             alone, logs why, and carries on with the rest of the file"
     (let [db-type      (mdb/db-type)
           details      (:details (mt/with-driver db-type (mt/db)))
+          ;; another name for the same server, so the connection test the config file runs first still succeeds
+          moved-host   (if (= "127.0.0.1" (:host details)) "localhost" "127.0.0.1")
           other-name   (str test-db-name "-other")
           config       (fn [pinned-details]
                          {:version 1
@@ -417,12 +419,12 @@
         (let [db-id (t2/select-one-pk :model/Database :name test-db-name)]
           (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "{}"})
           (let [messages (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.databases :error]]
-                           (is (= :ok (advanced-config.file/initialize! (config (assoc details :host "elsewhere.example")))))
+                           (is (= :ok (advanced-config.file/initialize! (config (assoc details :host moved-host)))))
                            (messages))]
             (is (some #(re-find #"Not updating Database .* from the config file: This database has a workspace provisioning connection"
                                 (:message %))
                       messages)))
-          (is (nil? (:host (t2/select-one-fn :details :model/Database :id db-id))))
+          (is (= (:host details) (:host (t2/select-one-fn :details :model/Database :id db-id))))
           (is (t2/exists? :model/Database :name other-name) "the next database in the file was still created"))
         (finally
           (t2/delete! :workspace_provisioning_connection
