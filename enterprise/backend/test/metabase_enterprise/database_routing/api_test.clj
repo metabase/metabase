@@ -126,6 +126,11 @@
     (is (= "Cannot enable database routing for a database with actions enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
+  (mt/with-additional-premium-features #{:workspaces}
+    (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-workspaces true}}]
+      (is (= "Cannot enable database routing for a database with workspaces enabled"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"})))))
   (mt/with-temp [:model/Database {db-id :id} {:uploads_enabled true}]
     (is (= "Cannot enable database routing for a database with uploads enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)

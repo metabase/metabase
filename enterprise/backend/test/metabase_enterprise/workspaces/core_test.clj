@@ -70,6 +70,20 @@
                                 (ws/create-workspace! {:name         "Nope"
                                                        :creator_id   (mt/user->id :crowberto)
                                                        :database_ids [ineligible-id]}))))
+        (testing "a router or destination database is rejected, even with workspaces enabled"
+          (mt/with-temp [:model/Database {router-id :id} {:engine   :postgres
+                                                          :details  {}
+                                                          :settings {:database-enable-workspaces true}}
+                         :model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                         :model/Database {destination-id :id} {:engine             :postgres
+                                                               :details            {}
+                                                               :router_database_id router-id
+                                                               :settings           {:database-enable-workspaces true}}]
+            (doseq [db-id [router-id destination-id]]
+              (is (thrown-with-msg? ExceptionInfo #"Workspaces are not enabled for this database"
+                                    (ws/create-workspace! {:name         "Routed"
+                                                           :creator_id   (mt/user->id :crowberto)
+                                                           :database_ids [db-id]}))))))
         (testing "a missing database is rejected"
           (is (thrown-with-msg? ExceptionInfo #"Database not found"
                                 (ws/create-workspace! {:name         "Nope"

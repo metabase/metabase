@@ -3,6 +3,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -52,10 +53,14 @@
 ;;; --------------------------------------- Database eligibility ---------------------------------------
 
 (defn database-eligible-for-workspaces?
-  "True iff `database`'s driver supports the `:workspace` feature and the
-   `database-enable-workspaces` database-local setting is enabled for it."
+  "True iff `database`'s driver supports the `:workspace` feature, the
+   `database-enable-workspaces` database-local setting is enabled for it, and it is
+   neither a router nor a destination database. Every connection to a router resolves
+   to the current user's destination, so provisioning DDL would land wherever the
+   provisioning admin happens to be routed, and teardown wherever the deleting admin is."
   [database]
   (and (driver.u/supports? (:engine database) :workspace database)
+       (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
        (boolean (setting/with-database database
                   (ws.settings/database-enable-workspaces)))))
 
