@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupBookmarksEndpoints,
@@ -225,5 +226,31 @@ describe("Document Page", () => {
         expect(within(menu).getByRole("menuitem", { name })).toBeDisabled();
       },
     );
+  });
+
+  it("archives the document when it is moved to the trash from the header menu", async () => {
+    setup({ canWrite: true });
+
+    expect(
+      await within(await screen.findByTestId("document-content")).findByText(
+        "Original content",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "More options" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Move to trash/ }),
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/document/1", { method: "PUT" }),
+      ).toHaveLength(1),
+    );
+    const [call] = fetchMock.callHistory.calls("path:/api/document/1", {
+      method: "PUT",
+    });
+    const body: unknown = JSON.parse(String(call.options.body));
+    expect(body).toMatchObject({ archived: true });
   });
 });

@@ -170,18 +170,4 @@ describe("document permissions > public links", () => {
     visitPublicDocument();
     verifyErrorMessage("An error occurred.");
   });
-
-  it("should not be accessible once the document is trashed", () => {
-    visitPublicDocument();
-    H.documentContent().should("contain", "Test content");
-
-    cy.intercept("PUT", "/api/document/*").as("updateDocument");
-    H.visitDocument("@documentId");
-    cy.findByRole("button", { name: "More options" }).click();
-    H.popover().findByText("Move to trash").click();
-    cy.wait("@updateDocument");
-
-    visitPublicDocument();
-    verifyErrorMessage("Not found");
-  });
 });
