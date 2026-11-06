@@ -34,9 +34,9 @@ export function DataStep({
   onChange,
 }: DataStepProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const tableId = query ? Lib.sourceTableOrCardId(query) : undefined;
+  const tableId = query ? Lib.primarySourceTableId(query) : undefined;
   const table =
-    query && tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+    query && tableId != null ? Lib.tableMetadata(query, tableId) : undefined;
   const tableInfo =
     query && table ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const tableValue =

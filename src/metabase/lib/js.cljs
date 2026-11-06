@@ -2211,6 +2211,15 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
+(defn ^:export table-metadata
+  "Given an integer `table-id`, returns the table's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/table query-or-metadata-provider table-id))
+
 (defn ^:export card-metadata
   "Given an integer `card-id`, returns the card's metadata.
 
@@ -2661,6 +2670,13 @@
   "Return a JS array of all source card IDs referenced anywhere in `a-query`."
   [a-query]
   (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
+
+(defn ^:export primary-source-table-id
+  "Return the ID of the table the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.core/primary-source-table-id a-query))
 
 (defn ^:export primary-source-card-id
   "Return the ID of the card the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
