@@ -499,30 +499,30 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
+;; An anonymous user who can open a dashboard reaches a database in three ways:
+;; - a dashcard whose Card runs against it,
+;; - a dashcard with a series Card that runs against it, and
+;; - a filter whose value list comes from a Card that runs against it.
+;; The first two are returned by `shown-card-ids`, the last is returned by `value-list-sources`.
 (defmethod public-sharing/shown-card-ids :model/Dashboard
   [_model dashboard-ids]
-  ;; An anonymous user who can open a dashboard reaches a database in three ways:
-  ;; - a dashcard whose Card runs against it,
-  ;; - a dashcard with a series Card that runs against it, and
-  ;; - a filter whose value list comes from a Card that runs against it (see `value-list-sources` below).
-  (reduce (fn [acc {:keys [dashboard_id card_id]}]
-            ;; text, link and action dashcards have no Card
-            (cond-> acc
-              card_id (update dashboard_id (fnil conj #{}) card_id)))
-          {}
-          (concat (dashboards.db/dashcard-cards-for-dashboards dashboard-ids)
-                  (dashboards.db/dashcard-series-cards-for-dashboards dashboard-ids))))
+  (->> (concat (dashboards.db/dashcard-cards-for-dashboards dashboard-ids)
+               (dashboards.db/dashcard-series-cards-for-dashboards dashboard-ids))
+       ;; text, link and action dashcards have no Card
+       (filter :card_id)
+       (reduce (fn [acc {:keys [dashboard_id card_id]}]
+                 (update acc dashboard_id (fnil conj #{}) card_id))
+               {})))
 
 (defmethod public-sharing/value-list-sources :model/Dashboard
   [_model dashboard-ids]
-  (into {}
-        (map (fn [{:keys [id parameters]}]
-               [id (into []
-                         (keep (fn [parameter]
-                                 (when-let [card-id (queries/values-source-card-id parameter)]
-                                   {:parameter parameter, :card-id card-id})))
-                         parameters)]))
-        (dashboards.db/parameters-for-dashboards dashboard-ids)))
+  (->> (dashboards.db/parameters-for-dashboards dashboard-ids)
+       (map (fn [{:keys [id parameters]}]
+              [id (vec (for [parameter parameters
+                             :let  [card-id (queries/values-source-card-id parameter)]
+                             :when card-id]
+                         {:parameter parameter, :card-id card-id}))]))
+       (into {})))
 
 (defmethod public-sharing/embedding-params :model/Dashboard
   [_model dashboard-ids]

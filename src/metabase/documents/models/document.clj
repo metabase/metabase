@@ -1,5 +1,6 @@
 (ns metabase.documents.models.document
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
@@ -742,15 +743,16 @@
   [_model document-ids]
   ;; An anonymous user who can open a document runs the query of each question that the document's content embeds
   ;; inline and that belongs to the document. A document has no filters of its own, so it implements nothing else.
-  (let [owned-card-ids (reduce (fn [acc {:keys [id document_id]}]
-                                 (update acc document_id (fnil conj #{}) id))
-                               {}
-                               (documents.db/card-ids-owned-by-documents document-ids))]
-    (into {}
-          ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
-          (map (fn [{document-id :id, :as document}]
-                 [document-id (into #{} (filter (get owned-card-ids document-id #{})) (prose-mirror/card-ids document))]))
-          (documents.db/contents-for-documents document-ids))))
+  (let [owned-card-ids (->> (documents.db/card-ids-owned-by-documents document-ids)
+                            (reduce (fn [acc {:keys [id document_id]}]
+                                      (update acc document_id (fnil conj #{}) id))
+                                    {}))]
+    (->> (documents.db/contents-for-documents document-ids)
+         ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
+         (map (fn [{document-id :id, :as document}]
+                [document-id (set/intersection (set (prose-mirror/card-ids document))
+                                               (get owned-card-ids document-id #{}))]))
+         (into {}))))
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))

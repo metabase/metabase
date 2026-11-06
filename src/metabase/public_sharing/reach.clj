@@ -72,7 +72,10 @@
 (defmethod value-list-sources :default [_model _ids] {})
 
 (defmulti embedding-params
-  "The guest-embed whitelist of each entity of `model` among `ids`, as an `::id->embedding-params`."
+  "A public link shows all filters, so if e.g. a Dashboard has a public link, then any value-list Cards for the
+  dashboard are exposed. But a guest embed is different - only *enabled* filters will matter. A locked or disabled
+  filter does not give a value list to an anonymous user. So models need to be able to tell us the embedding params
+  so we can check whether a filter is enabled or not."
   {:arglists '([model ids])}
   (fn [model _ids] model))
 
