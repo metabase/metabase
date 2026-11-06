@@ -35,8 +35,10 @@
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
-   (java.time LocalDateTime OffsetTime)))
+   (com.mchange.v2.c3p0 ConnectionTester)
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.time LocalDateTime OffsetTime)
+   (metabase.driver.motherduck ResetDatabaseConnectionTester)))
 
 (set! *warn-on-reflection* true)
 
@@ -339,6 +341,56 @@
                          mt/rows))))))
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
+
+;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it, which it does today
+;; but may stop doing (QUE-1012). A mock connection stands in for both behaviors.
+(defn- mock-connection
+  "A Connection opened on `catalog` whose statements record their SQL in `executed`, then return `result-set?` or
+  throw `error`."
+  ^Connection [catalog executed {:keys [result-set? error]}]
+  (reify Connection
+    (getCatalog [_] catalog)
+    (createStatement [_]
+      (reify Statement
+        (^boolean execute [_ ^String sql]
+          (clojure.core/swap! executed conj sql)
+          (when error (throw error))
+          (boolean result-set?))
+        (close [_])))))
+
+(deftest ^:parallel reset-database-connection-tester-test
+  (let [tester  (ResetDatabaseConnectionTester.)
+        check   (fn [opts]
+                  (let [executed (atom [])
+                        status   (.activeCheckConnection tester (mock-connection "my \"db\"" executed opts))]
+                    {:status status :executed @executed}))
+        use-sql "USE \"my \"\"db\"\"\""]
+    (testing "the check switches to the connection's own database, quoted"
+      (is (= {:status ConnectionTester/CONNECTION_IS_OKAY :executed [use-sql]}
+             (check {:result-set? true}))))
+    (testing "the check passes when `USE` returns no result set"
+      (is (= {:status ConnectionTester/CONNECTION_IS_OKAY :executed [use-sql]}
+             (check {:result-set? false}))))
+    (testing "the check fails, so c3p0 discards the connection, when `USE` fails"
+      (is (= {:status ConnectionTester/CONNECTION_IS_INVALID :executed [use-sql]}
+             (check {:error (SQLException. "connection reset")}))))
+    (testing "every overload c3p0 calls at checkout runs the same check"
+      (doseq [run [#(.activeCheckConnection tester ^Connection %)
+                   #(.activeCheckConnection tester ^Connection % "SELECT 1")
+                   #(.activeCheckConnection tester ^Connection % ^"[Ljava.lang.Throwable;" (make-array Throwable 1))
+                   #(.activeCheckConnection tester ^Connection % "SELECT 1" ^"[Ljava.lang.Throwable;" (make-array Throwable 1))]]
+        (let [executed (atom [])]
+          (is (= ConnectionTester/CONNECTION_IS_OKAY (run (mock-connection "db" executed {}))))
+          (is (= ["USE \"db\""] @executed)))))))
+
+(deftest pool-uses-reset-database-connection-tester-test
+  (mt/test-driver :motherduck
+    (testing "the pool tests every checkout with the tester, in tests as in production"
+      (is (=? {"connectionTesterClassName" (.getName ResetDatabaseConnectionTester)
+               "testConnectionOnCheckout"  true
+               "idleConnectionTestPeriod"  0}
+              (sql-jdbc.conn/data-warehouse-connection-pool-properties
+               :motherduck (lib.metadata/database (mt/metadata-provider))))))))
 
 ;; pgjdbc sets the session time zone to the JVM's, but the endpoint's `SHOW TIMEZONE` always answers UTC. Tests run
 ;; on a UTC JVM, so use another zone to tell them apart.

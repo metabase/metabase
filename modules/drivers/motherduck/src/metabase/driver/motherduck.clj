@@ -12,7 +12,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
-   [metabase.driver.connection :as driver.conn]
    ;; Register the parent before registering :motherduck.
    [metabase.driver.postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -26,11 +25,14 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.util.connection :as u.connection]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.performance :as perf])
   (:import
+   (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
+   (com.mchange.v2.c3p0.impl DefaultConnectionTester)
    (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
 
@@ -56,21 +58,81 @@
              :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
              :options    "--compatibility-mode=metabase")))
 
-;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
-;; lasts for the session. Metabase qualifies tables with only the schema, so later queries and syncs that reuse the
-;; pooled connection would read the other database. Switch back to the connection's own database at every checkout.
-;; c3p0 already makes a round trip at each checkout to test the connection, and a `USE` tests it as well as
-;; `isValid()` does, so make that the test query. The reset then adds no round trip of its own, unlike a `USE` per
-;; query, which cost Snowflake users (#63040). Tests normally skip the checkout test and check idle connections in the
-;; background instead, so turn the checkout test on for them too, and the idle test off, as in production.
+;;; Resetting the current database at checkout
+;;;
+;;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
+;;; lasts for the session. A MotherDuck connection can see every database in the account, and `USE` is idiomatic
+;;; DuckDB, so analysts will write it in native queries. Metabase qualifies tables with only the schema, so later
+;;; queries and syncs that reuse the pooled connection would read the other database: queries fail, or silently return
+;;; another database's data, and sync can deactivate every table.
+;;;
+;;; So every checkout from the pool switches back to the connection's own database. Three ways to do that were tried:
+;;;
+;;; 1. `USE` in `do-with-connection-with-options`, before each use. This works, but it adds a round trip to every
+;;;    query and sync step. A per-query `USE` is what cost Snowflake users in #63040.
+;;;
+;;; 2. `USE` as c3p0's `preferredTestQuery`. c3p0 already makes one round trip at each checkout to test the connection,
+;;;    so the reset would come free. But c3p0's `DefaultConnectionTester` runs the test query with `executeQuery`, which
+;;;    pgjdbc rejects unless the statement returns exactly one result set. The endpoint happens to return an empty one
+;;;    for `USE` today. We have asked MotherDuck to stop returning result sets for statements like this (QUE-1012). If
+;;;    they do, every checkout test fails, c3p0 discards every connection, and the database is unusable. Batching
+;;;    `USE ...; SELECT 1` doesn't help: `executeQuery` rejects two result sets today and zero first results later.
+;;;
+;;; 3. A custom connection tester, below. It runs the `USE` with `Statement.execute`, which accepts any result, as the
+;;;    checkout test. The reset costs no round trip beyond the test c3p0 makes anyway, and it doesn't depend on what the
+;;;    endpoint returns for `USE`.
+
+(def ^:private ^DefaultConnectionTester default-connection-tester
+  "c3p0's own tester, which decides whether an exception during use means the connection is broken."
+  (DefaultConnectionTester.))
+
+(defn- reset-current-database!
+  "Switch `conn` back to the database it opened with, and report to c3p0 whether that worked. `getCatalog` is pgjdbc's
+  startup database, unchanged by any SQL since. Any failure means the connection can't be used safely, so c3p0 should
+  discard it and open another."
+  [^Connection conn]
+  (try
+    (with-open [stmt (.createStatement conn)]
+      (.execute stmt (str "USE " (sql.u/quote-name :motherduck :database (.getCatalog conn)))))
+    ConnectionTester/CONNECTION_IS_OKAY
+    (catch Throwable _
+      ConnectionTester/CONNECTION_IS_INVALID)))
+
+;; c3p0 calls the `activeCheckConnection` overloads to test a connection at checkout; the query and the array for
+;; reporting the cause are ignored, since the check always runs the `USE`. It calls the `statusOnException` overloads
+;; when SQL fails during use, and those keep c3p0's default behavior.
+(deftype ResetDatabaseConnectionTester []
+  UnifiedConnectionTester
+  (^int activeCheckConnection [_ ^Connection conn]
+    (reset-current-database! conn))
+  (^int activeCheckConnection [_ ^Connection conn ^"[Ljava.lang.Throwable;" _root-cause-out]
+    (reset-current-database! conn))
+  (^int activeCheckConnection [_ ^Connection conn ^String _query]
+    (reset-current-database! conn))
+  (^int activeCheckConnection [_ ^Connection conn ^String _query ^"[Ljava.lang.Throwable;" _root-cause-out]
+    (reset-current-database! conn))
+  (^int statusOnException [_ ^Connection conn ^Throwable t]
+    (.statusOnException default-connection-tester conn t))
+  (^int statusOnException [_ ^Connection conn ^Throwable t ^"[Ljava.lang.Throwable;" root-cause-out]
+    (.statusOnException default-connection-tester conn t root-cause-out))
+  (^int statusOnException [_ ^Connection conn ^Throwable t ^String query]
+    (.statusOnException default-connection-tester conn t query))
+  (^int statusOnException [_ ^Connection conn ^Throwable t ^String query ^"[Ljava.lang.Throwable;" root-cause-out]
+    (.statusOnException default-connection-tester conn t query root-cause-out)))
+
+;; If c3p0 can't find a tester class, it logs a warning and falls back to `isValid()`, which brings the leak back
+;; without an error. `switched-database-does-not-leak-into-pooled-connections-test` fails if that happens.
+(u.connection/register-c3p0-connection-tester! ResetDatabaseConnectionTester)
+
+;; Tests normally skip the checkout test, and check idle connections in the background instead. The checkout test is
+;; what resets the database here, so turn it on for tests too, and the idle test off, as in production.
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :motherduck
   [driver database]
   (merge
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :postgres) driver database)
-   {"preferredTestQuery"       (str "USE " (sql.u/quote-name driver :database
-                                                             (:dbname (driver.conn/effective-details database))))
-    "testConnectionOnCheckout" true
-    "idleConnectionTestPeriod" 0}))
+   {"connectionTesterClassName" (.getName ResetDatabaseConnectionTester)
+    "testConnectionOnCheckout"  true
+    "idleConnectionTestPeriod"  0}))
 
 ;; The endpoint's messages for a bad token or database name don't match Postgres's, so map them here to highlight the
 ;; field in the connection form.

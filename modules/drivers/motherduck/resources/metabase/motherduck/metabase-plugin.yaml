@@ -27,6 +27,8 @@ driver:
     - name: schema-filters
       type: schema-filters
       display-name: Schemas
+      visible-if:
+        destination-database: false
     # The endpoint takes the token as the password and ignores the user name, so there's no user field; the driver
     # sends the user name MotherDuck documents. It always uses TLS, so there's no SSL toggle either.
     - name: token-info
