@@ -66,7 +66,10 @@
                                 :ssl-root-cert-options   "uploaded"
                                 :ssl-root-cert-value     root-cert
                                 :ssl-client-cert-options "uploaded"
-                                :ssl-client-cert-value   "client-cert"}}
+                                :ssl-client-cert-value   "client-cert"
+                                :ssl-key-options         "uploaded"
+                                :ssl-key-value           "client-key"
+                                :ssl-key-password-value  "client-key-pass"}}
                      :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
                      :model/WorkspaceDatabase _
                      {:workspace_id     ws-id :database_id db-id
@@ -75,14 +78,14 @@
         (let [stored  (t2/select-one-fn :details :model/Database :id db-id)
               details (->> (config/build-workspace-config ws-id) :config :databases
                            (some #(when (= "Cert DW" (:name %)) (:details %))))]
-          (testing "precondition: the parent stores both certs as Secrets"
-            (is (int? (:ssl-root-cert-id stored)))
-            (is (int? (:ssl-client-cert-id stored))))
+          (testing "precondition: the parent stores the certs and the key as Secrets"
+            (is (every? int? (map stored [:ssl-root-cert-id :ssl-client-cert-id :ssl-key-id :ssl-key-password-id]))))
           (is (= {:ssl-root-cert-options "uploaded" :ssl-root-cert-value root-cert}
                  (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))
-          (testing "the client cert is left as is (MBC10-87)"
-            (is (= (:ssl-client-cert-id stored) (:ssl-client-cert-id details)))
-            (is (not (contains? details :ssl-client-cert-value)))))))))
+          (testing "the client cert and key ship neither their parent Secret ids nor their values (MBC10-87)"
+            (is (= {} (select-keys details [:ssl-client-cert-id :ssl-client-cert-value
+                                            :ssl-key-id :ssl-key-value
+                                            :ssl-key-password-id :ssl-key-password-value])))))))))
 
 (defn- with-cert-workspace
   "Run `f` with the id of a provisioned workspace over a Postgres database named \"Cert DW\" with `details`."
@@ -104,6 +107,58 @@
                            (some #(when (= "Cert DW" (:name %)) (:details %))))]
           (is (= {:host "h" :ssl-mode "verify-full"} (select-keys details [:host :ssl-mode])))
           (is (= {} (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value]))))))))
+
+(deftest build-workspace-config-ssl-off-drops-root-cert-test
+  (testing "with :ssl off the root cert is not read or shipped, and its parent Secret id is dropped"
+    ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
+    (mt/with-premium-features #{}
+      (with-cert-workspace
+        {:host "h" :port 5432 :ssl false
+         :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
+        (fn [ws-id]
+          (let [details (->> (config/build-workspace-config ws-id) :config :databases
+                             (some #(when (= "Cert DW" (:name %)) (:details %))))]
+            (is (= {:host "h" :ssl false} (select-keys details [:host :ssl])))
+            (is (= {} (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))))))))
+
+(deftest build-workspace-config-carries-ssh-known-hosts-value-test
+  (let [known-hosts "bastion.example ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIknownhosts\n"
+        tunnel      {:host "h" :port 5432 :tunnel-enabled true :tunnel-host "bastion.example" :tunnel-user "t"}
+        kh-keys     [:tunnel-known-hosts-id :tunnel-known-hosts-options :tunnel-known-hosts-value]
+        details-of  (fn [ws-id]
+                      (->> (config/build-workspace-config ws-id) :config :databases
+                           (some #(when (= "Cert DW" (:name %)) (:details %)))))]
+    (testing "tunnel on, known hosts stored as a Secret: they ship as their value, so the child's tunnel still
+              verifies the host key"
+      (mt/with-temp [:model/Secret {secret-id :id} {:name "kh" :kind "binary-blob" :source "uploaded" :value known-hosts}]
+        (with-cert-workspace
+          (assoc tunnel :tunnel-known-hosts-id secret-id)
+          (fn [ws-id]
+            (is (= {:tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
+                   (select-keys (details-of ws-id) kh-keys)))))))
+    (testing "tunnel on, known hosts kept as a plain value (Postgres doesn't store them as a Secret): the value ships"
+      (with-cert-workspace
+        (assoc tunnel :tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts)
+        (fn [ws-id]
+          (is (= {:tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
+                 (select-keys (details-of ws-id) kh-keys))))))
+    (testing "tunnel off: the known hosts aren't read, and the parent Secret id doesn't ship"
+      (with-cert-workspace
+        {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-id Integer/MAX_VALUE}
+        (fn [ws-id]
+          (is (= {} (select-keys (details-of ws-id) kh-keys))))))
+    (testing "tunnel on with a known-hosts id that doesn't resolve: a 409, since dropping it would skip host-key checks"
+      (with-cert-workspace
+        (assoc tunnel :tunnel-known-hosts-id Integer/MAX_VALUE)
+        (fn [ws-id]
+          (is (=? {:status-code 409}
+                  (try
+                    (config/build-workspace-config ws-id)
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      (is (= "The SSH known hosts of database \"Cert DW\" can't be read on this instance"
+                             (ex-message e)))
+                      (ex-data e))))))))))
 
 (deftest build-workspace-config-unreadable-ssl-root-cert-test
   (testing "a root cert the parent can't read is a 409 naming the database, not an opaque 500"

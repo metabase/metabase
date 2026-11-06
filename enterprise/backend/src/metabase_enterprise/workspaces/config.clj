@@ -49,29 +49,63 @@
       :else
       {})))
 
-(defn- inline-ssl-root-cert
-  "Replace `:ssl-root-cert-id` with the certificate itself. `:secret` connection properties keep only the id of their
-   Secret row in `:details`, and the parent's Secret ids don't resolve in the child's app DB. The child's config-file
-   import stores an inlined `-value` as a new Secret of its own. Only the root certificate is inlined: it is public,
-   while the client certificate and key stay behind MBC10-87.
+(def ^:private inlined-secrets
+  "The `:secret` connection properties whose value the config carries, each with the detail that turns it on. Both are
+   public: the root certificate verifies the warehouse, and the known hosts verify the SSH tunnel's host key. Without
+   the known hosts the child's tunnel would skip host-key verification, so a known-hosts Secret that can't be resolved
+   is refused rather than dropped."
+  [{:label      "SSL root certificate"
+    :name       "ssl-root-cert"
+    :enabled-by :ssl
+    :id         :ssl-root-cert-id
+    :options    :ssl-root-cert-options
+    :value      :ssl-root-cert-value
+    :required?  false}
+   {:label      "SSH known hosts"
+    :name       "tunnel-known-hosts"
+    :enabled-by :tunnel-enabled
+    :id         :tunnel-known-hosts-id
+    :options    :tunnel-known-hosts-options
+    :value      :tunnel-known-hosts-value
+    :required?  true}])
 
-   The id is dropped even when it doesn't resolve on the parent: in the child it could name an unrelated Secret, and
-   the child would trust those bytes. A certificate that can't be read (e.g. a missing local file) is a 409 naming the
-   database rather than an opaque 500."
-  [db details]
-  (if-not (:ssl-root-cert-id details)
+(defn- unreadable-secret [db label cause]
+  (ex-info (format "The %s of database %s can't be read on this instance" label (pr-str (:name db)))
+           {:status-code 409
+            :database_id (:id db)}
+           cause))
+
+(defn- inline-secret
+  "Add the value of `secret`'s Secret to `details` when the connection uses it. A Secret the parent can't read (e.g. a
+   missing local file) is a 409 naming the database rather than an opaque 500."
+  [db details {:keys [label enabled-by id options value required?] secret-name :name}]
+  (if-not (and (get details enabled-by) (get details id))
     details
-    (let [root-cert (try
-                      (secrets/value-as-string (:engine db) details "ssl-root-cert")
-                      (catch Exception e
-                        (throw (ex-info (format "The SSL root certificate of database %s can't be read on this instance"
-                                                (pr-str (:name db)))
-                                        {:status-code 409
-                                         :database_id (:id db)}
-                                        e))))]
-      (cond-> (dissoc details :ssl-root-cert-id)
-        root-cert (assoc :ssl-root-cert-options "uploaded"
-                         :ssl-root-cert-value   root-cert)))))
+    (let [secret-value (try
+                         (secrets/value-as-string (:engine db) details secret-name)
+                         (catch Exception e
+                           (throw (unreadable-secret db label e))))]
+      (when (and required? (nil? secret-value))
+        (throw (unreadable-secret db label nil)))
+      (cond-> details
+        secret-value (assoc options "uploaded"
+                            value   secret-value)))))
+
+(defn- inline-secrets
+  "Replace the `:secret` connection properties' Secret ids with what the child can use. `:secret` properties keep only
+   the id of their Secret row in `:details`, and the parent's ids don't resolve in the child's app DB: there they could
+   name an unrelated Secret the child's own import created. So every `-id` is dropped, and the values in
+   `inlined-secrets` ship instead, for the child's config-file import to store as Secrets of its own. The client
+   certificate and key are not inlined (MBC10-87)."
+  [db details]
+  (let [inlined (reduce (partial inline-secret db) details inlined-secrets)
+        ;; the `-id` naming follows `metabase.secrets.models.secret`, which stores a property's Secret id under it.
+        ;; The inlined ids are listed on their own: Postgres nests the SSH-tunnel properties so that
+        ;; `secret-conn-props-by-name` doesn't list `tunnel-known-hosts`.
+        id-keys (into (set (map :id inlined-secrets))
+                      (map #(keyword (str % "-id")))
+                      (keys (secrets/secret-conn-props-by-name (:engine db))))]
+    (apply dissoc inlined id-keys)))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
@@ -80,10 +114,10 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (inline-ssl-root-cert db (merge (:details db)
-                                            (:database_details wsd)
-                                            (schema-filter-entries db wsd)
-                                            {:let-user-control-scheduling false}))})
+   :details (inline-secrets db (merge (:details db)
+                                      (:database_details wsd)
+                                      (schema-filter-entries db wsd)
+                                      {:let-user-control-scheduling false}))})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
