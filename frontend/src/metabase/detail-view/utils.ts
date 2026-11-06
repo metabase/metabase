@@ -26,7 +26,9 @@ import type {
   RowValue,
   Series,
   Table,
+  TableEntityType,
 } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatasetData,
@@ -179,7 +181,7 @@ export const getColumnTitle = (
   });
 };
 
-export const getEntityIcon = (entityType?: Table["entity_type"]) => {
+export const getEntityIcon = (entityType?: TableEntityType | null) => {
   switch (entityType) {
     case "entity/UserTable":
       return "person";
@@ -208,7 +210,9 @@ export const getTableQuery = createSelector(
       return undefined;
     }
 
-    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+    const tableMetadata = isConcreteTableId(table.id)
+      ? Lib.tableMetadata(metadataProvider, table.id)
+      : null;
     if (tableMetadata == null) {
       return undefined;
     }
