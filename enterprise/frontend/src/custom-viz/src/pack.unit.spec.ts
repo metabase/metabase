@@ -246,7 +246,7 @@ describe("pack", () => {
     rmSync(join(projectDir, "dist", "assets", "icon.svg"));
 
     await expect(packPlugin(projectDir)).rejects.toThrow(
-      'Asset "icon.svg" declared in metabase-plugin.json but missing from dist/assets/.',
+      'Icon "icon.svg" declared in metabase-plugin.json but missing from dist/assets/.',
     );
   });
 
