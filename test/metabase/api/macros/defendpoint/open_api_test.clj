@@ -138,10 +138,17 @@
     (testing "an override without content documents a response with no body"
       (is (= {"204" {:description "No content"}}
              (#'defendpoint.open-api/schema->response-obj no-content-204))))
+    (testing "an override without a description takes the description of its body schema"
+      (is (=? {"200" {:description "Rows as JSON"}}
+              (#'defendpoint.open-api/schema->response-obj
+               [:fn {:openapi/response {:status  "200"
+                                        :content {"application/json" [:sequential {:description "Rows as JSON"} :map]}}}
+                any?]))))
     (testing "an override takes precedence over :openapi/response-schema"
       (is (= {"204" {:description "No content"}}
              (#'defendpoint.open-api/schema->response-obj
-              [:map {:openapi/response {:status "204", :description "No content"}, :openapi/response-schema :int}]))))
+              [:map {:openapi/response        {:status "204", :description "No content"}
+                     :openapi/response-schema :int}]))))
     (testing "a malformed override is refused"
       (is (thrown? clojure.lang.ExceptionInfo
                    (#'defendpoint.open-api/schema->response-obj [:map {:openapi/response {:status "ok"}}]))))))
@@ -162,4 +169,8 @@
       (is (= #{"2XX" "4XX" "5XX"}
              (set (keys (:responses (#'defendpoint.open-api/path-item
                                      "/api/test"
-                                     {:method :get, :route {:path "/test"}, :docstr "Get it.", :params {}, :body []})))))))))
+                                     {:method :get
+                                      :route  {:path "/test"}
+                                      :docstr "Get it."
+                                      :params {}
+                                      :body   []})))))))))
