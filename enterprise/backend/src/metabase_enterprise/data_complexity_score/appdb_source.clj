@@ -1,88 +1,49 @@
 (ns metabase-enterprise.data-complexity-score.appdb-source
-  "Schema-tolerant reads and the raw score write for the Data Complexity CLI.
-  The CLI can run a newer Metabase against an older appdb, so it cannot trust the Toucan models the cron and API use."
+  "The universe reads and the score write for the Data Complexity CLI.
+  The CLI scores an appdb with a jar that may be newer, and it runs no migrations. The jar's Toucan models target the
+  jar's schema, so a hook or transform added in a later release would break the CLI on every older appdb. Card and
+  Table reads and the write therefore go through raw queries here. The other reads still use the models: today their
+  hooks and transforms touch none of the columns the CLI reads."
   (:require
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log])
-  (:import
-   (java.sql SQLException)))
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------- read tolerance --------------------------------------
+;;; -------------------------------------------- reads --------------------------------------------
 
-;; SQLState codes that mean "the table or column you referenced isn't there" across the appdb backends Metabase
-;; supports. Listed explicitly rather than prefix-matched on `42S` so we don't trip on other `42Sxx` codes a driver
-;; might introduce. Postgres uses `42P01` (undefined_table) and `42703` (undefined_column); MySQL uses `42S02` and
-;; `42S22`; H2 uses `42S02` and `42S22` on the modern JDBC surface and `42102` and `42122` on the legacy one, and also
-;; reports a missing table as `42S03` (with name suggestions) or `42S04` (empty database). The table states match
-;; `metabase.app-db.sql-errors`, which has no missing-column class to reuse.
-(def ^:private missing-relation-sql-states
-  #{"42102" "42122" "42703" "42P01" "42S02" "42S03" "42S04" "42S22"})
+(defn- normalize-table-row
+  "Return `table-row` with `:is_published` as a boolean."
+  [table-row]
+  ;; MySQL and MariaDB return `is_published` as `0` or `1`, and `0` is truthy. `:model/Table` coerces it with
+  ;; `mi/transform-boolean`.
+  (u/update-if-exists table-row :is_published #(or (true? %) (= 1 %))))
 
-(defn- missing-relation-exception
-  "The `SQLException` for a missing table or column that `t` is, or reaches through `getCause` and `getNextException`.
-  Nil when there is none."
-  ^SQLException [^Throwable t]
-  ;; Toucan 2 and next.jdbc throw the raw `SQLException` today. Walking both chains also covers a wrapper that
-  ;; carries it as a cause, and `seen` stops a cyclic chain.
-  (loop [pending (list t)
-         seen    #{}]
-    (when-let [[^Throwable cur & more] (seq pending)]
-      (cond
-        (or (nil? cur) (contains? seen cur))
-        (recur more seen)
+(defn reads
+  "The universe reads for [[metabase-enterprise.data-complexity-score.complexity/complexity-scores]]'s `:reads`, as
+  raw queries."
+  []
+  {:universe-cards-fn  data-complexity-score.db/raw-universe-cards
+   :universe-tables-fn #(mapv normalize-table-row (data-complexity-score.db/raw-universe-tables %))})
 
-        (and (instance? SQLException cur)
-             (contains? missing-relation-sql-states (.getSQLState ^SQLException cur)))
-        cur
-
-        :else
-        (recur (cond-> (conj more (.getCause cur))
-                 (instance? SQLException cur) (conj (.getNextException ^SQLException cur)))
-               (conj seen cur))))))
-
-(defn with-missing-relation-fallback
-  "Return `(f)`.
-  When `degraded-signals` is an atom, a missing table or column error from `f` instead logs a warning, adds `signal`
-  to the atom, and returns `fallback`.
-  When `degraded-signals` is nil, every error propagates."
-  [degraded-signals signal fallback f]
-  ;; The cron and API pass nil, so a schema bug there still raises. Catch `Throwable` rather than `SQLException`
-  ;; because a wrapper may carry the SQL error as its cause.
-  (if-not degraded-signals
-    (f)
-    (try
-      (f)
-      (catch Throwable t
-        (if-let [e (missing-relation-exception t)]
-          (do (log/warnf "Data Complexity: %s unavailable on this appdb (%s). Falling back to %s."
-                         signal (.getMessage e) (pr-str fallback))
-              (swap! degraded-signals conj signal)
-              fallback)
-          (throw t))))))
-
-;;; --------------------------------------- writer ------------------------------------------
+;;; -------------------------------------------- write --------------------------------------------
 
 (defn verify-write-target-shape!
   "Return nil when `data_complexity_score` has the columns [[insert-score-row!]] writes.
-  Throw an `ex-info` with `:cli-validation true` when the table or one of those columns is missing.
-  Other errors propagate."
+  Throw an `ex-info` with `:cli-validation true` when the probe fails."
   []
-  ;; Runs before the scoring pass, so a bad target fails at once rather than after minutes of scoring.
-  ;; Extra columns from a newer schema are fine.
+  ;; Runs before the scoring pass, so a bad target fails at once rather than after minutes of scoring. Extra
+  ;; columns from a newer schema are fine.
   (try
     (data-complexity-score.db/probe-score-columns)
     nil
-    (catch Throwable t
-      (if-let [e (missing-relation-exception t)]
-        (throw (ex-info (str "`data_complexity_score` is missing or doesn't have the columns "
-                             "--write-to-appdb needs (fingerprint, source, score_data, created_at). "
-                             "Underlying SQL error: " (.getMessage e))
-                        {:cli-validation true, :sql-state (.getSQLState e)}
-                        t))
-        (throw t)))))
+    (catch Exception e
+      (throw (ex-info (str "Can't write to `data_complexity_score`: --write-to-appdb needs the table and its "
+                           "fingerprint, source, score_data and created_at columns (Metabase 0.61 or later). "
+                           "Underlying error: " (ex-message e))
+                      {:cli-validation true}
+                      e)))))
 
 (defn insert-score-row!
   "Insert one `data_complexity_score` row with `score` encoded as JSON, running no model hooks or transforms.

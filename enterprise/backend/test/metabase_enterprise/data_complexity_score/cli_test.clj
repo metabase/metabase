@@ -381,7 +381,10 @@
         (#'cli/run-cli {:source "appdb"})
         (is (= [["appdb-fp" "appdb"]] @rows))
         (is (zero? @advance-calls) "the CLI never advances the cron's last-fingerprint setting")
-        (is (false? (:emit-snowplow? @score-opts)) "the CLI turns Snowplow off")))))
+        (is (=? {:emit-snowplow? false
+                 :reads          {:universe-cards-fn fn?, :universe-tables-fn fn?}}
+                @score-opts)
+            "the CLI turns Snowplow off and reads Cards and Tables raw")))))
 
 (deftest ^:synchronized run-cli-appdb-mode-respects-explicit-no-write-test
   (testing "appdb + --write-to-appdb false scores but never persists or advances the fingerprint"
@@ -398,41 +401,6 @@
         (#'cli/run-cli {:source "appdb", :write-to-appdb false})
         (is (false? @persisted?))
         (is (zero? @advance-calls))))))
-
-(deftest ^:synchronized run-cli-appdb-mode-stamps-degraded-signals-test
-  (testing "appdb mode passes one degraded-signals atom to the scope and the scorer, and reports what fell back"
-    (let [scope-signals  (atom nil)
-          scorer-signals (atom nil)
-          written        (atom nil)]
-      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!          (fn [])
-                                  appdb-source/verify-write-target-shape!   (fn [])
-                                  synonym-source/complexity-scores-opts     (constantly {})
-                                  metabot-scope/internal-metabot-scope      (fn [degraded]
-                                                                              (reset! scope-signals degraded)
-                                                                              (swap! degraded conj ::metabot-row)
-                                                                              {})
-                                  complexity/complexity-scores              (fn [& {signals :degraded-signals}]
-                                                                              (reset! scorer-signals signals)
-                                                                              (swap! signals conj ::measure-names)
-                                                                              {:meta {:formula-version 1}})
-                                  task.complexity-score/current-fingerprint (constantly "appdb-fp")
-                                  appdb-source/insert-score-row!            (fn [_fp _source result]
-                                                                              (reset! written result))]
-        (let [result (#'cli/run-cli {:source "appdb"})]
-          (is (identical? @scope-signals @scorer-signals))
-          (is (= {:meta {:formula-version  1
-                         :degraded-signals ["measure-names" "metabot-row"]}}
-                 result))
-          (is (= result @written) "the inserted row carries the same stamp"))))))
-
-(deftest ^:synchronized run-cli-appdb-mode-omits-degraded-signals-when-nothing-fell-back-test
-  (testing "a run where every read succeeded has no :degraded-signals key"
-    (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!      (fn [])
-                                synonym-source/complexity-scores-opts (constantly {})
-                                metabot-scope/internal-metabot-scope  (constantly {})
-                                complexity/complexity-scores          (constantly {:meta {:formula-version 1}})]
-      (is (= {:meta {:formula-version 1}}
-             (#'cli/run-cli {:source "appdb", :write-to-appdb false}))))))
 
 (deftest ^:synchronized run-cli-appdb-mode-registers-in-process-provider-test
   (testing "appdb mode registers the in-process embedding provider before it scores"

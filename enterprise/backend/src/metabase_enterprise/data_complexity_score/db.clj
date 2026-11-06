@@ -51,36 +51,20 @@
   (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
 (mu/defn universe-cards
-  "The ID, name, type and Collection of unarchived metric and model Cards outside the Database with `audit-database-id`.
-  A raw query, so no `:model/Card` hooks run, only these columns need to exist, and `:type` comes back as a string."
+  "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
+  `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/query {:select [:id :name :type :collection_id]
-             :from   [(t2/table-name :model/Card)]
-             :where  [:and
-                      [:in :type ["metric" "model"]]
-                      [:= :archived false]
-                      [:not= :database_id [:auto/param audit-database-id]]]}))
-
-(defn- universe-tables-query
-  "The query behind the universe Table reads, reading Tables from `from`."
-  [from audit-database-id]
-  {:select [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
-   :from   [from]
-   :where  [:and
-            [:= :active true]
-            [:not= :db_id [:auto/param audit-database-id]]]})
+  (t2/select [:model/Card :id :name :type :collection_id]
+             :type        [:in ["metric" "model"]]
+             :archived    false
+             :database_id [:not= audit-database-id]))
 
 (mu/defn universe-tables
-  "The scoring columns of the active Tables outside the Database with `audit-database-id`, with user settings applied.
-  A raw query, so no `:model/Table` hooks run and text columns come back as strings."
+  "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/query (universe-tables-query (t2/table-name :model/Table) audit-database-id)))
-
-(mu/defn universe-tables-without-user-settings
-  "The scoring columns of the active Tables outside the Database with `audit-database-id`, from `metabase_table` alone.
-  For an appdb whose schema the user-settings overlay cannot read."
-  [audit-database-id :- ::lib.schema.id/database]
-  (t2/query (universe-tables-query (t2/table-name :model/Table) audit-database-id)))
+  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
+             :active true
+             :db_id  [:not= audit-database-id]))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
@@ -120,12 +104,36 @@
   [months :- ms/PositiveInt]
   (t2/delete! :model/DataComplexityScore {:where [:< :created_at (t/minus (t/offset-date-time) (t/months months))]}))
 
+;;; ------------------------------------- CLI reads and write -------------------------------------
+;;; The CLI scores an appdb that may be older than this jar, so these name tables directly and run no model hooks
+;;; or transforms. Text columns come back as strings.
+
+(mu/defn raw-universe-cards
+  "[[universe-cards]] as a raw query."
+  [audit-database-id :- ::lib.schema.id/database]
+  (t2/query {:select [:id :name :type :collection_id]
+             :from   [:report_card]
+             :where  [:and
+                      [:in :type ["metric" "model"]]
+                      [:= :archived false]
+                      [:not= :database_id [:auto/param audit-database-id]]]}))
+
+(mu/defn raw-universe-tables
+  "[[universe-tables]] as a raw query. `:is_published` can come back as `0` or `1`."
+  [audit-database-id :- ::lib.schema.id/database]
+  (t2/query {:select [:t.id :t.name :t.collection_id :t.is_published :t.visibility_type :t.db_id :t.data_layer
+                      :t.data_authority]
+             :from   [[:metabase_table :t]]
+             :where  [:and
+                      [:= :t.active true]
+                      [:not= :t.db_id [:auto/param audit-database-id]]]}))
+
 (mu/defn probe-score-columns
   "Select the columns the CLI writes from `data_complexity_score`, matching no rows.
   Throws when the table or one of the columns is missing."
   []
   (t2/query {:select [:fingerprint :source :score_data :created_at]
-             :from   [(t2/table-name :model/DataComplexityScore)]
+             :from   [:data_complexity_score]
              :where  [:= 1 0]}))
 
 (mu/defn insert-score-row!
@@ -134,5 +142,5 @@
            [:fingerprint :string]
            [:source      :string]
            [:score_data  :string]]]
-  (t2/query {:insert-into [(t2/table-name :model/DataComplexityScore)]
+  (t2/query {:insert-into [:data_complexity_score]
              :values      [row]}))

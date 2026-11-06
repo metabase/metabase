@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
-   [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    ;; Load init for side-effect: exercises the transitive require of the task ns so
    ;; `scoring-task-registered-test` verifies init.clj's actual wiring path.
    [metabase-enterprise.data-complexity-score.init]
@@ -281,7 +280,7 @@
   (testing ":curated-only? true flows the caller's metabot-scope through to enumerate-catalogs"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                  (fn [scope _degraded-signals]
+                                  (fn [scope _reads]
                                     (reset! captured-scope scope)
                                     {:library  []
                                      :universe [(entity :name "orders") (entity :name "widgets")]
@@ -296,7 +295,7 @@
   (testing ":collection-id alone also flows through to enumerate-catalogs (no curated flag required)"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                  (fn [scope _degraded-signals]
+                                  (fn [scope _reads]
                                     (reset! captured-scope scope)
                                     {:library  []
                                      :universe [(entity :name "orders") (entity :name "widgets")]
@@ -313,7 +312,7 @@
     (doseq [scope [nil {} {:curated-only? false :collection-id nil}]]
       (let [captured-scope (atom ::not-called)]
         (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                    (fn [s _degraded-signals]
+                                    (fn [s _reads]
                                       (reset! captured-scope s)
                                       {:library  []
                                        :universe [(entity :name "orders") (entity :name "widgets")]
@@ -395,7 +394,7 @@
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
          :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
                                            :visibility_type "hidden" :data_authority :authoritative}]
-        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true, :collection-id nil} nil))
+        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil} nil))
               in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
           (is (= {:verified-card       true
                   :official-card       true
@@ -417,78 +416,6 @@
                   :hidden-authoritative (in? :table  hidden-auth)})
               "curated Cards (verified / official / library) and curated Tables (authoritative /
                published-final) are in; uncurated entities and hidden tables stay out"))))))
-
-(defn- throw-missing-table [& _]
-  (throw (java.sql.SQLException. "relation does not exist" "42P01")))
-
-(defn- find-table [entities table-id]
-  (some #(when (= [:table table-id] ((juxt :kind :id) %)) %) entities))
-
-(defn- has-table? [entities table-id]
-  (some? (find-table entities table-id)))
-
-(deftest ^:synchronized enumerate-catalogs-missing-measure-table-test
-  (mt/with-temp [:model/Database {db-id :id}    {:name "Degraded Measures DB"}
-                 :model/Table    {table-id :id} {:db_id db-id, :active true, :name "degraded_measures_table"}]
-    (mt/with-dynamic-fn-redefs [data-complexity-score.db/unarchived-measure-names throw-missing-table]
-      (testing "with a degraded-signals atom, Tables score no measures and the signal is recorded"
-        (let [degraded (atom #{})
-              universe (:universe (#'complexity/enumerate-catalogs nil degraded))]
-          (is (=? {:kind :table, :measure-names []}
-                  (find-table universe table-id)))
-          (is (= #{::complexity/measure-names} @degraded))))
-      (testing "without one, the error propagates"
-        (is (thrown? java.sql.SQLException (#'complexity/enumerate-catalogs nil nil)))))))
-
-(deftest ^:synchronized enumerate-catalogs-unreadable-user-settings-test
-  (testing "when the user-settings overlay cannot be read, Tables come from metabase_table alone"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "Degraded Overlay DB"}
-                   :model/Table    {table-id :id} {:db_id db-id, :active true, :name "degraded_overlay_table"}]
-      (mt/with-dynamic-fn-redefs [data-complexity-score.db/universe-tables throw-missing-table]
-        (let [degraded (atom #{})]
-          (is (has-table? (:universe (#'complexity/enumerate-catalogs nil degraded)) table-id))
-          (is (= #{::complexity/table-user-settings} @degraded)))))))
-
-(deftest ^:synchronized enumerate-catalogs-unreadable-table-columns-test
-  (testing "when neither Table read works, the Tables catalog is empty and both signals are recorded"
-    (mt/with-dynamic-fn-redefs [data-complexity-score.db/universe-tables                        throw-missing-table
-                                data-complexity-score.db/universe-tables-without-user-settings throw-missing-table]
-      (let [degraded (atom #{})]
-        (is (not-any? #(= :table (:kind %)) (:universe (#'complexity/enumerate-catalogs nil degraded))))
-        (is (= #{::complexity/table-user-settings ::complexity/universe-tables} @degraded))))))
-
-(deftest ^:synchronized metabot-catalog-legacy-data-layer-test
-  (testing "a published Table with a pre-v59 data_layer is curated by the value it became"
-    (mt/with-temp [:model/Database {db-id :id}  {:name "Legacy Data Layer DB"}
-                   :model/Table    {gold :id}   {:db_id db-id, :active true, :name "legacy_gold", :is_published true}
-                   :model/Table    {copper :id} {:db_id db-id, :active true, :name "legacy_copper", :is_published true}]
-      ;; The model maps legacy values on write, so set them with raw updates, as a v58 appdb holds them.
-      (t2/query {:update :metabase_table, :set {:data_layer "gold"}, :where [:= :id gold]})
-      (t2/query {:update :metabase_table, :set {:data_layer "copper"}, :where [:= :id copper]})
-      (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true, :collection-id nil} nil))]
-        (is (= {:gold true, :copper false}
-               {:gold   (has-table? metabot gold)
-                :copper (has-table? metabot copper)}))))))
-
-(deftest ^:synchronized library-catalog-unpublished-table-test
-  (testing "an unpublished Table in a Library collection stays out of :library on every app DB"
-    ;; MySQL and MariaDB return the overlay's computed `is_published` as `0` or `1`, and `0` is truthy.
-    (collections.tu/with-library [{:keys [metrics]}]
-      (mt/with-temp [:model/Database {db-id :id}       {:name "Published Library DB"}
-                     :model/Table    {published :id}   {:db_id         db-id
-                                                        :active        true
-                                                        :name          "library_published"
-                                                        :collection_id (:id metrics)
-                                                        :is_published  true}
-                     :model/Table    {unpublished :id} {:db_id         db-id
-                                                        :active        true
-                                                        :name          "library_unpublished"
-                                                        :collection_id (:id metrics)
-                                                        :is_published  false}]
-        (let [library (:library (#'complexity/enumerate-catalogs nil nil))]
-          (is (= {:published true, :unpublished false}
-                 {:published   (has-table? library published)
-                  :unpublished (has-table? library unpublished)})))))))
 
 (deftest ^:synchronized metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"

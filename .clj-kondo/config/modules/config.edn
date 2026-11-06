@@ -4151,7 +4151,8 @@
                     :model/Database
                     :model/Measure
                     :model/Metabot
-                    :model/ModerationReview}}
+                    :model/ModerationReview
+                    :model/Table}}
 
   enterprise/mfa
   {:team "Security Engineering"

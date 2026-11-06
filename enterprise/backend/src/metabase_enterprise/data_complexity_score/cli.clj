@@ -131,34 +131,22 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
-(defn- stamp-degraded-signals
-  "Return `result` with the sorted names of the `degraded` signals at `[:meta :degraded-signals]`.
-  Return `result` unchanged when `degraded` is empty."
-  [result degraded]
-  ;; Lets operators tell a real `0` from a signal the appdb's schema was too old to read.
-  (cond-> result
-    (seq degraded) (assoc-in [:meta :degraded-signals] (vec (sort (map name degraded))))))
-
 (defn- run-appdb-mode!
-  "Score the live appdb, and insert one score row stamped `\"appdb\"` when `write?`.
-  Return the score, with the names of any signals the appdb's schema was too old to read at
-  `[:meta :degraded-signals]`."
+  "Score the live appdb, and insert one score row stamped `\"appdb\"` when `write?`. Return the score."
   [write?]
-  ;; Reads of tables or columns newer than the appdb (e.g. `metabot`, `measure`) fall back instead of failing.
-  ;; The only write is one raw INSERT: no model hooks, no fingerprint setting, no Snowplow event.
+  ;; The appdb can be older than this jar, so Cards and Tables are read raw (see `appdb-source`). The only write is
+  ;; one raw INSERT: no model hooks, no fingerprint setting, no Snowplow event.
   (mdb/setup-db-without-migrations!)
   (when write?
     (appdb-source/verify-write-target-shape!))
   ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
   ;; configured for the `in-process` provider finds nothing registered and fails with `:provider-not-registered`.
   (embeddings.startup/ensure-in-process-provider!)
-  (let [degraded (atom #{})
-        scores   (complexity/complexity-scores
-                  (assoc (synonym-source/complexity-scores-opts)
-                         :metabot-scope    (metabot-scope/internal-metabot-scope degraded)
-                         :degraded-signals degraded
-                         :emit-snowplow?   false))
-        result   (stamp-degraded-signals scores @degraded)]
+  (let [result (complexity/complexity-scores
+                (assoc (synonym-source/complexity-scores-opts)
+                       :metabot-scope  (metabot-scope/internal-metabot-scope)
+                       :reads          (appdb-source/reads)
+                       :emit-snowplow? false))]
     (when write?
       (appdb-source/insert-score-row! (task.complexity-score/current-fingerprint) "appdb" result))
     result))
