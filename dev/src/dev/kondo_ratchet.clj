@@ -317,10 +317,11 @@
     (keyword (drop-metabase-prefix (name sym)))))
 
 (defn- alias-note
-  "The suffix ` (also counts :a/x, :b/y)` naming the keys in `aliases` that count under `k`, or an empty string."
-  [aliases k]
+  "The suffix ` (also counts :a/x, :b/y)` naming the keys in `aliases` that count under `k`, or an empty string.
+  Each key is written as `render` returns it."
+  [aliases k render]
   (if-let [names (seq (sort-by str (keep (fn [[alias source]] (when (= k source) alias)) aliases)))]
-    (str " (also counts " (str/join ", " names) ")")
+    (str " (also counts " (str/join ", " (map render names)) ")")
     ""))
 
 (defn discouraged-count-keys
@@ -1066,7 +1067,7 @@
   lowered/dropped/over-budget counts, unused `:unlimited` policies, and ignores with no budget entry, for
   `:ignore-counts` and each [[discouraged-count-field]], then stale discouraged-var and discouraged-namespace ignores.
   The `seeds` are [[resolve-seed]]'s, and `attribution` and `aliases` are [[fix!]]'s `:attribute` and `:aliases`.
-  A seeded, over-budget or missing-budget line for a key that other keys count under names them.
+  Seeded, over-budget and missing-budget lines name the keys that count under theirs.
   Its :comment-exempt is reported separately, via [[stale-exemptions-warning]].
   Shared by [[change-report]] (the prod ratchets file) and [[fix!]]'s pass over the test ratchets file."
   [{:keys [ignore-counts], :as ratchets} occurrences {:keys [unattributed], :as attribution} seeds aliases]
@@ -1084,7 +1085,7 @@
                      actual    (get-in attribution [:actual linter] {})
                      seeded    (get seeds field [])
                      seed-hint (partial discouraged-seed-name linter)
-                     label     #(str % (alias-note aliases %))
+                     label     #(str % (alias-note aliases % str))
                      ;; a bulk seed names every configured symbol, so only those it changes are worth a line
                      reported  (cond->> seeded
                                  (contains? (:bulk seeds) field)
@@ -1382,7 +1383,7 @@
   :comment-exempt, scoped to `occurrences`, plus the unresolved discouraged-var and discouraged-namespace
   findings among them. `attribution` is the `:attribute` result for `occurrences` (see [[fix!]]).
   `ratchets-file` names the file in the not-normalized message, and `render-fn` gives its canonical text.
-  An over-budget line for a key that other keys count under, by `aliases` (see [[fix!]]), names them.
+  An over-budget line names the keys that count under its key, by `aliases` (see [[fix!]]), in `--seed` form.
   Shared by [[check-report]] (the prod ratchets file) and [[check]]'s pass over the test ratchets file."
   [ratchets-file render-fn {:keys [ignore-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
    occurrences {:keys [unresolved], :as attribution} ratchets-text aliases]
@@ -1408,7 +1409,7 @@
                             " increase in the PR:")
                        (map (fn [[k v]]
                               (str (budget-line [(discouraged-seed-name linter k) v])
-                                   (alias-note aliases k)))
+                                   (alias-note aliases k (partial discouraged-seed-name linter))))
                             over))))
              (sort discouragement-linters))
      (when (seq unresolved)

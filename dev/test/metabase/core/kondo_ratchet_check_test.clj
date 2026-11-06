@@ -108,7 +108,7 @@
                     :attribution            {:actual {:discouraged-var {:a/x 2}}}
                     :aliases                {:b/x :a/x, :c/x :a/x, :d/y :d/z}}]
       (is (= ["discouraged-var symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
-              "  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :b/x, :c/x)"]
+              "  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :discouraged-var/b/x, :discouraged-var/c/x)"]
              (report-lines ratchets [] (kondo-ratchet/render ratchets)))))))
 
 (deftest ^:parallel unresolved-discouraged-finding-test
@@ -264,7 +264,7 @@
                               {:attribute (constantly [none over])
                                :aliases   (constantly {:b/x :a/x})})]
       (is (:thrown? result))
-      (is (some #{"  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :b/x)"} (:lines result))))))
+      (is (some #{"  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :discouraged-var/b/x)"} (:lines result))))))
 
 (deftest check-unconfigured-budget-test
   (let [ratchets {:ignore-counts {:a 1}, :discouraged-var-counts {:a/gone 2, :a/x 1}}]
