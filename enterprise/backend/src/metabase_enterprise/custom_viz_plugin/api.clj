@@ -148,7 +148,7 @@
   (let [tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
-            validated    (cache/validate-bundle! bundle-bytes)
+            validated    (cache/check-bundle-icon! (cache/validate-bundle! bundle-bytes))
             identifier   (get-in validated [:manifest :name])
             _            (api/check-400
                           (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
@@ -266,7 +266,8 @@
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (->> (cache/validate-bundle! bundle-bytes)
-                              (cache/check-bundle-identifier! (:identifier existing)))
+                              (cache/check-bundle-identifier! (:identifier existing))
+                              cache/check-bundle-icon!)
             result       (cache/save-bundle! existing validated)]
         (events/publish-event! :event/custom-viz-plugin-update
                                {:object          result
