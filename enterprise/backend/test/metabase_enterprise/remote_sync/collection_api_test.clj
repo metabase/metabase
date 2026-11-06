@@ -10,14 +10,12 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections
   (fn [f]
     (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
       (f))))

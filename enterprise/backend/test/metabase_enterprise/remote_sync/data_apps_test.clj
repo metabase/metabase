@@ -11,7 +11,6 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.lib.core :as lib]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -22,7 +21,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
+  test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
 
 (def ^:private sales-eid "w8YkMQBwU4kOD0-pZ1nJk")
 

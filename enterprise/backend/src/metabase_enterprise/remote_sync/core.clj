@@ -42,15 +42,6 @@
                                    ;; the root collection has no ID, and nothing in it is synced
                                    (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
 
-(defenterprise collection-syncable?
-  "Whether `collection` can be remote-synced: a Collection of a namespace remote sync syncs, the Library and every Collection inside it, and any other once custom collections are on."
-  :feature :none
-  [{:keys [location] :as collection}]
-  (or (not (settings/custom-collection? collection))
-      (settings/remote-sync-custom-collections-enabled)
-      (= collections/library-collection-type
-         (some-> location collections/location-path->ids first collections/root-collection-type-by-id))))
-
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
 
@@ -488,9 +479,6 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
-    (doseq [collection sync-on
-            :when (not (:is_remote_synced collection))]
-      (collections/assert-remote-syncable (assoc collection :is_remote_synced true)))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)

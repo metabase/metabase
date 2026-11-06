@@ -79,9 +79,11 @@
                                          column-viz-settings)
           global-settings              (update-vals (appearance/custom-formatting)
                                                     mb.viz/db->norm-column-settings-entries)
-          updated-card-viz-settings    (-> normalized-card-viz-settings
-                                           (assoc ::mb.viz/column-settings updated-column-viz-settings)
-                                           (assoc ::mb.viz/global-column-settings global-settings))]
+          display                      (-> query :middleware :display)
+          updated-card-viz-settings    (cond-> (-> normalized-card-viz-settings
+                                                   (assoc ::mb.viz/column-settings updated-column-viz-settings)
+                                                   (assoc ::mb.viz/global-column-settings global-settings))
+                                         display (assoc ::mb.viz/display display))]
       (fn update-viz-settings-rff* [metadata]
         (rff (assoc metadata :viz-settings updated-card-viz-settings))))
     rff))

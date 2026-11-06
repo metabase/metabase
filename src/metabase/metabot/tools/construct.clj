@@ -307,7 +307,7 @@
         (tree-seq coll? seq parsed-query)))
 
 (def ^:private unresolved-table-fk-errors
-  #{:unknown-table :ambiguous-table :unknown-database})
+  #{:unknown-table :ambiguous-table :unknown-database :cross-database-table})
 
 ;;; ----- the numeric-id boundary contract -------------------------------------------------
 ;;;
@@ -1194,7 +1194,9 @@
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
        sitting on a column that is not temporal
-       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), and reject a metric whose
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), reject automatic bins on a text
+       column or on a custom column with no known min and max
+       ([[repr.repair/assert-binning-on-numeric-columns!]]), and reject a metric whose
        definition can't run on the stage's source ([[incompatible-metrics]]). Any of these
        failing is a retryable `:agent-error?` - success on a query the editor rejects is
        BOT-1442.
@@ -1262,6 +1264,7 @@
             ;; argument against the same schema.
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query repaired)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
+            _bins-ok      (repr.repair/assert-binning-on-numeric-columns! pmbql-query)
             ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
             _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
                             (throw (metric-source-error mp {:error :incompatible-metric} incompatible-metric-explanation bad)))
@@ -1418,7 +1421,7 @@
    "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a\n"
    "short, human-friendly `title` shown above the resulting chart. Also provide a concise\n"
    "one- or two-sentence `description` of what the chart shows (the metric, the grouping, and\n"
-   "any notable filter); it is used as the saved question's description. See\n"
+   "any notable filter); if the chart is saved, it becomes the description of the saved question. See\n"
    "`resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."))
 
 (defn- chart-instructions
@@ -1431,9 +1434,20 @@
      "Next steps to present the chart to the user:"
      (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
      "- If creating multiple charts, present all chart links"
+     instructions/not-saved-instruction
      (when (shared/tool-offered? "run_query")
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
+
+(defn- query-instructions
+  "What to tell the model to do with a query built without a chart."
+  [query-id]
+  (te/lines
+   "Your query has been created. The user has not been shown it."
+   ""
+   (str "- To read its values, call `run_query` with `query_id` `" query-id "`.")
+   (str "- To let the user open it, link it using: `" (te/link "Link text" "metabase://query/" query-id) "`")
+   instructions/not-saved-instruction))
 
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
@@ -1456,14 +1470,9 @@
           ;; the user sees anything and is always shown.
           show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
       (if-not show-chart?
-        (let [instruction-text (te/lines
-                                "Your query has been created. The user has not been shown it."
-                                ""
-                                (str "To read its values, call `run_query` with `query_id` `"
-                                     (:query-id structured) "`."))]
-          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
-                                           instruction-text)
-           :structured-output (assoc structured :result-type :query)})
+        {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                         (query-instructions (:query-id structured)))
+         :structured-output (assoc structured :result-type :query)}
         (let [chart            (create-chart-tools/create-chart
                                 {:query-id      (:query-id structured)
                                  :chart-type    chart-type

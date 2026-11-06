@@ -17,7 +17,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -36,9 +35,9 @@
       (t2/delete! :model/RemoteSyncObject))))
 
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections (fn [f]
-                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                                                     (clean-remote-sync-state f))))
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (clean-remote-sync-state f))))
 
 ;;; ------------------------------------------- Event Handler Tests -------------------------------------------
 

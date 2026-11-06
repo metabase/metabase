@@ -33,6 +33,7 @@
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
@@ -3701,12 +3702,166 @@
 ;;; Post-resolve gate -- expressions the FE expression editor rejects
 ;;; ============================================================
 
+(def ^:private numeric-aggregation-ops
+  "Aggregations whose first argument must be a number. The first argument of `sum-where` is its value."
+  #{:sum :avg :median :percentile :stddev :var :cum-sum :sum-where})
+
+(defn- numeric-args
+  "The arguments that the clause `[op opts & args]` uses as numbers.
+
+    [:> {} field 100]      => [field]
+    [:= {} field 100]      => []      ; the editor accepts `=` and `!=`
+    [:sum-where {} v cond] => [v]"
+  [[op _opts & args]]
+  (cond
+    (#{:+ :- :* :/} op)                                      args
+    (and (#{:< :<= :> :>= :between} op) (some number? args)) args
+    (numeric-aggregation-ops op)                             (take 1 args)
+    :else                                                    []))
+
+(defn- numerically-used-field-refs
+  "The `:field` refs that `clause` uses as numbers: compared with a number, in arithmetic, or in a numeric aggregation.
+
+  A ref inside a cast is an argument of the cast, so it is not returned."
+  [clause]
+  (for [node  (tree-seq sequential? seq clause)
+        :when (and (vector? node) (keyword? (first node)))
+        arg   (numeric-args node)
+        :when (and (vector? arg) (= :field (first arg)))]
+    arg))
+
+(defn- text-column-refs
+  "The `:field` refs to text columns that `clause` uses as numbers."
+  [query stage-idx clause]
+  (filter #(isa? (lib/type-of query stage-idx %) :type/Text)
+          (numerically-used-field-refs clause)))
+
+(defn- ref-column-name
+  "The column name of the `:field` ref `a-ref`."
+  [query [_ _ id-or-name]]
+  (if (string? id-or-name)
+    id-or-name
+    (:name (lib.metadata.protocols/field (lib/->metadata-provider query) id-or-name))))
+
+(defn- native-card?
+  "Whether the card with `card-id` has a native query."
+  [query card-id]
+  ;; The query of a card is not always MBQL 5 yet (`:metabase.lib.schema.metadata/card`).
+  (let [card-query (:dataset-query (lib.metadata/card query card-id))]
+    (boolean (or (= :native (:type card-query))
+                 (some #(= :mbql.stage/native (:lib/type %)) (:stages card-query))))))
+
+(defn- table-field-ref?
+  "Whether `a-ref` is a `:field` ref to a column that comes from a table field."
+  [query stage-idx a-ref]
+  ;; Only a table field has a casting setting in Table Metadata. A custom column has no field id. The
+  ;; column of a native card comes from its SQL, so the casting of a field mapped to it changes nothing.
+  (try
+    (boolean
+     (when (and (vector? a-ref) (= :field (first a-ref)))
+       (let [{field-id :id, card-id :lib/card-id} (lib/metadata query stage-idx a-ref)]
+         (and (pos-int? field-id)
+              (not (and card-id (native-card? query card-id)))))))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not tell whether a ref names a table field")
+      false)))
+
+(defn- no-cast-hint
+  "The advice for a text column used as a number on a database that supports no cast.
+
+  It names Table Metadata casting only when `table-field?` is true."
+  [table-field?]
+  (str "The query builder cannot convert text to a number on this database. "
+       (if table-field?
+         "An admin can set the column's casting to String → Integer or String → Float in Table Metadata, or use a SQL question."
+         "Use a SQL question instead.")))
+
+(defn- cast-hint
+  "The sentence that tells how to use a text column as a number on the database of `query`.
+
+  It names only the casts that the database supports. When it supports neither, it gives
+  [[no-cast-hint]] for `table-field?`."
+  [query table-field?]
+  (let [casts (cond-> []
+                (lib.metadata/database-supports? query :expressions/integer) (conj "`[\"integer\", {}, <field>]`")
+                (lib.metadata/database-supports? query :expressions/float)   (conj "`[\"float\", {}, <field>]`"))]
+    (if (seq casts)
+      (format "If a text column holds numbers, wrap it in a cast: %s." (str/join " or " casts))
+      (no-cast-hint table-field?))))
+
+(defn- text-column-hint
+  "A sentence to add to the editor's rejection of `clause` when it uses text columns as numbers, or nil."
+  [query stage-idx clause]
+  ;; Return nil on a failure, so that the editor's own error is still sent.
+  (try
+    (let [refs  (vec (text-column-refs query stage-idx clause))
+          names (into [] (comp (keep #(ref-column-name query %)) (distinct)) refs)]
+      (when (seq names)
+        (format " It uses the text column(s) %s as numbers. %s"
+                (str/join ", " (map quoting/quoted names))
+                (cast-hint query (every? #(table-field-ref? query stage-idx %) refs)))))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not list the text columns of a rejected expression")
+      nil)))
+
+(def ^:private cast-features
+  "The database feature that each cast needs. The notebook editor hides a cast without its feature."
+  {:integer :expressions/integer
+   :float   :expressions/float})
+
+(defn- unsupported-cast
+  "The first cast in `clause` that the database of `query` does not support, or nil.
+
+    [:> {} [:integer {} field] 100] => [:integer {} field]   ; on a database without `:expressions/integer`"
+  [query clause]
+  (some (fn [node]
+          (when-let [feature (and (vector? node) (cast-features (first node)))]
+            (when-not (lib.metadata/database-supports? query feature)
+              node)))
+        (tree-seq sequential? seq clause)))
+
+(defn- numeric-expression?
+  "Whether `expr` has a numeric type in stage `stage-idx` of `query`. False when the type is unknown."
+  [query stage-idx expr]
+  (try
+    (isa? (lib/type-of query stage-idx expr) :type/Number)
+    (catch Exception e
+      (log/debug e "[repr-repair] could not compute the type of a cast argument")
+      false)))
+
+(defn- cast-argument-hint
+  "The advice for an unsupported cast of `arg`, from the type of `arg`."
+  [query stage-idx arg]
+  (if (numeric-expression? query stage-idx arg)
+    (str "Its argument is already a number, so remove the cast. To get a whole number, use `round`, "
+         "`floor` or `ceil`, for example `[\"round\", {}, <value>]`.")
+    (cast-hint query (table-field-ref? query stage-idx arg))))
+
+(defn- editor-rejection
+  "Why the query builder's expression editor rejects `clause`, the effect, and a hint to add to the message, or nil.
+
+  The reason is the editor's own diagnostic, or the \"Unsupported function\" error that the editor
+  shows for a cast that the database does not support."
+  [query stage-idx mode pos clause]
+  (if-let [{:keys [message]} (lib.expression/diagnose-expression
+                              query stage-idx mode clause
+                              (when (#{:expression :aggregation} mode) pos))]
+    {:reason (str/replace message #"\.$" "")
+     :effect "The query would build but could not be visualized or saved - rewrite the offending clause."
+     :hint   (text-column-hint query stage-idx clause)}
+    (when-let [[op _opts arg] (unsupported-cast query clause)]
+      {:reason (str "Unsupported function " (name op))
+       :effect "The query builder cannot edit this clause on this database - rewrite it."
+       :hint   (str " " (cast-argument-hint query stage-idx arg))})))
+
 (defn assert-editor-accepts-expressions!
   "Validate resolved query expressions with the query builder's expression editor.
 
   Check custom columns, aggregations and filters with [[metabase.lib.expression/diagnose-expression]],
   and throw a retryable `:agent-error?` for the first rejected clause. Return `pmbql-query` if every
-  clause passes.
+  clause passes. When the rejected clause uses text columns as numbers, the message names them and
+  tells how to convert them. Like the editor, reject an `integer` or `float` cast that the database
+  does not support.
 
   `pmbql-query` must already pass `::lib.schema/query` validation with expression type checks
   suppressed. Otherwise, schema errors can hide the clause's error message.
@@ -3718,17 +3873,16 @@
                            [:aggregation (lib/aggregations pmbql-query stage-idx)]
                            [:filter      (lib/filters      pmbql-query stage-idx)]]
            [pos clause]   (map-indexed vector clauses)]
-     (when-let [{:keys [message]} (lib.expression/diagnose-expression
-                                   pmbql-query stage-idx mode clause
-                                   (when (#{:expression :aggregation} mode) pos))]
+     (when-let [{:keys [reason effect hint]} (editor-rejection pmbql-query stage-idx mode pos clause)]
        (let [original-idx (repr/original-stage-index repaired-query stage-idx)
              where (case mode
                      :expression  "custom column (`expressions:`)"
                      :aggregation "`aggregation:`"
                      :filter      "`filters:`")]
          (throw (ex-info
-                 (format "The query builder's expression editor rejects a %s clause in stage %s: %s. The query would build but could not be visualized or saved - rewrite the offending clause."
-                         where original-idx (str/replace message #"\.$" ""))
+                 (str (format "The query builder's expression editor rejects a %s clause in stage %s: %s. %s"
+                              where original-idx reason effect)
+                      hint)
                  {:agent-error? true
                   :error        :expression-editor-rejection
                   :status-code  400
@@ -3838,6 +3992,142 @@
              ;; and anything narrower leaks past `execute-representations-query`'s relay as a 500
              (catch Throwable e
                ;; re-throw our own complaint; swallow lib's failure to resolve the ref
+               (when (:agent-error? (ex-data e))
+                 (throw e)))))))
+     nil))
+  pmbql-query)
+
+(defn- supported-cast-op
+  "The cast that the database of `query` supports, `\"integer\"` first, or nil."
+  [query]
+  (cond
+    (lib.metadata/database-supports? query :expressions/integer) "integer"
+    (lib.metadata/database-supports? query :expressions/float)   "float"))
+
+(defn- case-example
+  "A `case` bucket example that compares `value` with 100 and 500."
+  [value]
+  (format "`[\"case\", {}, [[[\"<=\", {}, %1$s, 100], \"1-100\"], [[\"<=\", {}, %1$s, 500], \"101-500\"]], \"Over 500\"]`"
+          value))
+
+(def ^:private case-advice
+  "Build a `case` custom column with explicit ranges instead, and break out by it.")
+
+(defn- bin-hint
+  "The advice for a bin rejection of a text column on the database of `query`.
+
+  `table-field?` tells whether the column comes from a table field."
+  [query table-field?]
+  ;; With a cast, the advice does not invite the LLM to cast and then bin: the LLM did that in 2 of 2
+  ;; live runs. Without a cast, it gives no `case` advice, because the editor gate rejects a `case`
+  ;; that compares text with numbers there.
+  (if-let [cast-op (supported-cast-op query)]
+    (str case-advice " Put the cast inside each condition, for example "
+         (case-example (format "[\"%s\", {}, <field>]" cast-op))
+         ", where <field> is the column's ref without `binning`.")
+    (no-cast-hint table-field?)))
+
+(defn- unbounded-bin-hint
+  "The advice for a bin rejection of a numeric column with no known min and max, on the database of `query`."
+  [query]
+  ;; The column is numeric, so a `case` that compares it with numbers passes the editor gate. A cast
+  ;; column of an earlier stage is the live-test case: the cast then goes inside each condition.
+  (if-let [cast-op (supported-cast-op query)]
+    (str case-advice " If the column is a cast of a text column, put the cast inside each condition, for example "
+         (case-example (format "[\"%s\", {}, <field>]" cast-op))
+         ", where <field> is the ref of the text column.")
+    (str case-advice " For example " (case-example "<field>")
+         ", where <field> is the column's ref without `binning`.")))
+
+(defn- custom-column-ref?
+  "Whether `a-ref` names a custom column of this stage or of an earlier stage."
+  [query stage-number a-ref]
+  (try
+    (let [column (lib/metadata query stage-number a-ref)]
+      (or (= :source/expressions (:lib/source column))
+          (some? (:lib/original-expression-name column))))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not tell whether a binned ref names a custom column")
+      false)))
+
+(defn- assert-binned-ref-is-not-text!
+  "Throw when the binned ref `clause` names a text column."
+  [query stage-number clause]
+  ;; `lib/with-binning` has no method for an `:expression` ref, so remove the option directly.
+  (let [bare-ref    (update clause 1 dissoc :binning)
+        column-type (lib/type-of query stage-number bare-ref)]
+    (when (isa? column-type :type/Text)
+      (throw (ex-info (str (format "%s is a text column, so it cannot be split into automatic bins. "
+                                   (quoting/quoted (lib/display-name query stage-number bare-ref)))
+                           ;; A text custom column is often the `case` bucket that `bin-hint` advises.
+                           (if (custom-column-ref? query stage-number bare-ref)
+                             (str "Remove `binning` from its ref, and break out by the column as it is"
+                                  (if (supported-cast-op query) "." ", or use a SQL question."))
+                             (str "Automatic bins need a numeric column with a known min and max. "
+                                  (bin-hint query (table-field-ref? query stage-number bare-ref)))))
+                      {:agent-error? true
+                       :error        :binning-on-non-numeric-column
+                       :status-code  400
+                       :column-type  column-type
+                       :clause       clause})))))
+
+(defn- binning-bounds
+  "The min and max that the QP bins the `:field` ref `a-ref` by in stage `stage-number`, or nil."
+  [query stage-number [_ _ id-or-name :as a-ref]]
+  ;; The same rule as `update-binning-strategy` in [[metabase.query-processor.middleware.binning]]: the
+  ;; column's numeric fingerprint, narrowed by the `between` and comparison filters of the same stage.
+  (lib.binning.util/extract-bounds id-or-name
+                                   (:fingerprint (lib/metadata query stage-number a-ref))
+                                   (lib.binning.util/filters->field-map (lib/filters query stage-number))))
+
+(defn- assert-binned-ref-has-bounds!
+  "Throw when the binned `:field` ref `clause` names a custom column with no known min and max."
+  [query stage-number clause]
+  ;; Only a custom column: the QP gets the min and max of a field from its fingerprint, and this
+  ;; check does not judge whether sync has fingerprinted a field.
+  (let [bare-ref (lib/update-options clause dissoc :binning)]
+    (when (and (custom-column-ref? query stage-number bare-ref)
+               (nil? (binning-bounds query stage-number bare-ref)))
+      (throw (ex-info (str (format "%s has no known min and max, so it cannot be split into automatic bins. "
+                                   (quoting/quoted (lib/display-name query stage-number bare-ref)))
+                           (unbounded-bin-hint query))
+                      {:agent-error? true
+                       :error        :binning-on-non-numeric-column
+                       :status-code  400
+                       :clause       clause})))))
+
+(defn- assert-binned-ref-is-binnable!
+  "Throw when the binned ref `clause` names a text column, or, in a stage clause, a custom column without bounds."
+  [query stage-number clause stage-clause?]
+  (assert-binned-ref-is-not-text! query stage-number clause)
+  ;; The QP computes the bounds of a binned `:field` ref in a stage clause only, not in a join condition.
+  (when (and stage-clause? (= :field (first clause)))
+    (assert-binned-ref-has-bounds! query stage-number clause)))
+
+(defn assert-binning-on-numeric-columns!
+  "Throw a retryable `:agent-error?` when a resolved ref with `binning` cannot be binned, or return `pmbql-query`.
+
+  A ref cannot be binned when it names a text column, or a custom column with no known min and max
+  and no `between` or comparison filter on it in the same stage. A text column that an admin coerced
+  to a number is not text here. A ref whose column cannot be resolved is skipped."
+  [pmbql-query]
+  ;; Without this check the query fails at run time: the QP needs a min and max to bin by. The
+  ;; skip of an unresolved ref and the stage path of a join condition's refs are the same as in
+  ;; [[assert-temporal-buckets-on-temporal-columns!]], which explains them.
+  (lib.walk/walk-clauses
+   pmbql-query
+   (fn [query path-type path clause]
+     (let [opts (when (vector? clause) (nth clause 1 nil))]
+       (when (and (map? opts)
+                  (:binning opts)
+                  (contains? #{:field :expression} (nth clause 0 nil)))
+         (let [stage-path (if (and (= path-type :lib.walk/join) (not (:join-alias opts)))
+                            (lib.walk/join-parent-stage-path path)
+                            path)]
+           (try
+             (lib.walk/apply-f-for-stage-at-path assert-binned-ref-is-binnable! query stage-path clause
+                                                 (= path-type :lib.walk/stage))
+             (catch Throwable e
                (when (:agent-error? (ex-data e))
                  (throw e)))))))
      nil))

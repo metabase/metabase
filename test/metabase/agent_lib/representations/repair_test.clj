@@ -4534,3 +4534,184 @@
                    (lib/filter orders-query (lib/= bucketed "2025-01-01")))
                   nil
                   (catch clojure.lang.ExceptionInfo e (ex-message e))))))))
+
+;;; ============================================================
+;;; Editor gate - the cast hint for text columns used as numbers (BOT-1482)
+;;; ============================================================
+
+(deftest ^:parallel numerically-used-field-refs-test
+  (let [text-field [:field {} "user_high"]
+        used       #(#'repair/numerically-used-field-refs %)]
+    (testing "a field is used as a number"
+      (testing "under a comparison with a number"
+        (doseq [op [:< :<= :> :>=]]
+          (is (= [text-field] (used [op {} text-field 100])))))
+      (testing "under `between` with numbers"
+        (is (= [text-field] (used [:between {} text-field 1 100]))))
+      (testing "as an argument of arithmetic"
+        (doseq [op [:+ :- :* :/]]
+          (is (= [text-field] (used [op {} text-field 1])))))
+      (testing "as the argument of a numeric aggregation"
+        (doseq [op [:sum :avg :median :stddev :var :cum-sum]]
+          (is (= [text-field] (used [op {} text-field]))))
+        (is (= [text-field] (used [:percentile {} text-field 0.5])))
+        (is (= [text-field] (used [:sum-where {} text-field [:= {} [:field {} "ID"] 1]]))))
+      (testing "nested in a larger clause"
+        (is (= [text-field] (used [:case {} [[[:> {} text-field 100] "big"]] "small"])))))
+    (testing "a field is not used as a number"
+      (testing "under `=` or `!=` with a number"
+        (is (empty? (used [:= {} text-field 100])))
+        (is (empty? (used [:!= {} text-field 100]))))
+      (testing "when compared with a string"
+        (is (empty? (used [:> {} text-field "100"]))))
+      (testing "inside a cast"
+        (is (empty? (used [:> {} [:integer {} text-field] 100])))
+        (is (empty? (used [:sum {} [:float {} text-field]]))))
+      (testing "under `max` or `min`"
+        (is (empty? (used [:max {} text-field])))
+        (is (empty? (used [:min {} text-field]))))
+      (testing "as the condition of `sum-where`"
+        (is (= [[:field {} "ID"]] (used [:sum-where {} [:field {} "ID"] [:= {} text-field "1"]])))))))
+
+(defn- query-with-features
+  "A query on a database that has `features`."
+  [features]
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "Sample" :features features}
+             :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+             :fields   [{:id 100 :name "ID" :table-id 10 :base-type :type/Integer}]})]
+    (lib/query mp (lib.metadata/table mp 10))))
+
+(deftest ^:parallel cast-hint-test
+  (let [hint         #(#'repair/cast-hint (query-with-features %) true)
+        integer-cast "[\"integer\", {}, <field>]"
+        float-cast   "[\"float\", {}, <field>]"]
+    (testing "integer only"
+      (is (str/includes? (hint #{:expressions/integer}) integer-cast))
+      (is (not (str/includes? (hint #{:expressions/integer}) float-cast))))
+    (testing "float only"
+      (is (str/includes? (hint #{:expressions/float}) float-cast))
+      (is (not (str/includes? (hint #{:expressions/float}) integer-cast))))
+    (testing "both"
+      (is (str/includes? (hint #{:expressions/integer :expressions/float}) integer-cast))
+      (is (str/includes? (hint #{:expressions/integer :expressions/float}) float-cast)))
+    (testing "neither: no cast, and the options that remain"
+      (let [fallback (hint #{})]
+        (is (not (str/includes? fallback "[\"integer\"")))
+        (is (not (str/includes? fallback "[\"float\"")))
+        (is (str/includes? fallback "Table Metadata"))
+        (is (str/includes? fallback "SQL question"))))
+    (testing "neither, for a column that is not a table field: only the SQL question"
+      (let [fallback (#'repair/cast-hint (query-with-features #{}) false)]
+        (is (not (str/includes? fallback "Table Metadata")))
+        (is (str/includes? fallback "SQL question"))))))
+
+(def ^:private mp-cast-sources
+  "CHURNS with a text field, an MBQL model and a SQL model over it, each with that field's id on a column."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 30 :name "CHURNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 302 :name "user_high" :table-id 30 :base-type :type/Text}]
+    :cards    [{:id              600
+                :database-id     1
+                :type            :model
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 30}]}
+                :result-metadata [{:name "user_high" :base-type :type/Text :id 302 :table-id 30}
+                                  {:name "Users Text" :base-type :type/Text}]}
+               {:id              601
+                :database-id     1
+                :type            :model
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/native :native "SELECT user_high FROM churns"}]}
+                :result-metadata [{:name "user_high" :base-type :type/Text :id 302 :table-id 30}]}]}))
+
+(deftest ^:parallel table-field-ref?-test
+  (let [mp          mp-cast-sources
+        by-name     (fn [column-name] [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text} column-name])
+        table-field (fn [query stage-idx a-ref] (#'repair/table-field-ref? query stage-idx a-ref))]
+    (testing "a table field"
+      (is (true? (table-field (lib/query mp (lib.metadata/table mp 30)) 0
+                              (lib/ref (lib.metadata/field mp 302))))))
+    (testing "a column of an MBQL model that comes from a table field"
+      (is (true? (table-field (lib/query mp (lib.metadata/card mp 600)) 0 (by-name "user_high")))))
+    (testing "a model custom column"
+      (is (false? (table-field (lib/query mp (lib.metadata/card mp 600)) 0 (by-name "Users Text")))))
+    (testing "a column of a SQL model mapped to a table field"
+      (is (false? (table-field (lib/query mp (lib.metadata/card mp 601)) 0 (by-name "user_high")))))
+    (testing "a custom column of an earlier stage"
+      (let [query (-> (lib/query mp (lib.metadata/table mp 30))
+                      (lib/expression "Users Range" (lib/concat "n" (lib.metadata/field mp 302)))
+                      lib/append-stage)]
+        (is (false? (table-field query 1 (by-name "Users Range"))))
+        (testing "and a table field of an earlier stage"
+          (is (true? (table-field query 1 (by-name "user_high")))))))
+    (testing "a clause that is not a `:field` ref"
+      (is (false? (table-field (lib/query mp (lib.metadata/table mp 30)) 0
+                               (lib/concat "n" (lib.metadata/field mp 302))))))))
+
+;;; ============================================================
+;;; Post-resolve check - automatic bins on text columns (BOT-1482)
+;;; ============================================================
+
+(def ^:private mp-text-users
+  "ORDERS with a text column that holds numbers, and PRODUCTS to join to."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample" :features #{:expressions/integer}}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "user_high"  :table-id 10 :base-type :type/Text
+                :display-name "Max No. of Users"}
+               {:id 102 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
+                :fk-target-field-id 200}
+               {:id 103 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
+               {:id 201 :name "PRICE"      :table-id 20 :base-type :type/Float}]}))
+
+(defn- text-users-ref [field-id]
+  (lib/ref (lib.metadata/field mp-text-users field-id)))
+
+(defn- binned [a-ref]
+  (lib/with-binning a-ref {:strategy :num-bins :num-bins 10}))
+
+(defn- binning-error!
+  "The `:error` code and the message that the bin check throws for `query`, or nil."
+  [query]
+  (try
+    (repair/assert-binning-on-numeric-columns! query)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      [(:error (ex-data e)) (ex-message e)])))
+
+(deftest assert-binning-on-numeric-columns-test
+  (let [orders (lib/query mp-text-users (lib.metadata/table mp-text-users 10))]
+    (testing "a binned text column is rejected, and the message names it and gives the cast"
+      (let [[code msg] (binning-error! (lib/breakout orders (binned (text-users-ref 101))))]
+        (is (= :binning-on-non-numeric-column code))
+        (is (str/includes? msg "\"Max No. of Users\""))
+        (is (str/includes? msg "`case`"))
+        (is (str/includes? msg "[\"<=\", {}, [\"integer\", {}, <field>], 100]"))
+        (is (not (str/includes? msg "`between`")))
+        (is (not (str/includes? msg "wrap it in a cast")))))
+    (testing "a binned numeric column passes, and the query comes back"
+      (let [query (lib/breakout orders (binned (text-users-ref 100)))]
+        (is (= query (repair/assert-binning-on-numeric-columns! query)))))
+    (testing "a temporal bucket without `binning` is not this check's concern"
+      (is (nil? (binning-error! (lib/breakout orders (lib/with-temporal-bucket (text-users-ref 103) :month))))))
+    (testing "a binned ref whose type cannot be resolved is skipped"
+      (is (nil? (binning-error! (assoc-in (lib/breakout orders (binned (text-users-ref 100)))
+                                          [:stages 0 :breakout 0 2] 999)))))
+    (testing "in a join condition, each ref is checked against its own stage"
+      (let [join     (lib/join-clause (lib.metadata/table mp-text-users 20)
+                                      [(lib/= (text-users-ref 102) (text-users-ref 200))])
+            joined   (lib/join orders join)
+            alias    (lib/current-join-alias (first (lib/joins joined)))
+            with-lhs (fn [query lhs] (assoc-in query [:stages 0 :joins 0 :conditions 0 2] lhs))]
+        (testing "a binned text column of the parent stage is rejected"
+          (is (= :binning-on-non-numeric-column
+                 (first (binning-error! (with-lhs joined (binned (text-users-ref 101))))))))
+        (testing "a binned numeric column of the join passes"
+          (is (nil? (binning-error! (with-lhs joined (binned (lib/with-join-alias (text-users-ref 201) alias)))))))))))

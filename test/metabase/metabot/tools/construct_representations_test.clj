@@ -960,7 +960,10 @@
           (is (some? e))
           (is (true? (:agent-error? (ex-data e))))
           (is (= :expression-editor-rejection (:error (ex-data e))))
-          (is (= :filter (:mode (ex-data e)))))))))
+          (is (= :filter (:mode (ex-data e))))
+          (testing "no text column is involved, so there is no cast hint"
+            (is (not (str/includes? (ex-message e) "text column")))
+            (is (not (str/includes? (ex-message e) "[\"integer\"")))))))))
 
 (deftest query-not-runnable-explanation-gate-test
   (testing (str "The runnability backstop returns nil for a runnable resolved query and a\n"
@@ -3678,3 +3681,525 @@
             (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
                    (:code classified)))
             (is (str/includes? (tools.error/recoverable-text classified #{}) expected))))))))
+
+;;; BOT-1482: a text column that holds numbers, used as a number
+
+(def ^:private text-model-entity-id
+  "A valid 21-char NanoID for the model card in [[mp-text-model]]."
+  "mOd123_456DefGhI789_K")
+
+(defn- mp-text-model
+  "A model over CHURNS whose `user_high` column is text that holds numbers, on a database with `features`.
+
+  The column's display name is \"Max No. of Users\", as in the BOT-1482 report. Like a real model
+  column, it keeps the id of its table field. \"Users Text\" stands for a model custom column: it has
+  no field id."
+  [features]
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample" :features features}
+    :tables   [{:id 30 :name "CHURNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 300 :name "ID"        :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "ACCOUNT"   :table-id 30 :base-type :type/Text}
+               {:id 302 :name "user_high" :table-id 30 :base-type :type/Text
+                :display-name "Max No. of Users"}]
+    :cards    [{:id              600
+                :name            "Enterprise Churns"
+                :database-id     1
+                :type            :model
+                :entity-id       text-model-entity-id
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 30}]}
+                :result-metadata [{:name "ID"         :display-name "ID"               :base-type :type/Integer
+                                   :id   300          :table-id     30}
+                                  {:name "ACCOUNT"    :display-name "Account"          :base-type :type/Text
+                                   :id   301          :table-id     30}
+                                  {:name "user_high"  :display-name "Max No. of Users" :base-type :type/Text
+                                   :id   302          :table-id     30}
+                                  {:name "Users Text" :display-name "Users Text"       :base-type :type/Text}]}]}))
+
+(def ^:private cast-features
+  #{:expressions/integer :expressions/float})
+
+(defn- with-text-model-mp-and-stubs! [features f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] (mp-text-model features))
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 600 :database_id 1 :entity_id text-model-entity-id})
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
+(defn- text-model-query
+  "A one-stage query on the text-column model, with `stage-keys` merged into the stage."
+  [stage-keys]
+  {"lib/type" "mbql/query"
+   "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                       "source-card" text-model-entity-id}
+                      stage-keys)]})
+
+(defn- text-table-query
+  "A one-stage query on the CHURNS table of [[mp-text-model]], with `stage-keys` merged into the stage."
+  [stage-keys]
+  {"lib/type" "mbql/query"
+   "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                       "source-table" ["Sample" "PUBLIC" "CHURNS"]}
+                      stage-keys)]})
+
+(def ^:private churns-user-high
+  "The portable FK of the CHURNS `user_high` text field."
+  ["Sample" "PUBLIC" "CHURNS" "user_high"])
+
+(defn- user-tier-case
+  "The BOT-1482 range bucketing of `users`, a ref to the text column or a cast of it."
+  [users]
+  ["case" {} [[["between" {} users 1 100] "1-100"]
+              [["between" {} users 101 500] "101-500"]]
+   "500+"])
+
+(defn- text-model-rejection! [features stage-keys]
+  (with-text-model-mp-and-stubs! features #(editor-rejection (text-model-query stage-keys))))
+
+(defn- text-model-builds! [features stage-keys]
+  (with-text-model-mp-and-stubs!
+    features
+    #(some? (construct/execute-representations-query (query-data (text-model-query stage-keys))))))
+
+(deftest editor-gate-numeric-comparison-on-text-column-hints-cast-test
+  (testing "BOT-1482: a rejected comparison of a text column with a number names the column and the cast"
+    (doseq [[label stage-keys] {"T1: between in a case, ref by display name"
+                                {"expressions" {"User Tier" (user-tier-case ["field" {} "Max No. of Users"])}}
+
+                                "T4: > in a filter"
+                                {"filters" [[">" {} ["field" {} "user_high"] 100]]}}]
+      (testing label
+        (let [e (text-model-rejection! cast-features stage-keys)]
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (str/includes? (ex-message e) "\"user_high\""))
+          (is (str/includes? (ex-message e) "[\"integer\", {}, <field>]"))
+          (is (str/includes? (ex-message e) "[\"float\", {}, <field>]")))))))
+
+(deftest editor-gate-sum-on-text-column-hints-cast-test
+  (testing "the sum of a text column is rejected, and the error names the column and the cast"
+    (let [e (text-model-rejection! cast-features {"aggregation" [["sum" {} ["field" {} "user_high"]]]})]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (str/includes? (ex-message e) "\"user_high\""))
+      (is (str/includes? (ex-message e) "[\"integer\", {}, <field>]")))))
+
+(deftest editor-gate-text-cast-hint-without-cast-features-test
+  (testing "without the cast features, the hint names no cast and points to Table Metadata"
+    (let [e (text-model-rejection! #{} {"filters" [[">" {} ["field" {} "user_high"] 100]]})]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (str/includes? (ex-message e) "\"user_high\""))
+      (is (str/includes? (ex-message e) "Table Metadata"))
+      (is (not (str/includes? (ex-message e) "[\"integer\"")))
+      (is (not (str/includes? (ex-message e) "[\"float\""))))))
+
+(deftest editor-gate-text-cast-hint-for-field-id-ref-test
+  (testing "a text field of a source table, referred to by its portable FK, is named in the cast hint"
+    (let [e (with-text-model-mp-and-stubs!
+              cast-features
+              #(editor-rejection (text-table-query {"filters" [[">" {} ["field" {} churns-user-high] 100]]})))]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (str/includes? (ex-message e) "\"user_high\""))
+      (is (str/includes? (ex-message e) "[\"integer\", {}, <field>]")))))
+
+(deftest editor-gate-text-cast-hint-names-each-column-once-test
+  (testing "two text columns in one rejected clause are both named, once each"
+    ;; `or`, because the repair pass splits a top-level `and` filter into one filter per condition.
+    (let [e   (text-model-rejection! cast-features
+                                     {"filters" [["or" {}
+                                                  [">" {} ["field" {} "user_high"] 100]
+                                                  ["<" {} ["field" {} "user_high"] 900]
+                                                  [">" {} ["field" {} "ACCOUNT"] 5]]]})
+          msg (ex-message e)]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (= 1 (count (re-seq #"\"user_high\"" msg))))
+      (is (= 1 (count (re-seq #"\"ACCOUNT\"" msg)))))))
+
+(deftest editor-gate-cast-text-column-builds-test
+  (testing "the same bucketing builds when the text column is cast first"
+    (doseq [cast-op ["integer" "float"]]
+      (testing cast-op
+        (is (text-model-builds!
+             cast-features
+             {"expressions" {"User Tier" (user-tier-case [cast-op {} ["field" {} "user_high"]])}}))))))
+
+(deftest editor-gate-equals-number-on-text-column-builds-test
+  (testing "`=` against a number on a text column is not rejected, so no hint is given"
+    (is (text-model-builds! cast-features {"filters" [["=" {} ["field" {} "user_high"] 100]]}))))
+
+(deftest editor-gate-max-on-text-column-builds-test
+  (testing "`max` of a text column is not rejected"
+    (is (text-model-builds! cast-features {"aggregation" [["max" {} ["field" {} "user_high"]]]}))))
+
+(deftest editor-gate-coerced-text-column-gets-no-cast-hint-test
+  (testing "ISO-8601 text coerced to a timestamp is not a text column, so a rejection carries no hint"
+    (with-coerced-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [[">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT_ISO"]] 100]]}]})]
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (not (str/includes? (ex-message e) "text column"))))))))
+
+;;; BOT-1482: automatic bins on a text column
+
+(defn- rejection-code-and-message
+  "Call `f` and return the `:error` code and the message of the exception that it throws.
+
+  Returns `[nil \"\"]` when `f` throws nothing."
+  [f]
+  (try
+    (f)
+    [nil ""]
+    (catch clojure.lang.ExceptionInfo e
+      [(:error (ex-data e)) (str (ex-message e))])))
+
+(defn- text-model-rejection-code-and-message! [features stage-keys]
+  (rejection-code-and-message
+   #(with-text-model-mp-and-stubs!
+      features
+      (fn [] (construct/execute-representations-query (query-data (text-model-query stage-keys)))))))
+
+(defn- binned-count [ref]
+  {"aggregation" [["count" {}]]
+   "breakout"    [ref]})
+
+(def ^:private text-column-bins
+  {"num-bins 10 on the column name"
+   ["field" {"binning" {"strategy" "num-bins" "num-bins" 10}} "user_high"]
+
+   "default strategy"
+   ["field" {"binning" {"strategy" "default"}} "user_high"]
+
+   "num-bins 10 on the display name, as in the live test"
+   ["field" {"binning" {"strategy" "num-bins" "num-bins" 10}} "Max No. of Users"]})
+
+(deftest binning-on-text-column-rejected-test
+  (testing "BOT-1482: automatic bins on a text column are rejected before the run, with the `case` advice"
+    (doseq [[label ref] text-column-bins]
+      (testing label
+        (testing "on a database with the cast features"
+          (let [[code msg] (text-model-rejection-code-and-message! cast-features (binned-count ref))]
+            (is (= :binning-on-non-numeric-column code))
+            (is (str/includes? msg "\"Max No. of Users\""))
+            (is (str/includes? msg "`case`"))
+            (testing "the cast goes inside each `case` condition"
+              (is (str/includes? msg "[\"<=\", {}, [\"integer\", {}, <field>], 100]")))
+            (testing "the message does not invite a cast column to bin (live test, 2 of 2 runs)"
+              (is (not (str/includes? msg "wrap it in a cast")))
+              (is (not (str/includes? msg "`between`"))))))
+        (testing "on a database with `float` only, the example casts with `float`"
+          (let [[_ msg] (text-model-rejection-code-and-message! #{:expressions/float} (binned-count ref))]
+            (is (str/includes? msg "[\"<=\", {}, [\"float\", {}, <field>], 100]"))
+            (is (not (str/includes? msg "[\"integer\"")))))
+        (testing "on a database without the cast features"
+          (let [[code msg] (text-model-rejection-code-and-message! #{} (binned-count ref))]
+            (is (= :binning-on-non-numeric-column code))
+            (testing "no `case` advice: the editor gate rejects a `case` that compares text with numbers here"
+              (is (not (str/includes? msg "`case`"))))
+            (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
+            (is (str/includes? msg "String → Integer or String → Float"))
+            (is (str/includes? msg "Table Metadata"))
+            (is (str/includes? msg "SQL question"))
+            (is (not (str/includes? msg "[\"integer\"")))
+            (is (not (str/includes? msg "[\"float\"")))))))))
+
+(deftest binning-hint-example-builds-test
+  (testing "the `case` example of the bin rejection builds, with the text column in place of <field>"
+    (let [users ["integer" {} ["field" {} "user_high"]]]
+      (with-text-model-mp-and-stubs!
+        cast-features
+        #(is (some? (construct/execute-representations-query
+                     (query-data (text-model-query
+                                  {"expressions" {"Users Range" ["case" {} [[["<=" {} users 100] "1-100"]
+                                                                            [["<=" {} users 500] "101-500"]]
+                                                                 "Over 500"]}
+                                   "aggregation" [["count" {}]]
+                                   "breakout"    [["expression" {} "Users Range"]]})))))))))
+
+(deftest binning-on-text-custom-column-of-earlier-stage-test
+  (testing "a binned text custom column of an earlier stage gets no `case` advice again, only \"remove `binning`\""
+    (let [users      ["integer" {} ["field" {} "user_high"]]
+          [code msg] (rejection-code-and-message
+                      #(with-text-model-mp-and-stubs!
+                         cast-features
+                         (fn []
+                           (construct/execute-representations-query
+                            (query-data
+                             {"lib/type" "mbql/query"
+                              "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                           "source-card" text-model-entity-id
+                                           "expressions" {"Users Range" ["case" {} [[["<=" {} users 100] "1-100"]
+                                                                                    [["<=" {} users 500] "101-500"]]
+                                                                         "Over 500"]}}
+                                          {"lib/type"    "mbql.stage/mbql"
+                                           "aggregation" [["count" {}]]
+                                           "breakout"    [["field" {"binning" {"strategy" "num-bins" "num-bins" 10}}
+                                                           "Users Range"]]}]})))))]
+      (is (= :binning-on-non-numeric-column code))
+      (is (str/includes? msg "\"Users Range\""))
+      (is (str/includes? msg "Remove `binning`"))
+      (is (not (str/includes? msg "`case`"))))))
+
+(defn- binned-count-builds? [stage]
+  (some? (construct/execute-representations-query
+          (query-data {"lib/type" "mbql/query"
+                       "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                                           "aggregation" [["count" {}]]}
+                                          stage)]}))))
+
+(deftest binning-on-numeric-column-builds-test
+  (testing "automatic bins on a numeric column still build"
+    (doseq [binning [{"strategy" "num-bins" "num-bins" 10}
+                     {"strategy" "default"}]]
+      (testing (str binning)
+        (testing "on a field-id ref of a source table"
+          (with-mp-and-stubs!
+            #(is (binned-count-builds?
+                  {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                   "breakout"     [["field" {"binning" binning} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}))))
+        (testing "on a by-name ref of a source card"
+          (with-card-mp-and-stubs!
+            #(is (binned-count-builds?
+                  {"source-card" card-entity-id
+                   "breakout"    [["field" {"binning" binning} "TOTAL"]]}))))))))
+
+(def ^:private mp-coerced-text-number
+  "CHURNS with a text column that an admin coerced to a float."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 30 :name "CHURNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 300 :name "ID"        :table-id 30 :base-type :type/Integer}
+               {:id 302 :name "user_high" :table-id 30 :base-type :type/Text
+                :effective-type :type/Float :coercion-strategy :Coercion/String->Float}]}))
+
+(deftest binning-on-coerced-text-column-builds-test
+  (testing "a text column coerced to a number is not text, so automatic bins on it build"
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced-text-number)
+                                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                api/read-check                                  allow-read-check
+                                api/query-check                                 allow-read-check]
+      (is (binned-count-builds?
+           {"source-table" ["Sample" "PUBLIC" "CHURNS"]
+            "breakout"     [["field" {"binning" {"strategy" "num-bins" "num-bins" 10}}
+                             ["Sample" "PUBLIC" "CHURNS" "user_high"]]]})))))
+
+;;; BOT-1482: automatic bins on a column with no known min and max
+
+(defn- two-stage-query
+  "A query with the `stage-0` keys on `source`, and a second stage with the `stage-1` keys."
+  [source stage-0 stage-1]
+  {"lib/type" "mbql/query"
+   "stages"   [(merge {"lib/type" "mbql.stage/mbql"} source stage-0)
+               (merge {"lib/type" "mbql.stage/mbql"} stage-1)]})
+
+(def ^:private ten-bins
+  {"binning" {"strategy" "num-bins" "num-bins" 10}})
+
+(deftest binning-on-cast-column-of-earlier-stage-rejected-test
+  (testing "live test run 4: stage 0 casts the text column, stage 1 bins the cast column, which has no known min and max"
+    (let [[code msg] (rejection-code-and-message
+                      #(with-text-model-mp-and-stubs!
+                         cast-features
+                         (fn []
+                           (construct/execute-representations-query
+                            (query-data
+                             (two-stage-query {"source-card" text-model-entity-id}
+                                              {"expressions" {"Max Users Int" ["integer" {} ["field" {} "user_high"]]}}
+                                              (binned-count ["field" ten-bins "Max Users Int"])))))))]
+      (is (= :binning-on-non-numeric-column code))
+      (is (str/includes? msg "\"Max Users Int\""))
+      (is (str/includes? msg "no known min and max"))
+      (is (str/includes? msg "`case`"))
+      (testing "the example puts the cast inside each condition"
+        (is (str/includes? msg "[\"<=\", {}, [\"integer\", {}, <field>], 100]")))
+      (is (not (str/includes? msg "`between`"))))))
+
+(def ^:private orders-total
+  ["Sample" "PUBLIC" "ORDERS" "TOTAL"])
+
+(def ^:private total-times-two
+  {"expressions" {"Total x2" ["*" {} ["field" {} orders-total] 2]}})
+
+(deftest binning-on-numeric-custom-column-of-earlier-stage-rejected-test
+  (testing "a numeric custom column of an earlier stage has no known min and max, so binning it is rejected"
+    (let [[code msg] (rejection-code-and-message
+                      #(with-mp-and-stubs!
+                         (fn []
+                           (construct/execute-representations-query
+                            (query-data
+                             (two-stage-query {"source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                              total-times-two
+                                              (binned-count ["field" ten-bins "Total x2"])))))))]
+      (is (= :binning-on-non-numeric-column code))
+      (is (str/includes? msg "\"Total x2\""))
+      (is (str/includes? msg "no known min and max"))
+      (testing "on a database without a cast, the `case` example has no cast"
+        (is (str/includes? msg "[\"<=\", {}, <field>, 100]"))
+        (is (not (str/includes? msg "[\"integer\"")))
+        (is (not (str/includes? msg "convert text")))))))
+
+(deftest binning-on-custom-column-bounded-by-a-filter-builds-test
+  (testing "a `between` filter in the same stage gives the custom column a min and max, as in the QP"
+    (with-mp-and-stubs!
+      #(is (some? (construct/execute-representations-query
+                   (query-data
+                    (two-stage-query {"source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                     total-times-two
+                                     (assoc (binned-count ["field" ten-bins "Total x2"])
+                                            "filters" [["between" {} ["field" {} "Total x2"] 0 200]])))))))))
+
+(def ^:private total-fingerprint
+  {:type {:type/Number {:min 1.0 :max 160.0}}})
+
+(def ^:private model-entity-id
+  "A valid 21-char NanoID for the model card in [[mp-fingerprinted]]."
+  "fPr123_456DefGhI789_K")
+
+(def ^:private mp-fingerprinted
+  "ORDERS with a fingerprinted TOTAL, and a model over ORDERS whose TOTAL column keeps the field id and fingerprint."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"    :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL" :table-id 10 :base-type :type/Float :fingerprint total-fingerprint}]
+    :cards    [{:id              700
+                :name            "Orders model"
+                :database-id     1
+                :type            :model
+                :entity-id       model-entity-id
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 10}]}
+                :result-metadata [{:name "ID"    :display-name "ID"    :base-type :type/Integer
+                                   :id   100     :table-id     10}
+                                  {:name "TOTAL" :display-name "Total" :base-type :type/Float
+                                   :id   101     :table-id     10      :fingerprint total-fingerprint}]}]}))
+
+(deftest binning-on-fingerprinted-columns-builds-test
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-fingerprinted)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 700 :database_id 1 :entity_id model-entity-id})
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (testing "a fingerprinted numeric table field"
+      (is (binned-count-builds? {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "breakout"     [["field" ten-bins orders-total]]})))
+    (testing "a model column backed by a fingerprinted field"
+      (is (binned-count-builds? {"source-card" model-entity-id
+                                 "breakout"    [["field" ten-bins "TOTAL"]]})))
+    (testing "a fingerprinted field of an earlier stage"
+      (is (some? (construct/execute-representations-query
+                  (query-data
+                   (two-stage-query {"source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                    {"filters" [[">" {} ["field" {} orders-total] 1]]}
+                                    (binned-count ["field" ten-bins "TOTAL"])))))))))
+
+(deftest binning-on-text-custom-column-without-cast-gives-sql-option-test
+  (testing "live test run 4 (SQLite): without a cast, the \"remove `binning`\" advice also names a SQL question"
+    (let [stage-0   {"expressions" {"Users Label" ["concat" {} "n" ["field" {} "user_high"]]}}
+          rejection (fn [features]
+                      (rejection-code-and-message
+                       #(with-text-model-mp-and-stubs!
+                          features
+                          (fn []
+                            (construct/execute-representations-query
+                             (query-data
+                              (two-stage-query {"source-card" text-model-entity-id}
+                                               stage-0
+                                               (binned-count ["field" ten-bins "Users Label"]))))))))]
+      (testing "without the cast features"
+        (let [[code msg] (rejection #{})]
+          (is (= :binning-on-non-numeric-column code))
+          (is (str/includes? msg "Remove `binning`"))
+          (is (str/includes? msg "SQL question"))
+          (is (not (str/includes? msg "Table Metadata")))))
+      (testing "with the cast features, no SQL option"
+        (let [[code msg] (rejection cast-features)]
+          (is (= :binning-on-non-numeric-column code))
+          (is (str/includes? msg "Remove `binning`"))
+          (is (not (str/includes? msg "SQL question"))))))))
+
+;;; BOT-1482: `integer` and `float` need their database feature, as in the notebook editor
+
+(defn- cast-in-a-case [cast-op]
+  {"expressions" {"User Tier" (user-tier-case [cast-op {} ["field" {} "user_high"]])}})
+
+(defn- cast-in-a-filter [cast-op]
+  {"filters" [[">" {} [cast-op {} ["field" {} "user_high"]] 100]]})
+
+(deftest cast-function-without-feature-rejected-test
+  (testing "without the feature, `integer` and `float` are rejected as the notebook editor rejects them"
+    (doseq [cast-op               ["integer" "float"]
+            [label stage-keys-fn] {"in a custom column" cast-in-a-case
+                                   "in a filter"        cast-in-a-filter}]
+      (testing (str cast-op " " label)
+        (let [[code msg] (text-model-rejection-code-and-message! #{} (stage-keys-fn cast-op))]
+          (is (= :expression-editor-rejection code))
+          (is (str/includes? msg (str "Unsupported function " cast-op)))
+          (is (str/includes? msg "Table Metadata"))
+          (testing "the message says that the editor cannot edit the clause, not that the query cannot be visualized"
+            (is (str/includes? msg "cannot edit this clause"))
+            (is (not (str/includes? msg "could not be visualized")))))))))
+
+(deftest cast-function-without-feature-advice-follows-argument-type-test
+  (testing "without the feature, the advice for a rejected cast follows the type of the cast's argument"
+    ;; `integer`, because the editor's own type check rejects `float` of a number first.
+    (testing "a numeric argument: drop the cast or round, and no text advice"
+      (let [[code msg] (text-model-rejection-code-and-message!
+                        #{} {"filters" [[">" {} ["integer" {} ["field" {} "ID"]] 1]]})]
+        (is (= :expression-editor-rejection code))
+        (is (str/includes? msg "Unsupported function integer"))
+        (is (str/includes? msg "`round`"))
+        (is (not (str/includes? msg "text")))
+        (is (not (str/includes? msg "Table Metadata")))))
+    (doseq [[label stage-keys]
+            {"a text custom column of the same stage"
+             {"expressions" {"Users Label" ["concat" {} "n" ["field" {} "user_high"]]
+                             "Users Num"   ["integer" {} ["expression" {} "Users Label"]]}}
+
+             "a `substring` of a text column"
+             {"filters" [[">" {} ["integer" {} ["substring" {} ["field" {} "user_high"] 1 3]] 100]]}}]
+      (testing (str label ": the text advice, without Table Metadata, because the argument is not a table field")
+        (let [[code msg] (text-model-rejection-code-and-message! #{} stage-keys)]
+          (is (= :expression-editor-rejection code))
+          (is (str/includes? msg "Unsupported function integer"))
+          (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
+          (is (str/includes? msg "SQL question"))
+          (is (not (str/includes? msg "Table Metadata")))
+          (is (not (str/includes? msg "`round`"))))))))
+
+(deftest cast-function-partial-feature-test
+  (testing "each cast needs its own feature"
+    (let [float-only #{:expressions/float}]
+      (testing "`integer` is rejected, and the hint names only the `float` cast"
+        (let [[code msg] (text-model-rejection-code-and-message! float-only (cast-in-a-case "integer"))]
+          (is (= :expression-editor-rejection code))
+          (is (str/includes? msg "Unsupported function integer"))
+          (is (str/includes? msg "[\"float\", {}, <field>]"))
+          (is (not (str/includes? msg "[\"integer\", {}, <field>]")))))
+      (testing "`float` builds"
+        (is (text-model-builds! float-only (cast-in-a-case "float")))))))
+
+(deftest no-cast-advice-names-table-metadata-only-for-table-fields-test
+  (testing "without the cast features, Table Metadata casting is advised only for a column that comes from a table field"
+    (doseq [[label query-fn ref table-field?]
+            [["a table field"                           text-table-query ["field" {} churns-user-high] true]
+             ["a model column backed by a table field"  text-model-query ["field" {} "user_high"]       true]
+             ["a model custom column"                   text-model-query ["field" {} "Users Text"]      false]]]
+      (testing label
+        (doseq [[gate stage-keys] {"the editor gate" {"filters" [[">" {} ref 100]]}
+                                   "the bin gate"    (binned-count (assoc ref 1 {"binning" {"strategy" "default"}}))}]
+          (testing gate
+            (let [[_ msg] (rejection-code-and-message
+                           #(with-text-model-mp-and-stubs!
+                              #{}
+                              (fn [] (construct/execute-representations-query (query-data (query-fn stage-keys))))))]
+              (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
+              (is (str/includes? msg "SQL question"))
+              (is (= table-field? (str/includes? msg "Table Metadata"))))))))))

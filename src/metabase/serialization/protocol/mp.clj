@@ -97,6 +97,39 @@
             :path         path
             :database-id  (:id (lib.metadata/database metadata-provider))}))
 
+(defn- database-mismatch-ex-info
+  "Build the agent-facing error for a portable table FK that names a database other than `metadata-provider`'s.
+
+  It is `:cross-database-table` when the name finds another database, and `:unknown-table` otherwise."
+  [metadata-provider [path-db-name :as path]]
+  (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)
+        ;; This tells the agent nothing new, since the query's first stage already finds its database by name.
+        named-db-id     (when (and (string? path-db-name)
+                                   (app-db-backed-provider? metadata-provider))
+                          (:id (first (serialization.db/databases-by-names [path-db-name] [:id]))))
+        ;; A MySQL app DB compares names without case, so the name can find this query's own database.
+        other-database? (and (some? named-db-id)
+                             (not= named-db-id current-db-id))]
+    (if other-database?
+      (ex-info (tru "Portable table FK {0} references database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                    (pr-str path)
+                    (pr-str path-db-name)
+                    (pr-str current-db))
+               {:status-code  400
+                :error        :cross-database-table
+                :agent-error? true
+                :path         path
+                :database-id  current-db-id})
+      (ex-info (tru "Portable table FK references database {0}, but metadata provider is for {1}."
+                    (pr-str path-db-name)
+                    (pr-str current-db))
+               {:status-code  400
+                :error        :unknown-table
+                :agent-error? true
+                :path         path
+                :expected-db  current-db
+                :database-id  current-db-id}))))
+
 (defn- table-candidates
   "Resolve `(schema, table-name)` against `metadata-provider`, returning only active tables.
 
@@ -121,30 +154,29 @@
     (filter :active app-db-rows)
     (matching-tables-via-provider metadata-provider schema table-name)))
 
-(declare import-database-by-name)
-
 (defn- find-table
   "The `{:id :db_id :schema :name}` row of the one active Table with the `[db-name schema table-name]` ref in the
   database of `metadata-provider`, throwing an agent-facing error, which carries the provider's unchecked
   `:database-id`, when the ref names another database, or when there is no such Table or several."
   [metadata-provider [db-name schema table-name]]
-  (import-database-by-name metadata-provider db-name)
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)
-        path                                  [current-db schema table-name]
-        candidates                            (table-candidates metadata-provider current-db-id schema table-name)]
-    (case (count candidates)
-      0 (throw (unknown-table-ex-info metadata-provider path))
-      1 {:id (:id (first candidates)) :db_id current-db-id :schema schema :name table-name}
-      ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
-      ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
-      ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
-      (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates."
-                           (pr-str path) (count candidates))
-                      {:status-code  400
-                       :error        :ambiguous-table
-                       :agent-error? true
-                       :path         path
-                       :database-id  current-db-id})))))
+        path                                  [current-db schema table-name]]
+    (when-not (= db-name current-db)
+      (throw (database-mismatch-ex-info metadata-provider [db-name schema table-name])))
+    (let [candidates (table-candidates metadata-provider current-db-id schema table-name)]
+      (case (count candidates)
+        0 (throw (unknown-table-ex-info metadata-provider path))
+        1 {:id (:id (first candidates)) :db_id current-db-id :schema schema :name table-name}
+        ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
+        ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
+        ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
+        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates."
+                             (pr-str path) (count candidates))
+                        {:status-code  400
+                         :error        :ambiguous-table
+                         :agent-error? true
+                         :path         path
+                         :database-id  current-db-id}))))))
 
 (defn- field-path
   "The `[db-name schema table-name & field-names]` ref of the Field named `field-name` under the Field with

@@ -9,11 +9,13 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-util :as lib.tu]
    [metabase.serialization.core :as serialization]
+   [metabase.serialization.db :as serialization.db]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.serialization.resolve :as resolve]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -305,15 +307,31 @@
               (is (not (re-find #"RAW" msg))))))))))
 
 (deftest ^:parallel import-table-fk-error-test-4
-  (testing "database name mismatch fails on the database, which resolves before its tables"
+  (testing "database name mismatch"
     (let [r (import-store mp-simple)]
       (try
         (import-table r ["Different" "PUBLIC" "ORDERS"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
           (let [d (ex-data e)]
-            (is (= :unknown-database (:error d)))
-            (is (= "Sample" (:expected-db d)))))))))
+            (is (= :unknown-table (:error d)))
+            (is (= "Sample" (:expected-db d)))
+            (is (true? (:agent-error? d)))))))))
+
+(deftest import-table-fk-names-another-database-test
+  (let [r        (import-store (lib-be/application-database-metadata-provider (mt/id)))
+        error-of (fn [db-name]
+                   (try
+                     (import-table r [db-name "PUBLIC" "ORDERS"])
+                     (catch clojure.lang.ExceptionInfo e
+                       (:error (ex-data e)))))]
+    (testing "a name that finds another database is a cross-database reference"
+      (mt/with-temp [:model/Database {other-db :name} {:name "Other Database"}]
+        (is (= :cross-database-table (error-of other-db)))))
+    (testing "a name that finds this query's own database is an unknown table"
+      ;; A MySQL app DB compares database names without case, so it finds the current database by a case variant.
+      (mt/with-dynamic-fn-redefs [serialization.db/databases-by-names (constantly [{:id (mt/id)}])]
+        (is (= :unknown-table (error-of (u/upper-case-en (:name (mt/db))))))))))
 
 (deftest ^:parallel import-table-fk-error-test-5
   (testing "fuzzy substring suggestions are NOT surfaced (info-leak guard)"

@@ -1,1 +1,6 @@
-export { DataAppBuildGuide, DataAppBuildSteps } from "./DataAppBuildGuide";
+export {
+  DataAppBuildDocsLink,
+  DataAppBuildGuide,
+  getDataAppsIntroDescription,
+  getDataAppsIntroTitle,
+} from "./DataAppBuildGuide";

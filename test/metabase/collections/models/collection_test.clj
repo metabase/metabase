@@ -17,15 +17,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 

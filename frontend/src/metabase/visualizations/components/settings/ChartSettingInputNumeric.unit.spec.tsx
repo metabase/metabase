@@ -75,6 +75,16 @@ describe("ChartSettingInputNumber", () => {
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
 
+  // for consistency with Mantine's NumberInput
+  // (see https://github.com/metabase/metabase/pull/86158)
+  it("allows comma as a decimal separator", async () => {
+    const { input, onChange } = setup();
+
+    await type({ input, value: "1,23" });
+    expect(input).toHaveDisplayValue("1.23");
+    expect(onChange).toHaveBeenCalledWith(1.23);
+  });
+
   it("allows scientific notation", async () => {
     const { input, onChange } = setup();
 

@@ -17,7 +17,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -33,9 +32,9 @@
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections (fn [f]
-                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                                                     (test-helpers/clean-remote-sync-state f))))
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (test-helpers/clean-remote-sync-state f))))
 
 (defn- count-definition
   "A Measure definition counting the rows of the Table `table-id` in the Database `db-id`."
