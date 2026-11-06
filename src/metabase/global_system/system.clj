@@ -321,10 +321,19 @@
    Each comes before every component it uses in `graph`, directly or through components that are not running.
    Components with no such path between them come in the reverse of their first-start order."
   [graph]
-  (let [running  @started-components
-        position (zipmap @start-order (range))
-        ;; every running component uses a placeholder, so each is a node even when it has no edges
-        graph    (reduce #(dep/depend %1 %2 ::placeholder) graph (keys running))]
+  (let [running     @started-components
+        position    (zipmap @start-order (range))
+        ;; the running components and what they use, directly or not; a user that is not running holds nothing back
+        relevant    (into (set (keys running)) (dep/transitive-dependencies-set graph (keys running)))
+        ;; an object no component key can equal, used by every relevant component, so each is a node even when it
+        ;; has no edges
+        placeholder (Object.)
+        graph       (reduce (fn [g k]
+                              (reduce #(dep/depend %1 k %2)
+                                      (dep/depend g k placeholder)
+                                      (dep/immediate-dependencies graph k)))
+                            (dep/graph)
+                            relevant)]
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
     ;; greatest position last
     (keep #(get-in running [% :handle])
