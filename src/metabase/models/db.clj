@@ -169,6 +169,16 @@
                                           [:in filter-column filter-ids])]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
+(mu/defn database-name
+  "The name of the Database with `database-id`, or nil."
+  [database-id :- [:maybe ::lib.schema.id/database]]
+  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
+
+(mu/defn timeline-ids-of-events
+  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
+  [event-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+
 (mu/defn update-entity!
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
   [id     :- [:or :int :string]
@@ -191,19 +201,19 @@
   [entities :- ::model-rows]
   (t2/insert! (:model entities) (:rows entities)))
 
-(mu/defn delete-entity!
-  "Delete the `model` row with `id`, returning the number deleted."
-  [model :- [:or :keyword symbol?]
-   id    :- [:maybe [:or :int :string]]]
-  ;; `model` is any model, so match on its own primary key, which may not be `:id`.
-  (t2/delete! model :toucan/pk id))
-
 (mu/defn delete-entities-with-ids!
   "Delete the `model` rows whose `id-column` is one of `ids`, returning the number deleted."
   [model     :- [:or :keyword symbol?]
    id-column :- :keyword
    ids       :- [:sequential [:or :int :string]]]
   (t2/delete! model id-column [:in ids]))
+
+(mu/defn delete-entity!
+  "Delete the `model` row with `id`, returning the number deleted."
+  [model :- [:or :keyword symbol?]
+   id    :- [:maybe [:or :int :string]]]
+  ;; `model` is any model, so match on its own primary key, which may not be `:id`.
+  (t2/delete! model :toucan/pk id))
 
 (mu/defn delete-children!
   "Delete the `model` rows whose `parent-column` is `parent-id`, returning the number deleted."
@@ -254,11 +264,6 @@
   "The id, Database id, name, and schema of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id))
-
-(mu/defn database-name
-  "The name of the Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
 (mu/defn database-id-by-name
   "The id of the Database named `database-name`, or nil."
@@ -358,11 +363,6 @@
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
-
-(mu/defn timeline-ids-of-events
-  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
-  [event-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
 
 (mu/defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."
