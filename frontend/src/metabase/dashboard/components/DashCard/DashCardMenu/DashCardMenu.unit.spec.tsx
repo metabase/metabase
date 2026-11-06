@@ -15,13 +15,14 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
-  createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
@@ -32,47 +33,37 @@ import {
 
 import { DashCardMenu } from "./DashCardMenu";
 
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
+);
+
 const TEST_CARD = createMockCard({
   can_write: true,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_SLUG = `${TEST_CARD.id}-${TEST_CARD.name.toLocaleLowerCase()}`;
 
 const TEST_CARD_NATIVE = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: {
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
       query: "SELECT * FROM ORDERS",
-    },
-  }),
+    }),
+  ),
 });
 
 const TEST_CARD_MODEL = createMockCard({
   can_write: true,
   type: "model",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_METRIC = createMockCard({
   can_write: true,
   type: "metric",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_CARD_NO_DATA_ACCESS = createMockCard({
@@ -84,12 +75,7 @@ const TEST_CARD_NO_DATA_ACCESS = createMockCard({
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
   can_write: false,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: ORDERS_QUERY,
 });
 
 const TEST_RESULT = createMockDataset();
