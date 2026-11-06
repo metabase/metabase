@@ -49,6 +49,23 @@
 
 ;;; Capture wiring
 
+(deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
+  (testing "the revisions and moderation reviews a card delete removes don't enqueue re-derivations of their own"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {id :id} {}
+                     :model/Revision         _        {:model       "Card"
+                                                       :model_id    id
+                                                       :user_id     (mt/user->id :crowberto)
+                                                       :object      {}
+                                                       :is_creation true
+                                                       :most_recent true}
+                     :model/ModerationReview _        {:moderated_item_type "card"
+                                                       :moderated_item_id   id
+                                                       :moderator_id        (mt/user->id :crowberto)
+                                                       :status              "verified"
+                                                       :most_recent         true}]
+        (is (= 1 (count (capture-enqueues! #(t2/delete! :model/Card :id id)))))))))
+
 (deftest capture-fields-disabled-without-engine-test
   (testing "delete capture is skipped entirely, with no pre-select, when no search engine is active"
     (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]

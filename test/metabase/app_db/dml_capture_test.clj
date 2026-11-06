@@ -168,6 +168,74 @@
       (is (= 1 (call-count))))
     (is (empty? (events)))))
 
+;;; `::pk-transformed-bird` transforms its pk, so capture can't trust a literal pk to be the stored value.
+(methodical/defmethod t2.model/table-name ::pk-transformed-bird [_] table-name)
+(derive ::pk-transformed-bird :metabase/model)
+(t2/deftransforms ::pk-transformed-bird {:id {:in identity, :out identity}})
+(defmethod dml-capture/capture-fields ::pk-transformed-bird [_ _op] [:id])
+(defmethod dml-capture/captured! ::pk-transformed-bird [_ event] (swap! captured conj event))
+
+(defn- pk-delete-statements!
+  "Delete with the args `args-fn` builds from two fresh `::bird` ids, capturing only `:id`.
+  Returns the statement count, the captured rows and the inserted ids."
+  [args-fn]
+  (reset-capture!)
+  (swap! bird-capture-fields assoc :delete [:id])
+  (let [ids (t2/insert-returning-pks! ::bird [(bird 90 "a") (bird 90 "b")])]
+    (reset! captured [])
+    (try
+      (t2/with-call-count [call-count]
+        (apply t2/delete! ::bird (args-fn ids))
+        {:statements (call-count)
+         :rows       (set (:rows (first (events))))
+         :expected   ids})
+      (finally
+        (t2/query [(str "DELETE FROM " table-name " WHERE group_id = 90")])))))
+
+(deftest pk-only-capture-needs-no-snapshot-query-test
+  (testing "a delete by literal pk builds its rows from the pks when capture only asks for the pk"
+    ;; Each shape maps to its args and how many of the two ids it names.
+    (doseq [[shape [args-fn n]] {"a lone pk"        [(fn [ids] [(first ids)])          1]
+                                 ":id [:in ids]"    [(fn [ids] [:id [:in ids]])        2]
+                                 ":id [:in #{ids}]" [(fn [ids] [:id [:in (set ids)]])  2]
+                                 ":toucan/pk [:in]" [(fn [ids] [:toucan/pk [:in ids]]) 2]
+                                 ":id [:= id]"      [(fn [ids] [:id [:= (first ids)]]) 1]}]
+      (testing shape
+        (let [{:keys [statements rows expected]} (pk-delete-statements! args-fn)]
+          (is (= {:statements 1, :rows (set (map (fn [id] {:id id}) (take n expected)))}
+                 {:statements statements, :rows rows}))))))
+  (testing "pks that match nothing are still reported"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :delete [:id])
+    (t2/with-call-count [call-count]
+      (is (= 0 (t2/delete! ::bird :id [:in [-1 -2]])))
+      (is (= 1 (call-count))))
+    (is (=? [{:rows [{:id -1} {:id -2}]}] (events))))
+  (testing "any other condition alongside the pk still takes the snapshot query"
+    (is (=? {:statements 2}
+            (pk-delete-statements! (fn [ids] [:id [:in ids] :group_id 90])))))
+  (testing "a pk with a transform still takes the snapshot query"
+    (reset-capture!)
+    (let [id (first (t2/insert-returning-pks! ::bird [(bird 91 "a")]))]
+      (reset! captured [])
+      (derive ::pk-transformed-bird dml-capture/hook)
+      (try
+        (t2/with-call-count [call-count]
+          (t2/delete! ::pk-transformed-bird :id id)
+          (is (= 2 (call-count))))
+        (finally
+          (underive ::pk-transformed-bird dml-capture/hook)))
+      (is (=? [{:rows [{:id id}]}] (events)))))
+  (testing "more pks than the ceiling skip capture without falling back to the snapshot query"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :delete [:id])
+    ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+    (with-redefs [dml-capture/max-pre-image-rows 2]
+      (t2/with-call-count [call-count]
+        (t2/delete! ::bird :id [:in [-1 -2 -3]])
+        (is (= 1 (call-count)))))
+    (is (empty? (events)))))
+
 (deftest zero-rows-no-event-test
   (testing "a delete matching zero rows delivers no event"
     (reset-capture!)
@@ -206,6 +274,13 @@
     (reset-capture!)
     (let [id (t2/insert-returning-pk! ::bird (bird 65 "a"))]
       (is (=? [(re-pattern (str "(?is)\\s*DELETE\\b.*\\b" id))] (t2/compile (t2/delete! ::bird :id id))))
+      (is (empty? (events)))
+      (is (true? (t2/exists? ::bird :id id)))))
+  (testing "the same holds for a delete whose rows come from its primary keys, with no snapshot query"
+    (reset-capture!)
+    (swap! bird-capture-fields assoc :delete [:id])
+    (let [id (t2/insert-returning-pk! ::bird (bird 66 "a"))]
+      (t2/compile (t2/delete! ::bird :id id))
       (is (empty? (events)))
       (is (true? (t2/exists? ::bird :id id))))))
 
