@@ -881,8 +881,8 @@
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
           (set-user-local-value! setting-name new-value)
-          ;; one cache state for the restore, the existence check and the updates, so they cannot split across caches
-          ;; if the app DB this thread sees changes midway
+          ;; one cache state for the whole write. Its reads and writes still go to the app DB this thread sees, which
+          ;; must not change during the write; only tests swap app DBs.
           (let [cache-state (setting.cache/current-state)]
             ;; make sure we're not trying to set the value of a Database-local-only Setting
             (when-not (allows-site-wide-values? setting)
