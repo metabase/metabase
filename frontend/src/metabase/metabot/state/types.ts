@@ -177,7 +177,8 @@ export type MetabotSavedDashboard = {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
-  savedDashboard: MetabotSavedDashboard | null;
+  // The latest save of each dashboard Metabot saved, by dashboard
+  dashboardSaveIds: Partial<Record<DashboardId, string>>;
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;

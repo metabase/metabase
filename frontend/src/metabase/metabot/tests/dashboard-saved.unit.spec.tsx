@@ -1,10 +1,14 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useListCollectionItemsQuery } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
@@ -14,6 +18,7 @@ import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMes
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
 import { getRouterLocation, navigate } from "metabase/router";
+import { setBasename } from "metabase/utils/basename";
 import {
   createMockUser,
   createMockUserMetabotPermissions,
@@ -23,7 +28,7 @@ import { MetabotProvider } from "../context";
 import { useOnMetabotDashboardSave } from "../hooks/use-on-metabot-dashboard-save";
 import { dashboardSaved } from "../state";
 import { sendAgentRequest } from "../state/actions";
-import { getSavedChartCardId, getSavedDashboard } from "../state/selectors";
+import { getDashboardSaveId, getSavedChartCardId } from "../state/selectors";
 
 import { convoForAgent, createTestMetabotState } from "./utils";
 
@@ -64,6 +69,11 @@ const viewing = (pathname: string) => ({
   key: "default",
 });
 
+const CollectionItemsProbe = () => {
+  useListCollectionItemsQuery({ id: 31 });
+  return null;
+};
+
 const ChatMessagesProbe = () => {
   const { conversationId, messages } = useMetabotAgent("omnibot");
 
@@ -99,7 +109,13 @@ const setupStore = (ui: React.ReactElement) => {
 
 const streamDashboardSaved = async (
   value: DashboardSavedValue,
-  { isFullPageMetabot = false }: { isFullPageMetabot?: boolean } = {},
+  {
+    isFullPageMetabot = false,
+    store = setupStore(<ChatMessagesProbe />),
+  }: {
+    isFullPageMetabot?: boolean;
+    store?: ReturnType<typeof setupStore>;
+  } = {},
 ) => {
   mockedAiStreamingQuery.mockImplementation(async (_request, callbacks) => {
     callbacks?.onStart?.({ type: "start", messageId: "msg_dashboard_saved" });
@@ -107,7 +123,6 @@ const streamDashboardSaved = async (
     return { aborted: false, toolCalls: [], data: [] };
   });
 
-  const store = setupStore(<ChatMessagesProbe />);
   await act(async () => {
     await store.dispatch(
       sendAgentRequest({
@@ -150,10 +165,22 @@ describe("metabot > dashboard_saved", () => {
       await screen.findByRole("link", { name: "Open dashboard" }),
     ).toHaveAttribute("href", "/dashboard/43");
     expect(getSavedChartCardId(store.getState(), "chart-a")).toBe(501);
-    expect(getSavedDashboard(store.getState())).toEqual({
-      dashboardId: 43,
-      saveId: "call-1",
+    expect(getDashboardSaveId(store.getState(), 43)).toBe("call-1");
+  });
+
+  it("refetches the dashboard's collection", async () => {
+    setupCollectionItemsEndpoint({
+      collection: { id: 31 },
+      collectionItems: [],
     });
+    const itemsFetches = () =>
+      fetchMock.callHistory.calls("path:/api/collection/31/items").length;
+    const store = setupStore(<CollectionItemsProbe />);
+    await waitFor(() => expect(itemsFetches()).toBe(1));
+
+    await streamDashboardSaved(createDashboardSaved(), { store });
+
+    await waitFor(() => expect(itemsFetches()).toBe(2));
   });
 
   it("opens the dashboard when the save asks for it", async () => {
@@ -167,6 +194,17 @@ describe("metabot > dashboard_saved", () => {
       viewing("/dashboard/43-churn-overview"),
     );
     await streamDashboardSaved(createDashboardSaved());
+
+    expect(mockedNavigate).not.toHaveBeenCalled();
+  });
+
+  it("doesn't open the dashboard the user is viewing under a subpath", async () => {
+    setBasename("/metabase");
+    mockedGetRouterLocation.mockReturnValue(
+      viewing("/metabase/dashboard/43-churn-overview"),
+    );
+    await streamDashboardSaved(createDashboardSaved());
+    setBasename("");
 
     expect(mockedNavigate).not.toHaveBeenCalled();
   });
@@ -189,9 +227,11 @@ describe("metabot > dashboard_saved", () => {
 });
 
 describe("useOnMetabotDashboardSave", () => {
+  // shows dashboard 42 until "Switch" moves it to dashboard 43
   const SaveProbe = ({ onSave }: { onSave: () => void }) => {
-    useOnMetabotDashboardSave(42, onSave);
-    return null;
+    const [dashboardId, setDashboardId] = useState(42);
+    useOnMetabotDashboardSave(dashboardId, onSave);
+    return <button onClick={() => setDashboardId(43)}>Switch</button>;
   };
 
   const save = (dashboardId: number, saveId: string) =>
@@ -211,6 +251,18 @@ describe("useOnMetabotDashboardSave", () => {
     expect(onSave).toHaveBeenCalledTimes(2);
   });
 
+  it("sees its save when a save of another dashboard follows in the same tick", () => {
+    const onSave = jest.fn();
+    const store = setupStore(<SaveProbe onSave={onSave} />);
+
+    act(() => {
+      store.dispatch(save(42, "call-1"));
+      store.dispatch(save(43, "call-2"));
+    });
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores saves of other dashboards", () => {
     const onSave = jest.fn();
     const store = setupStore(<SaveProbe onSave={onSave} />);
@@ -218,6 +270,18 @@ describe("useOnMetabotDashboardSave", () => {
     act(() => {
       store.dispatch(save(43, "call-1"));
     });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("ignores an earlier save of a dashboard it switches to", async () => {
+    const onSave = jest.fn();
+    const store = setupStore(<SaveProbe onSave={onSave} />);
+    act(() => {
+      store.dispatch(save(43, "call-1"));
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Switch" }));
 
     expect(onSave).not.toHaveBeenCalled();
   });

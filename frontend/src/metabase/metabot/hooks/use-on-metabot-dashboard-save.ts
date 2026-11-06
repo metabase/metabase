@@ -3,27 +3,32 @@ import { useEffect, useRef } from "react";
 import { useSelector } from "metabase/redux";
 import type { DashboardId } from "metabase-types/api";
 
-import { getSavedDashboard } from "../state/selectors";
+import { getDashboardSaveId } from "../state/selectors";
 
 /**
  * Calls `onSave` each time Metabot saves the dashboard with `dashboardId`.
- * Saves made before the calling component mounted are ignored, since a page that mounts afterwards
- * loads the saved dashboard anyway.
+ * Saves made before the component showed this dashboard are ignored, since it loads the dashboard then anyway.
  */
 export const useOnMetabotDashboardSave = (
   dashboardId: DashboardId | undefined,
   onSave: () => void,
 ) => {
-  const savedDashboard = useSelector(getSavedDashboard);
-  const handledSaveId = useRef(savedDashboard?.saveId);
+  const saveId = useSelector((state) =>
+    dashboardId === undefined
+      ? undefined
+      : getDashboardSaveId(state, dashboardId),
+  );
+  const seen = useRef({ dashboardId, saveId });
 
   useEffect(() => {
-    if (!savedDashboard || savedDashboard.saveId === handledSaveId.current) {
-      return;
-    }
-    handledSaveId.current = savedDashboard.saveId;
-    if (savedDashboard.dashboardId === dashboardId) {
+    const previous = seen.current;
+    seen.current = { dashboardId, saveId };
+    if (
+      previous.dashboardId === dashboardId &&
+      saveId !== undefined &&
+      saveId !== previous.saveId
+    ) {
       onSave();
     }
-  }, [savedDashboard, dashboardId, onSave]);
+  }, [dashboardId, saveId, onSave]);
 };

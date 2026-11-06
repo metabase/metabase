@@ -72,6 +72,24 @@ describe("useRegisterDashboardMetabotContext", () => {
     );
   });
 
+  it("leaves out a tab that hasn't been saved yet", async () => {
+    const onContext = setup({
+      tabs: [
+        createMockDashboardTab({ id: 101, dashboard_id: 42, name: "Revenue" }),
+        createMockDashboardTab({ id: -2, dashboard_id: 42, name: "New tab" }),
+      ],
+      selectedTabId: -2,
+    });
+
+    await waitFor(() =>
+      expect(onContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_is_viewing: [{ type: "dashboard", id: 42 }],
+        }),
+      ),
+    );
+  });
+
   it("sends only the dashboard when it has no tabs", async () => {
     const onContext = setup({ selectedTabId: null });
 
