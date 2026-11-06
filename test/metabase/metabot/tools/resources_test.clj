@@ -1535,10 +1535,12 @@
           (is (< (idx "Tab One") (idx "Tab Two") (idx "Empty Tab"))))
         (testing "dashcards come grouped by tab, not interleaved by raw row/col"
           (is (< (idx "Legacy Heading") (idx "First Tab Heading") (idx "Second Tab Heading"))))
-        (testing "items carry the tab_id that add mutations accept; nil-tab dashcards get the first tab's"
-          ;; tab1: its <tab> element + the legacy (nil-tab) heading + the first-tab heading
-          (is (= 3 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
-          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))))))
+        (testing "items carry the tab_id that add mutations accept"
+          ;; each tab: its <tab> element + its heading
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))
+        (testing "a dashcard with no tab shows on every tab, so it carries all_tabs instead"
+          (is (re-find #"<item [^>]*all_tabs=\"true\"[^>]*>Legacy Heading" output)))))))
 
 (deftest read-dashboard-items-includes-virtual-dashcards-test
   (mt/with-current-user (mt/user->id :crowberto)

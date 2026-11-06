@@ -1063,7 +1063,8 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :tab_id :row :col :size_x :size_y :name :uri :database_id :collection_id :table_id :can_write
+  [:type :id :dashcard_id :tab_id :all_tabs :row :col :size_x :size_y :name :uri
+   :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :sql_unavailable :timestamp])
 
@@ -1096,7 +1097,8 @@
       :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
-   block ahead of the items; items reference tabs via their `tab_id` attribute.
+   block ahead of the items; items reference tabs via their `tab_id` attribute, and an item on every tab has
+   `all_tabs`.
 
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
