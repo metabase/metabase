@@ -307,13 +307,13 @@
   [search-model ids]
   [:in (search.ingestion.query/doc-id-expression search-model) (vec ids)])
 
-(defn- requested-documents
-  "The `[search-model id]` pairs an update names, which [[bulk-ingest!]] purges if they no longer resolve."
-  [[search-model where-clause :as update]]
-  (let [[op expr ids] where-clause]
-    (if (and (= :in op) (= expr (search.ingestion.query/doc-id-expression search-model)))
-      (map (fn [id] [search-model (str id)]) ids)
-      (some-> (extract-model-and-id update) vector))))
+;; Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
+;; nulled rather than deleted still has a document, and must not be purged.
+(defn existing-doc-ids
+  "Which of `ids` `search-model` still produces a document for, or nil past [[max-enumerated-documents]]."
+  [search-model ids]
+  (when (seq ids)
+    (doc-ids search-model (doc-id-selector search-model ids))))
 
 (defn bulk-ingest!
   "Process the given search model updates."
@@ -326,14 +326,14 @@
                              ;; init collection is only for clj-kondo, as we know that the list is non-empty
                              (reduce u/rconcat [])
                              query->documents)
-              passed-documents (mapcat requested-documents updates)
+              passed-documents (map extract-model-and-id updates)
               ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
               ;; The eduction will replay the streaming query when passed to update!.
               indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
               ;; TODO: The list of documents to delete is not completely accurate.
               ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-              ;; Only `:this.id` selectors and [[doc-id-selector]]s name documents, so anything reached through a
-              ;; relationship is never purged here; deletes enumerate those up front, see [[metabase.search.core/cascading-documents]].
+              ;; This will not work for cases like indexed-entries with compound PKs,
+              ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
               to-delete (remove indexed-pairs passed-documents)]
           (update! documents to-delete))

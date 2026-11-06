@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojure.set :as set]
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -297,24 +298,30 @@
   "Ids per re-derivation message."
   100)
 
-;; The purge goes through the ingestion queue rather than straight to the engines. Its single worker may be running a
-;; batch that read one of these documents before the delete committed; a direct delete could land before that batch
-;; writes the document back, and nothing would remove it again.
 (defn- reconcile-search-model!
-  "Queue the enumerated `ids` of one `search-model` by document id, so ingestion re-derives the documents that still
-  resolve and purges the rest."
+  "Settle the enumerated `ids` of one `search-model`: re-derive the documents that still resolve, remove the rest."
   [search-model ids]
-  (search.ingestion/ingest-maybe-async!
-   (into #{}
-         (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
-         (partition-all reindex-batch-size ids))))
+  ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
+  (when-some [alive (search.ingestion/existing-doc-ids search-model ids)]
+    (when (seq alive)
+      (search.ingestion/ingest-maybe-async!
+       (into #{}
+             (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
+             (partition-all reindex-batch-size alive))))
+    (when-let [gone (not-empty (set/difference ids alive))]
+      (doseq [engine (search.engine/active-engines)]
+        (try
+          (search.engine/delete! engine search-model (into #{} (map str) gone))
+          (catch Exception e
+            (log/errorf e "Failed to purge cascaded %s documents from %s" search-model engine)))))))
 
 ;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
 ;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
 (defn reconcile-cascading-documents!
   "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
-  A failure for one search-model is logged and does not stop the others."
+  A search-model whose surviving documents cannot be enumerated is left alone.
+  A failure for one search-model, or one engine, is logged and does not stop the others."
   [cascading]
   (when (and (seq cascading) (supports-index?))
     (doseq [[search-model ids] cascading]
