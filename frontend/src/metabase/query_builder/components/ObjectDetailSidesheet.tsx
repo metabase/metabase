@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { supportsImplicitActions } from "metabase/actions/utils";
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import { filterByPk } from "metabase/detail-view/utils";
@@ -28,6 +29,7 @@ import {
   getCanZoomPreviousRow,
   getQuestion,
   getRawSeries,
+  getSourceCardId,
   getTableMetadata,
   getZoomRow,
   getZoomedObjectId,
@@ -48,6 +50,7 @@ function ObjectDetailSidesheetInner() {
   const rawSeries = useSelector(getRawSeries);
   const question = useSelector(getQuestion);
   const table = useSelector(getTableMetadata);
+  const sourceCardId = useSelector(getSourceCardId);
   const zoomedObjectId = useSelector(getZoomedObjectId);
   const zoomRow = useSelector(getZoomRow);
   const canZoomPreviousRow = useSelector(getCanZoomPreviousRow);
@@ -73,7 +76,11 @@ function ObjectDetailSidesheetInner() {
   const zoomedRowID = isZooming
     ? zoomedObjectId
     : datasetData
-      ? getIdValue({ data: datasetData, tableId: table?.id })
+      ? getIdValue({
+          data: datasetData,
+          tableId: table?.id,
+          cardId: sourceCardId,
+        })
       : null;
 
   const filteredQuery = useMemo(() => {
@@ -117,7 +124,7 @@ function ObjectDetailSidesheetInner() {
   const showImplicitActions = Boolean(
     question.canWrite() &&
     question.type() === "model" &&
-    question.supportsImplicitActions(),
+    supportsImplicitActions(question.query()),
   );
 
   return (
@@ -128,6 +135,7 @@ function ObjectDetailSidesheetInner() {
       query={filteredQuery}
       row={zoomedRow}
       rowId={zoomedRowID}
+      modelId={showImplicitActions ? sourceCardId : null}
       showImplicitActions={showImplicitActions}
       showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
       table={apiTable}

@@ -101,7 +101,6 @@ export function DetailViewPage({
                 columns={columns}
                 responsive={isSmallBreakpoint}
                 row={row}
-                table={table}
               />
             )}
           </Stack>

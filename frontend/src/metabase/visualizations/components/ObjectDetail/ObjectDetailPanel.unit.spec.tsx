@@ -23,6 +23,7 @@ import {
 import {
   PEOPLE,
   PEOPLE_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -52,7 +53,7 @@ const mockTableMultiplePks = createMockTable({
 });
 
 const databaseWithActionsEnabled = createMockDatabase({
-  id: getNextId(),
+  id: SAMPLE_DB_ID,
   settings: { "database-enable-actions": true },
 });
 

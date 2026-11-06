@@ -12,19 +12,6 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  createOrdersCreatedAtField,
-  createOrdersDiscountField,
-  createOrdersIdField,
-  createOrdersProductIdField,
-  createOrdersQuantityField,
-  createOrdersSubtotalField,
-  createOrdersTable,
-  createOrdersTaxField,
-  createOrdersTotalField,
-  createOrdersUserIdField,
-  createPeopleTable,
-  createProductsTable,
-  createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -33,31 +20,6 @@ import NativeQuery from "./queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
-});
-
-const metadata_without_order_pk = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      tables: [
-        createProductsTable(),
-        createPeopleTable(),
-        createReviewsTable(),
-        createOrdersTable({
-          fields: [
-            createOrdersIdField({ semantic_type: "type/Integer" }),
-            createOrdersUserIdField(),
-            createOrdersProductIdField(),
-            createOrdersSubtotalField(),
-            createOrdersTaxField(),
-            createOrdersTotalField(),
-            createOrdersDiscountField(),
-            createOrdersCreatedAtField(),
-            createOrdersQuantityField(),
-          ],
-        }),
-      ],
-    }),
-  ],
 });
 
 const card = {
@@ -88,30 +50,6 @@ const orders_raw_card = {
   },
 };
 const orders_raw_question = new Question(orders_raw_card, metadata);
-
-const orders_card_without_pk = {
-  id: 1,
-  name: "Orders Model",
-  display: "table",
-  visualization_settings: {},
-  can_write: true,
-  type: "model",
-  database_id: SAMPLE_DB_ID,
-  table_id: ORDERS_ID,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
-  result_metadata: [
-    createOrdersIdField({
-      semantic_type: "type/Integer",
-      field_ref: ["field", 11, null],
-    }),
-  ],
-};
 
 const orders_count_card = {
   id: 2,
@@ -151,78 +89,6 @@ const multipleRowsData = createMockDatasetData({
     [100, 200],
   ],
 });
-
-const orders_filter_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      filter: [">", ["field", ORDERS.TOTAL, null], 10],
-    },
-  },
-};
-
-const orders_join_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          fields: "all",
-          "source-table": PRODUCTS_ID,
-          condition: [
-            "=",
-            ["field-id", ORDERS.PRODUCT_ID],
-            ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-          ],
-          alias: "Products",
-        },
-      ],
-    },
-  },
-};
-
-const orders_expression_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      expressions: { double_total: ["+", 1, 1] },
-    },
-  },
-};
-
-const orders_multi_stage_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-query": {
-        "source-table": ORDERS_ID,
-        filter: [">", ["field", ORDERS.TOTAL, null], 10],
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 20],
-    },
-  },
-};
 
 const native_orders_count_card = {
   id: 3,
@@ -750,64 +616,6 @@ describe("Question", () => {
           value: null,
         },
       ]);
-    });
-  });
-
-  describe("Question.prototype.supportsImplicitActions", () => {
-    it("should allow to create implicit actions for a raw model", () => {
-      const question = new Question(orders_raw_card, metadata);
-      expect(question.supportsImplicitActions()).toBeTruthy();
-    });
-
-    it("should not allow to create implicit actions for a model with aggregations", () => {
-      const question = new Question(orders_count_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with filters", () => {
-      const question = new Question(orders_filter_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should allow to create implicit actions where the underlying table has a primary key but the model does not", () => {
-      const orders_question_without_pk = new Question(
-        orders_card_without_pk,
-        metadata,
-      );
-      expect(orders_question_without_pk.supportsImplicitActions()).toBeTruthy();
-    });
-
-    it("should not allow to create implicit actions where the underlying table has no primary key", () => {
-      const question = new Question(orders_raw_card, metadata_without_order_pk);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions where the model has a primary key, but the underlying table does not", () => {
-      const question = new Question(
-        orders_card_without_pk,
-        metadata_without_order_pk,
-      );
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with joins", () => {
-      const question = new Question(orders_join_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with expressions", () => {
-      const question = new Question(orders_expression_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with multiple stages", () => {
-      const question = new Question(orders_multi_stage_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should allow to create implicit actions for a native model", () => {
-      const question = new Question(native_orders_count_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
     });
   });
 

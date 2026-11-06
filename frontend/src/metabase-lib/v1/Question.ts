@@ -360,20 +360,6 @@ class Question {
     );
   }
 
-  supportsImplicitActions(): boolean {
-    const query = this.query();
-
-    // we want to check the metadata for the underlying table, not the model
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = this.metadata().table(sourceTableId);
-
-    const hasSinglePk =
-      table?.fields?.filter((field) => field.isPK())?.length === 1;
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-
-    return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
-  }
-
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
