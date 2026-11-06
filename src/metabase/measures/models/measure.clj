@@ -19,6 +19,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -242,6 +243,26 @@
                :definition {:export serdes/export-mbql :import import-measure-definition}}
    :defaults {:archived false}})
 
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serialization/storage-paths :model/Measure [_ entities _ctx]
+  (mapv (fn [measure]
+          (let [table-path (-> measure :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
+        entities))
+
+(defmethod serialization/spec :model/Measure [_]
+  {:schema    ::measures.schema/external-measure
+   :copy      [:name :archived :description :entity_id]
+   :skip      [:dimensions :dimension_mappings :table_id]
+   :transform {:creator_id serialization/user-transform
+               :definition (assoc serialization/mbql-transform
+                                  :import (fn [store _ queries opts]
+                                            (mapv #(cond-> % (seq %) lib-be/normalize-query)
+                                                  (serialization/import-mbql store queries opts))))}
+   :defaults  {:archived false}})
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "measure"
@@ -279,3 +300,8 @@
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+
+(defmethod serialization/import-dependencies :model/Measure [_ entities]
+  (mapv (fn [{:keys [definition]}]
+          (serialization/import-mbql-dependencies definition))
+        entities))

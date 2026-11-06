@@ -17,6 +17,7 @@
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -258,6 +259,23 @@
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}
    :defaults {:archived false :show_in_getting_started false}})
 
+;;; ------------------------------------------------ Serialization ---------------------------------------------------
+
+(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
+  (mapv (fn [segment]
+          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
+        entities))
+
+(defmethod serialization/spec :model/Segment [_]
+  {:schema    ::segments.schema/external-segment
+   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip      [:table_id]
+   :transform {:creator_id serialization/user-transform
+               :definition serialization/mbql-transform}
+   :defaults  {:archived false :show_in_getting_started false}})
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "segment"
@@ -289,3 +307,8 @@
                         [:and
                          [:= :table.is_published true]
                          [:= :collection.id :table.collection_id]]]}})
+
+(defmethod serialization/import-dependencies :model/Segment [_ entities]
+  (mapv (fn [{:keys [definition]}]
+          (serialization/import-mbql-dependencies definition))
+        entities))

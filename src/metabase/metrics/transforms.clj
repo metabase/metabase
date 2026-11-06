@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]))
 
 (mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
@@ -151,3 +152,74 @@
    (into #{} (comp (map :target)
                    (mapcat #(serdes/mbql-deps allow-int-ids? %)))
          mappings)))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; Dimensions and dimension-mappings embed instance-specific Field and Table IDs that must be turned into
+;;; references on export and resolved back to local IDs on import. Only curated (metric v2) entities serialize these;
+;;; others re-derive them from their query on the far side.
+
+(defn- walk-export-dimension
+  "Convert the Field IDs embedded in a persisted dimension's `:sources` to the references `visit` returns."
+  [visit dimension]
+  (cond-> dimension
+    (seq (:sources dimension))
+    (update :sources (fn [sources]
+                       (mapv (fn [source]
+                               (cond-> source
+                                 (pos-int? (:field-id source))
+                                 (update :field-id #(serialization/visit-some :model/Field % visit))))
+                             sources)))))
+
+(defn- walk-import-dimension
+  "Inverse of [[walk-export-dimension]]."
+  [visit dimension]
+  (cond-> dimension
+    (seq (:sources dimension))
+    (update :sources (fn [sources]
+                       (mapv (fn [source]
+                               (cond-> source
+                                 (vector? (:field-id source))
+                                 (update :field-id #(serialization/visit-some :model/Field % visit))))
+                             sources)))))
+
+(defn walk-export-dimensions
+  "Serialize a curated entity's `:dimensions`: convert the Field IDs embedded in each dimension's `:sources` to
+   the references `visit` returns. `nil` in, `nil` out (so the column is elided for non-curated entities);
+   an empty vector is preserved, so a fully cleared dimension set round-trips as cleared rather than being re-seeded
+   on import."
+  [visit dimensions]
+  (when (some? dimensions)
+    (mapv (partial walk-export-dimension visit) dimensions)))
+
+(defn walk-import-dimensions
+  "Inverse of [[walk-export-dimensions]]. Normalized like [[transform-dimensions]] output, since a file-based import
+  reads keyword values back as strings."
+  [visit dimensions]
+  (when (some? dimensions)
+    (mapv #(cond-> (walk-import-dimension visit %)
+             (not (serialization/collecting? visit)) normalize-dimension)
+          dimensions)))
+
+(defn walk-export-dimension-mappings
+  "Serialize a curated entity's `:dimension_mappings`: convert `:table-id` and the Field IDs inside each mapping's
+   `:target` field ref to the references `visit` returns. `nil`/empty handled as in
+   [[walk-export-dimensions]]."
+  [visit mappings]
+  (when (some? mappings)
+    (mapv (fn [mapping]
+            (cond-> mapping
+              (pos-int? (:table-id mapping)) (update :table-id #(serialization/visit-some :model/Table % visit))
+              (:target mapping)              (update :target (partial serialization/walk-export visit))))
+          mappings)))
+
+(defn walk-import-dimension-mappings
+  "Inverse of [[walk-export-dimension-mappings]]. Normalized like [[transform-dimension-mappings]] output, for the same
+  reason as [[walk-import-dimensions]]."
+  [visit mappings]
+  (when (some? mappings)
+    (mapv (fn [mapping]
+            (cond-> (cond-> mapping
+                      (vector? (:table-id mapping)) (update :table-id #(serialization/visit-some :model/Table % visit))
+                      (:target mapping)             (update :target (partial serialization/walk-import visit)))
+              (not (serialization/collecting? visit)) normalize-dimension-mapping))
+          mappings)))

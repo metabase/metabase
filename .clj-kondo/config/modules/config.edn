@@ -1518,6 +1518,7 @@
            premium-features
            remote-sync
            search
+           serialization
            users.schema
            util
            warehouses.schema}
@@ -1752,9 +1753,13 @@
            permissions
            query-processor
            request
+           serialization
            server
            util}
-   :model-imports #{:model/Card :model/Field :model/Measure}}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
 
   mfa
   {:team "Security Engineering"
@@ -2220,6 +2225,7 @@
            query-processor
            request
            search
+           serialization
            settings
            staleness
            sync
@@ -2619,6 +2625,7 @@
            premium-features
            remote-sync
            search
+           serialization
            users.schema
            util
            warehouses.schema}

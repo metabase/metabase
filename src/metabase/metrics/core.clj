@@ -40,6 +40,10 @@
   normalize-dimension-mapping
   transform-dimensions
   transform-dimension-mappings
+  walk-export-dimensions
+  walk-import-dimensions
+  walk-export-dimension-mappings
+  walk-import-dimension-mappings
   export-dimensions
   import-dimensions
   export-dimension-mappings
