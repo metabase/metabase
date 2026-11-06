@@ -1,1 +1,1 @@
-export { TableRowNounsRow, TableSubjectRow } from "./TableSubject";
+export { TableRowNounRow, TableSubjectRow } from "./TableSubject";

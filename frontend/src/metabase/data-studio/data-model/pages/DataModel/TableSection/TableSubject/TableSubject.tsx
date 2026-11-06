@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { DetailsRow } from "metabase/common/components/DetailSidebar";
 import {
   type ResolvedSubject,
+  type RowNouns,
   getTableSubjectLabel,
   useTableSemantics,
 } from "metabase/metadata/semantic-types";
@@ -62,40 +63,38 @@ export function TableSubjectRow({ table, disabled }: TableSubjectRowsProps) {
   );
 }
 
-export function TableRowNounsRow({ table, disabled }: TableSubjectRowsProps) {
+type RowNounForm = keyof RowNouns;
+
+function getRowNounLabels(): Record<RowNounForm, string> {
+  return {
+    singular: t`One row is called`,
+    plural: t`Many rows are called`,
+  };
+}
+
+export function TableRowNounRow({
+  table,
+  disabled,
+  form,
+}: TableSubjectRowsProps & { form: RowNounForm }) {
   const { subject, setRowNouns } = useTableSemantics(table);
+  const rowNoun = subject.rowNouns[form];
 
   return (
-    <>
-      <DetailsRow
-        label={t`One row is called`}
-        fillValue
-        value={
-          <DetailsEditableText
-            key={subject.rowNouns.singular}
-            initialValue={subject.rowNouns.singular}
-            placeholder={subject.defaultRowNouns.singular}
-            isDisabled={disabled}
-            onChange={(value) => setRowNouns(table, { singular: value.trim() })}
-            data-testid="table-row-noun-singular-input"
-          />
-        }
-      />
-      <DetailsRow
-        label={t`Many rows are called`}
-        fillValue
-        value={
-          <DetailsEditableText
-            key={subject.rowNouns.plural}
-            initialValue={subject.rowNouns.plural}
-            placeholder={subject.defaultRowNouns.plural}
-            isDisabled={disabled}
-            onChange={(value) => setRowNouns(table, { plural: value.trim() })}
-            data-testid="table-row-noun-plural-input"
-          />
-        }
-      />
-    </>
+    <DetailsRow
+      label={getRowNounLabels()[form]}
+      fillValue
+      value={
+        <DetailsEditableText
+          key={rowNoun}
+          initialValue={rowNoun}
+          placeholder={subject.defaultRowNouns[form]}
+          isDisabled={disabled}
+          onChange={(value) => setRowNouns(table, { [form]: value.trim() })}
+          data-testid={`table-row-noun-${form}-input`}
+        />
+      }
+    />
   );
 }
 
