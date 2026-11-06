@@ -197,6 +197,20 @@
                                      :ops  [{:op "add_tab", :id -1, :name "Revenue"}
                                             {:op "add_text", :id -2, :markdown "Notes", :tab -1}]}))))))))
 
+(deftest legacy-dashcard-on-tabbed-dashboard-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id}   {:name "Tabbed"}
+                 :model/DashboardTab  {first-tab :id} {:dashboard_id dash-id, :name "First", :position 0}
+                 :model/DashboardTab  _               {:dashboard_id dash-id, :name "Second", :position 1}
+                 :model/DashboardCard {legacy-id :id} {:dashboard_id dash-id, :dashboard_tab_id nil, :card_id nil
+                                                       :row 0, :col 0, :size_x 24, :size_y 1
+                                                       :visualization_settings {:virtual_card {:display "heading"}
+                                                                                :text         "Legacy"}}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a dashcard with no tab shows on the first tab, as the frontend renders it"
+        (is (re-find (re-pattern (str "<tab tab_id=\"" first-tab "\" name=\"First\">\n"
+                                      "      <dashcard dashcard_id=\"" legacy-id "\""))
+                     (:output (call {:dashboard_id dash-id, :name "Renamed"}))))))))
+
 (deftest retry-reuses-question-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}

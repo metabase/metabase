@@ -526,7 +526,10 @@
   they connect to."
   ;; Attribute names and the filter element match the dashboard reads in `read_resource`, so the model reads one shape.
   [{:keys [id name description tabs dashcards parameters]}]
-  (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
+  (let [sorted-tabs (sort-by :position tabs)
+        ;; A dashcard from before the dashboard had tabs has no tab, and the frontend shows it on the first one.
+        tab-of      #(or (:dashboard_tab_id %) (:id (first sorted-tabs)))
+        by-tab      (group-by tab-of (sort-by (juxt :row :col) dashcards))
         connections (fn [parameter-id]
                       (for [dc dashcards
                             :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
@@ -536,7 +539,7 @@
      (when description
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
      (if (seq tabs)
-       (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
+       (for [{tab-id :id tab-name :name} sorted-tabs]
          [(str "    <tab" (xml-attrs :tab_id tab-id :name tab-name) ">")
           (card-lines "      " (get by-tab tab-id))
           "    </tab>"])
