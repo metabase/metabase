@@ -7,8 +7,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
+   [metabase.task.job-factory :as job-factory]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -19,7 +21,7 @@
    (java.lang.annotation Annotation)
    (java.time Duration Instant)
    (java.util Date)
-   (org.quartz CronTrigger InterruptableJob Job JobDetail)))
+   (org.quartz CronTrigger InterruptableJob Job JobDetail Scheduler)))
 
 (set! *warn-on-reflection* true)
 
@@ -152,6 +154,32 @@
        (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "FALSE"]
          (task/start-scheduler!)
          (is (qs/started? (#'task/scheduler))))))))
+
+(deftest init-scheduler-publishes-a-ready-scheduler-once-test
+  (testing "racing inits attach our job factory once, and publish the scheduler only after attaching it"
+    (let [quartz   (reify Scheduler
+                     (standby [_]))
+          attaches (atom [])
+          ;; records whether the scheduler was already published; slow enough for every racer to reach its check
+          attach   (fn [_]
+                     (Thread/sleep 100)
+                     (swap! attaches conj (some? (task/scheduler))))
+          go       (promise)]
+      (mc/binding (task.impl/scheduler-handle) nil
+                  (fn []
+                    (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                                task.impl/set-jdbc-backend-properties! (constantly nil)
+                                                task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                                task.impl/reset-errored-triggers!      (constantly nil)
+                                                task.impl/init-tasks!                  (constantly nil)
+                                                job-factory/add-to-scheduler           attach]
+                      (let [racers (mapv (fn [_] (future @go (task/init-scheduler!))) (range 4))]
+                        (deliver go true)
+                        (run! deref racers))
+                      (is (= {:attaches-before-publishing [false]
+                              :published?                 true}
+                             {:attaches-before-publishing @attaches
+                              :published?                 (identical? quartz (task/scheduler))}))))))))
 
 (defn- capitalize-if-mysql [s]
   (cond-> (name s)
