@@ -19,7 +19,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 12,
-      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       width: 299,
@@ -28,7 +28,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 12,
-      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       width: 1100,
@@ -37,7 +37,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 12,
-      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       width: 300,
@@ -46,7 +46,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 12,
-      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 16, marginY: 16 },
     },
     {
       width: 639,
@@ -55,7 +55,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 12,
-      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 16, marginY: 16 },
     },
     {
       width: 1100,
@@ -64,7 +64,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 12,
-      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 16, marginY: 16 },
     },
     {
       width: 640,
@@ -73,7 +73,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 16,
-      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 20, marginY: 24 },
     },
     {
       width: 899,
@@ -82,7 +82,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 16,
-      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 20, marginY: 24 },
     },
     {
       width: 1100,
@@ -91,7 +91,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 10,
       marginY: 16,
-      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 20, marginY: 24 },
     },
     {
       width: 900,
@@ -100,7 +100,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 14,
       marginX: 14,
       marginY: 24,
-      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 40, marginY: 40 },
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 30, marginY: 40 },
     },
     {
       width: 1270,
@@ -109,7 +109,7 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 14,
       marginX: 14,
       marginY: 24,
-      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 40, marginY: 40 },
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 30, marginY: 40 },
     },
   ])(
     "uses $size styling for a $width by $height container",

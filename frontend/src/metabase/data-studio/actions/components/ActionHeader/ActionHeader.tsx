@@ -115,6 +115,7 @@ function ActionTabs({ actionId }: ActionTabsProps) {
         pathname.startsWith(Urls.dataStudioActionFields(actionId)),
     },
     { label: t`Run`, to: Urls.dataStudioActionRun(actionId) },
+    { label: t`Settings`, to: Urls.dataStudioActionSettings(actionId) },
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {
@@ -123,7 +124,6 @@ function ActionTabs({ actionId }: ActionTabsProps) {
           },
         ]
       : []),
-    { label: t`Settings`, to: Urls.dataStudioActionSettings(actionId) },
   ];
   return <PillTabNavigation tabs={tabs} />;
 }

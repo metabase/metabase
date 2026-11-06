@@ -5,6 +5,7 @@ import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  AutocompleteSuggestion,
   Database,
   DatabaseId,
   DatabaseUsageInfo,
@@ -41,6 +42,19 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
+export function setupDatabaseAutocompleteSuggestionsEndpoint({
+  databaseId,
+  suggestions,
+}: {
+  databaseId: DatabaseId;
+  suggestions: AutocompleteSuggestion[];
+}) {
+  fetchMock.get(
+    `path:/api/database/${databaseId}/autocomplete_suggestions`,
+    suggestions,
+  );
+}
+
 export function setupDatabaseMetadataEndpoint(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
     name: `database-${db.id}-metadata`,
@@ -64,6 +78,27 @@ export function setupUpdateDatabaseEndpointError(databaseId: Database["id"]) {
   fetchMock.put(`path:/api/database/${databaseId}`, { status: 500 });
 }
 
+export function setupDatabaseNotFoundEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+}
+
+export function setupCreateDatabaseEndpointError({
+  status,
+  body,
+}: {
+  status: number;
+  body: string | Record<string, unknown>;
+}) {
+  fetchMock.post(
+    "path:/api/database",
+    { status, body },
+    { name: "create-database" },
+  );
+}
+
 export function setupDatabaseHealthcheckEndpoint(databaseId: Database["id"]) {
   fetchMock.get(`path:/api/database/${databaseId}/healthcheck`, {
     body: { status: "ok" },
@@ -85,6 +120,20 @@ export function setupDatabaseListEndpoint(databases: Database[]) {
   fetchMock.get(
     "path:/api/database",
     { data: databases, total: databases.length },
+    { name: "database-list" },
+  );
+}
+
+export function setupDatabaseListEndpointError({
+  status,
+  body,
+}: {
+  status: number;
+  body: Record<string, unknown>;
+}) {
+  fetchMock.get(
+    "path:/api/database",
+    { status, body },
     { name: "database-list" },
   );
 }

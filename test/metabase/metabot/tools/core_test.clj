@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -235,7 +237,7 @@
       (is (some? @inner)))))
 
 (deftest ^:parallel only-declared-recoverables-are-captured-test
-  (testing "an undeclared exception ends the turn and discards the items that loaded"
+  (testing "an undeclared exception fails the whole call and discards the items that loaded"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"a real bug"
          (tools/call (reify
@@ -367,7 +369,7 @@
                                   {:agent-error? true :error error :source-card 12 :source-card-type "model"}))))))
   (testing "an ambiguous foreign key on a `source-table:` stage still points at the table's fields"
     (is (=? {:recovery [{:uses #{"read_resource"}
-                         :text (str "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                         :text (str "Call `read_resource` with `metabase://table/3/fields` for the source "
                                     "table to list the available foreign-key columns.")}]}
             (pipeline-failure "Two foreign keys reach the table."
                               {:agent-error? true :error :ambiguous-fk :source-table 3})))))
@@ -381,6 +383,31 @@
                              "may not have access to it.")
                :data    {}}
               (pipeline-failure "no" {:status-code status}))))))
+
+(deftest ^:parallel with-pipeline-errors-keeps-declared-errors-test
+  (testing "a declared not-found raised inside keeps the entity it names, despite its 404"
+    (is (=? {:class   :recoverable
+             :code    :metabase.metabot.tools.recoverable.common/not-found
+             :message "Table 5 was not found. It may not exist, or you may not have access to it."
+             :data    {:kind :table :id 5}}
+            (tools.error/classify
+             (is (thrown? clojure.lang.ExceptionInfo
+                          (tools/with-pipeline-errors
+                            (tools/with-entity {:kind :table :id 5}
+                              (throw (ex-info "nope" {:status-code 404}))))))))))
+  (doseq [[branch thunk] [["refusal"
+                           #(tools/with-entity {:kind :table :id 5}
+                              (throw (ex-info "nope" {:status-code 404})))]
+                          ["agent-error"
+                           #(tools.error/throw-recoverable!
+                             :metabase.metabot.tools.recoverable.pipeline/unknown-table
+                             {:message "No table found."})]]]
+    (testing (str "a declared error that would match the " branch " branch is rethrown as it is, not rebuilt")
+      (let [declared (try (thunk) (catch Throwable e e))]
+        (is (identical? declared
+                        (try
+                          (tools/with-pipeline-errors (throw declared))
+                          (catch Throwable e e))))))))
 
 (deftest ^:parallel with-pipeline-errors-does-not-relay-foreign-messages-test
   (testing "Lib exceptions stay unrecoverable without a declared `:error` code and lose the `:agent-error?` flag."
@@ -399,3 +426,15 @@
     (is (=? {:class :unrecoverable :code :internal} (pipeline-failure "boom" {}))))
   (testing "a successful body is returned untouched"
     (is (= :fine (tools/with-pipeline-errors :fine)))))
+
+(deftest ^:parallel structural-validation-paths-test
+  (let [e     (agent-lib.tu/structural-validation-error)
+        data  (ex-data e)
+        error (pipeline-failure (ex-message e) (assoc data :agent-error? true))
+        hint  "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+    (is (= {:message "Representations query has an invalid structure."
+            :paths "stages[0].filters: invalid type"}
+           (:data error)))
+    (is (= hint (recovery-hints/recovery-hint data)))
+    (is (= (str "Representations query has an invalid structure.\n" hint)
+           (tools.error/recoverable-text error #{})))))

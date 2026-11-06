@@ -167,7 +167,7 @@ export const TableActionInputSearchableSelect = ({
             shouldDisplayClearButton && (
               <Icon
                 name="close"
-                c="text-disabled"
+                c="text-secondary"
                 onClick={() => handleOptionSubmit(null)}
                 onMouseDown={(event) => event.stopPropagation()}
               />

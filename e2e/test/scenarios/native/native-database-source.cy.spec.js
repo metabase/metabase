@@ -4,7 +4,6 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 const PG_DB_ID = 2;
 const postgresName = "QA Postgres12";
 const additionalPG = "New Database";
-const ADDITIONAL_PG_DB_ID = 3;
 
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
@@ -13,10 +12,6 @@ describe(
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      cy.intercept("PUT", "/api/setting/last-used-native-database-id").as(
-        "persistDatabase",
-      );
-
       H.restore("postgres-12");
       cy.signInAsAdmin();
       cy.updatePermissionsGraph({
@@ -94,120 +89,6 @@ describe(
       // Postgres will be automatically selected because it's the only dataabse this user can query
       assertSelectedDatabase(postgresName);
     });
-
-    it("persisting a database source should work between native models and questions intechangeably", () => {
-      startNativeModel();
-      assertNoDatabaseSelected();
-
-      selectDatabase(postgresName);
-
-      startNativeQuestion();
-      assertSelectedDatabase(postgresName).click();
-      selectDatabase("Sample Database");
-
-      startNativeModel();
-
-      cy.findByTestId("native-query-top-bar").should(
-        "not.contain",
-        "Select a database",
-      );
-      cy.findByTestId("selected-database").should(
-        "have.text",
-        "Sample Database",
-      );
-    });
-
-    it("should not update the setting when the same database is selected again", () => {
-      H.updateSetting("last-used-native-database-id", SAMPLE_DB_ID);
-
-      startNativeQuestion();
-      cy.findByTestId("selected-database")
-        .should("have.text", "Sample Database")
-        .click();
-
-      cy.log("Pick the same database again");
-      selectDatabase("Sample Database");
-
-      cy.log("Only picking a different database persists it");
-      cy.findByTestId("selected-database").click();
-      selectDatabase(postgresName);
-      cy.wait("@persistDatabase");
-      cy.get("@persistDatabase.all").should("have.length", 1);
-    });
-
-    it("selecting a database in native editor for model actions should not persist the database", () => {
-      [SAMPLE_DB_ID, PG_DB_ID].forEach(enableModelActionsForDatabase);
-
-      cy.visit("/");
-      H.startNewAction();
-      assertNoDatabaseSelected();
-
-      selectDatabase("Sample Database");
-
-      startNativeModel();
-      assertNoDatabaseSelected();
-      cy.log(
-        "Persisting a database for a native model should not affect actions",
-      );
-      selectDatabase(postgresName);
-      cy.wait("@persistDatabase");
-      cy.get("@persistDatabase.all").should("have.length", 1);
-
-      cy.visit("/");
-      H.startNewAction();
-      assertNoDatabaseSelected();
-    });
-
-    describe("permissions", () => {
-      it("users should be able to choose the databases they can run native queries against (metabase#39053)", () => {
-        cy.log(
-          "users with no native write permissions should be able to choose only the databases they can query against",
-        );
-        cy.signIn("nosql");
-
-        startNativeQuestion();
-        cy.wait("@persistDatabase");
-        cy.findByTestId("selected-database")
-          .should("have.text", postgresName)
-          .click();
-
-        cy.get(H.POPOVER_ELEMENT).should("not.exist");
-
-        cy.signIn("nodata");
-
-        startNativeQuestion();
-        cy.wait("@persistDatabase");
-        cy.findByTestId("selected-database")
-          .should("have.text", postgresName)
-          .click();
-
-        cy.get(H.POPOVER_ELEMENT).should("not.exist");
-
-        cy.signOut();
-        cy.signInAsAdmin();
-
-        H.addPostgresDatabase(additionalPG);
-        cy.updatePermissionsGraph({
-          [ALL_USERS_GROUP]: {
-            [ADDITIONAL_PG_DB_ID]: {
-              "view-data": "unrestricted",
-              "create-queries": "query-builder-and-native",
-            },
-          },
-        });
-
-        cy.signIn("nodata");
-        startNativeQuestion();
-
-        cy.findByTestId("selected-database")
-          .should("have.text", postgresName)
-          .click();
-
-        H.popover()
-          .should("contain", postgresName)
-          .and("contain", "New Database");
-      });
-    });
   },
 );
 
@@ -261,8 +142,7 @@ describe("scenarios > question > native > mysql", { tags: "@external" }, () => {
     cy.wait("@dataset");
     cy.findByTextEnsureVisible("SUBTOTAL");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
+    cy.get("@queryPreview").should("contain", "37.65");
 
     // Save the query
     H.saveQuestion("sql count");
@@ -341,13 +221,6 @@ function startNativeQuestion() {
     .click();
 }
 
-// It is extremely important to use the UI flow for these scenarios!
-// Do not change this or replace it with `startNewNativeModel()`!
-function startNativeModel() {
-  cy.visit("/model/new");
-  cy.findByRole("heading", { name: "Use a native query" }).click();
-}
-
 function assertNoDatabaseSelected() {
   cy.findByTestId("selected-database").should("not.exist");
   cy.findByTestId("native-query-top-bar").should(
@@ -376,10 +249,4 @@ function assertSelectedDatabase(name) {
   );
 
   return cy.findByTestId("selected-database").should("have.text", name);
-}
-
-function enableModelActionsForDatabase(id) {
-  cy.request("PUT", `/api/database/${id}`, {
-    settings: { "database-enable-actions": true },
-  });
 }

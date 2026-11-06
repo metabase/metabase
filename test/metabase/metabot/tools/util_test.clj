@@ -306,17 +306,35 @@
     (are [field-id] (nil? (metabot.tools.util/find-column-by-field-id field-id columns))
       999 nil "missing")))
 
+(deftest ^:parallel column-field-ids-of-one-physical-field-test
+  (testing "Later columns of one physical field get their alias, so each column has its own field ID"
+    (let [columns [{:id 14 :lib/desired-column-alias "CREATED_AT"}
+                   {:id 14 :lib/desired-column-alias "CREATED_AT_2"}
+                   {:id 14 :lib/source-column-alias "CREATED_AT_3"}
+                   {:name "count" :lib/desired-column-alias "count"}
+                   {:id 15}
+                   {:id 15}]]
+      (is (= [14 "CREATED_AT_2" "CREATED_AT_3" "count" 15 15]
+             (metabot.tools.util/column-field-ids columns)))
+      (testing "and the lookup finds each column by its own field ID"
+        (are [field-id col-index] (= (get columns col-index)
+                                     (metabot.tools.util/find-column-by-field-id field-id columns))
+          14             0
+          "14"           0
+          "CREATED_AT_2" 1
+          "CREATED_AT_3" 2
+          "count"        3
+          15             4)))))
+
 ;;; ---------------------------------------- metric sources ----------------------------------------
 
-(deftest ^:parallel metric-required-source-classifies-the-four-definition-shapes-test
+(deftest ^:parallel metric-required-source-classifies-definition-shapes-test
   (testing "Metric sources follow the query processor's compatibility rules"
     (are [expected stages] (= expected
-                              (metabot.tools.util/metric-required-source
-                               {:dataset_query {:stages stages} :table_id 5}))
+                              (metabot.tools.util/metric-required-source {:dataset_query {:stages stages}}))
       {:kind :table, :table-id 5, :bare-table-only? false} [{:source-table 5}]
       {:kind :card,  :card-id 42}                          [{:source-card 42}]
-      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}]
-      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-card 42} {}])))
+      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}])))
 
 (deftest ^:parallel metric-required-source-unreadable-definition-test
   (testing "A blank or unconvertible metric definition has no usable source"
@@ -330,12 +348,12 @@
 (deftest ^:parallel metric-required-source-legacy-definition-test
   (testing "Legacy definitions are converted before classifying the source"
     (are [expected query] (= expected (metabot.tools.util/metric-required-source
-                                       {:dataset_query (assoc query :database 1 :type :query) :table_id 5}))
+                                       {:dataset_query (assoc query :database 1 :type :query)}))
       {:kind :table, :table-id 5, :bare-table-only? false} {:query {:source-table 5}}
       {:kind :card, :card-id 12}                           {:query {:source-table "card__12"
                                                                     :aggregation  [[:count]]}}
       ;; a nested `:source-query` is two stages, so the base table is the one to use
-      {:kind :table, :table-id 5, :bare-table-only? true}  {:query {:source-query {:source-table "card__12"}
+      {:kind :table, :table-id 5, :bare-table-only? true}  {:query {:source-query {:source-table 5}
                                                                     :aggregation  [[:count]]}})))
 
 (deftest ^:parallel metric-compatible-with-stage?-test
@@ -402,3 +420,10 @@
 
       {:source_unavailable true}
       {:database-name "Sample"})))
+
+(deftest declared-errors-keep-their-recovery-test
+  (let [error (try
+                (metabot.tools.util/wrong-source-type! {:id 1 :expected-type :metric :actual-type :question})
+                (catch clojure.lang.ExceptionInfo e e))]
+    (doseq [handle-error [metabot.tools.util/handle-agent-error metabot.tools.util/handle-agent-or-api-error]]
+      (is (identical? error (is (thrown? clojure.lang.ExceptionInfo (handle-error error))))))))

@@ -117,12 +117,46 @@
 
   The LLM can still self-correct in one turn by listing the parent database's tables with
   the calling surface's discovery tool; the message points it at that path."
-  [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
+  [metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
   (ex-info (tru "No table found matching portable FK {0}." (pr-str path))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
-            :path         path}))
+            :path         path
+            :database-id  (:id (lib.metadata/database metadata-provider))}))
+
+(defn- database-mismatch-ex-info
+  "Build the agent-facing error for a portable table FK that names a database other than `metadata-provider`'s.
+
+  It is `:cross-database-table` when the name finds another database, and `:unknown-table` otherwise."
+  [metadata-provider [path-db-name :as path]]
+  (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)
+        ;; This tells the agent nothing new, since the query's first stage already finds its database by name.
+        named-db-id     (when (and (string? path-db-name)
+                                   (app-db-backed-provider? metadata-provider))
+                          (models.db/database-id-by-name path-db-name))
+        ;; A MySQL app DB compares names without case, so the name can find this query's own database.
+        other-database? (and (some? named-db-id)
+                             (not= named-db-id current-db-id))]
+    (if other-database?
+      (ex-info (tru "Portable table FK {0} references database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                    (pr-str path)
+                    (pr-str path-db-name)
+                    (pr-str current-db))
+               {:status-code  400
+                :error        :cross-database-table
+                :agent-error? true
+                :path         path
+                :database-id  current-db-id})
+      (ex-info (tru "Portable table FK references database {0}, but metadata provider is for {1}."
+                    (pr-str path-db-name)
+                    (pr-str current-db))
+               {:status-code  400
+                :error        :unknown-table
+                :agent-error? true
+                :path         path
+                :expected-db  current-db
+                :database-id  current-db-id}))))
 
 (defn- table-candidates
   "Resolve `(schema, table-name)` against `metadata-provider`, returning only active tables.
@@ -156,19 +190,15 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim.
 
+  Every error here carries the provider's `:database-id`, which is not permission-checked: read it
+  with `metabase.metabot.tools.recoverable.pipeline/readable-database-id`.
+
   Inactive (`:active false`) tables are dropped by [[table-candidates]], so a stale FK to one
   surfaces here as a 0-candidate miss."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)
-      (throw (ex-info (tru "Portable table FK references database {0}, but metadata provider is for {1}."
-                           (pr-str path-db-name)
-                           (pr-str current-db))
-                      {:status-code  400
-                       :error        :unknown-table
-                       :agent-error? true
-                       :path         path
-                       :expected-db  current-db})))
+      (throw (database-mismatch-ex-info metadata-provider path)))
     (let [candidates (table-candidates metadata-provider current-db-id path-schema path-table-name)]
       (case (count candidates)
         0 (throw (unknown-table-ex-info metadata-provider path))
@@ -181,7 +211,8 @@
                         {:status-code  400
                          :error        :ambiguous-table
                          :agent-error? true
-                         :path         path}))))))
+                         :path         path
+                         :database-id  current-db-id}))))))
 
 (defn- find-field
   "Resolve a field path `[db schema table field …]` to a `:metadata/column` or throw with context.

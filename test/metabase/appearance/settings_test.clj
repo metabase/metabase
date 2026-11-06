@@ -8,6 +8,8 @@
    [metabase.test.util :as tu]
    [metabase.util.jvm :as u.jvm]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- image-data-uri [content-type content]

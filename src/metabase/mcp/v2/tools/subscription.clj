@@ -300,21 +300,14 @@
                       (t2/hydrate [:dashcards :card]))
         cards     (subscription-cards dashboard)
         channel   (build-channel nil (or channel "email") true args)
-        ;; `collection_id` is deliberately nil rather than the dashboard's: the Pulse model derives
-        ;; it from `dashboard_id`, and naming it here would make the create-check demand *write*
-        ;; access to the dashboard's collection — anyone who can view a dashboard can subscribe to
-        ;; it. Both collection keys must still be present, since the position reconciler requires
-        ;; them.
         pulse     (pulse.api/create-pulse-with-perm-checks!
                    cards
                    [channel]
-                   {:name                (:name dashboard)
-                    :creator_id          api/*current-user-id*
-                    :dashboard_id        (:id dashboard)
-                    :collection_id       nil
-                    :collection_position nil
-                    :skip_if_empty       (boolean skip_if_empty)
-                    :parameters          (resolve-parameters parameters (:parameters dashboard))})]
+                   {:name          (:name dashboard)
+                    :creator_id    api/*current-user-id*
+                    :dashboard_id  (:id dashboard)
+                    :skip_if_empty (boolean skip_if_empty)
+                    :parameters    (resolve-parameters parameters (:parameters dashboard))})]
     (:id pulse)))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------

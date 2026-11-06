@@ -6,7 +6,6 @@
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
    [metabase.sso.settings :as sso-settings]
-   [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]))
 
@@ -77,26 +76,6 @@
   (when-not enabled?
     (throw (ex-info (tru "Sorry, but you''ll need a Metabase account to view this page. Please contact your administrator.")
                     {:status-code 401}))))
-
-(defn check-sso-redirect
-  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
-  [redirect-url]
-  (try
-    (let [redirect (some-> redirect-url (java.net.URI.))
-          our-host (some-> (system/site-url) (java.net.URI.) (.getHost))]
-      (when-not (or (nil? redirect-url)
-                    (and (nil? (.getHost redirect))
-                         (nil? (.getScheme redirect)))
-                    (= (.getHost redirect) our-host))
-        (throw (ex-info (tru "Invalid redirect URL")
-                        {:status-code  400
-                         :redirect-url redirect-url})))
-      redirect-url)
-    (catch clojure.lang.ExceptionInfo e (throw e))
-    (catch Exception _e
-      (throw (ex-info (tru "Invalid redirect URL")
-                      {:status-code  400
-                       :redirect-url redirect-url})))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 

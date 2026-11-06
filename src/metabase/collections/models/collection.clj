@@ -336,27 +336,34 @@
   [collection]
   (library-entity-id? (:entity_id collection)))
 
+(defn- system-collection-name
+  "The translated name of a system-defined collection, or nil for a collection whose name is its own."
+  [collection]
+  (cond
+    (is-trash? collection)
+    (tru "Trash")
+
+    (and (is-library? collection) (library-root-collection? collection))
+    (tru "Library")
+
+    (and (is-library-data-collection? collection) (library-root-collection? collection))
+    (tru "Data")
+
+    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
+    (tru "Metrics")
+
+    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
+    (tru "Dashboards")))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
   Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
-  (cond-> collection
-    (is-trash? collection)
-    (assoc :name (tru "Trash"))
-
-    (and (is-library? collection) (library-root-collection? collection))
-    (assoc :name (tru "Library"))
-
-    (and (is-library-data-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Data"))
-
-    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Metrics"))
-
-    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Dashboards"))))
+  (if-let [localized-name (system-collection-name collection)]
+    (assoc collection :name localized-name)
+    collection))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -376,8 +383,6 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
-        ;; not even an administrator edits a data app's collection: only a pull of its app changes it
-        (not= (keyword (:namespace instance)) data-apps-ns)
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
@@ -609,13 +614,6 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
-(defn assert-remote-syncable
-  "Throws when `collection` is remote-synced but remote sync can't sync it."
-  [{:keys [is_remote_synced] :as collection}]
-  (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
-    (let [msg (tru "Remote sync syncs only the Library, transforms, snippets and data apps unless remote-sync-custom-collections-enabled is on.")]
-      (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
-
 (defenterprise check-library-content
   "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
   metabase-enterprise.library.validation
@@ -624,17 +622,14 @@
 
 (defn check-allowed-content
   "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
-  content of `model-type`."
+  content of `model-type`; a data app's collection holds only what a remote-sync pull of the app accepts."
   [model-type collection-id]
-  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content.
-  ;; A load checks every question as a possible dashboard question before its dashboard is known, so that is a
-  ;; question here.
   (when (and collection-id
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
-             (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
+             (not (contains? #{:question :dashboard-question :action} (keyword model-type)))
              (perms/data-app-collection? collection-id))
-    (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
+    (throw (ex-info (tru "A data app''s collection can hold only questions and implicit actions.") {:status-code 400})))
   (check-library-content model-type collection-id))
 
 (defenterprise check-library-update
@@ -1816,7 +1811,7 @@
                                   current-parent-id)
         new-parent              (if new-parent-id
                                   (collections.db/collection new-parent-id)
-                                  root-collection)
+                                  (assoc root-collection :namespace (:namespace collection)))
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
@@ -1885,7 +1880,6 @@
                        :new-location new-location})))
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
-    ;; an export writes a data app's collection under another as a file every pull refuses
     (when (perms/data-app-collection? (:id collection))
       (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
@@ -1928,8 +1922,7 @@
                (assoc :slug (slugify collection-name))
                (cond->
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)
-    (assert-remote-syncable <>)))
+    (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2112,12 +2105,13 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
-    ;; an export leaves out a trashed collection, which would delete the app's resource files, and writes an
-    ;; official one into a file every pull refuses
     (api/check
-     (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
+     (not (and (or (:archived collection-updates)
+                   (some? (:authority_level collection-updates))
+                   (contains? collection-updates :location)
+                   (some collection-updates [:type :personal_owner_id :is_sample :archive_operation_id]))
                (perms/data-app-collection? (:id collection-before-updates))))
-     [400 "You cannot move a data app's collection to the trash or make it official."])
+     [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
@@ -2150,9 +2144,7 @@
                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
                collection-name (assoc :slug (slugify collection-name)))
       (when-not *clearing-remote-sync*
-        (assert-valid-remote-synced-parent (merge collection-before-updates <>))
-        (when (contains? <> :is_remote_synced)
-          (assert-remote-syncable (merge collection-before-updates <>)))))))
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -2289,7 +2281,8 @@
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
-  {:copy [:archive_operation_id
+  {:schema    ::collections.schema/external-collection
+   :copy [:archive_operation_id
           :archived
           :archived_directly
           :authority_level
@@ -2312,6 +2305,11 @@
    :defaults {:archived         false
               :is_sample        false
               :is_remote_synced false}})
+
+(defmethod serdes/load-update! "Collection" [model-name ingested local]
+  (serdes/default-load-update! model-name
+                               (cond-> ingested (system-collection-name local) (dissoc :name))
+                               local))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

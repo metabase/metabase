@@ -112,19 +112,19 @@
 
 (deftest ^:synchronized failed-first-write-does-not-mark-series-live-test
   (testing "a failed first gauge write does not make later clears create a NaN-only series"
-    (let [set-index-gauge! @#'index-health/set-index-gauge!
-          live             @#'index-health/live-gauge-series
-          series           [:metabase-search/index-coverage-ratio :failed-write-test-engine]
-          calls            (atom [])]
+    (let [set-index-gauge!             @#'index-health/set-index-gauge!
+          live                         @#'index-health/live-gauge-series
+          [gauge-key index :as series] [:metabase-search/index-coverage-ratio :failed-write-test-engine]
+          calls                        (atom [])]
       (try
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
                                                            (throw (ex-info "prometheus down" {})))]
-          (is (thrown? Exception (apply set-index-gauge! (conj series 1.0))))
+          (is (thrown? Exception (set-index-gauge! gauge-key index 1.0)))
           (is (not (contains? @live series))))
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
-          (apply set-index-gauge! (conj series nil))
+          (set-index-gauge! gauge-key index nil)
           (is (empty? @calls))
-          (apply set-index-gauge! (conj series 0.5))
+          (set-index-gauge! gauge-key index 0.5)
           (is (contains? @live series)))
         (finally
           (swap! live disj series))))))

@@ -83,6 +83,8 @@ export type QueryEditorUiOptions = {
   hideRunButton?: boolean;
   hidePreviewQueryButton?: boolean;
   resizable?: boolean;
+  /** If true, a mod+Enter hotkey to run query will be attached */
+  canRunViaHotkey?: boolean;
 };
 
 /**

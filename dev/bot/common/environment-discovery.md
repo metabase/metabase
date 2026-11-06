@@ -1,6 +1,6 @@
 ## Initial Setup
 
-1. If you have not already, read `CLAUDE.md` in the project root for test commands and conventions.
+1. If you have not already, read `AGENTS.md` in the project root for test commands and conventions.
 2. **Create all directories and files that later steps will Read or Write.** Run this single Bash command up front so the rest of the phases don't trip over missing paths:
    ```bash
    mkdir -p .bot/autobot {{OUTPUT_DIR}}/output {{OUTPUT_DIR}}/tmp && touch .bot/autobot/llm-status.txt

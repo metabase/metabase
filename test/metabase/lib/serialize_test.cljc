@@ -205,7 +205,7 @@
    :metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases              #{"Cat"}
    :metabase.query-processor.util.add-alias-info/desired-alias->escaped                     {"ID" "ID_2"}
    :metabase.query-processor.util.add-alias-info/join-alias->escaped                        {"Cat" "Cat_2"}
-   :metabase.driver.sql.query-processor/cte-level                                           1})
+   :metabase.driver.sql.query-processor/cte-name                                            "__mb_stage_0"})
 
 (def ^:private join-internal-keys
   "Every internal key middleware adds to a join."
@@ -257,6 +257,7 @@
    :qp/compiled-inline                       {:query "SELECT 1"}
    :qp/source-card-id                        1
    :qp/skip-result-metadata-persistence      true
+   :qp/non-default-parameterized?            true
    :qp.pivot/unremapped-breakout-combination [0 1]
    :qp.pivot/remapped-breakout-combination   [0]
    :qp.pivot/num-remapped-cols               3

@@ -107,7 +107,7 @@
       ;; converter such as `with-pipeline-errors`. A declared recoverable carries `:agent-error?`
       ;; too, so without this it would be re-wrapped as a legacy agent error — losing its recovery
       ;; steps and re-attributing it to this tool.
-      (contains? (ex-data e) tools.error/error-key)
+      (tools.error/declared? e)
       (throw e)
 
       terminal-error?

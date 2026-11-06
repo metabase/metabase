@@ -17,7 +17,7 @@ export default {
 };
 
 const Template: StoryFn<StaticChartProps> = (args) => {
-  return <StaticVisualization {...args} />;
+  return <StaticVisualization {...args} isStorybook />;
 };
 
 export const Default = {

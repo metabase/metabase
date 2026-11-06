@@ -48,6 +48,19 @@ export * from "./data-app.esm.js";
 writeToFile("data-app.cjs", dataApp_cjs);
 writeToFile("data-app.js", dataApp_js);
 
+const testing_cjs = `
+const Testing = require("./testing.bundle");
+
+module.exports = Testing;
+`.trim();
+
+const testing_js = `
+export * from "./testing.esm.js";
+`.trim();
+
+writeToFile("testing.cjs", testing_cjs);
+writeToFile("testing.js", testing_js);
+
 // The data-app dev preset (`data-app-dev.js`, ESM-only) and the dev entry
 // (`data-app-dev-entry.js`) are emitted directly by the rspack builds, so they
 // need no wrappers here.

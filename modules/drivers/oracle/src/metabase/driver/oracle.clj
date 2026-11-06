@@ -76,7 +76,7 @@
    "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
 (doseq [[feature supported?] {:convert-timezone                 true
-                              :database-routing                 false
+                              :database-routing                 true
                               :datetime-diff                    true
                               :describe-default-expr            true
                               :describe-is-generated            true
@@ -89,8 +89,13 @@
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
                               :regex/lookaheads-and-lookbehinds false
-                              :table-privileges                true}]
+                              :stage-ctes                       true
+                              :table-privileges                 true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
+
+(defmethod driver/database-supports? [:oracle :stage-ctes/nested]
+  [_driver _feature db]
+  (boolean (some-> db :dbms-version :semantic-version first (>= 23))))
 
 (mr/def ::details
   "Oracle database details map."
@@ -125,10 +130,14 @@
 ;;; name, and leaving any of it through is what makes `config-https://attacker/x` or `x))(ADDRESS=(HOST=attacker)` a
 ;;; connection Metabase would open.
 
+(def ^:private host-pattern
+  "A hostname or IPv4 literal, or an IPv6 literal in the brackets Oracle needs to tell it from the port separator."
+  "(?:[A-Za-z0-9][A-Za-z0-9._-]*|\\[[0-9A-Fa-f:.]+\\])")
+
 (def ^:private detail-patterns
   "What each detail interpolated into the connect descriptor is allowed to look like, keyed by detail."
-  {;; a hostname or IPv4 literal, or an IPv6 literal in the brackets Oracle needs to tell it from the port separator
-   :host         #"[A-Za-z0-9][A-Za-z0-9._-]*|\[[0-9A-Fa-f:.]+\]"
+  {;; one host, or a comma-separated list of hosts that the driver tries in order
+   :host         (re-pattern (str host-pattern "(?:\\s*,\\s*" host-pattern ")*"))
    ;; bounded rather than `\d+` so that the `parse-long` in [[validated-details]] is total -- no TCP port needs more
    :port         #"\d{1,5}"
    ;; `$` and `#` are legal in an Oracle identifier; a service name is commonly qualified, e.g.
@@ -161,7 +170,10 @@
                  (do
                    (when-not (re-matches pattern value)
                      (throw (invalid-detail-exception detail-key)))
-                   (assoc details detail-key (cond-> value (= detail-key :port) parse-long)))
+                   (assoc details detail-key (case detail-key
+                                               :port (parse-long value)
+                                               :host (str/replace value #"\s*,\s*" ",")
+                                               value)))
                  ;; a blank detail names nowhere. Dropping it rather than passing `""` along lets the `:or` defaults in
                  ;; [[sql-jdbc.conn/connection-details->spec]] apply, and keeps a blank port out of [[ssl-spec]]'s `%d`
                  (dissoc details detail-key)))
@@ -273,9 +285,10 @@
    port         :- :int
    sid          :- [:maybe :string]
    service-name :- [:maybe :string]]
-  (assoc spec :subname (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
-                               host
-                               port
+  (assoc spec :subname (format "@(DESCRIPTION=%s(CONNECT_DATA=%s%s))"
+                               ;; one address for each host, which the driver tries in order
+                               (str/join (for [h (str/split host #",")]
+                                           (format "(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))" h port)))
                                (if sid (str "(SID=" sid ")") "")
                                (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
 

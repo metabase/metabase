@@ -20,7 +20,6 @@
   update-collection!]
  [metabase.collections.models.collection
   archive-or-unarchive-collection!
-  assert-remote-syncable
   has-remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
@@ -49,6 +48,7 @@
   shared-tenant-collection?
   slugify
   transforms-ns
+  trash-collection-id
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]
