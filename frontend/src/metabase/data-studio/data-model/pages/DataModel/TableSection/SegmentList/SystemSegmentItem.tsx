@@ -5,6 +5,7 @@ import { Card, Flex, Icon, Stack, Text, rem } from "metabase/ui";
 
 import type { ResolvedSystemSegment } from "../table-segments";
 
+import { FilterPills } from "./FilterPills";
 import { DefaultSegmentBadge } from "./SegmentItem";
 import S from "./SegmentItem/SegmentItem.module.css";
 
@@ -38,7 +39,7 @@ export function SystemSegmentItem({
       shadow="none"
       withBorder
     >
-      <Stack gap="xxs">
+      <Stack gap="xs">
         <Flex align="center" gap="sm">
           <Icon name="segment" c="core-brand" />
           <Text fw="bold">{segment.label}</Text>
@@ -47,11 +48,13 @@ export function SystemSegmentItem({
             <Text size="sm" c="text-secondary">{t`Edited`}</Text>
           )}
         </Flex>
-        <Text lh="lg" c={hasFilters ? "text-primary" : "text-secondary"}>
-          {hasFilters
-            ? segment.filterNames.join(t` and `)
-            : t`No matching column found. Open it to set it up.`}
-        </Text>
+        {hasFilters ? (
+          <FilterPills names={segment.filterNames} />
+        ) : (
+          <Text lh="lg" c="text-secondary">
+            {t`No matching column found. Open it to set it up.`}
+          </Text>
+        )}
       </Stack>
     </Card>
   );
