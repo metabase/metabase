@@ -112,17 +112,22 @@
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
     all))
 
-(defn- compile-sources! [basis]
+(defn- compile-sources!
+  "AOT-compile the sources in `basis`. The compiler runs in a child JVM; pass `:out-file` and `:err-file` to write its
+  output to those files instead of inheriting this process's stdout and stderr."
+  [basis {:keys [out-file err-file]}]
   (u/step "Compile Clojure source files"
     (let [paths    (all-paths basis)
           _        (u/announce "Compiling Clojure files in %s" (pr-str paths))
           ns-decls (u/step "Determine compilation order for Metabase files"
                      (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
-        (b/compile-clj {:basis      basis
-                        :src-dirs   paths
-                        :class-dir  class-dir
-                        :ns-compile ns-decls})
+        (b/compile-clj (cond-> {:basis      basis
+                                :src-dirs   paths
+                                :class-dir  class-dir
+                                :ns-compile ns-decls}
+                         out-file (assoc :out :write, :out-file out-file)
+                         err-file (assoc :err :write, :err-file err-file)))
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (def ^:private resource-ignore-patterns
@@ -249,11 +254,14 @@
 
 (defn compile!
   "Clean the build output and AOT-compile the Clojure sources for `edition`. Returns the basis to pass to
-  [[package!]]. Doesn't need the frontend build, so it can run while the frontend builds."
-  [edition]
-  (clean!)
-  (doto (create-basis edition)
-    compile-sources!))
+  [[package!]]. Doesn't need the frontend build, so it can run while the frontend builds. See [[compile-sources!]]
+  for `options`."
+  ([edition]
+   (compile! edition nil))
+  ([edition options]
+   (clean!)
+   (doto (create-basis edition)
+     (compile-sources! options))))
 
 (defn package!
   "Package the output of [[compile!]] and the resources, including the built frontend, into the uberjar."
