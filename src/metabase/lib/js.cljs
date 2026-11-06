@@ -2315,13 +2315,18 @@
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
 (defn ^:export legacy-column->type-info
-  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
-  does not require a `query`. Lib columns remain unchanged.
+  "Reads only the base, effective, and semantic types of a `legacy-column` into an object compatible with type checking
+  functions. Unlike [[legacy-column->metadata]], does not require a `query`. Lib columns remain unchanged.
 
   > **Code health:** Legacy."
   [column]
-  (cond-> column
-    (object? column) js.metadata/parse-column))
+  (if (object? column)
+    (let [type-keyword (fn [k] (some-> (gobject/get column k) keyword))]
+      (m/assoc-some {}
+                    :base-type      (type-keyword "base_type")
+                    :effective-type (type-keyword "effective_type")
+                    :semantic-type  (type-keyword "semantic_type")))
+    column))
 
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
