@@ -4,7 +4,6 @@ import type {
   ConcreteTableId,
   DatabaseId,
   SchemaName,
-  TableId,
 } from "metabase-types/api";
 
 import { DatabasePane } from "./DatabasePane";
@@ -64,11 +63,21 @@ export type DataReferenceQuestionItem = {
   id: CardId;
 };
 
-export type DataReferenceFieldItem = {
+export type DataReferenceTableFieldItem = {
   type: "field";
-  tableId: TableId;
+  tableId: ConcreteTableId;
   columnIndex: number;
 };
+
+export type DataReferenceCardFieldItem = {
+  type: "field";
+  cardId: CardId;
+  columnIndex: number;
+};
+
+export type DataReferenceFieldItem =
+  | DataReferenceTableFieldItem
+  | DataReferenceCardFieldItem;
 
 export type ColumnListInfo = {
   query: Lib.Query;
