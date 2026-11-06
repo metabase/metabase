@@ -76,11 +76,8 @@
   [auth-identity :- ::auth-identity.schema/auth-identity]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
-(mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]
-  "Extracts the user ID from a password reset token.
-
-  Password reset tokens follow the format `USER-ID_RANDOM-UUID` (e.g., `123_abc-def-ghi`). Returns the user ID as an
-  integer if the token matches this format, or nil if the token format is invalid."
+(mu/defn parse-token-user-id :- [:maybe ms/PositiveInt]
+  "The positive user ID that starts a `USER-ID_RANDOM-UUID` reset token, or nil for any other token."
   [token :- :string]
   (when-let [[_ user-id-str] (re-matches #"(^\d+)_.+$" token)]
     (try

@@ -2,6 +2,7 @@
   "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [java-time.api :as t]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
@@ -45,6 +46,16 @@
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+
+(mu/defn user-ids-with-used-password :- [:set ::lib.schema.id/user]
+  "The ids among `user-ids` of the Users whose `password` AuthIdentity has been used to log in and has not expired."
+  [user-ids :- [:set ::lib.schema.id/user]]
+  (set (when (seq user-ids)
+         (t2/select-fn-set :user_id [:model/AuthIdentity :user_id]
+                           :user_id      [:in [:auto/param user-ids]]
+                           :provider     "password"
+                           :last_used_at [:not= nil]
+                           {:where [:or [:= :expires_at nil] [:> :expires_at [:auto/param (t/offset-date-time)]]]}))))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
