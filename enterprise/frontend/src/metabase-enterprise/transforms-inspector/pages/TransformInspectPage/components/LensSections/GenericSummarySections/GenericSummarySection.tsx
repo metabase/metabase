@@ -121,10 +121,18 @@ export const GenericSummarySection = ({
         <Box>
           <SimpleGrid cols={2} spacing="xl">
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={inputInstance} styles={treeTableStyles} />
+              <TreeTable
+                instance={inputInstance}
+                static
+                styles={treeTableStyles}
+              />
             </Card>
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={outputInstance} styles={treeTableStyles} />
+              <TreeTable
+                instance={outputInstance}
+                static
+                styles={treeTableStyles}
+              />
             </Card>
           </SimpleGrid>
         </Box>
