@@ -3,17 +3,20 @@ import {
   type QueryInput,
   type QuestionQueryInput,
   type TableQueryInput,
+  isCountAggregation,
   isMeasureReference,
   isMetricReference,
   isNamedBreakout,
   isSegmentReference,
   unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import { getAggregationResultColumnNames } from "embedding-sdk-shared/lib/create-metabase-query/result-columns";
 import type {
   MetricSchema,
   QuestionSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import * as Lib from "metabase-lib";
+import type { TestAggregationSpec } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 // `satisfies` ties the list to the input type, so a renamed or mistyped clause
@@ -312,18 +315,8 @@ function getFirstOperatorArg(value: unknown) {
   return value.args[0];
 }
 
-function isCountAggregation(value: unknown) {
-  return (
-    isObject(value) &&
-    value.type === "operator" &&
-    value.operator === "count" &&
-    Array.isArray(value.args) &&
-    value.args.length === 0
-  );
-}
-
 type GroupingClauses = {
-  aggregations?: readonly unknown[];
+  aggregations?: readonly TestAggregationSpec[];
   breakouts?: readonly unknown[];
 };
 
@@ -337,7 +330,7 @@ function isGroupedQuery(input: GroupingClauses) {
 }
 
 function isAggregationResultReference(
-  aggregations: readonly unknown[] | undefined,
+  aggregations: readonly TestAggregationSpec[] | undefined,
   value: unknown,
 ) {
   if (
@@ -349,44 +342,6 @@ function isAggregationResultReference(
   }
 
   return getAggregationResultColumnNames(aggregations).includes(value.name);
-}
-
-function getAggregationResultColumnNames(
-  aggregations: readonly unknown[] | undefined,
-) {
-  return (aggregations ?? []).flatMap((aggregation) => {
-    // Metrics and Measures also carry a `name`, but it is their title, not a
-    // result column name.
-    if (
-      isObject(aggregation) &&
-      aggregation.type === "operator" &&
-      typeof aggregation.name === "string"
-    ) {
-      return [aggregation.name];
-    }
-
-    if (isCountAggregation(aggregation)) {
-      return ["count"];
-    }
-
-    const columns = getColumns(aggregation);
-
-    if (!columns) {
-      return [];
-    }
-
-    return columns.flatMap((column) =>
-      isObject(column) && typeof column.name === "string" ? [column.name] : [],
-    );
-  });
-}
-
-function getColumns(value: unknown) {
-  if (!isObject(value) || !("columns" in value)) {
-    return null;
-  }
-
-  return Array.isArray(value.columns) ? value.columns : null;
 }
 
 function isBreakoutReference(

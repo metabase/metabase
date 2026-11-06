@@ -94,22 +94,16 @@ jobs:
       env:
         VERSION: ${{ inputs.version }}
         COMMIT: ${{ inputs.commit }}
-        SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       with:
         script: | # js
           const {
             checkReleaseArtifacts,
             buildReleaseArtifactMismatchMessage,
-            sendPublishFailureMessage,
-            slackLink,
           } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const { VERSION: version, COMMIT: commit } = process.env;
           const { owner, repo } = context.repo;
 
-          let error;
-          let slackError;
           try {
             const result = await checkReleaseArtifacts({ github, owner, repo, version, commit });
 
@@ -118,23 +112,10 @@ jobs:
               return;
             }
 
-            error = buildReleaseArtifactMismatchMessage(result);
-            slackError = buildReleaseArtifactMismatchMessage(result, slackLink);
+            core.setFailed(buildReleaseArtifactMismatchMessage(result));
           } catch (err) {
-            // e.g. a short SHA: still worth telling the release thread
-            error = slackError = err.message;
+            core.setFailed(err.message);
           }
-
-          await sendPublishFailureMessage({
-            owner,
-            repo,
-            version,
-            runId: context.runId,
-            channelName: process.env.SLACK_RELEASE_CHANNEL,
-            details: slackError,
-          }).catch(console.error);
-
-          core.setFailed(error);
 
   publish-start-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -476,24 +457,15 @@ jobs:
             --template "$TEMPLATE" \
             --repository "$REPOSITORY" \
             --publish
-      - name: Send Docker Hub README failure message
-        if: failure()
-        uses: actions/github-script@v9
-        env:
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Send warning message
+        if: failure() || cancelled()
+        uses: ./.github/actions/notify-release-failure
         with:
-          script: | # js
-            const { sendDockerReadmeFailureMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            await sendDockerReadmeFailureMessage({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              version: '${{ inputs.version }}',
-              runId: context.runId,
-              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              edition: '${{ matrix.edition }}',
-            }).catch(console.error);
+          title: Updating the ${{ matrix.edition }} Docker Hub README for
+          version: ${{ inputs.version }}
+          level: warning
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   trigger-cloud-issues:
     # Only create issues in the cloud ops repository if this release happens in https://github.com/metabase/metabase.
@@ -591,57 +563,23 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
         uses: actions/github-script@v9
-        env:
-          # required by getMilestoneIssues to configure GraphQL client
-          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           result-encoding: string
           script: | # js
-            const {
-              publishRelease,
-              getCanonicalVersion,
-              getGenericVersion,
-              getMilestoneIssues,
-              getWebsiteChangelog,
-              getMajorVersion
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { publishRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const version = '${{ inputs.version }}';
-
-            const issues = await getMilestoneIssues({
-              version,
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-
-            // github releases page
             await publishRelease({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              version,
+              version: '${{ inputs.version }}',
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');
             }).catch((err) => {
               console.error('Failed to publish release notes', '${{ inputs.version }}', err);
               process.exit(1);
             });
-
-            // website changelog
-            const changelogText = getWebsiteChangelog({ version, issues });
-
-            await github.rest.repos.createDispatchEvent({
-              owner: context.repo.owner,
-              repo: '${{ vars.WEBSITE_REPO }}',
-              event_type: 'update-changelog',
-              client_payload: {
-                version: getGenericVersion(version),
-                majorVersion: getMajorVersion(version),
-                text: changelogText,
-              }
-            }).catch(console.warn);
 
   publish-version-info:
     if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
@@ -731,3 +669,36 @@ jobs:
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
+
+  notify-failure:
+    needs:
+      - check-version
+      - publish-start-message
+      - download-uberjar
+      - upload-to-s3
+      - verify-s3-download
+      - containerize-oss
+      - containerize-ee
+      - push-tags
+      - get-extra-tags
+      - trigger-cloud-issues
+      - trigger-ee-extra-pr
+      - draft-release-notes
+      - publish-version-info
+      - publish-complete-message
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Publishing
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

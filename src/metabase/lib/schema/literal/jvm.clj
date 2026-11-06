@@ -19,14 +19,14 @@
   :type/BigInteger)
 
 (mr/def ::big-decimal
-  (common/instance-of-class java.math.BigDecimal))
+  [:schema {:json-schema {:type "number"}} (common/instance-of-class java.math.BigDecimal)])
 
 (defmethod expression/type-of-method java.math.BigDecimal
   [_n]
   :type/Decimal)
 
 (mr/def ::float
-  (common/instance-of-class Float))
+  [:schema {:json-schema {:type "number"}} (common/instance-of-class Float)])
 
 (defmethod expression/type-of-method java.time.LocalDate
   [_t]

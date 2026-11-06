@@ -30,6 +30,7 @@ export const CurrencyPicker = ({
   return (
     <Select
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {

@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
+   [metabase.lib.core :as lib]
    [metabase.search.appdb.scoring-test :as appdb.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
    [metabase.search.test-util :as search.tu]
@@ -212,8 +213,8 @@
         (mt/with-temp [:model/Card        {c1 :id} {}
                        :model/Card        {c2 :id} {}
                        :model/Transform   {t1 :id} {:name "test transform"
-                                                    :source {:type "query"
-                                                             :query (mt/native-query {:query "SELECT 1"})}
+                                                    :source {:type :query
+                                                             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                     :target {:type "table"
                                                              :name (mt/random-name)}}
                        :model/RecentViews _ (recent-view c1 now)]

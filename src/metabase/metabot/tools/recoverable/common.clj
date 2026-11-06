@@ -90,13 +90,13 @@
        :recovery []}
 
       :sql-query
-      {:sentence " A saved question or model has no query ID."
+      {:sentence " The ID of a saved question or model is not a query ID."
        :recovery [{:uses #{"create_sql_query" "run_query"}
                    :text (str "To run one, write SQL that reads it with `create_sql_query`, then run that query"
                               " with `run_query`.")}]}
 
       :no-values
-      {:sentence " A saved question or model has no query ID, and no SQL can run here."
+      {:sentence " The ID of a saved question or model is not a query ID, and no SQL can run here."
        :recovery [{:uses #{} :text "Tell the user you can't read its results."}]})))
 
 (defrecoverable unknown-query-id!
