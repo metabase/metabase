@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { createMockMetadata } from "__support__/metadata";
 import { setupListDatabaseSchemasEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -10,6 +11,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 import {
@@ -76,20 +79,24 @@ describe("QuestionSources", () => {
   });
 
   it("should show card source information", async () => {
-    const card = createMockCard({
-      name: "My Question",
-      dataset_query: {
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": "card__2",
-        },
-      },
-    });
-
     const sourceCard = createMockCard({
       name: "My Source Question",
       id: 2,
+    });
+
+    const card = createMockCard({
+      name: "My Question",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(
+          createMetadataProvider({
+            metadata: createMockMetadata({
+              databases: [createSampleDatabase()],
+              questions: [sourceCard],
+            }),
+          }),
+          { stages: [{ source: { type: "card", id: sourceCard.id } }] },
+        ),
+      ),
     });
 
     await setup({ card, sourceCard });

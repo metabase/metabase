@@ -17,11 +17,8 @@ import Question from "metabase-lib/v1/Question";
 import type { Card, Database, Table } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
-  PRODUCTS,
   PRODUCTS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
@@ -142,42 +139,47 @@ function createCardFromQuery({
 describe("ViewOnlyTag", () => {
   describe("cards", () => {
     it("should show the View-only badge when the source card is inaccessible", async () => {
-      setup({
-        card: createCardFromQuery({
-          query: Lib.fromJsQuery(SAMPLE_PROVIDER, {
-            database: SAMPLE_DB_ID,
-            type: "query",
-            query: {
-              "source-table": "card__123",
-            },
-          }),
-        }),
+      const sourceCard = createCardFromQuery({
+        id: SOURCE_CARD_ID,
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       });
+      const query = Lib.createTestQuery(createCardProvider(sourceCard), {
+        stages: [{ source: { type: "card", id: sourceCard.id } }],
+      });
+
+      setup({ card: createCardFromQuery({ query }) });
 
       expect(screen.getByText("View-only")).toBeInTheDocument();
       await expectNoPopover();
     });
 
     it("should show the View-only badge when a joined card is inaccessible", async () => {
-      const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              alias: "Orders Question",
-              fields: "all",
-              // This card does not exist
-              "source-table": "card__123",
-              condition: [
-                "=",
-                ["field", PRODUCTS.ID, null],
-                ["field", ORDERS.PRODUCT_ID, null],
-              ],
-            },
-          ],
-        },
+      const sourceCard = createCardFromQuery({
+        id: SOURCE_CARD_ID,
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      });
+      const query = Lib.createTestQuery(createCardProvider(sourceCard), {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "card", id: sourceCard.id },
+                strategy: "left-join",
+                alias: "Orders Question",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: { type: "column", name: "PRODUCT_ID" },
+                    right: { type: "column", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       });
 
       setup({ card: createCardFromQuery({ query }) });

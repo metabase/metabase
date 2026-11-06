@@ -112,20 +112,3 @@ export const createNativeModelCard = (
     ...opts,
   });
 };
-
-export const createComposedModelCard = ({
-  id = 1,
-  ...opts
-}: Partial<StructuredCard> = {}): StructuredCard => {
-  return createStructuredModelCard({
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": `card__${id}`,
-      },
-    },
-    ...opts,
-    id,
-  });
-};

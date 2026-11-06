@@ -28,6 +28,8 @@ import {
   defaultContext,
 } from "metabase/metabot";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   Database,
@@ -37,7 +39,6 @@ import {
   createMockCard,
   createMockCollection,
   createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -75,10 +76,11 @@ const TEST_NATIVE_MODEL = createMockCard({
 const TEST_NOTEBOOK_MODEL = createMockCard({
   id: 3,
   type: "model",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: TEST_DB.id,
-    query: { "source-table": ORDERS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
 });
 
 const MONGO_DB = createSampleDatabase({ engine: "mongo" });
