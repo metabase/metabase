@@ -3971,7 +3971,7 @@
 
   enterprise/data-testing
   {:team "Graphy"
-   :api #{metabase-enterprise.data-testing.api metabase-enterprise.data-testing.init}
+   :api #{metabase-enterprise.data-testing.api metabase-enterprise.data-testing.init metabase-enterprise.data-testing.run-api}
    :uses #{api
            audit-app
            driver
