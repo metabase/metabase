@@ -823,7 +823,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
-    it("should open the saved questions when reopened on a card whose request fails", async () => {
+    it("should open the data types when reopened on a card whose request fails", async () => {
       const cardId = 140;
       fetchMock.get(
         `path:/api/card/${cardId}`,
@@ -839,7 +839,6 @@ describe("DataSourceSelector", () => {
 
       setup({
         ...setupOpts,
-        // A Saved Questions database to open on
         availableModels: ["table", "dataset", "card"],
         selectedTable: {
           id: getQuestionVirtualTableId(cardId),
@@ -847,7 +846,9 @@ describe("DataSourceSelector", () => {
         },
       });
 
-      expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
 
     it("should open the tables, not the saved questions, when reopened on a card whose request fails and nested queries are disabled", async () => {
@@ -898,7 +899,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
-    it("should open the source database's tables, not the data types, when a join on a model is reopened with nested queries disabled", async () => {
+    it("should open the data types, not the models, when a join on a model is reopened with nested queries disabled", async () => {
       const model = createMockCard({
         id: 140,
         name: "Orders model",
@@ -926,12 +927,12 @@ describe("DataSourceSelector", () => {
         },
       });
 
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
     });
 
-    it('should open the source database\'s tables, not the data types, when a join on a model is reopened and `entityTypes` = ["table", "question"]', async () => {
+    it('should open the data types, not the models, when a join on a model is reopened and `entityTypes` = ["table", "question"]', async () => {
       const model = createMockCard({
         id: 140,
         name: "Orders model",
@@ -959,9 +960,9 @@ describe("DataSourceSelector", () => {
         },
       });
 
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
     });
 
     it("should only show data from the selected database when joining data", async () => {
@@ -1090,6 +1091,21 @@ describe("DataSourceSelector", () => {
       });
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the data types, not the models, when joining data on a model and `entityTypes` = ["table", "question"]', async () => {
+      setup({
+        ...setupOpts,
+        availableModels: ["table", "dataset", "card"],
+        entityTypes: ["table", "question"],
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
       expect(screen.queryByText("Models")).not.toBeInTheDocument();
     });
 
@@ -1272,7 +1288,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
-    it("should open the source database's tables when a join on a question is reopened with nested queries disabled and a Library", async () => {
+    it("should open the data types, not the saved questions, when a join on a question is reopened with nested queries disabled and a Library", async () => {
       const question = createMockCard({ id: 140, name: "Orders question" });
       setupCardEndpoints(question);
       setupTableQueryMetadataEndpoint(
@@ -1298,9 +1314,9 @@ describe("DataSourceSelector", () => {
         },
       });
 
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
     it("should open the saved questions, not the tables, when joining data on a question before the database list has loaded", async () => {

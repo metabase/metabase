@@ -618,16 +618,20 @@ export class UnconnectedDataSelector extends Component<
         return;
       }
 
-      if (sourceCardType && this.canSelectCardType(sourceCardType)) {
+      if (!sourceCardType) {
+        // A join on a table: its database's schemas, or the data types when
+        // tables are left out
+        await this.switchToStep(
+          this.props.canSelectTable ? SCHEMA_STEP : DATA_BUCKET_STEP,
+        );
+      } else if (this.canSelectCardType(sourceCardType)) {
         // A join on a model or saved question that can be picked here
         await this.switchToStep(STEP_BY_CARD_TYPE[sourceCardType], {}, false);
-      } else if (this.props.canSelectTable) {
-        // query source is a table, or a card that can't be picked here
-        await this.switchToStep(SCHEMA_STEP);
       } else {
-        // A join that can pick neither tables nor the source's type: falls back
-        // to the first step, the data types
-        await this.switchToStep(DATA_BUCKET_STEP);
+        // A join on a model or saved question that can't be picked here
+        // (left out by the entity types, or needing nested queries) opens
+        // where a fresh pick starts
+        await this.switchToStep(this.getFreshPickStep());
       }
     } else {
       // A fresh pick
@@ -636,29 +640,26 @@ export class UnconnectedDataSelector extends Component<
   }
 
   async hydrateSavedEntityStep(): Promise<void> {
-    // Without the card's type (its request failed), it opens as a saved question
-    const cardType = this.state.hasCardRequestFailed
-      ? "question"
+    const { hasCardRequestFailed } = this.state;
+    const cardType = hasCardRequestFailed
+      ? undefined
       : this.props.selectedCardType;
-    // The card's type arrives with `fetchQuestion`, and `canSelectCardType`
-    // reads the data `allLoading` waits for: both hydrate again
-    if (!cardType || this.props.allLoading) {
+    const isCardTypeLoading = !cardType && !hasCardRequestFailed;
+    // The card's type arrives with `fetchQuestion`, and the checks below read
+    // the data `allLoading` waits for: both hydrate again
+    if (isCardTypeLoading || this.props.allLoading) {
       return;
     }
 
-    if (this.canSelectCardType(cardType)) {
+    if (cardType && this.canSelectCardType(cardType)) {
       await this.switchToStep(STEP_BY_CARD_TYPE[cardType]);
       return;
     }
 
-    // A card that can't be picked here (left out by the entity types, or
-    // needing nested queries) opens where a fresh pick starts, as a table does
-    // when tables are left out. A join, when tables can be picked, opens the
-    // source database's schemas or tables, as a fresh join does.
-    const step =
-      this.isJoinStep() && this.props.canSelectTable
-        ? SCHEMA_STEP
-        : this.getFreshPickStep();
+    // A card whose type is unknown (its request failed) or can't be picked
+    // here (left out by the entity types, or needing nested queries) opens
+    // where a fresh pick starts, as a table does when tables are left out
+    const step = this.getFreshPickStep();
     await this.switchToStep(step, this.getClearedStateForStep(step));
   }
 
