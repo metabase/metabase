@@ -57,7 +57,7 @@ import type { ColumnOption, PickedItem } from "./types";
 import { useDynamicGoalSource } from "./use-dynamic-goal-source";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
-import { getNumericColumnOptions } from "./utils";
+import { getCardGoalColumnOptions, getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
 const COLUMN_MENU_MIN_WIDTH = 256;
@@ -276,9 +276,7 @@ export const GoalValueInput = ({
         { id: entityId, ignore_error: true },
         true,
       ).unwrap();
-      const numericColumns = getNumericColumnOptions(
-        card.result_metadata ?? [],
-      );
+      const numericColumns = getCardGoalColumnOptions(card);
       return numericColumns.length === 1
         ? { name: numericColumns[0].name, kind: card.type }
         : null;
