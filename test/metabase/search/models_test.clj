@@ -194,7 +194,7 @@
             (is (not (str/includes? (indexed) "From Model")))))))))
 
 (deftest reconcile-chunks-reindex-messages-test
-  (testing "surviving ids go out in bounded chunks, so one batch cannot build an unbounded query"
+  (testing "enumerated ids go out in bounded chunks, so one batch cannot build an unbounded query"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model", :type :model}
                      :model/Action {_a1 :id}     {:name "Chunk Action 1", :model_id card-id, :type :query}
@@ -207,7 +207,7 @@
                                 ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
                                 (with-redefs [search/reindex-batch-size 2]
                                   (capture-enqueues! #(search/reconcile-cascading-documents! cascading))))]
-            (testing "three surviving documents split across two messages, neither over the limit"
+            (testing "three documents split across two messages, neither over the limit"
               (is (= [2 1] (sort > (map (fn [[_model [_in _id-expr ids]]] (count ids)) selectors)))))))))))
 
 (deftest cascade-enumeration-ceiling-test
@@ -229,17 +229,20 @@
           (search.ingestion/doc-ids "action" [:= 1 :this.model_id])))
       (is (=? [{:limit 3}] @queries)))))
 
-(deftest reconcile-leaves-unenumerable-survivors-alone-test
-  (testing "when the surviving documents cannot be enumerated, reconcile purges none of them"
+(deftest reconcile-purges-through-ingestion-test
+  (testing "reconcile hands its purge to ingestion, so it runs after any batch already in flight"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card   {card-id :id}   {:name "Unenumerable Model", :type :model}
-                     :model/Action {action-id :id} {:name "Live Action", :model_id card-id, :type :query}]
+      (mt/with-temp [:model/Card   {card-id :id}   {:name "Queued Purge Model", :type :model}
+                     :model/Action {action-id :id} {:name "Queued Purge Action", :model_id card-id, :type :query}]
         (let [cascading (cascading-documents-of card-id)]
-          (is (contains? cascading "action"))
-          ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
-          (with-redefs [search.ingestion/max-enumerated-documents 0]
-            (search/reconcile-cascading-documents! cascading))
-          (is (= 1 (indexed-count "action" action-id))))))))
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from :action, :where [:= :id action-id]})
+          (let [updates (into [] cat (capture-enqueues! #(search/reconcile-cascading-documents! cascading)))]
+            (testing "nothing is removed from the index until ingestion runs"
+              (is (= 1 (indexed-count "action" action-id))))
+            (testing "ingesting the queued message purges the document by its id"
+              (search.ingestion/bulk-ingest! updates)
+              (is (= 0 (indexed-count "action" action-id))))))))))
 
 (deftest model-index-delete-purges-indexed-entities-test
   (testing "deleting a model index purges the indexed-entity documents its cascade removed, by their compound ids"
@@ -315,7 +318,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card   {card-id :id} {:name "Partial Enumeration Model", :type :model}
                      :model/Action {_ :id}       {:name "Still Enumerated Action", :model_id card-id, :type :query}]
-        (let [doc-ids search.ingestion/doc-ids]
+        (let [doc-ids (mt/original-fn #'search.ingestion/doc-ids)]
           (mt/with-dynamic-fn-redefs [search.ingestion/doc-ids (fn [search-model where-clause]
                                                                  (if (= "indexed-entity" search-model)
                                                                    (throw (ex-info "enumeration failed" {}))
@@ -325,14 +328,14 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card   {card-id :id}   {:name "Partial Reconcile Model", :type :model}
                      :model/Action {action-id :id} {:name "Purged Action", :model_id card-id, :type :query}]
-        (let [cascading        (array-map "indexed-entity" #{"0:0"}
-                                          "action"         (get (cascading-documents-of card-id) "action"))
-              existing-doc-ids search.ingestion/existing-doc-ids]
+        (let [cascading   (array-map "indexed-entity" #{"0:0"}
+                                     "action"         (get (cascading-documents-of card-id) "action"))
+              bulk-ingest! (mt/original-fn #'search.ingestion/bulk-ingest!)]
           ;; A raw delete, so the action's document is left for the reconcile to purge.
           (t2/query {:delete-from :action, :where [:= :id action-id]})
-          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
-                                                                          (if (= "indexed-entity" search-model)
-                                                                            (throw (ex-info "reconcile failed" {}))
-                                                                            (existing-doc-ids search-model ids)))]
+          (mt/with-dynamic-fn-redefs [search.ingestion/bulk-ingest! (fn [updates]
+                                                                      (if (= "indexed-entity" (ffirst updates))
+                                                                        (throw (ex-info "reconcile failed" {}))
+                                                                        (bulk-ingest! updates)))]
             (search/reconcile-cascading-documents! cascading))
           (is (= 0 (indexed-count "action" action-id))))))))
