@@ -4,8 +4,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
+   [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- insert-database! []
@@ -25,6 +29,21 @@
   [table-id]
   (some #(when (= table-id (:id %)) (select-keys % [:is_published :collection_id :data_layer :data_authority]))
         ((:universe-tables-fn (appdb-source/reads)) Integer/MAX_VALUE)))
+
+(deftest cli-refuses-an-appdb-below-v59-test
+  (testing "below the v59 data_layer conversion the CLI refuses the appdb; from it, it scores"
+    (impl/test-migrations ["v59.2026-03-17T13:00:00"] [migrate!]
+      (let [e (try (appdb-source/verify-supported-appdb!)
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (=? {:cli-validation true} (ex-data e)))
+        (is (re-find #"0\.59" (ex-message e))))
+      (migrate!)
+      (is (nil? (appdb-source/verify-supported-appdb!)))
+      (testing "the whole read path runs against the migrated appdb and yields a score the schema accepts"
+        (is (mr/validate ::data-complexity-score.schema/data-complexity-score.score-data
+                         (complexity/complexity-scores :metabot-scope  (metabot-scope/internal-metabot-scope)
+                                                       :reads          (appdb-source/reads)
+                                                       :emit-snowplow? false)))))))
 
 (deftest cli-reads-user-settings-on-a-v64-appdb-test
   (testing "on an appdb where v64 moved user values into the settings table, the CLI reads them from there"

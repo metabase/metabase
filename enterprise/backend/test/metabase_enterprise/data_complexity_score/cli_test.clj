@@ -402,6 +402,19 @@
         (is (false? @persisted?))
         (is (zero? @advance-calls))))))
 
+(deftest ^:synchronized run-cli-appdb-mode-refuses-unsupported-appdb-before-scoring-test
+  (testing "an appdb below the CLI's floor fails validation before anything is scored or written"
+    (let [scored? (atom false)]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!     (fn [])
+                                  appdb-source/verify-supported-appdb! (fn []
+                                                                         (throw (ex-info "too old" {:cli-validation true})))
+                                  complexity/complexity-scores         (fn [& _] (reset! scored? true) {:meta {}})
+                                  appdb-source/insert-score-row!       (fn [& _] (reset! scored? true))]
+        (is (=? {:cli-validation true}
+                (try (#'cli/run-cli {:source "appdb"})
+                     (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+        (is (false? @scored?))))))
+
 (deftest ^:synchronized run-cli-appdb-mode-registers-in-process-provider-test
   (testing "appdb mode registers the in-process embedding provider before it scores"
     ;; The standalone CLI skips `metabase.core.core/init!`, where the server registers the provider. Without

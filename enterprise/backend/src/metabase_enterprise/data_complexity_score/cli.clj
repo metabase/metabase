@@ -137,6 +137,7 @@
   ;; The appdb can be older than this jar, so Cards and Tables are read raw (see `appdb-source`). The only write is
   ;; one raw INSERT: no model hooks, no fingerprint setting, no Snowplow event.
   (mdb/setup-db-without-migrations!)
+  (appdb-source/verify-supported-appdb!)
   (when write?
     (appdb-source/verify-write-target-shape!))
   ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
