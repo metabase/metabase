@@ -110,18 +110,14 @@ export function NotebookDataPicker({
   };
 
   const loadCard = async (cardId: CardId) => {
-    const card: Card = await runRtkEndpoint(
-      { id: cardId },
-      dispatch,
-      cardApi.endpoints.getCard,
-      { forceRefetch: false },
-    );
-    await runRtkEndpoint(
-      cardId,
-      dispatch,
-      cardApi.endpoints.getCardQueryMetadata,
-      { forceRefetch: false },
-    );
+    const [card]: [Card, unknown] = await Promise.all([
+      runRtkEndpoint({ id: cardId }, dispatch, cardApi.endpoints.getCard, {
+        forceRefetch: false,
+      }),
+      runRtkEndpoint(cardId, dispatch, cardApi.endpoints.getCardQueryMetadata, {
+        forceRefetch: false,
+      }),
+    ]);
     const metadataProvider = selectMetadataProvider(
       store.getState(),
       card.database_id ?? null,

@@ -514,8 +514,8 @@ describe("scenarios > embedding > full app", () => {
           databaseName: "Sample Database",
         });
         H.getNotebookStep("join")
-          .findByText(modelDetails.name)
-          .should("be.visible");
+          .findByLabelText("Right table")
+          .should("contain.text", modelDetails.name);
       });
     });
   });
@@ -568,16 +568,21 @@ describe("scenarios > embedding > full app", () => {
 
     const DEFAULT_ALIASES = {
       cardAlias: "@getCard",
+      cardQueryMetadataAlias: "@getCardQueryMetadata",
       tableMetadataAlias: "@getTableMetadata",
     };
 
     function interceptDataPickerRequests(name) {
       cy.intercept("GET", "/api/card/*").as(`getCard${name}`);
+      cy.intercept("GET", "/api/card/*/query_metadata").as(
+        `getCardQueryMetadata${name}`,
+      );
       cy.intercept("GET", "/api/table/*/query_metadata").as(
         `getTableMetadata${name}`,
       );
       return {
         cardAlias: `@getCard${name}`,
+        cardQueryMetadataAlias: `@getCardQueryMetadata${name}`,
         tableMetadataAlias: `@getTableMetadata${name}`,
       };
     }
@@ -614,7 +619,7 @@ describe("scenarios > embedding > full app", () => {
         );
         cy.findByText(cardName).click();
       });
-      cy.wait(aliases.tableMetadataAlias);
+      cy.wait(aliases.cardQueryMetadataAlias);
       if (cardType !== "metric") {
         cy.wait(aliases.cardAlias);
       }
@@ -677,6 +682,9 @@ describe("scenarios > embedding > full app", () => {
     beforeEach(() => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
+      cy.intercept("GET", "/api/card/*/query_metadata").as(
+        "getCardQueryMetadata",
+      );
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
