@@ -139,6 +139,20 @@ describe("UserPasswordResetModal", () => {
       ).toBe(false);
     });
 
+    it("should allow resetting password while provider is enabled when user has used password", async () => {
+      setup({
+        user: { ...ssoUser, has_used_password: true },
+        settings: { "saml-enabled": true },
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Get reset link" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Can't reset Ash Ketchum's password"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should allow resetting the password once their provider is disabled", async () => {
       setup({ user: ssoUser, settings: { "saml-enabled": false } });
 

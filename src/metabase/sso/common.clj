@@ -3,10 +3,16 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.sso.db :as sso.db]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.default-implementation :as ldap.impl]
+   [metabase.sso.ldap.settings :as ldap.settings]
+   [metabase.sso.settings :as sso.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- excluded-group-ids
   []
@@ -63,3 +69,25 @@
                                 (set/difference excluded))
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
      (sync-group-memberships*! user-or-id to-remove to-add))))
+
+(mu/defn ldap-directory-user :- [:maybe ldap.impl/UserInfo]
+  "The directory entry of `username` when LDAP is enabled and its directory finds `username`, or nil, so that callers
+  treat `username` as a local user, also when the lookup fails (for example, when the LDAP server is unavailable)."
+  [username :- :string]
+  (when (ldap.settings/ldap-enabled)
+    (try
+      (ldap/find-user username)
+      (catch Throwable e
+        (log/warnf "LDAP user lookup failed: %s" (ex-message e))
+        nil))))
+
+(mu/defn sso-only-user? :- :boolean
+  "Whether the User with `user-id`, `email` and `sso-source` signs in only through SSO: their SSO provider is enabled
+  and they have no used password, or their LDAP directory finds them."
+  [user-id    :- ::lib.schema.id/user
+   email      :- :string
+   sso-source :- [:maybe [:or :keyword :string]]]
+  (boolean (or (and (some? sso-source)
+                    (sso.settings/sso-source-enabled? sso-source)
+                    (not (sso.db/used-password-exists? user-id)))
+               (ldap-directory-user email))))

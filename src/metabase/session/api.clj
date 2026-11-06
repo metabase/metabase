@@ -82,7 +82,7 @@
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
-  (when-let [{:keys [dn]} (and (sso/ldap-enabled) (u/ignore-exceptions (sso/find-user username)))]
+  (when-let [{:keys [dn]} (sso/ldap-directory-user username)]
     (call-with-failure-throttling
      [[(login-throttlers :ldap-account) (u/lower-case-en dn)]]
      (fn []
@@ -311,14 +311,6 @@
   {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms (* 1000 60 60))
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
-(defn- sso-password-reset-disabled?
-  "Disable password reset for users whose SSO provider is still active — they should use SSO.
-   When a provider is no longer available (e.g., after license downgrade), allow password reset
-   so users aren't locked out."
-  [sso-source]
-  (and (some? sso-source)
-       (sso/sso-source-enabled? sso-source)))
-
 (defn- refresh-support-access-token!
   "Refresh the reset token on an existing support-access-grant AuthIdentity, preserving the grant
    binding. Returns the new plaintext token, or nil if the grant has expired."
@@ -342,9 +334,9 @@
                 is-active?   :is_active :as user}
                (session.db/user-by-email email)]
       (cond
-        ;; SSO users should use their SSO provider, not password reset.
-        (sso-password-reset-disabled? sso-source)
-        (messages/send-password-reset-email! email sso-source nil is-active?)
+        ;; SSO-only users (see `sso/sso-only-user?`) should use their SSO provider, not password reset.
+        (sso/sso-only-user? user-id email sso-source)
+        (messages/send-password-reset-email! email (or sso-source :ldap) nil is-active?)
 
         ;; Support-access users get a refreshed token bound to the grant.
         ;; If the grant has expired, refresh-support-access-token! returns nil and we silently
@@ -417,10 +409,19 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [auth-result (auth-identity/with-fallback auth-identity/login!
-                      [:provider/support-access-grant
-                       :provider/emailed-secret-password-reset]
-                      (select-keys request-body [:token :password]))]
+  (let [credentials  (select-keys request-body [:token :password])
+        grant-result (auth-identity/with-fallback auth-identity/login!
+                       [:provider/support-access-grant]
+                       credentials)
+        skip-session (boolean (when-not (:success? grant-result)
+                                (some-> (auth-identity/parse-token-user-id (:token credentials))
+                                        session.db/user-sso-source
+                                        sso/sso-source-enabled?)))
+        auth-result  (if (:success? grant-result)
+                       grant-result
+                       (auth-identity/with-fallback auth-identity/login!
+                         [:provider/emailed-secret-password-reset]
+                         (assoc credentials :session/skip? skip-session)))]
     (cond
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
@@ -428,9 +429,11 @@
       ;; The password change succeeded, but an MFA is required. Either the user is already enrolled with MFA or they
       ;; are unenrolled but `mfa-required?`. Issue no session, or anyone who can trigger a password reset can bypass
       ;; MFA! The user logs in normally with their new password, either providing their second factor or configuring
-      ;; MFA since it's required.
+      ;; MFA since it's required. Likewise, a user whose SSO provider is enabled logs in normally afterwards, so that
+      ;; login applies that provider's checks (for example, LDAP checks a directory user against the directory).
       (or (session.settings/mfa-required?)
-          (:mfa/pending? auth-result))
+          (:mfa/pending? auth-result)
+          skip-session)
       {:success true}
 
       :else

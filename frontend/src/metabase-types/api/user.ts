@@ -75,6 +75,7 @@ export interface User extends BaseUser {
   personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
+  has_used_password?: boolean;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;

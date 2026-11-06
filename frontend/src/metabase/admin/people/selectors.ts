@@ -23,15 +23,22 @@ const SSO_SOURCE_ENABLED_SETTING = {
   EnterpriseSettingKey
 >;
 
+type SsoOnlyUserOpts = {
+  sso_source: User["sso_source"];
+  has_used_password?: boolean;
+};
+
 /**
- * Whether the user signs in through an SSO provider that is currently enabled.
- * Admins can't reset passwords for these users; once the provider is disabled
- * (or its license lapses) the user falls back to password login.
+ * Whether the user signs in through an SSO provider that is currently enabled
+ * and has no used password. Admins can't reset passwords for these users; once
+ * the provider is disabled (or its license lapses) the user falls back to
+ * password login.
  */
-export const getIsUserSsoSourceEnabled = (
+export const getIsSsoOnlyUser = (
   state: State,
-  { sso_source }: Pick<User, "sso_source">,
+  { sso_source, has_used_password }: SsoOnlyUserOpts,
 ): boolean =>
+  has_used_password !== true &&
   sso_source != null &&
   Boolean(getSetting(state, SSO_SOURCE_ENABLED_SETTING[sso_source]));
 
