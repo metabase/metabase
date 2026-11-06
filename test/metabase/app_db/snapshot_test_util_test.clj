@@ -55,8 +55,10 @@
           before-boundary (first ids)
           after-boundary  (last ids)]
       (testing "the snapshot can stand in for a start after its boundary, and not for one before it"
-        (is (true? (snapshot/usable-for-start? conn :h2 after-boundary)))
-        (is (not (snapshot/usable-for-start? conn :h2 before-boundary))))
+        ;; without a key whatever the environment sets, since a key alone makes the snapshot unusable
+        (encryption-test/with-secret-key nil
+          (is (true? (snapshot/usable-for-start? conn :h2 after-boundary)))
+          (is (not (snapshot/usable-for-start? conn :h2 before-boundary)))))
       (testing "it is never used with an encryption key, since it was generated without one"
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
           (is (not (snapshot/usable-for-start? conn :h2 after-boundary))))))))
