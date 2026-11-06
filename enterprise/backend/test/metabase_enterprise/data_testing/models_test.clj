@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-testing.models-test
   "Transform testing model behavior: TransformTest column transforms and deletion, plus the
-  TransformTestRun heartbeat and terminal-state lifecycle."
+  DataTestRun heartbeat and terminal-state lifecycle."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
@@ -226,57 +226,83 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [initiated-by (mt/user->id :crowberto)
-          {run-id :id :as started} (data-testing.run-tracking/start-run! transform-test-id initiated-by)]
+          {run-id :id :as started} (data-testing.run-tracking/start-run! :transform transform-test-id initiated-by)]
       (testing "a new run is started with database timestamps"
         (is (= :started (:status started)))
+        (is (= :transform (:test_type started)))
+        (is (= transform-test-id (:test_id started)))
         (is (= initiated-by (:initiated_by started)))
         (is (some? (:start_time started)))
         (is (nil? (:end_time started)))
         (is (some? (:last_heartbeat started))))
       (testing "the owning process heartbeats its registered run"
-        (t2/update! :model/TransformTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
+        (t2/update! :model/DataTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
         (data-testing.run-tracking/heartbeat-and-reconcile-runs!)
-        (is (recent? (t2/select-one-fn :last_heartbeat :model/TransformTestRun :id run-id))))
+        (is (recent? (t2/select-one-fn :last_heartbeat :model/DataTestRun :id run-id))))
       (testing "finishing sets a terminal status and end time"
         (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
-        (let [finished (t2/select-one :model/TransformTestRun :id run-id)]
+        (let [finished (t2/select-one :model/DataTestRun :id run-id)]
           (is (= :passed (:status finished)))
           (is (some? (:end_time finished))))))))
 
 (deftest reap-orphaned-transform-test-runs-test
   (mt/with-temp [:model/Transform        {transform-id :id} {}
                  :model/TransformTest    {transform-test-id :id} {:transform_id transform-id}
-                 :model/TransformTestRun {stale-id :id} {:transform_test_id transform-test-id
+                 :model/DataTestRun {stale-id :id} {:test_id transform-test-id
                                                          :last_heartbeat    (minutes-ago 10)}
-                 :model/TransformTestRun {fresh-id :id} {:transform_test_id transform-test-id
+                 :model/DataTestRun {fresh-id :id} {:test_id transform-test-id
                                                          :last_heartbeat    (minutes-ago 1)}]
     (testing "only a stale started run is reaped"
       (is (= [stale-id]
              (mapv :id (data-testing.run-tracking/reap-orphaned-runs! 5))))
-      (is (= :timeout (t2/select-one-fn :status :model/TransformTestRun :id stale-id)))
-      (is (some? (t2/select-one-fn :end_time :model/TransformTestRun :id stale-id)))
-      (is (= :started (t2/select-one-fn :status :model/TransformTestRun :id fresh-id))))
+      (is (= :timeout (t2/select-one-fn :status :model/DataTestRun :id stale-id)))
+      (is (some? (t2/select-one-fn :end_time :model/DataTestRun :id stale-id)))
+      (is (= :started (t2/select-one-fn :status :model/DataTestRun :id fresh-id))))
     (testing "a late completion cannot overwrite the cluster reaper's timeout"
       (is (zero? (data-testing.run-tracking/finish-run! stale-id :passed)))
-      (is (= :timeout (t2/select-one-fn :status :model/TransformTestRun :id stale-id))))
+      (is (= :timeout (t2/select-one-fn :status :model/DataTestRun :id stale-id))))
     (testing "a second sweep is idempotent"
       (is (empty? (data-testing.run-tracking/reap-orphaned-runs! 5))))))
 
 (deftest deleting-transform-test-preserves-runs-test
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
-    (let [{run-id :id} (data-testing.run-tracking/start-run! transform-test-id)]
+    (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id)]
       (t2/delete! :model/TransformTest :id transform-test-id)
-      (is (nil? (t2/select-one-fn :transform_test_id :model/TransformTestRun :id run-id)))
+      (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
-      (is (= :passed (t2/select-one-fn :status :model/TransformTestRun :id run-id))))))
+      (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
+
+(deftest run-of-unsaved-test-records-type-without-id-test
+  (let [{run-id :id :as started} (data-testing.run-tracking/start-run! :transform nil)]
+    (try
+      (is (= :transform (:test_type started)))
+      (is (nil? (:test_id started)))
+      (is (=? {:test_type :transform, :test_id nil} (t2/select-one :model/DataTestRun :id run-id)))
+      (finally
+        (data-testing.run-tracking/finish-run! run-id :error)
+        (t2/delete! :model/DataTestRun :id run-id)))))
+
+(deftest last-run-hydration-finds-only-transform-runs-test
+  (mt/with-temp [:model/Transform   {transform-id :id} {}
+                 :model/TransformTest {test-id :id :as transform-test} {:transform_id transform-id}
+                 :model/DataTestRun {transform-run :id} {:test_type :transform, :test_id test-id}
+                 :model/DataTestRun _                   {:test_type :card, :test_id test-id}]
+    (is (= transform-run (-> (t2/hydrate transform-test :last_run) :last_run :id)))))
+
+(deftest deleting-transform-test-keeps-runs-of-other-test-types-test
+  (mt/with-temp [:model/Transform   {transform-id :id} {}
+                 :model/TransformTest {test-id :id} {:transform_id transform-id}
+                 :model/DataTestRun {card-run :id} {:test_type :card, :test_id test-id}]
+    (t2/delete! :model/TransformTest :id test-id)
+    (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id card-run)))))
 
 (deftest deleting-run-initiator-preserves-run-test
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}
                  :model/User          {user-id :id} {}]
-    (let [{run-id :id} (data-testing.run-tracking/start-run! transform-test-id user-id)]
+    (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id user-id)]
       (t2/delete! :model/User :id user-id)
-      (is (nil? (t2/select-one-fn :initiated_by :model/TransformTestRun :id run-id)))
+      (is (nil? (t2/select-one-fn :initiated_by :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
-      (is (= :passed (t2/select-one-fn :status :model/TransformTestRun :id run-id))))))
+      (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))

@@ -124,7 +124,7 @@
                                                           :expectations [{:type "empty"
                                                                           :name "no null ids"
                                                                           :sql  (str "SELECT * FROM " schema ".adhoc_people_summary WHERE id IS NULL")}]}})
-              run                           (t2/select-one :model/TransformTestRun {:order-by [[:id :desc]]})]
+              run                           (t2/select-one :model/DataTestRun {:order-by [[:id :desc]]})]
           (try
             (is (= "passed" (:status result)))
             (is (= [{:name "no null ids" :type "empty" :status "passed"}]
@@ -132,12 +132,13 @@
             (testing "saves no transform"
               (is (= transform-count (t2/count :model/Transform))))
             (testing "records run by caller under no test"
-              (is (=? {:transform_test_id nil
-                       :initiated_by      (mt/user->id :crowberto)
-                       :status            :passed}
+              (is (=? {:test_type   :transform
+                       :test_id     nil
+                       :initiated_by (mt/user->id :crowberto)
+                       :status      :passed}
                       run)))
             (finally
-              (t2/delete! :model/TransformTestRun :id (:id run)))))))))
+              (t2/delete! :model/DataTestRun :id (:id run)))))))))
 
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"

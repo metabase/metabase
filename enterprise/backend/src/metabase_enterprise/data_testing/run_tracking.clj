@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.run-tracking
-  "Cluster-safe lifecycle tracking for transform test runs."
+  "Cluster-safe lifecycle tracking for the runs of every type of test."
   (:require
    [medley.core :as m]
    [metabase-enterprise.data-testing.db :as data-testing.db]
@@ -19,15 +19,22 @@
 (defonce ^:private active-runs
   (atom #{}))
 
-(mu/defn start-run! :- ::data-testing.schema/transform-test-run
-  "Create a started run for `transform-test-id`, nil for a test that is not saved, and register it as owned by this
-  process."
-  ([transform-test-id :- [:maybe ms/PositiveInt]]
-   (start-run! transform-test-id nil))
-  ([transform-test-id :- [:maybe ms/PositiveInt]
-    initiated-by      :- [:maybe ::lib.schema.id/user]]
-   (let [run (data-testing.db/insert-transform-test-run! transform-test-id initiated-by)]
-     (events/publish-event! :event/transform-test-run-start
+(def ^:private run-topics
+  ;; A topic per test type and event, as the audit log records each type's runs under its own topics.
+  {:transform {:start   :event/transform-test-run-start
+               :timeout :event/transform-test-run-timeout}})
+
+(mu/defn start-run! :- ::data-testing.schema/data-test-run
+  "Create a started run of a `test-type` test with `test-id`, nil for a test that is not saved, publish the start event
+  of `test-type`, and register the run as owned by this process."
+  ([test-type :- ::data-testing.schema/test-type
+    test-id   :- [:maybe ms/PositiveInt]]
+   (start-run! test-type test-id nil))
+  ([test-type    :- ::data-testing.schema/test-type
+    test-id      :- [:maybe ms/PositiveInt]
+    initiated-by :- [:maybe ::lib.schema.id/user]]
+   (let [run (data-testing.db/insert-test-run! test-type test-id initiated-by)]
+     (events/publish-event! (get-in run-topics [test-type :start])
                             (-> {:object run}
                                 (m/assoc-some :user-id initiated-by)))
      (swap! active-runs conj (:id run))
@@ -40,38 +47,38 @@
   [run-id :- ms/PositiveInt
    status :- ::data-testing.schema/run-status]
   (try
-    (data-testing.db/finish-started-transform-test-run! run-id status)
+    (data-testing.db/finish-started-test-run! run-id status)
     (finally
       (swap! active-runs disj run-id))))
 
 (mu/defn heartbeat-runs!
   "Stamp a heartbeat on the given runs while they are still started."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! :model/TransformTestRun [:status "started"] :last_heartbeat run-ids))
+  (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
 
 (mu/defn heartbeat-and-reconcile-runs! :- :nil
   "Heartbeat the runs owned by this process and forget any that became terminal elsewhere."
   []
-  (rt/heartbeat-and-reconcile! {:model      :model/TransformTestRun
+  (rt/heartbeat-and-reconcile! {:model      :model/DataTestRun
                                 :active     [:status "started"]
                                 :ids        @active-runs
                                 :heartbeat! heartbeat-runs!
                                 :on-gone    #(swap! active-runs disj %)}))
 
-(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/transform-test-run]]
+(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/data-test-run]]
   "Time out started runs whose owning process has stopped heartbeating."
   [stale-minutes :- ms/PositiveInt]
-  (let [reaped (rt/reap-orphaned! {:model    :model/TransformTestRun
+  (let [reaped (rt/reap-orphaned! {:model    :model/DataTestRun
                                    :active   [:status "started"]
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
                                    :terminal {:status "timeout" :end_time :%now}})]
     (doseq [run reaped]
       (try
-        (events/publish-event! :event/transform-test-run-timeout
+        (events/publish-event! (get-in run-topics [(:test_type run) :timeout])
                                (-> {:object (assoc run :status :timeout)}
                                    (m/assoc-some :user-id (:initiated_by run))))
         (catch Throwable t
-          (log/warnf "Failed to publish transform-test-run-timeout event for run %s: %s"
+          (log/warnf "Failed to publish test run timeout event for run %s: %s"
                      (:id run)
                      (ex-message t)))))
     reaped))

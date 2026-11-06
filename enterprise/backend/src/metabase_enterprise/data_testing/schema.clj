@@ -177,20 +177,27 @@
    [:expectations {:optional true} ::expectations]])
 
 (mr/def ::run-status
-  "The persisted lifecycle state of a transform test run."
+  "The persisted lifecycle state of a test run."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
    :started :passed :failed :error :timeout])
 
-(mr/def ::transform-test-run
-  "A persisted execution of a transform test."
+(mr/def ::test-type
+  "The kind of test a run ran, which names the table `test_id` points into."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword}
+   :transform])
+
+(mr/def ::data-test-run
+  "A persisted execution of a test of any type. `:test_id` is nil for a test that is not saved and for one that was
+  deleted."
   [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:transform_test_id [:maybe ms/PositiveInt]]
-   [:initiated_by      [:maybe ::lib.schema.id/user]]
-   [:start_time        ms/TemporalInstant]
-   [:end_time          [:maybe ms/TemporalInstant]]
-   [:status            ::run-status]
-   [:last_heartbeat    ms/TemporalInstant]])
+   [:id             ms/PositiveInt]
+   [:test_type      ::test-type]
+   [:test_id        [:maybe ms/PositiveInt]]
+   [:initiated_by   [:maybe ::lib.schema.id/user]]
+   [:start_time     ms/TemporalInstant]
+   [:end_time       [:maybe ms/TemporalInstant]]
+   [:status         ::run-status]
+   [:last_heartbeat ms/TemporalInstant]])
 
 (mr/def ::user
   "The user who started a run."
@@ -201,17 +208,17 @@
    [:last_name   [:maybe :string]]
    [:common_name {:optional true} [:maybe :string]]])
 
-(mr/def ::transform-test-run.response
-  "A transform test run as the API returns it, with the user who started it."
+(mr/def ::data-test-run.response
+  "A test run as the API returns it, with the user who started it."
   [:merge
-   ::transform-test-run
+   ::data-test-run
    [:map {:closed true}
     [:initiated_by_user [:maybe ::user]]]])
 
-(mr/def ::transform-test-runs.response
-  "A page of transform test runs."
+(mr/def ::data-test-runs.response
+  "A page of test runs."
   [:map {:closed true}
-   [:data   [:sequential ::transform-test-run.response]]
+   [:data   [:sequential ::data-test-run.response]]
    [:limit  pos-int?]
    [:offset :int]
    [:total  :int]])
@@ -221,7 +228,7 @@
   [:merge
    ::transform-test
    [:map {:closed true}
-    [:last_run [:maybe ::transform-test-run]]]])
+    [:last_run [:maybe ::data-test-run]]]])
 
 (mr/def ::status
   "The outcome of a transform test run, or of one of its expectations.
