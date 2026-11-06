@@ -145,7 +145,14 @@ async function fetchAndPrepareSavedQuestionCards(
   dispatch: Dispatch,
   getState: GetState,
 ) {
-  const card = await loadCard({ cardId, token }, { dispatch, getState });
+  // RTK Query holds back tag invalidation while requests are running, and some
+  // card mutations never invalidate the card at all, so a cached copy can be
+  // older than the saved card. Editing that copy would overwrite the newer save.
+  // https://github.com/metabase/metabase/issues/84490
+  const card = await loadCard(
+    { cardId, token, forceRefetch: true },
+    { dispatch, getState },
+  );
   const originalCard = { ...card };
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -165,8 +172,9 @@ async function fetchAndPrepareAdHocQuestionCards(
     };
   }
 
+  // Saving over the original copies its name and description, so it must be current too.
   const originalCard = await loadCard(
-    { cardId: deserializedCard.original_card_id },
+    { cardId: deserializedCard.original_card_id, forceRefetch: true },
     {
       dispatch,
       getState,

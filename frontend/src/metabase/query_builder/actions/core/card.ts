@@ -8,16 +8,21 @@ export async function loadCard(
   {
     cardId,
     token,
+    forceRefetch = false,
   }: {
     cardId: string | number;
     token?: EntityToken | null;
+    forceRefetch?: boolean;
   },
   { dispatch }: { dispatch: Dispatch; getState: GetState },
 ) {
   try {
     // Unjustified type cast. FIXME
     const result = (await dispatch(
-      cardApi.endpoints.getCard.initiate({ id: token ?? cardId }),
+      cardApi.endpoints.getCard.initiate(
+        { id: token ?? cardId },
+        { forceRefetch },
+      ),
     )) as { data?: Card; error?: unknown };
 
     if (result.error) {
