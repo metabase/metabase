@@ -27,10 +27,8 @@
       "label": ".Team/Graphy",
       "members": [
         "ranquild",
-        "ericnormand",
         "galdre",
         "escherize",
-        "bgrabow",
         "alxnddr",
         "tsplude"
       ]
@@ -44,13 +42,6 @@
         "heypoom",
         "sanex3339",
         "lorem--ipsum"
-      ]
-    },
-    {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
-      "members": [
-        "eliotmetabase"
       ]
     },
     {
@@ -84,17 +75,9 @@
       ]
     },
     {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "eliotmetabase"
-      ]
-    },
-    {
       "name": "UX West",
       "label": ".Team/UXWest",
       "members": [
-        "eliotmetabase",
         "npfitz",
         "nvoxland",
         "deniskaber",
