@@ -153,6 +153,7 @@ export const GoalValueInput = ({
     : null;
   const pillTooltip = getPillTooltip({
     entityColumns: sourceInfo.columns,
+    entityKind: sourceInfo.kind,
     entityName: sourceInfo.name,
     foreignRef,
     selfColumnLabel,
@@ -491,11 +492,13 @@ export const GoalValueInput = ({
 
 function getPillTooltip({
   entityColumns,
+  entityKind,
   entityName,
   foreignRef,
   selfColumnLabel,
 }: {
   entityColumns: ColumnOption[];
+  entityKind: ReferencedEntityKind | undefined;
   entityName: string | undefined;
   foreignRef: GoalForeignColumnRef | null;
   selfColumnLabel: string | null;
@@ -512,8 +515,8 @@ function getPillTooltip({
     return columnLabel;
   }
 
-  // a measure has a single result column, so its column label is redundant
-  if (foreignRef.type === "measure") {
+  // a measure or a metric has a single result column, so its column label is redundant
+  if (entityKind === "measure" || entityKind === "metric") {
     return entityName;
   }
 

@@ -980,6 +980,27 @@ describe("GoalValueInput", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("names only the metric in the pill tooltip, without its sole column", async () => {
+    setupMetricWithNumericBreakout();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "sum",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "sum" },
+    });
+
+    await userEvent.hover(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(await screen.findByText("Revenue")).toBeInTheDocument();
+    expect(screen.queryByText(/Sum of Total/)).not.toBeInTheDocument();
+  });
+
   it("resolves a measure reference and treats it as a single-column source", async () => {
     setupMeasureEndpoint(
       createMockMeasure({
@@ -2046,7 +2067,7 @@ describe("GoalValueInput", () => {
       await userEvent.hover(
         screen.getByRole("button", { name: "Change value source" }),
       );
-      expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
       fireEvent.keyDown(pill, { key: "Backspace" });
 
       expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
