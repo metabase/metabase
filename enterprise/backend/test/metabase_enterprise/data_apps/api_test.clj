@@ -332,12 +332,15 @@
       (let [[{:keys [path contents]} :as files] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
         (is (= 1 (count files)))
         (is (= "src/metabase.schema.ts" path))
-        (testing "the schema holds the published tables with their fields, and the Library's metrics"
-          (is (str/includes? contents "const tables = {"))
+        (testing "the schema holds the published tables with their fields, and a section for the Library's metrics"
+          (is (str/includes? contents "export const venues = {"))
           (is (str/includes? contents (str "id: " (mt/id :venues))))
           (is (str/includes? contents (str "fieldId: " (mt/id :venues :name))))
           (is (str/includes? contents "slug: \"category_id\""))
-          (is (str/includes? contents "const metrics = {")))
+          (is (str/includes? contents "metrics: {")))
+        (testing "and `schema`, holding them all, for apps that import it"
+          (is (str/includes? contents "export const schema = {"))
+          (is (re-find #"\n    venues[,\n]" contents)))
         (testing "and no actions"
           (is (not (str/includes? contents "actions"))))))))
 

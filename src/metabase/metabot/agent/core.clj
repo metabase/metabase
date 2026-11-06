@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.core
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
@@ -24,6 +25,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.util :as u]
@@ -256,6 +258,17 @@
       (or (not-empty (:user-message terminal))
           (tru "Something went wrong.")))))
 
+(def ^:private step-limit-instruction
+  "What the last call of a turn that reached its step limit asks of the model."
+  (str "You have reached the step limit for this request and can't call tools any more. Reply to the user now: say "
+       "what you couldn't do and why, from what you found in this turn. Don't name tools."))
+
+(defn- step-limit-message
+  "The reply for a turn that reached its step limit when its last call gives none."
+  []
+  (tru "{0} reached its step limit before it could finish. Try a more specific request."
+       (metabot.settings/metabot-name)))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations terminal-tools parts]
@@ -312,11 +325,12 @@
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
-  Passes the AISDK `input-parts` to the adapter, which converts them to its native wire format."
-  [memory profile tools system-msg iteration tracking-opts link-registry-atom input-parts]
+  Passes the AISDK `input-parts` to the adapter, which converts them to its native wire format. `tool-choice` is nil,
+  or a `:tool_choice` value that [[metabase.metabot.self.core/LLMRequestOpts]] allows."
+  [memory profile tools system-msg iteration tracking-opts link-registry-atom input-parts tool-choice]
   (let [model        (:model profile)
         llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+                       tool-choice (assoc :tool-choice tool-choice))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
@@ -332,6 +346,21 @@
                                          (get-in memory [:state :charts] {})
                                          link-registry-atom)
               (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
+
+(defn- record-response!
+  "Record the `parts` that the LLM call of `iteration` returned, on the eval trace and in the debug log."
+  [iteration parts]
+  (when (ait/capture-active?)
+    (ait/record! {:ai/output-text (collect-text-from-parts parts)
+                  :ai/tool-io     (summarize-tool-ios parts)
+                  ;; preserve data parts (e.g. generated_entity) emitted this iteration
+                  :ai/data-parts  (filterv #(= :data (:type %)) parts)}))
+  (when *debug-log*
+    (debug-log! {:iteration iteration
+                 :phase     :response
+                 :text      (collect-text-from-parts parts)
+                 :tools     (summarize-tool-ios parts)
+                 :all-parts parts})))
 
 ;;; Memory management
 
@@ -397,29 +426,29 @@
   (cond-> item
     (not (:id item)) (assoc :id (str (random-uuid)))))
 
-(defn- ensure-question-query-id
-  "Give the query of a saved question an ID of its own, as `:query_id`.
-  The question's `:id` is the card ID, and `run_query` runs the saved version of the card by that ID. The query on
+(defn- ensure-card-query-id
+  "Give the query of a saved question or model an ID of its own, as `:query_id`.
+  The item's `:id` is the card ID, and `run_query` runs the saved version of the card by that ID. The query on
   screen can be different from the saved version, so the SQL edit tools get it by a different ID."
   [item]
   (cond-> item
-    (and (= "question" (normalize-type (:type item))) (map? (:query item)))
+    (and (#{"question" "model"} (normalize-type (:type item))) (map? (:query item)))
     (assoc :query_id (str (random-uuid)))))
 
 (defn- assign-context-ids
-  "Assign IDs to all viewing context items that lack one, and to the queries of saved questions.
+  "Assign IDs to all viewing context items that lack one, and to the queries of saved questions and models.
   Must be called before both seed-state and enrich-context-for-template
   so they share consistent IDs."
   [context]
-  (update context :user_is_viewing #(mapv (comp ensure-question-query-id ensure-context-item-id) %)))
+  (update context :user_is_viewing #(mapv (comp ensure-card-query-id ensure-context-item-id) %)))
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
   [{:keys [id type query query_id]}]
   (when (map? query)
     (case (normalize-type type)
-      ("adhoc" "native") (when id [(str id) query])
-      "question"         (when query_id [query_id query])
+      ("adhoc" "native")   (when id [(str id) query])
+      ("question" "model") (when query_id [query_id query])
       nil)))
 
 (defn- seed-state
@@ -626,10 +655,25 @@
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
 
-(defn- terminal-error-text-part
-  "Tool results are not rendered in the conversation, so a terminal error needs assistant text."
-  [message]
-  {:type :text, :id (str (random-uuid)), :text message})
+(defn- ended-loop-state
+  "The loop state for a turn that ends after this iteration for `reason`.
+
+  A `message` goes to the user as assistant text before the final state, and the status is `:reduced` instead when the
+  consumer has stopped. Tool results are not rendered in the conversation, so a turn that ends on a terminal error or
+  at the step limit would otherwise show no reply."
+  [{:keys [agent rf iteration] :as loop-state} result reason message]
+  (let [result (cond-> result
+                 (and message (not (reduced? result))) (rf {:type :text, :id (str (random-uuid)), :text message}))]
+    (if (reduced? result)
+      (assoc loop-state :status :reduced :finish-reason :reduced :result @result)
+      (do (if (= reason :length)
+            (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+            (log/info "Agent loop complete" {:iterations iteration :reason reason}))
+          (assoc loop-state
+                 :status :done
+                 ;; surfaced so run-agent-loop can record it on the turn span
+                 :finish-reason reason
+                 :result (rf result (final-state-part @(:memory-atom agent))))))))
 
 (defn- error-part [^Exception e]
   {:type :error, :error (or (self/context-overflow-error e)
@@ -658,6 +702,64 @@
                                (get model)))
              part)))))
 
+(defn- step-limit-reply-parts
+  "The parts of the last LLM call of a turn that reached its step limit, or nil when there is no such call.
+
+  The call asks the model to tell the user what it couldn't do and why. It is not made when the request this turn
+  serves was canceled. When building its input or making it throws, its parts are only the usage it reported before
+  that, which the turn's saved usage still has to count. The tools stay declared, since a changed tool set misses the
+  prompt cache's tool and system prefix and invalidates the thinking that Claude replays, but the `none` tool choice
+  lets the model call none of them."
+  [{:keys [agent iteration usage-atom]} sent-parts]
+  (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
+        memory @memory-atom]
+    (when-not (some-> (:request-canceled-chan memory) a/poll!)
+      (let [iteration          (inc iteration)
+            link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+            parts-atom         (atom [])]
+        (try
+          (let [input-parts (conj (turn-input-parts sent-parts context memory tools @link-registry-atom)
+                                  {:role :user :content step-limit-instruction})]
+            (u/prog1 (ait/with-llm-call {:ai/iteration iteration
+                                         :ai/model     (:model profile)}
+                       (u/prog1 (into [] (comp (accumulate-usage-xf usage-atom (:model profile))
+                                               (u/tee-xf parts-atom))
+                                      (call-llm memory profile tools system-msg iteration
+                                                (assoc tracking-opts :iteration iteration)
+                                                link-registry-atom input-parts "none"))
+                         (record-response! iteration <>)))
+              (swap! memory-atom memory/set-link-registry @link-registry-atom)))
+          (catch Exception e
+            (log/warn e "The last call of a turn at its step limit failed")
+            (filterv #(= :usage (:type %)) @parts-atom)))))))
+
+(defn- cut-short?
+  "Whether a call's `parts` report that it stopped for a reason other than a normal end, such as its output limit or
+  a content filter. A call whose adapter reports no reason is not cut short."
+  [parts]
+  (some #(and (= :usage (:type %))
+              (some? (:finish-reason %))
+              (not= "stop" (:finish-reason %)))
+        parts))
+
+(defn- text-reply?
+  "Whether `parts`, from the last call of a turn at its step limit, hold a reply: text from a call that wasn't cut
+  short, and no tool call or error."
+  [parts]
+  (and (not (str/blank? (collect-text-from-parts parts)))
+       (not (has-tool-calls? parts))
+       (not (cut-short? parts))
+       (not (errored? parts))))
+
+(defn- result-after-parts
+  "`result` after reducing `parts` into it with `rf`, still wrapped in `reduced` when the consumer stops."
+  [rf result parts]
+  (reduce (fn [acc part]
+            (let [acc (rf acc part)]
+              (cond-> acc (reduced? acc) reduced)))
+          result
+          parts))
+
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
@@ -684,24 +786,14 @@
           result'            (ait/with-llm-call {:ai/iteration iteration
                                                  :ai/model     (:model profile)}
                                (let [llm-call       (call-llm memory profile tools system-msg iteration
-                                                              tracking-opts link-registry-atom input-parts)
+                                                              tracking-opts link-registry-atom input-parts
+                                                              (when (:required-tool-call? profile) "required"))
                                      reduced-result (reduce (xf rf) result llm-call)]
-                                 (when (ait/capture-active?)
-                                   (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
-                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)
-                                                 ;; preserve data parts (e.g. generated_entity) emitted this iteration
-                                                 :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
+                                 (record-response! iteration @parts-atom)
                                  reduced-result))
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom memory/set-link-registry @link-registry-atom)
-      ;; Capture response for debug log
-      (when *debug-log*
-        (debug-log! {:iteration iteration
-                     :phase     :response
-                     :text      (collect-text-from-parts parts)
-                     :tools     (summarize-tool-ios parts)
-                     :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
         ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
@@ -722,14 +814,7 @@
               (assoc loop-state :status :reduced :finish-reason :reduced :result (unreduced result'))
 
               terminal-error
-              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
-                (if (reduced? result'')
-                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
-                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
-                      (assoc loop-state
-                             :status :done
-                             :finish-reason :terminal-error
-                             :result (rf result'' (final-state-part @memory-atom))))))
+              (ended-loop-state loop-state result' :terminal-error terminal-error)
 
               (should-continue? iteration max-iter terminal-tools parts)
               (assoc loop-state
@@ -740,14 +825,16 @@
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-                (if (= reason :length)
-                  (log/warn "Agent loop complete" {:iterations iteration :reason reason})
-                  (log/info "Agent loop complete" {:iterations iteration :reason reason}))
-                (assoc loop-state
-                       :status :done
-                       ;; surfaced so run-agent-loop can record it on the turn span
-                       :finish-reason reason
-                       :result (rf result' (final-state-part @memory-atom)))))))))))
+                ;; A model that must call a tool can't reply; elsewhere the web chat and Slack show a notice
+                (if (and (= reason :max-iterations) (:required-tool-call? profile))
+                  (let [reply-parts (step-limit-reply-parts loop-state input-parts)
+                        reply?      (text-reply? reply-parts)]
+                    (ended-loop-state loop-state
+                                      (result-after-parts rf result' (cond->> reply-parts
+                                                                       (not reply?) (filter #(= :usage (:type %)))))
+                                      reason
+                                      (when-not reply? (step-limit-message))))
+                  (ended-loop-state loop-state result' reason nil))))))))))
 
 ;;; Public API
 
