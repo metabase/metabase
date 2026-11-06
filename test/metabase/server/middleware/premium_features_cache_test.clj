@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.premium-features-cache-test
   (:require
    [clojure.test :refer :all]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.test-util :as premium-features.tu]
    [metabase.premium-features.token-check :as token-check]
@@ -114,29 +115,27 @@
            (run! deref futures)
            (is (= 1 @calls))))))))
 
-(deftest newer-cookie-refreshes-token-status-test
+(deftest ^:synchronized newer-cookie-refreshes-token-status-test
   (testing "a newer cookie makes an instance that holds no status fetch it from the store"
-    (let [entry    (var-get #'token-check/entry)
-          saved    @entry
-          calls    (atom 0)
-          ;; an hour between ticks, so none runs during the test
-          started? (premium-features/start-refresher! (* 60 60 1000))]
-      (reset! entry nil)
-      (try
-        (with-redefs [mw.pf-cache/last-known-invalidation (atom nil)]
-          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
-            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
-                                                                 (swap! calls inc)
-                                                                 {:status 200
-                                                                  :body   (json/encode {:valid    true
-                                                                                        :status   "ok"
-                                                                                        :features ["sandboxes"]})})]
-              ;; not a feature read: that would tick early on the refresher thread
-              (is (nil? @entry))
-              (run-middleware (request-with-cookie (str (Instant/now))) {:status 200})
-              (is (= 1 @calls))
-              (is (true? (premium-features/has-feature? :sandboxes))))))
-        (finally
-          (when started?
-            (premium-features/stop-refresher!))
-          (reset! entry saved))))))
+    ;; installed as the root, since the refresher thread does not inherit bindings
+    (global-system.tu/with-root (token-check/state-handle) (token-check/initial-state)
+      (let [calls    (atom 0)
+            ;; an hour between ticks, so none runs during the test
+            started? (premium-features/start-refresher! (* 60 60 1000))]
+        (try
+          (with-redefs [mw.pf-cache/last-known-invalidation (atom nil)]
+            (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+              (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                                   (swap! calls inc)
+                                                                   {:status 200
+                                                                    :body   (json/encode {:valid    true
+                                                                                          :status   "ok"
+                                                                                          :features ["sandboxes"]})})]
+                ;; not a feature read: that would tick early on the refresher thread
+                (is (nil? (:entry @@(token-check/state-handle))))
+                (run-middleware (request-with-cookie (str (Instant/now))) {:status 200})
+                (is (= 1 @calls))
+                (is (true? (premium-features/has-feature? :sandboxes))))))
+          (finally
+            (when started?
+              (premium-features/stop-refresher!))))))))

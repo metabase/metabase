@@ -4,7 +4,10 @@
    [clj-http.core :as http.core]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.db :as premium-features.db]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -27,20 +30,11 @@
 
 (defn- do-with-clean-refresher
   [thunk]
-  (let [entry   @#'token-check/entry
-        breaker @#'token-check/breaker
-        saved   @entry]
-    (reset! entry nil)
-    (reset! @#'token-check/refresh-requested? false)
-    (reset! @#'token-check/last-failure nil)
-    (reset! @#'token-check/ticked-for-token-hash nil)
-    (.close ^dev.failsafe.CircuitBreaker breaker)
-    (try
-      (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
-        (thunk))
-      (finally
-        (.close ^dev.failsafe.CircuitBreaker breaker)
-        (reset! entry saved)))))
+  ;; installed as the root, not bound, since some tests read what the refresher thread wrote, and that thread does not
+  ;; inherit bindings
+  (global-system.tu/with-root (token-check/state-handle) (token-check/initial-state)
+    (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
+      (thunk))))
 
 (use-fixtures :each do-with-clean-refresher)
 
@@ -79,7 +73,7 @@
 
 (defn- age-entry!
   [age]
-  (swap! @#'token-check/entry update :fetched-at t/minus age))
+  (swap! @(token-check/state-handle) update-in [:entry :fetched-at] t/minus age))
 
 (def ^:private good-status {:valid true :status "ok" :features ["sandboxes"]})
 
@@ -117,7 +111,7 @@
                                   "features that aren't a list" {:status 200 :body "{\"valid\":true,\"status\":\"ok\",\"features\":\"sso\"}"}
                                   "a JSON value, not an object" {:status 200 :body "[1,2,3]"}}]
     (testing (format "%s carries no verdict from the store: the refresh fails and the held status stands" description)
-      (reset! @#'token-check/entry nil)
+      (swap! @(token-check/state-handle) assoc :entry nil)
       (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
         (with-store [_ (constantly good-status)]
           (token-check/refresh-now!))
@@ -153,7 +147,7 @@
 (deftest feature-check-reads-no-app-db-test
   (doseq [held? [false true]]
     (testing (if held? "with a held status" "with no held status")
-      (reset! @#'token-check/entry nil)
+      (swap! @(token-check/state-handle) assoc :entry nil)
       (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
         (when held?
           (with-store [_ (constantly good-status)]
@@ -359,7 +353,7 @@
          (dotimes [_ 3]
            (premium-features/clear-local-cache!))
          (is (= 1 @calls))
-         (is (not @@#'token-check/refresh-requested?))
+         (is (not (:refresh-requested? @@(token-check/state-handle))))
          (is (premium-features/has-feature? :sandboxes)))))))
 
 (deftest clear-local-cache-with-a-differing-hash-row-fetches-test
@@ -390,15 +384,27 @@
          (is (= 1 @calls))
          (is (premium-features/has-feature? :sandboxes)))))))
 
+(defn- do-with-fetch-for-every-thread!
+  "Run `thunk` with `fetch` as the store's HTTP fetch on every thread, the refresher's included."
+  [fetch thunk]
+  ;; the refresher thread does not inherit bindings, so `with-dynamic-fn-redefs` cannot reach it
+  #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+  (with-redefs [token-check/http-fetch fetch]
+    (thunk)))
+
+(defmacro ^:private with-fetch-for-every-thread!
+  "Run `body` with `fetch` as the store's HTTP fetch on every thread. See [[do-with-fetch-for-every-thread!]]."
+  {:style/indent 1}
+  [fetch & body]
+  `(do-with-fetch-for-every-thread! ~fetch (fn [] ~@body)))
+
 (deftest read-for-a-newly-configured-token-ticks-early-test
   (do-with-refresher-started!
    (fn []
      (let [calls (atom 0)]
-       ;; the tick runs on the refresher thread, which does not see `with-dynamic-fn-redefs`
-       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-       (with-redefs [token-check/http-fetch (fn [& _]
-                                              (swap! calls inc)
-                                              {:status 200 :body (json/encode good-status)})]
+       (with-fetch-for-every-thread! (fn [& _]
+                                       (swap! calls inc)
+                                       {:status 200 :body (json/encode good-status)})
          (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
            (is (not (premium-features/has-feature? :sandboxes))
                "the read itself does not wait for the fetch")
@@ -408,17 +414,16 @@
                                :interval-ms 10})))
            (is (= 1 @calls))
            (testing "a token whose early tick already ran gets no second one"
-             (reset! @#'token-check/entry nil)
+             (swap! @(token-check/state-handle) assoc :entry nil)
              (premium-features/has-feature? :sandboxes)
              (Thread/sleep 200)
              (is (= 1 @calls)))))
        (testing "a token whose refresh already failed waits for the scheduled tick"
          (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
            ;; a tick, if one ran, would be on the refresher thread
-           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-           (with-redefs [token-check/http-fetch (fn [& _]
-                                                  (swap! calls inc)
-                                                  (throw (java.net.ConnectException. "Connection refused")))]
+           (with-fetch-for-every-thread! (fn [& _]
+                                           (swap! calls inc)
+                                           (throw (java.net.ConnectException. "Connection refused")))
              (premium-features/refresh-at-startup!)
              (reset! calls 0)
              (premium-features/has-feature? :sandboxes)
@@ -440,14 +445,14 @@
         (testing "with nothing held"
           (premium-features/clear-local-cache!)
           (is (zero? @calls) "a hint that arrives during initialization does not fetch")
-          (is @@#'token-check/refresh-requested?)
+          (is (:refresh-requested? @@(token-check/state-handle)))
           (token-check/tick!)
           (is (= 1 @calls) "the first tick makes the refresh the hint asked for"))
         (testing "with a differing hash row"
           (change-hash-row! token)
           (premium-features/clear-local-cache!)
           (is (= 1 @calls))
-          (is @@#'token-check/refresh-requested?)
+          (is (:refresh-requested? @@(token-check/state-handle)))
           (token-check/tick!)
           (is (= 2 @calls))
           (is (premium-features/has-feature? :sandboxes)))))))
@@ -476,7 +481,7 @@
         (t2/delete! :model/PremiumFeaturesCache :token_hash (#'token-check/hash-token token))
         (token-check/tick!)
         (is (= 2 @calls) "a missing row triggers one fetch")
-        (is (= (:status-hash @@#'token-check/entry) (:token_status_hash (hash-row token))))
+        (is (= (:status-hash (:entry @@(token-check/state-handle))) (:token_status_hash (hash-row token))))
         (is (premium-features/has-feature? :sandboxes))
         (testing "the row is back, so the next tick does nothing"
           (token-check/tick!)
@@ -516,13 +521,13 @@
     (mt/with-temporary-raw-setting-values [premium-embedding-token token]
       (with-store [_ (constantly good-status)]
         (token-check/refresh-now!))
-      (let [held @@#'token-check/entry
+      (let [held (:entry @@(token-check/state-handle))
             row  (hash-row token)]
         (with-store [calls #(throw (ex-info "network failure!" {}))]
           (token-check/request-refresh!)
           (is (nil? (token-check/tick!)))
           (is (pos? @calls))
-          (is (= held @@#'token-check/entry))
+          (is (= held (:entry @@(token-check/state-handle))))
           (is (= row (hash-row token)))
           (is (premium-features/has-feature? :sandboxes)))
         (testing "the request stands, so the next tick tries again"
@@ -630,7 +635,7 @@
               (is (every? (complement #(re-find (re-pattern token) %)) logs))
               (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))))
 
-(deftest ^:parallel extract-locks-test
+(deftest extract-locks-test
   (testing "empty :meters map yields empty result"
     (is (= {} (#'token-check/extract-locks {}))))
   (testing "meters without :is-locked are filtered out"
@@ -949,6 +954,90 @@
       (mt/with-dynamic-fn-redefs [premium-features.settings/premium-embedding-token (constantly token)
                                   mdb/db-is-set-up?                                 (constantly false)]
         (is (= #{"sandboxes"} (token-check/*token-features*)))
-        (reset! @#'token-check/entry nil)
+        (swap! @(token-check/state-handle) assoc :entry nil)
         (is (= #{} (token-check/*token-features*)))
         (is (=? {:valid false :canonical? false} (premium-features/token-status)))))))
+
+(deftest successful-refresh-clears-the-last-failure-test
+  (testing "a refresh that succeeds after one that failed clears the failure, so the token gets early ticks again"
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+      (with-store [_ #(throw (ex-info "network failure!" {}))]
+        (premium-features/refresh-at-startup!))
+      (is (some? (:last-failure @@(token-check/state-handle))))
+      (with-store [_ (constantly good-status)]
+        (token-check/refresh-now!))
+      (is (nil? (:last-failure @@(token-check/state-handle)))))))
+
+(deftest early-tick-runs-against-the-requesters-state-test
+  (testing "an early tick asked for under a bound state fills that state, not the root's"
+    (do-with-refresher-started!
+     (fn []
+       (mc/binding (token-check/state-handle) (token-check/initial-state)
+                   (fn []
+                     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+                       (with-fetch-for-every-thread! (fn [& _] {:status 200 :body (json/encode good-status)})
+                         (premium-features/has-feature? :sandboxes)
+                         (is (= {:bound-filled? true, :root-entry nil}
+                                {:bound-filled? (u/poll {:thunk       #(some? (:entry @@(token-check/state-handle)))
+                                                         :done?       true?
+                                                         :timeout-ms  5000
+                                                         :interval-ms 10})
+                                 :root-entry    (mc/without-binding (token-check/state-handle)
+                                                                    #(:entry @@(token-check/state-handle)))}))))))))))
+
+(deftest ^:synchronized refresh-stays-on-the-state-it-began-on-test
+  (testing "a refresh whose state is replaced midway installs into, and cleans up, the state it began on"
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+      (let [began-on    @(token-check/state-handle)
+            replacement (token-check/initial-state)
+            inside      (promise)
+            leave       (promise)]
+        (with-store [_ (fn [] (deliver inside true) @leave good-status)]
+          (let [refresh (future (token-check/refresh-now!))]
+            @inside
+            (global-system.tu/with-root (token-check/state-handle) replacement
+              (deliver leave true)
+              @refresh)))
+        (is (= {:began-on    {:installed? true, :in-flight {}}
+                :replacement {:installed? false, :in-flight {}}}
+               {:began-on    {:installed? (some? (:entry @began-on)), :in-flight (:in-flight @began-on)}
+                :replacement {:installed? (some? (:entry @replacement)), :in-flight (:in-flight @replacement)}}))))))
+
+(defn- recording-executor
+  "An executor that records the tasks it is given, and runs none of them."
+  [tasks]
+  (reify java.util.concurrent.ScheduledExecutorService
+    (execute [_ task]
+      (swap! tasks conj task))))
+
+(deftest ^:synchronized early-tick-writes-the-state-once-test
+  (testing "repeated reads for the same new token write the state once, and ask for one tick"
+    (let [tasks  (atom [])
+          writes (atom 0)]
+      (add-watch @(token-check/state-handle) ::writes (fn [& _] (swap! writes inc)))
+      (global-system.tu/with-root @#'token-check/refresher-component (recording-executor tasks)
+        (dotimes [_ 3]
+          (#'token-check/tick-for-new-token! "new-token-hash")))
+      (is (= {:writes 1, :ticks 1}
+             {:writes @writes, :ticks (count @tasks)})))))
+
+(deftest ^:synchronized early-tick-runs-without-the-requesting-user-test
+  (testing "an early tick asked for by a user under a bound state runs against that state, without the user's bindings"
+    (let [tasks (atom [])
+          seen  (promise)
+          box   (token-check/initial-state)]
+      ;; for every thread, since the task runs on one that has none of this test's bindings, and is built around the
+      ;; var's value when the tick is asked for
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [token-check/safe-tick! #(deliver seen {:user-id     api/*current-user-id*
+                                                           :same-state? (identical? box @(token-check/state-handle))})]
+        (global-system.tu/with-root @#'token-check/refresher-component (recording-executor tasks)
+          (mc/binding (token-check/state-handle) box
+                      (fn []
+                        (mt/with-current-user (mt/user->id :rasta)
+                          (#'token-check/tick-for-new-token! "new-token-hash")))))
+        (doto (Thread. ^Runnable (first @tasks))
+          (.start)
+          (.join 5000)))
+      (is (= {:user-id nil, :same-state? true}
+             (deref seen 1000 ::not-run))))))
