@@ -37,7 +37,8 @@
              Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
-   (javax.sql DataSource)))
+   (javax.sql DataSource)
+   (org.postgresql.core BaseConnection NativeQuery Parser SqlCommandType)))
 
 (set! *warn-on-reflection* true)
 
@@ -476,6 +477,28 @@
       (catch Throwable e
         (log/debugf "Error setting default holdability for connection: %s" (ex-message e))))))
 
+(defn- do-in-read-only-transaction
+  "Call `(f conn)` for a `:read-only-transaction?` connection (a query on a workspace sidecar's database). The
+  connection must be read-only with autoCommit off, so the server enforces READ ONLY; a nested checkout that kept an
+  outer connection's settings is refused rather than run read-write. Afterwards the top-level checkout ends the
+  transaction and runs DISCARD ALL, so nothing the query did to the session (settings, search_path, prepared
+  statements, advisory locks, temporary tables) reaches the next borrower, e.g. a transform's write."
+  [^Connection conn f]
+  (when (or (not (.isReadOnly conn)) (.getAutoCommit conn))
+    (throw (ex-info (tru "This query needs a read-only transaction, but its connection isn''t in one.")
+                    {:type driver-api/qp.error-type.invalid-query})))
+  (try
+    (f conn)
+    (finally
+      (when-not (recursive-connection?)
+        (try
+          (.rollback conn)
+          (.setAutoCommit conn true)
+          (with-open [stmt (.createStatement conn)]
+            (.execute stmt "DISCARD ALL"))
+          (catch Throwable e
+            (log/error e "Could not reset a workspace query's connection")))))))
+
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
   (do-with-resolved-connection
@@ -484,7 +507,22 @@
    options
    (fn [^Connection conn]
      (set-default-connection-options! driver db-or-id-or-spec conn options)
-     (f conn))))
+     (if (:read-only-transaction? options)
+       (do-in-read-only-transaction conn f)
+       (f conn)))))
+
+(defn- check-single-read-statement!
+  "Refuse `sql` unless the driver's own parser (PgJDBC's, with the connection's settings) reads it as exactly one
+  SELECT or WITH statement. On a workspace sidecar's database this holds whatever another parser thought: the READ
+  ONLY transaction can't be ended by a COMMIT the query can't contain."
+  [^Connection conn ^String sql]
+  (let [scs        (.getStandardConformingStrings ^BaseConnection (.unwrap conn BaseConnection))
+        statements (remove #(= SqlCommandType/BLANK (.getType (.command ^NativeQuery %)))
+                           (Parser/parseJdbcSql sql scs true true false true (into-array String [])))]
+    (when-not (and (= 1 (count statements))
+                   (#{SqlCommandType/SELECT SqlCommandType/WITH} (.getType (.command ^NativeQuery (first statements)))))
+      (throw (ex-info (tru "On a workspace database a query must be a single SELECT or WITH statement.")
+                      {:type driver-api/qp.error-type.invalid-query})))))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place
@@ -929,6 +967,8 @@
         ;; on a workspace sidecar's database the server, not only the SQL check, keeps the query read-only
         :read-only-transaction? (driver-api/workspace-query?)}
        (fn [^Connection conn]
+         (when (driver-api/workspace-query?)
+           (check-single-read-statement! conn sql))
          ;; whether a cancelation was issued is only knowable inside the Statement's scope, but the Connection can
          ;; only be dealt with once the Statement and ResultSet are closed, so it is carried out past both
          (let [canceled? (volatile! false)]
