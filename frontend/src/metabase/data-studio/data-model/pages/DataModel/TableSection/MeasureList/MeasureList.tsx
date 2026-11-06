@@ -7,7 +7,7 @@ import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
 import S from "../TableSection.module.css";
 
@@ -31,7 +31,7 @@ export function MeasureList({ table }: MeasureListProps) {
   );
   const onNewMeasureClick = () => {
     // Unjustified type cast. FIXME
-    trackMeasureCreateStarted(table.id as ConcreteTableId);
+    trackMeasureCreateStarted(table.id as TableId);
   };
   const newMeasureUrl = Urls.newDataStudioDataModelMeasure({
     databaseId: table.db_id,

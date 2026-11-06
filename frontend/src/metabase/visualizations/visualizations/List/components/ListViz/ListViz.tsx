@@ -9,7 +9,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import { type DatasetColumn, isConcreteTableId } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { LIST_DEFINITION } from "../../definition";
 import { ListView } from "../ListView/ListView";
@@ -50,8 +50,7 @@ const ListVizComponent = ({
       return undefined;
     }
     try {
-      const id = Lib.sourceTableOrCardId(question.query());
-      return id != null && isConcreteTableId(id) ? id : undefined;
+      return Lib.primarySourceTableId(question.query()) ?? undefined;
     } catch (error) {
       console.warn("Could not determine the source table:", error);
       return undefined;

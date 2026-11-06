@@ -3,25 +3,25 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { CONTAINER_WIDTH } from "metabase/querying/common/components/DataSelector/constants";
 import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
-import type { TableId } from "metabase-types/api";
 
 interface SimpleDataPickerProps {
-  selectedEntity?: TableId;
+  selectedSource?: DataSource;
   options: Options[];
-  onClick: (tableId: TableId) => void;
+  onClick: (source: DataSource) => void;
 }
 
 interface Options {
-  id: TableId;
+  source: DataSource;
   name: string;
 }
 
 const TEN_OPTIONS_HEIGHT = 10 * 33;
 
 export function SimpleDataPickerView({
-  selectedEntity,
+  selectedSource,
   options,
   onClick,
 }: SimpleDataPickerProps) {
@@ -72,17 +72,19 @@ export function SimpleDataPickerView({
         {displayOptions.length >= 1 ? (
           <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto" mb="auto">
             {displayOptions.map((option) => {
-              const isSelected = selectedEntity === option.id;
+              const isSelected =
+                selectedSource?.type === option.source.type &&
+                selectedSource.id === option.source.id;
               const iconColor = isSelected
                 ? "text-primary-inverse"
                 : "icon-brand";
               return (
                 <NavLink
-                  key={option.id}
-                  active={selectedEntity === option.id}
+                  key={`${option.source.type}:${option.source.id}`}
+                  active={isSelected}
                   leftSection={<Icon c={iconColor} name="table" aria-hidden />}
                   label={tc(option.name)}
-                  onClick={() => onClick(option.id)}
+                  onClick={() => onClick(option.source)}
                   variant="primary"
                 />
               );

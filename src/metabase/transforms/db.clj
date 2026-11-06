@@ -71,11 +71,6 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
 
-(mu/defn transform-collection-id
-  "The Collection ID of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :collection_id :model/Transform :id transform-id))
-
 (mu/defn insert-transform!
   "Insert `transform` and return the new instance."
   [transform :- ::transforms.schema/transform.update]
@@ -883,11 +878,6 @@
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
-
-(mu/defn field-exists?
-  "Whether a Field with `field-id` exists."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id))
 
 (mu/defn active-field-ids-by-name
   "A map of name to ID for the active Fields of the Table with `table-id`."

@@ -1,6 +1,6 @@
 import type { RowValue } from "./dataset";
-import type { DimensionReference, FieldReference } from "./query";
-import type { ConcreteTableId, Table, TableId } from "./table";
+import type { DimensionReference } from "./query";
+import type { Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -67,7 +67,7 @@ export type FieldDimension = {
 };
 
 export interface Field {
-  id: FieldId | FieldReference;
+  id: FieldId;
   table_id: TableId;
   table?: Table;
   field_ref?: DimensionReference;
@@ -129,7 +129,7 @@ export interface GetFieldTableIdsRequest {
 }
 
 export interface GetFieldTableIdsResponse {
-  table_ids: ConcreteTableId[];
+  table_ids: TableId[];
 }
 
 export interface UpdateFieldRequest {

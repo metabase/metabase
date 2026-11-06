@@ -1,16 +1,17 @@
 import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
-import { createMockNativeDatasetQuery } from "metabase-types/api/mocks/query";
 
 import type { QueryEditorUiState } from "../../types";
 
 import { useQueryResults } from "./use-query-results";
 
-const NATIVE_QUERY = createMockNativeDatasetQuery({
-  native: { query: "SELECXT 1" },
+const NATIVE_QUERY = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECXT 1",
 });
 
 const ERROR_DATASET = createMockDataset({

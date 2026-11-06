@@ -2,18 +2,17 @@ import { createMockMetadata } from "__support__/metadata";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { registerVisualization } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockSingleSeries,
   createMockTableColumnOrderSetting,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -85,18 +84,22 @@ describe("getQuestionWithDefaultVisualizationSettings", () => {
 describe("getAdHocQuestionWithVizSettings", () => {
   it("should sync table columns with the query of the current question (metabase#22382)", () => {
     const currentQuestion = new Question(
-      createAdHocCard({
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+      createMockUnsavedCard({
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                aggregations: [
+                  { type: "operator", operator: "count", args: [] },
+                ],
+                breakouts: [
+                  { type: "column", name: "CREATED_AT", unit: "month" },
+                ],
+              },
             ],
-          },
-        },
+          }),
+        ),
         visualization_settings: {
           "table.columns": [
             createMockTableColumnOrderSetting({

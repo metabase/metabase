@@ -10,6 +10,7 @@ import type {
   MeasureId,
   Metric,
   NativeQuerySnippet,
+  NormalizedTableId,
   SchemaId,
   Segment,
   SettingKey,
@@ -113,7 +114,7 @@ class Metadata {
    */
   field(
     fieldId: FieldId | FieldReference | string | undefined | null,
-    tableId?: TableId | undefined | null,
+    tableId?: NormalizedTableId | undefined | null,
   ): Field | null {
     if (fieldId == null) {
       return null;
