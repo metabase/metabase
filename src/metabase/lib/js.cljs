@@ -2662,6 +2662,13 @@
   [a-query]
   (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
 
+(defn ^:export primary-source-card-id
+  "Return the ID of the card the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.core/primary-source-card-id a-query))
+
 (defn ^:export all-field-ids
   "Return a JS array of all field IDs referenced anywhere in `a-query`."
   [a-query]

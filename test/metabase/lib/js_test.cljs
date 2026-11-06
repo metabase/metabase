@@ -714,3 +714,12 @@
               (lib.js/card-metadata mp (:id card)))))
     (testing "returns nil for unknown card id"
       (is (nil? (lib.js/card-metadata mp 999999))))))
+
+(deftest ^:parallel primary-source-card-id-test
+  (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+        card (:orders (lib.tu/mock-cards))]
+    (testing "returns id of source card"
+      (is (= (:id card)
+             (lib.js/primary-source-card-id (lib/query mp (lib.metadata/card mp (:id card)))))))
+    (testing "returns nil for source table"
+      (is (nil? (lib.js/primary-source-card-id (lib/query mp (lib.metadata/table mp (meta/id :orders)))))))))

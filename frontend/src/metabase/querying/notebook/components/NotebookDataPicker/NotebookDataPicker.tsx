@@ -24,6 +24,7 @@ import type {
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { getIsTenantUser } from "metabase/current-user";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { isEmbedding } from "metabase/embedding/config";
 import { selectMetadataProvider } from "metabase/metadata-store";
 import { useSelector, useStore } from "metabase/redux";
@@ -39,12 +40,7 @@ import {
 import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-import type { DataSource } from "./types";
-import {
-  getDataSourceFromTableId,
-  getMiniPickerDataSource,
-  isObjectWithModel,
-} from "./utils";
+import { getMiniPickerDataSource, isObjectWithModel } from "./utils";
 
 const DATA_SOURCE_SEARCH_PARAMS: MiniPickerSearchParams = {
   filter_items_in_personal_collection: "exclude-others",
@@ -136,9 +132,6 @@ export function NotebookDataPicker({
     }
   };
 
-  const handleEmbeddingChange = (tableId: TableId) =>
-    handleChange(getDataSourceFromTableId(tableId));
-
   const isRaw = useMemo(() => {
     return (
       Lib.aggregations(query, stageIndex).length === 0 &&
@@ -168,7 +161,7 @@ export function NotebookDataPicker({
           placeholder={placeholder}
           canChangeDatabase={canChangeDatabase}
           isDisabled={isDisabled}
-          onChange={handleEmbeddingChange}
+          onChange={handleChange}
         />
       </NotebookCellItem>
     );

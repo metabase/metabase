@@ -113,6 +113,10 @@ export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
+export function primarySourceCardId(query: Query): CardId | null {
+  return ML.primary_source_card_id(query);
+}
+
 export function allSourceTableIds(query: Query): ConcreteTableId[] {
   return ML.all_source_table_ids(query);
 }
