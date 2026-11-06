@@ -11,6 +11,7 @@ import {
 import { ScalarDescription } from "metabase/visualizations/components/ScalarValue/ScalarDescription";
 import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { getScalarValueFontSize } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import {
   compactifyValue,
@@ -114,6 +115,11 @@ function ScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
+  const fontSize = getScalarValueFontSize(
+    displayValue,
+    availableWidth,
+    tier.valueFontSize,
+  );
 
   const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
@@ -164,7 +170,7 @@ function ScalarComponent(
                 ref={valueRef}
                 color={color}
                 disableHover={isMetricsViewer}
-                fontSize={tier.valueFontSize}
+                fontSize={fontSize}
                 // Unjustified type cast. FIXME
                 value={displayValue as string}
               />
