@@ -166,3 +166,7 @@ export type Notification = NotificationPayload & {
   updated_at?: string;
   created_at?: string;
 };
+
+export type UnsubscribeResponse = {
+  title: string;
+};
