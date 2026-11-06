@@ -14,8 +14,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.serialization.protocol :as protocol]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]))
@@ -2321,16 +2321,17 @@
 
 (deftest ^:parallel fill-from-candidates-unexportable-fk-test
   (let [fill     #'repair/fill-from-candidates
-        unused   #(throw (ex-info "unexpected resolver call" {}))
-        resolver (reify serdes.resolve/SerdesExportResolver
-                   (export-fk [_ _ _] (unused))
-                   (export-fk-keyed [_ _ _ _] (unused))
-                   (export-user [_ _] (unused))
-                   (export-table-fk [_ _] (unused))
-                   (export-field-fk [_ _] (throw (ex-info "boom" {}))))
+        store    (reify protocol/Store
+                   (select-by-pks [_ _ _ _] (throw (ex-info "boom" {})))
+                   (select-by-refs [_ _ _ _] (throw (ex-info "unexpected store call" {})))
+                   (select-by-parent-pks [_ _ _ _] (throw (ex-info "unexpected store call" {})))
+                   (insert-rows! [_ _ _] (throw (ex-info "unexpected store call" {})))
+                   (update-row! [_ _ _ _] (throw (ex-info "unexpected store call" {})))
+                   (delete-rows! [_ _ _] (throw (ex-info "unexpected store call" {})))
+                   (transact [_ _ f] (f)))
         clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
         run      (fn [strict?]
-                   (fill clause {} (nth clause 2) resolver [{:source-field-id 1}]
+                   (fill clause {} (nth clause 2) store [{:source-field-id 1}]
                          {:source-label "Orders by user" :target-table-id 2 :strict? strict?}))]
     (testing "a single candidate whose FK cannot be exported is its own error on a strict stage, not :no-fk-path"
       (let [e (try (run true) nil (catch clojure.lang.ExceptionInfo e e))]
@@ -4027,7 +4028,7 @@
 (def ^:private card-content-store
   (let [cards [{:id 500 :database_id 1 :entity_id first-orders-card-eid}
                {:id 501 :database_id 1 :entity_id native-orders-card-eid}]]
-    (reify resolve.mp/ContentStore
+    (reify protocol.mp/ContentStore
       (card-by-entity-id    [_ eid] (some #(when (= eid (:entity_id %)) %) cards))
       (measure-by-entity-id [_ _] nil)
       (segment-by-entity-id [_ _] nil)
@@ -4504,7 +4505,7 @@
       (is (=? {:error :unresolved-join-alias-field :problems [{:columns ["PEOPLE.ID"] :available ["ID" "USER_ID"]}]} e))
       (is (re-find #"join \"Narrow\" doesn't return \"PEOPLE.ID\" \(available: \"ID\", \"USER_ID\"\)" (:message e)))))
   (testing "a numeric field id target is reported by its table and field names"
-    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+    (binding [repr.resolve/*numeric-ids-allowed?* true]
       (is (= [[0 "First" ["ORDERS.TOTAL"]]] (join-problems (first-orders-filtering (join-ref "First" 101))))))))
 
 (deftest ^:parallel join-alias-path-ref-with-source-field-is-skipped-test
@@ -4516,7 +4517,7 @@
   (testing "a path to no real field is left for the resolver to report"
     (is (nil? (repair-error (filtering-through "First" [first-orders-stage] "NOPE")))))
   (testing "a numeric id of no real field is left for the resolver to report"
-    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+    (binding [repr.resolve/*numeric-ids-allowed?* true]
       (is (nil? (repair-error (first-orders-filtering (join-ref "First" 999))))))))
 
 ;;; ============================================================

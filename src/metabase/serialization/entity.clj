@@ -1,6 +1,11 @@
 (ns metabase.serialization.entity
-  "Rows of a model as entities and back, by its spec."
+  "Rows of a model as entities and back, by its spec, and the model and ref of an entity.
+
+  An entity's `:serdes/meta` names only its model, `[{:model \"Card\"}]`. Its ref, which other entities refer to it
+  by, comes from its own keys: the exported values of its spec's identity columns, like the entity id of a Card, the
+  name of a Database, or the `[db-name schema table-name]` of a Table."
   (:require
+   [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.serialization.protocol :as protocol]
@@ -14,6 +19,11 @@
   "The `:serdes/meta` of an entity of `model`."
   [model]
   [{:model (name model)}])
+
+(defn model-of
+  "The model of `entity`, named by its `:serdes/meta`."
+  [entity]
+  (some->> entity :serdes/meta last :model (keyword "model")))
 
 (defn validate-export
   "In dev and test, throws when `entity`, exported from a row of `model`, does not match the schema of its spec."
@@ -108,3 +118,65 @@
                            {}
                            columns))]
     (mapv row (range (count entities)))))
+
+(defn- table-ref
+  "The `[db-name schema table-name]` ref of the Table on a full `:serdes/meta` `path`, with a nil schema for a
+  schemaless Table."
+  [path]
+  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) path))]
+    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
+
+(defn- field-ref
+  "The `[db-name schema table-name & field-names]` ref of the Field on a full `:serdes/meta` `path`."
+  [path]
+  (into (table-ref path) (keep #(when (= "Field" (:model %)) (:id %))) path))
+
+(def ^:private path-identity
+  "For each model whose files kept their identity only in a full `:serdes/meta` path up to release 64, a fn of the path
+  of its parent to its identity columns."
+  {"Dimension"         (fn [parent] {:field_id (field-ref parent)})
+   "FieldValues"       (fn [parent] {:field_id (field-ref parent)})
+   "FieldUserSettings" (fn [parent] {:field_id (field-ref parent)})
+   "TableUserSettings" (fn [parent] {:table_id (table-ref parent)})
+   "OsiAiContext"      (fn [parent]
+                         (let [{:keys [model id]} (peek parent)]
+                           (if (= "Table" model)
+                             {:entity_type "table" :entity_local_id (table-ref parent)}
+                             {:entity_type     (get {"Card" "card" "Measure" "measure" "Segment" "segment"} model model)
+                              :entity_local_id id})))})
+
+(defn restore-identity
+  "`entity` with the identity columns that an export up to release 64 kept only in its full `:serdes/meta` path filled
+  in from that path."
+  [entity]
+  (let [path (vec (:serdes/meta entity))]
+    (if-let [identity-of (and (next path) (path-identity (:model (peek path))))]
+      (reduce-kv (fn [entity k v] (cond-> entity (nil? (get entity k)) (assoc k v)))
+                 entity
+                 (identity-of (pop path)))
+      entity)))
+
+(defmulti entity-ref
+  "The ref of `entity`, an entity of `model`: the exported value of its one identity column, or the vector of the
+  values of several."
+  {:arglists '([model entity])}
+  (fn [model _entity] model))
+
+(defmethod entity-ref :default [model entity]
+  (let [spec   (serialization.spec/spec-of model)
+        values (for [k (serialization.spec/identity-columns model)]
+                 (let [v (get entity (get-in spec [:transform k :as] k))]
+                   (cond-> v (string? v) str/trim)))]
+    (if (next values) (vec values) (first values))))
+
+(defn key-of
+  "The `[model ref]` key of `entity`, which the dependencies of other entities name."
+  [entity]
+  (let [model (model-of entity)]
+    [model (entity-ref model entity)]))
+
+(defn log-str
+  "`entity` as a string for logs and errors."
+  [entity]
+  (let [[model ref] (key-of entity)]
+    (str (name model) " " (pr-str ref))))

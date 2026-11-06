@@ -16,12 +16,12 @@
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
@@ -45,15 +45,6 @@
   [:fn
    {:error/message "an instance of the root Collection"}
    #'collection.root/is-root-collection?])
-
-(defn- archived-directly-models
-  []
-  #{:model/Card :model/Dashboard :model/Document :model/Exploration})
-
-(defn- collectable-models
-  []
-  (set/union (archived-directly-models)
-             #{:model/Action :model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -1390,188 +1381,28 @@
 
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
-(defn- traverse-descendants
-  [node skip-archived]
-  (loop [to-traverse {node nil}
-         traversed   {}
-         accum       {}]
-    (let [item        (first to-traverse)
-          found       (let [[mod id] (key item)]
-                        (serdes/descendants mod id {:skip-archived skip-archived}))
-          traversed   (conj traversed item)
-          to-traverse (merge-with into
-                                  (dissoc to-traverse (key item))
-                                  (apply dissoc found (keys traversed)))
-          accum (merge-with concat accum (update-vals found vector))]
-      (if (empty? to-traverse)
-        accum
-        (recur to-traverse traversed accum)))))
-
-(defn- select-for-eligibility-check
-  "Select instances with fields needed for remote-sync eligibility checking.
-   Returns nil for nested models like DashboardCard that don't need separate eligibility checks."
-  [model-key ids]
-  (when (seq ids)
-    (case model-key
-      :model/Collection
-      ;; Collections use their own :id for eligibility, plus namespace and is_remote_synced
-      (collections.db/instances-with-columns [model-key :id :namespace :is_remote_synced] ids)
-      :model/Table
-      (collections.db/instances-with-columns [model-key :id :collection_id :is_published] ids)
-      ;; Actions without a model are synced with the Library rather than their collection
-      :model/Action
-      (collections.db/instances-with-columns [model-key :id :collection_id :model_id] ids)
-      ;; The Document spec's `:conditions` read `:exploration_id`; a row without the key never matches
-      :model/Document
-      (collections.db/instances-with-columns [model-key :id :collection_id :exploration_id] ids)
-      ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
-      (:model/DashboardCard :model/DashboardCardSeries)
-      nil
-      ;; Default - most models just need id and collection_id
-      (collections.db/instances-with-columns [model-key :id :collection_id] ids))))
-
-(defn- filter-eligible-dependents
-  "Filter a list of dependent info maps to only include those that are eligible for remote sync.
-   Each dependent-info is a map like {\"Card\" 123} or {\"Dashboard\" 456}.
-   Returns only those where the model instance is eligible for remote sync.
-   Nested models (like DashboardCard) are always considered eligible since their parent is checked."
-  [dependent-infos]
-  (let [;; Group by model type and collect IDs
-        grouped (reduce (fn [acc dependent-info]
-                          (reduce-kv (fn [acc' model-name inst-id]
-                                       (update acc' model-name (fnil conj #{}) inst-id))
-                                     acc
-                                     dependent-info))
-                        {}
-                        dependent-infos)
-        ;; For each model type, check eligibility
-        eligible-ids (reduce-kv (fn [acc model-name ids]
-                                  (let [model-key (keyword "model" model-name)
-                                        instances (select-for-eligibility-check model-key ids)]
-                                    (if (nil? instances)
-                                      ;; Nested models (DashboardCard, etc.) - all are eligible
-                                      (assoc acc model-name ids)
-                                      ;; Check eligibility via batch function
-                                      (let [eligibility-map (remote-sync/batch-model-eligible? model-key instances)
-                                            eligible (into #{} (keep (fn [[iid eligible?]] (when eligible? iid))) eligibility-map)]
-                                        (assoc acc model-name eligible)))))
-                                {}
-                                grouped)]
-    ;; Filter original list to keep only eligible ones
-    (filter (fn [dependent-info]
-              (every? (fn [[model-name inst-id]]
-                        (contains? (get eligible-ids model-name #{}) inst-id))
-                      dependent-info))
-            dependent-infos)))
-
-(defn remote-synced-dependents
-  "Finds dependents of a model that are eligible for remote sync.
-   Uses spec-based eligibility rules which account for special cases like
-   snippets (eligible when Library is synced, not by collection).
-
-  Takes model (the model to check dependents for).
-
-  Returns a sequence of {model-name id} maps for dependents that are eligible for remote sync."
-  [{:keys [id archived] :as model}]
-  (let [;; Get ALL top-level remote-synced collections
-        all-remote-synced-roots (collections.db/remote-synced-root-collection-ids)
-        ;; Traverse descendants of all remote-synced roots combined
-        all-remote-synced-descendants (reduce (fn [accum root-id]
-                                                (merge-with concat accum
-                                                            (traverse-descendants ["Collection" root-id] true)))
-                                              {}
-                                              all-remote-synced-roots)]
-    (case (t2/model model)
-      :model/Collection
-      ;; Get all descendants of the collection being moved and see if any of them are present in the
-      ;; set of all descendants across all remote-synced roots, then filter by eligibility
-      (let [all-dependents (->> (traverse-descendants ["Collection" id] (not archived))
-                                keys
-                                (mapcat #(get all-remote-synced-descendants %)))]
-        (filter-eligible-dependents all-dependents))
-
-      ;; If this is not a collection see if the provided model appears anywhere in the descendants of
-      ;; any remote-synced collection, then filter by eligibility
-      (let [direct-dependents (get all-remote-synced-descendants [(name (t2/model model)) id] [])]
-        (filter-eligible-dependents direct-dependents)))))
-
-(defn ineligible-dependencies
-  "Finds dependencies of a model that are not eligible for remote sync, along with the context needed to
-   explain why. Uses spec-based eligibility rules which account for special cases like snippets
-   (eligible when Library is synced, not by collection).
-
-  Takes model (the model to check dependencies for).
-
-  Returns a vector of maps, one per ineligible dependency:
-
-    {:model \"Card\", :id 412, :instance <row>, :used-by [{\"DashboardCard\" 12 \"Dashboard\" 3}]}
-
-  `:instance` carries whatever [[select-for-eligibility-check]] loaded for it, notably `:collection_id`.
-  `:used-by` carries the [[serdes/descendants]] provenance: one entry per entity that reached this one,
-  naming the direct referrer rather than the whole path back to `model`. Both fall out of the traversal
-  that [[non-remote-synced-dependencies]] already runs, so reporting them costs no extra queries."
-  [{:keys [id] :as model}]
-  (if (collections.db/collection-exists? (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
-    (let [traversed   (traverse-descendants [(name (t2/model model)) id] true)
-          descendants (u/group-by first second (keys traversed))]
-      (into []
-            (for [m (collectable-models)
-                  :let [model-name (name m)
-                        descendant-ids (set (get descendants model-name))]
-                  :when (seq descendant-ids)
-                  :let [instances (select-for-eligibility-check m descendant-ids)
-                        by-id (into {} (map (juxt :id identity)) instances)
-                        eligibility-map (remote-sync/batch-model-eligible? m instances)]
-                  [inst-id eligible?] eligibility-map
-                  :when (not eligible?)]
-              {:model    model-name
-               :id       inst-id
-               :instance (get by-id inst-id)
-               :used-by  (vec (get traversed [model-name inst-id]))})))
-    []))
-
-(defn non-remote-synced-dependencies
-  "Finds dependencies of a model that are not eligible for remote sync.
-   Uses spec-based eligibility rules which account for special cases like
-   snippets (eligible when Library is synced, not by collection).
-
-  Takes model (the model to check dependencies for).
-
-  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync.
-  See [[ineligible-dependencies]] for the same set with the containing collection attached."
-  [model]
-  (into #{} (map :id) (ineligible-dependencies model)))
-
 (defn check-non-remote-synced-dependencies
-  "Checks if a model has non-remote-synced-dependencies and throws if it does.
-
-  Takes model (the model to check dependencies for).
-
-  Returns the model if no non-remote-synced dependencies are found.
-
-  Throws an ex-info object with non-remote-synced-dependencies and a 400 status code if dependencies are found."
+  "Returns `model`, throwing a 400 when remote sync exports it, or for a Collection what it holds, and it depends on
+  content remote sync does not export."
   [model]
-  (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
+  (when-let [pairs (seq (remote-sync/dangling-dependencies {:from {(name (t2/model model)) [(:id model)]}}))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
-                    {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400
-                     :response/keys #{:non-remote-synced-models}})))
+                    {:status-code              400
+                     :error-code               "non-remote-synced-dependencies"
+                     :non-remote-synced-models (into #{} (map (comp second second)) pairs)
+                     :response/keys            #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
-  "Checks if a model has remote-synced-dependents and throws if it does.
-
-  Takes model (the model to check dependencies for).
-
-  Returns the model if no remote-synced dependents are found.
-
-  Throws an ex-info object with remote-synced-dependencies and a 400 status code if dependents are found."
+  "Returns `model`, throwing a 400 when content remote sync exports depends on it, or for a Collection on what it
+  holds, though remote sync no longer exports it."
   [model]
-  (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
+  (when-let [pairs (seq (remote-sync/dangling-dependencies {:to {(name (t2/model model)) [(:id model)]}}))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
-                    {:remote-synced-models remote-synced-deps
-                     :status-code 400
-                     :response/keys #{:remote-synced-models}})))
+                    {:status-code          400
+                     :error-code           "remote-synced-dependents"
+                     :remote-synced-models (vec (distinct (map (fn [[[model-name id]]] {model-name id}) pairs)))
+                     :response/keys        #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -2224,102 +2055,33 @@
       [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
-  (collections.db/collections-for-serdes-reducible collection-set skip-archived filter-column filter-ids))
+(defmethod serialization/storage-paths :model/Collection [_ entities {:keys [collections]}]
+  (mapv (fn [coll]
+          (into [{:label "collections"} {:label (serialization/collection-namespace-folder (:namespace coll))}]
+                (get collections (:entity_id coll))))
+        entities))
 
-(defmethod serdes/deserialization-dependencies "Collection"
-  [{:keys [parent_id]}]
-  (when parent_id
-    #{[{:model "Collection" :id parent_id}]}))
+(defn- import-parent-locations
+  "A transform fn importing parent Collection entity ids as the locations of their children."
+  [store _entities parent-eids opts]
+  (let [parent-ids (serialization/column-ids store :model/Collection parent-eids opts)
+        locations  (when-let [ids (seq (filter some? parent-ids))]
+                     (collections.db/collection-locations (vec (distinct ids))))]
+    (mapv #(if % (str (get locations %) % "/") "/") parent-ids)))
 
-(defmethod serdes/serialization-dependencies "Collection"
-  ;; The raw entity carries its ancestry in `:location` (the ingested form is normalized to `:parent_id`), so the
-  ;; parent Collection is derived from the path. A selective export may legitimately omit the parent.
-  [_model-name {:keys [location]}]
-  (when-let [parent-id (location-path->parent-id location)]
-    #{[{:model "Collection" :id parent-id}]}))
-
-(defmethod serdes/generate-path "Collection" [_ coll]
-  (serdes/maybe-labeled "Collection" coll :slug))
-
-(defmethod serdes/required "Collection" [_ id]
-  (when id
-    (let [{:keys [location]} (collections.db/collection id)
-          path               (location-path->ids location)]
-      ;; we'll recurse anyway, so just return immediate parent
-      (when (seq path)
-        {["Collection" (u/last path)] {"Collection" id}}))))
-
-(defmethod serdes/descendants "Collection" [_model-name id {:keys [skip-archived]}]
-  (let [location    (when id (collections.db/collection-location id))
-        child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
-                      (into {} (for [child-id (collections.db/child-collection-ids (str location id "/")
-                                                                                   trash-collection-type
-                                                                                   skip-archived)]
-                                 {["Collection" child-id] {"Collection" id}})))
-        dashboards  (into {} (for [dash-id (collections.db/dashboard-ids-in-collection id skip-archived)]
-                               {["Dashboard" dash-id] {"Collection" id}}))
-        ;; Cards materialized by an exploration Summary ride with that Summary, which is excluded just below. Listing
-        ;; them here would make them export targets whose Document dependency is absent.
-        cards       (into {} (for [card-id (collections.db/card-ids-in-collection id skip-archived)]
-                               {["Card" card-id] {"Collection" id}}))
-        documents (when config/ee-available?
-                    ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
-                    (into {} (for [doc-id (collections.db/document-ids-in-collection id skip-archived)]
-                               {["Document" doc-id] {"Collection" id}})))
-        timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
-                               {["Timeline" timeline-id] {"Collection" id}}))
-        actions     (into {} (for [action-id (collections.db/action-ids-in-collection id skip-archived)]
-                               {["Action" action-id] {"Collection" id}}))
-        tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
-                               {["Table" table-id] {"Collection" id}}))
-        ;; Transforms don't have an archived column, so we don't filter by skip-archived
-        transforms  (when config/ee-available?
-                      (into {} (for [transform-id (collections.db/transform-ids-in-collection id)]
-                                 {["Transform" transform-id] {"Collection" id}})))]
-    (merge child-colls dashboards cards documents timelines actions tables transforms)))
-
-(defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
-  (into [{:label "collections"} {:label (serdes/collection-namespace-folder (:namespace coll))}]
-        (get collections (:entity_id coll))))
-
-(defn- parent-id->location-path [parent-id]
-  (if-not parent-id
-    "/"
-    ;; It would be great to use a cache rather than a database call to fetch the parent.
-    (let [{:keys [id location]} (collections.db/collection parent-id)]
-      (str location id "/"))))
-
-(defmethod serdes/make-spec "Collection" [_model-name _opts]
+(defmethod serialization/spec :model/Collection [_]
   {:schema    ::collections.schema/external-collection
-   :copy [:archive_operation_id
-          :archived
-          :archived_directly
-          :authority_level
-          :description
-          :entity_id
-          :is_remote_synced
-          :is_sample
-          :name
-          :namespace
-          :slug
-          :type]
-   :skip []
-   :transform {;; We only dump the parent id, and recalculate the location from that on load.
-               :location          (serdes/as :parent_id
-                                             (serdes/compose
-                                              (serdes/fk :model/Collection)
-                                              {:export location-path->parent-id
-                                               :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)}
-   :defaults {:archived         false
-              :is_sample        false
-              :is_remote_synced false}})
-
-(defmethod serdes/load-update! "Collection" [model-name ingested local]
-  (serdes/default-load-update! model-name
-                               (cond-> ingested (system-collection-name local) (dissoc :name))
-                               local))
+   :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
+               :is_remote_synced :is_sample :name :namespace :slug :type]
+   :transform {:location          {:as     :parent_id
+                                   :export (fn [store _ locations _]
+                                             (serialization/column-refs store :model/Collection
+                                                                        (map location-path->parent-id locations)))
+                                   :import import-parent-locations}
+               :personal_owner_id serialization/user-transform}
+   :defaults  {:archived         false
+               :is_sample        false
+               :is_remote_synced false}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
@@ -2331,7 +2093,6 @@
   as the original, this check is a no-op.
 
   As usual, an `collection-id` of `nil` represents the Root Collection.
-
 
   Intended for use with `PUT` or `PATCH`-style operations. Usage should look something like:
 
@@ -2624,3 +2385,25 @@
   "Return all collections in the given namespace."
   [namespace]
   (collections.db/collections-in-namespace (name namespace)))
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Collection [_ entities]
+  (mapv (fn [{:keys [parent_id]}]
+          (when parent_id
+            #{[:model/Collection parent_id]}))
+        entities))
+
+(defmethod serialization/export-dependencies :model/Collection [_ collections]
+  (mapv (fn [{:keys [location]}]
+          (when-let [parent-id (some-> location location-path->parent-id)]
+            #{[:model/Collection parent-id]}))
+        collections))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/Collection [_ items]
+  (mapv (fn [{:keys [local] :as item}]
+          (cond-> item
+            (and local (system-collection-name local)) (update :row dissoc :name)))
+        items))
