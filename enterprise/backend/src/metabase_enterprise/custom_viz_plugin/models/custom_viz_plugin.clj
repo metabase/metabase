@@ -72,16 +72,9 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-;; A plugin is identified by its `entity_id`, like every other entity, and `custom_viz_plugin.yaml` carries it as
-;; `data_app.yaml` does. The identifier is the plugin's unique natural key: it names the directory, is the manifest's
-;; `name` and the `custom:<identifier>` display type, and labels the plugin's `serdes/meta` entry.
 ;; A plugin serializes as `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml` with its bundle unpacked beside it,
-;; laid out as `npx @metabase/custom-viz pack` archives it: `metabase-plugin.json` at the root, `dist/index.js`, and
-;; the icon the manifest names under `dist/assets/`. The YAML declares those files beside the plugin's identity.
-;; The files are all text (the icon is an SVG), so they travel as strings, as a data app's
-;; bundle does. An import packs them back into an archive, so a plugin's files are what a repository reviews
-;; and what an instance stores. Whether a plugin is enabled is an admin's choice on each instance, as for data apps,
-;; so the YAML carries no settings at all.
+;; in the layout `npx @metabase/custom-viz pack` produces; import packs the files back into an archive. Whether a
+;; plugin is enabled is per-instance, so the YAML carries no settings.
 
 (def ^:private index-file
   "The resource file holding the plugin's built JavaScript, relative to its YAML file."
@@ -98,8 +91,7 @@
   (str (.normalize (java.nio.file.Path/of path (into-array String [])))))
 
 (defn- served-paths
-  "The archive paths an instance serves from a bundle, which are the files a repository holds: the manifest, the
-  JavaScript, and the icon the manifest names. `read-text` reads an archive path as a string, or nil."
+  "Archive paths of the manifest, JS, and icon; `read-text` reads an archive path as a string, or nil."
   [read-text]
   (into [(manifest/manifest-path) index-file]
         (map (comp asset-file normalize-path))
@@ -116,8 +108,8 @@
   (.getBytes content StandardCharsets/UTF_8))
 
 (defn- served-files
-  "The entries of `files`, a map of archive path to bytes, at the [[served-paths]], as text. An uploaded archive may
-  hold more, such as a source map; an import reads back only these, so an export writes only these."
+  "`files` (archive path -> bytes) narrowed to [[served-paths]], as text. Extra files such as source maps are
+  dropped, since an import would ignore them."
   [files]
   (let [read-text (fn [path] (some-> ^bytes (get files path) file->text))]
     (into {}
@@ -127,9 +119,8 @@
           (served-paths read-text))))
 
 (defn- export-bundle
-  "The files a plugin's stored `bundle` exports beside its YAML, or `::serdes/skip` for a dev-only plugin, which
-  has none, and for a stored archive that can't be read: that plugin exports as the YAML alone, so one broken plugin
-  doesn't fail the export, and it imports as an error plugin."
+  "The bundle files exported beside the YAML. Skipped when absent or unreadable, so one broken plugin doesn't fail
+  the export."
   [{:keys [identifier]} _k bundle]
   (if bundle
     (try
