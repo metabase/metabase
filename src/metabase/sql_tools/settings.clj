@@ -68,4 +68,4 @@
   :visibility :internal
   :export? false
   :type :double
-  :default 0.1)
+  :default 1.0)
